@@ -8,7 +8,7 @@ export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/reminders/
      recipient of a due customer reminder is that customer's salesperson, so sellers may resolve
      (only that: DELETE stays with managers). canReachEntity below still limits it to customers
      they can reach. */
-  const guard = requireRole(req, [...MANAGE_ROLES, "phone_sales", "field_rep"]);
+  const guard = await requireRole(req, [...MANAGE_ROLES, "phone_sales", "field_rep"]);
   if (!guard.ok) return guard.response;
 
   const { id } = await ctx.params;
@@ -21,18 +21,18 @@ export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/reminders/
   if (typeof resolved !== "boolean") {
     return NextResponse.json({ ok: false, error: "پارامتر نامعتبر" }, { status: 400 });
   }
-  const owning = reminderEntity(reminderId);
-  if (!owning || !canReachEntity(guard.session, owning.entity_type, owning.entity_id)) {
+  const owning = await reminderEntity(reminderId);
+  if (!owning || !await canReachEntity(guard.session, owning.entity_type, owning.entity_id)) {
     return NextResponse.json({ ok: false, error: "یادآوری پیدا نشد" }, { status: 404 });
   }
-  if (!setReminderResolved(reminderId, resolved)) {
+  if (!await setReminderResolved(reminderId, resolved)) {
     return NextResponse.json({ ok: false, error: "یادآوری پیدا نشد" }, { status: 404 });
   }
   return NextResponse.json({ ok: true });
 }
 
 export async function DELETE(req: NextRequest, ctx: RouteContext<"/api/reminders/[id]">) {
-  const guard = requireRole(req, MANAGE_ROLES);
+  const guard = await requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
 
   const { id } = await ctx.params;
@@ -40,10 +40,10 @@ export async function DELETE(req: NextRequest, ctx: RouteContext<"/api/reminders
   if (!Number.isInteger(reminderId)) {
     return NextResponse.json({ ok: false, error: "شناسه نامعتبر" }, { status: 400 });
   }
-  const owning = reminderEntity(reminderId);
-  if (!owning || !canReachEntity(guard.session, owning.entity_type, owning.entity_id)) {
+  const owning = await reminderEntity(reminderId);
+  if (!owning || !await canReachEntity(guard.session, owning.entity_type, owning.entity_id)) {
     return NextResponse.json({ ok: false, error: "یادآوری پیدا نشد" }, { status: 404 });
   }
-  deleteReminder(reminderId);
+  await deleteReminder(reminderId);
   return NextResponse.json({ ok: true });
 }

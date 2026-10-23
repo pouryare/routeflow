@@ -1,4 +1,4 @@
-import type { DatabaseSync } from "node:sqlite";
+import type { Db } from "@/lib/database/client";
 import { makeRepo } from "./base";
 import {
   CHEQUE_TRANSITIONS,
@@ -50,11 +50,11 @@ export interface RecordChequeInput {
 
 /** Insert a cheque `in_hand` and a linked CHEQUE payment, allocated like any payment.
  *  The debt is treated as settled while the cheque is live. One transaction. */
-function recordChequePaymentTxn(
-  db: DatabaseSync,
+async function recordChequePaymentTxn(
+  db: Db,
   organizationId: number,
   input: RecordChequeInput
-): { cheque_id: number; payment_id: number } {
+): Promise<{ cheque_id: number; payment_id: number }> {
   if (!Number.isInteger(input.amount_toman) || input.amount_toman <= 0) {
     throw new ChequeError("مبلغ چک را به تومان، بدون اعشار و بیشتر از صفر وارد کنید");
   }
@@ -63,7 +63,7 @@ function recordChequePaymentTxn(
   let chequeId: number;
   try {
     chequeId = Number(
-      db
+      (await db
         .prepare(
           `INSERT INTO cheques
              (organization_id, customer_id, amount_toman, cheque_no, bank_name, due_date,
@@ -82,7 +82,7 @@ function recordChequePaymentTxn(
           input.note ?? null,
           now,
           now
-        ).lastInsertRowid
+        )).lastInsertRowid
     );
   } catch (e) {
     if (e instanceof Error && /UNIQUE/i.test(e.message)) {
@@ -91,7 +91,7 @@ function recordChequePaymentTxn(
     throw e;
   }
 
-  const paymentId = recordPaymentTxn(db, organizationId, {
+  const paymentId = await recordPaymentTxn(db, organizationId, {
     customer_id: input.customer_id,
     amount_toman: input.amount_toman,
     method: "CHEQUE",
@@ -105,20 +105,15 @@ function recordChequePaymentTxn(
   return { cheque_id: chequeId, payment_id: paymentId };
 }
 
-export function recordChequePayment(
+export async function recordChequePayment(
   organizationId: number,
   input: RecordChequeInput
-): { cheque_id: number; payment_id: number } {
+): Promise<{ cheque_id: number; payment_id: number }> {
   const db = chequesRepo.db();
-  db.exec("BEGIN IMMEDIATE");
-  try {
-    const out = recordChequePaymentTxn(db, organizationId, input);
-    db.exec("COMMIT");
+  return await db.tx(async () => {
+    const out = await recordChequePaymentTxn(db, organizationId, input);
     return out;
-  } catch (e) {
-    db.exec("ROLLBACK");
-    throw e;
-  }
+  });
 }
 
 const STAMP: Partial<Record<ChequeStatus, "deposited_at" | "cleared_at" | "bounced_at">> = {
@@ -142,17 +137,16 @@ export interface ReplacementInput {
  *  - `replaced` voids the linked payment if it is still live, then records the
  *    replacement cheque + payment (FIFO onto the now-unpaid orders) and links the two.
  */
-export function advanceCheque(
+export async function advanceCheque(
   organizationId: number,
   id: number,
   to: ChequeStatus,
   actor: number,
   opts?: { replacement?: ReplacementInput }
-): void {
+): Promise<void> {
   const db = chequesRepo.db();
-  db.exec("BEGIN IMMEDIATE");
-  try {
-    const cheque = db
+  await db.tx(async () => {
+    const cheque = await db
       .prepare("SELECT * FROM cheques WHERE id = ? AND organization_id = ?")
       .get(id, organizationId) as ChequeRow | undefined;
     if (!cheque) throw new ChequeError("چک پیدا نشد");
@@ -165,13 +159,13 @@ export function advanceCheque(
     }
 
     const now = new Date().toISOString();
-    const linkedPayment = db
+    const linkedPayment = await db
       .prepare("SELECT id, voided_at FROM payments WHERE cheque_id = ?")
       .get(id) as { id: number; voided_at: string | null } | undefined;
 
     if (to === "bounced" || to === "replaced") {
       if (linkedPayment && !linkedPayment.voided_at) {
-        voidPaymentTxn(
+        await voidPaymentTxn(
           db,
           organizationId,
           linkedPayment.id,
@@ -182,7 +176,7 @@ export function advanceCheque(
     }
 
     if (to === "bounced") {
-      db.prepare(
+      await db.prepare(
         `INSERT INTO reminders (entity_type, entity_id, due_date, message, resolved, created_at)
          VALUES ('customer', ?, ?, ?, 0, ?)`
       ).run(
@@ -199,7 +193,7 @@ export function advanceCheque(
         throw new ChequeError("برای جایگزینی، مشخصات چک جدید لازم است");
       }
       const r = opts.replacement;
-      const { cheque_id } = recordChequePaymentTxn(db, organizationId, {
+      const { cheque_id } = await recordChequePaymentTxn(db, organizationId, {
         customer_id: cheque.customer_id,
         amount_toman: r.amount_toman ?? cheque.amount_toman,
         cheque_no: r.cheque_no,
@@ -213,7 +207,7 @@ export function advanceCheque(
     }
 
     const stampCol = STAMP[to];
-    db.prepare(
+    await db.prepare(
       `UPDATE cheques
           SET status = ?, updated_at = ?,
               replaced_by_cheque_id = COALESCE(?, replaced_by_cheque_id)` +
@@ -224,26 +218,21 @@ export function advanceCheque(
         ? [to, now, replacementId, now, id, organizationId]
         : [to, now, replacementId, id, organizationId])
     );
-
-    db.exec("COMMIT");
-  } catch (e) {
-    db.exec("ROLLBACK");
-    throw e;
-  }
+  });
 }
 
-export function listCheques(
+export async function listCheques(
   organizationId: number,
   filter?: { status?: ChequeStatus; customer_id?: number }
-): ChequeRow[] {
+): Promise<ChequeRow[]> {
   const where: Partial<ChequeRow> = {};
   if (filter?.status) where.status = filter.status;
   if (filter?.customer_id) where.customer_id = filter.customer_id;
-  return chequesRepo.list(organizationId, where);
+  return await chequesRepo.list(organizationId, where);
 }
 
 /** The board view: every cheque bucketed by status. */
-export function chequesByStatus(organizationId: number): Record<ChequeStatus, ChequeRow[]> {
+export async function chequesByStatus(organizationId: number): Promise<Record<ChequeStatus, ChequeRow[]>> {
   const out = {
     issued: [],
     in_hand: [],
@@ -253,6 +242,6 @@ export function chequesByStatus(organizationId: number): Record<ChequeStatus, Ch
     replaced: [],
     cancelled: [],
   } as Record<ChequeStatus, ChequeRow[]>;
-  for (const c of chequesRepo.list(organizationId)) out[c.status].push(c);
+  for (const c of await chequesRepo.list(organizationId)) out[c.status].push(c);
   return out;
 }

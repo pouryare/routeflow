@@ -7,7 +7,7 @@
 
 import { MAX_LINES_PER_ORDER, MAX_NOTES_LENGTH, MAX_PACKS_PER_LINE, isValidPacks } from "./orderLimits";
 import { refreshOrderFigures } from "./repo/orderFigures";
-import type { DatabaseSync } from "node:sqlite";
+import type { Db } from "@/lib/database/client";
 import { getDb } from "./db";
 import { resolvePrice, costBasisFor } from "./catalogue";
 import { toJalali } from "./jalali";
@@ -34,6 +34,7 @@ import {
   type LineSnapshot,
 } from "./orderMath";
 
+import { mapSeq } from "@/lib/seq";
 export { OrderError, OrderTransitionError, OrderRoleError };
 
 export interface LineInput {
@@ -108,7 +109,7 @@ export interface OrderDetail {
  *  constraint on order_no is what actually guarantees no duplicate -- this only has to
  *  be right, not exclusive, and BEGIN IMMEDIATE in createOrder takes the write lock
  *  before the read so two concurrent writers cannot both see the same maximum. */
-function nextOrderNo(db: DatabaseSync, orderDate: string, organizationId: number): string {
+async function nextOrderNo(db: Db, orderDate: string, organizationId: number): Promise<string> {
   const jy = toJalali(orderDate)?.jy ?? toJalali(new Date().toISOString())!.jy;
   const prefix = `${jy}-`;
   // Scoped to this organisation: order_no is unique per (organization_id, order_no) now,
@@ -116,7 +117,7 @@ function nextOrderNo(db: DatabaseSync, orderDate: string, organizationId: number
   // otherwise a second tenant's numbering would start wherever the first tenant's had
   // reached, which both wastes numbers and tells one company how many orders another has
   // taken this year.
-  const row = db
+  const row = await db
     .prepare("SELECT MAX(order_no) AS latest FROM orders WHERE order_no LIKE ? AND organization_id = ?")
     .get(`${prefix}%`, organizationId) as { latest: string | null };
 
@@ -129,8 +130,8 @@ function nextOrderNo(db: DatabaseSync, orderDate: string, organizationId: number
  *  Refusing an unpriced product rather than defaulting to zero is deliberate: a free
  *  order is a real thing, so a silent zero is indistinguishable from one, and the
  *  person recording it is the only one who can tell the difference. */
-function snapshotLine(db: DatabaseSync, orderDate: string, input: LineInput) {
-  const packaging = db
+async function snapshotLine(db: Db, orderDate: string, input: LineInput) {
+  const packaging = await db
     .prepare(
       `SELECT pk.id, pk.qty_per_pack, pk.product_id, p.kg_per_base_unit, p.avg_cost_toman, p.name AS product_name
          FROM packagings pk JOIN products p ON p.id = pk.product_id
@@ -147,7 +148,7 @@ function snapshotLine(db: DatabaseSync, orderDate: string, input: LineInput) {
 
   if (!packaging) throw new OrderError("بسته‌بندی برای این کالا پیدا نشد");
 
-  const price = resolvePrice(db, input.product_id, input.packaging_id, orderDate);
+  const price = await resolvePrice(db, input.product_id, input.packaging_id, orderDate);
   if (!price) {
     throw new OrderError(`«${packaging.product_name}» در این تاریخ قیمت ندارد`);
   }
@@ -174,7 +175,7 @@ function snapshotLine(db: DatabaseSync, orderDate: string, input: LineInput) {
      is the figure a free order is really about, and refusing to record an order over an
      unknown COST would block sales the owner is trying to make; the drawer is where that
      gap belongs, and it says so. */
-  const basis = costBasisFor(db, input.product_id, input.packaging_id, orderDate);
+  const basis = await costBasisFor(db, input.product_id, input.packaging_id, orderDate);
 
   return {
     unit_price_toman: price.price_toman,
@@ -222,10 +223,10 @@ function assertValidOrderDate(orderDate: string): void {
   }
 }
 
-export function createOrder(
-  db: DatabaseSync,
+export async function createOrder(
+  db: Db,
   input: CreateOrderInput
-): { id: number; order_no: string } {
+): Promise<{ id: number; order_no: string }> {
   if (input.lines.length === 0) throw new OrderError("سفارش بدون قلم ثبت نمی‌شود");
   assertValidLines(input.lines);
   assertValidOrderDate(input.order_date);
@@ -233,7 +234,7 @@ export function createOrder(
     throw new OrderError(`یادداشت حداکثر ${MAX_NOTES_LENGTH} نویسه است`);
   }
 
-  const customer = db
+  const customer = await db
     .prepare(
       "SELECT id, group_id, hard_credit_block, credit_limit_toman FROM customers WHERE id = ?"
     )
@@ -247,7 +248,7 @@ export function createOrder(
   if (!customer) throw new OrderError("مشتری پیدا نشد");
 
   // A representative settles in cash or bank cheque and is outside credit control.
-  const isRepresentative = !!db
+  const isRepresentative = !!await db
     .prepare(
       "SELECT 1 FROM representative_profiles WHERE customer_id = ? AND organization_id = ?"
     )
@@ -260,13 +261,12 @@ export function createOrder(
   // IMMEDIATE rather than a deferred BEGIN: the transaction reads the highest order
   // number and then writes it back, and a deferred transaction would let two writers
   // both read the same maximum before either takes the lock.
-  db.exec("BEGIN IMMEDIATE");
-  try {
-    const orderNo = nextOrderNo(db, input.order_date, input.organization_id);
+  return await db.tx(async () => {
+    const orderNo = await nextOrderNo(db, input.order_date, input.organization_id);
     const now = new Date().toISOString();
 
     const orderId = Number(
-      db
+      (await db
         .prepare(
           `INSERT INTO orders (order_no, customer_id, group_id, salesperson_user_id, status,
                                order_date, requested_day, requested_kind, notes, credit_override_by,
@@ -290,17 +290,17 @@ export function createOrder(
           now,
           now,
           input.organization_id
-        ).lastInsertRowid
+        )).lastInsertRowid
     );
 
     for (const line of input.lines) {
-      insertLine(db, orderId, input.order_date, line, now);
+      await insertLine(db, orderId, input.order_date, line, now);
     }
 
     // Phase 3: an order is born a DRAFT. Credit control moved to submitOrder -- it is a
     // property of *submitting* for review, not of typing the slip. Record the birth so
     // the order_events timeline is never blank.
-    appendOrderEvent(db, {
+    await appendOrderEvent(db, {
       organization_id: input.organization_id,
       order_id: orderId,
       from_status: null,
@@ -308,24 +308,19 @@ export function createOrder(
       action: "create",
       actor_user_id: input.created_by,
     });
-
-    db.exec("COMMIT");
     return { id: orderId, order_no: orderNo };
-  } catch (e) {
-    db.exec("ROLLBACK");
-    throw e;
-  }
+  });
 }
 
-function insertLine(
-  db: DatabaseSync,
+async function insertLine(
+  db: Db,
   orderId: number,
   orderDate: string,
   line: LineInput,
   now: string
 ) {
-  const snap = snapshotLine(db, orderDate, line);
-  db.prepare(
+  const snap = await snapshotLine(db, orderDate, line);
+  await db.prepare(
     `INSERT INTO order_lines (order_id, product_id, packaging_id, packs_ordered,
                               unit_price_toman, unit_cost_toman, qty_per_pack,
                               kg_per_base_unit, price_id, is_reversal, reverses_line_id, created_at)
@@ -344,13 +339,13 @@ function insertLine(
     line.reverses_line_id ?? null,
     now
   );
-  refreshOrderFigures(db, orderId);
+  await refreshOrderFigures(db, orderId);
 }
 
 /** Adds a line to a draft. Refuses once the order is confirmed -- at that point the
  *  correction is a reversal line, which is a different and deliberate act. */
-export function addLine(db: DatabaseSync, orderId: number, line: LineInput): void {
-  const order = db.prepare("SELECT status, order_date FROM orders WHERE id = ?").get(orderId) as
+export async function addLine(db: Db, orderId: number, line: LineInput): Promise<void> {
+  const order = await db.prepare("SELECT status, order_date FROM orders WHERE id = ?").get(orderId) as
     | { status: string; order_date: string }
     | undefined;
   if (!order) throw new OrderError("سفارش پیدا نشد");
@@ -358,14 +353,14 @@ export function addLine(db: DatabaseSync, orderId: number, line: LineInput): voi
   if (order.status !== "DRAFT") {
     throw new OrderError("سفارش تأییدشده ویرایش نمی‌شود؛ برای اصلاح، قلم برگشتی ثبت کنید");
   }
-  insertLine(db, orderId, order.order_date, line, new Date().toISOString());
-  touch(db, orderId);
+  await insertLine(db, orderId, order.order_date, line, new Date().toISOString());
+  await touch(db, orderId);
 }
 
 /** Whether a DRAFT is complete enough to submit: at least one non-reversal line and a
  *  positive total. */
-function orderComplete(db: DatabaseSync, orderId: number): boolean {
-  const lines = linesOf(db, orderId);
+async function orderComplete(db: Db, orderId: number): Promise<boolean> {
+  const lines = await linesOf(db, orderId);
   const real = lines.filter((l) => !l.is_reversal);
   return real.length > 0 && orderTotalToman(lines) > 0;
 }
@@ -380,13 +375,13 @@ function orderComplete(db: DatabaseSync, orderId: number): boolean {
  *    raises the manager's reminder.
  *  - Otherwise it waits at PENDING_REVIEW for a human `passReview`.
  */
-export function submitOrder(
+export async function submitOrder(
   organizationId: number,
   orderId: number,
   actor: { id: number | null; role: OrderRole; roles?: readonly OrderRole[]; actorId?: number }
-): OrderStatus {
+): Promise<OrderStatus> {
   const db = getDb();
-  const order = db
+  const order = await db
     .prepare(
       "SELECT id, customer_id, order_type, status, created_by FROM orders WHERE id = ? AND organization_id = ?"
     )
@@ -394,31 +389,31 @@ export function submitOrder(
     | { id: number; customer_id: number; order_type: string; status: OrderStatus; created_by: number }
     | undefined;
   if (!order) throw new OrderError("سفارش پیدا نشد");
-  if (!orderComplete(db, orderId)) throw new OrderError("سفارش بدون قلم یا با جمع صفر ثبت نمی‌شود");
+  if (!await orderComplete(db, orderId)) throw new OrderError("سفارش بدون قلم یا با جمع صفر ثبت نمی‌شود");
 
-  advanceOrder(organizationId, orderId, "submit", actor);
+  await advanceOrder(organizationId, orderId, "submit", actor);
 
-  const isRepresentative = !!db
+  const isRepresentative = !!await db
     .prepare("SELECT 1 FROM representative_profiles WHERE customer_id = ? AND organization_id = ?")
     .get(order.customer_id, organizationId);
 
   if (isRepresentative || order.order_type === "SAMPLE") {
-    return advanceOrder(organizationId, orderId, "passReview", { id: actor.id, role: "system" });
+    return await advanceOrder(organizationId, orderId, "passReview", { id: actor.id, role: "system" });
   }
 
-  const customer = db
+  const customer = await db
     .prepare("SELECT credit_limit_toman FROM customers WHERE id = ?")
     .get(order.customer_id) as { credit_limit_toman: number | null } | undefined;
 
   if (customer?.credit_limit_toman != null) {
-    const total = orderTotalToman(linesOf(db, orderId));
-    const balance = customerDebt(organizationId, order.customer_id).total;
+    const total = orderTotalToman(await linesOf(db, orderId));
+    const balance = (await customerDebt(organizationId, order.customer_id)).total;
     if (balance + total > customer.credit_limit_toman) {
-      db.prepare("UPDATE orders SET credit_hold = 1 WHERE id = ? AND organization_id = ?").run(
+      await db.prepare("UPDATE orders SET credit_hold = 1 WHERE id = ? AND organization_id = ?").run(
         orderId,
         organizationId
       );
-      requestApproval(organizationId, {
+      await requestApproval(organizationId, {
         order_id: orderId,
         // A system caller has no user id; the approval is attributed to whoever created the order. It used to fall
         // back to the CUSTOMER id, which is not a user: it only worked when the two ids happened to coincide.
@@ -427,7 +422,7 @@ export function submitOrder(
         customer_balance_toman: balance,
         credit_limit_toman: customer.credit_limit_toman,
       });
-      return advanceOrder(organizationId, orderId, "flagCredit", { id: actor.id, role: "system" });
+      return await advanceOrder(organizationId, orderId, "flagCredit", { id: actor.id, role: "system" });
     }
   }
 
@@ -437,25 +432,25 @@ export function submitOrder(
 /** The manager's one-click "confirm this draft": submit for review and, if it did not
  *  divert to PENDING_CREDIT, pass review straight away. Kept for the board / PATCH route
  *  and the many tests that just want a confirmed order. */
-export function confirmOrder(db: DatabaseSync, orderId: number): void {
-  const order = db.prepare("SELECT organization_id, status FROM orders WHERE id = ?").get(orderId) as
+export async function confirmOrder(db: Db, orderId: number): Promise<void> {
+  const order = await db.prepare("SELECT organization_id, status FROM orders WHERE id = ?").get(orderId) as
     | { organization_id: number; status: string }
     | undefined;
   if (!order) throw new OrderError("سفارش پیدا نشد");
   if (order.status !== "DRAFT") throw new OrderError("این سفارش قبلاً تأیید شده است");
 
-  const lines = db
+  const lines = await db
     .prepare("SELECT COUNT(*) AS n FROM order_lines WHERE order_id = ?")
     .get(orderId) as { n: number };
   if (lines.n === 0) throw new OrderError("سفارش بدون قلم تأیید نمی‌شود");
 
   const orgId = order.organization_id ?? 1;
-  const after = submitOrder(orgId, orderId, { id: null, role: "owner" });
+  const after = await submitOrder(orgId, orderId, { id: null, role: "owner" });
   if (after === "PENDING_REVIEW") {
-    advanceOrder(orgId, orderId, "passReview", { id: null, role: "owner" });
+    await advanceOrder(orgId, orderId, "passReview", { id: null, role: "owner" });
   }
 
-  stampLastPurchase(db, orderId);
+  await stampLastPurchase(db, orderId);
 }
 
 /** Brings customers.last_purchase_date up to this order's date.
@@ -469,8 +464,8 @@ export function confirmOrder(db: DatabaseSync, orderId: number): void {
  *  older order after a newer one, and that must not make an active customer look
  *  dormant. COALESCE covers the first order a customer has ever had.
  */
-function stampLastPurchase(db: DatabaseSync, orderId: number): void {
-  db.prepare(
+async function stampLastPurchase(db: Db, orderId: number): Promise<void> {
+  await db.prepare(
     `UPDATE customers
         SET last_purchase_date = MAX(
               COALESCE(last_purchase_date, ''),
@@ -480,15 +475,15 @@ function stampLastPurchase(db: DatabaseSync, orderId: number): void {
   ).run(orderId, orderId);
 }
 
-function touch(db: DatabaseSync, orderId: number) {
-  db.prepare("UPDATE orders SET updated_at = ? WHERE id = ?").run(
+async function touch(db: Db, orderId: number) {
+  await db.prepare("UPDATE orders SET updated_at = ? WHERE id = ?").run(
     new Date().toISOString(),
     orderId
   );
 }
 
-function linesOf(db: DatabaseSync, orderId: number): OrderLine[] {
-  const rows = db
+async function linesOf(db: Db, orderId: number): Promise<OrderLine[]> {
+  const rows = await db
     .prepare(
       `SELECT ol.*, p.name AS product_name, pk.name AS packaging_name
          FROM order_lines ol
@@ -506,8 +501,8 @@ function linesOf(db: DatabaseSync, orderId: number): OrderLine[] {
   }));
 }
 
-export function readOrder(db: DatabaseSync, orderId: number): OrderDetail | null {
-  const order = db
+export async function readOrder(db: Db, orderId: number): Promise<OrderDetail | null> {
+  const order = await db
     .prepare(
       `SELECT o.*, c.business_name AS customer_name, u.display_name AS salesperson_name
          FROM orders o
@@ -518,7 +513,7 @@ export function readOrder(db: DatabaseSync, orderId: number): OrderDetail | null
     .get(orderId) as unknown as OrderDetail | undefined;
   if (!order) return null;
 
-  const lines = linesOf(db, orderId);
+  const lines = await linesOf(db, orderId);
   return {
     ...order,
     lines,
@@ -560,11 +555,11 @@ export interface OrderSummary {
  *  Takes the filter fragment rather than the session so that the scoping decision is
  *  made once, at the route, by orderFilter -- and so this module cannot accidentally be
  *  called without one. */
-export function readOrders(
-  db: DatabaseSync,
+export async function readOrders(
+  db: Db,
   scope: { sql: string; params: number[] },
   opts: { limit?: number; customerId?: number; status?: string } = {}
-): OrderSummary[] {
+): Promise<OrderSummary[]> {
   const extra: string[] = [];
   const params: (number | string)[] = [...scope.params];
   if (opts.customerId !== undefined) {
@@ -576,7 +571,7 @@ export function readOrders(
     params.push(opts.status);
   }
 
-  const orders = db
+  const orders = await db
     .prepare(
       `SELECT o.id, o.order_no, o.status, o.priority, o.order_date, o.payment_status, o.paid_toman,
               o.requested_day, o.requested_kind,
@@ -595,8 +590,8 @@ export function readOrders(
 
   // Totals are derived from the frozen line columns rather than stored on the order, so
   // there is no second copy of the figure to fall out of step with the lines.
-  return orders.map((order) => {
-    const lines = linesOf(db, order.id);
+  return await mapSeq(orders, async (order) => {
+    const lines = await linesOf(db, order.id);
     return {
       ...order,
       total_toman: orderTotalToman(lines),
@@ -623,12 +618,12 @@ export interface ProductMixRow {
  *  as a buying habit would let an abandoned order shape what gets offered. Takes the
  *  same scope fragment as readOrders so it cannot see further than the list beside it.
  */
-export function productMixFor(
-  db: DatabaseSync,
+export async function productMixFor(
+  db: Db,
   scope: { sql: string; params: number[] },
   customerId: number
-): ProductMixRow[] {
-  const rows = db
+): Promise<ProductMixRow[]> {
+  const rows = await db
     .prepare(
       `SELECT ol.product_id, p.name AS product_name,
               ol.packs_ordered, ol.packs_delivered, ol.unit_price_toman, ol.unit_cost_toman,

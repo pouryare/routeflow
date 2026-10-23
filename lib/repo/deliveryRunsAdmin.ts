@@ -7,10 +7,10 @@ import { orgClause } from "@/lib/orgScope";
 
 type Scope = { sql: string; params: (string | number)[] };
 
-export function listRuns(scope: Scope, organizationId: number | null) {
+export async function listRuns(scope: Scope, organizationId: number | null) {
   const db = getDb();
   const org = orgClause("dr.organization_id", organizationId);
-  const rows = db
+  const rows = await db
     .prepare(
       `SELECT dr.id, dr.run_date, dr.status, u.display_name AS driver_name,
               COALESCE(SUM(ds.collected_toman), 0) AS collected_toman
@@ -27,42 +27,42 @@ export function listRuns(scope: Scope, organizationId: number | null) {
   /* stop_count and remaining come from runStops rather than the join above, so the load and the
    * unload are counted: they are stops, and this list is what somebody plans the day from. */
   const ids = rows.map((r) => r.id);
-  const counts = stopCountsByRun(db, ids);
-  const remaining = remainingByRun(db, ids);
+  const counts = await stopCountsByRun(db, ids);
+  const remaining = await remainingByRun(db, ids);
   return rows.map((r) => ({ ...r, stop_count: counts.get(r.id) ?? 0, remaining: remaining.get(r.id) ?? 0 }));
 }
 
 /** An active driver of this company who holds the delivery role (the SET, so a driver whose primary
  *  role is something else still counts), with the group the caller's reach check needs. */
-export function findDriverInOrg(userId: number, organizationId: number | null): { id: number; group_id: number | null } | undefined {
+export async function findDriverInOrg(userId: number, organizationId: number | null): Promise<{ id: number; group_id: number | null } | undefined> {
   const db = getDb();
   const org = orgClause("organization_id", organizationId);
-  const driver = db.prepare(`SELECT id, group_id FROM users WHERE id = ? AND active = 1${org.sql}`).get(userId, ...org.params) as
+  const driver = await db.prepare(`SELECT id, group_id FROM users WHERE id = ? AND active = 1${org.sql}`).get(userId, ...org.params) as
     | { id: number; group_id: number | null }
     | undefined;
   if (!driver) return undefined;
-  const canDrive = db.prepare("SELECT 1 FROM user_roles WHERE user_id = ? AND role = 'delivery_driver'").get(userId);
+  const canDrive = await db.prepare("SELECT 1 FROM user_roles WHERE user_id = ? AND role = 'delivery_driver'").get(userId);
   return canDrive ? driver : undefined;
 }
 
-export function newRun(input: Parameters<typeof createRun>[1]): number {
-  return createRun(getDb(), input);
+export async function newRun(input: Parameters<typeof createRun>[1]): Promise<number> {
+  return await createRun(getDb(), input);
 }
 
-export function runGroup(runId: number, organizationId: number | null): { id: number; group_id: number | null } | undefined {
+export async function runGroup(runId: number, organizationId: number | null): Promise<{ id: number; group_id: number | null } | undefined> {
   const org = orgClause("organization_id", organizationId);
-  return getDb().prepare(`SELECT id, group_id FROM delivery_runs WHERE id = ?${org.sql}`).get(runId, ...org.params) as
+  return await getDb().prepare(`SELECT id, group_id FROM delivery_runs WHERE id = ?${org.sql}`).get(runId, ...org.params) as
     | { id: number; group_id: number | null }
     | undefined;
 }
 
-export function orderForRun(orderId: number, organizationId: number | null): { id: number; group_id: number | null; status: string } | undefined {
+export async function orderForRun(orderId: number, organizationId: number | null): Promise<{ id: number; group_id: number | null; status: string } | undefined> {
   const org = orgClause("organization_id", organizationId);
-  return getDb().prepare(`SELECT id, group_id, status FROM orders WHERE id = ?${org.sql}`).get(orderId, ...org.params) as
+  return await getDb().prepare(`SELECT id, group_id, status FROM orders WHERE id = ?${org.sql}`).get(orderId, ...org.params) as
     | { id: number; group_id: number | null; status: string }
     | undefined;
 }
 
-export function addOrderToRun(runId: number, orderId: number, sortOrder: number): number {
-  return addStop(getDb(), runId, orderId, sortOrder);
+export async function addOrderToRun(runId: number, orderId: number, sortOrder: number): Promise<number> {
+  return await addStop(getDb(), runId, orderId, sortOrder);
 }

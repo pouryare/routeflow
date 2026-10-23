@@ -7,7 +7,7 @@ import { OWNER_ROLES } from "@/lib/roles";
 /** Owner only. Recording a purchase is recording that company money was spent, and it
  *  moves the average cost every future margin is measured against. */
 export async function POST(req: NextRequest) {
-  const guard = requireRole(req, OWNER_ROLES);
+  const guard = await requireRole(req, OWNER_ROLES);
   if (!guard.ok) return guard.response;
 
   const body = (await req.json().catch(() => null)) as {
@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const id = recordPurchaseFor({
+    const id = await recordPurchaseFor({
       supplier: typeof body?.supplier === "string" ? body.supplier : null,
       purchase_date: purchaseDate,
       invoice_no: typeof body?.invoice_no === "string" ? body.invoice_no : null,

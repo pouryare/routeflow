@@ -38,11 +38,11 @@ const pct = (n: number) => `${faNum(Math.round(n * 100))}٪`;
 
 export default async function DashboardPage() {
   const jar = await cookies();
-  const session = getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
+  const session = await getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
   if (!session) redirect("/login");
   if (isVanRole(session.role)) redirect("/driver");
 
-  const d = dashboardFor(session);
+  const d = await dashboardFor(session);
 
   const today = toJalali(new Date().toISOString())!;
   const period = {
@@ -58,7 +58,7 @@ export default async function DashboardPage() {
      handed them the aggregate by the back door -- so the read itself is skipped, not
      just the markup. One clock for the whole section, so its day boundaries agree. */
   const coverageNow = new Date();
-  const coverage = session.role === "phone_sales" ? null : coverageAnalytics(session, coverageNow);
+  const coverage = session.role === "phone_sales" ? null : await coverageAnalytics(session, coverageNow);
 
   const newThisMonth = d.new_customers_by_month.find((p) => p.key === jalaliMonthKey(period.to))?.value ?? 0;
 

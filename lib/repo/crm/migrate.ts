@@ -1,4 +1,4 @@
-import type { DatabaseSync } from "node:sqlite";
+import type { Db } from "@/lib/database/client";
 import { normPhone } from "@/lib/crm/phone";
 import { replayCrmState, type ActivityFacts } from "@/lib/crm/replay";
 import type { SalesStage, Temperature } from "@/lib/crm/vocab";
@@ -8,8 +8,8 @@ export const ACTIVITY_FACT_COLUMNS =
   "occurred_at, contact_status_to, stage_to, verification_to, signal, attempt, miss, talked";
 
 /** Called from getDb() before the TENANT_TABLES loop, which ALTERs every listed table. */
-export function createCrmTables(db: DatabaseSync): void {
-  db.exec(`
+export async function createCrmTables(db: Db): Promise<void> {
+  await db.exec(`
     CREATE TABLE IF NOT EXISTS contacts (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       organization_id INTEGER NOT NULL REFERENCES organizations(id),
@@ -107,22 +107,22 @@ const CUSTOMER_COLUMNS: [string, string][] = [
 ];
 
 /** Called from getDb() after backfillReminderTasks, when every customers column it reads exists. */
-export function migrateCrm(db: DatabaseSync): void {
-  const have = new Set((db.prepare("PRAGMA table_info(customers)").all() as { name: string }[]).map((c) => c.name));
-  for (const [col, type] of CUSTOMER_COLUMNS) if (!have.has(col)) db.exec(`ALTER TABLE customers ADD COLUMN ${col} ${type}`);
-  db.exec(`
+export async function migrateCrm(db: Db): Promise<void> {
+  const have = new Set((await db.prepare("PRAGMA table_info(customers)").all() as { name: string }[]).map((c) => c.name));
+  for (const [col, type] of CUSTOMER_COLUMNS) if (!have.has(col)) await db.exec(`ALTER TABLE customers ADD COLUMN ${col} ${type}`);
+  await db.exec(`
     CREATE INDEX IF NOT EXISTS ix_customers_phone_norm ON customers(organization_id, phone_norm);
     CREATE INDEX IF NOT EXISTS ix_customers_owner ON customers(organization_id, owner_user_id);
     CREATE INDEX IF NOT EXISTS ix_customers_next_task ON customers(next_task_id);
     CREATE INDEX IF NOT EXISTS ix_customers_instagram ON customers(organization_id, instagram);
   `);
   // saved_locations columns added after the initial CREATE TABLE.
-  const locHave = new Set((db.prepare("PRAGMA table_info(saved_locations)").all() as { name: string }[]).map((c) => c.name));
-  if (!locHave.has("rating_potential")) db.exec("ALTER TABLE saved_locations ADD COLUMN rating_potential REAL");
-  if (!locHave.has("rating_volume")) db.exec("ALTER TABLE saved_locations ADD COLUMN rating_volume REAL");
-  if (!locHave.has("rating_ease")) db.exec("ALTER TABLE saved_locations ADD COLUMN rating_ease REAL");
-  if (!locHave.has("visit_outcome")) db.exec("ALTER TABLE saved_locations ADD COLUMN visit_outcome TEXT");
-  backfillCrm(db);
+  const locHave = new Set((await db.prepare("PRAGMA table_info(saved_locations)").all() as { name: string }[]).map((c) => c.name));
+  if (!locHave.has("rating_potential")) await db.exec("ALTER TABLE saved_locations ADD COLUMN rating_potential REAL");
+  if (!locHave.has("rating_volume")) await db.exec("ALTER TABLE saved_locations ADD COLUMN rating_volume REAL");
+  if (!locHave.has("rating_ease")) await db.exec("ALTER TABLE saved_locations ADD COLUMN rating_ease REAL");
+  if (!locHave.has("visit_outcome")) await db.exec("ALTER TABLE saved_locations ADD COLUMN visit_outcome TEXT");
+  await backfillCrm(db);
 }
 
 export function initialFacts(lifecycle: string, deliveredOrders: number, at: string): ActivityFacts {
@@ -149,12 +149,11 @@ export function initialFacts(lifecycle: string, deliveredOrders: number, at: str
 /** One-time: owner from the free-text salesperson, a primary contact from contact_person /
  *  phone, one 'system' activity carrying each business's starting facts, and the cached
  *  state columns written from the replay of that activity. Guarded on app_meta. */
-export function backfillCrm(db: DatabaseSync): void {
-  if (db.prepare("SELECT value FROM app_meta WHERE key = 'crm_backfill_v1'").get()) return;
+export async function backfillCrm(db: Db): Promise<void> {
+  if (await db.prepare("SELECT value FROM app_meta WHERE key = 'crm_backfill_v1'").get()) return;
   const now = new Date().toISOString();
-  db.exec("BEGIN IMMEDIATE");
-  try {
-    db.exec(`
+  await db.tx(async () => {
+    await db.exec(`
       UPDATE customers SET owner_user_id = (
         SELECT u.id FROM users u
          WHERE u.organization_id = customers.organization_id AND u.display_name = customers.salesperson
@@ -163,11 +162,11 @@ export function backfillCrm(db: DatabaseSync): void {
       WHERE owner_user_id IS NULL AND salesperson IS NOT NULL AND TRIM(salesperson) <> ''`);
 
     const delivered = new Map<number, number>(
-      (db.prepare(`SELECT customer_id, COUNT(*) n FROM orders
+      (await db.prepare(`SELECT customer_id, COUNT(*) n FROM orders
                     WHERE status IN ('DELIVERED', 'CLOSED') AND COALESCE(order_type, 'SALE') = 'SALE'
                     GROUP BY customer_id`).all() as { customer_id: number; n: number }[]).map((r) => [r.customer_id, r.n])
     );
-    const customers = db.prepare("SELECT id, organization_id, phone, contact_person, lifecycle, synced_at FROM customers").all() as {
+    const customers = await db.prepare("SELECT id, organization_id, phone, contact_person, lifecycle, synced_at FROM customers").all() as {
       id: number; organization_id: number; phone: string | null; contact_person: string | null; lifecycle: string; synced_at: string;
     }[];
     const insContact = db.prepare(`INSERT INTO contacts (organization_id, customer_id, name, role, phone, phone_norm, is_primary, is_decider, created_at, updated_at)
@@ -182,20 +181,16 @@ export function backfillCrm(db: DatabaseSync): void {
     for (const c of customers) {
       const norm = normPhone(c.phone);
       const name = c.contact_person?.trim() || null;
-      if (name || norm) insContact.run(c.organization_id, c.id, name, c.phone, norm, now, now);
+      if (name || norm) await insContact.run(c.organization_id, c.id, name, c.phone, norm, now, now);
       const f = initialFacts(c.lifecycle, delivered.get(c.id) ?? 0, c.synced_at);
-      insAct.run(c.organization_id, c.id, f.contact_status_to, f.stage_to, f.verification_to, f.signal, f.attempt, f.miss, f.talked, f.occurred_at, now);
+      await insAct.run(c.organization_id, c.id, f.contact_status_to, f.stage_to, f.verification_to, f.signal, f.attempt, f.miss, f.talked, f.occurred_at, now);
       const s = replayCrmState([f]);
-      const task = openTask.get(c.id) as { id: number } | undefined;
-      upd.run(norm, s.contact_status, s.sales_stage, s.verification, s.temperature, s.attempt_count, s.consecutive_misses,
+      const task = await openTask.get(c.id) as { id: number } | undefined;
+      await upd.run(norm, s.contact_status, s.sales_stage, s.verification, s.temperature, s.attempt_count, s.consecutive_misses,
         s.last_activity_at, s.last_contacted_at, task?.id ?? null, c.id);
     }
-    db.prepare("INSERT OR REPLACE INTO app_meta (key, value) VALUES ('crm_backfill_v1', ?)").run(now);
-    db.exec("COMMIT");
-  } catch (e) {
-    db.exec("ROLLBACK");
-    throw e;
-  }
+    await db.prepare("INSERT INTO app_meta (key, value) VALUES ('crm_backfill_v1', ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value").run(now);
+  });
 }
 
 

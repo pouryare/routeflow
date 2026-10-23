@@ -19,6 +19,7 @@ import {
   type ChurnWeights,
 } from "@/lib/predict/churn";
 
+import { mapSeq } from "@/lib/seq";
 const DAY_MS = 86_400_000;
 const TRAIN_WINDOW_DAYS = 60;
 const MIN_TRAIN_ROWS = 10;
@@ -29,14 +30,14 @@ const daysBetween = (a: string, b: string) => (Date.parse(a) - Date.parse(b)) / 
 
 /** Feature vector for a customer, as of `asOfIso` (orders after it are ignored, so this
  *  is safe to call at a historical cutoff for training). */
-export function churnFeaturesFor(
+export async function churnFeaturesFor(
   organizationId: number,
   customerId: number,
   asOfIso: string = new Date().toISOString()
-): ChurnFeatures {
+): Promise<ChurnFeatures> {
   const db = getDb();
   const dates = (
-    db
+    await db
       .prepare(
         `SELECT order_date FROM orders
           WHERE organization_id = ? AND customer_id = ?
@@ -63,7 +64,7 @@ export function churnFeaturesFor(
 
   const complaints_90d = Number(
     (
-      db
+      await db
         .prepare(
           `SELECT COUNT(*) AS n FROM quality_complaints
             WHERE organization_id = ? AND customer_id = ?
@@ -75,7 +76,7 @@ export function churnFeaturesFor(
 
   const rev = Number(
     (
-      db
+      await db
         .prepare(
           `SELECT COALESCE(SUM(COALESCE(ol.packs_delivered, ol.packs_ordered) * ol.unit_price_toman), 0) AS r
              FROM order_lines ol JOIN orders o ON o.id = ol.order_id
@@ -86,15 +87,15 @@ export function churnFeaturesFor(
         .get(organizationId, customerId, q2, asOfIso) as { r: number }
     ).r
   );
-  const overdue = customerDebt(organizationId, customerId, asOfIso).bucket_30_plus;
+  const overdue = (await customerDebt(organizationId, customerId, asOfIso)).bucket_30_plus;
   const overdue_ratio = rev > 0 ? overdue / rev : overdue > 0 ? 2 : 0;
 
   return { recency_ratio, trend, tenure_months, complaints_90d, overdue_ratio };
 }
 
 /** The tenant's learned weights, or the shipped default. */
-export function churnWeightsFor(organizationId: number): ChurnWeights {
-  const row = getDb()
+export async function churnWeightsFor(organizationId: number): Promise<ChurnWeights> {
+  const row = await getDb()
     .prepare(
       `SELECT weights_json FROM churn_models
         WHERE organization_id = ? OR organization_id IS NULL
@@ -116,30 +117,30 @@ export interface ChurnResult {
   reason_fa: string;
 }
 
-export function scoreChurn(
+export async function scoreChurn(
   organizationId: number,
   customerId: number,
   asOfIso: string = new Date().toISOString()
-): ChurnResult {
-  const f = churnFeaturesFor(organizationId, customerId, asOfIso);
-  const p = churnScore(f, churnWeightsFor(organizationId));
+): Promise<ChurnResult> {
+  const f = await churnFeaturesFor(organizationId, customerId, asOfIso);
+  const p = churnScore(f, await churnWeightsFor(organizationId));
   return { probability: p, band: churnBand(p), reason_fa: churnReason(f) };
 }
 
 /** Build a labelled set from history and fold it through `churnStep`. A customer active
  *  at `cutoff = asOf − 60d` is label 1 if they then had no order in the following 60
  *  days. No-op (keeps the default) below MIN_TRAIN_ROWS labelled rows. */
-export function trainChurnFromLapses(
+export async function trainChurnFromLapses(
   organizationId: number,
   asOfIso: string = new Date().toISOString()
-): { trained: boolean; n_obs: number } {
+): Promise<{ trained: boolean; n_obs: number }> {
   const db = getDb();
   const asOf = Date.parse(asOfIso);
   const cutoffIso = new Date(asOf - TRAIN_WINDOW_DAYS * DAY_MS).toISOString();
   const activeFromIso = new Date(asOf - 2 * TRAIN_WINDOW_DAYS * DAY_MS).toISOString();
 
   const activeAtCutoff = (
-    db
+    await db
       .prepare(
         `SELECT DISTINCT customer_id AS id FROM orders
           WHERE organization_id = ? AND status IN (${sqlStatusList(PRICED_ORDER_STATUSES)})
@@ -149,14 +150,14 @@ export function trainChurnFromLapses(
   ).map((r) => r.id);
 
   if (activeAtCutoff.length < MIN_TRAIN_ROWS) {
-    const existing = db
+    const existing = await db
       .prepare("SELECT n_obs FROM churn_models WHERE organization_id = ?")
       .get(organizationId) as { n_obs: number } | undefined;
     return { trained: false, n_obs: existing?.n_obs ?? 0 };
   }
 
-  const rows = activeAtCutoff.map((id) => {
-    const orderedAfter = db
+  const rows = await mapSeq(activeAtCutoff, async (id) => {
+    const orderedAfter = await db
       .prepare(
         `SELECT 1 FROM orders
           WHERE organization_id = ? AND customer_id = ? AND status IN (${sqlStatusList(PRICED_ORDER_STATUSES)})
@@ -164,19 +165,19 @@ export function trainChurnFromLapses(
       )
       .get(organizationId, id, cutoffIso, asOfIso);
     return {
-      features: churnFeaturesFor(organizationId, id, cutoffIso),
+      features: await churnFeaturesFor(organizationId, id, cutoffIso),
       label: (orderedAfter ? 0 : 1) as 0 | 1,
     };
   });
 
-  let w = churnWeightsFor(organizationId);
+  let w = await churnWeightsFor(organizationId);
   for (let epoch = 0; epoch < TRAIN_EPOCHS; epoch++) {
     for (const r of [...rows].sort(() => Math.random() - 0.5)) {
       w = churnStep(w, r.features, r.label, TRAIN_LR);
     }
   }
 
-  db.prepare(
+  await db.prepare(
     `INSERT INTO churn_models (organization_id, weights_json, n_obs, updated_at)
      VALUES (?, ?, ?, ?)
      ON CONFLICT (organization_id) DO UPDATE SET weights_json = excluded.weights_json,
@@ -187,12 +188,12 @@ export function trainChurnFromLapses(
 }
 
 /** Score every customer with at least one confirmed order. */
-export function materialiseChurnScores(
+export async function materialiseChurnScores(
   organizationId: number,
   asOfIso: string = new Date().toISOString()
-): number {
+): Promise<number> {
   const db = getDb();
-  const customers = db
+  const customers = await db
     .prepare(
       `SELECT DISTINCT customer_id AS id FROM orders
         WHERE organization_id = ? AND status IN (${sqlStatusList(PRICED_ORDER_STATUSES)})`
@@ -207,8 +208,8 @@ export function materialiseChurnScores(
        band = excluded.band, reason_fa = excluded.reason_fa, computed_at = excluded.computed_at`
   );
   for (const c of customers) {
-    const r = scoreChurn(organizationId, c.id, asOfIso);
-    stmt.run(organizationId, c.id, r.probability, r.band, r.reason_fa, now);
+    const r = await scoreChurn(organizationId, c.id, asOfIso);
+    await stmt.run(organizationId, c.id, r.probability, r.band, r.reason_fa, now);
   }
   return customers.length;
 }
@@ -222,14 +223,14 @@ export interface ChurnBoardRow {
   computed_at: string;
 }
 
-export function churnBoard(organizationId: number, band?: "low" | "watch" | "high"): ChurnBoardRow[] {
+export async function churnBoard(organizationId: number, band?: "low" | "watch" | "high"): Promise<ChurnBoardRow[]> {
   const where = ["cs.organization_id = ?"];
   const params: unknown[] = [organizationId];
   if (band) {
     where.push("cs.band = ?");
     params.push(band);
   }
-  return getDb()
+  return await getDb()
     .prepare(
       `SELECT cs.customer_id, c.business_name, cs.probability, cs.band, cs.reason_fa, cs.computed_at
          FROM churn_scores cs JOIN customers c ON c.id = cs.customer_id

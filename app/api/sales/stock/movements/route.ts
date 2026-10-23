@@ -13,13 +13,13 @@ import {
 import { MANAGE_ROLES } from "@/lib/roles";
 
 export async function GET(req: NextRequest) {
-  const guard = requireRole(req, MANAGE_ROLES);
+  const guard = await requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
 
   const sp = req.nextUrl.searchParams;
   return NextResponse.json({
     ok: true,
-    movements: listMovements(guard.session.organizationId, {
+    movements: await listMovements(guard.session.organizationId, {
       product_id: sp.get("product_id") ? Number(sp.get("product_id")) : undefined,
       facility_id: sp.get("facility_id") ? Number(sp.get("facility_id")) : undefined,
     }),
@@ -27,7 +27,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const guard = requireRole(req, MANAGE_ROLES);
+  const guard = await requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
 
   const body = (await req.json().catch(() => null)) as {
@@ -66,9 +66,9 @@ export async function POST(req: NextRequest) {
      for the books lagging the paper (see `onHand`), but a person typing an adjustment, transfer or
      sample is asserting a quantity that exists; a count that overshoots is a typo or a hidden loss,
      and the physical-count kind exists to correct a wrong total. */
-  const facilityId = body.facility_id ?? defaultFacilityId(guard.session.organizationId);
+  const facilityId = body.facility_id ?? await defaultFacilityId(guard.session.organizationId);
   if (Number(body.base_qty) < 0) {
-    const have = onHand(guard.session.organizationId, {
+    const have = await onHand(guard.session.organizationId, {
       product_id: Number(body.product_id),
       facility_id: facilityId,
       ...(body.batch_id != null ? { batch_id: body.batch_id } : {}),
@@ -82,7 +82,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const id = recordMovement(guard.session.organizationId, {
+    const id = await recordMovement(guard.session.organizationId, {
       facility_id: facilityId,
       product_id: Number(body.product_id),
       batch_id: body.batch_id ?? null,

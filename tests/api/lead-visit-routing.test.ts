@@ -33,40 +33,40 @@ let locInGroup = 0;
 let locOtherGroup = 0;
 let locOnRun = 0;
 
-beforeAll(() => {
+beforeAll(async () => {
   const db = getDb();
   const now = new Date().toISOString();
   // organization_id included because groups gains it in a migration, and scopeGroupIds
   // reads "WHERE organization_id = ?" for an owner -- a group left NULL is invisible to
   // one, which is its own kind of confusing test failure.
   groupId = Number(
-    db.prepare("INSERT INTO groups (name, slug, created_at, organization_id) VALUES (?, ?, ?, 1)")
-      .run("گروه بازدید", "visit-routing", now).lastInsertRowid
+    (await db.prepare("INSERT INTO groups (name, slug, created_at, organization_id) VALUES (?, ?, ?, 1)")
+      .run("گروه بازدید", "visit-routing", now)).lastInsertRowid
   );
   const otherGroupId = Number(
-    db.prepare("INSERT INTO groups (name, slug, created_at, organization_id) VALUES (?, ?, ?, 1)")
-      .run("گروه دیگر", "visit-routing-other", now).lastInsertRowid
+    (await db.prepare("INSERT INTO groups (name, slug, created_at, organization_id) VALUES (?, ?, ?, 1)")
+      .run("گروه دیگر", "visit-routing-other", now)).lastInsertRowid
   );
   const insertUser = db.prepare(
     "INSERT INTO users (username, password_hash, display_name, role, group_id, active, created_at, organization_id) VALUES (?, 'x:y', ?, ?, ?, 1, ?, 1)"
   );
-  ownerId = Number(insertUser.run("visit-owner", "مالک", "owner", null, now).lastInsertRowid);
-  driverId = Number(insertUser.run("visit-driver", "راننده", "delivery_driver", groupId, now).lastInsertRowid);
-  salespersonId = Number(insertUser.run("visit-sales", "فروشنده", "phone_sales", groupId, now).lastInsertRowid);
+  ownerId = Number((await insertUser.run("visit-owner", "مالک", "owner", null, now)).lastInsertRowid);
+  driverId = Number((await insertUser.run("visit-driver", "راننده", "delivery_driver", groupId, now)).lastInsertRowid);
+  salespersonId = Number((await insertUser.run("visit-sales", "فروشنده", "phone_sales", groupId, now)).lastInsertRowid);
   const insertLoc = db.prepare(
     "INSERT INTO saved_locations (name, maps_url, lat, lng, resolution, group_id, created_at, organization_id) VALUES (?, ?, 35.7, 51.4, 'manual', ?, ?, 1)"
   );
-  locInGroup = Number(insertLoc.run("هتل آریا", "https://maps.example/x", groupId, now).lastInsertRowid);
-  locOtherGroup = Number(insertLoc.run("هتل دیگر", "https://maps.example/y", otherGroupId, now).lastInsertRowid);
+  locInGroup = Number((await insertLoc.run("هتل آریا", "https://maps.example/x", groupId, now)).lastInsertRowid);
+  locOtherGroup = Number((await insertLoc.run("هتل دیگر", "https://maps.example/y", otherGroupId, now)).lastInsertRowid);
   // locInGroup is not on a route on purpose: it is the "not your stop" case. locOnRun is.
   // insertLoc hardcodes the coordinates, so it takes only (name, url, group, created_at).
-  locOnRun = Number(insertLoc.run("هتل روی مسیر", "https://maps.example/z", groupId, now).lastInsertRowid);
+  locOnRun = Number((await insertLoc.run("هتل روی مسیر", "https://maps.example/z", groupId, now)).lastInsertRowid);
   const runId = Number(
-    db.prepare(`INSERT INTO delivery_runs (driver_user_id, group_id, run_date, status, created_by, organization_id, created_at, updated_at)
+    (await db.prepare(`INSERT INTO delivery_runs (driver_user_id, group_id, run_date, status, created_by, organization_id, created_at, updated_at)
                 VALUES (?, ?, ?, 'planned', ?, ?, ?, ?)`)
-      .run(driverId, groupId, "2026-09-25", ownerId, 1, now, now).lastInsertRowid
+      .run(driverId, groupId, "2026-09-25", ownerId, 1, now, now)).lastInsertRowid
   );
-  db.prepare("INSERT INTO lead_run_stops (run_id, location_id, sort_order, created_at) VALUES (?, ?, 0, ?)")
+  await db.prepare("INSERT INTO lead_run_stops (run_id, location_id, sort_order, created_at) VALUES (?, ?, 0, ?)")
     .run(runId, locOnRun, now);
 });
 
@@ -96,13 +96,13 @@ const boughtNow = [
 ];
 const boughtLater = boughtNow.map((a) => (a.option === "now" ? { ...a, option: "office" } : a));
 
-function task(id: number) {
-  return getDb().prepare("SELECT * FROM tasks WHERE id = ?").get(id) as
+async function task(id: number) {
+  return await getDb().prepare("SELECT * FROM tasks WHERE id = ?").get(id) as
     | { kind: string; title: string; assignee_user_id: number | null; role_hint: string | null; due_at: string; priority: string; entity_id: number }
     | undefined;
 }
-function location(id: number) {
-  return getDb().prepare("SELECT * FROM saved_locations WHERE id = ?").get(id) as
+async function location(id: number) {
+  return await getDb().prepare("SELECT * FROM saved_locations WHERE id = ?").get(id) as
     | { visit_outcome: string | null; status: string | null; rating_potential: number | null }
     | undefined;
 }
@@ -115,7 +115,7 @@ describe("a driver records a visit that closed a sale", () => {
     const body = (await res.json()) as { next_task_id: number | null };
     expect(body.next_task_id).not.toBeNull();
 
-    const t = task(body.next_task_id!);
+    const t = await task(body.next_task_id!);
     expect(t?.kind).toBe("order");
     expect(t?.title).toBe("ثبت سفارش");
     // The driver did not take the work; the office has to do the paperwork. This mirrors
@@ -125,23 +125,23 @@ describe("a driver records a visit that closed a sale", () => {
     expect(t?.entity_id).toBe(locOnRun);
   });
 
-  it("records the outcome and the stars against the location", () => {
-    const loc = location(locOnRun);
+  it("records the outcome and the stars against the location", async () => {
+    const loc = await location(locOnRun);
     expect(loc?.visit_outcome).toBe("READY_TO_BUY");
     expect(loc?.status).toBe("visited");
     expect(loc?.rating_potential).toBe(5);
   });
 
-  it("does not convert the lead and does not remove the pin -- that is the order's job", () => {
+  it("does not convert the lead and does not remove the pin -- that is the order's job", async () => {
     // The dead end this replaces asked the driver, stored an answer nobody read, and left
     // the lead exactly where it was. Rule 1 is that a lead becomes a customer when it
     // buys, so the visit must not invent a customer...
-    const customers = getDb().prepare("SELECT COUNT(*) AS n FROM customers").get() as { n: number };
+    const customers = await getDb().prepare("SELECT COUNT(*) AS n FROM customers").get() as { n: number };
     expect(customers.n).toBe(0);
     // ...and it must not delete the row either. saved_locations is referenced by
     // lead_list_items with ON DELETE CASCADE, so deleting it here would quietly rip the
     // stop out of the route the driver is standing on.
-    expect(location(locOnRun)).toBeDefined();
+    expect(await location(locOnRun)).toBeDefined();
   });
 
   it("still files the order for a buyer who says not yet, just not urgently", async () => {
@@ -150,8 +150,8 @@ describe("a driver records a visit that closed a sale", () => {
     const deferred = await POST(post(locOnRun, boughtLater, DRIVER()), ctx(locOnRun));
     const deferredBody = (await deferred.json()) as { next_task_id: number | null };
 
-    const now = task(immediateBody.next_task_id!)!;
-    const later = task(deferredBody.next_task_id!)!;
+    const now = (await task(immediateBody.next_task_id!))!;
+    const later = (await task(deferredBody.next_task_id!))!;
     expect(later.kind).toBe("order");
     // Tomorrow morning rather than this instant: the difference between the two answers is
     // urgency, not whether anybody is told. Compared against the other answer rather than
@@ -173,8 +173,8 @@ describe("the follow-ups that already worked still work", () => {
       ctx(locOnRun)
     );
     const body = (await res.json()) as { next_task_id: number | null };
-    expect(task(body.next_task_id!)?.kind).toBe("call");
-    expect(location(locOnRun)?.visit_outcome).toBe("INTERESTED");
+    expect((await task(body.next_task_id!))?.kind).toBe("call");
+    expect((await location(locOnRun))?.visit_outcome).toBe("INTERESTED");
   });
 
   it("a miss the driver wants to retry still leaves a reminder", async () => {
@@ -190,8 +190,8 @@ describe("the follow-ups that already worked still work", () => {
       ctx(locOnRun)
     );
     const body = (await res.json()) as { next_task_id: number | null };
-    expect(task(body.next_task_id!)?.kind).toBe("reminder");
-    expect(location(locOnRun)?.visit_outcome).toBe("VISIT_NO_OWNER");
+    expect((await task(body.next_task_id!))?.kind).toBe("reminder");
+    expect((await location(locOnRun))?.visit_outcome).toBe("VISIT_NO_OWNER");
   });
 
   it("and the derived action agrees with the task that was actually filed", async () => {
@@ -210,7 +210,7 @@ describe("the follow-ups that already worked still work", () => {
       ctx(locOnRun)
     );
     const body = (await res.json()) as { next_task_id: number | null };
-    expect(nextActionFor(location(locOnRun)?.visit_outcome)).toBe(task(body.next_task_id!)?.kind);
+    expect(nextActionFor((await location(locOnRun))?.visit_outcome)).toBe((await task(body.next_task_id!))?.kind);
   });
 });
 

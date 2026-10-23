@@ -18,7 +18,7 @@ const SLOW_JOB_MS = 60_000;
  *  re-derive either, and so the sentence naming the current method is computed from the
  *  same numbers the runner ordered by. */
 export async function GET(req: NextRequest, ctx: RouteContext<"/api/locations/parse/[jobId]">) {
-  const guard = requireRole(req, PIN_POOL_ROLES);
+  const guard = await requireRole(req, PIN_POOL_ROLES);
   if (!guard.ok) return guard.response;
 
   const id = Number((await ctx.params).jobId);
@@ -27,10 +27,10 @@ export async function GET(req: NextRequest, ctx: RouteContext<"/api/locations/pa
   }
 
   const org = guard.session.organizationId;
-  const job = importRepo.getJob(org, id);
+  const job = await importRepo.getJob(org, id);
   if (!job) return NextResponse.json({ ok: false, error: "پردازش پیدا نشد" }, { status: 404 });
 
-  const items = plain(importRepo.listItems(org, id));
+  const items = plain(await importRepo.listItems(org, id));
 
   // The pool is only the pending rows: what is still outstanding, in paste order.
   const pool = items
@@ -50,7 +50,7 @@ export async function GET(req: NextRequest, ctx: RouteContext<"/api/locations/pa
   // One notification per job however many tabs are polling: the repo's claim is a
   // single conditional UPDATE, so only the first caller wins.
   if (job.status === "running" && elapsedMs >= SLOW_JOB_MS) {
-    maybeNotifySlowJob(org, id, job.total);
+    await maybeNotifySlowJob(org, id, job.total);
   }
 
   return NextResponse.json({

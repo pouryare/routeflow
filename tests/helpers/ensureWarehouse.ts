@@ -10,16 +10,16 @@
  *
  *  What it must NEVER do is re-add the auto-create inside lib/. That would put the warehouse
  *  back for real users, where it is exactly the bug that was removed. */
-import type { DatabaseSync } from "node:sqlite";
+import type { Db } from "@/lib/database/client";
 
-export function ensureWarehouse(db: DatabaseSync, organizationId = 1): void {
-  const existing = db
+export async function ensureWarehouse(db: Db, organizationId = 1): Promise<void> {
+  const existing = await db
     .prepare("SELECT id FROM facilities WHERE organization_id = ? AND kind = 'warehouse'")
     .get(organizationId) as { id: number } | undefined;
   if (existing) return;
 
   const now = new Date().toISOString();
-  db.prepare(
+  await db.prepare(
     `INSERT INTO facilities
        (organization_id, slug, name, kind, lat, lng, created_at, updated_at)
      VALUES (?, ?, ?, 'warehouse', ?, ?, ?, ?)`

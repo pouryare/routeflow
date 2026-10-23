@@ -9,18 +9,18 @@ import { MANAGE_ROLES } from "@/lib/roles";
 // visit_plans is option 2: a stop is *at* a customer, district or facility.
 // Reading is scoped by entityGroupFilter below, so the map's salesperson may read; writes stay with managers.
 export async function GET(req: NextRequest) {
-  const guard = requireRole(req, [...MANAGE_ROLES, "rep_manager", "phone_sales"]);
+  const guard = await requireRole(req, [...MANAGE_ROLES, "rep_manager", "phone_sales"]);
   if (!guard.ok) return guard.response;
-  const f = entityGroupFilter(guard.session, "v");
+  const f = await entityGroupFilter(guard.session, "v");
 
   const { searchParams } = new URL(req.url);
-  const plans = listPlans(f, { date: searchParams.get("date"), from: searchParams.get("from"), to: searchParams.get("to") });
+  const plans = await listPlans(f, { date: searchParams.get("date"), from: searchParams.get("from"), to: searchParams.get("to") });
 
   return NextResponse.json({ ok: true, plans });
 }
 
 export async function POST(req: NextRequest) {
-  const guard = requireRole(req, MANAGE_ROLES);
+  const guard = await requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
 
   const body = await req.json().catch(() => null);
@@ -54,11 +54,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "ترتیب نامعتبر است" }, { status: 400 });
   }
 
-  if (!canReachEntity(guard.session, entity_type, entity_id)) {
+  if (!await canReachEntity(guard.session, entity_type, entity_id)) {
     return NextResponse.json({ ok: false, error: "یافت نشد" }, { status: 404 });
   }
 
-  const id = addPlan(
+  const id = await addPlan(
     { entity_type, entity_id, planned_date, status, sort_order },
     { name: guard.session.user.display_name, id: guard.session.user.id }
   );

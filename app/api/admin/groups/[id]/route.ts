@@ -5,7 +5,7 @@ import { GROUP_PALETTE } from "../route";
 import { OWNER_ROLES } from "@/lib/roles";
 
 export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/admin/groups/[id]">) {
-  const guard = requireRole(req, OWNER_ROLES);
+  const guard = await requireRole(req, OWNER_ROLES);
   if (!guard.ok) return guard.response;
 
   const { id } = await ctx.params;
@@ -16,7 +16,7 @@ export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/admin/grou
 
   // The group must belong to the caller's company: an id alone reaches every tenant's groups.
   const organizationId = orgScopeId(guard.session);
-  if (!groupExists(groupId, organizationId)) {
+  if (!await groupExists(groupId, organizationId)) {
     return NextResponse.json({ ok: false, error: "گروه پیدا نشد" }, { status: 404 });
   }
 
@@ -48,7 +48,7 @@ export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/admin/grou
   }
 
   try {
-    updateGroup(groupId, organizationId, sets, values);
+    await updateGroup(groupId, organizationId, sets, values);
   } catch (e) {
     const msg = e instanceof Error ? e.message : "خطا";
     if (msg.includes("UNIQUE")) {
@@ -61,7 +61,7 @@ export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/admin/grou
 }
 
 export async function DELETE(req: NextRequest, ctx: RouteContext<"/api/admin/groups/[id]">) {
-  const guard = requireRole(req, OWNER_ROLES);
+  const guard = await requireRole(req, OWNER_ROLES);
   if (!guard.ok) return guard.response;
 
   const { id } = await ctx.params;
@@ -72,7 +72,7 @@ export async function DELETE(req: NextRequest, ctx: RouteContext<"/api/admin/gro
 
   // The group must belong to the caller's company: an id alone reaches every tenant's groups.
   const organizationId = orgScopeId(guard.session);
-  if (!groupExists(groupId, organizationId)) {
+  if (!await groupExists(groupId, organizationId)) {
     return NextResponse.json({ ok: false, error: "گروه پیدا نشد" }, { status: 404 });
   }
 
@@ -80,7 +80,7 @@ export async function DELETE(req: NextRequest, ctx: RouteContext<"/api/admin/gro
   // with a group_id pointing at nothing -- scopeGroupIds would still return that id, so
   // every query would match zero rows and the account would silently see an empty app
   // rather than an error anyone could diagnose.
-  const n = groupMemberCount(groupId);
+  const n = await groupMemberCount(groupId);
   if (n > 0) {
     return NextResponse.json(
       { ok: false, error: `این گروه ${n} کاربر دارد. اول آن‌ها را به گروه دیگری منتقل کنید.` },
@@ -88,7 +88,7 @@ export async function DELETE(req: NextRequest, ctx: RouteContext<"/api/admin/gro
     );
   }
 
-  const regrouped = deleteGroup(groupId, organizationId);
+  const regrouped = await deleteGroup(groupId, organizationId);
 
   return NextResponse.json({ ok: true, regrouped });
 }

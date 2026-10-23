@@ -46,29 +46,29 @@ const { refreshAll } = await import("@/lib/repo/analysisRefresh");
 const { snapshot } = await import("@/lib/repo/kpiSnapshots");
 
 describe.skipIf(!dbPath)("Phase 9 analysis migration on real data", () => {
-  it("adds the two tables + seeds 14 definitions, then a sweep runs clean", () => {
+  it("adds the two tables + seeds 14 definitions, then a sweep runs clean", async () => {
     const db = getDb();
-    expect(db.prepare("PRAGMA foreign_key_check").all()).toEqual([]);
+    expect(await db.prepare("PRAGMA foreign_key_check").all()).toEqual([]);
     for (const t of ["kpi_definitions", "kpi_snapshots"]) {
-      expect(db.prepare(`SELECT 1 FROM sqlite_master WHERE type='table' AND name = ?`).get(t), t).toBeTruthy();
+      expect(await db.prepare(`SELECT 1 FROM sqlite_master WHERE type='table' AND name = ?`).get(t), t).toBeTruthy();
     }
-    expect((db.prepare("SELECT COUNT(*) AS n FROM kpi_snapshots").get() as { n: number }).n).toBe(
+    expect((await db.prepare("SELECT COUNT(*) AS n FROM kpi_snapshots").get() as { n: number }).n).toBe(
       snapshotsBefore
     );
     expect(
-      (db.prepare("SELECT COUNT(*) AS n FROM kpi_definitions WHERE organization_id IS NULL").get() as { n: number }).n
+      (await db.prepare("SELECT COUNT(*) AS n FROM kpi_definitions WHERE organization_id IS NULL").get() as { n: number }).n
     ).toBe(14);
     expect(
-      (db.prepare("SELECT COUNT(*) AS n FROM kpi_definitions WHERE organization_id IS NOT NULL").get() as { n: number }).n
+      (await db.prepare("SELECT COUNT(*) AS n FROM kpi_definitions WHERE organization_id IS NOT NULL").get() as { n: number }).n
     ).toBe(0);
 
     // the sweep must run against real rows without throwing and write an org net_sales
-    const res = refreshAll(1);
+    const res = await refreshAll(1);
     expect(res.written).toBeGreaterThan(0);
-    const ns = snapshot(1, "net_sales", { scope_type: "org", period: res.period });
+    const ns = await snapshot(1, "net_sales", { scope_type: "org", period: res.period });
     expect(ns).not.toBeNull();
     expect(ns as number).toBeGreaterThanOrEqual(0);
-    expect(db.prepare("PRAGMA foreign_key_check").all()).toEqual([]);
+    expect(await db.prepare("PRAGMA foreign_key_check").all()).toEqual([]);
 
     if (temp) for (const s of ["", "-wal", "-shm"]) fs.rmSync(`${dbPath}${s}`, { force: true });
   });

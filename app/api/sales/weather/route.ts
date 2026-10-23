@@ -5,7 +5,7 @@ import { MANAGE_ROLES } from "@/lib/roles";
 
 /** The stored snapshot for a cell/date plus the capacity adjustment it implies. */
 export async function GET(req: NextRequest) {
-  const guard = requireRole(req, [...MANAGE_ROLES, "phone_sales"]);
+  const guard = await requireRole(req, [...MANAGE_ROLES, "phone_sales"]);
   if (!guard.ok) return guard.response;
   const sp = req.nextUrl.searchParams;
   const lat = Number(sp.get("lat"));
@@ -16,8 +16,8 @@ export async function GET(req: NextRequest) {
   }
   return NextResponse.json({
     ok: true,
-    snapshot: snapshotFor(lat, lng, date.slice(0, 10)) ?? null,
-    adjustment: runWeatherAdjustment(guard.session.organizationId, {
+    snapshot: await snapshotFor(lat, lng, date.slice(0, 10)) ?? null,
+    adjustment: await runWeatherAdjustment(guard.session.organizationId, {
       lat,
       lng,
       date: date.slice(0, 10),

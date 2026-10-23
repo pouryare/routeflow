@@ -16,13 +16,13 @@ export interface PredictionRefreshResult {
   capacity: number;
 }
 
-export function refreshPredictions(
+export async function refreshPredictions(
   organizationId: number,
   asOfIso: string = new Date().toISOString()
-): PredictionRefreshResult {
-  const forecasts = materialiseForecasts(organizationId, asOfIso);
-  const train = trainChurnFromLapses(organizationId, asOfIso);
-  const churn = materialiseChurnScores(organizationId, asOfIso);
-  const capacity = learnCapacityFromRuns(organizationId, asOfIso);
+): Promise<PredictionRefreshResult> {
+  const forecasts = await materialiseForecasts(organizationId, asOfIso);
+  const train = await trainChurnFromLapses(organizationId, asOfIso);
+  const churn = await materialiseChurnScores(organizationId, asOfIso);
+  const capacity = await learnCapacityFromRuns(organizationId, asOfIso);
   return { forecasts, churn, churn_trained: train.trained, capacity };
 }

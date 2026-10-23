@@ -23,7 +23,7 @@ export const creditApprovalsRepo = makeRepo<CreditApprovalRow>("credit_approvals
 
 /** Park an order that breaches a direct customer's credit limit. Refuses a representative
  *  customer -- reps settle in cash or bank cheque and are outside credit control. */
-export function requestApproval(
+export async function requestApproval(
   organizationId: number,
   input: {
     order_id: number;
@@ -32,9 +32,9 @@ export function requestApproval(
     customer_balance_toman: number;
     credit_limit_toman: number | null;
   }
-): number {
+): Promise<number> {
   const db = creditApprovalsRepo.db();
-  const isRep = db
+  const isRep = await db
     .prepare("SELECT 1 FROM representative_profiles WHERE customer_id = ? AND organization_id = ?")
     .get(input.customer_id, organizationId);
   if (isRep) {
@@ -42,7 +42,7 @@ export function requestApproval(
   }
   const overage = Math.max(0, input.customer_balance_toman - (input.credit_limit_toman ?? 0));
   return Number(
-    db
+    (await db
       .prepare(
         `INSERT INTO credit_approvals
            (organization_id, order_id, requested_by, requested_at,
@@ -57,23 +57,23 @@ export function requestApproval(
         input.customer_balance_toman,
         input.credit_limit_toman,
         overage
-      ).lastInsertRowid
+      )).lastInsertRowid
   );
 }
 
-export function decide(
+export async function decide(
   organizationId: number,
   id: number,
   verdict: "approved" | "rejected",
   decidedBy: number,
   reason?: string
-): void {
-  const row = creditApprovalsRepo.get(organizationId, id);
+): Promise<void> {
+  const row = await creditApprovalsRepo.get(organizationId, id);
   if (!row) throw new CreditApprovalError("درخواست پیدا نشد");
   if (row.status !== "pending") {
     throw new CreditApprovalError("این درخواست قبلاً تعیین‌تکلیف شده است");
   }
-  creditApprovalsRepo.patch(organizationId, id, {
+  await creditApprovalsRepo.patch(organizationId, id, {
     status: verdict,
     decided_by: decidedBy,
     decided_at: new Date().toISOString(),
@@ -83,7 +83,7 @@ export function decide(
   // effects clear credit_hold and reserve stock); reject -> ON_HOLD, still held until it
   // is cancelled or a payment brings the balance back under the limit and a manager
   // releases it.
-  advanceOrder(
+  await advanceOrder(
     organizationId,
     row.order_id,
     verdict === "approved" ? "approveCredit" : "rejectCredit",
@@ -95,13 +95,13 @@ export function decide(
  *  credit_approvals row; this drops the manager's follow-up reminder. Same shape as the
  *  Phase 1 cheque-bounce reminder. */
 registerOrderEffectHandlers({
-  createCreditApprovalTask(conn, _orgId, orderId) {
-    const order = conn
+  async createCreditApprovalTask(conn, _orgId, orderId) {
+    const order = await conn
       .prepare("SELECT customer_id FROM orders WHERE id = ?")
       .get(orderId) as { customer_id: number } | undefined;
     if (!order) return;
     const now = new Date().toISOString();
-    conn
+    await conn
       .prepare(
         `INSERT INTO reminders (entity_type, entity_id, due_date, message, resolved, created_at)
          VALUES ('customer', ?, ?, ?, 0, ?)`
@@ -115,13 +115,13 @@ registerOrderEffectHandlers({
   },
 });
 
-export function listApprovals(
+export async function listApprovals(
   organizationId: number,
   status?: CreditApprovalRow["status"]
-): CreditApprovalRow[] {
+): Promise<CreditApprovalRow[]> {
   return status
-    ? creditApprovalsRepo.list(organizationId, { status } as Partial<CreditApprovalRow>)
-    : creditApprovalsRepo.list(organizationId);
+    ? await creditApprovalsRepo.list(organizationId, { status } as Partial<CreditApprovalRow>)
+    : await creditApprovalsRepo.list(organizationId);
 }
 
 export interface PendingApprovalCard {
@@ -136,8 +136,8 @@ export interface PendingApprovalCard {
 
 /** The pending requests with the words a decision card needs (customer, order number), oldest
  *  first. Tenant-scoped through the approval row; the joins only add names. */
-export function pendingForDeck(organizationId: number): PendingApprovalCard[] {
-  return getDb()
+export async function pendingForDeck(organizationId: number): Promise<PendingApprovalCard[]> {
+  return (await getDb()
     .prepare(
       `SELECT ca.id, o.order_no, c.business_name AS customer_name, ca.customer_balance_toman,
               ca.credit_limit_toman, ca.overage_toman, ca.requested_at
@@ -147,7 +147,7 @@ export function pendingForDeck(organizationId: number): PendingApprovalCard[] {
         WHERE ca.organization_id = ? AND ca.status = 'pending'
         ORDER BY ca.requested_at`
     )
-    .all(organizationId)
+    .all(organizationId))
     // Plain objects: a database row has a null prototype and cannot cross into a client component.
     .map((r) => ({ ...r })) as unknown as PendingApprovalCard[];
 }

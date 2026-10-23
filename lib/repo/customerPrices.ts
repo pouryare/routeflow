@@ -23,12 +23,12 @@ export interface ProductPrices {
   points: PricePoint[];
 }
 
-export function customerPriceHistory(
+export async function customerPriceHistory(
   scope: { sql: string; params: number[] },
   customerId: number,
   perProduct = 5
-): ProductPrices[] {
-  const rows = getDb()
+): Promise<ProductPrices[]> {
+  const rows = await getDb()
     .prepare(
       `SELECT ol.product_id, p.name AS product_name, ol.packaging_id, pk.name AS packaging_name,
               o.id AS order_id, o.order_date, ol.unit_price_toman, pp.price_toman AS list_price_toman

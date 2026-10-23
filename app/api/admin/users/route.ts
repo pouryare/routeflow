@@ -10,18 +10,18 @@ import { lastSignInByUser } from "@/lib/repo/loginEvents";
 const MIN_PASSWORD = 8;
 
 export async function GET(req: NextRequest) {
-  const guard = requireRole(req, OWNER_ROLES);
+  const guard = await requireRole(req, OWNER_ROLES);
   if (!guard.ok) return guard.response;
 
   // Scoped to the caller's own company: the list carries telegram_chat_id, a live delivery address.
-  const lastSignIn = lastSignInByUser(guard.session.organizationId);
-  const users = listUsers(guard.session.organizationId).map((u) => ({ ...u, last_sign_in_at: lastSignIn.get(u.id as number) ?? null }));
+  const lastSignIn = await lastSignInByUser(guard.session.organizationId);
+  const users = (await listUsers(guard.session.organizationId)).map((u) => ({ ...u, last_sign_in_at: lastSignIn.get(u.id as number) ?? null }));
 
   return NextResponse.json({ ok: true, users, roles: ROLES });
 }
 
 export async function POST(req: NextRequest) {
-  const guard = requireRole(req, OWNER_ROLES);
+  const guard = await requireRole(req, OWNER_ROLES);
   if (!guard.ok) return guard.response;
 
   const body = (await req.json().catch(() => null)) as Record<string, unknown> | null;
@@ -66,7 +66,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "برای این نقش، انتخاب گروه الزامی است" }, { status: 400 });
   }
   // The group must be this company's: a user placed in another tenant's group would read that tenant's data.
-  if (groupId !== null && !groupExists(groupId, guard.session.organizationId)) {
+  if (groupId !== null && !await groupExists(groupId, guard.session.organizationId)) {
     return NextResponse.json({ ok: false, error: "گروه پیدا نشد" }, { status: 400 });
   }
 
@@ -74,7 +74,7 @@ export async function POST(req: NextRequest) {
   const phone = typeof body?.phone === "string" && body.phone.trim() ? body.phone.trim() : null;
 
   try {
-    const id = insertUser({
+    const id = await insertUser({
       username,
       passwordHash: hashPassword(password),
       displayName,

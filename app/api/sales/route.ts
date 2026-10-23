@@ -11,7 +11,7 @@ import { MANAGE_ROLES } from "@/lib/roles";
 // already see. Widening the role without that check would have been the leak, since any
 // business name is guessable and the ledger is the whole debt picture.
 export async function GET(req: NextRequest) {
-  const guard = requireRole(req, MANAGE_ROLES);
+  const guard = await requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
 
   const { searchParams } = new URL(req.url);
@@ -22,11 +22,11 @@ export async function GET(req: NextRequest) {
 
   // 404, not 403: the same rule as everywhere else -- a 403 would confirm that a customer
   // by this name exists in someone else's group.
-  if (!customerNameVisible(customer, groupFilter(guard.session))) {
+  if (!await customerNameVisible(customer, await groupFilter(guard.session))) {
     return NextResponse.json({ ok: false, error: "مشتری پیدا نشد" }, { status: 404 });
   }
 
-  const { orders, topProducts } = customerPurchaseHistory(customer, orgScopeId(guard.session));
+  const { orders, topProducts } = await customerPurchaseHistory(customer, orgScopeId(guard.session));
 
   return NextResponse.json({ ok: true, orders, topProducts });
 }

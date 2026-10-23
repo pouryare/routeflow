@@ -30,7 +30,7 @@ export default async function NewOrderPage({
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
   const jar = await cookies();
-  const session = getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
+  const session = await getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
   if (!session) redirect("/login");
   if (isVanRole(session.role)) redirect("/driver");
   /* A rep manager reaches the orders list but cannot sell (the order API refuses them). Say
@@ -52,7 +52,7 @@ export default async function NewOrderPage({
     );
   }
 
-  const { customers, products, sellers } = orderEntryFor(session);
+  const { customers, products, sellers } = await orderEntryFor(session);
 
   // Validated against the customers this caller can already see, rather than passed
   // through. A link is user input: an id from another group must not preselect anything,

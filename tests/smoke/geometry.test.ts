@@ -4,6 +4,7 @@ import { DatabaseSync } from "node:sqlite";
 import { startDevServer, BASE } from "./server";
 import { sessionCookie } from "./session";
 import { ensureWarehouse } from "../helpers/ensureWarehouse";
+import { sqliteDb } from "@/lib/database/client";
 
 /** Geometric invariants that survive a redesign.
  *
@@ -64,7 +65,7 @@ async function open(
   waitUntil: "networkidle" | "load" = "networkidle",
 ) {
   const context = await browser.newContext({ locale: "fa-IR", viewport });
-  await context.addCookies([{ ...sessionCookie(), url: BASE }]);
+  await context.addCookies([{ ...await sessionCookie(), url: BASE }]);
   const page = await context.newPage();
   /* 60s, not the 30s default: a dev server compiling a page on first visit while the
      machine is busy can miss 30s without anything being wrong with the page, and a layout
@@ -400,7 +401,7 @@ describe("order pipeline drag", () => {
       const now = new Date().toISOString();
       if (product) db.prepare("INSERT INTO product_prices (product_id, price_toman, valid_from, created_at) VALUES (?, 100000, ?, ?)").run(product.id, now.slice(0, 10), now);
     }
-    ensureWarehouse(db, org);
+    await ensureWarehouse(sqliteDb(() => db), org);
     const line = pricedLine();
     const customer = db.prepare("SELECT id FROM customers WHERE organization_id = ? ORDER BY id LIMIT 1").get(org) as { id: number } | undefined;
     db.close();

@@ -8,7 +8,7 @@
  */
 
 import { refreshOrderFigures } from "./repo/orderFigures";
-import type { DatabaseSync } from "node:sqlite";
+import type { Db } from "@/lib/database/client";
 import { getDb } from "./db";
 import {
   orderTotalToman,
@@ -28,6 +28,7 @@ import { planDelivery, deliveryForStop } from "./repo/deliveries";
 import { tombstone } from "./repo/tombstones";
 import type { OrderStatus } from "./orderStateMachine";
 
+import { mapSeq } from "@/lib/seq";
 export class DeliveryError extends Error {}
 
 export interface RunStopLine extends LineSnapshot {
@@ -93,8 +94,8 @@ export interface RunFacilityStop {
   icon_key: string | null;
 }
 
-export function createRun(
-  db: DatabaseSync,
+export async function createRun(
+  db: Db,
   input: {
     driver_user_id: number;
     run_date: string;
@@ -104,8 +105,8 @@ export function createRun(
     organization_id: number;
     group_id?: number | null;
   }
-): number {
-  const driver = db
+): Promise<number> {
+  const driver = await db
     .prepare("SELECT id, role, group_id FROM users WHERE id = ? AND active = 1")
     .get(input.driver_user_id) as { role: string; group_id: number | null } | undefined;
 
@@ -113,14 +114,14 @@ export function createRun(
   // A run belongs to a DRIVER by definition, and driving is a HELD role, not a primary one.
   // Assigning one to a manager would make a day of stops that nothing in the driver app can
   // reach; refusing a driver who also sells would do the same, silently.
-  const canDrive = db
+  const canDrive = await db
     .prepare("SELECT 1 FROM user_roles WHERE user_id = ? AND role = 'delivery_driver'")
     .get(input.driver_user_id);
   if (!canDrive) throw new DeliveryError("این حساب راننده تحویل نیست");
 
   const now = new Date().toISOString();
   return Number(
-    db
+    (await db
       .prepare(
         `INSERT INTO delivery_runs (driver_user_id, group_id, run_date, created_by, created_at, updated_at, organization_id)
          VALUES (?, ?, ?, ?, ?, ?, ?)`
@@ -133,7 +134,7 @@ export function createRun(
         now,
         now,
         input.organization_id
-      ).lastInsertRowid
+      )).lastInsertRowid
   );
 }
 
@@ -141,14 +142,14 @@ export function createRun(
  *
  *  Draft orders are refused: a draft is a shopping list somebody is still editing, and
  *  loading a van from one means the quantities can change after it has left. */
-export function addStop(
-  db: DatabaseSync,
+export async function addStop(
+  db: Db,
   runId: number,
   orderId: number,
   sortOrder = 0,
   opts: { force?: boolean } = {}
-): number {
-  const order = db
+): Promise<number> {
+  const order = await db
     .prepare("SELECT id, status, credit_hold, organization_id FROM orders WHERE id = ?")
     .get(orderId) as
     | { status: string; credit_hold: number; organization_id: number | null }
@@ -162,7 +163,7 @@ export function addStop(
   }
 
   // Phase 5: after a route is frozen, adding to it is a deliberate act.
-  const run = db.prepare("SELECT frozen_at FROM delivery_runs WHERE id = ?").get(runId) as
+  const run = await db.prepare("SELECT frozen_at FROM delivery_runs WHERE id = ?").get(runId) as
     | { frozen_at: string | null }
     | undefined;
   if (run?.frozen_at && !opts.force) {
@@ -170,19 +171,19 @@ export function addStop(
   }
 
   const stopId = Number(
-    db
+    (await db
       .prepare(
         "INSERT INTO delivery_stops (run_id, order_id, sort_order, created_at) VALUES (?, ?, ?, ?)"
       )
-      .run(runId, orderId, sortOrder, new Date().toISOString()).lastInsertRowid
+      .run(runId, orderId, sortOrder, new Date().toISOString())).lastInsertRowid
   );
 
   // Phase 3 (M6): the stop gets its own delivery entity, and the order moves to PLANNED.
-  planDelivery(order.organization_id ?? 1, orderId, { route_stop_id: stopId });
+  await planDelivery(order.organization_id ?? 1, orderId, { route_stop_id: stopId });
 
   // Phase 5: an add to a frozen route is worth a line in the audit trail.
   if (run?.frozen_at && opts.force) {
-    db.prepare(
+    await db.prepare(
       `INSERT INTO order_events (organization_id, order_id, from_status, to_status, action, note, created_at)
        VALUES (?, ?, NULL, (SELECT status FROM orders WHERE id = ?), 'note', 'افزوده به مسیر قطعی‌شده', ?)`
     ).run(order.organization_id ?? 1, orderId, orderId, new Date().toISOString());
@@ -205,8 +206,8 @@ export function addStop(
  *  CONFIRMED, and only then does the run go and take its stops with it — that FK *is* a
  *  cascade, so the stops need no statement of their own.
  */
-export function deleteRun(db: DatabaseSync, runId: number): { releasedOrderIds: number[] } {
-  const run = db.prepare("SELECT id, status, organization_id FROM delivery_runs WHERE id = ?").get(runId) as
+export async function deleteRun(db: Db, runId: number): Promise<{ releasedOrderIds: number[] }> {
+  const run = await db.prepare("SELECT id, status, organization_id FROM delivery_runs WHERE id = ?").get(runId) as
     | { id: number; status: string; organization_id: number | null }
     | undefined;
   if (!run) throw new DeliveryError("مسیر پیدا نشد");
@@ -215,7 +216,7 @@ export function deleteRun(db: DatabaseSync, runId: number): { releasedOrderIds: 
     throw new DeliveryError("مسیر بسته‌شده حذف نمی‌شود");
   }
 
-  const stops = db
+  const stops = await db
     .prepare("SELECT id, order_id, status FROM delivery_stops WHERE run_id = ?")
     .all(runId) as { id: number; order_id: number; status: string }[];
 
@@ -227,7 +228,7 @@ export function deleteRun(db: DatabaseSync, runId: number): { releasedOrderIds: 
   /* A delivery past PLANNED is a fact about the world rather than a plan about it, and it is
      checked separately from the stop status: a delivery can be recorded against a stop that
      still says 'pending' if the writer updated one and not the other. */
-  const recorded = db
+  const recorded = await db
     .prepare(
       `SELECT COUNT(*) AS n FROM deliveries d
          JOIN delivery_stops ds ON ds.id = d.route_stop_id
@@ -239,7 +240,7 @@ export function deleteRun(db: DatabaseSync, runId: number): { releasedOrderIds: 
   }
 
   // Read before the loop below deletes them, for the tombstones after the run goes.
-  const plannedDeliveries = db
+  const plannedDeliveries = await db
     .prepare(
       `SELECT d.id FROM deliveries d JOIN delivery_stops ds ON ds.id = d.route_stop_id WHERE ds.run_id = ?`
     )
@@ -254,8 +255,8 @@ export function deleteRun(db: DatabaseSync, runId: number): { releasedOrderIds: 
   );
   const now = new Date().toISOString();
   for (const s of stops) {
-    dropDelivery.run(s.id);
-    releaseOrder.run(now, s.order_id);
+    await dropDelivery.run(s.id);
+    await releaseOrder.run(now, s.order_id);
   }
 
   /* Captured BEFORE the delete, and from the rows already in hand — reading them back
@@ -271,15 +272,15 @@ export function deleteRun(db: DatabaseSync, runId: number): { releasedOrderIds: 
   const gone: [string, number][] = [["delivery_runs", runId]];
   for (const s of stops) gone.push(["delivery_stops", s.id]);
   for (const t of ["lead_run_stops", "run_facility_stops", "run_unload_lines"] as const) {
-    for (const r of db.prepare(`SELECT id FROM ${t} WHERE run_id = ?`).all(runId) as { id: number }[]) {
+    for (const r of await db.prepare(`SELECT id FROM ${t} WHERE run_id = ?`).all(runId) as { id: number }[]) {
       gone.push([t, r.id]);
     }
   }
   for (const d of plannedDeliveries) gone.push(["deliveries", d.id]);
 
-  db.prepare("DELETE FROM delivery_runs WHERE id = ?").run(runId);
+  await db.prepare("DELETE FROM delivery_runs WHERE id = ?").run(runId);
   if (run.organization_id !== null) {
-    for (const [table, id] of gone) tombstone(run.organization_id, table, id, db);
+    for (const [table, id] of gone) await tombstone(run.organization_id, table, id, db);
   }
 
   /* The released orders, so the caller can put them back on a run of the same shape. A
@@ -288,8 +289,8 @@ export function deleteRun(db: DatabaseSync, runId: number): { releasedOrderIds: 
   return { releasedOrderIds };
 }
 
-function stopLines(db: DatabaseSync, orderId: number): RunStopLine[] {
-  const rows = db
+async function stopLines(db: Db, orderId: number): Promise<RunStopLine[]> {
+  const rows = await db
     .prepare(
       `SELECT ol.*, p.name AS product_name, pk.name AS packaging_name
          FROM order_lines ol
@@ -303,8 +304,8 @@ function stopLines(db: DatabaseSync, orderId: number): RunStopLine[] {
   return rows.map((row) => ({ ...row, total_toman: lineTotalToman(row), kg: lineKg(row) }));
 }
 
-export function readRun(db: DatabaseSync, runId: number): RunDetail | null {
-  const run = db
+export async function readRun(db: Db, runId: number): Promise<RunDetail | null> {
+  const run = await db
     .prepare(
       `SELECT dr.*, u.display_name AS driver_name
          FROM delivery_runs dr JOIN users u ON u.id = dr.driver_user_id
@@ -319,7 +320,7 @@ export function readRun(db: DatabaseSync, runId: number): RunDetail | null {
    * screen renders in a van with no signal, and the driver's ability to answer «where am I
    * going?» must not depend on a lookup that has not arrived. A card that says
    * «بارگیری · انبار بکه» with nothing under it is not a degraded view, it is a dead end. */
-  const facilities = db
+  const facilities = await db
     .prepare(
       `SELECT rfs.id, rfs.facility_id, rfs.role, rfs.status, rfs.done_at, rfs.notes,
               f.name, f.address, f.lat, f.lng, f.kind, f.icon_key
@@ -330,7 +331,7 @@ export function readRun(db: DatabaseSync, runId: number): RunDetail | null {
     )
     .all(runId) as unknown as RunFacilityStop[];
 
-  const stopRows = db
+  const stopRows = await db
     .prepare(
       `SELECT ds.id, ds.order_id, ds.status, ds.collected_toman, ds.sort_order, ds.notes,
               o.order_no, o.priority, o.customer_id,
@@ -343,8 +344,8 @@ export function readRun(db: DatabaseSync, runId: number): RunDetail | null {
     )
     .all(runId) as unknown as Omit<RunStop, "lines" | "total_toman">[];
 
-  const stops: RunStop[] = stopRows.map((stop) => {
-    const lines = stopLines(db, stop.order_id);
+  const stops: RunStop[] = await mapSeq(stopRows, async (stop) => {
+    const lines = await stopLines(db, stop.order_id);
     return { ...stop, lines, total_toman: orderTotalToman(lines) };
   });
 
@@ -381,7 +382,7 @@ export interface DeliveryInput {
 
 /** Everything the steps of one door event share. Built once by recordDelivery and handed to each step. */
 interface DoorContext {
-  db: DatabaseSync;
+  db: Db;
   stopId: number;
   stop: {
     id: number;
@@ -402,10 +403,10 @@ interface DoorContext {
   nothingTaken: boolean;
   someShort: boolean;
   total: number;
-  statusNow: () => OrderStatus;
+  statusNow: () => Promise<OrderStatus>;
 }
 
-function debitVan(c: DoorContext): void {
+async function debitVan(c: DoorContext): Promise<void> {
   const { stop, input, byId } = c;
   /* The van's balance leaves the van HERE, and only here.
    *
@@ -424,14 +425,14 @@ function debitVan(c: DoorContext): void {
    * A driver with no van on file gets a null facility and no movement -- NOT a throw. Their
    * delivery is real and must still be recorded; the missing van is a separate problem for
    * somebody else to notice, and failing the door event over it would lose the delivery. */
-  const vanFacility = vanFacilityFor(stop.organization_id, stop.driver_user_id);
+  const vanFacility = await vanFacilityFor(stop.organization_id, stop.driver_user_id);
   if (vanFacility !== null) {
     for (const line of input.lines) {
       const target = byId.get(line.line_id);
       if (!target) continue; // already rejected above; unreachable
       const packs = line.packs_delivered * target.qty_per_pack;
       if (packs > 0) {
-        deliverFromVan(stop.organization_id, {
+        await deliverFromVan(stop.organization_id, {
           facilityId: vanFacility,
           productId: target.product_id,
           qty: packs,
@@ -442,25 +443,25 @@ function debitVan(c: DoorContext): void {
   }
 }
 
-function advanceDoorOrder(c: DoorContext): void {
+async function advanceDoorOrder(c: DoorContext): Promise<void> {
   const { db, stop, input, orgId, nothingTaken, someShort, statusNow } = c;
   const sys = { id: input.by, role: "system" as const };
-  let st = statusNow();
+  let st = await statusNow();
   if (st === "CONFIRMED") {
-    advanceOrder(orgId, stop.order_id, "plan", sys, { db });
+    await advanceOrder(orgId, stop.order_id, "plan", sys, { db });
     st = "PLANNED";
   }
   if (st === "PLANNED") {
-    advanceOrder(orgId, stop.order_id, "freeze", sys, { db });
+    await advanceOrder(orgId, stop.order_id, "freeze", sys, { db });
     st = "READY";
   }
   if (st === "READY") {
-    advanceOrder(orgId, stop.order_id, "startRoute", sys, { db });
+    await advanceOrder(orgId, stop.order_id, "startRoute", sys, { db });
     st = "OUT_FOR_DELIVERY";
   }
   if (st === "OUT_FOR_DELIVERY") {
     const action = nothingTaken ? "failDelivery" : someShort ? "deliverPartial" : "deliver";
-    advanceOrder(
+    await advanceOrder(
       orgId,
       stop.order_id,
       action,
@@ -469,7 +470,7 @@ function advanceDoorOrder(c: DoorContext): void {
     );
     if (nothingTaken) {
       // Phase 7: a failed delivery is a rule trigger.
-      tryEmitEvent(
+      await tryEmitEvent(
         orgId,
         {
           kind: "delivery.failed",
@@ -484,7 +485,7 @@ function advanceDoorOrder(c: DoorContext): void {
       // Phase 1 notifications: a partial OR full delivery is its own event, so both
       // order actions (deliver / deliverPartial) feed one notification type without the
       // feed rules special-casing two verbs. Best-effort, joins this transaction.
-      tryEmitEvent(
+      await tryEmitEvent(
         orgId,
         {
           kind: "delivery.succeeded",
@@ -504,7 +505,7 @@ function advanceDoorOrder(c: DoorContext): void {
   }
 }
 
-function settleDoorPayment(c: DoorContext): void {
+async function settleDoorPayment(c: DoorContext): Promise<void> {
   const { db, stopId, stop, input, now, nothingTaken, total } = c;
   // Cash handed over at the door is a real payment now, not a number stamped onto the
   // order. recordPaymentTxn writes the ledger row, allocates it to this order (the
@@ -515,7 +516,7 @@ function settleDoorPayment(c: DoorContext): void {
   // Keyed to the stop so a retried sync converges rather than stacking: an existing,
   // non-voided door payment for this stop with the same amount is left alone; a
   // different amount voids the old row and writes a fresh one.
-  const priorDoorPayment = db
+  const priorDoorPayment = await db
     .prepare(
       "SELECT id, amount_toman FROM payments WHERE delivery_stop_id = ? AND voided_at IS NULL"
     )
@@ -526,7 +527,7 @@ function settleDoorPayment(c: DoorContext): void {
     priorDoorPayment && wantPayment && priorDoorPayment.amount_toman === input.collected_toman;
 
   if (priorDoorPayment && !alreadyRight) {
-    voidPaymentTxn(db, stop.organization_id, priorDoorPayment.id, input.by, "بازثبت تحویل");
+    await voidPaymentTxn(db, stop.organization_id, priorDoorPayment.id, input.by, "بازثبت تحویل");
   }
 
   if (wantPayment && !alreadyRight) {
@@ -537,7 +538,7 @@ function settleDoorPayment(c: DoorContext): void {
     if (input.collected_toman > total) {
       allocations.push({ order_id: null, amount_toman: input.collected_toman - total });
     }
-    recordPaymentTxn(db, stop.organization_id, {
+    await recordPaymentTxn(db, stop.organization_id, {
       customer_id: stop.customer_id,
       amount_toman: input.collected_toman,
       method: "CASH",
@@ -553,21 +554,21 @@ function settleDoorPayment(c: DoorContext): void {
   } else if (!wantPayment) {
     // A retry that now collects nothing (or refuses the stop) must also clear the
     // cache the earlier attempt set.
-    recomputeOrderPaymentTxn(db, stop.organization_id, stop.order_id);
+    await recomputeOrderPaymentTxn(db, stop.organization_id, stop.order_id);
   }
 }
 
-function drawDeliveredStock(c: DoorContext): void {
+async function drawDeliveredStock(c: DoorContext): Promise<void> {
   const { db, stopId, input, byId, now, stockOrgId, nothingTaken } = c;
   // Phase 2: draw the delivered quantity from stock, FEFO. The DELIVERY_OUT movements
   // and delivery_line_batches rows this writes are machine-generated within this one
   // atomic delivery record and carry no independent history -- so a retried sync just
   // deletes and re-writes them, converging like the payment above.
-  const facilityId = defaultFacilityId(stockOrgId);
-  db.prepare(
+  const facilityId = await defaultFacilityId(stockOrgId);
+  await db.prepare(
     "DELETE FROM stock_movements WHERE ref_type = 'delivery_stop' AND ref_id = ? AND kind = 'DELIVERY_OUT'"
   ).run(stopId);
-  db.prepare("DELETE FROM delivery_line_batches WHERE delivery_stop_id = ?").run(stopId);
+  await db.prepare("DELETE FROM delivery_line_batches WHERE delivery_stop_id = ?").run(stopId);
 
   const insDlb = db.prepare(
     `INSERT INTO delivery_line_batches
@@ -579,8 +580,8 @@ function drawDeliveredStock(c: DoorContext): void {
       if (!(line.packs_delivered > 0)) continue;
       const ol = byId.get(line.line_id)!;
       const baseQty = line.packs_delivered * ol.qty_per_pack;
-      for (const a of allocateFEFO(stockOrgId, ol.product_id, baseQty, facilityId)) {
-        recordMovementsTxn(db, stockOrgId, [
+      for (const a of await allocateFEFO(stockOrgId, ol.product_id, baseQty, facilityId)) {
+        await recordMovementsTxn(db, stockOrgId, [
           {
             facility_id: facilityId,
             product_id: ol.product_id,
@@ -593,13 +594,13 @@ function drawDeliveredStock(c: DoorContext): void {
             created_by: input.by,
           },
         ]);
-        insDlb.run(stockOrgId, stopId, line.line_id, a.batch_id, a.base_qty, now);
+        await insDlb.run(stockOrgId, stopId, line.line_id, a.batch_id, a.base_qty, now);
       }
     }
   }
 }
 
-function recogniseRevenue(c: DoorContext): void {
+async function recogniseRevenue(c: DoorContext): Promise<void> {
   const { db, stopId, stop, input, now, stockOrgId, nothingTaken } = c;
   /* Revenue and cost, recognised when the goods MOVE -- not on the order, and not on the
      payment (which posts its own Dr cash / Cr AR journal). The two are separate journals
@@ -625,7 +626,7 @@ function recogniseRevenue(c: DoorContext): void {
      alone -- a partial cost that silently excluded one line's real cost would be worse
      than no cost at all. */
   if (!nothingTaken) {
-    const orderLines = stopLines(db, stop.order_id);
+    const orderLines = await stopLines(db, stop.order_id);
     let revenueToman = 0;
     let costToman = 0;
     let costKnown = true;
@@ -634,7 +635,7 @@ function recogniseRevenue(c: DoorContext): void {
       if (line.unit_cost_toman > 0) costToman += lineCostToman(line);
       else costKnown = false;
     }
-    postDeliveryRecognition(db, {
+    await postDeliveryRecognition(db, {
       organizationId: stockOrgId,
       deliveryStopId: stopId,
       customerId: stop.customer_id,
@@ -646,18 +647,18 @@ function recogniseRevenue(c: DoorContext): void {
   }
 }
 
-function syncDeliveryEntity(c: DoorContext): void {
+async function syncDeliveryEntity(c: DoorContext): Promise<void> {
   const { db, stopId, stop, input, byId, now, stockOrgId, nothingTaken, someShort } = c;
   // Phase 3 (M6): keep the deliveries entity in step. Server owns actual_arrival /
   // completed_at -- input.device_time is stored beside them, never trusted as the time.
-  let delivery = deliveryForStop(stockOrgId, stopId, db);
+  let delivery = await deliveryForStop(stockOrgId, stopId, db);
   if (!delivery) {
-    planDelivery(stockOrgId, stop.order_id, { route_stop_id: stopId, db });
-    delivery = deliveryForStop(stockOrgId, stopId, db);
+    await planDelivery(stockOrgId, stop.order_id, { route_stop_id: stopId, db });
+    delivery = await deliveryForStop(stockOrgId, stopId, db);
   }
   if (delivery) {
     const dStatus = nothingTaken ? "FAILED" : someShort ? "PARTIAL" : "DELIVERED";
-    db.prepare(
+    await db.prepare(
       `UPDATE deliveries
           SET status = ?, actual_arrival = COALESCE(actual_arrival, ?), completed_at = ?,
               collected_toman = ?, fail_reason_id = ?, receiver_name = COALESCE(?, receiver_name),
@@ -682,7 +683,7 @@ function syncDeliveryEntity(c: DoorContext): void {
     );
     for (const line of input.lines) {
       const ol = byId.get(line.line_id)!;
-      dlSet.run(line.packs_delivered * ol.qty_per_pack, delivery.id, line.line_id);
+      await dlSet.run(line.packs_delivered * ol.qty_per_pack, delivery.id, line.line_id);
     }
   }
 }
@@ -695,8 +696,8 @@ function syncDeliveryEntity(c: DoorContext): void {
  *  connection is exactly the situation where half of this landing would be worst --
  *  an order marked delivered with no quantities is an invoice for nothing.
  */
-export function recordDelivery(db: DatabaseSync, stopId: number, input: DeliveryInput): void {
-  const stop = db
+export async function recordDelivery(db: Db, stopId: number, input: DeliveryInput): Promise<void> {
+  const stop = await db
     .prepare(
       `SELECT s.id, s.run_id, s.order_id, s.status, o.customer_id, o.order_no, o.organization_id,
               c.business_name AS customer_name,
@@ -722,7 +723,7 @@ export function recordDelivery(db: DatabaseSync, stopId: number, input: Delivery
     | undefined;
   if (!stop) throw new DeliveryError("توقف پیدا نشد");
 
-  const ordered = db
+  const ordered = await db
     .prepare(
       "SELECT id, packs_ordered, product_id, qty_per_pack FROM order_lines WHERE order_id = ?"
     )
@@ -749,14 +750,13 @@ export function recordDelivery(db: DatabaseSync, stopId: number, input: Delivery
   }
 
   const now = new Date().toISOString();
-  db.exec("BEGIN IMMEDIATE");
-  try {
+  await db.tx(async () => {
     const setLine = db.prepare("UPDATE order_lines SET packs_delivered = ? WHERE id = ?");
-    for (const line of input.lines) setLine.run(line.packs_delivered, line.line_id);
-    refreshOrderFigures(db, stop.order_id);
+    for (const line of input.lines) await setLine.run(line.packs_delivered, line.line_id);
+    await refreshOrderFigures(db, stop.order_id);
 
     // Re-read after writing, so the total is the delivered one rather than the ordered.
-    const lines = stopLines(db, stop.order_id);
+    const lines = await stopLines(db, stop.order_id);
     const total = orderTotalToman(lines);
     const nothingTaken = lines.every((l) => (l.packs_delivered ?? l.packs_ordered) === 0);
     const someShort =
@@ -764,14 +764,14 @@ export function recordDelivery(db: DatabaseSync, stopId: number, input: Delivery
 
     const orgId = stop.organization_id || 1;
     const stockOrgId = orgId;
-    const statusNow = (): OrderStatus =>
-      (db.prepare("SELECT status FROM orders WHERE id = ?").get(stop.order_id) as { status: OrderStatus }).status;
+    const statusNow = async (): Promise<OrderStatus> =>
+      (await db.prepare("SELECT status FROM orders WHERE id = ?").get(stop.order_id) as { status: OrderStatus }).status;
     const ctx: DoorContext = { db, stopId, stop, input, byId, now, orgId, stockOrgId, nothingTaken, someShort, total, statusNow };
 
-    debitVan(ctx);
+    await debitVan(ctx);
 
     const stopStatus = nothingTaken ? "refused" : "delivered";
-    db.prepare(
+    await db.prepare(
       `UPDATE delivery_stops
           SET status = ?, collected_toman = ?, delivered_at = ?, delivered_by = ?, notes = COALESCE(?, notes)
         WHERE id = ?`
@@ -782,39 +782,34 @@ export function recordDelivery(db: DatabaseSync, stopId: number, input: Delivery
     // 'system' -- each still lands its own order_events row -- then fire the real
     // outcome as the driver. A retried sync finds the order already past
     // OUT_FOR_DELIVERY and fires nothing.
-    advanceDoorOrder(ctx);
+    await advanceDoorOrder(ctx);
 
-    settleDoorPayment(ctx);
+    await settleDoorPayment(ctx);
 
-    drawDeliveredStock(ctx);
+    await drawDeliveredStock(ctx);
 
-    recogniseRevenue(ctx);
+    await recogniseRevenue(ctx);
 
-    syncDeliveryEntity(ctx);
+    await syncDeliveryEntity(ctx);
 
     // A fully-settled delivered order closes itself.
-    const afterStatus = statusNow();
+    const afterStatus = await statusNow();
     if (
       (afterStatus === "DELIVERED" || afterStatus === "PARTIALLY_DELIVERED") &&
       total > 0
     ) {
       const paid = (
-        db.prepare("SELECT paid_toman FROM orders WHERE id = ?").get(stop.order_id) as {
+        await db.prepare("SELECT paid_toman FROM orders WHERE id = ?").get(stop.order_id) as {
           paid_toman: number;
         }
       ).paid_toman;
       if (total - paid <= 0) {
-        advanceOrder(orgId, stop.order_id, "settle", { id: input.by, role: "system" }, { db });
+        await advanceOrder(orgId, stop.order_id, "settle", { id: input.by, role: "system" }, { db });
       }
     }
 
-    closeRunIfFinished(db, stop.run_id, now);
-
-    db.exec("COMMIT");
-  } catch (e) {
-    db.exec("ROLLBACK");
-    throw e;
-  }
+    await closeRunIfFinished(db, stop.run_id, now);
+  });
 }
 
 /** The last stop of the day CLOSES the run — and records how long it took.
@@ -833,8 +828,8 @@ export function recordDelivery(db: DatabaseSync, stopId: number, input: Delivery
  *
  *  Idempotent: `AND actual_duration_min IS NULL` means a retried sync converges rather than
  *  overwriting a real measurement with a different one. */
-function closeRunIfFinished(db: DatabaseSync, runId: number, now: string): void {
-  const run = db
+async function closeRunIfFinished(db: Db, runId: number, now: string): Promise<void> {
+  const run = await db
     .prepare(
       `SELECT r.id, r.started_at, r.finished_at, r.actual_duration_min,
               (SELECT COUNT(*) FROM delivery_stops ds
@@ -864,7 +859,7 @@ function closeRunIfFinished(db: DatabaseSync, runId: number, now: string): void 
       ? null
       : Math.max(1, Math.round((Date.parse(now) - Date.parse(run.started_at)) / 60000));
 
-  db.prepare(
+  await db.prepare(
     `UPDATE delivery_runs
         SET status = 'done', finished_at = ?,
             actual_duration_min = COALESCE(actual_duration_min, ?), updated_at = ?
@@ -889,14 +884,14 @@ export interface CompleteDeliveryInput {
  *  packs against each line's frozen qty_per_pack. A `failed` outcome sets every line to
  *  zero and requires a fail_reason_id. Server timestamps only -- any client time in the
  *  body is carried as device_time, never used as the time. */
-export function completeDelivery(
+export async function completeDelivery(
   organizationId: number,
   deliveryId: number,
   actor: { id: number },
   input: CompleteDeliveryInput
-): void {
+): Promise<void> {
   const db = getDb();
-  const delivery = db
+  const delivery = await db
     .prepare("SELECT id, order_id, route_stop_id FROM deliveries WHERE id = ? AND organization_id = ?")
     .get(deliveryId, organizationId) as
     | { id: number; order_id: number; route_stop_id: number | null }
@@ -907,7 +902,7 @@ export function completeDelivery(
     throw new DeliveryError("برای ثبت تحویل ناموفق، دلیل لازم است");
   }
 
-  const orderLines = db
+  const orderLines = await db
     .prepare("SELECT id, packs_ordered, qty_per_pack FROM order_lines WHERE order_id = ?")
     .all(delivery.order_id) as unknown as {
     id: number;
@@ -922,7 +917,7 @@ export function completeDelivery(
     return { line_id: ol.id, packs_delivered: base / ol.qty_per_pack };
   });
 
-  recordDelivery(db, delivery.route_stop_id, {
+  await recordDelivery(db, delivery.route_stop_id, {
     lines,
     collected_toman: input.collected_toman ?? 0,
     by: actor.id,
@@ -943,8 +938,8 @@ export interface RunSummary {
   remaining: number;
 }
 
-export function readDriverRuns(db: DatabaseSync, driverUserId: number): RunSummary[] {
-  return db
+export async function readDriverRuns(db: Db, driverUserId: number): Promise<RunSummary[]> {
+  return await db
     .prepare(
       `SELECT dr.id, dr.run_date, dr.status,
               COUNT(ds.id) AS stop_count,
@@ -963,16 +958,16 @@ export function readDriverRuns(db: DatabaseSync, driverUserId: number): RunSumma
  *  order of everyone else's stops is untouched. It is not a new state: the stop stays pending and
  *  simply comes last, which is what skipping a door for now means in practice. Idempotent: a stop
  *  already last stays last. */
-export function deferStop(db: DatabaseSync, stopId: number): { moved: boolean } {
-  const stop = db
+export async function deferStop(db: Db, stopId: number): Promise<{ moved: boolean }> {
+  const stop = await db
     .prepare("SELECT id, run_id, status FROM delivery_stops WHERE id = ?")
     .get(stopId) as { id: number; run_id: number; status: string } | undefined;
   if (!stop) throw new DeliveryError("توقف پیدا نشد");
   if (stop.status !== "pending") throw new DeliveryError("این توقف تعیین‌تکلیف شده و جابه‌جا نمی‌شود");
-  const last = db
+  const last = await db
     .prepare("SELECT id, sort_order FROM delivery_stops WHERE run_id = ? ORDER BY sort_order DESC, id DESC LIMIT 1")
     .get(stop.run_id) as { id: number; sort_order: number };
   if (last.id === stop.id) return { moved: false };
-  db.prepare("UPDATE delivery_stops SET sort_order = ? WHERE id = ?").run(last.sort_order + 1, stop.id);
+  await db.prepare("UPDATE delivery_stops SET sort_order = ? WHERE id = ?").run(last.sort_order + 1, stop.id);
   return { moved: true };
 }

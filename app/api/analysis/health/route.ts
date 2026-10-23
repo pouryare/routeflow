@@ -16,7 +16,7 @@ type Scope = "customer" | "phone_sales" | "driver";
 /** Health scores. `?scope=customer` (default) returns the group-scoped overview;
  *  `?scope=customer&id=88` returns one; salesperson / driver scope need an id. */
 export async function GET(req: NextRequest) {
-  const guard = requireRole(req, [...MANAGE_ROLES, "rep_manager"]);
+  const guard = await requireRole(req, [...MANAGE_ROLES, "rep_manager"]);
   if (!guard.ok) return guard.response;
 
   const sp = req.nextUrl.searchParams;
@@ -27,17 +27,17 @@ export async function GET(req: NextRequest) {
   const period = sp.get("period") ?? currentPeriod();
 
   if (scope === "customer") {
-    if (id) return NextResponse.json({ ok: true, scope, id, health: customerHealthFor(org, id) });
-    return NextResponse.json({ ok: true, scope, rows: customersHealthOverview(guard.session) });
+    if (id) return NextResponse.json({ ok: true, scope, id, health: await customerHealthFor(org, id) });
+    return NextResponse.json({ ok: true, scope, rows: await customersHealthOverview(guard.session) });
   }
   if (!id) {
     return NextResponse.json({ ok: false, error: "محدوده مشخص نشده است" }, { status: 400 });
   }
   if (scope === "phone_sales") {
-    return NextResponse.json({ ok: true, scope, id, health: salespersonScoreFor(org, id, period) });
+    return NextResponse.json({ ok: true, scope, id, health: await salespersonScoreFor(org, id, period) });
   }
   if (scope === "driver") {
-    return NextResponse.json({ ok: true, scope, id, health: driverScoreFor(org, id, period) });
+    return NextResponse.json({ ok: true, scope, id, health: await driverScoreFor(org, id, period) });
   }
   return NextResponse.json({ ok: false, error: "محدودهٔ نامعتبر" }, { status: 400 });
 }

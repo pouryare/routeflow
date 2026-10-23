@@ -52,10 +52,10 @@ const TITLE_B = "تحویل ناموفق";
 let uid = 0;
 
 /** A pref row on both channels, so the cases do not ride on the catalogue defaults. */
-function routeLoud(typeCode: string): void {
+async function routeLoud(typeCode: string): Promise<void> {
   const now = new Date().toISOString();
   for (const ch of ["push", "telegram"]) {
-    getDb()
+    await getDb()
       .prepare(
         "INSERT OR REPLACE INTO notification_prefs (user_id, type_code, channel, enabled, updated_at) VALUES (?,?,?,1,?)"
       )
@@ -63,35 +63,35 @@ function routeLoud(typeCode: string): void {
   }
 }
 
-function addNotif(o: {
+async function addNotif(o: {
   type: string;
   group: string;
   title: string;
   body?: string | null;
   priority?: string;
   at: number;
-}): number {
+}): Promise<number> {
   return Number(
-    getDb()
+    (await getDb()
       .prepare(
         `INSERT INTO notifications
            (organization_id, user_id, type_code, title_fa, body_fa, group_key, priority, created_at)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
       )
-      .run(ORG, uid, o.type, o.title, o.body ?? null, o.group, o.priority ?? "NORMAL", at(o.at)).lastInsertRowid
+      .run(ORG, uid, o.type, o.title, o.body ?? null, o.group, o.priority ?? "NORMAL", at(o.at))).lastInsertRowid
   );
 }
 
-function connectPush(): number {
+async function connectPush(): Promise<number> {
   return Number(
-    getDb()
+    (await getDb()
       .prepare("INSERT INTO push_subscriptions (endpoint, p256dh, auth, created_at, user_id) VALUES (?,?,?,?,?)")
-      .run("https://push.example/e1", "p", "a", new Date().toISOString(), uid).lastInsertRowid
+      .run("https://push.example/e1", "p", "a", new Date().toISOString(), uid)).lastInsertRowid
   );
 }
 
-function setQuiet(channel: "push" | "telegram", start: string, end: string, criticalBreaks: 0 | 1): void {
-  getDb()
+async function setQuiet(channel: "push" | "telegram", start: string, end: string, criticalBreaks: 0 | 1): Promise<void> {
+  await getDb()
     .prepare(
       `INSERT OR REPLACE INTO notification_channels
          (user_id, channel, enabled, quiet_start, quiet_end, critical_breaks_quiet, updated_at)
@@ -100,32 +100,32 @@ function setQuiet(channel: "push" | "telegram", start: string, end: string, crit
     .run(uid, channel, start, end, criticalBreaks, new Date().toISOString());
 }
 
-function unflushed(col: "push_flushed_at" | "tg_flushed_at"): number {
-  return (getDb().prepare(`SELECT COUNT(*) c FROM notifications WHERE ${col} IS NULL`).get() as { c: number }).c;
+async function unflushed(col: "push_flushed_at" | "tg_flushed_at"): Promise<number> {
+  return (await getDb().prepare(`SELECT COUNT(*) c FROM notifications WHERE ${col} IS NULL`).get() as { c: number }).c;
 }
-function subCount(): number {
-  return (getDb().prepare("SELECT COUNT(*) c FROM push_subscriptions").get() as { c: number }).c;
+async function subCount(): Promise<number> {
+  return (await getDb().prepare("SELECT COUNT(*) c FROM push_subscriptions").get() as { c: number }).c;
 }
-function deliveries(): { id: number; channel: string; flushed_at: string; notification_ids_json: string; provider_ref: string | null; target: string | null }[] {
-  return getDb()
+async function deliveries(): Promise<{ id: number; channel: string; flushed_at: string; notification_ids_json: string; provider_ref: string | null; target: string | null }[]> {
+  return await getDb()
     .prepare("SELECT id, channel, flushed_at, notification_ids_json, provider_ref, target FROM notification_deliveries ORDER BY id")
     .all() as { id: number; channel: string; flushed_at: string; notification_ids_json: string; provider_ref: string | null; target: string | null }[];
 }
 
-beforeEach(() => {
+beforeEach(async () => {
   const db = getDb();
-  db.exec(
+  await db.exec(
     "PRAGMA foreign_keys=OFF; DELETE FROM users WHERE id>0; DELETE FROM notifications; DELETE FROM notification_prefs; DELETE FROM notification_channels; DELETE FROM notification_deliveries; DELETE FROM push_subscriptions; PRAGMA foreign_keys=ON;"
   );
   uid = Number(
-    db
+    (await db
       .prepare(
         "INSERT INTO users (username, password_hash, display_name, role, active, created_at, organization_id) VALUES (?, 'x:y', 'ک', 'phone_sales', 1, ?, 1)"
       )
-      .run(`u${Date.now()}${Math.random().toString(36).slice(2)}`, new Date().toISOString()).lastInsertRowid
+      .run(`u${Date.now()}${Math.random().toString(36).slice(2)}`, new Date().toISOString())).lastInsertRowid
   );
-  db.prepare("UPDATE users SET telegram_chat_id = ? WHERE id = ?").run(CHAT, uid);
-  for (const t of ["order.confirmed", "delivery.failed", "task.escalated"]) routeLoud(t);
+  await db.prepare("UPDATE users SET telegram_chat_id = ? WHERE id = ?").run(CHAT, uid);
+  for (const t of ["order.confirmed", "delivery.failed", "task.escalated"]) await routeLoud(t);
 
   vi.clearAllMocks();
   tgSend.mockResolvedValue({ message_id: 777 });
@@ -135,13 +135,13 @@ beforeEach(() => {
 
 describe("flushNotifications", () => {
   it("debounces a fresh burst, then flushes it as one message", async () => {
-    addNotif({ type: "order.confirmed", group: "order:1", title: TITLE_A, at: T0 });
-    addNotif({ type: "delivery.failed", group: "order:2", title: TITLE_B, at: T0 });
+    await addNotif({ type: "order.confirmed", group: "order:1", title: TITLE_A, at: T0 });
+    await addNotif({ type: "delivery.failed", group: "order:2", title: TITLE_B, at: T0 });
 
     const early = await flushNotifications(ORG, at(T0 + 30_000));
     expect(early).toEqual({ sent: 0, edited: 0, held: 0 });
     expect(tgSend).not.toHaveBeenCalled();
-    expect(unflushed("tg_flushed_at")).toBe(2);
+    expect(await unflushed("tg_flushed_at")).toBe(2);
 
     const late = await flushNotifications(ORG, at(T0 + 3 * MIN));
     expect(late).toEqual({ sent: 1, edited: 0, held: 0 });
@@ -150,19 +150,19 @@ describe("flushNotifications", () => {
     const text = tgSend.mock.calls[0][1];
     expect(text).toContain(TITLE_A);
     expect(text).toContain(TITLE_B);
-    expect(unflushed("tg_flushed_at")).toBe(0);
+    expect(await unflushed("tg_flushed_at")).toBe(0);
 
-    const d = deliveries();
+    const d = await deliveries();
     expect(d.length).toBe(1);
     expect(d[0]).toMatchObject({ channel: "telegram", provider_ref: "777", target: CHAT, flushed_at: at(T0 + 3 * MIN) });
   });
 
   it("bundles by group_key into one digest: counts, ` · ` join, and the 4-group cap", async () => {
-    addNotif({ type: "order.confirmed", group: "order:1", title: TITLE_A, at: T0 });
-    addNotif({ type: "order.confirmed", group: "order:1", title: TITLE_A, at: T0 });
-    addNotif({ type: "delivery.failed", group: "order:2", title: TITLE_B, body: "سفارش ب", at: T0 });
+    await addNotif({ type: "order.confirmed", group: "order:1", title: TITLE_A, at: T0 });
+    await addNotif({ type: "order.confirmed", group: "order:1", title: TITLE_A, at: T0 });
+    await addNotif({ type: "delivery.failed", group: "order:2", title: TITLE_B, body: "سفارش ب", at: T0 });
     for (const g of ["order:3", "order:4", "order:5", "order:6"]) {
-      addNotif({ type: "delivery.failed", group: g, title: TITLE_B, at: T0 });
+      await addNotif({ type: "delivery.failed", group: g, title: TITLE_B, at: T0 });
     }
 
     const r = await flushNotifications(ORG, at(T0 + 3 * MIN));
@@ -176,11 +176,11 @@ describe("flushNotifications", () => {
   });
 
   it("edits the last message in place inside the edit window and unions the ids", async () => {
-    const a = addNotif({ type: "order.confirmed", group: "order:1", title: TITLE_A, at: T0 });
+    const a = await addNotif({ type: "order.confirmed", group: "order:1", title: TITLE_A, at: T0 });
     await flushNotifications(ORG, at(T0 + 3 * MIN));
     expect(tgSend).toHaveBeenCalledTimes(1);
 
-    const b = addNotif({ type: "delivery.failed", group: "order:2", title: TITLE_B, at: T0 + 3 * MIN });
+    const b = await addNotif({ type: "delivery.failed", group: "order:2", title: TITLE_B, at: T0 + 3 * MIN });
     const r = await flushNotifications(ORG, at(T0 + 8 * MIN));
 
     expect(r).toEqual({ sent: 0, edited: 1, held: 0 });
@@ -190,68 +190,68 @@ describe("flushNotifications", () => {
     expect(tgEdit.mock.calls[0][1]).toBe(777);
     expect(tgEdit.mock.calls[0][2]).toContain(TITLE_B);
 
-    const d = deliveries();
+    const d = await deliveries();
     expect(d.length).toBe(1); // updated, not appended
     expect((JSON.parse(d[0].notification_ids_json) as number[]).sort()).toEqual([a, b].sort());
     expect(d[0].flushed_at).toBe(at(T0 + 8 * MIN));
-    expect(unflushed("tg_flushed_at")).toBe(0);
+    expect(await unflushed("tg_flushed_at")).toBe(0);
   });
 
   it("sends a fresh message once the last delivery is older than the edit window", async () => {
-    addNotif({ type: "order.confirmed", group: "order:1", title: TITLE_A, at: T0 });
+    await addNotif({ type: "order.confirmed", group: "order:1", title: TITLE_A, at: T0 });
     await flushNotifications(ORG, at(T0 + 3 * MIN));
 
-    addNotif({ type: "delivery.failed", group: "order:2", title: TITLE_B, at: T0 + 3 * MIN });
+    await addNotif({ type: "delivery.failed", group: "order:2", title: TITLE_B, at: T0 + 3 * MIN });
     const r = await flushNotifications(ORG, at(T0 + 14 * MIN)); // 11 min after the delivery row
 
     expect(r).toEqual({ sent: 1, edited: 0, held: 0 });
     expect(tgEdit).not.toHaveBeenCalled();
     expect(tgSend).toHaveBeenCalledTimes(2);
-    expect(deliveries().length).toBe(2);
+    expect((await deliveries()).length).toBe(2);
   });
 
   it("holds a batch during quiet hours and releases it after quiet_end", async () => {
     const T = T0 + 3 * MIN;
-    setQuiet("telegram", hhmm(T - 60 * MIN), hhmm(T + 60 * MIN), 1);
-    addNotif({ type: "order.confirmed", group: "order:1", title: TITLE_A, at: T0 });
-    addNotif({ type: "delivery.failed", group: "order:2", title: TITLE_B, at: T0 });
+    await setQuiet("telegram", hhmm(T - 60 * MIN), hhmm(T + 60 * MIN), 1);
+    await addNotif({ type: "order.confirmed", group: "order:1", title: TITLE_A, at: T0 });
+    await addNotif({ type: "delivery.failed", group: "order:2", title: TITLE_B, at: T0 });
 
     const quiet = await flushNotifications(ORG, at(T));
     expect(quiet).toEqual({ sent: 0, edited: 0, held: 2 });
     expect(tgSend).not.toHaveBeenCalled();
-    expect(unflushed("tg_flushed_at")).toBe(2);
-    expect(deliveries().length).toBe(0);
+    expect(await unflushed("tg_flushed_at")).toBe(2);
+    expect((await deliveries()).length).toBe(0);
 
     const released = await flushNotifications(ORG, at(T + 120 * MIN));
     expect(released).toEqual({ sent: 1, edited: 0, held: 0 });
     expect(tgSend).toHaveBeenCalledTimes(1);
-    expect(unflushed("tg_flushed_at")).toBe(0);
+    expect(await unflushed("tg_flushed_at")).toBe(0);
   });
 
   it("lets a CRITICAL row break quiet hours, but only when critical_breaks_quiet is on", async () => {
     const T = T0 + 3 * MIN;
-    setQuiet("telegram", hhmm(T - 60 * MIN), hhmm(T + 60 * MIN), 1);
-    addNotif({ type: "order.confirmed", group: "order:1", title: TITLE_A, at: T0 });
-    addNotif({ type: "task.escalated", group: "task:9", title: "کار فوری", priority: "CRITICAL", at: T0 });
+    await setQuiet("telegram", hhmm(T - 60 * MIN), hhmm(T + 60 * MIN), 1);
+    await addNotif({ type: "order.confirmed", group: "order:1", title: TITLE_A, at: T0 });
+    await addNotif({ type: "task.escalated", group: "task:9", title: "کار فوری", priority: "CRITICAL", at: T0 });
 
     const r = await flushNotifications(ORG, at(T));
     expect(r).toEqual({ sent: 1, edited: 0, held: 0 });
     expect(tgSend).toHaveBeenCalledTimes(1);
-    expect(unflushed("tg_flushed_at")).toBe(0);
+    expect(await unflushed("tg_flushed_at")).toBe(0);
 
     // Same window, same CRITICAL priority, but the escape hatch switched off -> held.
-    setQuiet("telegram", hhmm(T - 60 * MIN), hhmm(T + 60 * MIN), 0);
-    addNotif({ type: "task.escalated", group: "task:10", title: "کار فوری", priority: "CRITICAL", at: T });
+    await setQuiet("telegram", hhmm(T - 60 * MIN), hhmm(T + 60 * MIN), 0);
+    await addNotif({ type: "task.escalated", group: "task:10", title: "کار فوری", priority: "CRITICAL", at: T });
     const held = await flushNotifications(ORG, at(T + 3 * MIN));
     expect(held).toEqual({ sent: 0, edited: 0, held: 1 });
     expect(tgSend).toHaveBeenCalledTimes(1);
-    expect(unflushed("tg_flushed_at")).toBe(1);
+    expect(await unflushed("tg_flushed_at")).toBe(1);
   });
 
   it("deletes a subscription on a 410 and leaves push_flushed_at NULL", async () => {
-    connectPush();
+    await connectPush();
     pushSend.mockRejectedValue(Object.assign(new Error("gone"), { statusCode: 410 }));
-    addNotif({ type: "delivery.failed", group: "order:1", title: TITLE_B, at: T0 });
+    await addNotif({ type: "delivery.failed", group: "order:1", title: TITLE_B, at: T0 });
 
     const r = await flushNotifications(ORG, at(T0 + 3 * MIN));
 
@@ -265,23 +265,23 @@ describe("flushNotifications", () => {
       url: "/notifications",
       body: TITLE_B,
     });
-    expect(subCount()).toBe(0); // the dead endpoint is gone
-    expect(unflushed("push_flushed_at")).toBe(1); // nothing landed on push
-    expect(deliveries().every((d) => d.channel !== "push")).toBe(true);
+    expect(await subCount()).toBe(0); // the dead endpoint is gone
+    expect(await unflushed("push_flushed_at")).toBe(1); // nothing landed on push
+    expect((await deliveries()).every((d) => d.channel !== "push")).toBe(true);
     // telegram is independent and still went out
     expect(r).toEqual({ sent: 1, edited: 0, held: 0 });
-    expect(unflushed("tg_flushed_at")).toBe(0);
+    expect(await unflushed("tg_flushed_at")).toBe(0);
   });
 
   it("stamps flushed_at per channel: telegram connected, push not", async () => {
-    addNotif({ type: "order.confirmed", group: "order:1", title: TITLE_A, at: T0 });
+    await addNotif({ type: "order.confirmed", group: "order:1", title: TITLE_A, at: T0 });
 
     const r = await flushNotifications(ORG, at(T0 + 3 * MIN));
 
     expect(r).toEqual({ sent: 1, edited: 0, held: 0 });
     expect(pushSend).not.toHaveBeenCalled();
-    expect(unflushed("push_flushed_at")).toBe(1);
-    expect(unflushed("tg_flushed_at")).toBe(0);
-    expect(deliveries().map((d) => d.channel)).toEqual(["telegram"]);
+    expect(await unflushed("push_flushed_at")).toBe(1);
+    expect(await unflushed("tg_flushed_at")).toBe(0);
+    expect((await deliveries()).map((d) => d.channel)).toEqual(["telegram"]);
   });
 });

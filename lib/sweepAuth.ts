@@ -31,11 +31,11 @@ export type SweepScope =
   | { ok: false; response: NextResponse };
 
 /** The organisations this request may sweep, or a 401/403 to return. */
-export function sweepScope(req: NextRequest): SweepScope {
+export async function sweepScope(req: NextRequest): Promise<SweepScope> {
   if (tokenMatches(req.headers.get("x-sweep-token"))) {
-    return { ok: true, orgIds: allOrgIds(), via: "token" };
+    return { ok: true, orgIds: await allOrgIds(), via: "token" };
   }
-  const guard = requireRole(req, MANAGE_ROLES);
+  const guard = await requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return { ok: false, response: guard.response };
   return { ok: true, orgIds: [guard.session.organizationId], via: "session" };
 }

@@ -106,8 +106,8 @@ function ScheduleChrome({ view, children }: { view: DayView; children: ReactNode
  *  DRAFTS are read here and passed down rather than fetched in the browser, because a draft
  *  is private to one user and that is a server-side fact — never something the client is
  *  trusted to have filtered. */
-function RunsView({ session }: { session: Session }) {
-  const { drivers, runs, kgByRun, plannable, drafts } = runsViewData(session);
+async function RunsView({ session }: { session: Session }) {
+  const { drivers, runs, kgByRun, plannable, drafts } = await runsViewData(session);
 
   return (
     <RunsViewClient
@@ -137,7 +137,7 @@ function RunsView({ session }: { session: Session }) {
  *  every test asking "does this page have a header?" reported green. Symmetry with RunsView
  *  is the fix — two views, two components, one place that renders the chrome.
  */
-function PlanView({ session }: { session: Session }) {
+async function PlanView({ session }: { session: Session }) {
   const today = toJalali(new Date().toISOString())!;
   const grid = jalaliMonthGrid(today.jy, today.jm);
 
@@ -145,7 +145,7 @@ function PlanView({ session }: { session: Session }) {
   const from = jalaliToIsoDate(today.jy, today.jm, 1);
   const to = jalaliToIsoDate(today.jy, today.jm, grid.days.length);
 
-  const { runs, visits } = planViewData(session, from, to);
+  const { runs, visits } = await planViewData(session, from, to);
 
   // Which day-of-month carries work, for the calendar dots.
   const marks: Record<number, string[]> = {};
@@ -169,7 +169,7 @@ function PlanView({ session }: { session: Session }) {
    *  an empty map, and holidays are generated in-process with no I/O at all. The two are
    *  independent — a holiday never touches routing, and the forecast never touches a plan. */
   const weatherIso = monthConditions(
-    snapshotsInRange(
+    await snapshotsInRange(
       jalaliToIsoDate(today.jy, today.jm, 1).slice(0, 10),
       jalaliToIsoDate(today.jy, today.jm, jalaliMonthLength(today.jy, today.jm)).slice(0, 10),
     ),
@@ -193,7 +193,7 @@ function PlanView({ session }: { session: Session }) {
   const airByDay = new Map<number, AirBand>();
 
   const holidaysByDay = new Map<number, { title_fa: string; kind: "official" | "commemorative" }>();
-  for (const h of listHolidaysForMonth(today.jy, today.jm)) {
+  for (const h of await listHolidaysForMonth(today.jy, today.jm)) {
     if (h.jd >= 1 && h.jd <= grid.days.length) holidaysByDay.set(h.jd, h);
   }
 
@@ -248,7 +248,7 @@ export default async function SchedulePage({
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
   const jar = await cookies();
-  const session = getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
+  const session = await getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
   if (!session) redirect("/login");
   if (isVanRole(session.role)) redirect("/driver");
 

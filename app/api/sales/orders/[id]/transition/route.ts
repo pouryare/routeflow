@@ -16,7 +16,7 @@ const ORDER_ROLES: OrderRole[] = ["phone_sales", "group_manager", "owner", "fiel
  *  a missing / cross-tenant order is 404, and confirming with no warehouse to reserve from
  *  is 409 naming where to add one. */
 export async function POST(req: NextRequest, ctx: RouteContext<"/api/sales/orders/[id]/transition">) {
-  const guard = requireRole(req, [
+  const guard = await requireRole(req, [
     "owner",
     "group_manager",
     "phone_sales",
@@ -41,7 +41,7 @@ export async function POST(req: NextRequest, ctx: RouteContext<"/api/sales/order
     : ("phone_sales" as OrderRole);
 
   try {
-    const to = advanceOrder(
+    const to = await advanceOrder(
       guard.session.organizationId,
       Number(id),
       body.action as OrderAction,

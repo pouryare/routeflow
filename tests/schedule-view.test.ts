@@ -27,18 +27,18 @@ const owner = (uid: number, oid: number): Session =>
     role: "owner", groupId: null, organizationId: oid, roles: ["owner"], hasRole: (x: string) => x === "owner",
   }) as unknown as Session;
 
-beforeAll(() => {
-  ({ a, b } = seedTwoOrgs(getDb()));
+beforeAll(async () => {
+  ({ a, b } = await seedTwoOrgs(getDb()));
   const plan = getDb().prepare("INSERT INTO visit_plans (entity_type, entity_id, planned_date, status, sort_order, created_at) VALUES ('customer', ?, '2026-01-10', 'planned', 0, '2026-01-01')");
-  plan.run(a.customerId);
-  plan.run(b.customerId);
+  await plan.run(a.customerId);
+  await plan.run(b.customerId);
 });
 
 describe("planViewData", () => {
-  it("lists only the caller's company's visits", () => {
-    const seenByA = planViewData(owner(a.ownerId, a.orgId), "2026-01-01", "2026-01-31").visits;
+  it("lists only the caller's company's visits", async () => {
+    const seenByA = (await planViewData(owner(a.ownerId, a.orgId), "2026-01-01", "2026-01-31")).visits;
     expect(seenByA).toHaveLength(1);
-    const seenByB = planViewData(owner(b.ownerId, b.orgId), "2026-01-01", "2026-01-31").visits;
+    const seenByB = (await planViewData(owner(b.ownerId, b.orgId), "2026-01-01", "2026-01-31")).visits;
     expect(seenByB).toHaveLength(1);
     expect(seenByA[0].id).not.toBe(seenByB[0].id);
   });

@@ -17,10 +17,10 @@ import type { Session } from "@/lib/session";
 type CreateInput = Parameters<typeof createOrReuseLeadRun>[2];
 type UpdateInput = Parameters<typeof updateLeadRun>[3];
 
-export const todaysRun = (driverUserId: number, orgId: number, todayIso: string) => readTodaysLeadRun(getDb(), driverUserId, orgId, todayIso);
-export const driversFor = (session: Session) => assignableDrivers(getDb(), session);
-export const assignmentsFor = (session: Session) => readLeadRunAssignments(getDb(), session);
-export const runsFor = (session: Session) => readScopedLeadRuns(getDb(), session);
-export const createRunFor = (session: Session, input: CreateInput) => createOrReuseLeadRun(getDb(), session, input);
-export const runById = (id: number, orgId: number) => readLeadRun(getDb(), id, orgId);
-export const updateRunFor = (session: Session, id: number, patch: UpdateInput) => updateLeadRun(getDb(), session, id, patch);
+export const todaysRun = async (driverUserId: number, orgId: number, todayIso: string) => await readTodaysLeadRun(getDb(), driverUserId, orgId, todayIso);
+export const driversFor = async (session: Session) => await assignableDrivers(getDb(), session);
+export const assignmentsFor = async (session: Session) => await readLeadRunAssignments(getDb(), session);
+export const runsFor = async (session: Session) => await readScopedLeadRuns(getDb(), session);
+export const createRunFor = async (session: Session, input: CreateInput) => await createOrReuseLeadRun(getDb(), session, input);
+export const runById = async (id: number, orgId: number) => await readLeadRun(getDb(), id, orgId);
+export const updateRunFor = async (session: Session, id: number, patch: UpdateInput) => await updateLeadRun(getDb(), session, id, patch);

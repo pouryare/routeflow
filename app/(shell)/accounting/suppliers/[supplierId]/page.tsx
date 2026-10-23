@@ -27,10 +27,10 @@ export default async function SupplierStatementPage({
 
   const id = Number(supplierId);
   if (!Number.isInteger(id) || id <= 0) notFound();
-  const supplier = supplierOf(organizationId, id);
+  const supplier = await supplierOf(organizationId, id);
   if (!supplier) notFound();
 
-  const rows = supplierStatement(organizationId, id);
+  const rows = await supplierStatement(organizationId, id);
 
   const { lines, closingToman: running } = withRunningBalance(rows, "C");
 

@@ -4,20 +4,20 @@ import { listRouteTemplates, createRouteTemplate, RoutingError } from "@/lib/rep
 import { MANAGE_ROLES } from "@/lib/roles";
 
 export async function GET(req: NextRequest) {
-  const guard = requireRole(req, MANAGE_ROLES);
+  const guard = await requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
-  return NextResponse.json({ ok: true, templates: listRouteTemplates(guard.session.organizationId) });
+  return NextResponse.json({ ok: true, templates: await listRouteTemplates(guard.session.organizationId) });
 }
 
 export async function POST(req: NextRequest) {
-  const guard = requireRole(req, MANAGE_ROLES);
+  const guard = await requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
   const b = (await req.json().catch(() => null)) as Record<string, unknown> | null;
   if (!b?.code || !b?.name) {
     return NextResponse.json({ ok: false, error: "کد و نام لازم است" }, { status: 400 });
   }
   try {
-    const id = createRouteTemplate(guard.session.organizationId, {
+    const id = await createRouteTemplate(guard.session.organizationId, {
       code: String(b.code),
       name: String(b.name),
       territory_id: (b.territory_id as number | null) ?? null,

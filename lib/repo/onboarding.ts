@@ -4,8 +4,8 @@ import { onboardingChecklist, type Onboarding, type OnboardingFacts } from "@/li
 
 /** F40: the onboarding checklist for one customer of this organisation, or null if it is not one.
  *  Callers have already checked the person may see the customer. */
-export function onboardingFor(organizationId: number, customerId: number): Onboarding | null {
-  const row = getDb()
+export async function onboardingFor(organizationId: number, customerId: number): Promise<Onboarding | null> {
+  const row = await getDb()
     .prepare(
       `SELECT c.lat, c.lng, c.price_tier, c.contact_person, c.credit_limit_toman,
               (SELECT COUNT(*) FROM contacts k WHERE k.customer_id = c.id AND k.active = 1) AS contacts,

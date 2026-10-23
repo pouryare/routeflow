@@ -1,4 +1,4 @@
-import type { DatabaseSync } from "node:sqlite";
+import type { Db } from "@/lib/database/client";
 
 /** F100: one way to record that a customer changed hands, so every path that moves a customer
  *  leaves the same `owner_change` entry on its timeline: what moved (the salesperson or the
@@ -16,10 +16,10 @@ const REASON_LABEL: Record<OwnerChangeReason, string> = {
 const NOBODY = "بدون مسئول";
 const NO_GROUP = "بدون گروه";
 
-function nameOf(db: DatabaseSync, table: "users" | "groups", id: number | null): string | null {
+async function nameOf(db: Db, table: "users" | "groups", id: number | null): Promise<string | null> {
   if (id === null) return null;
   const col = table === "users" ? "display_name" : "name";
-  const row = db.prepare(`SELECT ${col} AS name FROM ${table} WHERE id = ?`).get(id) as { name: string } | undefined;
+  const row = await db.prepare(`SELECT ${col} AS name FROM ${table} WHERE id = ?`).get(id) as { name: string } | undefined;
   return row?.name ?? `#${id}`;
 }
 
@@ -35,8 +35,8 @@ export function ownerChangeNote(
   return `${REASON_LABEL[reason]} · ${label}: از «${from ?? empty}» به «${to ?? empty}»`;
 }
 
-export function recordOwnerChange(
-  db: DatabaseSync,
+export async function recordOwnerChange(
+  db: Db,
   input: {
     organizationId: number;
     customerId: number;
@@ -47,11 +47,11 @@ export function recordOwnerChange(
     toId: number | null;
     at?: string;
   }
-): void {
+): Promise<void> {
   const table = input.what === "owner" ? "users" : "groups";
-  const note = ownerChangeNote(input.reason, input.what, nameOf(db, table, input.fromId), nameOf(db, table, input.toId));
+  const note = ownerChangeNote(input.reason, input.what, await nameOf(db, table, input.fromId), await nameOf(db, table, input.toId));
   const at = input.at ?? new Date().toISOString();
-  db.prepare(
+  await db.prepare(
     `INSERT INTO activities (organization_id, customer_id, user_id, type, note, occurred_at, created_at)
      VALUES (?, ?, ?, 'owner_change', ?, ?, ?)`
   ).run(input.organizationId, input.customerId, input.actorUserId, note, at, new Date().toISOString());

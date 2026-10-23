@@ -34,10 +34,10 @@ export interface Customer360 {
   complaints: OpenComplaint[];
 }
 
-export function customer360(session: Session, organizationId: number, customerId: number): Customer360 {
+export async function customer360(session: Session, organizationId: number, customerId: number): Promise<Customer360> {
   const db = getDb();
   const items = MANAGE_ROLES.includes(session.role)
-    ? (db
+    ? (await db
         .prepare(
           `SELECT id, cheque_no, amount_toman, due_date, status FROM cheques
             WHERE customer_id = ? AND organization_id = ? AND status IN ('in_hand', 'deposited', 'bounced')
@@ -45,7 +45,7 @@ export function customer360(session: Session, organizationId: number, customerId
         )
         .all(customerId, organizationId) as unknown as OpenCheque[])
     : null;
-  const complaints = db
+  const complaints = await db
     .prepare(
       `SELECT id, category, severity, status, reported_at, description FROM quality_complaints
         WHERE customer_id = ? AND organization_id = ? AND status IN ('open', 'investigating')

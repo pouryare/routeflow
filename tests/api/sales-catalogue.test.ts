@@ -24,19 +24,19 @@ afterAll(() => {
 
 const ids: Record<string, number> = {};
 
-beforeAll(() => {
+beforeAll(async () => {
   const db = getDb();
-  db.prepare(
+  await db.prepare(
     "INSERT INTO groups (name, slug, color, active, created_at) VALUES ('گروه شرق', 'east', '#2DE0E6', 1, ?)"
   ).run(new Date().toISOString());
 
   for (const role of ROLES) {
     ids[role] = Number(
-      db
+      (await db
         .prepare(
           "INSERT INTO users (username, password_hash, display_name, role, group_id, active, created_at) VALUES (?, 'x:y', ?, ?, ?, 1, ?)"
         )
-        .run(`cat-${role}`, role, role, role === "owner" ? null : 1, new Date().toISOString())
+        .run(`cat-${role}`, role, role, role === "owner" ? null : 1, new Date().toISOString()))
         .lastInsertRowid
     );
   }
@@ -228,7 +228,7 @@ describe("POST /api/sales/prices", () => {
         valid_from: "2026-09-01",
       })
     );
-    const row = getDb()
+    const row = await getDb()
       .prepare(
         "SELECT created_by FROM product_prices WHERE product_id = ? ORDER BY id DESC LIMIT 1"
       )
@@ -237,7 +237,7 @@ describe("POST /api/sales/prices", () => {
   });
 
   it("keeps the earlier price rather than overwriting it", async () => {
-    const n = getDb()
+    const n = await getDb()
       .prepare("SELECT COUNT(*) AS n FROM product_prices WHERE product_id = ?")
       .get(ids.product) as { n: number };
     expect(n.n).toBeGreaterThan(1);

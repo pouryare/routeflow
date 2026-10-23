@@ -15,11 +15,11 @@ export const dynamic = "force-dynamic";
 /** F23: today's price list as a sheet to print or save as PDF and send to a customer. Prices
  *  are resolved for one date, which is printed on the sheet so an old copy shows its age. */
 export default async function PriceListPage() {
-  const session = getSessionFromCookies((await cookies()).get(COOKIE_NAME)?.value);
+  const session = await getSessionFromCookies((await cookies()).get(COOKIE_NAME)?.value);
   if (!session) redirect("/login");
   if (isVanRole(session.role)) redirect("/driver");
   const today = tehranTodayIso();
-  const { sections, unpriced } = priceList(catalogueFor(session, { onDate: today }));
+  const { sections, unpriced } = priceList(await catalogueFor(session, { onDate: today }));
 
   return (
     <main dir="rtl" className="print-report" style={{ maxWidth: 720, margin: "0 auto", padding: 16 }}>
@@ -29,7 +29,7 @@ export default async function PriceListPage() {
         </p>
         <PrintButton />
       </div>
-      <h1>فهرست قیمت {organizationName(session.organizationId) ?? ""}</h1>
+      <h1>فهرست قیمت {await organizationName(session.organizationId) ?? ""}</h1>
       <p>قیمت‌های روز {faJalaliDate(today)}. قیمت‌ها به تومان است و ممکن است تغییر کند.</p>
       {sections.length === 0 ? (
         <p>هنوز هیچ کالایی قیمت ندارد.</p>

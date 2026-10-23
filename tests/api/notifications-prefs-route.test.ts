@@ -30,24 +30,24 @@ function req(method: string, token: string, body?: unknown) {
   });
 }
 
-function prefRows(userId: number): number {
+async function prefRows(userId: number): Promise<number> {
   return (
-    getDb().prepare("SELECT COUNT(*) c FROM notification_prefs WHERE user_id = ?").get(userId) as { c: number }
+    await getDb().prepare("SELECT COUNT(*) c FROM notification_prefs WHERE user_id = ?").get(userId) as { c: number }
   ).c;
 }
 
-beforeEach(() => {
+beforeEach(async () => {
   const db = getDb();
-  db.exec(
+  await db.exec(
     "PRAGMA foreign_keys=OFF; DELETE FROM notification_prefs; DELETE FROM notification_channels; DELETE FROM notifications; DELETE FROM users WHERE id>0; PRAGMA foreign_keys=ON;"
   );
   const now = new Date().toISOString();
   seller = Number(
-    db
+    (await db
       .prepare(
         "INSERT INTO users (username,password_hash,display_name,role,active,created_at,organization_id) VALUES (?,?,?,?,1,?,1)"
       )
-      .run(`s${Date.now()}${Math.random()}`, "x:y", "ف", "phone_sales", now).lastInsertRowid
+      .run(`s${Date.now()}${Math.random()}`, "x:y", "ف", "phone_sales", now)).lastInsertRowid
   );
   sellerToken = createSessionToken({ uid: seller, role: "phone_sales", gid: null, oid: 1, tv: 0, name: "ف" });
 });
@@ -81,7 +81,7 @@ describe("PUT /api/notifications/prefs", () => {
     // order.created is ambient+NORMAL -> default_push 0, so `true` is an override.
     const on = await PUT(req("PUT", sellerToken, { type_code: "order.created", channel: "push", enabled: true }));
     expect(on.status).toBe(200);
-    expect(prefRows(seller)).toBe(1);
+    expect(await prefRows(seller)).toBe(1);
 
     const after = await (await GET(req("GET", sellerToken))).json();
     const row = after.types.find((t: { code: string }) => t.code === "order.created");
@@ -89,20 +89,20 @@ describe("PUT /api/notifications/prefs", () => {
 
     const off = await PUT(req("PUT", sellerToken, { type_code: "order.created", channel: "push", enabled: false }));
     expect(off.status).toBe(200);
-    expect(prefRows(seller)).toBe(0);
+    expect(await prefRows(seller)).toBe(0);
   });
 
   it("400 on a channel outside {push, telegram}", async () => {
     const res = await PUT(req("PUT", sellerToken, { type_code: "order.created", channel: "sms", enabled: true }));
     expect(res.status).toBe(400);
     expect((await res.json()).ok).toBe(false);
-    expect(prefRows(seller)).toBe(0);
+    expect(await prefRows(seller)).toBe(0);
   });
 
   it("400 on an unknown type code", async () => {
     const res = await PUT(req("PUT", sellerToken, { type_code: "nope.nope", channel: "push", enabled: true }));
     expect(res.status).toBe(400);
-    expect(prefRows(seller)).toBe(0);
+    expect(await prefRows(seller)).toBe(0);
   });
 
   it("400 on a non-boolean enabled", async () => {

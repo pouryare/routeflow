@@ -42,13 +42,13 @@ describe("what's new (F112)", () => {
     expect(unseenFor("phone_sales", "2026-11-01", entries)).toBeNull();
   });
 
-  it("remembers the dismissed version in the person's preferences, and only a real version", () => {
+  it("remembers the dismissed version in the person's preferences, and only a real version", async () => {
     const db = getDb();
-    const id = Number(db.prepare("INSERT INTO users (username,password_hash,display_name,role,active,created_at,organization_id) VALUES ('s','x','س','phone_sales',1,?,1)").run(new Date().toISOString()).lastInsertRowid);
-    setPrefs(id, { whats_new_seen: WHATS_NEW[0].version });
-    expect(getPrefs(id).whats_new_seen).toBe(WHATS_NEW[0].version);
-    expect(unseenFor("phone_sales", getPrefs(id).whats_new_seen)).toBeNull();
-    expect(() => setPrefs(id, { whats_new_seen: "1999-01-01" })).toThrow();
+    const id = Number((await db.prepare("INSERT INTO users (username,password_hash,display_name,role,active,created_at,organization_id) VALUES ('s','x','س','phone_sales',1,?,1)").run(new Date().toISOString())).lastInsertRowid);
+    await setPrefs(id, { whats_new_seen: WHATS_NEW[0].version });
+    expect((await getPrefs(id)).whats_new_seen).toBe(WHATS_NEW[0].version);
+    expect(unseenFor("phone_sales", (await getPrefs(id)).whats_new_seen)).toBeNull();
+    await expect((async () => await setPrefs(id, { whats_new_seen: "1999-01-01" }))()).rejects.toThrow();
   });
 
   it("the card lists the lines with a dismiss button and a link to the history", () => {

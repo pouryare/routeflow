@@ -31,48 +31,48 @@ function session(role: "owner" | "group_manager", uid: number, gid: number | nul
   } as unknown as Session;
 }
 
-beforeAll(() => {
-  ({ a, b } = seedTwoOrgs(getDb()));
+beforeAll(async () => {
+  ({ a, b } = await seedTwoOrgs(getDb()));
   const db = getDb();
   otherGroupInA = Number(
-    db.prepare("INSERT INTO groups (name, slug, created_at, organization_id) VALUES ('other', 'other-a', '2026-01-01', 1)").run().lastInsertRowid
+    (await db.prepare("INSERT INTO groups (name, slug, created_at, organization_id) VALUES ('other', 'other-a', '2026-01-01', 1)").run()).lastInsertRowid
   );
   customerInOtherGroup = Number(
-    db
+    (await db
       .prepare("INSERT INTO customers (customer_code, business_name, synced_at, group_id, organization_id) VALUES ('OTHER-1', 'other group customer', '2026-01-01', ?, 1)")
-      .run(otherGroupInA).lastInsertRowid
+      .run(otherGroupInA)).lastInsertRowid
   );
 });
 
 describe("customersFor", () => {
-  it("shows an owner their whole organisation and nothing of another", () => {
-    const ids = customersFor(session("owner", a.ownerId, null, 1)).map((c) => c.id);
+  it("shows an owner their whole organisation and nothing of another", async () => {
+    const ids = (await customersFor(session("owner", a.ownerId, null, 1))).map((c) => c.id);
     expect(ids).toContain(a.customerId);
     expect(ids).toContain(customerInOtherGroup);
     expect(ids).not.toContain(b.customerId);
   });
 
-  it("shows a group manager only their own group's customers", () => {
-    const ids = customersFor(session("group_manager", a.managerId, a.groupId, 1)).map((c) => c.id);
+  it("shows a group manager only their own group's customers", async () => {
+    const ids = (await customersFor(session("group_manager", a.managerId, a.groupId, 1))).map((c) => c.id);
     expect(ids).toContain(a.customerId);
     expect(ids).not.toContain(customerInOtherGroup);
     expect(ids).not.toContain(b.customerId);
   });
 
-  it("attaches each customer's computed debt only when asked", () => {
+  it("attaches each customer's computed debt only when asked", async () => {
     const owner = session("owner", a.ownerId, null, 1);
     // Customer's declared type predates the attached balance, so read the field structurally.
     const debtOf = (rows: { id: number }[]) => (rows.find((c) => c.id === a.customerId) as unknown as { debt?: unknown }).debt;
-    expect(debtOf(customersFor(owner))).toBeUndefined();
-    expect(debtOf(customersFor(owner, { withDebt: true }))).toBeDefined();
+    expect(debtOf(await customersFor(owner))).toBeUndefined();
+    expect(debtOf(await customersFor(owner, { withDebt: true }))).toBeDefined();
   });
 });
 
 describe("catalogueFor", () => {
-  it("lists only the caller's organisation's products", () => {
-    const own = catalogueFor(session("owner", a.ownerId, null, 1)).map((p) => p.id);
+  it("lists only the caller's organisation's products", async () => {
+    const own = (await catalogueFor(session("owner", a.ownerId, null, 1))).map((p) => p.id);
     expect(own).toContain(a.productId);
     expect(own).not.toContain(b.productId);
-    expect(catalogueFor(session("owner", b.ownerId, null, 2)).map((p) => p.id)).toEqual(expect.arrayContaining([b.productId]));
+    expect((await catalogueFor(session("owner", b.ownerId, null, 2))).map((p) => p.id)).toEqual(expect.arrayContaining([b.productId]));
   });
 });

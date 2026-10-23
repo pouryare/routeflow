@@ -15,7 +15,7 @@ interface PatchInput extends Partial<Record<LeadCriterion, number | null>> {
 }
 
 export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/locations/[id]">) {
-  const guard = requireRole(req, PIN_POOL_ROLES);
+  const guard = await requireRole(req, PIN_POOL_ROLES);
   if (!guard.ok) return guard.response;
 
   const { id } = await ctx.params;
@@ -28,8 +28,8 @@ export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/locations/
   // question the request body gets a say in. The company is part of it: a pin with no group is
   // reachable by any owner through the group rule alone.
   const organizationId = orgScopeId(guard.session);
-  const owning = findOwnLocation(idNum, organizationId);
-  if (!owning || !canReachGroup(guard.session, owning.group_id)) {
+  const owning = await findOwnLocation(idNum, organizationId);
+  if (!owning || !await canReachGroup(guard.session, owning.group_id)) {
     return NextResponse.json({ ok: false, error: "مکان پیدا نشد" }, { status: 404 });
   }
 
@@ -103,14 +103,14 @@ export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/locations/
     return NextResponse.json({ ok: false, error: "چیزی برای به‌روزرسانی ارسال نشده است" }, { status: 400 });
   }
 
-  if (!updateLocation(idNum, organizationId, sets, values)) {
+  if (!await updateLocation(idNum, organizationId, sets, values)) {
     return NextResponse.json({ ok: false, error: "مورد پیدا نشد" }, { status: 404 });
   }
   return NextResponse.json({ ok: true });
 }
 
 export async function DELETE(req: NextRequest, ctx: RouteContext<"/api/locations/[id]">) {
-  const guard = requireRole(req, PIN_POOL_ROLES);
+  const guard = await requireRole(req, PIN_POOL_ROLES);
   if (!guard.ok) return guard.response;
 
   const { id } = await ctx.params;
@@ -120,11 +120,11 @@ export async function DELETE(req: NextRequest, ctx: RouteContext<"/api/locations
   }
 
   const organizationId = orgScopeId(guard.session);
-  const owning = findOwnLocation(idNum, organizationId);
-  if (!owning || !canReachGroup(guard.session, owning.group_id)) {
+  const owning = await findOwnLocation(idNum, organizationId);
+  if (!owning || !await canReachGroup(guard.session, owning.group_id)) {
     return NextResponse.json({ ok: false, error: "مکان پیدا نشد" }, { status: 404 });
   }
-  const deleted = deleteLocation(idNum, organizationId);
+  const deleted = await deleteLocation(idNum, organizationId);
   if (!deleted) {
     return NextResponse.json({ ok: false, error: "مورد پیدا نشد" }, { status: 404 });
   }

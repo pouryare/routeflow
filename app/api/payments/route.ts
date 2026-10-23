@@ -14,7 +14,7 @@ import { isOwner, MANAGE_ROLES } from "@/lib/roles";
 const METHODS: PaymentMethod[] = ["CASH", "POS", "CARD_TO_CARD", "CHEQUE", "CREDIT_NOTE", "OTHER"];
 
 export async function GET(req: NextRequest) {
-  const guard = requireRole(req, [...MANAGE_ROLES, "phone_sales"]);
+  const guard = await requireRole(req, [...MANAGE_ROLES, "phone_sales"]);
   if (!guard.ok) return guard.response;
 
   const customerId = req.nextUrl.searchParams.get("customer_id");
@@ -25,12 +25,12 @@ export async function GET(req: NextRequest) {
   if (isOwner(session.role)) {
     return NextResponse.json({
       ok: true,
-      payments: listPayments(session.organizationId, customer_id ? { customer_id } : undefined),
+      payments: await listPayments(session.organizationId, customer_id ? { customer_id } : undefined),
     });
   }
   return NextResponse.json({
     ok: true,
-    payments: listPaymentsScoped(session.organizationId, {
+    payments: await listPaymentsScoped(session.organizationId, {
       customer_id,
       ...(session.role === "group_manager"
         ? { groupIds: session.groupId === null ? [] : [session.groupId] }
@@ -40,7 +40,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const guard = requireRole(req, [...MANAGE_ROLES, "phone_sales"]);
+  const guard = await requireRole(req, [...MANAGE_ROLES, "phone_sales"]);
   if (!guard.ok) return guard.response;
 
   const body = (await req.json().catch(() => null)) as {
@@ -65,13 +65,13 @@ export async function POST(req: NextRequest) {
 
   // A receipt against another group's customer is refused as if the customer did not exist,
   // like every other cross-group write.
-  const owner = customerGroupOf(guard.session.organizationId, Number(body.customer_id));
-  if (owner && owner.group_id !== null && !canReachGroup(guard.session, owner.group_id)) {
+  const owner = await customerGroupOf(guard.session.organizationId, Number(body.customer_id));
+  if (owner && owner.group_id !== null && !await canReachGroup(guard.session, owner.group_id)) {
     return NextResponse.json({ ok: false, error: "مشتری پیدا نشد" }, { status: 409 });
   }
 
   try {
-    const id = recordPayment(guard.session.organizationId, {
+    const id = await recordPayment(guard.session.organizationId, {
       customer_id: Number(body.customer_id),
       amount_toman: body.amount_toman as number,
       method: body.method as PaymentMethod,

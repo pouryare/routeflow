@@ -7,14 +7,14 @@ import { buildSuggestions, typicalGap, type ChurnSignal, type ReorderSignal, typ
 /** The suggestions for a phone salesperson: their OWN customers (the ones they have sold to),
  *  at risk of leaving or due to order again. Other roles get none: the call and the order are
  *  personal actions, and a manager's list of someone else's customers is the churn board's job. */
-export function suggestionsFor(session: Session): Suggestion[] {
+export async function suggestionsFor(session: Session): Promise<Suggestion[]> {
   if (session.role !== "phone_sales") return [];
   const db = getDb();
   const org = session.organizationId;
   const user = session.user.id;
   const today = tehranTodayIso();
 
-  const churn = db
+  const churn = await db
     .prepare(
       `SELECT c.id AS customerId, c.business_name AS name, c.phone, cs.probability, cs.reason_fa AS reason
          FROM churn_scores cs JOIN customers c ON c.id = cs.customer_id
@@ -24,17 +24,17 @@ export function suggestionsFor(session: Session): Suggestion[] {
     )
     .all(org, org, user) as unknown as ChurnSignal[];
 
-  const reorder = reorderSignals(org, user, today);
+  const reorder = await reorderSignals(org, user, today);
   return buildSuggestions({ churn, reorder });
 }
 
 /** Every customer this salesperson has sold to with a regular rhythm (typicalGap): days since
  *  their last fulfilled order against their usual gap. Shared by the suggestion cards and the
  *  briefing's «موعد سفارش امروز» panel (F8), so the two cannot disagree about who is due. */
-export function reorderSignals(org: number, user: number, today: string): ReorderSignal[] {
+export async function reorderSignals(org: number, user: number, today: string): Promise<ReorderSignal[]> {
   const db = getDb();
   const todayMs = Date.parse(`${today}T00:00:00Z`);
-  const rows = db
+  const rows = await db
     .prepare(
       `SELECT c.id AS customerId, c.business_name AS name, c.phone, o.order_date AS day
          FROM orders o JOIN customers c ON c.id = o.customer_id

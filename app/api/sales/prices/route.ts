@@ -8,7 +8,7 @@ import { OWNER_ROLES } from "@/lib/roles";
  *  route, and that absence is the feature: a price row that could be edited would take
  *  every order priced from it with it. */
 export async function POST(req: NextRequest) {
-  const guard = requireRole(req, OWNER_ROLES);
+  const guard = await requireRole(req, OWNER_ROLES);
   if (!guard.ok) return guard.response;
 
   const body = (await req.json().catch(() => null)) as {
@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
   }
 
   // The product must be this company's: an id alone reaches every tenant's catalogue.
-  if (!productInOrg(productId, orgScopeId(guard.session))) {
+  if (!await productInOrg(productId, orgScopeId(guard.session))) {
     return NextResponse.json({ ok: false, error: "کالا پیدا نشد" }, { status: 404 });
   }
 
@@ -48,12 +48,12 @@ export async function POST(req: NextRequest) {
     ? null
     : Number(body.packaging_id);
   if (packagingId !== null) {
-    if (!packagingOfProduct(packagingId, productId)) {
+    if (!await packagingOfProduct(packagingId, productId)) {
       return NextResponse.json({ ok: false, error: "بسته‌بندی پیدا نشد" }, { status: 404 });
     }
   }
 
-  const id = addPrice({
+  const id = await addPrice({
     product_id: productId,
     packaging_id: packagingId,
     price_toman: price,

@@ -1,4 +1,4 @@
-import type { DatabaseSync } from "node:sqlite";
+import type { Db } from "@/lib/database/client";
 import { makeRepo } from "./base";
 import { isDayWithin, isQuantity } from "@/lib/inputChecks";
 import { isToman } from "@/lib/money";
@@ -7,6 +7,7 @@ import {
   canTransitionBatch,
   type BatchStatus,
 } from "@/lib/batchStates";
+import { tehranTodayIso } from "@/lib/jalali";
 
 /** A refusal the caller shows the user, not a bug. */
 export class BatchError extends Error {}
@@ -49,11 +50,11 @@ function ymd(iso: string): string {
 /** Insert a batch inside a transaction the caller already owns. Auto-codes as
  *  `<YYMMDD>-<n>` per (org, product, date) when no code is given; defaults `expiry_date`
  *  to `produced_at + products.shelf_life_days` when both are known. */
-export function createBatchTxn(
-  db: DatabaseSync,
+export async function createBatchTxn(
+  db: Db,
   organizationId: number,
   input: CreateBatchInput
-): number {
+): Promise<number> {
   if (!(input.qty_received_base > 0)) {
     throw new BatchError("مقدار دریافتی سری ساخت باید بزرگ‌تر از صفر باشد");
   }
@@ -75,7 +76,7 @@ export function createBatchTxn(
   if (input.batch_code != null && input.batch_code.trim().length > 60) {
     throw new BatchError("کد سری ساخت حداکثر ۶۰ نویسه است");
   }
-  if (!db.prepare("SELECT 1 FROM products WHERE id = ? AND organization_id = ?").get(input.product_id, organizationId)) {
+  if (!await db.prepare("SELECT 1 FROM products WHERE id = ? AND organization_id = ?").get(input.product_id, organizationId)) {
     throw new BatchError("کالا پیدا نشد");
   }
   const now = new Date().toISOString();
@@ -83,12 +84,12 @@ export function createBatchTxn(
 
   let expiry = input.expiry_date ?? null;
   if (!expiry && producedAt) {
-    const shelf = db
+    const shelf = await db
       .prepare("SELECT shelf_life_days FROM products WHERE id = ?")
       .get(input.product_id) as { shelf_life_days: number | null } | undefined;
     if (shelf?.shelf_life_days && shelf.shelf_life_days > 0) {
       expiry = (
-        db
+        await db
           .prepare("SELECT date(?, ?) AS d")
           .get(producedAt.slice(0, 10), `+${shelf.shelf_life_days} days`) as { d: string }
       ).d;
@@ -101,7 +102,7 @@ export function createBatchTxn(
     const n =
       Number(
         (
-          db
+          await db
             .prepare(
               "SELECT COUNT(*) AS n FROM batches WHERE organization_id = ? AND product_id = ? AND batch_code LIKE ?"
             )
@@ -113,7 +114,7 @@ export function createBatchTxn(
 
   try {
     return Number(
-      db
+      (await db
         .prepare(
           `INSERT INTO batches
              (organization_id, product_id, batch_code, supplier_batch_ref, purchase_line_id,
@@ -134,7 +135,7 @@ export function createBatchTxn(
           input.notes ?? null,
           now,
           now
-        ).lastInsertRowid
+        )).lastInsertRowid
     );
   } catch (e) {
     if (e instanceof Error && /UNIQUE/i.test(e.message)) {
@@ -144,27 +145,21 @@ export function createBatchTxn(
   }
 }
 
-export function createBatch(organizationId: number, input: CreateBatchInput): number {
+export async function createBatch(organizationId: number, input: CreateBatchInput): Promise<number> {
   const db = batchesRepo.db();
-  db.exec("BEGIN IMMEDIATE");
-  try {
-    const id = createBatchTxn(db, organizationId, input);
-    db.exec("COMMIT");
+  return await db.tx(async () => {
+    const id = await createBatchTxn(db, organizationId, input);
     return id;
-  } catch (e) {
-    db.exec("ROLLBACK");
-    throw e;
-  }
+  });
 }
 
 /** Move a batch's status, enforcing lib/batchStates. `expired` / `depleted` are computed
  *  by the sweep, never set here. A recall raises a reminder for every customer that
  *  received the lot. One transaction. */
-export function advanceBatchStatus(organizationId: number, id: number, to: BatchStatus): void {
+export async function advanceBatchStatus(organizationId: number, id: number, to: BatchStatus): Promise<void> {
   const db = batchesRepo.db();
-  db.exec("BEGIN IMMEDIATE");
-  try {
-    const batch = batchesRepo.get(organizationId, id);
+  await db.tx(async () => {
+    const batch = await batchesRepo.get(organizationId, id);
     if (!batch) throw new BatchError("سری ساخت پیدا نشد");
     if (to === "expired" || to === "depleted") {
       throw new BatchError("این وضعیت خودکار محاسبه می‌شود");
@@ -177,7 +172,7 @@ export function advanceBatchStatus(organizationId: number, id: number, to: Batch
     }
 
     const now = new Date().toISOString();
-    db.prepare("UPDATE batches SET status = ?, updated_at = ? WHERE id = ? AND organization_id = ?").run(
+    await db.prepare("UPDATE batches SET status = ?, updated_at = ? WHERE id = ? AND organization_id = ?").run(
       to,
       now,
       id,
@@ -185,7 +180,7 @@ export function advanceBatchStatus(organizationId: number, id: number, to: Batch
     );
 
     if (to === "recalled") {
-      const customers = db
+      const customers = await db
         .prepare(
           `SELECT DISTINCT o.customer_id AS id
              FROM delivery_line_batches dlb
@@ -199,56 +194,47 @@ export function advanceBatchStatus(organizationId: number, id: number, to: Batch
          VALUES ('customer', ?, ?, ?, 0, ?)`
       );
       const msg = `سری ساخت ${batch.batch_code} فراخوان شد — پیگیری کنید`;
-      for (const c of customers) ins.run(c.id, now.slice(0, 10), msg, now);
+      for (const c of customers) await ins.run(c.id, now.slice(0, 10), msg, now);
     }
-
-    db.exec("COMMIT");
-  } catch (e) {
-    try {
-      db.exec("ROLLBACK");
-    } catch {
-      // already committed / no open transaction
-    }
-    throw e;
-  }
+  });
 }
 
 /** Set `expired` on batches past their date and `depleted` on batches with no stock
  *  left. Idempotent; safe every boot. Returns the counts changed. */
-export function sweepBatchStatuses(organizationId?: number): { expired: number; depleted: number } {
+export async function sweepBatchStatuses(organizationId?: number): Promise<{ expired: number; depleted: number }> {
   const db = batchesRepo.db();
   const now = new Date().toISOString();
   const orgClause = organizationId !== undefined ? "AND organization_id = ?" : "";
   const orgArg = organizationId !== undefined ? [organizationId] : [];
 
   const expired = Number(
-    db
+    (await db
       .prepare(
         `UPDATE batches SET status = 'expired', updated_at = ?
           WHERE status IN ('active', 'quarantined')
-            AND expiry_date IS NOT NULL AND expiry_date < date('now') ${orgClause}`
+            AND expiry_date IS NOT NULL AND expiry_date < ? ${orgClause}`
       )
-      .run(now, ...(orgArg as never[])).changes
+      .run(now, tehranTodayIso(), ...(orgArg as never[]))).changes
   );
 
   const depleted = Number(
-    db
+    (await db
       .prepare(
         `UPDATE batches SET status = 'depleted', updated_at = ?
           WHERE status IN ('active', 'quarantined', 'expired')
             AND COALESCE((SELECT SUM(m.base_qty) FROM stock_movements m WHERE m.batch_id = batches.id), 0) <= 0
             ${orgClause}`
       )
-      .run(now, ...(orgArg as never[])).changes
+      .run(now, ...(orgArg as never[]))).changes
   );
 
   return { expired, depleted };
 }
 
-export function listBatches(
+export async function listBatches(
   organizationId: number,
   filter?: { product_id?: number; status?: BatchStatus }
-): Array<BatchRow & { on_hand: number }> {
+): Promise<Array<BatchRow & { on_hand: number }>> {
   const clauses = ["b.organization_id = ?"];
   const params: unknown[] = [organizationId];
   if (filter?.product_id !== undefined) {
@@ -259,7 +245,7 @@ export function listBatches(
     clauses.push("b.status = ?");
     params.push(filter.status);
   }
-  return batchesRepo
+  return await batchesRepo
     .db()
     .prepare(
       `SELECT b.*,
@@ -279,12 +265,12 @@ export interface ExpiringBatch extends BatchRow {
 /** Batches still holding stock that are past expiry or inside their alert window. The
  *  per-batch window is `max(7, floor(shelf_life_days * 0.25))`, or a flat 14 days when
  *  the product has no shelf life set. */
-export function expiringBatches(
+export async function expiringBatches(
   organizationId: number,
   opts?: { withinDays?: number; asOf?: string }
-): ExpiringBatch[] {
+): Promise<ExpiringBatch[]> {
   const asOf = (opts?.asOf ?? new Date().toISOString()).slice(0, 10);
-  const rows = batchesRepo
+  const rows = await batchesRepo
     .db()
     .prepare(
       `SELECT b.*, p.shelf_life_days AS _shelf,
@@ -336,15 +322,15 @@ export interface BatchTrace {
 
 /** Forward trace: this batch → the purchase line it came in on, and every delivery that
  *  carried it out to a customer. */
-export function batchTrace(organizationId: number, batchId: number): BatchTrace | null {
-  const batch = batchesRepo.get(organizationId, batchId);
+export async function batchTrace(organizationId: number, batchId: number): Promise<BatchTrace | null> {
+  const batch = await batchesRepo.get(organizationId, batchId);
   if (!batch) return null;
   const db = batchesRepo.db();
 
   let purchase: BatchTrace["purchase"] = null;
   if (batch.purchase_line_id) {
     purchase =
-      (db
+      (await db
         .prepare(
           `SELECT pu.id AS purchase_id, pu.supplier, pu.purchase_date, pl.unit_cost_toman
              FROM purchase_lines pl JOIN purchases pu ON pu.id = pl.purchase_id
@@ -353,7 +339,7 @@ export function batchTrace(organizationId: number, batchId: number): BatchTrace 
         .get(batch.purchase_line_id) as BatchTrace["purchase"]) ?? null;
   }
 
-  const deliveries = db
+  const deliveries = await db
     .prepare(
       `SELECT dlb.delivery_stop_id, o.id AS order_id, o.order_no,
               o.customer_id, c.business_name AS customer_name,
@@ -369,7 +355,7 @@ export function batchTrace(organizationId: number, batchId: number): BatchTrace 
 
   const complaints = Number(
     (
-      db
+      await db
         .prepare(
           "SELECT COUNT(*) AS n FROM quality_complaints WHERE batch_id = ? AND organization_id = ?"
         )
@@ -382,8 +368,8 @@ export function batchTrace(organizationId: number, batchId: number): BatchTrace 
 
 /** Every batch with its product's name, soonest expiry first, for the batch list on
  *  /sales/stock (item 18). One query; the name join is why this is not listBatches. */
-export function listBatchesWithProduct(organizationId: number): Array<BatchRow & { on_hand: number; product_name: string }> {
-  return batchesRepo
+export async function listBatchesWithProduct(organizationId: number): Promise<Array<BatchRow & { on_hand: number; product_name: string }>> {
+  return await batchesRepo
     .db()
     .prepare(
       `SELECT b.*, p.name AS product_name,

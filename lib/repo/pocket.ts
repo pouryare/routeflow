@@ -29,19 +29,19 @@ export interface Pocket {
 
 /** The personal task view. A member sees their own; a manager may pass `scopeUserId` to
  *  see a report's (only if `canReachUser`). */
-export function pocketFor(
+export async function pocketFor(
   session: Session,
   opts: { scopeUserId?: number; nowIso?: string } = {}
-): Pocket {
+): Promise<Pocket> {
   const db = getDb();
   const org = session.organizationId;
   const now = opts.nowIso ?? new Date().toISOString();
 
   const target =
-    opts.scopeUserId && canReachUser(session, opts.scopeUserId)
+    opts.scopeUserId && await canReachUser(session, opts.scopeUserId)
       ? opts.scopeUserId
       : session.user.id;
-  const u = db
+  const u = await db
     .prepare("SELECT display_name, role, group_id FROM users WHERE id = ?")
     .get(target) as { display_name: string; role: string; group_id: number | null } | undefined;
 
@@ -54,14 +54,14 @@ export function pocketFor(
 
      An account with no set rows falls back to its primary, mirroring the session rule, so
      the two never disagree about the same person. */
-  const heldRows = db
+  const heldRows = await db
     .prepare("SELECT role FROM user_roles WHERE user_id = ? ORDER BY role")
     .all(target) as Array<{ role: string }>;
   const held: string[] = heldRows.length
     ? heldRows.map((r) => r.role)
     : [u?.role ?? "phone_sales"];
   const placeholders = held.map(() => "?").join(", ");
-  const rows = db
+  const rows = await db
     .prepare(
       `SELECT ${TASK_CARD_SELECT}
          FROM tasks t ${TASK_CARD_JOINS}
@@ -126,7 +126,7 @@ export interface PocketTeamMember {
 
 /** The people a manager can scope the Pocket to — their reports, each with an open-task
  *  count. Empty for a plain member. */
-export function pocketTeam(session: Session): PocketTeamMember[] {
+export async function pocketTeam(session: Session): Promise<PocketTeamMember[]> {
   if (session.role === "phone_sales" || isVanRole(session.role)) return [];
   const db = getDb();
   // The manager's team: people who HOLD one of these roles, whoever their primary. A
@@ -142,7 +142,7 @@ export function pocketTeam(session: Session): PocketTeamMember[] {
   const params: unknown[] = [session.organizationId, ...roles];
 
   if (session.role === "group_manager" || session.role === "rep_manager") {
-    const scope = scopeGroupIds(session);
+    const scope = await scopeGroupIds(session);
     const ids = scope === "all" ? [] : scope;
     if (ids.length === 0) return [];
     where += ` AND u.group_id IN (${ids.map(() => "?").join(", ")})`;
@@ -153,7 +153,7 @@ export function pocketTeam(session: Session): PocketTeamMember[] {
   // a Server Component to a Client Component. pocketFor's rows go through rowToCard
   // (fresh literals); this query does not, so it needs the copy.
   return plain(
-    db
+    await db
       .prepare(
         `SELECT u.id, u.display_name AS name, u.role,
                 (SELECT COUNT(*) FROM tasks t

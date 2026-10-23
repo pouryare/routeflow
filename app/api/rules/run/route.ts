@@ -10,14 +10,14 @@ export const dynamic = "force-dynamic";
  *  flushes the feed rows both passes produced to push/telegram. The flush runs last and
  *  per org so an escalation's `task.escalated` notification goes out on the same tick. */
 export async function POST(req: NextRequest) {
-  const scope = sweepScope(req);
+  const scope = await sweepScope(req);
   if (!scope.ok) return scope.response;
   const results = [];
   for (const organization_id of scope.orgIds) {
-    const fired = runSweepRules(organization_id).length;
-    const escalated = escalateStaleRuns(organization_id);
+    const fired = (await runSweepRules(organization_id)).length;
+    const escalated = await escalateStaleRuns(organization_id);
     // F16: the owner's morning digest rides the same flush, once a day from 07:00 Tehran.
-    queueMorningDigests(organization_id);
+    await queueMorningDigests(organization_id);
     await flushAllNotifications(organization_id);
     results.push({ organization_id, fired, escalated });
   }

@@ -5,7 +5,7 @@ import { MANAGE_ROLES } from "@/lib/roles";
 import { isDayWithin } from "@/lib/inputChecks";
 
 export async function POST(req: NextRequest) {
-  const guard = requireRole(req, MANAGE_ROLES);
+  const guard = await requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
   const b = (await req.json().catch(() => null)) as { plan?: RoutingPlan } | null;
   if (!b?.plan?.date || !Array.isArray(b.plan.assignments)) {
@@ -29,6 +29,6 @@ export async function POST(req: NextRequest) {
   ) {
     return NextResponse.json({ ok: false, error: "پیشنهاد نامعتبر است" }, { status: 400 });
   }
-  const res = commitPlan(guard.session.organizationId, b.plan, { planned_by: guard.session.user.id });
+  const res = await commitPlan(guard.session.organizationId, b.plan, { planned_by: guard.session.user.id });
   return NextResponse.json({ ok: true, ...res });
 }

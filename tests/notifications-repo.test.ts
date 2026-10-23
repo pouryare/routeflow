@@ -7,7 +7,7 @@ const testDbPath = path.join(os.tmpdir(), `rf-notif-repo-${Date.now()}-${Math.ra
 process.env.ROUTEFLOW_DB_PATH = testDbPath;
 process.env.SESSION_SECRET = "test-secret";
 
-const { getDb } = await import("@/lib/db");
+const { getDb, rawSqlite } = await import("@/lib/db");
 const { recipientsFor, fanOutNotifications, listNotificationGroups, unreadGroupCount, markGroupsRead } = await import(
   "@/lib/repo/notifications"
 );
@@ -26,44 +26,44 @@ let owner = 0,
   ord = 0,
   now = "";
 
-beforeEach(() => {
+beforeEach(async () => {
   const db = getDb();
-  db.exec(
+  await db.exec(
     "PRAGMA foreign_keys=OFF; DELETE FROM notifications; DELETE FROM events; DELETE FROM rule_runs; DELETE FROM tasks; DELETE FROM alerts; DELETE FROM orders; DELETE FROM customers; DELETE FROM groups; DELETE FROM users WHERE id>0; PRAGMA foreign_keys=ON;"
   );
   now = new Date().toISOString();
   const u = db.prepare(
     "INSERT INTO users (username,password_hash,display_name,role,active,created_at,organization_id) VALUES (?,?,?,?,1,?,1)"
   );
-  owner = Number(u.run(`o${Date.now()}`, "x:y", "م", "owner", now).lastInsertRowid);
-  mgr = Number(u.run(`m${Date.now()}`, "x:y", "مد", "group_manager", now).lastInsertRowid);
-  seller = Number(u.run(`s${Date.now()}`, "x:y", "ف", "phone_sales", now).lastInsertRowid);
+  owner = Number((await u.run(`o${Date.now()}`, "x:y", "م", "owner", now)).lastInsertRowid);
+  mgr = Number((await u.run(`m${Date.now()}`, "x:y", "مد", "group_manager", now)).lastInsertRowid);
+  seller = Number((await u.run(`s${Date.now()}`, "x:y", "ف", "phone_sales", now)).lastInsertRowid);
   custId = Number(
-    db
+    (await db
       .prepare(
         "INSERT INTO customers (customer_code,business_name,lifecycle,synced_at,organization_id) VALUES ('C1','x','active','2026-01-01',1)"
       )
-      .run().lastInsertRowid
+      .run()).lastInsertRowid
   );
   g = Number(
-    db.prepare("INSERT INTO groups (name, slug, created_at, organization_id) VALUES ('گ', 'g', ?, 1)").run(now)
+    (await db.prepare("INSERT INTO groups (name, slug, created_at, organization_id) VALUES ('گ', 'g', ?, 1)").run(now))
       .lastInsertRowid
   );
-  db.prepare("UPDATE users SET group_id = ? WHERE id = ?").run(g, mgr);
+  await db.prepare("UPDATE users SET group_id = ? WHERE id = ?").run(g, mgr);
   ord = Number(
-    db
+    (await db
       .prepare(
         `INSERT INTO orders (order_no, customer_id, group_id, salesperson_user_id, status, order_date, created_by, created_at, updated_at, organization_id)
          VALUES ('9001', ?, ?, ?, 'CONFIRMED', '2026-06-01', ?, ?, ?, 1)`
       )
-      .run(custId, g, seller, owner, now, now).lastInsertRowid
+      .run(custId, g, seller, owner, now, now)).lastInsertRowid
   );
 });
 
 describe("notification schema", () => {
-  it("seeds the NULL-org catalogue and every seed row has a valid shape", () => {
+  it("seeds the NULL-org catalogue and every seed row has a valid shape", async () => {
     const db = getDb();
-    const rows = db
+    const rows = await db
       .prepare("SELECT code, directedness, priority, group_scope FROM notification_types WHERE organization_id IS NULL")
       .all() as { code: string; directedness: string; priority: string; group_scope: string }[];
     expect(rows.length).toBeGreaterThanOrEqual(6);
@@ -78,17 +78,17 @@ describe("notification schema", () => {
   it("re-running seedNotificationTypes does not duplicate rows", async () => {
     const { seedNotificationTypes } = await import("@/lib/db");
     const db = getDb();
-    seedNotificationTypes(db);
-    seedNotificationTypes(db);
-    const n = (db.prepare("SELECT COUNT(*) c FROM notification_types WHERE organization_id IS NULL").get() as { c: number }).c;
-    const distinct = (db.prepare("SELECT COUNT(DISTINCT code) c FROM notification_types WHERE organization_id IS NULL").get() as { c: number }).c;
+    seedNotificationTypes(await rawSqlite());
+    seedNotificationTypes(await rawSqlite());
+    const n = (await db.prepare("SELECT COUNT(*) c FROM notification_types WHERE organization_id IS NULL").get() as { c: number }).c;
+    const distinct = (await db.prepare("SELECT COUNT(DISTINCT code) c FROM notification_types WHERE organization_id IS NULL").get() as { c: number }).c;
     expect(n).toBe(distinct);
   });
 });
 
 describe("recipientsFor", () => {
-  it("routes order events to the order's salesperson", () => {
-    const r = recipientsFor(
+  it("routes order events to the order's salesperson", async () => {
+    const r = await recipientsFor(
       1,
       "order.confirmed",
       { kind: "order.passReview", entity_type: "order", entity_id: ord, occurred_at: now, meta: {} },
@@ -97,8 +97,8 @@ describe("recipientsFor", () => {
     expect(r).toEqual([seller]);
   });
 
-  it("routes delivery.failed to the salesperson AND the group's manager, actor excluded", () => {
-    const r = recipientsFor(
+  it("routes delivery.failed to the salesperson AND the group's manager, actor excluded", async () => {
+    const r = await recipientsFor(
       1,
       "delivery.failed",
       { kind: "delivery.failed", entity_type: "order", entity_id: ord, occurred_at: now, meta: {} },
@@ -107,8 +107,8 @@ describe("recipientsFor", () => {
     expect(r.sort()).toEqual([mgr].sort()); // seller is the actor -> excluded
   });
 
-  it("routes task.assigned to meta.assignee_user_id", () => {
-    const r = recipientsFor(
+  it("routes task.assigned to meta.assignee_user_id", async () => {
+    const r = await recipientsFor(
       1,
       "task.assigned",
       { kind: "task.assigned", entity_type: "task", entity_id: 5, occurred_at: now, meta: { assignee_user_id: seller } },
@@ -117,8 +117,8 @@ describe("recipientsFor", () => {
     expect(r).toEqual([seller]);
   });
 
-  it("returns [] when nothing resolves", () => {
-    const r = recipientsFor(
+  it("returns [] when nothing resolves", async () => {
+    const r = await recipientsFor(
       1,
       "order.confirmed",
       { kind: "x", entity_type: "order", entity_id: 999999, occurred_at: now, meta: {} },
@@ -127,8 +127,8 @@ describe("recipientsFor", () => {
     expect(r).toEqual([]);
   });
 
-  it("routes payment.recorded to every allocation order's salesperson via meta.order_ids", () => {
-    const r = recipientsFor(
+  it("routes payment.recorded to every allocation order's salesperson via meta.order_ids", async () => {
+    const r = await recipientsFor(
       1,
       "payment.recorded",
       { kind: "payment.recorded", entity_type: "payment", entity_id: 77, occurred_at: now, meta: { order_ids: [ord] } },
@@ -137,8 +137,8 @@ describe("recipientsFor", () => {
     expect(r).toEqual([seller]);
   });
 
-  it("routes payment.recorded to nobody when meta.order_ids is empty", () => {
-    const r = recipientsFor(
+  it("routes payment.recorded to nobody when meta.order_ids is empty", async () => {
+    const r = await recipientsFor(
       1,
       "payment.recorded",
       { kind: "payment.recorded", entity_type: "payment", entity_id: 77, occurred_at: now, meta: { order_ids: [] } },
@@ -160,56 +160,56 @@ function evRow(kind: string, entityId: number | null, meta: Record<string, unkno
   };
 }
 
-it("fans one order.confirmed event out to a single feed row for the salesperson", () => {
-  const n = fanOutNotifications(
+it("fans one order.confirmed event out to a single feed row for the salesperson", async () => {
+  const n = await fanOutNotifications(
     1,
     { code: "notify_order_confirmed", action_json: JSON.stringify({ notification_type: "order.confirmed" }) },
     evRow("order.passReview", ord, { order_no: "9001", customer_name: "x" }, owner),
     null
   );
   expect(n).toBe(1);
-  const groups = listNotificationGroups(1, seller);
+  const groups = await listNotificationGroups(1, seller);
   expect(groups).toHaveLength(1);
   expect(groups[0].group_key).toBe(`order:${ord}`);
   expect(groups[0].unread_count).toBe(1);
-  expect(unreadGroupCount(1, seller)).toBe(1);
+  expect(await unreadGroupCount(1, seller)).toBe(1);
 });
 
-it("two order.created events the same day collapse into one group with count 2", () => {
+it("two order.created events the same day collapse into one group with count 2", async () => {
   const rule = { code: "notify_order_created", action_json: JSON.stringify({ notification_type: "order.created" }) };
-  fanOutNotifications(1, rule, evRow("order.submit", ord, { order_no: "9001" }, owner), null);
+  await fanOutNotifications(1, rule, evRow("order.submit", ord, { order_no: "9001" }, owner), null);
   // a second order in the same group/day
   const db = getDb();
   const ord2 = Number(
-    db
+    (await db
       .prepare(
         `INSERT INTO orders (order_no, customer_id, group_id, salesperson_user_id, status, order_date, created_by, created_at, updated_at)
      VALUES ('9002', ?, (SELECT group_id FROM orders WHERE id = ?), ?, 'CONFIRMED', '2026-06-01', ?, ?, ?)`
       )
-      .run(custId, ord, seller, owner, now, now).lastInsertRowid
+      .run(custId, ord, seller, owner, now, now)).lastInsertRowid
   );
-  fanOutNotifications(1, rule, { ...evRow("order.submit", ord2, { order_no: "9002" }, owner), id: 2 }, null);
+  await fanOutNotifications(1, rule, { ...evRow("order.submit", ord2, { order_no: "9002" }, owner), id: 2 }, null);
 
-  const groups = listNotificationGroups(1, mgr);
+  const groups = await listNotificationGroups(1, mgr);
   expect(groups).toHaveLength(1);
   expect(groups[0].count).toBe(2);
 });
 
-it("markGroupsRead('all') clears the unread count", () => {
-  fanOutNotifications(
+it("markGroupsRead('all') clears the unread count", async () => {
+  await fanOutNotifications(
     1,
     { code: "c", action_json: JSON.stringify({ notification_type: "order.confirmed" }) },
     evRow("order.passReview", ord, {}, owner),
     null
   );
-  expect(unreadGroupCount(1, seller)).toBe(1);
-  markGroupsRead(1, seller, "all");
-  expect(unreadGroupCount(1, seller)).toBe(0);
+  expect(await unreadGroupCount(1, seller)).toBe(1);
+  await markGroupsRead(1, seller, "all");
+  expect(await unreadGroupCount(1, seller)).toBe(0);
 });
 
-function seedNotifyRule(code: string, trigger: string, typeCode: string) {
+async function seedNotifyRule(code: string, trigger: string, typeCode: string) {
   const ts = new Date().toISOString();
-  getDb()
+  await getDb()
     .prepare(
       `INSERT INTO rules (organization_id, code, name, trigger_kind, condition_json, action_kind, action_json,
          cooldown_min, escalate_after_min, escalate_to_role, active, created_at, updated_at)
@@ -219,38 +219,38 @@ function seedNotifyRule(code: string, trigger: string, typeCode: string) {
 }
 
 describe("notify action", () => {
-  it("runEventRules fires a notify rule and writes a feed row", () => {
-    seedNotifyRule("n_conf", "order.passReview", "order.confirmed");
-    const id = emitEvent(1, {
+  it("runEventRules fires a notify rule and writes a feed row", async () => {
+    await seedNotifyRule("n_conf", "order.passReview", "order.confirmed");
+    const id = await emitEvent(1, {
       kind: "order.passReview",
       entity_type: "order",
       entity_id: ord,
       actor_user_id: owner,
       metadata: {},
     });
-    const e = getDb().prepare("SELECT * FROM events WHERE id = ?").get(id) as never;
-    const fired = runEventRules(1, e);
+    const e = await getDb().prepare("SELECT * FROM events WHERE id = ?").get(id) as never;
+    const fired = await runEventRules(1, e);
     expect(fired.map((f: { rule_code: string }) => f.rule_code)).toContain("n_conf");
-    expect(listNotificationGroups(1, seller)).toHaveLength(1);
+    expect(await listNotificationGroups(1, seller)).toHaveLength(1);
   });
 
-  it("emitEvent alone (no explicit runEventRules) also produces the feed row", () => {
-    seedNotifyRule("n_conf2", "order.passReview", "order.confirmed");
-    emitEvent(1, {
+  it("emitEvent alone (no explicit runEventRules) also produces the feed row", async () => {
+    await seedNotifyRule("n_conf2", "order.passReview", "order.confirmed");
+    await emitEvent(1, {
       kind: "order.passReview",
       entity_type: "order",
       entity_id: ord,
       actor_user_id: owner,
       metadata: {},
     });
-    expect(unreadGroupCount(1, seller)).toBeGreaterThanOrEqual(1);
+    expect(await unreadGroupCount(1, seller)).toBeGreaterThanOrEqual(1);
   });
 });
 
-it("a due-reminder notification remembers which reminder it is, so a push button can resolve it", () => {
+it("a due-reminder notification remembers which reminder it is, so a push button can resolve it", async () => {
   const rule = { code: "notify_reminder_due", action_json: JSON.stringify({ notification_type: "reminder.due" }) };
   const ev = { ...evRow("reminder.due", custId, { message: "تماس", reminder_id: 77 }, null), entity_type: "customer" };
-  expect(fanOutNotifications(1, rule, ev, null)).toBeGreaterThan(0);
-  const row = getDb().prepare("SELECT ref_id FROM notifications WHERE type_code = 'reminder.due' ORDER BY id DESC LIMIT 1").get() as { ref_id: number | null };
+  expect(await fanOutNotifications(1, rule, ev, null)).toBeGreaterThan(0);
+  const row = await getDb().prepare("SELECT ref_id FROM notifications WHERE type_code = 'reminder.due' ORDER BY id DESC LIMIT 1").get() as { ref_id: number | null };
   expect(row.ref_id).toBe(77);
 });

@@ -14,7 +14,7 @@ process.env.SESSION_SECRET = "test-secret";
 
 const { getDb } = await import("@/lib/db");
 const { ensureWarehouse } = await import("./helpers/ensureWarehouse");
-ensureWarehouse(getDb());
+await ensureWarehouse(getDb());
 const { createProduct, createPackaging, setPrice } = await import("@/lib/catalogue");
 const { createOrder, confirmOrder } = await import("@/lib/orders");
 const { createRun, addStop } = await import("@/lib/delivery");
@@ -47,68 +47,68 @@ const PERIOD = `${jNow.jy}-${String(jNow.jm).padStart(2, "0")}`;
 const sess = (id: number, role: string, gid: number | null): Session =>
   ({ user: { id } as never, role: role as never, groupId: gid, organizationId: 1, roles: [role] as Session["roles"], hasRole: (x) => x === role }) as Session;
 
-beforeEach(() => {
+beforeEach(async () => {
   const db = getDb();
-  db.exec(
+  await db.exec(
     "PRAGMA foreign_keys=OFF; DELETE FROM tasks; DELETE FROM alerts; DELETE FROM targets; DELETE FROM credit_approvals; DELETE FROM order_events; DELETE FROM stock_reservations; DELETE FROM deliveries; DELETE FROM delivery_stops; DELETE FROM delivery_runs; DELETE FROM order_lines; DELETE FROM orders; DELETE FROM packagings; DELETE FROM products; DELETE FROM customers; DELETE FROM groups; DELETE FROM users WHERE id>0; PRAGMA foreign_keys=ON;"
   );
   const now = new Date().toISOString();
-  groupId = Number(db.prepare("INSERT INTO groups (name,slug,created_at,organization_id) VALUES ('A','a',?,1)").run(now).lastInsertRowid);
+  groupId = Number((await db.prepare("INSERT INTO groups (name,slug,created_at,organization_id) VALUES ('A','a',?,1)").run(now)).lastInsertRowid);
   const u = db.prepare(
     "INSERT INTO users (username,password_hash,display_name,role,group_id,active,created_at,organization_id) VALUES (?,?,?,?,?,1,?,1)"
   );
-  owner = Number(u.run(`o${Date.now()}`, "x", "م", "owner", null, now).lastInsertRowid);
-  mgr = Number(u.run(`m${Date.now()}`, "x", "مد", "group_manager", groupId, now).lastInsertRowid);
-  seller = Number(u.run(`s${Date.now()}`, "x", "ف", "phone_sales", groupId, now).lastInsertRowid);
-  driver = Number(u.run(`d${Date.now()}`, "x", "ر", "delivery_driver", groupId, now).lastInsertRowid);
-  custId = Number(db.prepare("INSERT INTO customers (customer_code,business_name,lifecycle,synced_at,group_id,organization_id) VALUES ('C','x','active',?,?,1)").run(now, groupId).lastInsertRowid);
-  product = createProduct(db, { name: "کره", kg_per_base_unit: 0.25, organization_id: 1 });
-  packaging = createPackaging(db, { product_id: product, name: "جعبه", qty_per_pack: 10 });
-  setPrice(db, { product_id: product, price_toman: 1000, valid_from: "2026-01-01" });
+  owner = Number((await u.run(`o${Date.now()}`, "x", "م", "owner", null, now)).lastInsertRowid);
+  mgr = Number((await u.run(`m${Date.now()}`, "x", "مد", "group_manager", groupId, now)).lastInsertRowid);
+  seller = Number((await u.run(`s${Date.now()}`, "x", "ف", "phone_sales", groupId, now)).lastInsertRowid);
+  driver = Number((await u.run(`d${Date.now()}`, "x", "ر", "delivery_driver", groupId, now)).lastInsertRowid);
+  custId = Number((await db.prepare("INSERT INTO customers (customer_code,business_name,lifecycle,synced_at,group_id,organization_id) VALUES ('C','x','active',?,?,1)").run(now, groupId)).lastInsertRowid);
+  product = await createProduct(db, { name: "کره", kg_per_base_unit: 0.25, organization_id: 1 });
+  packaging = await createPackaging(db, { product_id: product, name: "جعبه", qty_per_pack: 10 });
+  await setPrice(db, { product_id: product, price_toman: 1000, valid_from: "2026-01-01" });
 });
 
 describe("todayFor", () => {
-  it("salesperson gets open_tasks and the target panel", () => {
-    createTask(1, { title: "تماس با علی", kind: "call", assignee_user_id: seller });
-    setTarget(1, { user_id: seller, period: PERIOD, metric: "revenue_toman", target_value: 100_000 });
-    const b = todayFor(sess(seller, "phone_sales", groupId));
+  it("salesperson gets open_tasks and the target panel", async () => {
+    await createTask(1, { title: "تماس با علی", kind: "call", assignee_user_id: seller });
+    await setTarget(1, { user_id: seller, period: PERIOD, metric: "revenue_toman", target_value: 100_000 });
+    const b = await todayFor(sess(seller, "phone_sales", groupId));
     const keys = b.panels.map((p) => p.key);
     expect(keys).toContain("open_tasks");
     expect(keys).toContain("target");
     expect(b.panels.find((p) => p.key === "open_tasks")!.items[0].action).toMatchObject({ kind: "task_outcome" });
   });
 
-  it("driver gets today_run and a retry panel for yesterday's failure", () => {
+  it("driver gets today_run and a retry panel for yesterday's failure", async () => {
     const db = getDb();
-    const o = createOrder(db, { customer_id: custId, order_date: today, created_by: owner, organization_id: 1, lines: [{ product_id: product, packaging_id: packaging, packs: 1 }] });
-    confirmOrder(db, o.id);
-    const run = createRun(db, { driver_user_id: driver, run_date: today, created_by: owner, organization_id: 1 });
-    addStop(db, run, o.id);
+    const o = await createOrder(db, { customer_id: custId, order_date: today, created_by: owner, organization_id: 1, lines: [{ product_id: product, packaging_id: packaging, packs: 1 }] });
+    await confirmOrder(db, o.id);
+    const run = await createRun(db, { driver_user_id: driver, run_date: today, created_by: owner, organization_id: 1 });
+    await addStop(db, run, o.id);
 
     // a failed order on yesterday's run
     const yesterday = tehranTodayIso(new Date(Date.now() - 86_400_000));
-    const o2 = createOrder(db, { customer_id: custId, order_date: yesterday, created_by: owner, organization_id: 1, lines: [{ product_id: product, packaging_id: packaging, packs: 1 }] });
-    confirmOrder(db, o2.id);
-    const run2 = createRun(db, { driver_user_id: driver, run_date: yesterday, created_by: owner, organization_id: 1 });
-    addStop(db, run2, o2.id);
-    db.prepare("UPDATE orders SET status = 'DELIVERY_FAILED' WHERE id = ?").run(o2.id);
+    const o2 = await createOrder(db, { customer_id: custId, order_date: yesterday, created_by: owner, organization_id: 1, lines: [{ product_id: product, packaging_id: packaging, packs: 1 }] });
+    await confirmOrder(db, o2.id);
+    const run2 = await createRun(db, { driver_user_id: driver, run_date: yesterday, created_by: owner, organization_id: 1 });
+    await addStop(db, run2, o2.id);
+    await db.prepare("UPDATE orders SET status = 'DELIVERY_FAILED' WHERE id = ?").run(o2.id);
 
-    const b = todayFor(sess(driver, "delivery_driver", groupId));
+    const b = await todayFor(sess(driver, "delivery_driver", groupId));
     const keys = b.panels.map((p) => p.key);
     expect(keys).toContain("today_run");
     expect(keys).toContain("retry");
     expect(b.panels.find((p) => p.key === "retry")!.items).toHaveLength(1);
   });
 
-  it("group_manager gets credit_waiting and unplanned", () => {
+  it("group_manager gets credit_waiting and unplanned", async () => {
     const db = getDb();
-    const o = createOrder(db, { customer_id: custId, order_date: today, created_by: owner, organization_id: 1, lines: [{ product_id: product, packaging_id: packaging, packs: 1 }] });
-    confirmOrder(db, o.id); // CONFIRMED, no stop -> unplanned
-    db.prepare(
+    const o = await createOrder(db, { customer_id: custId, order_date: today, created_by: owner, organization_id: 1, lines: [{ product_id: product, packaging_id: packaging, packs: 1 }] });
+    await confirmOrder(db, o.id); // CONFIRMED, no stop -> unplanned
+    await db.prepare(
       "INSERT INTO credit_approvals (organization_id, order_id, requested_by, requested_at, customer_balance_toman, credit_limit_toman, overage_toman, status) VALUES (1,?,?,?,1,0,1,'pending')"
     ).run(o.id, owner, new Date().toISOString());
 
-    const b = todayFor(sess(mgr, "group_manager", groupId));
+    const b = await todayFor(sess(mgr, "group_manager", groupId));
     const keys = b.panels.map((p) => p.key);
     expect(keys).toContain("credit_waiting");
     expect(keys).toContain("unplanned");
@@ -118,7 +118,7 @@ describe("todayFor", () => {
     expect(credit.items.map((i) => i.href)).toContain(`/sales/orders/${o.id}`);
   });
 
-  it("puts no raw English enum on screen", () => {
+  it("puts no raw English enum on screen", async () => {
     /* The briefing builds its panels straight from SQL rows, which is how two English
        enums reached a Persian page: `sub: a.severity` printed «critical» under «هشدارها»,
        and `label: s.stage` printed «prospect» under «نمایندگان بر اساس مرحله». The user
@@ -133,16 +133,16 @@ describe("todayFor", () => {
        A guard with no fixtures is not a guard. The summary is walked too, because a status
        breakdown that reaches the header is still on screen. */
     const db = getDb();
-    db.prepare(
+    await db.prepare(
       "INSERT INTO alerts (organization_id,severity,category,title,created_at) VALUES (1,'critical','credit','درخواست اعتبار در انتظار تصمیم',?)",
     ).run(new Date().toISOString());
-    db.prepare(
+    await db.prepare(
       "INSERT INTO representative_profiles (organization_id,customer_id,rep_code,stage,created_at,updated_at) VALUES (1,?,'R1','prospect',?,?)",
     ).run(custId, new Date().toISOString(), new Date().toISOString());
-    const o = createOrder(db, { customer_id: custId, order_date: today, created_by: owner, organization_id: 1, lines: [{ product_id: product, packaging_id: packaging, packs: 1 }] });
-    confirmOrder(db, o.id);
+    const o = await createOrder(db, { customer_id: custId, order_date: today, created_by: owner, organization_id: 1, lines: [{ product_id: product, packaging_id: packaging, packs: 1 }] });
+    await confirmOrder(db, o.id);
 
-    const b = todayFor(sess(owner, "owner", null));
+    const b = await todayFor(sess(owner, "owner", null));
     expect(b.panels.map((p) => p.key)).toContain("orders_by_state");
     for (const panel of b.panels) {
       for (const item of [...(panel.summary ?? []), ...panel.items]) {
@@ -152,17 +152,17 @@ describe("todayFor", () => {
     }
   });
 
-  it("«سفارش‌های امروز» names its orders instead of only counting them", () => {
+  it("«سفارش‌های امروز» names its orders instead of only counting them", async () => {
     /* One row per ORDER, not one row per status. The panel used to answer "there are five"
        and nothing else — no order number, no customer, no money — and every row linked to
        the same generic board, so a manager could not tell WHICH five. The status breakdown
        survives as the panel's header, because that is a different statement from the list. */
     const db = getDb();
-    const o = createOrder(db, { customer_id: custId, order_date: today, created_by: owner, organization_id: 1, lines: [{ product_id: product, packaging_id: packaging, packs: 2 }] });
-    confirmOrder(db, o.id);
-    const name = (db.prepare("SELECT business_name FROM customers WHERE id = ?").get(custId) as { business_name: string }).business_name;
+    const o = await createOrder(db, { customer_id: custId, order_date: today, created_by: owner, organization_id: 1, lines: [{ product_id: product, packaging_id: packaging, packs: 2 }] });
+    await confirmOrder(db, o.id);
+    const name = (await db.prepare("SELECT business_name FROM customers WHERE id = ?").get(custId) as { business_name: string }).business_name;
 
-    const p = todayFor(sess(owner, "owner", null)).panels.find((x) => x.key === "orders_by_state");
+    const p = (await todayFor(sess(owner, "owner", null))).panels.find((x) => x.key === "orders_by_state");
     expect(p).toBeDefined();
 
     // The breakdown is Persian, and it is a header rather than another row of «تأییدشده».
@@ -178,26 +178,26 @@ describe("todayFor", () => {
     expect(row!.sub).toMatch(/[۰-۹]/);
   });
 
-  it("open_tasks never prints the raw priority enum", () => {
+  it("open_tasks never prints the raw priority enum", async () => {
     /* `sub: t.priority` put «HIGH» beside a Persian task title. Same leak as the order
        status, two panels up — found while fixing that one, exactly as the alert severity
        was. Asserted against a HIGH task specifically, because the demo seed writes NORMAL
        for everything and a NORMAL-only fixture would not have proved the map is consulted. */
-    createTask(1, { title: "تماس با علی", kind: "call", assignee_user_id: seller, priority: "HIGH" });
-    const p = todayFor(sess(seller, "phone_sales", groupId)).panels.find((x) => x.key === "open_tasks");
+    await createTask(1, { title: "تماس با علی", kind: "call", assignee_user_id: seller, priority: "HIGH" });
+    const p = (await todayFor(sess(seller, "phone_sales", groupId))).panels.find((x) => x.key === "open_tasks");
     expect(p).toBeDefined();
     expect(p!.items.map((i) => i.sub)).toContain("زیاد");
     expect(JSON.stringify(p)).not.toMatch(/CRITICAL|HIGH|NORMAL|LOW/);
   });
 
-  it("omits a panel with nothing actionable", () => {
-    const b = todayFor(sess(seller, "phone_sales", groupId));
+  it("omits a panel with nothing actionable", async () => {
+    const b = await todayFor(sess(seller, "phone_sales", groupId));
     // no tasks, no target -> neither panel present
     expect(b.panels.map((p) => p.key)).not.toContain("open_tasks");
     expect(b.panels.map((p) => p.key)).not.toContain("target");
   });
 
-  it("gives EVERY role at least one panel, even on an empty day", () => {
+  it("gives EVERY role at least one panel, even on an empty day", async () => {
     // todayFor is a chain of `if (role === ...)` blocks with no fallback, so a role with no
     // branch produces ZERO panels: a person who signs in to an empty screen, with no error
     // anywhere to explain it. That is how the next new role lands in production unnoticed.
@@ -208,7 +208,7 @@ describe("todayFor", () => {
     // empties. A founder on a quiet day must still get SOMETHING, or the briefing is
     // indistinguishable from a broken page.
     for (const role of ROLES) {
-      const b = todayFor(sess(owner, role, role === "owner" || role === "platform_owner" ? null : groupId));
+      const b = await todayFor(sess(owner, role, role === "owner" || role === "platform_owner" ? null : groupId));
       expect(b.panels.length, `${role} produced no briefing panel`).toBeGreaterThan(0);
     }
   });

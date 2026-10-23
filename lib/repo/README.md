@@ -15,8 +15,11 @@ The only place in the codebase where **new** raw SQL is allowed.
   as its required first argument and applies `WHERE organization_id = ?` on every
   read and stamps it on every write. A forgotten scope is a compile error at the
   call site, not a silent leak.
-- The eventual Postgres migration replaces `base.ts`'s driver and nothing else —
-  that is the whole point of the layer.
+- Every call on a `Db` returns a Promise (`await db.prepare(sql).get(...)`), so the
+  PostgreSQL adapter can sit behind the same interface (`lib/database/client.ts`).
+  Several writes that must land together go in `await db.tx(async () => { ... })`,
+  never a hand-written `BEGIN`/`COMMIT`. SQL that SQLite and PostgreSQL spell
+  differently goes through `lib/database/dialect.ts`.
 
 ## Using it
 

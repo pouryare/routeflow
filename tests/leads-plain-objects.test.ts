@@ -14,8 +14,8 @@ afterAll(() => {
   for (const s of ["", "-wal", "-shm"]) fs.rmSync(`${testDbPath}${s}`, { force: true });
 });
 
-beforeAll(() => {
-  getDb().exec(
+beforeAll(async () => {
+  await getDb().exec(
     /* maps_url is NOT NULL — the column list here is read off the live schema rather than
        guessed, which is a lesson this session repeated several times over. */
     `INSERT INTO saved_locations (name, lat, lng, organization_id, maps_url, created_at)
@@ -36,21 +36,21 @@ beforeAll(() => {
  * The assertion is about the PROTOTYPE, not the values: `toEqual` and `toMatchObject` both
  * pass on a null-prototype object, which is precisely why the type system stayed silent. */
 describe("readLeadPins", () => {
-  it("returns plain objects, not node:sqlite's null-prototype rows", () => {
-    const pins = readLeadPins(getDb(), 1);
+  it("returns plain objects, not node:sqlite's null-prototype rows", async () => {
+    const pins = await readLeadPins(getDb(), 1);
     expect(pins.length).toBeGreaterThan(0);
     for (const pin of pins) {
       expect(Object.getPrototypeOf(pin), `pin ${pin.id} has a null prototype`).toBe(Object.prototype);
     }
   });
 
-  it("still returns the four fields it always did", () => {
-    const [pin] = readLeadPins(getDb(), 1);
+  it("still returns the four fields it always did", async () => {
+    const [pin] = await readLeadPins(getDb(), 1);
     expect(pin).toEqual({ id: pin.id, name: "pin", lat: 35.7, lng: 51.4 });
   });
 
-  it("survives a structuredClone, which is what the RSC boundary does to it", () => {
-    for (const pin of readLeadPins(getDb(), 1)) {
+  it("survives a structuredClone, which is what the RSC boundary does to it", async () => {
+    for (const pin of await readLeadPins(getDb(), 1)) {
       expect(() => structuredClone(pin)).not.toThrow();
     }
   });

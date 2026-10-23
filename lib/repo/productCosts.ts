@@ -1,4 +1,4 @@
-import type { DatabaseSync } from "node:sqlite";
+import type { Db } from "@/lib/database/client";
 
 import { effectiveAt } from "@/lib/pricing";
 import type { CostRow } from "@/lib/catalogue";
@@ -18,8 +18,8 @@ import type { CostRow } from "@/lib/catalogue";
  */
 
 /** Every cost row for a product, newest first. Unscoped by design: the caller scopes. */
-export function costRowsFor(db: DatabaseSync, productId: number): CostRow[] {
-  return db
+export async function costRowsFor(db: Db, productId: number): Promise<CostRow[]> {
+  return await db
     .prepare(
       `SELECT id, product_id, packaging_id, method, cost_toman, valid_from
          FROM product_costs WHERE product_id = ?`
@@ -50,8 +50,8 @@ export function effectiveCost(
 }
 
 /** `products.avg_cost_toman` for a product, or null when there is none to read. */
-export function avgCostFor(db: DatabaseSync, productId: number): number | null {
-  const row = db
+export async function avgCostFor(db: Db, productId: number): Promise<number | null> {
+  const row = await db
     .prepare("SELECT avg_cost_toman FROM products WHERE id = ?")
     .get(productId) as { avg_cost_toman: number } | undefined;
   return row ? row.avg_cost_toman : null;
@@ -67,23 +67,23 @@ export function avgCostFor(db: DatabaseSync, productId: number): number | null {
  *
  *  Returns true when the product is the caller's to write for.
  */
-export function productInOrganization(
-  db: DatabaseSync,
+export async function productInOrganization(
+  db: Db,
   productId: number,
   organizationId: number
-): boolean {
-  return !!db
+): Promise<boolean> {
+  return !!await db
     .prepare("SELECT id FROM products WHERE id = ? AND organization_id = ?")
     .get(productId, organizationId);
 }
 
 /** True when this packaging belongs to this product. Guards a mismatched pair. */
-export function packagingBelongsTo(
-  db: DatabaseSync,
+export async function packagingBelongsTo(
+  db: Db,
   packagingId: number,
   productId: number
-): boolean {
-  return !!db
+): Promise<boolean> {
+  return !!await db
     .prepare("SELECT id FROM packagings WHERE id = ? AND product_id = ?")
     .get(packagingId, productId);
 }

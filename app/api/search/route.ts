@@ -8,7 +8,7 @@ import { MANAGE_ROLES } from "@/lib/roles";
  *  applies its own role and scope rules in lib/repo/search.ts. The role list here is
  *  just the union, so a driver is refused at the door. */
 export async function GET(req: NextRequest) {
-  const guard = requireRole(req, [...MANAGE_ROLES, "phone_sales"]);
+  const guard = await requireRole(req, [...MANAGE_ROLES, "phone_sales"]);
   if (!guard.ok) return guard.response;
 
   const q = (new URL(req.url).searchParams.get("q") ?? "").slice(0, 80);
@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
       // Districts is shared reference data with no tenant row, so searchDistricts applies
       // no scope of its own -- but it still goes through the same door guard, because this
       // route is a read path and a new kind in it is a new place to leak.
-      ...searchIn(guard.session, q),
+      ...await searchIn(guard.session, q),
     },
     { headers: { "Cache-Control": "no-store" } },
   );

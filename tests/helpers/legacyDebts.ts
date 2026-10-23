@@ -1,4 +1,4 @@
-import type { DatabaseSync } from "node:sqlite";
+import type { Db } from "@/lib/database/client";
 import { lineTotalToman, type LineSnapshot } from "@/lib/orderMath";
 import { FULFILLED_ORDER_STATUSES, sqlStatusList } from "@/lib/orderStateMachine";
 
@@ -14,22 +14,22 @@ const bucketOf = (debt: LegacyDebt, days: number, amount: number) => {
   else debt.bucket_30_plus += amount;
 };
 
-export function legacyDebtsForOrg(db: DatabaseSync, organizationId: number, asOf?: string): Map<number, LegacyDebt> {
+export async function legacyDebtsForOrg(db: Db, organizationId: number, asOf?: string): Promise<Map<number, LegacyDebt>> {
   const now = asOf ?? new Date().toISOString();
   const out = new Map<number, LegacyDebt>();
-  const customers = db
+  const customers = await db
     .prepare("SELECT id, COALESCE(opening_balance_toman, 0) AS ob FROM customers WHERE organization_id = ?")
     .all(organizationId) as unknown as { id: number; ob: number }[];
   for (const c of customers) out.set(c.id, { total: c.ob, bucket_0_7: 0, bucket_8_30: 0, bucket_30_plus: c.ob });
 
-  const orders = db
+  const orders = await db
     .prepare(
       `SELECT o.id, o.customer_id, o.order_date, o.delivered_at, o.paid_toman
          FROM orders o JOIN customers c ON c.id = o.customer_id
         WHERE c.organization_id = ? AND o.status IN (${sqlStatusList(FULFILLED_ORDER_STATUSES)})`
     )
     .all(organizationId) as unknown as { id: number; customer_id: number; order_date: string; delivered_at: string | null; paid_toman: number }[];
-  const lineRows = db
+  const lineRows = await db
     .prepare(
       `SELECT ol.order_id, ol.packs_ordered, ol.packs_delivered, ol.unit_price_toman,
               ol.unit_cost_toman, ol.qty_per_pack, ol.kg_per_base_unit
@@ -47,7 +47,7 @@ export function legacyDebtsForOrg(db: DatabaseSync, organizationId: number, asOf
     const outstanding = Math.max(0, total - o.paid_toman);
     if (outstanding > 0) bucketOf(d, ageDays(now, o.delivered_at ?? o.order_date), outstanding);
   }
-  const allocRows = db
+  const allocRows = await db
     .prepare(
       `SELECT p.customer_id, COALESCE(SUM(a.amount_toman), 0) AS allocated
          FROM payment_allocations a JOIN payments p ON p.id = a.payment_id

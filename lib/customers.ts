@@ -1,4 +1,4 @@
-import type { DatabaseSync } from "node:sqlite";
+import type { Db } from "@/lib/database/client";
 import { Customer, getDb } from "./db";
 import { customerDebtsForOrg } from "./repo/payments";
 
@@ -7,11 +7,11 @@ import { customerDebtsForOrg } from "./repo/payments";
  *  boundary ("Only plain objects ... can be passed to Client Components"), which the
  *  server-rendered map page does. Rebuilding each row as an object literal is also the
  *  explicit column list -- the page and the API can't drift apart in what they send. */
-export function readCustomers(
-  db: DatabaseSync = getDb(),
+export async function readCustomers(
+  db: Db = getDb(),
   groupIds: number[] | "all" = "all",
   attachDebt?: { organizationId: number }
-): Customer[] {
+): Promise<Customer[]> {
   // An empty scope means "this caller can reach nothing" -- a non-owner with no group
   // assigned yet. Returning early matters: `IN ()` is a syntax error in SQLite, and
   // dropping the clause instead would widen the query to every customer in the province,
@@ -19,12 +19,12 @@ export function readCustomers(
   if (groupIds !== "all" && groupIds.length === 0) return [];
   const where = groupIds === "all" ? "" : ` WHERE group_id IN (${groupIds.map(() => "?").join(", ")})`;
   const params = groupIds === "all" ? [] : groupIds;
-  const rows = db
+  const rows = await db
     .prepare(`SELECT * FROM customers${where} ORDER BY business_name`)
     .all(...params) as unknown as Customer[];
 
   const debtByCustomer = attachDebt
-    ? customerDebtsForOrg(attachDebt.organizationId)
+    ? await customerDebtsForOrg(attachDebt.organizationId)
     : undefined;
 
   return rows.map((r) => ({

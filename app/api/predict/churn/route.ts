@@ -10,7 +10,7 @@ const BANDS = ["low", "watch", "high"] as const;
 /** `?id=` → one customer's live score; `?band=` → that slice of the board; else the
  *  whole board, highest probability first. Manager tool. */
 export async function GET(req: NextRequest) {
-  const guard = requireRole(req, MANAGE_ROLES);
+  const guard = await requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
 
   const sp = req.nextUrl.searchParams;
@@ -19,10 +19,10 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({
       ok: true,
       id: Number(id),
-      score: scoreChurn(guard.session.organizationId, Number(id)),
+      score: await scoreChurn(guard.session.organizationId, Number(id)),
     });
   }
   const band = sp.get("band");
   const filter = band && (BANDS as readonly string[]).includes(band) ? (band as (typeof BANDS)[number]) : undefined;
-  return NextResponse.json({ ok: true, rows: churnBoard(guard.session.organizationId, filter) });
+  return NextResponse.json({ ok: true, rows: await churnBoard(guard.session.organizationId, filter) });
 }

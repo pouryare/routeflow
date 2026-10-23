@@ -57,8 +57,8 @@ export interface SnapshotWrite extends SnapshotScope, SnapshotValue {
 
 /** Idempotent: the UNIQUE `(organization_id, metric, scope_type, scope_id, period)`
  *  turns a re-run of the same period into an overwrite, not a duplicate. */
-export function upsertSnapshot(organizationId: number, w: SnapshotWrite): void {
-  getDb()
+export async function upsertSnapshot(organizationId: number, w: SnapshotWrite): Promise<void> {
+  await getDb()
     .prepare(
       `INSERT INTO kpi_snapshots
          (organization_id, metric, scope_type, scope_id, period, value,
@@ -86,26 +86,21 @@ export function upsertSnapshot(organizationId: number, w: SnapshotWrite): void {
 }
 
 /** Write several snapshots in one transaction — the sweep's unit of work. */
-export function upsertSnapshots(organizationId: number, writes: SnapshotWrite[]): number {
+export async function upsertSnapshots(organizationId: number, writes: SnapshotWrite[]): Promise<number> {
   const db = getDb();
-  db.exec("BEGIN");
-  try {
-    for (const w of writes) upsertSnapshot(organizationId, w);
-    db.exec("COMMIT");
-  } catch (e) {
-    db.exec("ROLLBACK");
-    throw e;
-  }
+  await db.tx(async () => {
+    for (const w of writes) await upsertSnapshot(organizationId, w);
+  });
   return writes.length;
 }
 
 /** One indexed row, or null when the sweep has not written it yet. */
-export function snapshot(
+export async function snapshot(
   organizationId: number,
   metric: string,
   scope: SnapshotScope & { period: string }
-): number | null {
-  const row = getDb()
+): Promise<number | null> {
+  const row = await getDb()
     .prepare(
       `SELECT value FROM kpi_snapshots
         WHERE organization_id = ? AND metric = ? AND scope_type = ? AND scope_id = ? AND period = ?`
@@ -129,10 +124,10 @@ export interface SnapshotRow extends SnapshotValue {
   computed_at: string;
 }
 
-export function snapshotRows(
+export async function snapshotRows(
   organizationId: number,
   filter: { period?: string; metric?: string; scope_type?: ScopeType }
-): SnapshotRow[] {
+): Promise<SnapshotRow[]> {
   const where = ["organization_id = ?"];
   const params: unknown[] = [organizationId];
   if (filter.period) {
@@ -147,7 +142,7 @@ export function snapshotRows(
     where.push("scope_type = ?");
     params.push(filter.scope_type);
   }
-  return getDb()
+  return await getDb()
     .prepare(
       `SELECT metric, scope_type, scope_id, period, value, numerator, denominator, sample_size, computed_at
          FROM kpi_snapshots WHERE ${where.join(" AND ")}`
@@ -156,8 +151,8 @@ export function snapshotRows(
 }
 
 /** The newest `computed_at` across a period's snapshots — the page's "as of …" line. */
-export function newestComputedAt(organizationId: number, period: string): string | null {
-  const row = getDb()
+export async function newestComputedAt(organizationId: number, period: string): Promise<string | null> {
+  const row = await getDb()
     .prepare(
       `SELECT MAX(computed_at) AS t FROM kpi_snapshots WHERE organization_id = ? AND period = ?`
     )
@@ -181,23 +176,23 @@ function scopeClause(s: MetricScope, alias = "o"): { sql: string; params: number
 }
 
 /** The customer ids a scope covers, for the debt-loop metrics. */
-function customersInScope(organizationId: number, s: MetricScope): number[] {
+async function customersInScope(organizationId: number, s: MetricScope): Promise<number[]> {
   const db = getDb();
   if (s.scope_type === "org") {
-    return (db.prepare("SELECT id FROM customers WHERE organization_id = ?").all(organizationId) as {
+    return (await db.prepare("SELECT id FROM customers WHERE organization_id = ?").all(organizationId) as {
       id: number;
     }[]).map((r) => r.id);
   }
   if (s.scope_type === "group") {
     return (
-      db.prepare("SELECT id FROM customers WHERE organization_id = ? AND group_id = ?").all(
+      await db.prepare("SELECT id FROM customers WHERE organization_id = ? AND group_id = ?").all(
         organizationId,
         s.scope_id
       ) as { id: number }[]
     ).map((r) => r.id);
   }
   return (
-    db
+    await db
       .prepare(
         "SELECT DISTINCT customer_id AS id FROM orders WHERE organization_id = ? AND salesperson_user_id = ?"
       )
@@ -213,14 +208,14 @@ interface LineAgg {
 }
 
 /** delivered-quantity revenue + cost + order count over FULFILLED orders in the window. */
-function fulfilledLineTotals(
+async function fulfilledLineTotals(
   organizationId: number,
   s: MetricScope,
   from: string,
   toExcl: string
-): { revenue: number; cost: number; orders: number; packsOrdered: number; packsDelivered: number } {
+): Promise<{ revenue: number; cost: number; orders: number; packsOrdered: number; packsDelivered: number }> {
   const sc = scopeClause(s);
-  const rows = getDb()
+  const rows = await getDb()
     .prepare(
       `SELECT ol.packs_ordered, ol.packs_delivered, ol.unit_price_toman, ol.unit_cost_toman, o.id AS oid
          FROM order_lines ol JOIN orders o ON o.id = ol.order_id
@@ -261,28 +256,28 @@ export interface MetricResult {
 
 /** One metric, one scope, one Jalali month. `switch (metric)`, each arm one bounded
  *  query — the Data Dictionary constants from lib/analysis/metrics are the definitions. */
-export function computeMetric(
+export async function computeMetric(
   organizationId: number,
   metric: Metric,
   scope: MetricScope,
   period: string
-): MetricResult {
+): Promise<MetricResult> {
   const db = getDb();
   const { from, toExcl } = periodRange(period);
   const sc = scopeClause(scope);
-  const totals = () => fulfilledLineTotals(organizationId, scope, from, toExcl);
+  const totals = async () => await fulfilledLineTotals(organizationId, scope, from, toExcl);
 
   switch (metric) {
     case "net_sales": {
-      const t = totals();
+      const t = await totals();
       return { value: t.revenue, sample_size: t.orders };
     }
     case "gross_profit": {
-      const t = totals();
+      const t = await totals();
       return { value: t.revenue - t.cost, sample_size: t.orders };
     }
     case "gross_margin": {
-      const t = totals();
+      const t = await totals();
       return {
         value: t.revenue > 0 ? (t.revenue - t.cost) / t.revenue : 0,
         numerator: t.revenue - t.cost,
@@ -291,11 +286,11 @@ export function computeMetric(
       };
     }
     case "orders": {
-      const t = totals();
+      const t = await totals();
       return { value: t.orders, sample_size: t.orders };
     }
     case "aov": {
-      const t = totals();
+      const t = await totals();
       return {
         value: t.orders > 0 ? Math.round(t.revenue / t.orders) : 0,
         numerator: t.revenue,
@@ -304,7 +299,7 @@ export function computeMetric(
       };
     }
     case "fulfillment_rate": {
-      const t = totals();
+      const t = await totals();
       return {
         value: t.packsOrdered > 0 ? t.packsDelivered / t.packsOrdered : 0,
         numerator: t.packsDelivered,
@@ -318,7 +313,7 @@ export function computeMetric(
         .slice(0, 10);
       const n = Number(
         (
-          db
+          await db
             .prepare(
               `SELECT COUNT(DISTINCT o.customer_id) AS n FROM orders o
                 WHERE o.organization_id = ?
@@ -333,7 +328,7 @@ export function computeMetric(
     case "new_customers": {
       const n = Number(
         (
-          db
+          await db
             .prepare(
               `SELECT COUNT(*) AS n FROM (
                  SELECT o.customer_id, MIN(o.order_date) AS first_date
@@ -357,7 +352,7 @@ export function computeMetric(
       const sc2 = scopeClause(scope, "o2");
       const n = Number(
         (
-          db
+          await db
             .prepare(
               `SELECT COUNT(*) AS n FROM (
                  SELECT DISTINCT o.customer_id FROM orders o
@@ -383,7 +378,7 @@ export function computeMetric(
       return { value: n, sample_size: n };
     }
     case "repeat_rate": {
-      const rows = db
+      const rows = await db
         .prepare(
           `SELECT o.customer_id AS cid, COUNT(*) AS c FROM orders o
             WHERE o.organization_id = ?
@@ -402,10 +397,10 @@ export function computeMetric(
       };
     }
     case "collection_rate": {
-      const t = totals();
+      const t = await totals();
       const paid = Number(
         (
-          db
+          await db
             .prepare(
               scope.scope_type === "org"
                 ? `SELECT COALESCE(SUM(amount_toman), 0) AS s FROM payments
@@ -433,12 +428,12 @@ export function computeMetric(
     }
     case "overdue_receivables": {
       let sum = 0;
-      const ids = customersInScope(organizationId, scope);
-      for (const id of ids) sum += customerDebt(organizationId, id, toExcl).bucket_30_plus;
+      const ids = await customersInScope(organizationId, scope);
+      for (const id of ids) sum += (await customerDebt(organizationId, id, toExcl)).bucket_30_plus;
       return { value: Math.round(sum), sample_size: ids.length };
     }
     case "on_time_delivery": {
-      const rows = db
+      const rows = await db
         .prepare(
           `SELECT d.planned_date, d.completed_at FROM deliveries d
              JOIN orders o ON o.id = d.order_id
@@ -461,7 +456,7 @@ export function computeMetric(
       };
     }
     case "sample_conversion": {
-      const samples = db
+      const samples = await db
         .prepare(
           `SELECT o.customer_id AS cid, o.order_date AS d FROM orders o
             WHERE o.organization_id = ? AND o.order_type = 'SAMPLE'
@@ -473,7 +468,7 @@ export function computeMetric(
         const until = new Date(Date.parse(s.d) + SAMPLE_CONVERT_DAYS * 86_400_000)
           .toISOString()
           .slice(0, 10);
-        const hit = db
+        const hit = await db
           .prepare(
             `SELECT 1 FROM orders o
               WHERE o.organization_id = ? AND o.customer_id = ?
@@ -509,15 +504,15 @@ const SALESPERSON_METRICS: readonly Metric[] = [
 ];
 
 /** Compute every metric at every applicable scope for one period and upsert the lot. */
-export function refreshSnapshots(organizationId: number, period: string): { written: number } {
+export async function refreshSnapshots(organizationId: number, period: string): Promise<{ written: number }> {
   const db = getDb();
   const groups = (
-    db.prepare("SELECT id FROM groups WHERE organization_id = ?").all(organizationId) as { id: number }[]
+    await db.prepare("SELECT id FROM groups WHERE organization_id = ?").all(organizationId) as { id: number }[]
   ).map((r) => r.id);
   // People who HOLD phone_sales, whoever their primary — otherwise a driver who also sells
   // contributes no seller KPIs at all, and the snapshot silently omits them.
   const sellers = (
-    db
+    await db
       .prepare(
         `SELECT u.id FROM users u JOIN user_roles _r ON _r.user_id = u.id AND _r.role = 'phone_sales'
           WHERE u.organization_id = ? AND u.active = 1`
@@ -526,8 +521,8 @@ export function refreshSnapshots(organizationId: number, period: string): { writ
   ).map((r) => r.id);
 
   const writes: SnapshotWrite[] = [];
-  const add = (metric: Metric, scope: MetricScope): void => {
-    const r = computeMetric(organizationId, metric, scope, period);
+  const add = async (metric: Metric, scope: MetricScope): Promise<void> => {
+    const r = await computeMetric(organizationId, metric, scope, period);
     writes.push({
       metric,
       scope_type: scope.scope_type,
@@ -541,14 +536,14 @@ export function refreshSnapshots(organizationId: number, period: string): { writ
   };
 
   for (const metric of METRICS) {
-    add(metric, { scope_type: "org", scope_id: 0 });
-    for (const g of groups) add(metric, { scope_type: "group", scope_id: g });
+    await add(metric, { scope_type: "org", scope_id: 0 });
+    for (const g of groups) await add(metric, { scope_type: "group", scope_id: g });
     if (SALESPERSON_METRICS.includes(metric)) {
-      for (const s of sellers) add(metric, { scope_type: "salesperson", scope_id: s });
+      for (const s of sellers) await add(metric, { scope_type: "salesperson", scope_id: s });
     }
   }
 
-  return { written: upsertSnapshots(organizationId, writes) };
+  return { written: await upsertSnapshots(organizationId, writes) };
 }
 
 // ---- The board (read path — no orders scan) -------------------------------------
@@ -581,14 +576,14 @@ function boardScope(session: Session): MetricScope {
 /** The last few periods of every metric, for the KPI bar's sparklines (item 10). One read,
  *  same scope as kpiBoard. Periods oldest first; a period with no snapshot is `null`, a
  *  gap in the line rather than a fall to zero, because "not computed" is not "none". */
-export function kpiHistory(
+export async function kpiHistory(
   organizationId: number,
   periods: string[],
   session: Session
-): Record<string, (number | null)[]> {
+): Promise<Record<string, (number | null)[]>> {
   if (periods.length === 0) return {};
   const scope = boardScope(session);
-  const rows = getDb()
+  const rows = await getDb()
     .prepare(
       `SELECT metric, period, value FROM kpi_snapshots
         WHERE organization_id = ? AND scope_type = ? AND scope_id = ?
@@ -609,16 +604,16 @@ export function kpiHistory(
 
 /** One `kpi_snapshots` read for two periods + one `targets` read + the definitions
  *  join. Never touches `orders`. */
-export function kpiBoard(
+export async function kpiBoard(
   organizationId: number,
   period: string,
   prevPeriod: string,
   session: Session
-): KpiCard[] {
+): Promise<KpiCard[]> {
   const db = getDb();
   const scope = boardScope(session);
 
-  const snapRows = db
+  const snapRows = await db
     .prepare(
       `SELECT metric, period, value, sample_size FROM kpi_snapshots
         WHERE organization_id = ? AND scope_type = ? AND scope_id = ? AND period IN (?, ?)`
@@ -637,7 +632,7 @@ export function kpiBoard(
   }
 
   const defs = new Map<string, { title_fa: string; definition_fa: string; action_fa: string; direction: "up" | "down" }>();
-  for (const d of db
+  for (const d of await db
     .prepare(
       `SELECT metric, title_fa, definition_fa, action_fa, direction, organization_id
          FROM kpi_definitions WHERE organization_id = ? OR organization_id IS NULL`
@@ -665,7 +660,7 @@ export function kpiBoard(
     net_sales: "revenue_toman",
     orders: "orders",
   };
-  const targetRows = db
+  const targetRows = await db
     .prepare(
       `SELECT metric, target_value FROM targets
         WHERE organization_id = ? AND period = ? AND user_id IS ? AND group_id IS ?`

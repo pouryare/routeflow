@@ -10,16 +10,16 @@ const testDbPath = path.join(
 process.env.ROUTEFLOW_DB_PATH = testDbPath;
 process.env.SESSION_SECRET = "test-secret";
 
-const { getDb } = await import("@/lib/db");
+const { getDb, dbReady } = await import("@/lib/db");
 const repo = await import("@/lib/repo/leadImport");
 import type { LinkResolver } from "@/lib/leadImport/runner";
 const { drainJob } = await import("@/lib/leadImport/runner");
 
 const ORG = 1;
 
-beforeAll(() => {
-  getDb();
-  getDb()
+beforeAll(async () => {
+  await dbReady();
+  await getDb()
     .prepare(`INSERT OR IGNORE INTO organizations (id, name, slug, created_at) VALUES (?, ?, ?, ?)`)
     .run(ORG, "org", "org", new Date().toISOString());
 });
@@ -51,9 +51,9 @@ function stubResolver(calls: string[] = []): LinkResolver {
   };
 }
 
-function newJob(items: { name: string; mapsUrl: string }[]): number {
-  const id = repo.createJob(ORG, null, items.length);
-  repo.addItems(ORG, id, items);
+async function newJob(items: { name: string; mapsUrl: string }[]): Promise<number> {
+  const id = await repo.createJob(ORG, null, items.length);
+  await repo.addItems(ORG, id, items);
   return id;
 }
 
@@ -90,8 +90,8 @@ function placeFor(url: string): { lat: number; lng: number } {
 
 /** How many rows this one job added -- a delta, because the database is shared across
  *  every test in the file and an absolute count would be asserting on the tests above. */
-function savedBy(jobId: number): number {
-  return (getDb()
+async function savedBy(jobId: number): Promise<number> {
+  return (await getDb()
     .prepare(
       `SELECT COUNT(*) c FROM lead_import_items
         WHERE job_id = ? AND organization_id = ? AND saved_location_id IS NOT NULL`
@@ -101,26 +101,26 @@ function savedBy(jobId: number): number {
 
 describe("drainJob", () => {
   it("decodes every link and saves the clean ones", async () => {
-    const jobId = newJob(links(3));
+    const jobId = await newJob(links(3));
     await drainJob(ORG, jobId, stubResolver());
 
-    const job = repo.getJob(ORG, jobId)!;
+    const job = (await repo.getJob(ORG, jobId))!;
     expect(job.status).toBe("done");
     expect(job.done_count).toBe(3);
     expect(job.added_count).toBe(3);
-    expect(savedBy(jobId)).toBe(3);
+    expect(await savedBy(jobId)).toBe(3);
   });
 
   it("never runs the same link twice", async () => {
     const calls: string[] = [];
-    await drainJob(ORG, newJob(links(6)), stubResolver(calls));
+    await drainJob(ORG, await newJob(links(6)), stubResolver(calls));
     expect(new Set(calls).size).toBe(6);
     expect(calls).toHaveLength(6);
   });
 
   // One poisoned link must not end a run nine hundred links from finished.
   it("keeps going when one link's resolver throws", async () => {
-    const jobId = newJob(links(4));
+    const jobId = await newJob(links(4));
     let call = 0;
     await drainJob(ORG, jobId, async (url) => {
       call++;
@@ -128,7 +128,7 @@ describe("drainJob", () => {
       return { ...placeFor(url), address: null, resolvedUrl: url, resolution: "direct" };
     });
 
-    const job = repo.getJob(ORG, jobId)!;
+    const job = (await repo.getJob(ORG, jobId))!;
     expect(job.status).toBe("done");
     expect(job.done_count).toBe(3);
     expect(job.unresolved_count).toBe(1);
@@ -136,14 +136,14 @@ describe("drainJob", () => {
 
   it("leaves an unresolvable link out of saved_locations but still finishes", async () => {
     const items = links(2);
-    const jobId = newJob(items);
+    const jobId = await newJob(items);
     await drainJob(ORG, jobId, async (url) =>
       url === items[0].mapsUrl
         ? { lat: null, lng: null, address: "?", resolvedUrl: url, resolution: "unresolved" as const }
         : { ...placeFor(url), address: null, resolvedUrl: url, resolution: "direct" as const }
     );
 
-    const job = repo.getJob(ORG, jobId)!;
+    const job = (await repo.getJob(ORG, jobId))!;
     expect(job.status).toBe("done");
     expect(job.added_count).toBe(1);
     expect(job.unresolved_count).toBe(1);
@@ -151,19 +151,19 @@ describe("drainJob", () => {
 
   // A Nominatim hit is an area match. Auto-adding it plants a pin nobody checked.
   it("does not auto-add an approximate geocoder match", async () => {
-    const jobId = newJob(links(1));
+    const jobId = await newJob(links(1));
     await drainJob(ORG, jobId, async (url) => ({
       lat: 36.1, lng: 51.9, address: "تهران", resolvedUrl: url, resolution: "nominatim" as const,
     }));
 
-    const job = repo.getJob(ORG, jobId)!;
+    const job = (await repo.getJob(ORG, jobId))!;
     expect(job.added_count).toBe(0);
     expect(job.unresolved_count).toBe(1);
   });
 
   // The batch pickup goes cheapest-first even though every item starts as `pending`.
   it("settles fetch-decodable links before the expensive ones in the same batch", async () => {
-    const jobId = newJob([
+    const jobId = await newJob([
       { name: "سخت", mapsUrl: "https://maps.app.goo.gl/abcXYZ" },
       { name: "آسان", mapsUrl: "https://maps.google.com/maps/place/x/@35.7,51.4,14z" },
     ]);
@@ -181,55 +181,55 @@ describe("drainJob", () => {
 
   // Cooperative, not a kill: whatever had already been decoded is kept.
   it("stops on cancel and keeps what had already been decoded", async () => {
-    const jobId = newJob(links(8));
+    const jobId = await newJob(links(8));
     let n = 0;
     await drainJob(ORG, jobId, async (url) => {
       n++;
-      if (n === 4) repo.requestCancel(ORG, jobId);
+      if (n === 4) await repo.requestCancel(ORG, jobId);
       return { ...placeFor(url), address: null, resolvedUrl: url, resolution: "direct" };
     });
 
-    const job = repo.getJob(ORG, jobId)!;
+    const job = (await repo.getJob(ORG, jobId))!;
     expect(job.status).toBe("cancelled");
     expect(n).toBeLessThan(8);
     expect(job.done_count).toBeGreaterThan(0);
   });
 
   it("picks up a job a restart left half-finished, without redoing finished work", async () => {
-    const jobId = newJob(links(4));
+    const jobId = await newJob(links(4));
     // Simulate a crash: two items done, two still pending, job still marked running.
-    const items = repo.listItems(ORG, jobId);
+    const items = await repo.listItems(ORG, jobId);
     for (const item of items.slice(0, 2)) {
-      repo.markResolved(ORG, item.id, {
+      await repo.markResolved(ORG, item.id, {
         lat: 35.7, lng: 51.4, address: null,
         resolvedUrl: item.maps_url, resolution: "direct", status: "done",
       });
     }
-    expect(repo.getJob(ORG, jobId)!.status).toBe("running");
+    expect((await repo.getJob(ORG, jobId))!.status).toBe("running");
 
     const calls: string[] = [];
     await drainJob(ORG, jobId, stubResolver(calls));
 
     // Only the two unfinished links were re-resolved.
     expect(calls).toHaveLength(2);
-    expect(repo.getJob(ORG, jobId)!.status).toBe("done");
+    expect((await repo.getJob(ORG, jobId))!.status).toBe("done");
   });
 
   it("does not duplicate saved links when a job is drained again", async () => {
-    const jobId = newJob(links(2));
+    const jobId = await newJob(links(2));
     await drainJob(ORG, jobId, stubResolver());
-    const afterFirst = savedBy(jobId);
+    const afterFirst = await savedBy(jobId);
     await drainJob(ORG, jobId, stubResolver());
     // The second pass must add nothing: the unique index on (organization_id,
     // maps_url) is what stops a re-drain from saving the same pin twice.
     expect(afterFirst).toBe(2);
-    expect(savedBy(jobId)).toBe(2);
+    expect(await savedBy(jobId)).toBe(2);
   });
 
   it("finishes an empty job rather than spinning", async () => {
-    const jobId = newJob([]);
+    const jobId = await newJob([]);
     await drainJob(ORG, jobId, stubResolver());
-    expect(repo.getJob(ORG, jobId)!.status).toBe("done");
+    expect((await repo.getJob(ORG, jobId))!.status).toBe("done");
   });
 });
 
@@ -241,7 +241,7 @@ describe("a duplicate says what it duplicates", () => {
   // actionable. Only a test that asserts on the kind catches that.
   it("records location and customer duplicates distinctly", async () => {
     const now = new Date().toISOString();
-    getDb()
+    await getDb()
       .prepare(
         `INSERT INTO saved_locations (name, maps_url, address, lat, lng, resolution, organization_id, created_at, updated_at)
          VALUES ('کافه موجود', 'https://existing/loc', NULL, 35.62, 51.31, 'direct', ?, ?, ?)`
@@ -249,28 +249,28 @@ describe("a duplicate says what it duplicates", () => {
       .run(ORG, now, now);
     // customers is a different shape: a required customer_code and synced_at, and its
     // tenant column was added by a later migration rather than the base DDL.
-    getDb()
+    await getDb()
       .prepare(
         `INSERT INTO customers (customer_code, business_name, synced_at, organization_id)
          VALUES ('C-1', 'مشتری موجود', ?, ?)`
       )
       .run(now, ORG);
 
-    const pool = repo.loadDuplicatePool(ORG);
+    const pool = await repo.loadDuplicatePool(ORG);
     expect(pool.find((p) => p.name === "کافه موجود")?.kind).toBe("location");
     expect(pool.find((p) => p.name === "مشتری موجود")?.kind).toBe("customer");
   });
 
   it("carries the kind through to the item row", async () => {
-    const jobId = newJob(links(1));
-    const item = repo.listItems(ORG, jobId)[0];
+    const jobId = await newJob(links(1));
+    const item = (await repo.listItems(ORG, jobId))[0];
     // Same coordinates and name as the row seeded above: a genuine duplicate.
-    repo.markResolved(ORG, item.id, {
+    await repo.markResolved(ORG, item.id, {
       lat: 35.62, lng: 51.31, address: null, resolvedUrl: item.maps_url,
       resolution: "direct", status: "duplicate",
       duplicateOf: "location", duplicateName: "کافه موجود",
     });
-    const row = repo.listItems(ORG, jobId)[0];
+    const row = (await repo.listItems(ORG, jobId))[0];
     expect(row.status).toBe("duplicate");
     expect(row.duplicate_of).toBe("location");
     expect(row.duplicate_name).toBe("کافه موجود");

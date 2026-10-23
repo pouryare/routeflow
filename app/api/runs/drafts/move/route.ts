@@ -16,7 +16,7 @@ import {
  *  to one person, and the id in the body is never trusted for that — the same instinct as
  *  the door endpoint refusing another driver's stop. */
 export async function POST(req: NextRequest) {
-  const guard = requireRole(req, MANAGE_ROLES);
+  const guard = await requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
 
   const body = (await req.json().catch(() => null)) as {
@@ -34,13 +34,13 @@ export async function POST(req: NextRequest) {
     if (body.draftId == null) {
       // Out of every lane THIS user owns. Scoped by user, because another manager's lane is
       // not this manager's to rearrange.
-      for (const d of draftsOf(orgId, userId)) {
+      for (const d of await draftsOf(orgId, userId)) {
         if (d.order_ids.includes(body.orderId!)) {
-          removeOrderFromDraft({ organizationId: orgId, userId, draftId: d.id, orderId: body.orderId! });
+          await removeOrderFromDraft({ organizationId: orgId, userId, draftId: d.id, orderId: body.orderId! });
         }
       }
     } else {
-      addOrderToDraft({
+      await addOrderToDraft({
         organizationId: orgId,
         userId,
         draftId: body.draftId,

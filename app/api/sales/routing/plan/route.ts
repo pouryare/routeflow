@@ -6,7 +6,7 @@ import { isDayWithin } from "@/lib/inputChecks";
 
 /** Build a delivery-route proposal for a date. Read-only. */
 export async function POST(req: NextRequest) {
-  const guard = requireRole(req, MANAGE_ROLES);
+  const guard = await requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
   const b = (await req.json().catch(() => null)) as {
     date?: string;

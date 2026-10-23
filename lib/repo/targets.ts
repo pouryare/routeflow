@@ -30,7 +30,7 @@ function periodRange(period: string): { from: string; toExcl: string } {
 
 /** Upsert a target. The table's UNIQUE does not bite when user_id or group_id is NULL,
  *  so find-or-update by the exact scope here. */
-export function setTarget(
+export async function setTarget(
   organizationId: number,
   input: {
     user_id?: number | null;
@@ -40,9 +40,9 @@ export function setTarget(
     target_value: number;
     created_by?: number | null;
   }
-): number {
+): Promise<number> {
   const db = getDb();
-  const existing = db
+  const existing = await db
     .prepare(
       `SELECT id FROM targets
         WHERE organization_id = ? AND user_id IS ? AND group_id IS ? AND period = ? AND metric = ?`
@@ -55,11 +55,11 @@ export function setTarget(
       input.metric
     ) as { id: number } | undefined;
   if (existing) {
-    db.prepare("UPDATE targets SET target_value = ? WHERE id = ?").run(input.target_value, existing.id);
+    await db.prepare("UPDATE targets SET target_value = ? WHERE id = ?").run(input.target_value, existing.id);
     return existing.id;
   }
   return Number(
-    db
+    (await db
       .prepare(
         `INSERT INTO targets (organization_id, user_id, group_id, period, metric, target_value, created_by, created_at)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
@@ -73,16 +73,16 @@ export function setTarget(
         input.target_value,
         input.created_by ?? null,
         new Date().toISOString()
-      ).lastInsertRowid
+      )).lastInsertRowid
   );
 }
 
-export function listTargets(organizationId: number, period?: string): TargetRow[] {
+export async function listTargets(organizationId: number, period?: string): Promise<TargetRow[]> {
   return period
-    ? (getDb()
+    ? (await getDb()
         .prepare("SELECT * FROM targets WHERE organization_id = ? AND period = ?")
         .all(organizationId, period) as unknown as TargetRow[])
-    : (getDb()
+    : (await getDb()
         .prepare("SELECT * FROM targets WHERE organization_id = ? ORDER BY period DESC")
         .all(organizationId) as unknown as TargetRow[]);
 }
@@ -94,12 +94,12 @@ export interface TargetProgress {
 }
 
 /** Actual delivered performance for a scope over the period, against its target. */
-export function targetProgress(
+export async function targetProgress(
   organizationId: number,
   scope: { user_id?: number | null; group_id?: number | null; period: string; metric: TargetMetric }
-): TargetProgress {
+): Promise<TargetProgress> {
   const db = getDb();
-  const t = db
+  const t = await db
     .prepare(
       `SELECT target_value FROM targets
         WHERE organization_id = ? AND user_id IS ? AND group_id IS ? AND period = ? AND metric = ?`
@@ -133,12 +133,12 @@ export function targetProgress(
   let actual = 0;
   if (scope.metric === "orders") {
     actual = (
-      db
+      await db
         .prepare(`SELECT COUNT(*) AS n FROM orders o WHERE ${where.join(" AND ")}`)
         .get(...(params as never[])) as { n: number }
     ).n;
   } else {
-    const rows = db
+    const rows = await db
       .prepare(
         `SELECT ol.packs_ordered, ol.packs_delivered, ol.qty_per_pack, ol.kg_per_base_unit, ol.unit_price_toman
            FROM order_lines ol JOIN orders o ON o.id = ol.order_id

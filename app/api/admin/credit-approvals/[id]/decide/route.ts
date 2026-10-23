@@ -7,7 +7,7 @@ export async function POST(
   req: NextRequest,
   ctx: RouteContext<"/api/admin/credit-approvals/[id]/decide">
 ) {
-  const guard = requireRole(req, MANAGE_ROLES);
+  const guard = await requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
 
   const { id } = await ctx.params;
@@ -20,7 +20,7 @@ export async function POST(
   }
 
   try {
-    decide(guard.session.organizationId, Number(id), body.verdict, guard.session.user.id, body.reason);
+    await decide(guard.session.organizationId, Number(id), body.verdict, guard.session.user.id, body.reason);
     return NextResponse.json({ ok: true });
   } catch (e) {
     if (e instanceof CreditApprovalError) {

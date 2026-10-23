@@ -34,32 +34,32 @@ function req(token: string, body: unknown, id = driver): InstanceType<typeof Nex
   });
 }
 
-const avatarOf = (id: number) =>
-  (getDb().prepare("SELECT avatar_url FROM users WHERE id = ?").get(id) as {
+const avatarOf = async (id: number) =>
+  (await getDb().prepare("SELECT avatar_url FROM users WHERE id = ?").get(id) as {
     avatar_url: string | null;
   }).avatar_url;
 
-beforeAll(() => {
+beforeAll(async () => {
   const db = getDb();
   const now = new Date().toISOString();
   org = Number(
-    db
+    (await db
       .prepare("INSERT INTO organizations (name, slug, created_at) VALUES (?, ?, ?)")
-      .run("Avatars Inc", `avatars-${Date.now()}`, now).lastInsertRowid,
+      .run("Avatars Inc", `avatars-${Date.now()}`, now)).lastInsertRowid,
   );
   // The route refuses to edit a non-owner who has no group (route.ts:117), so the driver
   // needs one. Without it every assertion here would be measuring THAT 400, not this task.
   group = Number(
-    db
+    (await db
       .prepare("INSERT INTO groups (name, slug, active, created_at) VALUES (?, ?, 1, ?)")
-      .run("گروه", `g-${Date.now()}`, now).lastInsertRowid,
+      .run("گروه", `g-${Date.now()}`, now)).lastInsertRowid,
   );
   const u = db.prepare(
     "INSERT INTO users (username,password_hash,display_name,role,group_id,organization_id,created_at) VALUES (?,?,?,?,?,?,?)",
   );
-  owner = Number(u.run(`o${Date.now()}`, "x", "مالک", "owner", null, org, now).lastInsertRowid);
-  manager = Number(u.run(`m${Date.now()}`, "x", "مدیر", "group_manager", group, org, now).lastInsertRowid);
-  driver = Number(u.run(`d${Date.now()}`, "x", "راننده", "delivery_driver", group, org, now).lastInsertRowid);
+  owner = Number((await u.run(`o${Date.now()}`, "x", "مالک", "owner", null, org, now)).lastInsertRowid);
+  manager = Number((await u.run(`m${Date.now()}`, "x", "مدیر", "group_manager", group, org, now)).lastInsertRowid);
+  driver = Number((await u.run(`d${Date.now()}`, "x", "راننده", "delivery_driver", group, org, now)).lastInsertRowid);
 });
 
 afterAll(() => {
@@ -74,7 +74,7 @@ describe("avatar_url on the admin user PATCH", () => {
       params: Promise.resolve({ id: String(driver) }),
     } as never);
     expect(res.status).toBe(200);
-    expect(avatarOf(driver)).toBe("/api/users/7/avatar");
+    expect(await avatarOf(driver)).toBe("/api/users/7/avatar");
   });
 
   it("a NON-owner is refused", async () => {
@@ -89,12 +89,12 @@ describe("avatar_url on the admin user PATCH", () => {
   it("an empty string clears the photo, and clearing is not the same as failing", async () => {
     const { PATCH } = await import("@/app/api/admin/users/[id]/route");
     const token = tokenFor(owner, "owner");
-    expect(avatarOf(driver)).toBe("/api/users/7/avatar");
+    expect(await avatarOf(driver)).toBe("/api/users/7/avatar");
     const res = await PATCH(req(token, { avatar_url: "" }), {
       params: Promise.resolve({ id: String(driver) }),
     } as never);
     expect(res.status).toBe(200);
-    expect(avatarOf(driver)).toBeNull();
+    expect(await avatarOf(driver)).toBeNull();
   });
 
   it("a preset key is allowed", async () => {
@@ -104,7 +104,7 @@ describe("avatar_url on the admin user PATCH", () => {
       params: Promise.resolve({ id: String(driver) }),
     } as never);
     expect(res.status).toBe(200);
-    expect(avatarOf(driver)).toBe("/api/users/7/avatar?key=chef-2");
+    expect(await avatarOf(driver)).toBe("/api/users/7/avatar?key=chef-2");
   });
 
   /**
@@ -127,7 +127,7 @@ describe("avatar_url on the admin user PATCH", () => {
     } as never);
     expect(res.status).toBe(400);
     // and the refused value must not have been written
-    expect(avatarOf(driver)).toBe("/api/users/7/avatar?key=chef-2");
+    expect(await avatarOf(driver)).toBe("/api/users/7/avatar?key=chef-2");
   });
 });
 
@@ -172,7 +172,7 @@ describe("avatar upload and serve", () => {
     const json = (await res.json()) as { avatar_url: string };
     expect(json.avatar_url).toBe(`/api/users/${driver}/avatar`);
     // and the row points at it in the same request — no window with bytes but no pointer
-    expect(avatarOf(driver)).toBe(`/api/users/${driver}/avatar`);
+    expect(await avatarOf(driver)).toBe(`/api/users/${driver}/avatar`);
   });
 
   it("the uploaded avatar is servable, and re-encoded down to the avatar cap", async () => {
@@ -211,13 +211,13 @@ it("refuses a file that lies about its type but is not decodable", async () => {
   it("cannot upload for a user in another organisation", async () => {
     const now = new Date().toISOString();
     const otherOrg = Number(
-      getDb().prepare("INSERT INTO organizations (name, slug, created_at) VALUES (?, ?, ?)")
-        .run("Elsewhere", `else-${Date.now()}`, now).lastInsertRowid,
+      (await getDb().prepare("INSERT INTO organizations (name, slug, created_at) VALUES (?, ?, ?)")
+        .run("Elsewhere", `else-${Date.now()}`, now)).lastInsertRowid,
     );
     const stranger = Number(
-      getDb().prepare(
+      (await getDb().prepare(
         "INSERT INTO users (username,password_hash,display_name,role,group_id,organization_id,created_at) VALUES (?,?,?,?,?,?,?)",
-      ).run(`s${Date.now()}`, "x", "بیگانه", "delivery_driver", group, otherOrg, now).lastInsertRowid,
+      ).run(`s${Date.now()}`, "x", "بیگانه", "delivery_driver", group, otherOrg, now)).lastInsertRowid,
     );
     const res = await upload(tokenFor(owner, "owner"), stranger, await solidPng(32));
     expect(res.status).toBe(404);

@@ -9,17 +9,17 @@ export type LoginResult = "success" | "bad_password" | "inactive" | "bad_code";
 
 const KEEP_DAYS = 90;
 
-export function recordLogin(input: {
+export async function recordLogin(input: {
   organizationId: number;
   userId: number;
   result: LoginResult;
   ip: string | null;
   userAgent: string | null;
   now?: Date;
-}): void {
+}): Promise<void> {
   const db = getDb();
   const now = input.now ?? new Date();
-  db.prepare(
+  await db.prepare(
     `INSERT INTO login_events (organization_id, user_id, result, ip, user_agent, created_at) VALUES (?, ?, ?, ?, ?, ?)`
   ).run(
     input.organizationId,
@@ -30,7 +30,7 @@ export function recordLogin(input: {
     now.toISOString()
   );
   const cutoff = new Date(now.getTime() - KEEP_DAYS * 86_400_000).toISOString();
-  db.prepare("DELETE FROM login_events WHERE organization_id = ? AND created_at < ?").run(input.organizationId, cutoff);
+  await db.prepare("DELETE FROM login_events WHERE organization_id = ? AND created_at < ?").run(input.organizationId, cutoff);
 }
 
 export interface LoginEventRow {
@@ -47,22 +47,22 @@ const SELECT = `SELECT e.id, e.user_id, u.display_name, e.result, e.ip, e.user_a
                   FROM login_events e JOIN users u ON u.id = e.user_id`;
 
 /** The organisation's newest sign-ins, for the owner. */
-export function recentLogins(organizationId: number, limit = 100): LoginEventRow[] {
-  return getDb()
+export async function recentLogins(organizationId: number, limit = 100): Promise<LoginEventRow[]> {
+  return await getDb()
     .prepare(`${SELECT} WHERE e.organization_id = ? ORDER BY e.created_at DESC, e.id DESC LIMIT ?`)
     .all(organizationId, limit) as unknown as LoginEventRow[];
 }
 
 /** One person's own newest sign-ins, for /settings/security. */
-export function myRecentLogins(organizationId: number, userId: number, limit = 10): LoginEventRow[] {
-  return getDb()
+export async function myRecentLogins(organizationId: number, userId: number, limit = 10): Promise<LoginEventRow[]> {
+  return await getDb()
     .prepare(`${SELECT} WHERE e.organization_id = ? AND e.user_id = ? ORDER BY e.created_at DESC, e.id DESC LIMIT ?`)
     .all(organizationId, userId, limit) as unknown as LoginEventRow[];
 }
 
 /** Each user's last successful sign-in, for the users admin page. */
-export function lastSignInByUser(organizationId: number): Map<number, string> {
-  const rows = getDb()
+export async function lastSignInByUser(organizationId: number): Promise<Map<number, string>> {
+  const rows = await getDb()
     .prepare(
       `SELECT user_id, MAX(created_at) AS at FROM login_events
         WHERE organization_id = ? AND result = 'success' GROUP BY user_id`

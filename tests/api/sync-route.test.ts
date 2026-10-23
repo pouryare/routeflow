@@ -12,7 +12,7 @@ process.env.SESSION_SECRET = "test-secret";
 
 const { getDb } = await import("@/lib/db");
 const { ensureWarehouse } = await import("../helpers/ensureWarehouse");
-ensureWarehouse(getDb());
+await ensureWarehouse(getDb());
 const { createProduct, createPackaging, setPrice } = await import("@/lib/catalogue");
 const { createOrder, confirmOrder } = await import("@/lib/orders");
 const { createRun, addStop } = await import("@/lib/delivery");
@@ -37,41 +37,41 @@ function cookie(uid: number, role: string) {
   return `${COOKIE_NAME}=${createSessionToken({ uid, role: role as never, gid: null, oid: 1, tv: 0, name: "م" })}`;
 }
 
-beforeEach(() => {
+beforeEach(async () => {
   const db = getDb();
-  db.exec(
+  await db.exec(
     "PRAGMA foreign_keys=OFF; DELETE FROM sync_mutations; DELETE FROM order_events; DELETE FROM stock_reservations; DELETE FROM deliveries; DELETE FROM delivery_lines; DELETE FROM payment_allocations; DELETE FROM payments; DELETE FROM delivery_stops; DELETE FROM delivery_runs; DELETE FROM order_lines; DELETE FROM orders; DELETE FROM packagings; DELETE FROM products; DELETE FROM customers; DELETE FROM users WHERE id>0; PRAGMA foreign_keys=ON;"
   );
   const now = new Date().toISOString();
   const u = db.prepare(
     "INSERT INTO users (username,password_hash,display_name,role,active,created_at,organization_id) VALUES (?,?,?,?,1,?,1)"
   );
-  owner = Number(u.run(`o${Date.now()}`, "x:y", "م", "owner", now).lastInsertRowid);
-  driver = Number(u.run(`d${Date.now()}`, "x:y", "ر", "delivery_driver", now).lastInsertRowid);
-  vendor = Number(u.run(`v${Date.now()}`, "x:y", "و", "platform_owner", now).lastInsertRowid);
+  owner = Number((await u.run(`o${Date.now()}`, "x:y", "م", "owner", now)).lastInsertRowid);
+  driver = Number((await u.run(`d${Date.now()}`, "x:y", "ر", "delivery_driver", now)).lastInsertRowid);
+  vendor = Number((await u.run(`v${Date.now()}`, "x:y", "و", "platform_owner", now)).lastInsertRowid);
   custId = Number(
-    db
+    (await db
       .prepare("INSERT INTO customers (customer_code,business_name,lifecycle,synced_at,organization_id) VALUES ('C1','x','active','2026-01-01',1)")
-      .run().lastInsertRowid
+      .run()).lastInsertRowid
   );
-  product = createProduct(db, { name: "کره", kg_per_base_unit: 0.25, organization_id: 1 });
-  packaging = createPackaging(db, { product_id: product, name: "جعبه", qty_per_pack: 10 });
-  setPrice(db, { product_id: product, price_toman: 1000, valid_from: "2026-01-01" });
+  product = await createProduct(db, { name: "کره", kg_per_base_unit: 0.25, organization_id: 1 });
+  packaging = await createPackaging(db, { product_id: product, name: "جعبه", qty_per_pack: 10 });
+  await setPrice(db, { product_id: product, price_toman: 1000, valid_from: "2026-01-01" });
 });
 
-function readyDelivery(): number {
+async function readyDelivery(): Promise<number> {
   const db = getDb();
-  const o = createOrder(db, {
+  const o = await createOrder(db, {
     customer_id: custId,
     order_date: "2026-01-01",
     created_by: owner,
     organization_id: 1,
     lines: [{ product_id: product, packaging_id: packaging, packs: 2 }],
   });
-  confirmOrder(db, o.id);
-  const run = createRun(db, { driver_user_id: driver, run_date: "2026-01-02", created_by: owner, organization_id: 1 });
-  const stop = addStop(db, run, o.id);
-  return deliveryForStop(1, stop)!.id;
+  await confirmOrder(db, o.id);
+  const run = await createRun(db, { driver_user_id: driver, run_date: "2026-01-02", created_by: owner, organization_id: 1 });
+  const stop = await addStop(db, run, o.id);
+  return (await deliveryForStop(1, stop))!.id;
 }
 
 function pushReq(mutations: unknown[], role = "delivery_driver", uid = driver) {
@@ -95,7 +95,7 @@ describe("sync routes", () => {
   });
 
   it("a driver pushes a delivery.complete and it applies; a replay is a duplicate", async () => {
-    const dId = readyDelivery();
+    const dId = await readyDelivery();
     const m = {
       client_uuid: "d-1",
       op: "delivery.complete",
@@ -154,7 +154,7 @@ describe("sync routes", () => {
   });
 
   it("pull returns the run and reflects the completed delivery", async () => {
-    const dId = readyDelivery();
+    const dId = await readyDelivery();
     await PUSH(
       pushReq([
         {

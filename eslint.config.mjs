@@ -24,6 +24,27 @@ const eslintConfig = defineConfig([
     ".zoocodeules/**",
   ]),
   {
+    /* Every database call returns a Promise since the move toward PostgreSQL (Wave P). A
+     * forgotten `await` would not fail loudly: the write still lands, but later, outside its
+     * transaction, and its error goes nowhere. These rules need type information, so they run
+     * with the project's tsconfig, on the code that reaches the database: lib, the API routes,
+     * server actions, scripts and tests. Client screens (app/(shell) pages, components) are
+     * left out: they start fetches on purpose without waiting (a refresh on focus, a save from
+     * a tap), and none of them holds a database handle. */
+    files: ["lib/**/*.ts", "app/api/**/*.ts", "app/**/actions.ts", "scripts/**/*.ts", "tests/**/*.ts", "tests/**/*.tsx", "proxy.ts"],
+    languageOptions: { parserOptions: { projectService: true, tsconfigRootDir: import.meta.dirname } },
+    rules: {
+      "@typescript-eslint/no-floating-promises": "error",
+      "@typescript-eslint/no-misused-promises": ["error", { checksVoidReturn: { attributes: false } }],
+      "@typescript-eslint/await-thenable": "error",
+    },
+  },
+  {
+    /* A mock that answers with a Promise where the type says void is how a test fakes fetch. */
+    files: ["tests/**/*.ts", "tests/**/*.tsx"],
+    rules: { "@typescript-eslint/no-misused-promises": ["error", { checksVoidReturn: false }] },
+  },
+  {
     /* `@next/next/no-img-element` wants every image routed through the optimiser. Avatar
      * draws 34px thumbnails of files that already live in /public, where the optimiser
      * would cost a request to resize something already the right size. Set here rather

@@ -4,15 +4,15 @@ import { ordersRepo, orderEvents } from "@/lib/repo/orders";
 import { MANAGE_ROLES } from "@/lib/roles";
 
 export async function GET(req: NextRequest, ctx: RouteContext<"/api/sales/orders/[id]/events">) {
-  const guard = requireRole(req, [...MANAGE_ROLES, "phone_sales"]);
+  const guard = await requireRole(req, [...MANAGE_ROLES, "phone_sales"]);
   if (!guard.ok) return guard.response;
 
   const { id } = await ctx.params;
-  if (!ordersRepo.get(guard.session.organizationId, Number(id))) {
+  if (!await ordersRepo.get(guard.session.organizationId, Number(id))) {
     return NextResponse.json({ ok: false, error: "سفارش پیدا نشد" }, { status: 404 });
   }
   return NextResponse.json({
     ok: true,
-    events: orderEvents(guard.session.organizationId, Number(id)),
+    events: await orderEvents(guard.session.organizationId, Number(id)),
   });
 }

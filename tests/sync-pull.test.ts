@@ -13,7 +13,7 @@ process.env.SESSION_SECRET = "test-secret";
 
 const { getDb } = await import("@/lib/db");
 const { ensureWarehouse } = await import("./helpers/ensureWarehouse");
-ensureWarehouse(getDb());
+await ensureWarehouse(getDb());
 const { createProduct, createPackaging, setPrice } = await import("@/lib/catalogue");
 const { createOrder, confirmOrder } = await import("@/lib/orders");
 const { createRun, addStop } = await import("@/lib/delivery");
@@ -42,37 +42,37 @@ const sess = (id: number, role: string, orgId: number, groupId: number | null): 
     hasRole: (x) => x === role,
   }) as Session;
 
-beforeEach(() => {
+beforeEach(async () => {
   const db = getDb();
-  db.exec(
+  await db.exec(
     "PRAGMA foreign_keys=OFF; DELETE FROM deleted_rows; DELETE FROM order_events; DELETE FROM stock_reservations; DELETE FROM deliveries; DELETE FROM delivery_stops; DELETE FROM delivery_runs; DELETE FROM order_lines; DELETE FROM orders; DELETE FROM product_prices; DELETE FROM packagings; DELETE FROM products; DELETE FROM customers; DELETE FROM groups; DELETE FROM users WHERE id>0; PRAGMA foreign_keys=ON;"
   );
-  db.prepare("INSERT OR IGNORE INTO organizations (id,name,slug,created_at) VALUES (2,'B','b',?)").run(
+  await db.prepare("INSERT OR IGNORE INTO organizations (id,name,slug,created_at) VALUES (2,'B','b',?)").run(
     new Date().toISOString()
   );
   const now = new Date().toISOString();
   groupA = Number(
-    db.prepare("INSERT INTO groups (name,slug,created_at,organization_id) VALUES ('A','a',?,1)").run(now).lastInsertRowid
+    (await db.prepare("INSERT INTO groups (name,slug,created_at,organization_id) VALUES ('A','a',?,1)").run(now)).lastInsertRowid
   );
   const u = db.prepare(
     "INSERT INTO users (username,password_hash,display_name,role,group_id,active,created_at,organization_id) VALUES (?,?,?,?,?,1,?,?)"
   );
-  ownerA = Number(u.run(`oa${Date.now()}`, "x", "م", "owner", null, now, 1).lastInsertRowid);
-  driverA = Number(u.run(`da${Date.now()}`, "x", "ر", "delivery_driver", groupA, now, 1).lastInsertRowid);
-  driverB = Number(u.run(`db${Date.now()}`, "x", "ر", "delivery_driver", groupA, now, 1).lastInsertRowid);
+  ownerA = Number((await u.run(`oa${Date.now()}`, "x", "م", "owner", null, now, 1)).lastInsertRowid);
+  driverA = Number((await u.run(`da${Date.now()}`, "x", "ر", "delivery_driver", groupA, now, 1)).lastInsertRowid);
+  driverB = Number((await u.run(`db${Date.now()}`, "x", "ر", "delivery_driver", groupA, now, 1)).lastInsertRowid);
   custA = Number(
-    db
+    (await db
       .prepare("INSERT INTO customers (customer_code,business_name,lifecycle,synced_at,group_id,organization_id) VALUES ('CA','x','active',?,?,1)")
-      .run(now, groupA).lastInsertRowid
+      .run(now, groupA)).lastInsertRowid
   );
-  product = createProduct(db, { name: "کره", kg_per_base_unit: 0.25, organization_id: 1 });
-  packaging = createPackaging(db, { product_id: product, name: "جعبه", qty_per_pack: 10 });
-  setPrice(db, { product_id: product, price_toman: 1000, valid_from: "2026-01-01" });
+  product = await createProduct(db, { name: "کره", kg_per_base_unit: 0.25, organization_id: 1 });
+  packaging = await createPackaging(db, { product_id: product, name: "جعبه", qty_per_pack: 10 });
+  await setPrice(db, { product_id: product, price_toman: 1000, valid_from: "2026-01-01" });
 });
 
-function runFor(driver: number, cust: number): number {
+async function runFor(driver: number, cust: number): Promise<number> {
   const db = getDb();
-  const o = createOrder(db, {
+  const o = await createOrder(db, {
     customer_id: cust,
     order_date: "2026-01-01",
     created_by: ownerA,
@@ -80,9 +80,9 @@ function runFor(driver: number, cust: number): number {
     salesperson_user_id: ownerA,
     lines: [{ product_id: product, packaging_id: packaging, packs: 1 }],
   });
-  confirmOrder(db, o.id);
-  const run = createRun(db, { driver_user_id: driver, run_date: "2026-01-02", created_by: ownerA, organization_id: 1, group_id: groupA });
-  addStop(db, run, o.id);
+  await confirmOrder(db, o.id);
+  const run = await createRun(db, { driver_user_id: driver, run_date: "2026-01-02", created_by: ownerA, organization_id: 1, group_id: groupA });
+  await addStop(db, run, o.id);
   // createRun returns the run id itself, not an object. A version of this helper returned
   // `o.id` (the ORDER id), and a later test then inserted its visit onto that id — which is not
   // an error, because lead_run_stops only checks that SOME run exists, so the visit silently
@@ -91,17 +91,17 @@ function runFor(driver: number, cust: number): number {
 }
 
 describe("pullSince", () => {
-  it("gives a driver their own run's orders, stops, customers and the catalogue -- nothing else", () => {
-    const mine = runFor(driverA, custA);
+  it("gives a driver their own run's orders, stops, customers and the catalogue -- nothing else", async () => {
+    const mine = await runFor(driverA, custA);
     // another customer + another driver's run
     const custOther = Number(
-      getDb()
+      (await getDb()
         .prepare("INSERT INTO customers (customer_code,business_name,lifecycle,synced_at,group_id,organization_id) VALUES ('CO','y','active',?,?,1)")
-        .run(new Date().toISOString(), groupA).lastInsertRowid
+        .run(new Date().toISOString(), groupA)).lastInsertRowid
     );
-    const notMine = runFor(driverB, custOther);
+    const notMine = await runFor(driverB, custOther);
 
-    const res = pullSince(sess(driverA, "delivery_driver", 1, groupA), null);
+    const res = await pullSince(sess(driverA, "delivery_driver", 1, groupA), null);
     const orderIds = res.rows.filter((r) => r.table === "orders").map((r) => r.row.id);
     expect(orderIds).toContain(mine);
     expect(orderIds).not.toContain(notMine);
@@ -112,21 +112,21 @@ describe("pullSince", () => {
     expect(custIds).not.toContain(custOther);
   });
 
-  it("an immediate re-pull at the watermark returns no rows once the clock has moved on", () => {
-    runFor(driverA, custA);
+  it("an immediate re-pull at the watermark returns no rows once the clock has moved on", async () => {
+    await runFor(driverA, custA);
     // Pull a few ms "later" so nothing was stamped in the pull's own millisecond; that
     // millisecond is deliberately asked for again (see the tie tests below).
     const later = new Date(Date.now() + 5);
-    const first = pullSince(sess(driverA, "delivery_driver", 1, groupA), null, later);
-    const second = pullSince(sess(driverA, "delivery_driver", 1, groupA), first.watermark, later);
+    const first = await pullSince(sess(driverA, "delivery_driver", 1, groupA), null, later);
+    const second = await pullSince(sess(driverA, "delivery_driver", 1, groupA), first.watermark, later);
     expect(second.rows).toEqual([]);
     expect(second.tombstones).toEqual([]);
   });
 
   it("surfaces a tombstone recorded after the watermark", async () => {
-    const first = pullSince(sess(driverA, "delivery_driver", 1, groupA), null);
-    tombstone(1, "order_line", 999);
-    const second = pullSince(sess(driverA, "delivery_driver", 1, groupA), first.watermark);
+    const first = await pullSince(sess(driverA, "delivery_driver", 1, groupA), null);
+    await tombstone(1, "order_line", 999);
+    const second = await pullSince(sess(driverA, "delivery_driver", 1, groupA), first.watermark);
     expect(second.tombstones.map((t) => t.entity_id)).toContain(999);
   });
 
@@ -135,69 +135,69 @@ describe("pullSince", () => {
     // millisecond; a row stamped at T is visible to the pull, and a delete stamped at T
     // lands just after it.
     const T = new Date("2030-06-01T10:00:00.123Z");
-    const stampProduct = (at: string) =>
-      getDb().prepare("UPDATE products SET updated_at = ? WHERE id = ?").run(at, product);
-    const stampTombstone = (id: number, at: string) =>
-      getDb()
+    const stampProduct = async (at: string) =>
+      await getDb().prepare("UPDATE products SET updated_at = ? WHERE id = ?").run(at, product);
+    const stampTombstone = async (id: number, at: string) =>
+      await getDb()
         .prepare(
           "INSERT INTO deleted_rows (organization_id, entity_type, entity_id, deleted_at) VALUES (1, 'order_line', ?, ?)"
         )
         .run(id, at);
 
-    it("a tombstone stamped in the same millisecond as the last pull still arrives", () => {
-      stampProduct(T.toISOString());
-      const first = pullSince(sess(driverA, "delivery_driver", 1, groupA), null, T);
+    it("a tombstone stamped in the same millisecond as the last pull still arrives", async () => {
+      await stampProduct(T.toISOString());
+      const first = await pullSince(sess(driverA, "delivery_driver", 1, groupA), null, T);
       // Before the fix the watermark was T itself and `deleted_at > T` hid the delete.
       expect(first.watermark < T.toISOString()).toBe(true);
 
-      stampTombstone(4242, T.toISOString());
-      const second = pullSince(sess(driverA, "delivery_driver", 1, groupA), first.watermark, T);
+      await stampTombstone(4242, T.toISOString());
+      const second = await pullSince(sess(driverA, "delivery_driver", 1, groupA), first.watermark, T);
       expect(second.tombstones.map((t) => t.entity_id)).toContain(4242);
     });
 
-    it("a row stamped in the pull's millisecond is sent again (the device upserts by id)", () => {
-      stampProduct(T.toISOString());
-      const first = pullSince(sess(driverA, "delivery_driver", 1, groupA), null, T);
-      const again = pullSince(sess(driverA, "delivery_driver", 1, groupA), first.watermark, T);
+    it("a row stamped in the pull's millisecond is sent again (the device upserts by id)", async () => {
+      await stampProduct(T.toISOString());
+      const first = await pullSince(sess(driverA, "delivery_driver", 1, groupA), null, T);
+      const again = await pullSince(sess(driverA, "delivery_driver", 1, groupA), first.watermark, T);
       const ids = again.rows.filter((r) => r.table === "products").map((r) => r.row.id);
       expect(ids).toEqual([product]);
     });
 
-    it("once the clock passes T the watermark reaches T and stops repeating it", () => {
-      stampProduct(T.toISOString());
+    it("once the clock passes T the watermark reaches T and stops repeating it", async () => {
+      await stampProduct(T.toISOString());
       const after = new Date(T.getTime() + 1);
-      const first = pullSince(sess(driverA, "delivery_driver", 1, groupA), null, after);
-      const again = pullSince(sess(driverA, "delivery_driver", 1, groupA), first.watermark, after);
+      const first = await pullSince(sess(driverA, "delivery_driver", 1, groupA), null, after);
+      const again = await pullSince(sess(driverA, "delivery_driver", 1, groupA), first.watermark, after);
       expect(again.rows.filter((r) => r.table === "products")).toEqual([]);
     });
 
-    it("the watermark covers tombstones, so a delete newer than every row is not re-sent", () => {
-      stampProduct("2030-01-01T00:00:00.000Z");
-      stampTombstone(77, "2030-03-01T00:00:00.000Z");
-      const first = pullSince(sess(driverA, "delivery_driver", 1, groupA), null, T);
+    it("the watermark covers tombstones, so a delete newer than every row is not re-sent", async () => {
+      await stampProduct("2030-01-01T00:00:00.000Z");
+      await stampTombstone(77, "2030-03-01T00:00:00.000Z");
+      const first = await pullSince(sess(driverA, "delivery_driver", 1, groupA), null, T);
       expect(first.watermark).toBe("2030-03-01T00:00:00.000Z");
-      const again = pullSince(sess(driverA, "delivery_driver", 1, groupA), first.watermark, T);
+      const again = await pullSince(sess(driverA, "delivery_driver", 1, groupA), first.watermark, T);
       expect(again.tombstones).toEqual([]);
     });
   });
 
-  it("does not leak another organisation's rows to a salesperson", () => {
+  it("does not leak another organisation's rows to a salesperson", async () => {
     // org 2 order
     const db = getDb();
     const c2 = Number(
-      db.prepare("INSERT INTO customers (customer_code,business_name,lifecycle,synced_at,organization_id) VALUES ('C2','z','active',?,2)").run(new Date().toISOString()).lastInsertRowid
+      (await db.prepare("INSERT INTO customers (customer_code,business_name,lifecycle,synced_at,organization_id) VALUES ('C2','z','active',?,2)").run(new Date().toISOString())).lastInsertRowid
     );
-    db.prepare(
+    await db.prepare(
       "INSERT INTO orders (order_no,customer_id,status,order_date,created_by,created_at,updated_at,organization_id) VALUES ('x2',?,'CONFIRMED','2026-01-01',?,?,?,2)"
     ).run(c2, ownerA, new Date().toISOString(), new Date().toISOString());
-    runFor(driverA, custA);
+    await runFor(driverA, custA);
 
-    const res = pullSince(sess(ownerA, "owner", 1, null), null);
+    const res = await pullSince(sess(ownerA, "owner", 1, null), null);
     const orgs = new Set(res.rows.filter((r) => r.table === "orders").map((r) => r.row.organization_id));
     expect([...orgs]).toEqual([1]);
   });
 
-  it("carries the driver's VISITS, not just their deliveries — the gap that motivated the merge", () => {
+  it("carries the driver's VISITS, not just their deliveries — the gap that motivated the merge", async () => {
     // THE REGRESSION. pullSince read delivery_runs and delivery_stops and NOTHING else, so a
     // driver offline in the field saw their deliveries and zero visits. For a field rep or a van
     // driver who does both jobs, half of the day's manifest was simply absent — with no error,
@@ -206,19 +206,19 @@ describe("pullSince", () => {
     // Phase 2 folded lead_runs into delivery_runs, which is what made this fixable at all: a
     // visit now hangs off the same run_id the driver already has.
     const db = getDb();
-    const runId = runFor(driverA, custA);
+    const runId = await runFor(driverA, custA);
     const locId = Number(
-      db
+      (await db
         .prepare(
           "INSERT INTO saved_locations (name, maps_url, organization_id, created_at) VALUES (?, ?, 1, ?)"
         )
-        .run(`SYNC-LOC-${Date.now()}`, `u${Date.now()}`, new Date().toISOString()).lastInsertRowid,
+        .run(`SYNC-LOC-${Date.now()}`, `u${Date.now()}`, new Date().toISOString())).lastInsertRowid,
     );
-    db.prepare(
+    await db.prepare(
       "INSERT INTO lead_run_stops (run_id, location_id, sort_order, created_at) VALUES (?, ?, 0, ?)"
     ).run(runId, locId, new Date().toISOString());
 
-    const res = pullSince(sess(driverA, "delivery_driver", 1, null), null);
+    const res = await pullSince(sess(driverA, "delivery_driver", 1, null), null);
 
     const visitTables = res.rows.filter((r) => r.table === "lead_run_stops").map((r) => r.row.location_id);
     expect(visitTables, "a driver's visits never reached the device").toContain(locId);
@@ -229,23 +229,23 @@ describe("pullSince", () => {
     expect(locs).toContain(locId);
   });
 
-  it("does not leak another driver's visits", () => {
+  it("does not leak another driver's visits", async () => {
     const db = getDb();
-    const runA = runFor(driverA, custA);
-    const runB = runFor(driverB, custA);
+    const runA = await runFor(driverA, custA);
+    const runB = await runFor(driverB, custA);
     const locId = Number(
-      db
+      (await db
         .prepare(
           "INSERT INTO saved_locations (name, maps_url, organization_id, created_at) VALUES (?, ?, 1, ?)"
         )
-        .run(`SYNC-LOC-B-${Date.now()}`, `ub${Date.now()}`, new Date().toISOString()).lastInsertRowid,
+        .run(`SYNC-LOC-B-${Date.now()}`, `ub${Date.now()}`, new Date().toISOString())).lastInsertRowid,
     );
-    db.prepare(
+    await db.prepare(
       "INSERT INTO lead_run_stops (run_id, location_id, sort_order, created_at) VALUES (?, ?, 0, ?)"
     ).run(runB, locId, new Date().toISOString());
     expect(runA).not.toBe(runB);
 
-    const mine = pullSince(sess(driverA, "delivery_driver", 1, null), null);
+    const mine = await pullSince(sess(driverA, "delivery_driver", 1, null), null);
     const others = mine.rows
       .filter((r) => r.table === "lead_run_stops")
       .map((r) => r.row.location_id);
@@ -257,15 +257,15 @@ describe("deleting a run tells the phones", () => {
   it("records tombstones for the run, its stops and its planned deliveries", async () => {
     const { deleteRun } = await import("@/lib/delivery");
     const { snapshotDeletes } = await import("@/lib/offline/snapshotDeletes");
-    const run = runFor(driverA, custA);
+    const run = await runFor(driverA, custA);
     const later = new Date(Date.now() + 5);
-    const first = pullSince(sess(driverA, "delivery_driver", 1, groupA), null, later);
+    const first = await pullSince(sess(driverA, "delivery_driver", 1, groupA), null, later);
     const stopIds = first.rows.filter((r) => r.table === "delivery_stops").map((r) => Number(r.row.id));
     expect(stopIds.length).toBe(1);
 
     await new Promise((r) => setTimeout(r, 10));
-    deleteRun(getDb(), run);
-    const second = pullSince(sess(driverA, "delivery_driver", 1, groupA), first.watermark);
+    await deleteRun(getDb(), run);
+    const second = await pullSince(sess(driverA, "delivery_driver", 1, groupA), first.watermark);
     const keys = snapshotDeletes(second.tombstones, second.rows).map(([t, id]) => `${t}:${id}`);
     expect(keys).toContain(`delivery_runs:${run}`);
     expect(keys).toContain(`delivery_stops:${stopIds[0]}`);

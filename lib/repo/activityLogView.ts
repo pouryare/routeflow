@@ -6,8 +6,8 @@ import { getDb, logActivity, type ActivityEntry, type LoggableEntityType } from 
 type Filter = { joins: string; sql: string; params: number[] };
 
 /** Every event of one kind on one date, whichever entity (the day's depot arrivals are read back this way). */
-export function activityOnDate(filter: Filter, entityType: string, date: string): ActivityEntry[] {
-  return getDb()
+export async function activityOnDate(filter: Filter, entityType: string, date: string): Promise<ActivityEntry[]> {
+  return await getDb()
     .prepare(
       `SELECT a.* FROM activity_log a${filter.joins}
        WHERE a.entity_type = ? AND a.created_at >= ? AND a.created_at < ?${filter.sql}
@@ -16,8 +16,8 @@ export function activityOnDate(filter: Filter, entityType: string, date: string)
     .all(entityType, `${date}T00:00:00.000Z`, `${date}T23:59:59.999Z`, ...filter.params) as unknown as ActivityEntry[];
 }
 
-export function activityForEntity(filter: Filter, entityType: string, entityId: number): ActivityEntry[] {
-  return getDb()
+export async function activityForEntity(filter: Filter, entityType: string, entityId: number): Promise<ActivityEntry[]> {
+  return await getDb()
     .prepare(
       `SELECT a.* FROM activity_log a${filter.joins}
        WHERE a.entity_type = ? AND a.entity_id = ?${filter.sql}
@@ -27,8 +27,8 @@ export function activityForEntity(filter: Filter, entityType: string, entityId: 
 }
 
 /** Always a "note": a caller that could pick "status_change" could write history of a change that never happened. */
-export function addActivityNote(entityType: LoggableEntityType, entityId: number, note: string, actor: { name: string; id: number }): void {
-  logActivity(getDb(), {
+export async function addActivityNote(entityType: LoggableEntityType, entityId: number, note: string, actor: { name: string; id: number }): Promise<void> {
+  await logActivity(getDb(), {
     entity_type: entityType,
     entity_id: entityId,
     event_type: "note",

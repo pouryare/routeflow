@@ -10,7 +10,7 @@
  *  than three queries that have to be kept in step.
  */
 
-import type { DatabaseSync } from "node:sqlite";
+import type { Db } from "@/lib/database/client";
 import { orderFilter, groupFilter, type Session } from "./session";
 import { customerDebtsForOrgOnce } from "./repo/payments";
 import {
@@ -82,7 +82,7 @@ function rank(map: Map<string, number>, limit = 10): Series[] {
     .slice(0, limit);
 }
 
-export function salesDashboard(db: DatabaseSync, session: Session): SalesDashboard {
+export async function salesDashboard(db: Db, session: Session): Promise<SalesDashboard> {
   const scope = orderFilter(session);
 
   /* Everything the charts group by, aggregated in SQL in two passes instead of loading every
@@ -104,7 +104,7 @@ export function salesDashboard(db: DatabaseSync, session: Session): SalesDashboa
   const LINE_KG = `(${EFF} * ol.qty_per_pack * ol.kg_per_base_unit)`;
   const fulfilled = sqlStatusList(FULFILLED_ORDER_STATUSES);
 
-  const agg = db
+  const agg = await db
     .prepare(
       `WITH ot AS MATERIALIZED (
          SELECT o.id AS oid, o.order_date AS od, o.customer_id AS cid, o.salesperson_user_id AS sid,
@@ -136,7 +136,7 @@ export function salesDashboard(db: DatabaseSync, session: Session): SalesDashboa
     n: number | null;
   }[];
 
-  const productRows = db
+  const productRows = await db
     .prepare(
       `SELECT p.name AS label, SUM(${LINE_TOTAL}) AS total, SUM(${LINE_KG}) AS kg
          FROM order_lines ol
@@ -150,7 +150,7 @@ export function salesDashboard(db: DatabaseSync, session: Session): SalesDashboa
 
   // Ordered/delivered packs across everything confirmed or beyond, for fill rate. A
   // draft has not been agreed yet, so including it would read as under-delivery.
-  const packs = db
+  const packs = await db
     .prepare(
       `SELECT COALESCE(SUM(ol.packs_ordered), 0) AS ordered,
               COALESCE(SUM(COALESCE(ol.packs_delivered, 0)), 0) AS delivered
@@ -160,7 +160,7 @@ export function salesDashboard(db: DatabaseSync, session: Session): SalesDashboa
     )
     .get(...scope.params) as { ordered: number; delivered: number };
 
-  const statusRows = db
+  const statusRows = await db
     .prepare(
       `SELECT o.status, COUNT(*) AS n FROM orders o WHERE 1 = 1${scope.sql} GROUP BY o.status`
     )
@@ -222,11 +222,11 @@ export function salesDashboard(db: DatabaseSync, session: Session): SalesDashboa
   // Debt is computed from delivered orders and payment allocations now, not stored on
   // the customer row. customerDebtsForOrg does the whole organisation in one pass; this
   // page then keeps only the customers the viewer's territory can reach.
-  const customerScope = groupFilter(session);
-  const scopedCustomers = db
+  const customerScope = await groupFilter(session);
+  const scopedCustomers = await db
     .prepare(`SELECT id FROM customers WHERE 1 = 1${customerScope.sql}`)
     .all(...customerScope.params) as unknown as { id: number }[];
-  const debtByCustomer = customerDebtsForOrgOnce(session.organizationId);
+  const debtByCustomer = await customerDebtsForOrgOnce(session.organizationId);
   const debt = { d0_7: 0, d8_30: 0, over_30: 0, n: scopedCustomers.length };
   for (const { id } of scopedCustomers) {
     const d = debtByCustomer.get(id);
@@ -239,7 +239,7 @@ export function salesDashboard(db: DatabaseSync, session: Session): SalesDashboa
   // Lead time: one row per ORDER, not per line -- a five-line order counted once per
   // line would weight itself five times into the average for no reason connected to how
   // long it took to arrive.
-  const leadRows = db
+  const leadRows = await db
     .prepare(
       `SELECT o.order_date, o.delivered_at
          FROM orders o
@@ -256,7 +256,7 @@ export function salesDashboard(db: DatabaseSync, session: Session): SalesDashboa
   // First order ever per customer, not first in the reporting window -- a customer who
   // has bought for years must not look "new" just because revenue_by_day only looks
   // back 30 days. Scoped the same way orders are everywhere else on this page.
-  const firstOrderRows = db
+  const firstOrderRows = await db
     .prepare(
       `SELECT c.id, MIN(o.order_date) AS first_date
          FROM orders o JOIN customers c ON c.id = o.customer_id
@@ -320,9 +320,9 @@ export function salesDashboard(db: DatabaseSync, session: Session): SalesDashboa
 }
 
 /** Packs ordered against packs delivered, per driver -- who leaves goods on the van. */
-export function fillRateByDriver(db: DatabaseSync, session: Session): Series[] {
+export async function fillRateByDriver(db: Db, session: Session): Promise<Series[]> {
   const scope = orderFilter(session);
-  const rows = db
+  const rows = await db
     .prepare(
       `SELECT u.display_name AS name,
               COALESCE(SUM(ol.packs_ordered), 0) AS ordered,

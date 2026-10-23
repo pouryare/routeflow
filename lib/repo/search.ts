@@ -1,4 +1,4 @@
-import type { DatabaseSync } from "node:sqlite";
+import type { Db } from "@/lib/database/client";
 import { readCustomers } from "@/lib/customers";
 import { crmFilter, orderFilter, scopeGroupIds, type Session } from "@/lib/session";
 import { matchesQuery, normalisePersian } from "@/lib/persian";
@@ -28,9 +28,9 @@ const ORDER_WINDOW = 2000;
 
 const tooShort = (q: string) => normalisePersian(q.trim()).length < MIN_REMOTE_QUERY;
 
-export function searchCustomers(db: DatabaseSync, session: Session, q: string, limit = DEFAULT_LIMIT): SearchHit[] {
+export async function searchCustomers(db: Db, session: Session, q: string, limit = DEFAULT_LIMIT): Promise<SearchHit[]> {
   if (!CUSTOMER_ROLES.includes(session.role) || tooShort(q)) return [];
-  return readCustomers(db, scopeGroupIds(session))
+  return (await readCustomers(db, await scopeGroupIds(session)))
     .filter((c) =>
       matchesQuery([c.business_name, c.customer_code, c.contact_person ?? "", c.phone ?? ""].join(" "), q),
     )
@@ -44,10 +44,10 @@ export function searchCustomers(db: DatabaseSync, session: Session, q: string, l
     }));
 }
 
-export function searchOrders(db: DatabaseSync, session: Session, q: string, limit = DEFAULT_LIMIT): SearchHit[] {
+export async function searchOrders(db: Db, session: Session, q: string, limit = DEFAULT_LIMIT): Promise<SearchHit[]> {
   if (!ORDER_ROLES.includes(session.role) || tooShort(q)) return [];
   const scope = orderFilter(session);
-  const rows = db
+  const rows = await db
     .prepare(
       `SELECT o.id, o.order_no, o.status, c.business_name AS customer_name
          FROM orders o
@@ -85,10 +85,10 @@ const SNIPPET = 60;
  *  can already open in the CRM (crmFilter: owner over the company, a manager over their group,
  *  a phone rep over their own and their group's unowned ones). Each hit names the customer, the
  *  day and a snippet around the match, and opens the customer's page. */
-export function searchNotes(db: DatabaseSync, session: Session, q: string, limit = DEFAULT_LIMIT): SearchHit[] {
+export async function searchNotes(db: Db, session: Session, q: string, limit = DEFAULT_LIMIT): Promise<SearchHit[]> {
   if (normalisePersian(q.trim()).length < MIN_NOTE_QUERY) return [];
   const scope = crmFilter(session, "c");
-  const rows = db
+  const rows = await db
     .prepare(
       `SELECT a.id, a.customer_id, a.note, a.occurred_at, c.business_name
          FROM activities a
@@ -128,9 +128,9 @@ function noteSnippet(note: string, q: string, width = SNIPPET): string {
  *  own organisation only, and never someone the Login-As route would refuse (another
  *  owner, a platform owner, a deactivated account, themselves). lib/impersonation.ts is
  *  the rule; this only avoids offering what it would turn down. */
-export function searchUsers(db: DatabaseSync, session: Session, q: string, limit = DEFAULT_LIMIT): SearchHit[] {
+export async function searchUsers(db: Db, session: Session, q: string, limit = DEFAULT_LIMIT): Promise<SearchHit[]> {
   if (!(isOwner(session.role)) || tooShort(q)) return [];
-  const rows = db
+  const rows = await db
     .prepare(
       `SELECT id, display_name, username, role FROM users
         WHERE organization_id = ? AND active = 1 AND id <> ?
@@ -164,10 +164,10 @@ export function searchUsers(db: DatabaseSync, session: Session, q: string, limit
  *  No role gate, unlike searchCustomers. Districts is shared reference data and carries no
  *  tenant row, so there is nothing to scope and nothing to leak -- and a driver who has
  *  been sent to ۱۴۰۵ has to be able to look it up. */
-export function searchDistricts(db: DatabaseSync, session: Session, q: string, limit = DEFAULT_LIMIT): SearchHit[] {
+export async function searchDistricts(db: Db, session: Session, q: string, limit = DEFAULT_LIMIT): Promise<SearchHit[]> {
   void session; // deliberately unscoped -- see above
   if (tooShort(q)) return [];
-  const rows = db
+  const rows = await db
     .prepare(
       `SELECT id, name, code FROM districts
         WHERE code IS NOT NULL AND code LIKE ? ESCAPE '\\'

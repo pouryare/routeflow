@@ -37,11 +37,11 @@ const EPOCH = "1970-01-01T00:00:00.000Z";
  *  owner gets their group's recent orders and customers. The catalogue
  *  (products / prices / packagings) goes to everyone in full -- it is small and a driver
  *  at a door needs a price. */
-export function pullSince(
+export async function pullSince(
   session: Session,
   since: string | null,
   now: Date = new Date()
-): PullResult {
+): Promise<PullResult> {
   const db = getDb();
   // Taken before any read: everything stamped before this millisecond is already visible.
   const settled = new Date(now.getTime() - 1).toISOString();
@@ -64,7 +64,7 @@ export function pullSince(
   add(
     "products",
     plain(
-      db
+      await db
         .prepare(
           "SELECT * FROM products WHERE (organization_id = ? OR organization_id IS NULL) AND updated_at > ?"
         )
@@ -75,7 +75,7 @@ export function pullSince(
   add(
     "packagings",
     plain(
-      db
+      await db
         .prepare(
           `SELECT pk.* FROM packagings pk JOIN products p ON p.id = pk.product_id
             WHERE (p.organization_id = ? OR p.organization_id IS NULL) AND pk.created_at > ?`
@@ -87,7 +87,7 @@ export function pullSince(
   add(
     "product_prices",
     plain(
-      db
+      await db
         .prepare(
           `SELECT pp.* FROM product_prices pp JOIN products p ON p.id = pp.product_id
             WHERE (p.organization_id = ? OR p.organization_id IS NULL) AND pp.created_at > ?`
@@ -101,7 +101,7 @@ export function pullSince(
 
   if (isDriver) {
     const runIds = (
-      db
+      await db
         .prepare("SELECT id FROM delivery_runs WHERE driver_user_id = ? AND organization_id = ?")
         .all(session.user.id, org) as { id: number }[]
     ).map((r) => r.id);
@@ -110,14 +110,14 @@ export function pullSince(
     add(
       "delivery_runs",
       plain(
-        db
+        await db
           .prepare(`SELECT * FROM delivery_runs WHERE id IN (${runList}) AND updated_at > ?`)
           .all(from) as Record<string, unknown>[]
       ),
       "updated_at"
     );
     const stops = plain(
-      db
+      await db
         .prepare(`SELECT * FROM delivery_stops WHERE run_id IN (${runList}) AND created_at > ?`)
         .all(from) as Record<string, unknown>[]
     );
@@ -134,7 +134,7 @@ export function pullSince(
      *  this is the same shape as the delivery stops. `lead_run_stops` has no `status` column: a
      *  visit is driven or it is not, tracked by the visit's own outcome. */
     const visitStops = plain(
-      db
+      await db
         .prepare(`SELECT * FROM lead_run_stops WHERE run_id IN (${runList}) AND created_at > ?`)
         .all(from) as Record<string, unknown>[]
     );
@@ -152,7 +152,7 @@ export function pullSince(
      * row looks exactly like a place that has no location yet, which is how a real address
      * becomes indistinguishable from an invented one. */
     const runFacilityStops = plain(
-      db
+      await db
         .prepare(`SELECT * FROM run_facility_stops WHERE run_id IN (${runList}) AND created_at > ?`)
         .all(from) as Record<string, unknown>[]
     );
@@ -165,7 +165,7 @@ export function pullSince(
       }
       const list = [...facilityIds].join(",");
       const facilities = plain(
-        db
+        await db
           .prepare(
             `SELECT * FROM facilities WHERE id IN (${list})
                AND (organization_id = ? OR organization_id IS NULL)`
@@ -176,7 +176,7 @@ export function pullSince(
 
       // ...and the unload lines, which are how the day is closed.
       const unloadLines = plain(
-        db
+        await db
           .prepare(`SELECT * FROM run_unload_lines WHERE run_id IN (${runList}) AND created_at > ?`)
           .all(from) as Record<string, unknown>[]
       );
@@ -188,7 +188,7 @@ export function pullSince(
      * the name does not, and the driver sees an unnamed stop with a coordinate and no idea. */
     const locationIds = new Set<number>();
     for (const s of visitStops) locationIds.add(Number((s as { location_id: number }).location_id));
-    for (const s of db
+    for (const s of await db
       .prepare(`SELECT location_id FROM lead_run_stops WHERE run_id IN (${runList})`)
       .all() as { location_id: number }[]) {
       locationIds.add(s.location_id);
@@ -197,7 +197,7 @@ export function pullSince(
     add(
       "saved_locations",
       plain(
-        db
+        await db
           .prepare(`SELECT * FROM saved_locations WHERE id IN (${locList}) AND created_at > ?`)
           .all(from) as Record<string, unknown>[]
       ),
@@ -207,14 +207,14 @@ export function pullSince(
     const orderIds = new Set<number>();
     for (const s of stops) orderIds.add(Number((s as { order_id: number }).order_id));
     // also orders on stops not changed since `from` but whose order did change
-    for (const r of db
+    for (const r of await db
       .prepare(`SELECT order_id FROM delivery_stops WHERE run_id IN (${runList})`)
       .all() as { order_id: number }[])
       orderIds.add(r.order_id);
     const orderList = orderIds.size ? [...orderIds].join(",") : "NULL";
 
     const orders = plain(
-      db
+      await db
         .prepare(`SELECT * FROM orders WHERE id IN (${orderList}) AND updated_at > ?`)
         .all(from) as Record<string, unknown>[]
     );
@@ -222,7 +222,7 @@ export function pullSince(
     add(
       "order_lines",
       plain(
-        db
+        await db
           .prepare(`SELECT * FROM order_lines WHERE order_id IN (${orderList}) AND created_at > ?`)
           .all(from) as Record<string, unknown>[]
       ),
@@ -231,7 +231,7 @@ export function pullSince(
     add(
       "customers",
       plain(
-        db
+        await db
           .prepare(
             `SELECT * FROM customers WHERE id IN (
                SELECT DISTINCT customer_id FROM orders WHERE id IN (${orderList})
@@ -244,7 +244,7 @@ export function pullSince(
     add(
       "deliveries",
       plain(
-        db
+        await db
           .prepare(`SELECT * FROM deliveries WHERE order_id IN (${orderList}) AND created_at > ?`)
           .all(from) as Record<string, unknown>[]
       ),
@@ -253,12 +253,12 @@ export function pullSince(
   } else {
     // salesperson / group_manager / owner -- their group's recent business
     const of = orderFilter(session);
-    const gf = groupFilter(session, "c.group_id");
+    const gf = await groupFilter(session, "c.group_id");
 
     add(
       "orders",
       plain(
-        db
+        await db
           .prepare(`SELECT o.* FROM orders o WHERE o.updated_at > ?${of.sql}`)
           .all(from, ...of.params) as Record<string, unknown>[]
       ),
@@ -267,7 +267,7 @@ export function pullSince(
     add(
       "customers",
       plain(
-        db
+        await db
           .prepare(`SELECT c.* FROM customers c WHERE c.synced_at > ?${gf.sql}`)
           .all(from, ...gf.params) as Record<string, unknown>[]
       ),
@@ -275,7 +275,7 @@ export function pullSince(
     );
   }
 
-  const tombstones = tombstonesSince(org, since);
+  const tombstones = await tombstonesSince(org, since);
   for (const t of tombstones) seen(t.deleted_at);
 
   return {

@@ -18,36 +18,36 @@ type PurchaseInput = Parameters<typeof recordPurchase>[1];
 
 /** Records a purchase. Every product on it must be this company's: the purchase moves the product's
  *  average cost, so a foreign product id would change another company's cost of goods. */
-export function recordPurchaseFor(input: PurchaseInput): number {
+export async function recordPurchaseFor(input: PurchaseInput): Promise<number> {
   for (const line of input.lines) {
-    if (!productInOrg(line.product_id, input.organization_id)) throw new PurchaseError("کالا پیدا نشد");
+    if (!await productInOrg(line.product_id, input.organization_id)) throw new PurchaseError("کالا پیدا نشد");
   }
-  return recordPurchase(getDb(), input);
+  return await recordPurchase(getDb(), input);
 }
 
-export function costTargetsInOrg(productId: number, packagingId: number | null, organizationId: number): "ok" | "no-product" | "no-packaging" {
+export async function costTargetsInOrg(productId: number, packagingId: number | null, organizationId: number): Promise<"ok" | "no-product" | "no-packaging"> {
   const db = getDb();
-  if (!productInOrganization(db, productId, organizationId)) return "no-product";
-  if (packagingId !== null && !packagingBelongsTo(db, packagingId, productId)) return "no-packaging";
+  if (!await productInOrganization(db, productId, organizationId)) return "no-product";
+  if (packagingId !== null && !await packagingBelongsTo(db, packagingId, productId)) return "no-packaging";
   return "ok";
 }
 
-export function addCost(input: Parameters<typeof setCost>[1]): number {
-  return setCost(getDb(), input);
+export async function addCost(input: Parameters<typeof setCost>[1]): Promise<number> {
+  return await setCost(getDb(), input);
 }
 
-export function catalogueFor(organizationId: number, opts: Parameters<typeof readCatalogue>[2]) {
-  return readCatalogue(getDb(), organizationId, opts);
+export async function catalogueFor(organizationId: number, opts: Parameters<typeof readCatalogue>[2]) {
+  return await readCatalogue(getDb(), organizationId, opts);
 }
 
-export function addProduct(input: Parameters<typeof createProduct>[1]): number {
-  return createProduct(getDb(), input);
+export async function addProduct(input: Parameters<typeof createProduct>[1]): Promise<number> {
+  return await createProduct(getDb(), input);
 }
 
-export function stockView(organizationId: number, scopeOrgId: number | null, includePurchases: boolean) {
+export async function stockView(organizationId: number, scopeOrgId: number | null, includePurchases: boolean) {
   const db = getDb();
-  const levelByProduct = new Map(stockLevels(organizationId).map((l) => [l.product_id, l]));
-  const stock = stockPosition(db, scopeOrgId).map((row) => {
+  const levelByProduct = new Map((await stockLevels(organizationId)).map((l) => [l.product_id, l]));
+  const stock = (await stockPosition(db, scopeOrgId)).map((row) => {
     const lvl = levelByProduct.get(row.product_id);
     return {
       ...row,
@@ -58,27 +58,27 @@ export function stockView(organizationId: number, scopeOrgId: number | null, inc
   });
   return {
     stock,
-    expiringCount: expiringBatches(organizationId).length,
-    purchases: includePurchases ? readPurchases(db, organizationId, 25) : [],
+    expiringCount: (await expiringBatches(organizationId)).length,
+    purchases: includePurchases ? await readPurchases(db, organizationId, 25) : [],
   };
 }
 
-export function ordersForExport(scope: Parameters<typeof readOrders>[1]) {
-  return readOrders(getDb(), scope, { limit: 5000 });
+export async function ordersForExport(scope: Parameters<typeof readOrders>[1]) {
+  return await readOrders(getDb(), scope, { limit: 5000 });
 }
 
-export function findDeletableRun(organizationId: number, runId: number) {
-  return readDeletableRun(getDb(), organizationId, runId);
+export async function findDeletableRun(organizationId: number, runId: number) {
+  return await readDeletableRun(getDb(), organizationId, runId);
 }
 
-export function removeRun(runId: number) {
-  return deleteRun(getDb(), runId);
+export async function removeRun(runId: number) {
+  return await deleteRun(getDb(), runId);
 }
 
-export function commitPlan(wanted: Parameters<typeof laneTargetsAreReachable>[1], userId: number, organizationId: number) {
+export async function commitPlan(wanted: Parameters<typeof laneTargetsAreReachable>[1], userId: number, organizationId: number) {
   const db = getDb();
   // A lane the caller cannot reach is dropped rather than refused: their screen never showed it.
-  const lanes = laneTargetsAreReachable(db, wanted, organizationId);
+  const lanes = await laneTargetsAreReachable(db, wanted, organizationId);
   if (lanes.length === 0) return null;
-  return commitDaySplit(db, lanes, { userId, organizationId });
+  return await commitDaySplit(db, lanes, { userId, organizationId });
 }

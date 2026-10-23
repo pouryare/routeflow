@@ -37,26 +37,26 @@ const { getDb } = await import("@/lib/db");
 const { FULFILLED_ORDER_STATUSES, sqlStatusList } = await import("@/lib/orderStateMachine");
 
 describe.skipIf(!dbPath)("Phase 2 stock backfill on real data", () => {
-  it("keeps SUM(stock_movements.base_qty) per product equal to legacy purchased - delivered", () => {
+  it("keeps SUM(stock_movements.base_qty) per product equal to legacy purchased - delivered", async () => {
     const db = getDb(); // runs every migration incl. backfillStockLedger
 
-    expect(db.prepare("PRAGMA foreign_key_check").all()).toEqual([]);
+    expect(await db.prepare("PRAGMA foreign_key_check").all()).toEqual([]);
 
-    const products = db.prepare("SELECT id FROM products").all() as { id: number }[];
+    const products = await db.prepare("SELECT id FROM products").all() as { id: number }[];
     const bad: string[] = [];
     for (const p of products) {
       const ledger = (
-        db
+        await db
           .prepare("SELECT COALESCE(SUM(base_qty),0) n FROM stock_movements WHERE product_id = ?")
           .get(p.id) as { n: number }
       ).n;
       const bought = (
-        db
+        await db
           .prepare("SELECT COALESCE(SUM(base_qty),0) n FROM purchase_lines WHERE product_id = ?")
           .get(p.id) as { n: number }
       ).n;
       const gone = (
-        db
+        await db
           .prepare(
             `SELECT COALESCE(SUM(COALESCE(ol.packs_delivered,0) * ol.qty_per_pack),0) n
                FROM order_lines ol JOIN orders o ON o.id = ol.order_id
@@ -71,7 +71,7 @@ describe.skipIf(!dbPath)("Phase 2 stock backfill on real data", () => {
     expect(bad, bad.join("; ")).toEqual([]);
 
     expect(
-      (db.prepare("SELECT value FROM app_meta WHERE key='stock_ledger_backfill_done'").get() as
+      (await db.prepare("SELECT value FROM app_meta WHERE key='stock_ledger_backfill_done'").get() as
         | { value: string }
         | undefined) ?? null
     ).not.toBeNull();

@@ -27,25 +27,25 @@ afterAll(() => {
  *  fails to match the moment the name changes — surviving because it was a raw string in
  *  a page rather than a shared constant. */
 describe("the van-role dropdown queries", () => {
-  it("finds a real delivery driver, in the SQL the pages run", () => {
+  it("finds a real delivery driver, in the SQL the pages run", async () => {
     const db = getDb();
-    db.exec(`INSERT INTO organizations (id,name,slug,created_at) VALUES (3,'T','t','2026-01-01')`);
-    db.exec(`INSERT INTO users (id, username, display_name, password_hash, role, active, created_at, organization_id)
+    await db.exec(`INSERT INTO organizations (id,name,slug,created_at) VALUES (3,'T','t','2026-01-01')`);
+    await db.exec(`INSERT INTO users (id, username, display_name, password_hash, role, active, created_at, organization_id)
              VALUES (700, 'd7', 'راننده', 'x', 'delivery_driver', 1, '2026-01-01', 3)`);
 
     /* The exact predicate the two pages use, with VAN_ROLES inlined. */
     const inList = VAN_ROLES.map((r) => `'${r}'`).join(", ");
-    const found = db
+    const found = await db
       .prepare(`SELECT id, display_name FROM users WHERE role IN (${inList}) AND active = 1`)
       .all() as unknown as { id: number; display_name: string }[];
 
     expect(found.map((u) => u.id)).toContain(700);
   });
 
-  it("would NOT have found that driver under the old name", () => {
+  it("would NOT have found that driver under the old name", async () => {
     /* The bug, demonstrated rather than described. Same driver, old predicate, no rows. */
     const db = getDb();
-    const old = db
+    const old = await db
       .prepare("SELECT id FROM users WHERE role = 'driver' AND active = 1")
       .all() as unknown as { id: number }[];
     expect(old).toHaveLength(0);

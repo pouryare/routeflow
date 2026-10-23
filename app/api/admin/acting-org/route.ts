@@ -16,8 +16,8 @@ import { requireRole } from "@/lib/session";
 
 const cookieBase = { httpOnly: true, sameSite: "lax" as const, path: "/", secure: process.env.NODE_ENV === "production" };
 
-function guard(req: NextRequest) {
-  const g = requireRole(req, ["platform_owner"]);
+async function guard(req: NextRequest) {
+  const g = await requireRole(req, ["platform_owner"]);
   if (!g.ok) return g;
   if (g.session.actorId !== undefined) {
     return { ok: false as const, response: NextResponse.json({ ok: false, error: "در حالت ورود به‌جای کاربر دیگر نمی‌توان سازمان را عوض کرد" }, { status: 403 }) };
@@ -27,14 +27,14 @@ function guard(req: NextRequest) {
 
 /** GET: the companies to choose from, and which one is acting now (null = all). */
 export async function GET(req: NextRequest) {
-  const g = guard(req);
+  const g = await guard(req);
   if (!g.ok) return g.response;
-  return NextResponse.json({ ok: true, organizations: listOrganizations(), acting: g.session.actingOrg ?? null, home: g.session.user.organization_id });
+  return NextResponse.json({ ok: true, organizations: await listOrganizations(), acting: g.session.actingOrg ?? null, home: g.session.user.organization_id });
 }
 
 /** POST { organization_id }: act as that company's owner; null (or 0) goes back to all companies. */
 export async function POST(req: NextRequest) {
-  const g = guard(req);
+  const g = await guard(req);
   if (!g.ok) return g.response;
   const own = req.cookies.get(COOKIE_NAME)?.value;
   const claims = parseSessionToken(own);
@@ -48,9 +48,9 @@ export async function POST(req: NextRequest) {
   }
 
   if (wanted !== null) {
-    const org = findOrganization(wanted);
+    const org = await findOrganization(wanted);
     if (!org || !org.active) return NextResponse.json({ ok: false, error: "سازمان پیدا نشد" }, { status: 404 });
-    logActingOrgSwitch(g.session, wanted);
+    await logActingOrgSwitch(g.session, wanted);
   }
 
   // Rebuilt field by field: expiry restarts, and neither Login-As (`act`) nor a previous choice (`ao`) carries over.

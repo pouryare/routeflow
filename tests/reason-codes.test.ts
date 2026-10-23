@@ -10,7 +10,7 @@ const testDbPath = path.join(
 process.env.ROUTEFLOW_DB_PATH = testDbPath;
 process.env.SESSION_SECRET = "test-secret";
 
-const { getDb } = await import("@/lib/db");
+const { getDb, dbReady } = await import("@/lib/db");
 const { listReasonCodes, createReasonCode, deactivateReasonCode, ReasonCodeError } = await import(
   "@/lib/repo/reasonCodes"
 );
@@ -19,68 +19,66 @@ afterAll(() => {
   for (const s of ["", "-wal", "-shm"]) fs.rmSync(`${testDbPath}${s}`, { force: true });
 });
 
-beforeAll(() => {
+beforeAll(async () => {
   const db = getDb();
-  db.prepare("INSERT INTO organizations (id, name, slug, created_at) VALUES (2, 'B', 'b', ?)").run(
+  await db.prepare("INSERT INTO organizations (id, name, slug, created_at) VALUES (2, 'B', 'b', ?)").run(
     new Date().toISOString()
   );
 });
 
 describe("reason_codes", () => {
-  it("seeds the system defaults with a NULL organization", () => {
-    const rows = getDb()
+  it("seeds the system defaults with a NULL organization", async () => {
+    const rows = await getDb()
       .prepare("SELECT domain, code FROM reason_codes WHERE organization_id IS NULL")
       .all() as { domain: string; code: string }[];
     expect(rows.length).toBeGreaterThanOrEqual(13);
     expect(rows.find((r) => r.code === "CUSTOMER_ABSENT")?.domain).toBe("delivery_fail");
   });
 
-  it("does not re-seed on a second getDb pass", () => {
-    getDb();
-    getDb();
-    const n = getDb()
+  it("does not re-seed on a second getDb pass", async () => {
+    await dbReady();
+    await dbReady();
+    const n = await getDb()
       .prepare("SELECT COUNT(*) AS n FROM reason_codes WHERE organization_id IS NULL")
       .get() as { n: number };
     expect(n.n).toBe(13);
   });
 
-  it("lists system defaults plus the tenant's own, filtered by domain", () => {
-    createReasonCode(1, { domain: "delivery_fail", code: "LIFT_BROKEN", label_fa: "آسانسور خراب بود" });
-    const fails = listReasonCodes(1, "delivery_fail");
+  it("lists system defaults plus the tenant's own, filtered by domain", async () => {
+    await createReasonCode(1, { domain: "delivery_fail", code: "LIFT_BROKEN", label_fa: "آسانسور خراب بود" });
+    const fails = await listReasonCodes(1, "delivery_fail");
     expect(fails.some((r) => r.code === "CUSTOMER_ABSENT")).toBe(true); // system
     expect(fails.some((r) => r.code === "LIFT_BROKEN")).toBe(true); // tenant
     expect(fails.every((r) => r.domain === "delivery_fail")).toBe(true);
   });
 
-  it("keeps one tenant's reason codes out of another's list", () => {
-    createReasonCode(2, { domain: "order_cancel", code: "B_ONLY", label_fa: "فقط ب" });
-    expect(listReasonCodes(1, "order_cancel").some((r) => r.code === "B_ONLY")).toBe(false);
-    expect(listReasonCodes(2, "order_cancel").some((r) => r.code === "B_ONLY")).toBe(true);
+  it("keeps one tenant's reason codes out of another's list", async () => {
+    await createReasonCode(2, { domain: "order_cancel", code: "B_ONLY", label_fa: "فقط ب" });
+    expect((await listReasonCodes(1, "order_cancel")).some((r) => r.code === "B_ONLY")).toBe(false);
+    expect((await listReasonCodes(2, "order_cancel")).some((r) => r.code === "B_ONLY")).toBe(true);
     // both still see the shared system defaults
-    expect(listReasonCodes(2, "order_cancel").some((r) => r.code === "DUPLICATE")).toBe(true);
+    expect((await listReasonCodes(2, "order_cancel")).some((r) => r.code === "DUPLICATE")).toBe(true);
   });
 
-  it("refuses a duplicate code in the same domain for the same tenant", () => {
-    expect(() =>
-      createReasonCode(1, { domain: "delivery_fail", code: "LIFT_BROKEN", label_fa: "دوباره" })
-    ).toThrow(ReasonCodeError);
+  it("refuses a duplicate code in the same domain for the same tenant", async () => {
+    await expect((async () =>
+      await createReasonCode(1, { domain: "delivery_fail", code: "LIFT_BROKEN", label_fa: "دوباره" }))()).rejects.toThrow(ReasonCodeError);
   });
 
-  it("refuses an unknown domain", () => {
-    expect(() =>
+  it("refuses an unknown domain", async () => {
+    await expect((async () =>
       // @ts-expect-error deliberately wrong
-      createReasonCode(1, { domain: "nonsense", code: "X", label_fa: "y" })
-    ).toThrow(ReasonCodeError);
+      await createReasonCode(1, { domain: "nonsense", code: "X", label_fa: "y" }))()).rejects.toThrow(ReasonCodeError);
   });
 
-  it("lets a tenant hide its own code but the system rows survive", () => {
-    const id = createReasonCode(1, {
+  it("lets a tenant hide its own code but the system rows survive", async () => {
+    const id = await createReasonCode(1, {
       domain: "order_return",
       code: "TEMP",
       label_fa: "موقت",
     });
-    deactivateReasonCode(1, id);
-    expect(listReasonCodes(1, "order_return").some((r) => r.code === "TEMP")).toBe(false);
-    expect(listReasonCodes(1, "order_return").some((r) => r.code === "WRONG_ITEM")).toBe(true);
+    await deactivateReasonCode(1, id);
+    expect((await listReasonCodes(1, "order_return")).some((r) => r.code === "TEMP")).toBe(false);
+    expect((await listReasonCodes(1, "order_return")).some((r) => r.code === "WRONG_ITEM")).toBe(true);
   });
 });

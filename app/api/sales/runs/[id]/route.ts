@@ -16,7 +16,7 @@ const notFound = () => NextResponse.json({ ok: false, error: "پیدا نشد" }
  *  letting the caller find out by reloading.
  */
 export async function DELETE(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
-  const guard = requireRole(req, MANAGE_ROLES);
+  const guard = await requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
 
   const runId = Number((await ctx.params).id);
@@ -27,11 +27,11 @@ export async function DELETE(req: NextRequest, ctx: { params: Promise<{ id: stri
      The read lives in lib/repo/deliveries.ts so this handler holds no SQL; the repo-boundary
      test asserts raw SQL appears only under lib/repo/, and that test has a second case proving
      the grandfather allowlist may only shrink — so moving the query is the fix, never the list. */
-  const run = findDeletableRun(guard.session.organizationId, runId);
-  if (!run || !canReachGroup(guard.session, run.group_id)) return notFound();
+  const run = await findDeletableRun(guard.session.organizationId, runId);
+  if (!run || !await canReachGroup(guard.session, run.group_id)) return notFound();
 
   try {
-    const { releasedOrderIds } = removeRun(runId);
+    const { releasedOrderIds } = await removeRun(runId);
     /* Everything an undo needs to rebuild the route as it was: same driver, same day, and
        every order it was carrying. Without this the toast could only say "deleted", and an
        undo button would have been a promise the server could not keep. */

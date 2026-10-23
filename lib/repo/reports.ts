@@ -29,8 +29,8 @@ export interface PeriodStatus {
 }
 
 /** Open/closed per period. Read-only: closing changes posting, never what can be seen. */
-export function listPeriods(organizationId: number): PeriodStatus[] {
-  return getDb()
+export async function listPeriods(organizationId: number): Promise<PeriodStatus[]> {
+  return await getDb()
     .prepare(
       `SELECT f.period_key AS periodKey, f.status, f.closed_at AS closedAt,
               u.display_name AS closedByName
@@ -73,10 +73,10 @@ export interface JournalReport {
  *  fact about two rows and only a query can answer it. A UI inferring it — by matching
  *  amounts, say — would be guessing, and could mark a genuine second payment as a
  *  correction. */
-export function journalReport(
+export async function journalReport(
   organizationId: number,
   filter?: { periodKey?: string; sourceType?: string; limit?: number; offset?: number }
-): JournalReport {
+): Promise<JournalReport> {
   const where: string[] = ["j.organization_id = ?"];
   const args: unknown[] = [organizationId];
   if (filter?.periodKey) {
@@ -90,7 +90,7 @@ export function journalReport(
   const limit = filter?.limit ?? 500;
   const offset = Math.max(0, filter?.offset ?? 0);
 
-  const rows = getDb()
+  const rows = await getDb()
     .prepare(
       `SELECT j.id AS journalId, j.seq, j.period_key AS periodKey, j.posted_at AS postedAt,
               j.source_type AS sourceType, j.source_id AS sourceId, j.memo,
@@ -108,7 +108,7 @@ export function journalReport(
 
   const total = Number(
     (
-      getDb()
+      await getDb()
         .prepare(`SELECT COUNT(*) AS n FROM journals j WHERE ${where.join(" AND ")}`)
         .get(...(args as never[])) as { n: number }
     ).n
@@ -118,7 +118,7 @@ export function journalReport(
   const legsByJournal = new Map<number, JournalReportRow["legs"]>();
   for (let i = 0; i < rows.length; i += 500) {
     const ids = rows.slice(i, i + 500).map((r) => r.journalId);
-    const legRows = getDb()
+    const legRows = await getDb()
       .prepare(
         `SELECT e.journal_id AS journalId, a.code, a.name_fa AS nameFa, e.side, e.amount_toman AS amountToman
            FROM ledger_entries e JOIN accounts a ON a.id = e.account_id
@@ -167,10 +167,10 @@ export interface IncomeStatement {
  *  carry a COGS leg against the number that exist. If any delivery posted revenue alone, the
  *  gross margin in this row is too flattering, and the report says so rather than letting
  *  the number imply a precision it does not have. */
-export function incomeStatement(
+export async function incomeStatement(
   organizationId: number,
   filter?: { periodKey?: string }
-): IncomeStatement {
+): Promise<IncomeStatement> {
   const db = getDb();
   const args: unknown[] = [organizationId];
   let where = "j.organization_id = ?";
@@ -179,9 +179,9 @@ export function incomeStatement(
     args.push(filter.periodKey);
   }
 
-  const sumFor = (code: string) =>
+  const sumFor = async (code: string) =>
     (
-      db
+      await db
         .prepare(
           `SELECT COALESCE(SUM(e.amount_toman), 0) AS n
              FROM ledger_entries e
@@ -192,12 +192,12 @@ export function incomeStatement(
         .get(...(args as never[]), code) as { n: number }
     ).n;
 
-  const revenue = sumFor("4101");
-  const cogs = sumFor("5101");
+  const revenue = await sumFor("4101");
+  const cogs = await sumFor("5101");
 
   /* Expenses exclude 5101 COGS: cost of goods is matched against revenue above, and
      counting it again here would subtract it twice. */
-  const expenseRows = db
+  const expenseRows = await db
     .prepare(
       `SELECT a.id AS accountId, a.code, a.name_fa AS nameFa, COALESCE(SUM(e.amount_toman), 0) AS amountToman
          FROM ledger_entries e
@@ -209,7 +209,7 @@ export function incomeStatement(
     )
     .all(...(args as never[])) as unknown as IncomeStatement["expenses"];
 
-  const totals = db
+  const totals = await db
     .prepare(
       `SELECT COUNT(*) AS sales,
               COUNT(*) FILTER (WHERE EXISTS (
@@ -248,16 +248,16 @@ export interface BalanceSheet {
 
 /** The balance sheet AS AT a date. A balance sheet is a MOMENT, not a period — `asAt` is
  *  explicit in the result so nobody reads it as "this month's results". */
-export function balanceSheet(
+export async function balanceSheet(
   organizationId: number,
   asAt: { periodKey?: string; onDate?: string } = {}
-): BalanceSheet {
+): Promise<BalanceSheet> {
   const db = getDb();
 
   /* Each type nets its own normal direction: an asset's balance is debits less credits, a
      liability's the reverse. Doing it in SQL rather than by summing signed amounts keeps a
      contra account (a credit balance inside an asset) from flipping the whole side. */
-  const side = (type: string) => {
+  const side = async (type: string) => {
     const args: unknown[] = [organizationId, type];
     let dateClause = "";
     if (asAt.periodKey) {
@@ -267,7 +267,7 @@ export function balanceSheet(
       dateClause = " AND j.posted_at <= ?";
       args.push(asAt.onDate);
     }
-    return db
+    return await db
       .prepare(
         `SELECT a.id AS accountId, a.code, a.name_fa AS nameFa,
                 COALESCE(SUM(CASE
@@ -285,9 +285,9 @@ export function balanceSheet(
       .all(...(args as never[])) as unknown as BalanceSheet["assets"];
   };
 
-  const assets = side("ASSET");
-  const liabilities = side("LIABILITY");
-  const equity = side("EQUITY");
+  const assets = await side("ASSET");
+  const liabilities = await side("LIABILITY");
+  const equity = await side("EQUITY");
 
   /* Current-period earnings belong in EQUITY.
    *
@@ -301,7 +301,7 @@ export function balanceSheet(
      does NOT post closing entries — that would be a second set of books, and the whole point
      is that the ledger is the only source. So earnings are shown DERIVED, as one equity line,
      and labelled as such. Same number, no stored duplicate, and the identity holds. */
-  const earnings = currentPeriodEarnings(organizationId, asAt);
+  const earnings = await currentPeriodEarnings(organizationId, asAt);
   const equityRows: BalanceSheet["equity"] =
     earnings.amountToman !== 0
       ? [
@@ -330,10 +330,10 @@ export function balanceSheet(
 /** Revenue less cost of goods less expenses, over the same window the balance sheet covers.
  *  A LOSS is returned negative and appears as a negative equity line, which is what a
  *  balance sheet does — it does not hide a loss by flipping it to the other side. */
-function currentPeriodEarnings(
+async function currentPeriodEarnings(
   organizationId: number,
   asAt: { periodKey?: string; onDate?: string }
-): { amountToman: number } {
+): Promise<{ amountToman: number }> {
   const db = getDb();
   const args: unknown[] = [organizationId];
   let dateClause = "";
@@ -344,7 +344,7 @@ function currentPeriodEarnings(
     dateClause = " AND j.posted_at <= ?";
     args.push(asAt.onDate);
   }
-  const row = db
+  const row = await db
     .prepare(
       `SELECT COALESCE(SUM(
                 CASE WHEN a.type = 'REVENUE' AND e.side = 'C' THEN e.amount_toman
@@ -370,8 +370,8 @@ export interface AgedPayableRow {
 
 /** What we owe each supplier, DERIVED from the ledger — never a stored number, so it cannot
  *  drift from the trial balance. Mirrors the receivable ageing the dashboard already has. */
-export function agedPayables(organizationId: number): AgedPayableRow[] {
-  return getDb()
+export async function agedPayables(organizationId: number): Promise<AgedPayableRow[]> {
+  return await getDb()
     .prepare(
       `SELECT s.id AS supplierId, s.name AS supplierName,
               COALESCE(SUM(CASE WHEN e.side = 'C' THEN e.amount_toman
@@ -403,11 +403,11 @@ export interface SupplierStatementLine {
 
 /** Every movement on one supplier's account — both legs, so a credit balance reads as
  *  distinct from no balance at all rather than as an absence. */
-export function supplierStatement(
+export async function supplierStatement(
   organizationId: number,
   supplierId: number
-): SupplierStatementLine[] {
-  return getDb()
+): Promise<SupplierStatementLine[]> {
+  return await getDb()
     .prepare(
       `SELECT j.id AS journalId, j.seq, j.period_key AS periodKey, j.posted_at AS postedAt,
               j.source_type AS sourceType, j.memo,
@@ -422,14 +422,14 @@ export function supplierStatement(
 }
 
 /** Expenses by category, for the expenses report. */
-export function expensesByCategory(organizationId: number, filter?: { periodKey?: string }) {
+export async function expensesByCategory(organizationId: number, filter?: { periodKey?: string }) {
   const args: unknown[] = [organizationId];
   let extra = "";
   if (filter?.periodKey) {
     extra = " AND j.period_key = ?";
     args.push(filter.periodKey);
   }
-  return getDb()
+  return await getDb()
     .prepare(
       `SELECT a.code, a.name_fa AS nameFa,
               COALESCE(SUM(e.amount_toman), 0) AS amountToman
@@ -445,8 +445,8 @@ export function expensesByCategory(organizationId: number, filter?: { periodKey?
 
 /** Who entered what. Accountability, not a second set of books: a group_manager may enter
  *  expenses, so the report names them rather than silently pooling the money. */
-export function expensesByEnterer(organizationId: number) {
-  return getDb()
+export async function expensesByEnterer(organizationId: number) {
+  return await getDb()
     .prepare(
       `SELECT u.display_name AS displayName, COUNT(*) AS entries,
               COALESCE(SUM(e.amount_toman), 0) AS amountToman
@@ -477,7 +477,7 @@ export interface AccountLedgerLine {
 /** One account's statement, with a running balance and a period-OPENING figure.
  *  The opening answers "what was in this account before this period?" — the first thing an
  *  accountant asks, and something nothing in this app answered before. */
-export function accountLedger(
+export async function accountLedger(
   organizationId: number,
   accountId: number,
   filter?: { periodKey?: string; limit?: number; offset?: number }
@@ -489,7 +489,7 @@ export function accountLedger(
      question about a period; with no period, the answer is none. */
   const openingToman = filter?.periodKey
     ? ((
-        db
+        await db
           .prepare(
             `SELECT COALESCE(SUM(CASE WHEN e.side = CASE a.normal_balance WHEN 'DEBIT' THEN 'D' ELSE 'C' END
                                       THEN e.amount_toman ELSE -e.amount_toman END), 0) AS n
@@ -509,7 +509,7 @@ export function accountLedger(
     extra = " AND j.period_key = ?";
     args.push(filter.periodKey);
   }
-  const rows = db
+  const rows = await db
     .prepare(
       `SELECT j.id AS journalId, j.seq, j.period_key AS periodKey, j.posted_at AS postedAt,
               j.source_type AS sourceType, j.memo, e.side, e.amount_toman AS amountToman,
@@ -530,20 +530,20 @@ export function accountLedger(
   return { openingToman, lines, totalLines: all.length, closingToman };
 }
 
-export function accountById(accountId: number): {
+export async function accountById(accountId: number): Promise<{
   id: number;
   code: string;
   nameFa: string;
   type: string;
-} | undefined {
-  return getDb()
+} | undefined> {
+  return await getDb()
     .prepare("SELECT id, code, name_fa AS nameFa, type FROM accounts WHERE id = ?")
     .get(accountId) as { id: number; code: string; nameFa: string; type: string } | undefined;
 }
 
 /** The chart, for the account picker. Global by design — see the schema comment. */
-export function postableAccounts(): { id: number; code: string; nameFa: string; type: string }[] {
-  return getDb()
+export async function postableAccounts(): Promise<{ id: number; code: string; nameFa: string; type: string }[]> {
+  return await getDb()
     .prepare(
       `SELECT id, code, name_fa AS nameFa, type FROM accounts
         WHERE is_postable = 1 AND active = 1 ORDER BY code`

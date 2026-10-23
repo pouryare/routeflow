@@ -30,7 +30,7 @@ let custId = 0;
 let product = 0;
 let packaging = 0;
 
-beforeEach(() => {
+beforeEach(async () => {
   const db = getDb();
   /* The ledger is append-only by trigger and its AR leg REFERENCES customers(id), so
      `DELETE FROM customers` below raises FOREIGN KEY constraint failed once any test in
@@ -38,91 +38,91 @@ beforeEach(() => {
      tests/helpers/ledgerTeardown.ts, and note the scope warning in it: many suites do not
      set ROUTEFLOW_DB_PATH, so this must stay an explicit per-suite call and never a global
      setupFiles hook, which would run against the real data/routeflow.db. */
-  clearLedger(db);
+  await clearLedger(db);
 
-  db.exec(
+  await db.exec(
     "PRAGMA foreign_keys=OFF; DELETE FROM notifications; DELETE FROM rule_runs; DELETE FROM events; DELETE FROM order_events; DELETE FROM stock_reservations; DELETE FROM deliveries; DELETE FROM delivery_lines; DELETE FROM delivery_line_batches; DELETE FROM stock_movements; DELETE FROM batches; DELETE FROM payment_allocations; DELETE FROM payments; DELETE FROM delivery_stops; DELETE FROM delivery_runs; DELETE FROM tasks; DELETE FROM alerts; DELETE FROM order_lines; DELETE FROM orders; DELETE FROM packagings; DELETE FROM products; DELETE FROM customers; DELETE FROM facilities; DELETE FROM users WHERE id>0; PRAGMA foreign_keys=ON;"
   );
   const now = new Date().toISOString();
   const u = db.prepare(
     "INSERT INTO users (username,password_hash,display_name,role,active,created_at,organization_id) VALUES (?,?,?,?,1,?,1)"
   );
-  owner = Number(u.run(`o${Date.now()}`, "x:y", "مالک", "owner", now).lastInsertRowid);
-  driver = Number(u.run(`d${Date.now()}`, "x:y", "راننده", "delivery_driver", now).lastInsertRowid);
-  seller = Number(u.run(`s${Date.now()}`, "x:y", "فروشنده", "phone_sales", now).lastInsertRowid);
+  owner = Number((await u.run(`o${Date.now()}`, "x:y", "مالک", "owner", now)).lastInsertRowid);
+  driver = Number((await u.run(`d${Date.now()}`, "x:y", "راننده", "delivery_driver", now)).lastInsertRowid);
+  seller = Number((await u.run(`s${Date.now()}`, "x:y", "فروشنده", "phone_sales", now)).lastInsertRowid);
   custId = Number(
-    db
+    (await db
       .prepare(
         "INSERT INTO customers (customer_code,business_name,lifecycle,synced_at,organization_id) VALUES ('C1','x','active','2026-01-01',1)"
       )
-      .run().lastInsertRowid
+      .run()).lastInsertRowid
   );
-ensureWarehouse(getDb());
-  product = createProduct(db, { name: "کره", kg_per_base_unit: 0.25, organization_id: 1 });
-  packaging = createPackaging(db, { product_id: product, name: "جعبه", qty_per_pack: 10 });
-  setPrice(db, { product_id: product, price_toman: 1000, valid_from: "2026-01-01" });
+await ensureWarehouse(getDb());
+  product = await createProduct(db, { name: "کره", kg_per_base_unit: 0.25, organization_id: 1 });
+  packaging = await createPackaging(db, { product_id: product, name: "جعبه", qty_per_pack: 10 });
+  await setPrice(db, { product_id: product, price_toman: 1000, valid_from: "2026-01-01" });
 });
 
 /** createOrder then pin the salesperson: recipientsFor(order/delivery/payment) resolves
  *  the recipient from orders.salesperson_user_id, so every order these tests deliver on
  *  has to name one. */
-function orderForSeller(): number {
+async function orderForSeller(): Promise<number> {
   const db = getDb();
-  const o = createOrder(db, {
+  const o = await createOrder(db, {
     customer_id: custId,
     order_date: "2026-01-01",
     created_by: owner,
     organization_id: 1,
     lines: [{ product_id: product, packaging_id: packaging, packs: 1 }],
   });
-  db.prepare("UPDATE orders SET salesperson_user_id = ? WHERE id = ?").run(seller, o.id);
+  await db.prepare("UPDATE orders SET salesperson_user_id = ? WHERE id = ?").run(seller, o.id);
   return o.id;
 }
 
 describe("notification system — end to end", () => {
-  it("a passed review notifies the order's salesperson via the seeded notify rule", () => {
+  it("a passed review notifies the order's salesperson via the seeded notify rule", async () => {
     const db = getDb();
-    const orderId = orderForSeller();
-    confirmOrder(db, orderId); // drives submit -> passReview
+    const orderId = await orderForSeller();
+    await confirmOrder(db, orderId); // drives submit -> passReview
 
-    const groups = listNotificationGroups(1, seller);
+    const groups = await listNotificationGroups(1, seller);
     expect(groups.some((g) => g.items.some((i) => i.title_fa.includes("سفارش")))).toBe(true);
   });
 
-  it("a successful delivery notifies the salesperson", () => {
+  it("a successful delivery notifies the salesperson", async () => {
     const db = getDb();
-    const orderId = orderForSeller();
-    confirmOrder(db, orderId);
+    const orderId = await orderForSeller();
+    await confirmOrder(db, orderId);
 
-    const run = createRun(db, {
+    const run = await createRun(db, {
       driver_user_id: driver,
       run_date: "2026-01-02",
       created_by: owner,
       organization_id: 1,
     });
-    const stopId = addStop(db, run, orderId);
+    const stopId = await addStop(db, run, orderId);
     const lineId = (
-      db.prepare("SELECT id FROM order_lines WHERE order_id = ?").get(orderId) as { id: number }
+      await db.prepare("SELECT id FROM order_lines WHERE order_id = ?").get(orderId) as { id: number }
     ).id;
-    recordDelivery(db, stopId, {
+    await recordDelivery(db, stopId, {
       lines: [{ line_id: lineId, packs_delivered: 1 }],
       collected_toman: 0,
       by: driver,
     });
 
-    const groups = listNotificationGroups(1, seller);
+    const groups = await listNotificationGroups(1, seller);
     expect(groups.some((g) => g.group_key.startsWith("delivery.succeeded:"))).toBe(true);
   });
 
   it("createTask with an assignee notifies that assignee", async () => {
     const { createTask } = await import("@/lib/repo/tasks");
-    createTask(1, { title: "پیگیری", kind: "call", assignee_user_id: seller, created_by: owner });
-    expect(unreadGroupCount(1, seller)).toBeGreaterThanOrEqual(1);
+    await createTask(1, { title: "پیگیری", kind: "call", assignee_user_id: seller, created_by: owner });
+    expect(await unreadGroupCount(1, seller)).toBeGreaterThanOrEqual(1);
   });
 
-  it("a recorded payment allocated to an order notifies its salesperson (meta.order_ids)", () => {
-    const orderId = orderForSeller();
-    recordPayment(1, {
+  it("a recorded payment allocated to an order notifies its salesperson (meta.order_ids)", async () => {
+    const orderId = await orderForSeller();
+    await recordPayment(1, {
       customer_id: custId,
       amount_toman: 500,
       method: "CASH",
@@ -131,37 +131,37 @@ describe("notification system — end to end", () => {
       allocations: [{ order_id: orderId, amount_toman: 500 }],
     });
 
-    expect(unreadGroupCount(1, seller)).toBeGreaterThanOrEqual(1);
-    const groups = listNotificationGroups(1, seller);
+    expect(await unreadGroupCount(1, seller)).toBeGreaterThanOrEqual(1);
+    const groups = await listNotificationGroups(1, seller);
     expect(groups.some((g) => g.items.some((i) => i.title_fa.includes("پرداخت")))).toBe(true);
   });
 
-  it("a new order in a group notifies that group's manager (ambient order.created path)", () => {
+  it("a new order in a group notifies that group's manager (ambient order.created path)", async () => {
     const db = getDb();
     const stamp = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
     // A group, a group_manager sitting in it, and a customer whose orders fall in that group.
     const grp = Number(
-      db
+      (await db
         .prepare("INSERT INTO groups (name, slug, created_at, organization_id) VALUES (?, ?, ?, 1)")
-        .run(`گروه ${stamp}`, `grp-${stamp}`, new Date().toISOString()).lastInsertRowid
+        .run(`گروه ${stamp}`, `grp-${stamp}`, new Date().toISOString())).lastInsertRowid
     );
     const mgr = Number(
-      db
+      (await db
         .prepare(
           "INSERT INTO users (username,password_hash,display_name,role,group_id,active,created_at,organization_id) VALUES (?,?,?,?,?,1,?,1)"
         )
-        .run(`gm${stamp}`, "x:y", "مدیر گروه", "group_manager", grp, new Date().toISOString()).lastInsertRowid
+        .run(`gm${stamp}`, "x:y", "مدیر گروه", "group_manager", grp, new Date().toISOString())).lastInsertRowid
     );
     const custInGroup = Number(
-      db
+      (await db
         .prepare(
           "INSERT INTO customers (customer_code,business_name,lifecycle,synced_at,organization_id,group_id) VALUES (?,'x','active','2026-01-01',1,?)"
         )
-        .run(`CG-${stamp}`, grp).lastInsertRowid
+        .run(`CG-${stamp}`, grp)).lastInsertRowid
     );
 
     // actor = the salesperson; createOrder derives orders.group_id from the customer.
-    const o = createOrder(db, {
+    const o = await createOrder(db, {
       customer_id: custInGroup,
       order_date: "2026-01-01",
       created_by: seller,
@@ -169,11 +169,11 @@ describe("notification system — end to end", () => {
       organization_id: 1,
       lines: [{ product_id: product, packaging_id: packaging, packs: 1 }],
     });
-    confirmOrder(db, o.id); // real path: drives order.submit -> the seeded notify_order_created rule
+    await confirmOrder(db, o.id); // real path: drives order.submit -> the seeded notify_order_created rule
 
-    const groups = listNotificationGroups(1, mgr);
+    const groups = await listNotificationGroups(1, mgr);
     expect(groups.length).toBeGreaterThanOrEqual(1);
     expect(groups.some((g) => g.group_key.startsWith("order.created:"))).toBe(true);
-    expect(unreadGroupCount(1, mgr)).toBeGreaterThanOrEqual(1);
+    expect(await unreadGroupCount(1, mgr)).toBeGreaterThanOrEqual(1);
   });
 });

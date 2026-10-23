@@ -66,13 +66,13 @@ afterAll(() => {
 });
 
 describe("the districts rebuild on a populated table", () => {
-  it("kept every row", () => {
-    const n = (getDb().prepare("SELECT COUNT(*) c FROM districts").get() as { c: number }).c;
+  it("kept every row", async () => {
+    const n = (await getDb().prepare("SELECT COUNT(*) c FROM districts").get() as { c: number }).c;
     expect(n, "the copy must not drop rows").toBe(2);
   });
 
-  it("kept the columns a careless copy list would lose", () => {
-    const row = getDb().prepare("SELECT name, notes, centroid_lat, coverage_status, is_custom FROM districts WHERE name = ?").get("منطقه 14") as
+  it("kept the columns a careless copy list would lose", async () => {
+    const row = await getDb().prepare("SELECT name, notes, centroid_lat, coverage_status, is_custom FROM districts WHERE name = ?").get("منطقه 14") as
       | { name: string; notes: string | null; centroid_lat: number | null; coverage_status: string; is_custom: number }
       | undefined;
     expect(row, "منطقه 14 must survive").toBeDefined();
@@ -82,16 +82,16 @@ describe("the districts rebuild on a populated table", () => {
     expect(row!.is_custom).toBe(0);
   });
 
-  it("dropped organization_id and the org-scoped key", () => {
-    const cols = (getDb().prepare("PRAGMA table_info(districts)").all() as { name: string }[]).map((c) => c.name);
+  it("dropped organization_id and the org-scoped key", async () => {
+    const cols = (await getDb().prepare("PRAGMA table_info(districts)").all() as { name: string }[]).map((c) => c.name);
     expect(cols).not.toContain("organization_id");
-    const sql = (getDb().prepare("SELECT sql FROM sqlite_master WHERE name = 'districts'").get() as { sql: string }).sql;
+    const sql = (await getDb().prepare("SELECT sql FROM sqlite_master WHERE name = 'districts'").get() as { sql: string }).sql;
     expect(sql).toContain("UNIQUE(name, level, parent_name)");
   });
 
-  it("is a no-op on the second boot", () => {
+  it("is a no-op on the second boot", async () => {
     // Guarded on the constraint text, so a migrated database must not rebuild again.
-    const before = (getDb().prepare("SELECT COUNT(*) c FROM districts").get() as { c: number }).c;
+    const before = (await getDb().prepare("SELECT COUNT(*) c FROM districts").get() as { c: number }).c;
     expect(before).toBe(2);
   });
 });

@@ -2,6 +2,7 @@ import { clamp } from "@/lib/math";
 import { getDb } from "@/lib/db";
 import { FULFILLED_ORDER_STATUSES, sqlStatusList } from "@/lib/orderStateMachine";
 
+import { mapSeq } from "@/lib/seq";
 /** The band, in the language the app is written in.
  *
  *  `band` is a three-value enum in English and it was reaching the page raw — «good» in
@@ -38,16 +39,16 @@ function recencyScore(lastOrder: string | null, nowIso: string): number {
   return clampScore(Math.round((1 - (days - 14) / 46) * 100));
 }
 
-export function repHealth(organizationId: number, representativeId: number): RepHealth {
+export async function repHealth(organizationId: number, representativeId: number): Promise<RepHealth> {
   const db = getDb();
   const now = new Date().toISOString();
 
-  const rep = db
+  const rep = await db
     .prepare("SELECT customer_id FROM representative_profiles WHERE id = ? AND organization_id = ?")
     .get(representativeId, organizationId) as { customer_id: number } | undefined;
   const customerId = rep?.customer_id ?? -1;
 
-  const steps = db
+  const steps = await db
     .prepare(
       "SELECT COUNT(*) AS total, SUM(CASE WHEN completed_at IS NOT NULL THEN 1 ELSE 0 END) AS done FROM representative_onboarding_steps WHERE representative_id = ?"
     )
@@ -57,7 +58,7 @@ export function repHealth(organizationId: number, representativeId: number): Rep
   const onboarding = onboardingTotal === 0 ? 100 : Math.round((onboardingDone / onboardingTotal) * 100);
 
   const lastOrder = (
-    db
+    await db
       .prepare(
         `SELECT MAX(order_date) AS d FROM orders WHERE customer_id = ? AND status IN (${sqlStatusList(FULFILLED_ORDER_STATUSES)})`
       )
@@ -65,12 +66,12 @@ export function repHealth(organizationId: number, representativeId: number): Rep
   ).d;
 
   const available = (
-    db
+    await db
       .prepare("SELECT COUNT(*) AS n FROM products WHERE (organization_id = ? OR organization_id IS NULL) AND active = 1")
       .get(organizationId) as { n: number }
   ).n;
   const covered = (
-    db
+    await db
       .prepare(
         `SELECT COUNT(DISTINCT ol.product_id) AS n FROM order_lines ol JOIN orders o ON o.id = ol.order_id
           WHERE o.customer_id = ? AND o.status IN (${sqlStatusList(FULFILLED_ORDER_STATUSES)})`
@@ -102,16 +103,16 @@ export interface RepOverviewRow extends RepHealth {
   stage: string;
 }
 
-export function repsOverview(organizationId: number): RepOverviewRow[] {
-  const reps = getDb()
+export async function repsOverview(organizationId: number): Promise<RepOverviewRow[]> {
+  const reps = await getDb()
     .prepare(
       `SELECT rp.id, rp.rep_code, rp.stage, c.business_name
          FROM representative_profiles rp JOIN customers c ON c.id = rp.customer_id
         WHERE rp.organization_id = ? ORDER BY rp.rep_code`
     )
     .all(organizationId) as { id: number; rep_code: string; stage: string; business_name: string }[];
-  return reps.map((r) => ({
-    ...repHealth(organizationId, r.id),
+  return await mapSeq(reps, async (r) => ({
+    ...await repHealth(organizationId, r.id),
     rep_code: r.rep_code,
     business_name: r.business_name,
     stage: r.stage,

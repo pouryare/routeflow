@@ -29,18 +29,18 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const user = findUserById(uid);
-  const log = (result: "success" | "bad_code") => {
+  const user = await findUserById(uid);
+  const log = async (result: "success" | "bad_code") => {
     if (user?.organization_id != null) {
-      recordLogin({ organizationId: user.organization_id, userId: user.id, result, ip: clientKey(req), userAgent: req.headers.get("user-agent") });
+      await recordLogin({ organizationId: user.organization_id, userId: user.id, result, ip: clientKey(req), userAgent: req.headers.get("user-agent") });
     }
   };
-  if (!user || !user.active || user.role !== "platform_owner" || !checkSecondFactor(user.id, body.code)) {
-    if (user) log("bad_code");
+  if (!user || !user.active || user.role !== "platform_owner" || !await checkSecondFactor(user.id, body.code)) {
+    if (user) await log("bad_code");
     return NextResponse.json({ ok: false, error: REFUSED }, { status: 401 });
   }
   rateLimitReset(`2fa:${uid}`);
-  log("success");
+  await log("success");
 
   const res = NextResponse.json({ ok: true });
   res.cookies.set(

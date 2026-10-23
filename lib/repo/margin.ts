@@ -65,12 +65,12 @@ const DIMENSION_SQL: Record<
 
 /** Grouped margin rows for one dimension over one Jalali month, scoped to what the
  *  session may see. Throws for a `salesperson` session. */
-export function marginBy(
+export async function marginBy(
   organizationId: number,
   dimension: MarginDimension,
   period: string,
   session: Session
-): MarginRow[] {
+): Promise<MarginRow[]> {
   if (session.role === "phone_sales") {
     throw new MarginError("حاشیهٔ سود برای این نقش در دسترس نیست");
   }
@@ -86,7 +86,7 @@ export function marginBy(
   ];
   if (d.require) where.push(d.require);
 
-  const rows = getDb()
+  const rows = await getDb()
     .prepare(
       `SELECT ol.packs_ordered, ol.packs_delivered, ol.unit_price_toman, ol.unit_cost_toman,
               ol.qty_per_pack, ol.kg_per_base_unit,
@@ -111,9 +111,9 @@ export function marginBy(
 /** Org-wide roll-up (no session — the sweep's caller is trusted). Writes `net_sales`,
  *  `gross_profit` and `gross_margin` at `org` scope and per `group` and per
  *  `salesperson`. */
-export function materialiseMargin(organizationId: number, period: string): number {
+export async function materialiseMargin(organizationId: number, period: string): Promise<number> {
   const { from, toExcl } = periodRange(period);
-  const rows = getDb()
+  const rows = await getDb()
     .prepare(
       `SELECT ol.packs_ordered, ol.packs_delivered, ol.unit_price_toman, ol.unit_cost_toman,
               ol.qty_per_pack, ol.kg_per_base_unit,
@@ -180,5 +180,5 @@ export function materialiseMargin(organizationId: number, period: string): numbe
   for (const [gid, b] of byGroup) if (gid) push("group", gid, b);
   for (const [uid, b] of bySalesperson) if (uid) push("salesperson", uid, b);
 
-  return upsertSnapshots(organizationId, writes);
+  return await upsertSnapshots(organizationId, writes);
 }

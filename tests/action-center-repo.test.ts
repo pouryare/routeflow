@@ -32,97 +32,97 @@ let cust = 0;
 let product = 0;
 let pkg = 0;
 
-beforeEach(() => {
+beforeEach(async () => {
   const db = getDb();
-  db.exec(
+  await db.exec(
     "PRAGMA foreign_keys=OFF; DELETE FROM kpi_snapshots; DELETE FROM churn_scores; DELETE FROM alerts; DELETE FROM order_events; DELETE FROM order_lines; DELETE FROM orders; DELETE FROM payments; DELETE FROM payment_allocations; DELETE FROM packagings; DELETE FROM products; DELETE FROM customers; DELETE FROM users WHERE id>0; DELETE FROM groups; PRAGMA foreign_keys=ON;"
   );
   const now = new Date().toISOString();
-  grp = Number(db.prepare("INSERT INTO groups (name,slug,created_at,organization_id) VALUES ('گ','g',?,1)").run(now).lastInsertRowid);
-  owner = Number(db.prepare("INSERT INTO users (username,password_hash,display_name,role,created_at,organization_id) VALUES ('o','x','م','owner',?,1)").run(now).lastInsertRowid);
-  driver = Number(db.prepare("INSERT INTO users (username,password_hash,display_name,role,group_id,created_at,organization_id) VALUES ('d','x','ر','delivery_driver',?,?,1)").run(grp, now).lastInsertRowid);
-  cust = Number(db.prepare("INSERT INTO customers (customer_code,business_name,lifecycle,synced_at,group_id,organization_id) VALUES ('C','مشتری','active',?,?,1)").run(now, grp).lastInsertRowid);
-  product = Number(db.prepare("INSERT INTO products (name,sku,kg_per_base_unit,created_at,updated_at,organization_id) VALUES ('کره','K',0.25,?,?,1)").run(now, now).lastInsertRowid);
-  pkg = Number(db.prepare("INSERT INTO packagings (product_id,name,qty_per_pack,created_at) VALUES (?,'ج',1,?)").run(product, now).lastInsertRowid);
+  grp = Number((await db.prepare("INSERT INTO groups (name,slug,created_at,organization_id) VALUES ('گ','g',?,1)").run(now)).lastInsertRowid);
+  owner = Number((await db.prepare("INSERT INTO users (username,password_hash,display_name,role,created_at,organization_id) VALUES ('o','x','م','owner',?,1)").run(now)).lastInsertRowid);
+  driver = Number((await db.prepare("INSERT INTO users (username,password_hash,display_name,role,group_id,created_at,organization_id) VALUES ('d','x','ر','delivery_driver',?,?,1)").run(grp, now)).lastInsertRowid);
+  cust = Number((await db.prepare("INSERT INTO customers (customer_code,business_name,lifecycle,synced_at,group_id,organization_id) VALUES ('C','مشتری','active',?,?,1)").run(now, grp)).lastInsertRowid);
+  product = Number((await db.prepare("INSERT INTO products (name,sku,kg_per_base_unit,created_at,updated_at,organization_id) VALUES ('کره','K',0.25,?,?,1)").run(now, now)).lastInsertRowid);
+  pkg = Number((await db.prepare("INSERT INTO packagings (product_id,name,qty_per_pack,created_at) VALUES (?,'ج',1,?)").run(product, now)).lastInsertRowid);
 });
 
-function order(status: string, orderDate: string, packs: number, price: number, deliveredAt?: string) {
+async function order(status: string, orderDate: string, packs: number, price: number, deliveredAt?: string) {
   const db = getDb();
   const now = new Date().toISOString();
   const oid = Number(
-    db.prepare(
+    (await db.prepare(
       "INSERT INTO orders (order_no,customer_id,group_id,status,order_date,delivered_at,created_by,created_at,updated_at,organization_id) VALUES ('o'||abs(random()),?,?,?,?,?,?,?,?,1)"
-    ).run(cust, grp, status, orderDate.slice(0, 10), deliveredAt ?? null, owner, now, now).lastInsertRowid
+    ).run(cust, grp, status, orderDate.slice(0, 10), deliveredAt ?? null, owner, now, now)).lastInsertRowid
   );
-  db.prepare(
+  await db.prepare(
     "INSERT INTO order_lines (order_id,product_id,packaging_id,packs_ordered,packs_delivered,unit_price_toman,unit_cost_toman,qty_per_pack,kg_per_base_unit,created_at) VALUES (?,?,?,?,?,?,700,1,0.25,?)"
   ).run(oid, product, pkg, packs, packs, price, now);
   return oid;
 }
 
 describe("action center repo", () => {
-  it("surfaces an open critical alert", () => {
-    getDb()
+  it("surfaces an open critical alert", async () => {
+    await getDb()
       .prepare("INSERT INTO alerts (organization_id,severity,category,title,created_at) VALUES (1,'critical','stock','بچ رو به انقضا',?)")
       .run(iso(1));
-    const r = actionCenterFor(session("owner", owner, null));
+    const r = await actionCenterFor(session("owner", owner, null));
     expect(r.critical.some((c) => c.kind === "alert")).toBe(true);
   });
 
-  it("flags a CONFIRMED order stalled four days as a warning", () => {
-    const oid = order("CONFIRMED", iso(6), 5, 1000);
-    getDb()
+  it("flags a CONFIRMED order stalled four days as a warning", async () => {
+    const oid = await order("CONFIRMED", iso(6), 5, 1000);
+    await getDb()
       .prepare("INSERT INTO order_events (organization_id,order_id,from_status,to_status,action,actor_user_id,created_at) VALUES (1,?,NULL,'CONFIRMED','x',?,?)")
       .run(oid, owner, iso(4));
-    const r = actionCenterFor(session("owner", owner, null));
+    const r = await actionCenterFor(session("owner", owner, null));
     const hit = r.warning.find((c) => c.key === `stalled_order:${oid}`);
     expect(hit).toBeTruthy();
     expect(hit!.kind).toBe("stalled_order");
   });
 
-  it("a big 30+ day unpaid receivable is critical", () => {
-    order("DELIVERED", iso(45), 100, 250_000, iso(45)); // 25m toman, unpaid
-    const r = actionCenterFor(session("owner", owner, null));
+  it("a big 30+ day unpaid receivable is critical", async () => {
+    await order("DELIVERED", iso(45), 100, 250_000, iso(45)); // 25m toman, unpaid
+    const r = await actionCenterFor(session("owner", owner, null));
     expect(r.critical.some((c) => c.kind === "overdue_receivable")).toBe(true);
   });
 
-  it("a driver gets nothing", () => {
-    getDb()
+  it("a driver gets nothing", async () => {
+    await getDb()
       .prepare("INSERT INTO alerts (organization_id,severity,category,title,created_at) VALUES (1,'critical','stock','x',?)")
       .run(iso(1));
-    const r = actionCenterFor(session("delivery_driver", driver, grp));
+    const r = await actionCenterFor(session("delivery_driver", driver, grp));
     expect(r).toEqual({ critical: [], warning: [], opportunity: [] });
   });
 
-  it("surfaces a high churn_scores row as a warning", () => {
-    getDb()
+  it("surfaces a high churn_scores row as a warning", async () => {
+    await getDb()
       .prepare(
         "INSERT INTO churn_scores (organization_id,customer_id,probability,band,reason_fa,computed_at) VALUES (1,?,0.82,'high','مدت‌هاست از ریتم خرید عقب افتاده',?)"
       )
       .run(cust, iso(1));
-    const r = actionCenterFor(session("owner", owner, null));
+    const r = await actionCenterFor(session("owner", owner, null));
     expect(r.warning.some((c) => c.key === `churn:${cust}`)).toBe(true);
   });
 
-  it("respects the per-bucket cap", () => {
+  it("respects the per-bucket cap", async () => {
     for (let i = 0; i < 20; i++) {
-      getDb()
+      await getDb()
         .prepare("INSERT INTO alerts (organization_id,severity,category,title,created_at) VALUES (1,'warning','other',?,?)")
         .run(`هشدار ${i}`, iso(i + 1));
     }
-    const r = actionCenterFor(session("owner", owner, null));
+    const r = await actionCenterFor(session("owner", owner, null));
     expect(r.warning.length).toBeLessThanOrEqual(12);
   });
 });
 
 describe("action centre never leaks English into Persian copy", () => {
-  it("gives an unmapped alert category no subtitle rather than an English one", () => {
-    getDb()
+  it("gives an unmapped alert category no subtitle rather than an English one", async () => {
+    await getDb()
       .prepare(
         "INSERT INTO alerts (organization_id,severity,category,title,created_at) VALUES (1,'critical','webhook_failed','بچ رو به انقضا',?)",
       )
       .run(iso(1));
-    const r = actionCenterFor(session("owner", owner, null));
+    const r = await actionCenterFor(session("owner", owner, null));
     const all = [...r.critical, ...r.warning, ...r.opportunity];
     expect(all.length).toBeGreaterThan(0);
     for (const item of all) {
@@ -133,13 +133,13 @@ describe("action centre never leaks English into Persian copy", () => {
     }
   });
 
-  it("labels a known alert category in Persian", () => {
-    getDb()
+  it("labels a known alert category in Persian", async () => {
+    await getDb()
       .prepare(
         "INSERT INTO alerts (organization_id,severity,category,title,created_at) VALUES (1,'critical','credit','سقف اعتبار',?)",
       )
       .run(iso(1));
-    const hit = actionCenterFor(session("owner", owner, null)).critical.find(
+    const hit = (await actionCenterFor(session("owner", owner, null))).critical.find(
       (c) => c.kind === "alert",
     );
     expect(hit?.sub_fa).toBe("اعتبار");

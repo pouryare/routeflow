@@ -15,7 +15,7 @@ import { vanFacilityFor } from "@/lib/repo/vanStock";
  *  The error message goes to the driver verbatim. It names the gap by number, because the
  *  whole point of refusing a shortfall is that the driver has to go and account for it. */
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
-  const guard = requireRole(req, ["field_rep", "delivery_driver"]);
+  const guard = await requireRole(req, ["field_rep", "delivery_driver"]);
   if (!guard.ok) return guard.response;
 
   const runId = Number((await ctx.params).id);
@@ -28,7 +28,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   // The run must belong to this driver. Checked here rather than trusting the id in the
   // URL, and answered as 404 so another driver's run is indistinguishable from one that
   // does not exist.
-  const owned = runOwnedByDriver(runId, guard.session.user.id, orgId);
+  const owned = await runOwnedByDriver(runId, guard.session.user.id, orgId);
   if (!owned) {
     return NextResponse.json({ ok: false, error: "مسیر پیدا نشد" }, { status: 404 });
   }
@@ -43,7 +43,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
 
   // Which van? Resolved from the driver's own vehicle rather than accepted from the body --
   // a client that named a different van would be debiting the wrong stock balance.
-  const vanFacilityId = vanFacilityFor(orgId, owned.driver_user_id);
+  const vanFacilityId = await vanFacilityFor(orgId, owned.driver_user_id);
   if (vanFacilityId === null) {
     return NextResponse.json(
       { ok: false, error: "برای این راننده وانتی ثبت نشده است" },
@@ -51,7 +51,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     );
   }
 
-  const unload = unloadOf(runId);
+  const unload = await unloadOf(runId);
   if (!unload) {
     return NextResponse.json(
       { ok: false, error: "تخلیه‌ای برای این مسیر ثبت نشده است" },
@@ -77,7 +77,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   }
 
   try {
-    reconcileUnload({
+    await reconcileUnload({
       runId,
       organizationId: orgId,
       vanFacilityId,

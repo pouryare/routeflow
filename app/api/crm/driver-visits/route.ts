@@ -3,7 +3,7 @@ import { requireRole } from "@/lib/session";
 import { driverVisitsFor } from "@/lib/repo/crm/driverVisits";
 
 export async function GET(req: NextRequest) {
-  const guard = requireRole(req, ["field_rep", "delivery_driver"]);
+  const guard = await requireRole(req, ["field_rep", "delivery_driver"]);
   if (!guard.ok) return guard.response;
-  return NextResponse.json({ ok: true, visits: driverVisitsFor(guard.session) });
+  return NextResponse.json({ ok: true, visits: await driverVisitsFor(guard.session) });
 }

@@ -13,16 +13,16 @@ import { PIN_POOL_ROLES } from "@/lib/roles";
  *  while work continues unseen. The decoding is server-side, so the browser tab was only
  *  ever watching -- losing it costs nothing but the watching. */
 export async function GET(req: NextRequest) {
-  const guard = requireRole(req, PIN_POOL_ROLES);
+  const guard = await requireRole(req, PIN_POOL_ROLES);
   if (!guard.ok) return guard.response;
 
   const org = guard.session.organizationId;
-  const job = importRepo.latestJob(org);
+  const job = await importRepo.latestJob(org);
   if (!job) {
     return NextResponse.json({ ok: true, job: null, items: [], remaining: {}, currentMethod: null, etaSeconds: 0 });
   }
 
-  const items = plain(importRepo.listItems(org, job.id));
+  const items = plain(await importRepo.listItems(org, job.id));
   const pool = items
     .filter((i) => i.status === "pending" || i.status === "resolving")
     .map((i) => ({ id: i.id, ordinal: i.ordinal, resolution: i.resolution, maps_url: i.maps_url }));

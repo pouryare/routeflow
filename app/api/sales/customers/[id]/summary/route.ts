@@ -14,7 +14,7 @@ const CAN_SEE = ["platform_owner", "owner", "group_manager", "phone_sales"] as c
  *  probe for ids.
  */
 export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
-  const guard = requireRole(req, [...CAN_SEE]);
+  const guard = await requireRole(req, [...CAN_SEE]);
   if (!guard.ok) return guard.response;
 
   const id = Number((await ctx.params).id);
@@ -22,12 +22,12 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
     return NextResponse.json({ ok: false, error: "شناسه معتبر نیست" }, { status: 400 });
   }
 
-  const visible = customerVisible(groupFilter(guard.session), id);
+  const visible = await customerVisible(await groupFilter(guard.session), id);
   if (!visible) {
     return NextResponse.json({ ok: false, error: "مشتری پیدا نشد" }, { status: 404 });
   }
 
-  const summary = customerSummaryIn(orderFilter(guard.session), id);
+  const summary = await customerSummaryIn(orderFilter(guard.session), id);
   if (!summary) {
     return NextResponse.json({ ok: false, error: "مشتری پیدا نشد" }, { status: 404 });
   }

@@ -9,7 +9,7 @@ process.env.SESSION_SECRET = "test-secret";
 
 const { getDb } = await import("@/lib/db");
 const { ensureWarehouse } = await import("../helpers/ensureWarehouse");
-ensureWarehouse(getDb());
+await ensureWarehouse(getDb());
 const { createProduct, createPackaging, setPrice } = await import("@/lib/catalogue");
 const { createOrder, confirmOrder } = await import("@/lib/orders");
 const { createRun, addStop } = await import("@/lib/delivery");
@@ -24,22 +24,22 @@ afterAll(() => {
 
 let driver = 0, owner = 0, stopId = 0, lineId = 0;
 
-beforeAll(() => {
+beforeAll(async () => {
   const db = getDb();
   const now = new Date().toISOString();
   const u = db.prepare("INSERT INTO users (username,password_hash,display_name,role,active,created_at,organization_id) VALUES (?,?,?,?,1,?,1)");
-  owner = Number(u.run("o", "x", "م", "owner", now).lastInsertRowid);
-  driver = Number(u.run("d", "x", "ر", "delivery_driver", now).lastInsertRowid);
-  const cust = Number(db.prepare("INSERT INTO customers (customer_code,business_name,lifecycle,synced_at,organization_id) VALUES ('C','x','active',?,1)").run(now).lastInsertRowid);
-  const product = createProduct(db, { name: "کره", kg_per_base_unit: 1, organization_id: 1 });
-  const packaging = createPackaging(db, { product_id: product, name: "جعبه", qty_per_pack: 1 });
-  setPrice(db, { product_id: product, price_toman: 1000, valid_from: "2020-01-01" });
+  owner = Number((await u.run("o", "x", "م", "owner", now)).lastInsertRowid);
+  driver = Number((await u.run("d", "x", "ر", "delivery_driver", now)).lastInsertRowid);
+  const cust = Number((await db.prepare("INSERT INTO customers (customer_code,business_name,lifecycle,synced_at,organization_id) VALUES ('C','x','active',?,1)").run(now)).lastInsertRowid);
+  const product = await createProduct(db, { name: "کره", kg_per_base_unit: 1, organization_id: 1 });
+  const packaging = await createPackaging(db, { product_id: product, name: "جعبه", qty_per_pack: 1 });
+  await setPrice(db, { product_id: product, price_toman: 1000, valid_from: "2020-01-01" });
   const today = tehranTodayIso();
-  const order = createOrder(db, { customer_id: cust, order_date: today, created_by: owner, organization_id: 1, lines: [{ product_id: product, packaging_id: packaging, packs: 4 }] });
-  confirmOrder(db, order.id);
-  const run = createRun(db, { driver_user_id: driver, run_date: today, created_by: owner, organization_id: 1 });
-  stopId = addStop(db, run, order.id, 0);
-  lineId = (db.prepare("SELECT id FROM order_lines WHERE order_id = ?").get(order.id) as { id: number }).id;
+  const order = await createOrder(db, { customer_id: cust, order_date: today, created_by: owner, organization_id: 1, lines: [{ product_id: product, packaging_id: packaging, packs: 4 }] });
+  await confirmOrder(db, order.id);
+  const run = await createRun(db, { driver_user_id: driver, run_date: today, created_by: owner, organization_id: 1 });
+  stopId = await addStop(db, run, order.id, 0);
+  lineId = (await db.prepare("SELECT id FROM order_lines WHERE order_id = ?").get(order.id) as { id: number }).id;
 });
 
 const cookie = (uid: number, role: string) =>

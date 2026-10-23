@@ -4,7 +4,7 @@
  *  reproducible and "last 7 days" always has something in it.
  */
 
-import type { DatabaseSync } from "node:sqlite";
+import type { Db } from "@/lib/database/client";
 import type { Rng } from "./rng";
 
 export interface ScaleProfile {
@@ -43,7 +43,7 @@ export interface SeedIds {
 }
 
 export interface SeedContext {
-  db: DatabaseSync;
+  db: Db;
   rng: Rng;
   scale: ScaleProfile;
   /** The anchor date, YYYY-MM-DD. GREGORIAN. Use `periodOf()` for Jalali keys. */

@@ -25,7 +25,7 @@ let custId = 0;
 let product = 0;
 let packaging = 0;
 
-beforeEach(() => {
+beforeEach(async () => {
   const db = getDb();
   /* The ledger is append-only by trigger and its AR leg REFERENCES customers(id), so
      `DELETE FROM customers` below raises FOREIGN KEY constraint failed once any test in
@@ -33,31 +33,31 @@ beforeEach(() => {
      tests/helpers/ledgerTeardown.ts, and note the scope warning in it: many suites do not
      set ROUTEFLOW_DB_PATH, so this must stay an explicit per-suite call and never a global
      setupFiles hook, which would run against the real data/routeflow.db. */
-  clearLedger(db);
+  await clearLedger(db);
 
-  db.exec(
+  await db.exec(
     "PRAGMA foreign_keys=OFF; DELETE FROM order_events; DELETE FROM payment_allocations; DELETE FROM payments; DELETE FROM order_lines; DELETE FROM orders; DELETE FROM packagings; DELETE FROM products; DELETE FROM customers; DELETE FROM users WHERE id>0; PRAGMA foreign_keys=ON;"
   );
   const now = new Date().toISOString();
   owner = Number(
-    db
+    (await db
       .prepare("INSERT INTO users (username,password_hash,display_name,role,created_at,organization_id) VALUES ('o','x','م','owner',?,1)")
-      .run(now).lastInsertRowid
+      .run(now)).lastInsertRowid
   );
   custId = Number(
-    db
+    (await db
       .prepare("INSERT INTO customers (customer_code,business_name,lifecycle,synced_at,organization_id) VALUES ('C1','x','active','2026-01-01',1)")
-      .run().lastInsertRowid
+      .run()).lastInsertRowid
   );
-  product = createProduct(db, { name: "کره", kg_per_base_unit: 0.25, organization_id: 1 });
-  packaging = createPackaging(db, { product_id: product, name: "جعبه", qty_per_pack: 10 });
-  setPrice(db, { product_id: product, price_toman: 1_000, valid_from: "2026-01-01" });
+  product = await createProduct(db, { name: "کره", kg_per_base_unit: 0.25, organization_id: 1 });
+  packaging = await createPackaging(db, { product_id: product, name: "جعبه", qty_per_pack: 10 });
+  await setPrice(db, { product_id: product, price_toman: 1_000, valid_from: "2026-01-01" });
 });
 
 describe("client_uuid threading", () => {
-  it("createOrder writes the client_uuid when given, NULL when not", () => {
+  it("createOrder writes the client_uuid when given, NULL when not", async () => {
     const db = getDb();
-    const a = createOrder(db, {
+    const a = await createOrder(db, {
       customer_id: custId,
       order_date: "2026-01-01",
       created_by: owner,
@@ -65,20 +65,20 @@ describe("client_uuid threading", () => {
       client_uuid: "cuuid-1",
       lines: [{ product_id: product, packaging_id: packaging, packs: 1 }],
     });
-    const b = createOrder(db, {
+    const b = await createOrder(db, {
       customer_id: custId,
       order_date: "2026-01-01",
       created_by: owner,
       organization_id: 1,
       lines: [{ product_id: product, packaging_id: packaging, packs: 1 }],
     });
-    expect((db.prepare("SELECT client_uuid FROM orders WHERE id=?").get(a.id) as { client_uuid: string | null }).client_uuid).toBe("cuuid-1");
-    expect((db.prepare("SELECT client_uuid FROM orders WHERE id=?").get(b.id) as { client_uuid: string | null }).client_uuid).toBeNull();
+    expect((await db.prepare("SELECT client_uuid FROM orders WHERE id=?").get(a.id) as { client_uuid: string | null }).client_uuid).toBe("cuuid-1");
+    expect((await db.prepare("SELECT client_uuid FROM orders WHERE id=?").get(b.id) as { client_uuid: string | null }).client_uuid).toBeNull();
   });
 
-  it("a replayed client_uuid is refused by the partial unique index", () => {
+  it("a replayed client_uuid is refused by the partial unique index", async () => {
     const db = getDb();
-    createOrder(db, {
+    await createOrder(db, {
       customer_id: custId,
       order_date: "2026-01-01",
       created_by: owner,
@@ -86,21 +86,20 @@ describe("client_uuid threading", () => {
       client_uuid: "dupe",
       lines: [{ product_id: product, packaging_id: packaging, packs: 1 }],
     });
-    expect(() =>
-      createOrder(db, {
+    await expect((async () =>
+      await createOrder(db, {
         customer_id: custId,
         order_date: "2026-01-01",
         created_by: owner,
         organization_id: 1,
         client_uuid: "dupe",
         lines: [{ product_id: product, packaging_id: packaging, packs: 1 }],
-      })
-    ).toThrow();
+      }))()).rejects.toThrow();
   });
 
-  it("recordPayment writes the client_uuid", () => {
+  it("recordPayment writes the client_uuid", async () => {
     const db = getDb();
-    const pid = recordPayment(1, {
+    const pid = await recordPayment(1, {
       customer_id: custId,
       amount_toman: 500,
       method: "CASH",
@@ -109,6 +108,6 @@ describe("client_uuid threading", () => {
       client_uuid: "pay-cuuid",
       allocations: [{ order_id: null, amount_toman: 500 }],
     });
-    expect((db.prepare("SELECT client_uuid FROM payments WHERE id=?").get(pid) as { client_uuid: string }).client_uuid).toBe("pay-cuuid");
+    expect((await db.prepare("SELECT client_uuid FROM payments WHERE id=?").get(pid) as { client_uuid: string }).client_uuid).toBe("pay-cuuid");
   });
 });

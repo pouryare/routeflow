@@ -9,9 +9,9 @@ import { CrmError, writableBusiness } from "./write";
 import { recomputeState } from "./state";
 import { recordOwnerChange } from "./ownerChange";
 
-function correction(session: Session, id: number, org: number, note: string, verified = false) {
+async function correction(session: Session, id: number, org: number, note: string, verified = false) {
   const now = new Date().toISOString();
-  getDb().prepare(`INSERT INTO activities (organization_id,customer_id,user_id,type,note,verification_to,occurred_at,created_at)
+  await getDb().prepare(`INSERT INTO activities (organization_id,customer_id,user_id,type,note,verification_to,occurred_at,created_at)
     VALUES (?,?,?,?,?,?,?,?)`).run(org, id, session.user.id, verified ? "verification" : "correction", note, verified ? "verified" : null, now, now);
 }
 type Values = Record<string, string | number | null>;
@@ -111,37 +111,33 @@ export function parseBusinessFields(raw: unknown): Values {
   return values;
 }
 
-export function updateBusinessFields(session: Session, id: number, raw: unknown): void {
+export async function updateBusinessFields(session: Session, id: number, raw: unknown): Promise<void> {
   const values = parseBusinessFields(raw);
   const db = getDb();
-  db.exec("BEGIN IMMEDIATE");
-  try {
-    const b = writableBusiness(session, id), org = b.organization_id;
-    if (values.phone_norm && db.prepare(`SELECT id FROM customers WHERE organization_id = ? AND id <> ? AND merged_into_id IS NULL
+  await db.tx(async () => {
+    const b = await writableBusiness(session, id), org = b.organization_id;
+    if (values.phone_norm && await db.prepare(`SELECT id FROM customers WHERE organization_id = ? AND id <> ? AND merged_into_id IS NULL
       AND (phone_norm = ? OR id IN (SELECT customer_id FROM contacts WHERE organization_id = ? AND active = 1 AND phone_norm = ?)) LIMIT 1`)
       .get(org, id, values.phone_norm, org, values.phone_norm)) throw new CrmError(409, "این شماره مال کسب‌وکار دیگری است");
     if (typeof values.instagram === "string" && values.instagram) {
-      const others = findDuplicates(session, { instagram: values.instagram }).filter(m => m.kind === "instagram" && m.id !== id);
+      const others = (await findDuplicates(session, { instagram: values.instagram })).filter(m => m.kind === "instagram" && m.id !== id);
       if (others.length) throw new CrmError(409, "این صفحهٔ اینستاگرام مال کسب‌وکار دیگری است", { matches: others });
     }
     const claims = session.role === "phone_sales" && b.owner_user_id === null;
     if (claims) values.owner_user_id = session.user.id;
-    db.prepare(`UPDATE customers SET ${Object.keys(values).map(k => `${k} = ?`).join(",")} WHERE id = ? AND organization_id = ?`).run(...Object.values(values), id, org);
-    if (claims) recordOwnerChange(db, { organizationId: org, customerId: id, actorUserId: session.user.id, reason: "pool_claim", what: "owner", fromId: null, toId: session.user.id });
-    correction(session, id, org, "اطلاعات کسب‌وکار اصلاح شد");
-    db.exec("COMMIT");
-  } catch (e) { db.exec("ROLLBACK"); throw e; }
+    await db.prepare(`UPDATE customers SET ${Object.keys(values).map(k => `${k} = ?`).join(",")} WHERE id = ? AND organization_id = ?`).run(...Object.values(values), id, org);
+    if (claims) await recordOwnerChange(db, { organizationId: org, customerId: id, actorUserId: session.user.id, reason: "pool_claim", what: "owner", fromId: null, toId: session.user.id });
+    await correction(session, id, org, "اطلاعات کسب‌وکار اصلاح شد");
+  });
 }
-export function verifyBusiness(session: Session, id: number): void {
+export async function verifyBusiness(session: Session, id: number): Promise<void> {
   const db = getDb();
-  db.exec("BEGIN IMMEDIATE");
-  try {
-    const b = writableBusiness(session, id);
+  await db.tx(async () => {
+    const b = await writableBusiness(session, id);
     if (b.closed_at) throw new CrmError(400, "کسب‌وکار بسته شده است");
     if (b.verification !== "verified") {
-      correction(session, id, b.organization_id, "اطلاعات کسب‌وکار تأیید شد", true);
-      recomputeState(db, id);
+      await correction(session, id, b.organization_id, "اطلاعات کسب‌وکار تأیید شد", true);
+      await recomputeState(db, id);
     }
-    db.exec("COMMIT");
-  } catch (e) { db.exec("ROLLBACK"); throw e; }
+  });
 }

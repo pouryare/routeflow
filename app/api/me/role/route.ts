@@ -9,7 +9,7 @@ import { ROLES, type Role } from "@/lib/roles";
  *  reach the database and the claim is the only thing it can read. `token_version` is
  *  deliberately NOT bumped: switching a hat must not log anyone out. */
 export async function POST(req: NextRequest) {
-  const session = getSession(req);
+  const session = await getSession(req);
   if (!session) {
     return NextResponse.json({ ok: false, error: "احراز هویت نشده" }, { status: 401 });
   }

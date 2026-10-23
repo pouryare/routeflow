@@ -31,28 +31,28 @@ describe("customer lifecycle transitions", () => {
 });
 
 describe("setLifecycle", () => {
-  it("enforces the transition table and tenant scope", () => {
+  it("enforces the transition table and tenant scope", async () => {
     const db = getDb();
-    db.exec(`INSERT INTO organizations (id,name,slug,created_at) VALUES (7,'S','s','2026-01-01')`);
-    db.exec(
+    await db.exec(`INSERT INTO organizations (id,name,slug,created_at) VALUES (7,'S','s','2026-01-01')`);
+    await db.exec(
       `INSERT INTO customers (id, customer_code, business_name, lifecycle, synced_at, organization_id)
        VALUES (500, 'C500', 'x', 'lead', '2026-01-01', 7)`
     );
 
-    setLifecycle(7, 500, "qualified");
+    await setLifecycle(7, 500, "qualified");
     expect(
-      (db.prepare("SELECT lifecycle, qualified_at FROM customers WHERE id=500").get() as {
+      (await db.prepare("SELECT lifecycle, qualified_at FROM customers WHERE id=500").get() as {
         lifecycle: string;
         qualified_at: string | null;
       })
     ).toMatchObject({ lifecycle: "qualified" });
     expect(
-      (db.prepare("SELECT qualified_at FROM customers WHERE id=500").get() as { qualified_at: string | null })
+      (await db.prepare("SELECT qualified_at FROM customers WHERE id=500").get() as { qualified_at: string | null })
         .qualified_at
     ).toBeTruthy(); // stamped on the lead -> qualified move
 
-    expect(() => setLifecycle(7, 500, "active")).not.toThrow(); // qualified -> active legal
-    expect(() => setLifecycle(7, 500, "lead")).toThrow(LifecycleError); // active -> lead illegal
-    expect(() => setLifecycle(999, 500, "dormant")).toThrow(LifecycleError); // wrong org -> not found
+    await (async () => await setLifecycle(7, 500, "active"))(); // qualified -> active legal
+    await expect((async () => await setLifecycle(7, 500, "lead"))()).rejects.toThrow(LifecycleError); // active -> lead illegal
+    await expect((async () => await setLifecycle(999, 500, "dormant"))()).rejects.toThrow(LifecycleError); // wrong org -> not found
   });
 });

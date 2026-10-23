@@ -9,13 +9,13 @@ import PageHeader from "@/components/meridian/PageHeader";
 import { canSell } from "@/lib/roles";
 export const dynamic = "force-dynamic";
 export default async function ProfilePage({ params }: { params: Promise<{ id: string }> }) {
-  const session = getSessionFromCookies((await cookies()).get(COOKIE_NAME)?.value);
+  const session = await getSessionFromCookies((await cookies()).get(COOKIE_NAME)?.value);
   if (!session) redirect("/login");
   const id = idParam((await params).id);
-  const profile = id === null ? null : profileFor(session, id);
+  const profile = id === null ? null : await profileFor(session, id);
   if (!profile || id === null) notFound();
   return <>
     <PageHeader route="/crm" />
-    <BusinessProfile initial={profile} initialTimeline={timelineFor(session, id)!} canOrder={canSell(session.role)} />
+    <BusinessProfile initial={profile} initialTimeline={(await timelineFor(session, id))!} canOrder={canSell(session.role)} />
   </>;
 }

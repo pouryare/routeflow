@@ -27,19 +27,19 @@ let org = 0;
 const tokenFor = (uid: number, role: "owner" | "group_manager") =>
   createSessionToken({ uid, role, gid: null, oid: org, tv: 0, name: "t" });
 
-beforeAll(() => {
+beforeAll(async () => {
   const db = getDb();
   const now = new Date().toISOString();
   org = Number(
-    db
+    (await db
       .prepare("INSERT INTO organizations (name, slug, created_at) VALUES (?, ?, ?)")
-      .run("H", `h-${Date.now()}`, now).lastInsertRowid,
+      .run("H", `h-${Date.now()}`, now)).lastInsertRowid,
   );
   const u = db.prepare(
     "INSERT INTO users (username,password_hash,display_name,role,organization_id,created_at) VALUES (?,?,?,?,?,?)",
   );
-  owner = Number(u.run(`o${Date.now()}`, "x", "مالک", "owner", org, now).lastInsertRowid);
-  manager = Number(u.run(`m${Date.now()}`, "x", "مدیر", "group_manager", org, now).lastInsertRowid);
+  owner = Number((await u.run(`o${Date.now()}`, "x", "مالک", "owner", org, now)).lastInsertRowid);
+  manager = Number((await u.run(`m${Date.now()}`, "x", "مدیر", "group_manager", org, now)).lastInsertRowid);
 });
 
 afterAll(() => {
@@ -65,7 +65,7 @@ describe("the holiday admin API", () => {
     const res = await POST(post(tokenFor(owner, "owner"), { iso: "2026-03-20", title_fa: "عید فطر", kind: "official" }));
     expect(res.status).toBe(200);
     const j = toJalali("2026-03-20")!;
-    expect(listHolidaysForMonth(j.jy, j.jm).find((h) => h.iso === "2026-03-20")).toMatchObject({
+    expect((await listHolidaysForMonth(j.jy, j.jm)).find((h) => h.iso === "2026-03-20")).toMatchObject({
       title_fa: "عید فطر",
       kind: "official",
     });
@@ -125,7 +125,7 @@ describe("the holiday admin API", () => {
   it("a recorded holiday is marked lunar, so the screen can say it needs confirming", async () => {
     const { POST } = await import("@/app/api/admin/holidays/route");
     await POST(post(tokenFor(owner, "owner"), { iso: "2026-05-27", title_fa: "عید قربان" }));
-    const row = getDb().prepare("SELECT is_lunar FROM holidays WHERE iso_date = ?").get("2026-05-27") as {
+    const row = await getDb().prepare("SELECT is_lunar FROM holidays WHERE iso_date = ?").get("2026-05-27") as {
       is_lunar: number;
     };
     expect(row.is_lunar).toBe(1);
@@ -136,7 +136,7 @@ describe("the holiday admin API", () => {
     const token = tokenFor(owner, "owner");
     await POST(post(token, { iso: "2026-05-27", title_fa: "عید قربان (اشتباه)" }));
     await POST(post(token, { iso: "2026-05-27", title_fa: "عید قربان" }));
-    const rows = getDb().prepare("SELECT title_fa FROM holidays WHERE iso_date = ?").all("2026-05-27");
+    const rows = await getDb().prepare("SELECT title_fa FROM holidays WHERE iso_date = ?").all("2026-05-27");
     expect(rows).toHaveLength(1);
     expect((rows[0] as { title_fa: string }).title_fa).toBe("عید قربان");
   });
@@ -144,7 +144,7 @@ describe("the holiday admin API", () => {
   it("an unknown kind falls back to official rather than writing junk", async () => {
     const { POST } = await import("@/app/api/admin/holidays/route");
     await POST(post(tokenFor(owner, "owner"), { iso: "2026-06-01", title_fa: "تست", kind: "invented" }));
-    const row = getDb().prepare("SELECT kind FROM holidays WHERE iso_date = ?").get("2026-06-01") as {
+    const row = await getDb().prepare("SELECT kind FROM holidays WHERE iso_date = ?").get("2026-06-01") as {
       kind: string;
     };
     expect(row.kind).toBe("official");
@@ -153,7 +153,7 @@ describe("the holiday admin API", () => {
   it("a commemorative kind is stored as commemorative", async () => {
     const { POST } = await import("@/app/api/admin/holidays/route");
     await POST(post(tokenFor(owner, "owner"), { iso: "2026-06-02", title_fa: "یادبود", kind: "commemorative" }));
-    const row = getDb().prepare("SELECT kind FROM holidays WHERE iso_date = ?").get("2026-06-02") as {
+    const row = await getDb().prepare("SELECT kind FROM holidays WHERE iso_date = ?").get("2026-06-02") as {
       kind: string;
     };
     expect(row.kind).toBe("commemorative");
@@ -163,7 +163,7 @@ describe("the holiday admin API", () => {
     const { POST } = await import("@/app/api/admin/holidays/route");
     const res = await POST(post(tokenFor(owner, "owner"), { iso: "2026-06-03", title_fa: "\t\n  " }));
     expect(res.status).toBe(400);
-    const n = getDb().prepare("SELECT COUNT(*) AS n FROM holidays WHERE iso_date = ?").get("2026-06-03") as { n: number };
+    const n = await getDb().prepare("SELECT COUNT(*) AS n FROM holidays WHERE iso_date = ?").get("2026-06-03") as { n: number };
     expect(n.n).toBe(0);
   });
 
@@ -201,7 +201,7 @@ describe("the holiday admin API", () => {
       params: Promise.resolve({ iso: "2026-06-05" }),
     } as never);
     expect(res.status).toBe(200);
-    const n = getDb().prepare("SELECT COUNT(*) AS n FROM holidays WHERE iso_date = ?").get("2026-06-05") as { n: number };
+    const n = await getDb().prepare("SELECT COUNT(*) AS n FROM holidays WHERE iso_date = ?").get("2026-06-05") as { n: number };
     expect(n.n).toBe(0);
   });
 
@@ -211,7 +211,7 @@ describe("the holiday admin API", () => {
       params: Promise.resolve({ iso: ".." }),
     } as never);
     expect(res.status).toBe(400);
-    const n = getDb().prepare("SELECT COUNT(*) AS n FROM holidays").get() as { n: number };
+    const n = await getDb().prepare("SELECT COUNT(*) AS n FROM holidays").get() as { n: number };
     expect(n.n).toBeGreaterThan(0);
   });
 

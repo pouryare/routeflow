@@ -22,11 +22,11 @@ export default async function SecuritySettingsPage({
   searchParams: Promise<{ done?: string; error?: string }>;
 }) {
   const jar = await cookies();
-  const session = getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
+  const session = await getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
   if (!session) redirect("/login");
   const { done, error } = await searchParams;
   const impersonating = session.actorId !== undefined;
-  const logins = myRecentLogins(session.organizationId, session.user.id, 10);
+  const logins = await myRecentLogins(session.organizationId, session.user.id, 10);
 
   return (
     <>

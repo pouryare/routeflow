@@ -12,7 +12,7 @@ process.env.SESSION_SECRET = "test-secret";
 
 const { getDb } = await import("@/lib/db");
 const { ensureWarehouse } = await import("../helpers/ensureWarehouse");
-ensureWarehouse(getDb());
+await ensureWarehouse(getDb());
 const { createProduct, createPackaging, setPrice } = await import("@/lib/catalogue");
 const { GET, POST } = await import("@/app/api/sales/orders/route");
 const { GET: GET_ONE, PATCH } = await import("@/app/api/sales/orders/[id]/route");
@@ -39,38 +39,38 @@ const ctx = {
   packaging: 0,
 };
 
-beforeAll(() => {
+beforeAll(async () => {
   const db = getDb();
   const now = new Date().toISOString();
   const group = db.prepare(
     "INSERT INTO groups (name, slug, color, active, created_at, organization_id) VALUES (?, ?, ?, 1, ?, 1)"
   );
-  ctx.east = Number(group.run("شرق", "east", "#0ff", now).lastInsertRowid);
-  ctx.west = Number(group.run("غرب", "west", "#f0f", now).lastInsertRowid);
+  ctx.east = Number((await group.run("شرق", "east", "#0ff", now)).lastInsertRowid);
+  ctx.west = Number((await group.run("غرب", "west", "#f0f", now)).lastInsertRowid);
 
   const user = db.prepare(
     "INSERT INTO users (username, password_hash, display_name, role, group_id, active, created_at, organization_id) VALUES (?, 'x', ?, ?, ?, 1, ?, 1)"
   );
-  ctx.owner = Number(user.run("owner", "مالک", "owner", null, now).lastInsertRowid);
-  ctx.eastManager = Number(user.run("em", "مدیر شرق", "group_manager", ctx.east, now).lastInsertRowid);
-  ctx.westManager = Number(user.run("wm", "مدیر غرب", "group_manager", ctx.west, now).lastInsertRowid);
-  ctx.nazanin = Number(user.run("nazanin", "نازنین", "phone_sales", ctx.east, now).lastInsertRowid);
-  ctx.yasamin = Number(user.run("yasamin", "یاسمین", "phone_sales", ctx.east, now).lastInsertRowid);
-  ctx.driver = Number(user.run("driver", "راننده", "delivery_driver", ctx.east, now).lastInsertRowid);
+  ctx.owner = Number((await user.run("owner", "مالک", "owner", null, now)).lastInsertRowid);
+  ctx.eastManager = Number((await user.run("em", "مدیر شرق", "group_manager", ctx.east, now)).lastInsertRowid);
+  ctx.westManager = Number((await user.run("wm", "مدیر غرب", "group_manager", ctx.west, now)).lastInsertRowid);
+  ctx.nazanin = Number((await user.run("nazanin", "نازنین", "phone_sales", ctx.east, now)).lastInsertRowid);
+  ctx.yasamin = Number((await user.run("yasamin", "یاسمین", "phone_sales", ctx.east, now)).lastInsertRowid);
+  ctx.driver = Number((await user.run("driver", "راننده", "delivery_driver", ctx.east, now)).lastInsertRowid);
 
   const customer = db.prepare(
     "INSERT INTO customers (customer_code, business_name, group_id, synced_at, organization_id) VALUES (?, ?, ?, ?, 1)"
   );
-  ctx.eastCustomer = Number(customer.run("C1", "رستوران شرق", ctx.east, now).lastInsertRowid);
-  ctx.westCustomer = Number(customer.run("C2", "رستوران غرب", ctx.west, now).lastInsertRowid);
+  ctx.eastCustomer = Number((await customer.run("C1", "رستوران شرق", ctx.east, now)).lastInsertRowid);
+  ctx.westCustomer = Number((await customer.run("C2", "رستوران غرب", ctx.west, now)).lastInsertRowid);
 
-  ctx.product = createProduct(db, { name: "کره گیاهی", kg_per_base_unit: 0.25, organization_id: 1 });
-  ctx.packaging = createPackaging(db, {
+  ctx.product = await createProduct(db, { name: "کره گیاهی", kg_per_base_unit: 0.25, organization_id: 1 });
+  ctx.packaging = await createPackaging(db, {
     product_id: ctx.product,
     name: "جعبه",
     qty_per_pack: 100,
   });
-  setPrice(db, { product_id: ctx.product, price_toman: 440000, valid_from: "2026-01-01" });
+  await setPrice(db, { product_id: ctx.product, price_toman: 440000, valid_from: "2026-01-01" });
 });
 
 function cookieFor(uid: number, role: Role, gid: number | null) {
@@ -149,7 +149,7 @@ describe("POST /api/sales/orders", () => {
     /* By customer + newest, because the response carries no row id — the order number is
      * the handle, and asking for "the last one" would pass even if this POST wrote nothing
      * as long as some earlier test in this file had. */
-    const row = getDb()
+    const row = await getDb()
       .prepare("SELECT requested_day, requested_kind FROM orders WHERE customer_id = ? ORDER BY id DESC LIMIT 1")
       .get(ctx.eastCustomer) as { requested_day: string | null; requested_kind: string | null } | undefined;
     expect(row?.requested_day).toBeNull();
@@ -184,7 +184,7 @@ describe("POST /api/sales/orders", () => {
     );
     expect(res.status).toBe(201);
     const { id } = await res.json();
-    const row = getDb()
+    const row = await getDb()
       .prepare("SELECT salesperson_user_id FROM orders WHERE id = ?")
       .get(id) as { salesperson_user_id: number };
     expect(row.salesperson_user_id).toBe(ctx.nazanin);
@@ -193,7 +193,7 @@ describe("POST /api/sales/orders", () => {
   it("credits a salesperson's own order to themselves", async () => {
     const res = await POST(post(AS.nazanin(), orderBody()));
     const { id } = await res.json();
-    const row = getDb()
+    const row = await getDb()
       .prepare("SELECT salesperson_user_id FROM orders WHERE id = ?")
       .get(id) as { salesperson_user_id: number };
     expect(row.salesperson_user_id).toBe(ctx.nazanin);
@@ -204,7 +204,7 @@ describe("POST /api/sales/orders", () => {
     // moving money. A فروشنده's order is always their own.
     const res = await POST(post(AS.nazanin(), orderBody({ salesperson_user_id: ctx.yasamin })));
     const { id } = await res.json();
-    const row = getDb()
+    const row = await getDb()
       .prepare("SELECT salesperson_user_id FROM orders WHERE id = ?")
       .get(id) as { salesperson_user_id: number };
     expect(row.salesperson_user_id).toBe(ctx.nazanin);
@@ -216,8 +216,8 @@ describe("POST /api/sales/orders", () => {
 
   it("reports an unpriced product as a message rather than a crash", async () => {
     const db = getDb();
-    const bare = createProduct(db, { name: "بی‌قیمت", kg_per_base_unit: 1, organization_id: 1 });
-    const barePack = createPackaging(db, { product_id: bare, name: "ک", qty_per_pack: 1 });
+    const bare = await createProduct(db, { name: "بی‌قیمت", kg_per_base_unit: 1, organization_id: 1 });
+    const barePack = await createPackaging(db, { product_id: bare, name: "ک", qty_per_pack: 1 });
     const res = await POST(
       post(AS.eastManager(), orderBody({ lines: [{ product_id: bare, packaging_id: barePack, packs: 1 }] }))
     );

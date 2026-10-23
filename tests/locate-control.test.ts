@@ -16,7 +16,7 @@ vi.mock("@/components/MyPositionProvider", () => ({ useMyPosition: () => state }
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 let root: Root | undefined;
 afterEach(async () => {
-  if (root) await act(() => root!.unmount());
+  if (root) await act(async () => { root!.unmount(); });
   root = undefined;
   state.map?.remove();
   state.map = null;
@@ -33,7 +33,7 @@ it("uses the shared Lucide icon and retries/recentres once per click", async () 
   state.map = new Map(container).setView([35.7, 51.4], 10);
   const flyTo = vi.spyOn(state.map, "flyTo").mockReturnValue(state.map);
   root = createRoot(host);
-  const render = () => act(() => root!.render(createElement(StrictMode, null, createElement(LocateControl))));
+  const render = () => act(async () => { root!.render(createElement(StrictMode, null, createElement(LocateControl))); });
   await render();
   expect(container.querySelectorAll(".locate-control a")).toHaveLength(1);
   const button = container.querySelector<HTMLAnchorElement>(".locate-control a")!;
@@ -46,7 +46,7 @@ it("uses the shared Lucide icon and retries/recentres once per click", async () 
   await render();
   button.click();
   expect(flyTo).toHaveBeenCalledExactlyOnceWith([35.8, 51.5], 16, { duration: 1 });
-  await act(() => root!.render(null));
+  await act(async () => { root!.render(null); });
   button.click();
   expect(flyTo).toHaveBeenCalledTimes(1);
 });

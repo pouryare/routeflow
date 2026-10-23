@@ -1,4 +1,4 @@
-import type { DatabaseSync } from "node:sqlite";
+import type { Db } from "@/lib/database/client";
 import { getDb } from "@/lib/db";
 
 /** Record that a row went away, so a device that pulled it before the delete finds out.
@@ -8,13 +8,13 @@ import { getDb } from "@/lib/db";
  *  Call this from every hard DELETE of an offline-relevant row. Status changes (an order
  *  moving to CANCELLED) are NOT deletes and need no tombstone -- the row is still there,
  *  the pull sees its new `updated_at`. */
-export function tombstone(
+export async function tombstone(
   organizationId: number,
   entityType: string,
   entityId: number,
-  db?: DatabaseSync
-): void {
-  (db ?? getDb())
+  db?: Db
+): Promise<void> {
+  await (db ?? getDb())
     .prepare(
       "INSERT INTO deleted_rows (organization_id, entity_type, entity_id, deleted_at) VALUES (?, ?, ?, ?)"
     )
@@ -28,19 +28,19 @@ export interface Tombstone {
 }
 
 /** Tombstones for one org since a watermark (exclusive). `since` null = all of them. */
-export function tombstonesSince(
+export async function tombstonesSince(
   organizationId: number,
   since: string | null,
-  db?: DatabaseSync
-): Tombstone[] {
+  db?: Db
+): Promise<Tombstone[]> {
   const conn = db ?? getDb();
   return since
-    ? (conn
+    ? (await conn
         .prepare(
           "SELECT entity_type, entity_id, deleted_at FROM deleted_rows WHERE organization_id = ? AND deleted_at > ? ORDER BY deleted_at"
         )
         .all(organizationId, since) as unknown as Tombstone[])
-    : (conn
+    : (await conn
         .prepare(
           "SELECT entity_type, entity_id, deleted_at FROM deleted_rows WHERE organization_id = ? ORDER BY deleted_at"
         )

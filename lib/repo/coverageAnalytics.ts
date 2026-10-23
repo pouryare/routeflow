@@ -16,7 +16,7 @@
  *  that is not theirs — so the scope is applied to the rows being aggregated, never to
  *  the page.
  */
-import type { DatabaseSync } from "node:sqlite";
+import type { Db } from "@/lib/database/client";
 import { getDb, type Customer, type District, type CoverageStatus } from "@/lib/db";
 import { daysSinceLastPurchase } from "@/lib/types";
 import { readFacilities, pickOrigin } from "@/lib/facilities";
@@ -25,6 +25,7 @@ import { groupFilter, groupFilterWithShared, orgScopeId, type Session } from "@/
 import { orgClause } from "@/lib/orgScope";
 import { isOwner } from "@/lib/roles";
 import type { CostToServeRow, MatchQuality } from "@/components/CostToServePanel";
+import { tehranTodayIso } from "@/lib/jalali";
 
 export type DayLogRow = {
   day: string;
@@ -66,20 +67,20 @@ function mmdd(d: Date): string {
 /** `now` is injected rather than read here so that every figure on one page agrees about
  *  what "now" means. Two reads can land either side of a day boundary and disagree about
  *  which days exist. */
-export function coverageAnalytics(
+export async function coverageAnalytics(
   session: Session,
   now: Date = new Date(),
-  db: DatabaseSync = getDb(),
-): CoverageAnalytics {
+  db: Db = getDb(),
+): Promise<CoverageAnalytics> {
   // districts is shared reference data (no organization_id), so the org guard is dropped;
   // the group filter still applies, since which group holds a territory is per-organisation.
-  const fd = groupFilter(session, "group_id", { shared: true });
+  const fd = await groupFilter(session, "group_id", { shared: true });
   // customers are per-organisation: they keep the organisation guard even though districts drop it.
-  const f = groupFilter(session);
-  const districts = db
+  const f = await groupFilter(session);
+  const districts = await db
     .prepare(`SELECT * FROM districts WHERE 1 = 1${fd.sql}`)
     .all(...fd.params) as unknown as District[];
-  const customers = db
+  const customers = await db
     .prepare(`SELECT * FROM customers WHERE 1 = 1${f.sql}`)
     .all(...f.params) as unknown as Customer[];
 
@@ -89,22 +90,22 @@ export function coverageAnalytics(
     return days !== null && days > 30;
   }).length;
 
-  const remindersRow = db
+  const remindersRow = await db
     .prepare(
       `SELECT
-         SUM(CASE WHEN due_date < date('now') THEN 1 ELSE 0 END) as overdue,
-         SUM(CASE WHEN due_date = date('now') THEN 1 ELSE 0 END) as today,
+         SUM(CASE WHEN due_date < ? THEN 1 ELSE 0 END) as overdue,
+         SUM(CASE WHEN due_date = ? THEN 1 ELSE 0 END) as today,
          COUNT(*) as total
        FROM reminders WHERE resolved = 0`,
     )
-    .get() as { overdue: number | null; today: number | null; total: number };
+    .get(tehranTodayIso(now), tehranTodayIso(now)) as { overdue: number | null; today: number | null; total: number };
 
   /* Revenue per customer against distance from the site we dispatch from.
      The join is by business name as free text -- sales rows carry no customer id -- so
      any renamed or differently-spelled business drops out silently. That gap is counted
      and surfaced in the panel rather than absorbed, because a total that is quietly
      missing rows is worse than one that says so. */
-  const facilities = readFacilities(db, groupFilterWithShared(session));
+  const facilities = await readFacilities(db, await groupFilterWithShared(session));
   const dispatchSite = pickOrigin(facilities);
 
   /* `match` counts sales rows that match no customer at all: a join drops the very rows it is there to
@@ -114,15 +115,15 @@ export function coverageAnalytics(
   const org = orgClause("organization_id", orgScopeId(session));
   const orgJoin = orgClause("s.organization_id", orgScopeId(session));
   const canCountUnmatched = isOwner(session.role);
-  const salesScope = groupFilter(session, "c.group_id");
+  const salesScope = await groupFilter(session, "c.group_id");
   const salesByName = (
     canCountUnmatched
-      ? db
+      ? await db
           .prepare(
             `SELECT customer_name, SUM(amount) as total, COUNT(*) as rows FROM sales WHERE 1 = 1${org.sql} GROUP BY customer_name`,
           )
           .all(...org.params)
-      : db
+      : await db
           .prepare(
             `SELECT s.customer_name, SUM(s.amount) as total, COUNT(*) as rows
              FROM sales s JOIN customers c ON c.business_name = s.customer_name
@@ -160,7 +161,7 @@ export function coverageAnalytics(
      Days with no arrivals are absent rather than shown as zero-hour days: the log is the
      only evidence there is, and a day nobody recorded is unknown, not empty. */
   const logWindowStart = new Date(now.getTime() - 21 * 86400000).toISOString();
-  const dayLogRows = db
+  const dayLogRows = await db
     .prepare(
       `SELECT substr(created_at, 1, 10) AS day,
               MIN(created_at) AS first_seen,
@@ -176,7 +177,7 @@ export function coverageAnalytics(
 
   const doneByDay = new Map(
     (
-      db
+      await db
         .prepare(
           `SELECT planned_date, COUNT(*) AS c FROM visit_plans
            WHERE status = 'done' AND planned_date >= ?
@@ -206,7 +207,7 @@ export function coverageAnalytics(
   for (let i = 7; i >= 0; i--) {
     const end = new Date(now.getTime() - i * 7 * 86400000);
     const start = new Date(end.getTime() - 7 * 86400000);
-    const row = db
+    const row = await db
       .prepare(
         `SELECT COUNT(*) as n FROM activity_log
          WHERE event_type = 'status_change' AND new_value = 'visited'

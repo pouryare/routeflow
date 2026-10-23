@@ -72,31 +72,31 @@ describe("usualBasket (F58)", () => {
 });
 
 describe("customerUsualBasket", () => {
-  it("reads the last repeatable orders in scope; drafts and other organisations are left out", () => {
+  it("reads the last repeatable orders in scope; drafts and other organisations are left out", async () => {
     const db = getDb();
-    ensureWarehouse(db);
+    await ensureWarehouse(db);
     const now = new Date().toISOString();
     const owner = Number(
-      db.prepare("INSERT INTO users (username,password_hash,display_name,role,active,created_at,organization_id) VALUES ('ub','x','م','owner',1,?,1)").run(now).lastInsertRowid
+      (await db.prepare("INSERT INTO users (username,password_hash,display_name,role,active,created_at,organization_id) VALUES ('ub','x','م','owner',1,?,1)").run(now)).lastInsertRowid
     );
     const cust = Number(
-      db.prepare("INSERT INTO customers (customer_code,business_name,lifecycle,synced_at,organization_id) VALUES ('UB','x','active',?,1)").run(now).lastInsertRowid
+      (await db.prepare("INSERT INTO customers (customer_code,business_name,lifecycle,synced_at,organization_id) VALUES ('UB','x','active',?,1)").run(now)).lastInsertRowid
     );
-    const product = createProduct(db, { name: "کره", kg_per_base_unit: 0.25, organization_id: 1 });
-    const packaging = createPackaging(db, { product_id: product, name: "جعبه", qty_per_pack: 10 });
-    setPrice(db, { product_id: product, price_toman: 1000, valid_from: "2026-01-01" });
-    const order = (date: string, packs: number) =>
-      createOrder(db, {
+    const product = await createProduct(db, { name: "کره", kg_per_base_unit: 0.25, organization_id: 1 });
+    const packaging = await createPackaging(db, { product_id: product, name: "جعبه", qty_per_pack: 10 });
+    await setPrice(db, { product_id: product, price_toman: 1000, valid_from: "2026-01-01" });
+    const order = async (date: string, packs: number) =>
+      await createOrder(db, {
         customer_id: cust, order_date: date, created_by: owner, organization_id: 1, salesperson_user_id: owner,
         lines: [{ product_id: product, packaging_id: packaging, packs }],
       });
-    confirmOrder(db, order("2026-02-01", 2).id);
-    confirmOrder(db, order("2026-02-08", 3).id);
-    order("2026-02-10", 50); // draft
+    await confirmOrder(db, (await order("2026-02-01", 2)).id);
+    await confirmOrder(db, (await order("2026-02-08", 3)).id);
+    await order("2026-02-10", 50); // draft
     const scope = { sql: " AND o.organization_id = ?", params: [1] };
-    expect(customerUsualBasket(scope, cust)).toEqual([]);
-    confirmOrder(db, order("2026-02-15", 4).id);
-    expect(customerUsualBasket(scope, cust)).toEqual([{ product_id: product, packaging_id: packaging, packs_ordered: 3 }]);
-    expect(customerUsualBasket({ sql: " AND o.organization_id = ?", params: [2] }, cust)).toEqual([]);
+    expect(await customerUsualBasket(scope, cust)).toEqual([]);
+    await confirmOrder(db, (await order("2026-02-15", 4)).id);
+    expect(await customerUsualBasket(scope, cust)).toEqual([{ product_id: product, packaging_id: packaging, packs_ordered: 3 }]);
+    expect(await customerUsualBasket({ sql: " AND o.organization_id = ?", params: [2] }, cust)).toEqual([]);
   });
 });

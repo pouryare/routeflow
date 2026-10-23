@@ -21,7 +21,7 @@ const lastTestAt = new Map<number, number>();
  *  a silent no-op, and hands back the flush's own tuple so the UI can distinguish a real
  *  send from a quiet-hours hold. */
 export async function POST(req: NextRequest) {
-  const guard = requireRole(req, [...ROLES]);
+  const guard = await requireRole(req, [...ROLES]);
   if (!guard.ok) return guard.response;
   const { organizationId, user } = guard.session;
 
@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
 
   // Checked before the slot is burned: a "not configured yet" answer must not lock the
   // user out of retrying the moment they finish connecting.
-  const state = getChannelState(user.id, channel);
+  const state = await getChannelState(user.id, channel);
   if (!state.configured) {
     return NextResponse.json({ ok: false, error: "کانال پیکربندی نشده است" }, { status: 400 });
   }
@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
   }
   lastTestAt.set(user.id, Date.now());
 
-  const notificationId = insertTestNotification(organizationId, user.id);
+  const notificationId = await insertTestNotification(organizationId, user.id);
   const asOf = new Date(Date.now() + PAST_DEBOUNCE_MS).toISOString();
 
   // Two side effects of the asOf shift, both deliberate and both org-wide:
@@ -65,6 +65,6 @@ export async function POST(req: NextRequest) {
   // may not touch. `result` below is read back off the caller's own row instead, so the UI
   // never mistakes a coworker's delivery for the caller's test.
   const org = await flushNotifications(organizationId, asOf);
-  const result = testNotificationOutcome(notificationId, channel, asOf);
+  const result = await testNotificationOutcome(notificationId, channel, asOf);
   return NextResponse.json({ ok: true, result, org });
 }

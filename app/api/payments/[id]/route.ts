@@ -11,21 +11,21 @@ import { MANAGE_ROLES } from "@/lib/roles";
 import { openOrdersOf } from "@/lib/repo/routeAdapters";
 
 export async function GET(req: NextRequest, ctx: RouteContext<"/api/payments/[id]">) {
-  const guard = requireRole(req, [...MANAGE_ROLES, "phone_sales"]);
+  const guard = await requireRole(req, [...MANAGE_ROLES, "phone_sales"]);
   if (!guard.ok) return guard.response;
 
   const { id } = await ctx.params;
-  const payment = getPayment(guard.session.organizationId, Number(id));
+  const payment = await getPayment(guard.session.organizationId, Number(id));
   if (!payment) return NextResponse.json({ ok: false, error: "یافت نشد" }, { status: 404 });
 
   return NextResponse.json({
     ok: true,
     payment,
-    allocations: allocationsOfPayment(guard.session.organizationId, Number(id)),
+    allocations: await allocationsOfPayment(guard.session.organizationId, Number(id)),
     /* The customer's open orders, so the allocation picker has something to offer. Sent
        with the payment rather than as its own endpoint: the editor always needs both, and
        two round trips that could disagree about the payment's customer are worse than one. */
-    openOrders: openOrdersOf(
+    openOrders: await openOrdersOf(
       guard.session.organizationId,
       payment.customer_id
     ),
@@ -33,12 +33,12 @@ export async function GET(req: NextRequest, ctx: RouteContext<"/api/payments/[id
 }
 
 export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/payments/[id]">) {
-  const guard = requireRole(req, MANAGE_ROLES);
+  const guard = await requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
 
   const { id } = await ctx.params;
   const paymentId = Number(id);
-  if (!getPayment(guard.session.organizationId, paymentId)) {
+  if (!await getPayment(guard.session.organizationId, paymentId)) {
     return NextResponse.json({ ok: false, error: "یافت نشد" }, { status: 404 });
   }
 
@@ -52,10 +52,10 @@ export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/payments/[
   try {
     // The repo re-reads the payment under its own organization scope, so a hand-crafted id
     // from another tenant still fails there rather than only here.
-    replaceAllocations(guard.session.organizationId, paymentId, body.allocations);
+    await replaceAllocations(guard.session.organizationId, paymentId, body.allocations);
     return NextResponse.json({
       ok: true,
-      allocations: allocationsOfPayment(guard.session.organizationId, paymentId),
+      allocations: await allocationsOfPayment(guard.session.organizationId, paymentId),
     });
   } catch (e) {
     if (e instanceof PaymentError) {
@@ -66,7 +66,7 @@ export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/payments/[
 }
 
 export async function POST(req: NextRequest, ctx: RouteContext<"/api/payments/[id]">) {
-  const guard = requireRole(req, MANAGE_ROLES);
+  const guard = await requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
 
   const { id } = await ctx.params;
@@ -81,12 +81,12 @@ export async function POST(req: NextRequest, ctx: RouteContext<"/api/payments/[i
   // A payment in another org reads as not found -- but we only learn that from the
   // repo, which throws the same PaymentError for "gone" and "already void". Check
   // existence first so a genuine 404 is not reported as 409.
-  if (!getPayment(guard.session.organizationId, Number(id))) {
+  if (!await getPayment(guard.session.organizationId, Number(id))) {
     return NextResponse.json({ ok: false, error: "یافت نشد" }, { status: 404 });
   }
 
   try {
-    voidPayment(guard.session.organizationId, Number(id), guard.session.user.id, body.reason);
+    await voidPayment(guard.session.organizationId, Number(id), guard.session.user.id, body.reason);
     return NextResponse.json({ ok: true });
   } catch (e) {
     if (e instanceof PaymentError) {

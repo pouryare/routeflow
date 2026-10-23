@@ -37,61 +37,61 @@ function ctxFor(id: number) {
   return { params: Promise.resolve({ id: String(id) }) } as never;
 }
 
-function makeOrder(status: string, orgId = 1): number {
+async function makeOrder(status: string, orgId = 1): Promise<number> {
   const db = getDb();
   const now = new Date().toISOString();
   const cust = Number(
-    db
+    (await db
       .prepare(
         "INSERT INTO customers (customer_code,business_name,synced_at,organization_id) VALUES ('c'||abs(random()),'ر',?,?)"
       )
-      .run(now, orgId).lastInsertRowid
+      .run(now, orgId)).lastInsertRowid
   );
   return Number(
-    db
+    (await db
       .prepare(
         `INSERT INTO orders (order_no, customer_id, status, order_date, created_by, created_at, updated_at, organization_id)
          VALUES ('o'||abs(random()), ?, ?, '2026-01-01', ?, ?, ?, ?)`
       )
-      .run(cust, status, owner, now, now, orgId).lastInsertRowid
+      .run(cust, status, owner, now, now, orgId)).lastInsertRowid
   );
 }
 
-beforeEach(() => {
+beforeEach(async () => {
   const db = getDb();
-  db.exec(
+  await db.exec(
     "PRAGMA foreign_keys=OFF; DELETE FROM order_events; DELETE FROM orders; DELETE FROM customers; DELETE FROM users WHERE id>0; PRAGMA foreign_keys=ON;"
   );
   const now = new Date().toISOString();
-  db.prepare(
+  await db.prepare(
     "INSERT OR IGNORE INTO organizations (id,name,slug,created_at) VALUES (2,'B','b',?)"
   ).run(now);
   owner = Number(
-    db
+    (await db
       .prepare(
         "INSERT INTO users (username,password_hash,display_name,role,active,created_at,organization_id) VALUES ('o','x:y','م','owner',1,?,1)"
       )
-      .run(now).lastInsertRowid
+      .run(now)).lastInsertRowid
   );
   seller = Number(
-    db
+    (await db
       .prepare(
         "INSERT INTO users (username,password_hash,display_name,role,active,created_at,organization_id) VALUES ('s','x:y','ف','phone_sales',1,?,1)"
       )
-      .run(now).lastInsertRowid
+      .run(now)).lastInsertRowid
   );
 });
 
 describe("POST /api/sales/orders/[id]/transition", () => {
   it("advances a legal edge and returns the new status", async () => {
-    const id = makeOrder("DRAFT");
+    const id = await makeOrder("DRAFT");
     const res = await TRANSITION(jreq(`/api/sales/orders/${id}/transition`, { action: "submit" }), ctxFor(id));
     expect(res.status).toBe(200);
     expect((await res.json()).status).toBe("PENDING_REVIEW");
   });
 
   it("409s an illegal edge and lists the legal actions", async () => {
-    const id = makeOrder("DRAFT");
+    const id = await makeOrder("DRAFT");
     const res = await TRANSITION(jreq(`/api/sales/orders/${id}/transition`, { action: "deliver" }), ctxFor(id));
     expect(res.status).toBe(409);
     const j = await res.json();
@@ -99,7 +99,7 @@ describe("POST /api/sales/orders/[id]/transition", () => {
   });
 
   it("403s a legal edge fired by the wrong role", async () => {
-    const id = makeOrder("PENDING_REVIEW");
+    const id = await makeOrder("PENDING_REVIEW");
     const res = await TRANSITION(
       new NextRequest(`http://localhost/api/sales/orders/${id}/transition`, {
         method: "POST",
@@ -112,23 +112,23 @@ describe("POST /api/sales/orders/[id]/transition", () => {
   });
 
   it("404s another organisation's order", async () => {
-    const other = makeOrder("DRAFT", 2);
+    const other = await makeOrder("DRAFT", 2);
     const res = await TRANSITION(jreq(`/api/sales/orders/${other}/transition`, { action: "submit" }), ctxFor(other));
     expect(res.status).toBe(404);
   });
 
   it("409s a confirm with no warehouse to reserve from, saying where to add one", async () => {
     const db = getDb();
-    db.exec("PRAGMA foreign_keys=OFF; DELETE FROM facilities; PRAGMA foreign_keys=ON;");
+    await db.exec("PRAGMA foreign_keys=OFF; DELETE FROM facilities; PRAGMA foreign_keys=ON;");
     const now = new Date().toISOString();
     const product = Number(
-      db.prepare("INSERT INTO products (name, base_unit, active, created_at, updated_at, organization_id) VALUES ('ک','kg',1,?,?,1)").run(now, now).lastInsertRowid
+      (await db.prepare("INSERT INTO products (name, base_unit, active, created_at, updated_at, organization_id) VALUES ('ک','kg',1,?,?,1)").run(now, now)).lastInsertRowid
     );
     const pack = Number(
-      db.prepare("INSERT INTO packagings (product_id, name, qty_per_pack, active, created_at) VALUES (?, 'ک', 1, 1, ?)").run(product, now).lastInsertRowid
+      (await db.prepare("INSERT INTO packagings (product_id, name, qty_per_pack, active, created_at) VALUES (?, 'ک', 1, 1, ?)").run(product, now)).lastInsertRowid
     );
-    const id = makeOrder("PENDING_REVIEW");
-    db.prepare(
+    const id = await makeOrder("PENDING_REVIEW");
+    await db.prepare(
       "INSERT INTO order_lines (order_id, product_id, packaging_id, packs_ordered, unit_price_toman, qty_per_pack, kg_per_base_unit, created_at) VALUES (?,?,?,2,1000,1,1,?)"
     ).run(id, product, pack, now);
     const res = await TRANSITION(jreq(`/api/sales/orders/${id}/transition`, { action: "passReview" }), ctxFor(id));
@@ -137,7 +137,7 @@ describe("POST /api/sales/orders/[id]/transition", () => {
   });
 
   it("events lists the transition history", async () => {
-    const id = makeOrder("DRAFT");
+    const id = await makeOrder("DRAFT");
     await TRANSITION(jreq(`/api/sales/orders/${id}/transition`, { action: "submit" }), ctxFor(id));
     const res = await EVENTS(
       new NextRequest(`http://localhost/api/sales/orders/${id}/events`, {

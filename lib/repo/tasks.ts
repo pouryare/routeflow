@@ -40,7 +40,7 @@ export interface TaskRow {
 
 export const tasksRepo = makeRepo<TaskRow>("tasks", { tenant: true });
 
-export function createTask(
+export async function createTask(
   organizationId: number,
   input: {
     title: string;
@@ -56,9 +56,9 @@ export function createTask(
     priority?: TaskRow["priority"];
     created_by?: number | null;
   }
-): number {
+): Promise<number> {
   if (!input.title?.trim()) throw new TaskError("عنوان لازم است");
-  const id = tasksRepo.insert(organizationId, {
+  const id = await tasksRepo.insert(organizationId, {
     organization_id: organizationId,
     assignee_user_id: input.assignee_user_id ?? null,
     role_hint: input.role_hint ?? null,
@@ -84,7 +84,7 @@ export function createTask(
   // only matches notify_task_assigned (a `notify` rule, which creates no task), and the
   // rule-spawned tasks fire() writes go through a raw INSERT, never this function.
   if (input.assignee_user_id) {
-    tryEmitEvent(organizationId, {
+    await tryEmitEvent(organizationId, {
       kind: "task.assigned",
       entity_type: "task",
       entity_id: id,
@@ -104,18 +104,18 @@ export function createTask(
  *  lane→field mapping lives. A move that closes the task routes through `completeTask`
  *  so `done_at` stamps and any linked `rule_runs` resolve, then the derived stage is
  *  written on top. Returns the task's new lens fields, or null if it is not in this org. */
-export function moveTask(
+export async function moveTask(
   organizationId: number,
   id: number,
   args: { view: BoardView; toLane: string; actor: number; nowIso: string; outcome_code?: string | null }
-): {
+): Promise<{
   id: number;
   status: string;
   stage: string | null;
   started_at: string | null;
   due_at: string | null;
-} | null {
-  const row = tasksRepo.get(organizationId, id);
+} | null> {
+  const row = await tasksRepo.get(organizationId, id);
   if (!row) return null;
 
   const lensRow: TaskLensFields = {
@@ -128,21 +128,21 @@ export function moveTask(
   const patch = movePatch(lensRow, args.view, args.toLane, args.nowIso);
 
   if (patch.status === "done" && row.status !== "done") {
-    completeTask(organizationId, id, { outcome_code: args.outcome_code ?? null });
+    await completeTask(organizationId, id, { outcome_code: args.outcome_code ?? null });
     const after: Partial<TaskRow> = {};
     if (patch.stage !== undefined) after.stage = patch.stage;
     if (patch.started_at !== undefined) after.started_at = patch.started_at;
-    if (Object.keys(after).length) tasksRepo.patch(organizationId, id, after);
+    if (Object.keys(after).length) await tasksRepo.patch(organizationId, id, after);
   } else {
     const fields: Partial<TaskRow> = {};
     if (patch.status !== undefined) fields.status = patch.status as TaskRow["status"];
     if (patch.started_at !== undefined) fields.started_at = patch.started_at;
     if (patch.due_at !== undefined) fields.due_at = patch.due_at;
     if (patch.stage !== undefined) fields.stage = patch.stage;
-    if (Object.keys(fields).length) tasksRepo.patch(organizationId, id, fields);
+    if (Object.keys(fields).length) await tasksRepo.patch(organizationId, id, fields);
   }
 
-  const out = tasksRepo.get(organizationId, id)!;
+  const out = (await tasksRepo.get(organizationId, id))!;
   return {
     id: out.id,
     status: out.status,
@@ -152,10 +152,10 @@ export function moveTask(
   };
 }
 
-export function listTasks(
+export async function listTasks(
   organizationId: number,
   filter: { assignee?: number; role?: string; status?: string; limit?: number; groupIds?: number[] } = {}
-): TaskRow[] {
+): Promise<TaskRow[]> {
   const clauses = ["organization_id = ?"];
   const params: unknown[] = [organizationId];
   if (filter.assignee !== undefined) {
@@ -179,7 +179,7 @@ export function listTasks(
   clauses.push("status = ?");
   params.push(filter.status ?? "open");
   params.push(filter.limit ?? 100);
-  return tasksRepo
+  return await tasksRepo
     .db()
     .prepare(
       `SELECT * FROM tasks WHERE ${clauses.join(" AND ")}
@@ -211,64 +211,64 @@ export function canActOnTask(
  *  must be one of those two, and the row must belong to the caller's organisation: the route used
  *  to store whatever type and id it was handed, including ids that exist nowhere or in another
  *  tenant. Returns true when there is no link at all. */
-export function taskEntityValid(
+export async function taskEntityValid(
   organizationId: number,
   entityType: unknown,
   entityId: unknown
-): boolean {
+): Promise<boolean> {
   if (entityType == null && entityId == null) return true;
   if (typeof entityType !== "string" || typeof entityId !== "number" || !Number.isInteger(entityId)) return false;
   const table = entityType === "customer" ? "customers" : entityType === "order" ? "orders" : null;
   if (!table) return false;
-  return !!tasksRepo
+  return !!await tasksRepo
     .db()
     .prepare(`SELECT 1 FROM ${table} WHERE id = ? AND organization_id = ?`)
     .get(entityId, organizationId);
 }
 
 /** Whether `userId` is an active user of the organisation. */
-export function assigneeInOrg(organizationId: number, userId: number): boolean {
+export async function assigneeInOrg(organizationId: number, userId: number): Promise<boolean> {
   if (!Number.isInteger(userId)) return false;
-  return !!tasksRepo
+  return !!await tasksRepo
     .db()
     .prepare("SELECT 1 FROM users WHERE id = ? AND organization_id = ? AND active = 1")
     .get(userId, organizationId);
 }
 
-export function completeTask(
+export async function completeTask(
   organizationId: number,
   id: number,
   outcome: { outcome_code?: string | null; outcome_note?: string | null } = {}
-): void {
-  const row = tasksRepo.get(organizationId, id);
+): Promise<void> {
+  const row = await tasksRepo.get(organizationId, id);
   if (!row) throw new TaskError("کار پیدا نشد");
-  tasksRepo.patch(organizationId, id, {
+  await tasksRepo.patch(organizationId, id, {
     status: "done",
     done_at: new Date().toISOString(),
     outcome_code: outcome.outcome_code ?? null,
     outcome_note: outcome.outcome_note ?? null,
   });
   if (row.entity_type && row.entity_id) {
-    resolveRuleRunsFor(organizationId, row.entity_type, row.entity_id);
+    await resolveRuleRunsFor(organizationId, row.entity_type, row.entity_id);
   }
 }
 
 /** The customer_type behind a task, resolved from its entity: 'customer' directly, or
  *  'order' -> orders.customer_id -> customers.customer_type. */
-export function taskCustomerType(organizationId: number, id: number): string | null {
-  const t = tasksRepo.get(organizationId, id);
+export async function taskCustomerType(organizationId: number, id: number): Promise<string | null> {
+  const t = await tasksRepo.get(organizationId, id);
   if (!t?.entity_type || !t.entity_id) return null;
   const db = tasksRepo.db();
   if (t.entity_type === "customer") {
     return (
-      (db.prepare("SELECT customer_type FROM customers WHERE id = ? AND organization_id = ?").get(t.entity_id, organizationId) as
+      (await db.prepare("SELECT customer_type FROM customers WHERE id = ? AND organization_id = ?").get(t.entity_id, organizationId) as
         | { customer_type: string | null }
         | undefined)?.customer_type ?? null
     );
   }
   if (t.entity_type === "order") {
     return (
-      (db
+      (await db
         .prepare(
           `SELECT c.customer_type FROM orders o JOIN customers c ON c.id = o.customer_id
             WHERE o.id = ? AND o.organization_id = ?`
@@ -279,22 +279,22 @@ export function taskCustomerType(organizationId: number, id: number): string | n
   return null;
 }
 
-export function dismissTask(organizationId: number, id: number): void {
-  const row = tasksRepo.get(organizationId, id);
+export async function dismissTask(organizationId: number, id: number): Promise<void> {
+  const row = await tasksRepo.get(organizationId, id);
   if (!row) throw new TaskError("کار پیدا نشد");
-  tasksRepo.patch(organizationId, id, { status: "dismissed", done_at: new Date().toISOString() });
+  await tasksRepo.patch(organizationId, id, { status: "dismissed", done_at: new Date().toISOString() });
   if (row.entity_type && row.entity_id) {
-    resolveRuleRunsFor(organizationId, row.entity_type, row.entity_id);
+    await resolveRuleRunsFor(organizationId, row.entity_type, row.entity_id);
   }
 }
 
 /** F142: put an open task off by an hour or to 09:00 tomorrow. Refused for critical and high
  *  priority work and after three snoozes. Returns the new due time. */
-export function snoozeTask(organizationId: number, id: number, choice: SnoozeChoice, nowIso = new Date().toISOString()): string {
-  const row = tasksRepo.get(organizationId, id);
+export async function snoozeTask(organizationId: number, id: number, choice: SnoozeChoice, nowIso = new Date().toISOString()): Promise<string> {
+  const row = await tasksRepo.get(organizationId, id);
   if (!row) throw new TaskError("کار پیدا نشد");
   if (!canSnooze(row)) throw new TaskError("این کار را نمی‌شود عقب انداخت؛ انجامش دهید یا حذفش کنید");
   const due = snoozedDue(choice, nowIso);
-  tasksRepo.patch(organizationId, id, { due_at: due, snooze_count: row.snooze_count + 1 });
+  await tasksRepo.patch(organizationId, id, { due_at: due, snooze_count: row.snooze_count + 1 });
   return due;
 }

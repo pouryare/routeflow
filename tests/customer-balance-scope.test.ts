@@ -36,30 +36,30 @@ let aCustomer = 0, bCustomer = 0;
 const groups = { a: 0, b: 0 };
 let xOrderOnA = 0, xOrderOtherOrg = 0;
 
-beforeAll(() => {
+beforeAll(async () => {
   const db = getDb();
   const now = new Date().toISOString();
-  db.exec(
+  await db.exec(
     "PRAGMA foreign_keys=OFF; DELETE FROM orders; DELETE FROM delivery_stops; DELETE FROM delivery_runs; DELETE FROM customers; DELETE FROM users WHERE id>0; PRAGMA foreign_keys=ON;"
   );
   /* The existing two-tenant fixture, not a hand-built one. It creates organization 2 and it
    * makes both companies' rows COLLIDE on purpose — the same customer code, the same order
    * number. A test that passes against that has proved isolation rather than proved the ids
    * happened to differ. */
-  const { a, b } = seedTwoOrgs(db);
+  const { a, b } = await seedTwoOrgs(db);
   // The fixture ships owners and managers, not drivers, so make two real ones. The point of
   // the file is the VAN ROLE branch of orderFilter, and an owner takes the branch above it.
-  const mk = (tag: string, org: number, gid: number) =>
+  const mk = async (tag: string, org: number, gid: number) =>
     Number(
-      db
+      (await db
         .prepare(
           "INSERT INTO users (username,password_hash,display_name,role,group_id,active,created_at,organization_id) VALUES (?, 'x:y', ?, 'delivery_driver', ?, 1, ?, ?)"
         )
-        .run(`drv-${tag}`, `راننده ${tag}`, gid, now, org).lastInsertRowid
+        .run(`drv-${tag}`, `راننده ${tag}`, gid, now, org)).lastInsertRowid
     );
-  driverA = mk("a", 1, a.groupId);
-  driverB = mk("b", 1, a.groupId);
-  otherOrgDriver = mk("x", 2, b.groupId);
+  driverA = await mk("a", 1, a.groupId);
+  driverB = await mk("b", 1, a.groupId);
+  otherOrgDriver = await mk("x", 2, b.groupId);
 
   // Put each org's order on its own driver's van, which is one of the two ways a van role
   // earns an order. The other -- authoring it -- is what tests/delivery.test.ts covers.
@@ -69,8 +69,8 @@ beforeAll(() => {
   const stop = db.prepare(
     "INSERT INTO delivery_stops (run_id, order_id, sort_order, status, collected_toman, created_at) VALUES (?,?,0,'pending',0,?)"
   );
-  stop.run(Number(run.run(driverA, a.groupId, driverA, now, now, 1).lastInsertRowid), a.orderId, now);
-  stop.run(Number(run.run(otherOrgDriver, b.groupId, otherOrgDriver, now, now, 2).lastInsertRowid), b.orderId, now);
+  await stop.run(Number((await run.run(driverA, a.groupId, driverA, now, now, 1)).lastInsertRowid), a.orderId, now);
+  await stop.run(Number((await run.run(otherOrgDriver, b.groupId, otherOrgDriver, now, now, 2)).lastInsertRowid), b.orderId, now);
   groups.a = a.groupId;
   groups.b = b.groupId;
   aCustomer = a.customerId;
@@ -92,25 +92,25 @@ describe("the outstanding balance a driver is shown", () => {
     expect(f.params.length).toBeGreaterThan(0);
   });
 
-  it("shows a driver their own orders and none from another tenant", () => {
+  it("shows a driver their own orders and none from another tenant", async () => {
     // THE POINT. The balance is another party's account data. A driver needs it to know
     // whether to expect cash at the door, but a driver must never see the whole receivables
     // book. Org 2's order belongs to a different CUSTOMER as well as a different company, so
     // this also pins that a customer's history is not global.
-    const seen = orderIdsFor(session("delivery_driver", driverA, null), aCustomer);
+    const seen = await orderIdsFor(session("delivery_driver", driverA, null), aCustomer);
     expect(seen).toContain(xOrderOnA);
     expect(seen).not.toContain(xOrderOtherOrg);
   });
 
-  it("gives two drivers of the SAME company different sets", () => {
+  it("gives two drivers of the SAME company different sets", async () => {
     /* They share a company, not a book.
      *
      * A's van carries org A's order; B drives a different van and has no run of A's, so B must
      * not see it — even though both are delivery_drivers in organization 1. Two colleagues
      * getting different answers for the same customer is the CORRECT outcome, and the test that
      * matters is that neither of them ever sees org 2's order. */
-    const aSees = orderIdsFor(session("delivery_driver", driverA, groups.a), aCustomer);
-    const bSees = orderIdsFor(session("delivery_driver", driverB, groups.a), aCustomer);
+    const aSees = await orderIdsFor(session("delivery_driver", driverA, groups.a), aCustomer);
+    const bSees = await orderIdsFor(session("delivery_driver", driverB, groups.a), aCustomer);
     expect(aSees).toContain(xOrderOnA);
     expect(bSees).not.toContain(xOrderOnA);
     expect(bSees).not.toEqual(aSees);
@@ -119,9 +119,9 @@ describe("the outstanding balance a driver is shown", () => {
     expect(bSees).not.toContain(xOrderOtherOrg);
   });
 
-  it("hides another tenant's driver from the balance entirely", () => {
-    const mine = orderIdsFor(session("delivery_driver", driverA, null), aCustomer);
-    const theirs = orderIdsFor(session("delivery_driver", otherOrgDriver, null, 2), bCustomer);
+  it("hides another tenant's driver from the balance entirely", async () => {
+    const mine = await orderIdsFor(session("delivery_driver", driverA, null), aCustomer);
+    const theirs = await orderIdsFor(session("delivery_driver", otherOrgDriver, null, 2), bCustomer);
     for (const id of theirs) expect(mine).not.toContain(id);
   });
 });
@@ -129,9 +129,9 @@ describe("the outstanding balance a driver is shown", () => {
 /** The orders a session can see for one customer: the balance query's SELECT list, with the
  *  scope fragment applied. Asserting on the LIST rather than a SUM means a failure names the
  *  order that leaked, instead of a number that is quietly one too large. */
-function orderIdsFor(who: Session, customerId: number): number[] {
+async function orderIdsFor(who: Session, customerId: number): Promise<number[]> {
   const f = orderFilter(who, "o");
-  const rows = getDb()
+  const rows = await getDb()
     .prepare(`SELECT o.id FROM orders o WHERE o.customer_id = ?${f.sql}`)
     .all(customerId, ...f.params) as { id: number }[];
   return rows.map((r) => r.id);

@@ -40,8 +40,8 @@ interface MonthPoint {
 const HOLT_MIN_OBS = 8;
 
 /** The tenant's 12 Jalali-month factors, unioned with the shipped defaults. */
-export function seasonalMonthFactors(organizationId: number): number[] {
-  const rows = getDb()
+export async function seasonalMonthFactors(organizationId: number): Promise<number[]> {
+  const rows = await getDb()
     .prepare(
       `SELECT idx, factor, (organization_id IS NOT NULL) AS is_tenant
          FROM seasonal_factors
@@ -62,12 +62,12 @@ export function seasonalMonthFactors(organizationId: number): number[] {
 }
 
 /** Closed Jalali months (the current, still-open one excluded), oldest first. */
-export function monthlyHistory(
+export async function monthlyHistory(
   organizationId: number,
   entity: ForecastEntity,
   metric: ForecastMetric,
   asOfIso: string = new Date().toISOString()
-): MonthPoint[] {
+): Promise<MonthPoint[]> {
   const where = [
     "o.organization_id = ?",
     `o.status IN (${sqlStatusList(FULFILLED_ORDER_STATUSES)})`,
@@ -81,7 +81,7 @@ export function monthlyHistory(
     params.push(entity.id);
   }
 
-  const rows = getDb()
+  const rows = await getDb()
     .prepare(
       `SELECT o.order_date,
               COALESCE(ol.packs_delivered, ol.packs_ordered) AS packs,
@@ -124,14 +124,14 @@ export interface ForecastModelRow {
 }
 
 /** Recompute the model from the full closed history (idempotent — months are few). */
-export function updateForecastModel(
+export async function updateForecastModel(
   organizationId: number,
   entity: ForecastEntity,
   metric: ForecastMetric,
   asOfIso: string = new Date().toISOString()
-): ForecastModelRow {
-  const history = monthlyHistory(organizationId, entity, metric, asOfIso);
-  const factors = seasonalMonthFactors(organizationId);
+): Promise<ForecastModelRow> {
+  const history = await monthlyHistory(organizationId, entity, metric, asOfIso);
+  const factors = await seasonalMonthFactors(organizationId);
 
   const deseason = history.map((p) =>
     deseasonalise(p.value, monthIndex(factors, periodRange(p.period).from))
@@ -151,7 +151,7 @@ export function updateForecastModel(
   const mae = errors.length > 0 ? errors.reduce((s, e) => s + Math.abs(e), 0) / errors.length : null;
   const lastPeriod = history.at(-1)?.period ?? null;
 
-  getDb()
+  await getDb()
     .prepare(
       `INSERT INTO forecast_models
          (organization_id, entity_type, entity_id, metric, method, level, trend, alpha, beta, n_obs, mae, last_period, updated_at)
@@ -182,16 +182,16 @@ export function updateForecastModel(
 
 /** Predict the next `horizonMonths` and upsert them into `forecasts`. Refreshes the
  *  model first (cheap + idempotent). */
-export function forecastDemand(
+export async function forecastDemand(
   organizationId: number,
   entity: ForecastEntity,
   metric: ForecastMetric,
   horizonMonths = 3,
   asOfIso: string = new Date().toISOString()
-): { target_period: string; horizon: number; yhat: number; yhat_lo: number; yhat_hi: number; method: string }[] {
-  const model = updateForecastModel(organizationId, entity, metric, asOfIso);
-  const history = monthlyHistory(organizationId, entity, metric, asOfIso);
-  const factors = seasonalMonthFactors(organizationId);
+): Promise<{ target_period: string; horizon: number; yhat: number; yhat_lo: number; yhat_hi: number; method: string }[]> {
+  const model = await updateForecastModel(organizationId, entity, metric, asOfIso);
+  const history = await monthlyHistory(organizationId, entity, metric, asOfIso);
+  const factors = await seasonalMonthFactors(organizationId);
   const state: HoltState = {
     level: model.level ?? 0,
     trend: model.trend ?? 0,
@@ -214,7 +214,7 @@ export function forecastDemand(
     const { lo, hi } = predictionInterval(yhat, model.mae ?? yhat * 0.4);
     out.push({ target_period: target, horizon: h, yhat, yhat_lo: lo, yhat_hi: hi, method: model.method });
 
-    db.prepare(
+    await db.prepare(
       `INSERT INTO forecasts
          (organization_id, entity_type, entity_id, metric, target_period, horizon, yhat, yhat_lo, yhat_hi, method, computed_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -227,12 +227,12 @@ export function forecastDemand(
 }
 
 /** org + every active product, both metrics, 3 months. */
-export function materialiseForecasts(
+export async function materialiseForecasts(
   organizationId: number,
   asOfIso: string = new Date().toISOString()
-): number {
+): Promise<number> {
   const db = getDb();
-  const products = db
+  const products = await db
     .prepare("SELECT id FROM products WHERE organization_id = ?")
     .all(organizationId) as { id: number }[];
   const entities: ForecastEntity[] = [
@@ -242,7 +242,7 @@ export function materialiseForecasts(
   let n = 0;
   for (const e of entities) {
     for (const metric of ["demand_base_units", "demand_toman"] as ForecastMetric[]) {
-      n += forecastDemand(organizationId, e, metric, 3, asOfIso).length;
+      n += (await forecastDemand(organizationId, e, metric, 3, asOfIso)).length;
     }
   }
   return n;
@@ -259,8 +259,8 @@ export interface DemandBoardEntry {
   points: { target_period: string; horizon: number; yhat: number; yhat_lo: number; yhat_hi: number }[];
 }
 
-export function demandBoard(organizationId: number): DemandBoardEntry[] {
-  const rows = getDb()
+export async function demandBoard(organizationId: number): Promise<DemandBoardEntry[]> {
+  const rows = await getDb()
     .prepare(
       `SELECT f.entity_type, f.entity_id, f.metric, f.target_period, f.horizon, f.yhat, f.yhat_lo, f.yhat_hi,
               fm.method, fm.mae, fm.n_obs,
@@ -318,9 +318,9 @@ export function demandBoard(organizationId: number): DemandBoardEntry[] {
 
 /** The near-term daily run-rate the inventory rule needs: the forecast next-month
  *  base-unit yhat ÷ 30, or the trailing-28-day actual when there is no model yet. */
-export function avgDailySalesFor(organizationId: number, productId: number): number {
+export async function avgDailySalesFor(organizationId: number, productId: number): Promise<number> {
   const db = getDb();
-  const next = db
+  const next = await db
     .prepare(
       `SELECT yhat FROM forecasts
         WHERE organization_id = ? AND entity_type = 'product' AND entity_id = ?
@@ -331,7 +331,7 @@ export function avgDailySalesFor(organizationId: number, productId: number): num
   if (next && next.yhat > 0) return next.yhat / 30;
 
   const since = new Date(Date.now() - 28 * 86_400_000).toISOString().slice(0, 10);
-  const row = db
+  const row = await db
     .prepare(
       `SELECT COALESCE(SUM(COALESCE(ol.packs_delivered, 0) * ol.qty_per_pack), 0) AS base
          FROM order_lines ol JOIN orders o ON o.id = ol.order_id
@@ -344,8 +344,8 @@ export function avgDailySalesFor(organizationId: number, productId: number): num
 }
 
 /** The newest `computed_at` across the tenant's forecasts — the page's "as of …" line. */
-export function newestForecastAt(organizationId: number): string | null {
-  const row = getDb()
+export async function newestForecastAt(organizationId: number): Promise<string | null> {
+  const row = await getDb()
     .prepare("SELECT MAX(computed_at) AS t FROM forecasts WHERE organization_id = ?")
     .get(organizationId) as { t: string | null };
   return row.t;

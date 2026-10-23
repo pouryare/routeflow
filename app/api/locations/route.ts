@@ -8,21 +8,21 @@ import { PIN_POOL_ROLES } from "@/lib/roles";
 // saved_locations is option 1 (spec §2.3 / Task 8): a pin belongs outright to the group
 // that dropped it, so the table carries its own group_id, stamped on insert.
 export async function GET(req: NextRequest) {
-  const guard = requireRole(req, PIN_POOL_ROLES);
+  const guard = await requireRole(req, PIN_POOL_ROLES);
   if (!guard.ok) return guard.response;
-  const filter = groupFilter(guard.session);
-  const scope = scopeGroupIds(guard.session);
+  const filter = await groupFilter(guard.session);
+  const scope = await scopeGroupIds(guard.session);
 
   const organizationId = orgScopeId(guard.session);
   const q = req.nextUrl.searchParams.get("q")?.trim();
 
-  const sig = locationsSignature(organizationId);
+  const sig = await locationsSignature(organizationId);
   // Scope belongs in the cache key -- see the note in /api/customers.
   const tag = etagFor(`saved_locations-${q ?? ""}-${scope === "all" ? "all" : scope.join(",")}`, sig.c, sig.m);
   const cached = notModified(req, tag);
   if (cached) return cached;
 
-  const rows = searchLocations(q, filter, organizationId);
+  const rows = await searchLocations(q, filter, organizationId);
 
   return etagJson(req, tag, { locations: rows });
 }
@@ -37,7 +37,7 @@ interface NewLocationInput {
 }
 
 export async function POST(req: NextRequest) {
-  const guard = requireRole(req, PIN_POOL_ROLES);
+  const guard = await requireRole(req, PIN_POOL_ROLES);
   if (!guard.ok) return guard.response;
 
   const body = await req.json().catch(() => null);
@@ -64,7 +64,7 @@ export async function POST(req: NextRequest) {
   let added: number;
   try {
     // An owner's pin is unowned until territory says otherwise; a manager's is theirs.
-    added = addLocations(pins, guard.session.groupId, guard.session.organizationId);
+    added = await addLocations(pins, guard.session.groupId, guard.session.organizationId);
   } catch (e) {
     const msg = e instanceof Error ? e.message : "خطا";
     return NextResponse.json({ ok: false, error: msg }, { status: 500 });

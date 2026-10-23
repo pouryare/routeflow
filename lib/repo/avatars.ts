@@ -12,9 +12,9 @@ import { orgClause } from "@/lib/orgScope";
 /** The file stem behind a person's avatar, or null when they have no photo. Only people of this
  *  company (`organizationId` null = every company, platform owner only): a face is not shared across
  *  tenants, and an id alone reaches every tenant's staff. */
-export function readAvatarStem(userId: number, organizationId: number | null): string | null | undefined {
+export async function readAvatarStem(userId: number, organizationId: number | null): Promise<string | null | undefined> {
   const org = orgClause("organization_id", organizationId);
-  const row = getDb().prepare(`SELECT avatar_stem FROM users WHERE id = ?${org.sql}`).get(userId, ...org.params) as
+  const row = await getDb().prepare(`SELECT avatar_stem FROM users WHERE id = ?${org.sql}`).get(userId, ...org.params) as
     | { avatar_stem: string | null }
     | undefined;
   // `undefined` (no such user) and `null` (a real user with no photo) are different
@@ -23,21 +23,21 @@ export function readAvatarStem(userId: number, organizationId: number | null): s
 }
 
 /** Is this person of this company? The upload route's only authorisation-relevant read; the query lives with the tenants. */
-export function avatarUserInOrg(userId: number, organizationId: number): boolean {
-  return userInOrg(getDb(), userId, organizationId);
+export async function avatarUserInOrg(userId: number, organizationId: number): Promise<boolean> {
+  return await userInOrg(getDb(), userId, organizationId);
 }
 
 /** Point a user at their freshly uploaded avatar.
  *
  *  avatar_url is the ROUTE and avatar_stem the FILE; both are written together so there is
  *  no state where the route resolves to a stem that does not exist. */
-export function setAvatar(
+export async function setAvatar(
   userId: number,
   organizationId: number,
   avatarUrl: string,
   stem: string,
-): void {
-  getDb().prepare("UPDATE users SET avatar_url = ?, avatar_stem = ? WHERE id = ? AND organization_id = ?").run(
+): Promise<void> {
+  await getDb().prepare("UPDATE users SET avatar_url = ?, avatar_stem = ? WHERE id = ? AND organization_id = ?").run(
     avatarUrl,
     stem,
     userId,

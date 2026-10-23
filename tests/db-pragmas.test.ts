@@ -13,25 +13,25 @@ afterAll(() => {
   for (const s of ["", "-wal", "-shm"]) fs.rmSync(`${testDbPath}${s}`, { force: true });
 });
 
-const pragma = (name: string) =>
-  Object.values(getDb().prepare(`PRAGMA ${name}`).get() as Record<string, unknown>)[0];
+const pragma = async (name: string) =>
+  Object.values(await getDb().prepare(`PRAGMA ${name}`).get() as Record<string, unknown>)[0];
 
 describe("getDb pragmas", () => {
-  it("keeps WAL and foreign keys on", () => {
-    expect(pragma("journal_mode")).toBe("wal");
-    expect(pragma("foreign_keys")).toBe(1);
+  it("keeps WAL and foreign keys on", async () => {
+    expect(await pragma("journal_mode")).toBe("wal");
+    expect(await pragma("foreign_keys")).toBe(1);
   });
 
-  it("leaves synchronous at the default (FULL, 2): durability is not traded away", () => {
-    expect(pragma("synchronous")).toBe(2);
+  it("leaves synchronous at the default (FULL, 2): durability is not traded away", async () => {
+    expect(await pragma("synchronous")).toBe(2);
   });
 
-  it("keeps temp structures in memory and enlarges the page cache", () => {
-    expect(pragma("temp_store")).toBe(2);
-    expect(Number(pragma("cache_size"))).toBeLessThanOrEqual(-65536);
+  it("keeps temp structures in memory and enlarges the page cache", async () => {
+    expect(await pragma("temp_store")).toBe(2);
+    expect(Number(await pragma("cache_size"))).toBeLessThanOrEqual(-65536);
   });
 
-  it("sets a busy timeout so a concurrent writer waits instead of throwing", () => {
-    expect(Number(pragma("busy_timeout"))).toBeGreaterThanOrEqual(5000);
+  it("sets a busy timeout so a concurrent writer waits instead of throwing", async () => {
+    expect(Number(await pragma("busy_timeout"))).toBeGreaterThanOrEqual(5000);
   });
 });

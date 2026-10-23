@@ -17,7 +17,7 @@ const NOT_THIS_KIND = { sales: "فروشنده", driver: "راننده", manager
  *  which table they insert into.
  */
 export async function POST(req: NextRequest) {
-  const guard = requireRole(req, OWNER_ROLES);
+  const guard = await requireRole(req, OWNER_ROLES);
   if (!guard.ok) return guard.response;
 
   const body = (await req.json().catch(() => null)) as {
@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
   // The SET, not the primary column: paying a driver whose primary is something else must
   // still work, or a legitimate payment is refused over a detail the ledger itself ignores.
   // And this company's: an id alone reaches every tenant's staff.
-  if (!userWithRoleInOrg(personId, [ROLE_FOR_KIND[kind]], orgScopeId(guard.session))) {
+  if (!await userWithRoleInOrg(personId, [ROLE_FOR_KIND[kind]], orgScopeId(guard.session))) {
     return NextResponse.json({ ok: false, error: `این حساب ${NOT_THIS_KIND[kind]} نیست` }, { status: 400 });
   }
 
@@ -69,10 +69,10 @@ export async function POST(req: NextRequest) {
 
   const id =
     kind === "driver"
-      ? payDriver({ driver_user_id: personId, ...shared })
+      ? await payDriver({ driver_user_id: personId, ...shared })
       : kind === "manager"
-        ? payManager({ manager_user_id: personId, ...shared })
-        : paySales({ salesperson_user_id: personId, ...shared });
+        ? await payManager({ manager_user_id: personId, ...shared })
+        : await paySales({ salesperson_user_id: personId, ...shared });
 
   return NextResponse.json({ ok: true, id }, { status: 201 });
 }

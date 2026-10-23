@@ -28,7 +28,7 @@ function seasonalFactor(date: Date): number {
   return 1;
 }
 
-export function run(ctx: SeedContext): void {
+export async function run(ctx: SeedContext): Promise<void> {
   const { db, rng, scale } = ctx;
   const sellers = [ctx.staff.phone_sales, ctx.staff.field_rep, ctx.staff.rep_manager];
   const driver = ctx.staff.delivery_driver;
@@ -39,7 +39,7 @@ export function run(ctx: SeedContext): void {
   /* Which packaging sits on which product, so a line can name both. */
   const packFor = new Map<number, number>();
   for (const p of products) {
-    const row = db.prepare(`SELECT id FROM packagings WHERE product_id = ? LIMIT 1`).get(p) as
+    const row = await db.prepare(`SELECT id FROM packagings WHERE product_id = ? LIMIT 1`).get(p) as
       | { id: number }
       | undefined;
     if (row) packFor.set(p, row.id);
@@ -93,7 +93,7 @@ export function run(ctx: SeedContext): void {
       }
       if (lines.length === 0) continue;
 
-      const { id: orderId } = createOrder(db, {
+      const { id: orderId } = await createOrder(db, {
         customer_id: customerId,
         order_date: isoDate,
         created_by: rng.pick(sellers),
@@ -110,12 +110,12 @@ export function run(ctx: SeedContext): void {
         continue;
       }
 
-      confirmOrder(db, orderId);
+      await confirmOrder(db, orderId);
 
       /* A customer already near their credit limit has the order held for approval, and a held order cannot
          go on a run. Which orders that is depends on the day's accumulated balances, so it is checked here
          rather than assumed: the held ones stay on the board as pending approval. */
-      const held = db.prepare("SELECT credit_hold FROM orders WHERE id = ?").get(orderId) as { credit_hold: number } | undefined;
+      const held = await db.prepare("SELECT credit_hold FROM orders WHERE id = ?").get(orderId) as { credit_hold: number } | undefined;
       if (held?.credit_hold) {
         stuck++;
         continue;
@@ -133,7 +133,7 @@ export function run(ctx: SeedContext): void {
 
     if (todaysOrders.length === 0) continue;
 
-    const runId = createRun(db, {
+    const runId = await createRun(db, {
       driver_user_id: driver,
       run_date: isoDate,
       created_by: rng.pick(sellers),
@@ -143,14 +143,14 @@ export function run(ctx: SeedContext): void {
 
     let sortOrder = 0;
     for (const orderId of todaysOrders) {
-      const stopId = addStop(db, runId, orderId, sortOrder++);
+      const stopId = await addStop(db, runId, orderId, sortOrder++);
 
       /* Collect a share of the order at the door — the cash-in-transit reality — and let the
          rest go on account, which is what phase 07's ageing buckets measure. */
       const collected = rng.chance(0.35)
         ? Number(
             (
-              db
+              await db
                 .prepare(
                   `SELECT COALESCE(SUM(packs_ordered * unit_price_toman * qty_per_pack), 0) v
                      FROM order_lines WHERE order_id = ?`,
@@ -177,11 +177,11 @@ export function run(ctx: SeedContext): void {
        * Delivering in full removes the cause rather than filtering the symptom: the earlier
        * backorder sweep (see the end of this file) is now belt-and-braces for whatever the
        * partial-delivery path still produces on its own. */
-      const lineRows = db
+      const lineRows = await db
         .prepare(`SELECT id, packs_ordered FROM order_lines WHERE order_id = ?`)
         .all(orderId) as Array<{ id: number; packs_ordered: number }>;
 
-      recordDelivery(db, stopId, {
+      await recordDelivery(db, stopId, {
         lines: lineRows.map((r) => ({ line_id: r.id, packs_delivered: r.packs_ordered })),
         collected_toman: collected,
         by: driver,
@@ -190,11 +190,11 @@ export function run(ctx: SeedContext): void {
       /* The real writer stamps delivery with the wall clock, but the seed is replaying history:
        * left as is, every order "took" as long as it is old (a 552-day average lead time on
        * the dashboard). Delivery happened on the order's own day. */
-      db.prepare(`UPDATE orders SET delivered_at = order_date WHERE id = ? AND delivered_at IS NOT NULL`).run(orderId);
+      await db.prepare(`UPDATE orders SET delivered_at = order_date WHERE id = ? AND delivered_at IS NOT NULL`).run(orderId);
       delivered++;
     }
 
-    db.prepare(`UPDATE delivery_runs SET status = 'done' WHERE id = ?`).run(runId);
+    await db.prepare(`UPDATE delivery_runs SET status = 'done' WHERE id = ?`).run(runId);
   }
 
   /* ENFORCE the lapsed cohort's silence as a POST-CONDITION rather than trusting the loop.
@@ -229,12 +229,12 @@ export function run(ctx: SeedContext): void {
    * only `order_lines`, which DO cascade. Measured on the cohort: 77 backorders, 0 with
    * deliveries, 0 with stops, 0 with payments. */
   const markDormant = db.prepare(`UPDATE customers SET lifecycle = 'dormant' WHERE id = ?`);
-  for (const id of lapsed) markDormant.run(id);
+  for (const id of lapsed) await markDormant.run(id);
 
   if (lapsed.size > 0) {
     const ids = [...lapsed];
     const ph = ids.map(() => "?").join(",");
-    const removed = db
+    const removed = await db
       .prepare(
         `DELETE FROM orders
           WHERE customer_id IN (${ph})

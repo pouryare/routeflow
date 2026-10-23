@@ -20,30 +20,30 @@ afterAll(() => {
 
 let east = 0, west = 0, ownerId = 0, eastMgrId = 0, driverId = 0, westDistrictId = 0;
 
-beforeAll(() => {
+beforeAll(async () => {
   const db = getDb();
   const now = new Date().toISOString();
   const g = db.prepare("INSERT INTO groups (name, slug, active, created_at, organization_id) VALUES (?, ?, 1, ?, 1)");
-  east = Number(g.run("شرق", "east", now).lastInsertRowid);
-  west = Number(g.run("غرب", "west", now).lastInsertRowid);
+  east = Number((await g.run("شرق", "east", now)).lastInsertRowid);
+  west = Number((await g.run("غرب", "west", now)).lastInsertRowid);
 
   const u = db.prepare(
     "INSERT INTO users (username, password_hash, display_name, role, group_id, active, created_at, organization_id) VALUES (?, ?, ?, ?, ?, 1, ?, 1)"
   );
-  ownerId = Number(u.run("owner", "x:y", "مالک", "owner", null, now).lastInsertRowid);
-  eastMgrId = Number(u.run("east-mgr", "x:y", "شرقی", "group_manager", east, now).lastInsertRowid);
-  driverId = Number(u.run("drv", "x:y", "راننده", "delivery_driver", east, now).lastInsertRowid);
+  ownerId = Number((await u.run("owner", "x:y", "مالک", "owner", null, now)).lastInsertRowid);
+  eastMgrId = Number((await u.run("east-mgr", "x:y", "شرقی", "group_manager", east, now)).lastInsertRowid);
+  driverId = Number((await u.run("drv", "x:y", "راننده", "delivery_driver", east, now)).lastInsertRowid);
 
   const c = db.prepare(
     "INSERT INTO customers (customer_code, business_name, group_id, synced_at, organization_id) VALUES (?, ?, ?, ?, 1)"
   );
-  c.run("E1", "مشتری شرق", east, now);
-  c.run("W1", "مشتری غرب", west, now);
+  await c.run("E1", "مشتری شرق", east, now);
+  await c.run("W1", "مشتری غرب", west, now);
 
   westDistrictId = Number(
-    db.prepare(
+    (await db.prepare(
       "INSERT INTO districts (name, level, boundary_geojson, coverage_status, group_id, updated_at) VALUES (?, 'mahalle', '{}', 'unknown', ?, ?)"
-    ).run("محله غرب", west, now).lastInsertRowid
+    ).run("محله غرب", west, now)).lastInsertRowid
   );
 });
 
@@ -105,7 +105,7 @@ describe("PATCH /api/districts/bulk", () => {
     });
     const res = await patchBulk(req);
     expect(res.status).toBe(200);
-    const row = db.prepare("SELECT group_id FROM districts WHERE id = ?").get(westDistrictId) as { group_id: number };
+    const row = await db.prepare("SELECT group_id FROM districts WHERE id = ?").get(westDistrictId) as { group_id: number };
     expect(row.group_id).toBe(east);
   });
 
@@ -161,70 +161,70 @@ const json = (body: unknown) => ({
   headers: { "Content-Type": "application/json" },
 });
 
-beforeAll(() => {
+beforeAll(async () => {
   const db = getDb();
   const now = new Date().toISOString();
 
-  eastCustomerId = (db.prepare("SELECT id FROM customers WHERE customer_code = 'E1'").get() as { id: number }).id;
-  westCustomerId = (db.prepare("SELECT id FROM customers WHERE customer_code = 'W1'").get() as { id: number }).id;
+  eastCustomerId = (await db.prepare("SELECT id FROM customers WHERE customer_code = 'E1'").get() as { id: number }).id;
+  westCustomerId = (await db.prepare("SELECT id FROM customers WHERE customer_code = 'W1'").get() as { id: number }).id;
   eastDistrictId = Number(
-    db.prepare(
+    (await db.prepare(
       "INSERT INTO districts (name, level, boundary_geojson, coverage_status, group_id, updated_at) VALUES (?, 'mahalle', '{}', 'unknown', ?, ?)"
-    ).run("محله شرق", east, now).lastInsertRowid
+    ).run("محله شرق", east, now)).lastInsertRowid
   );
 
   const loc = db.prepare(
     "INSERT INTO saved_locations (name, maps_url, lat, lng, resolution, group_id, created_at, updated_at, organization_id) VALUES (?, ?, ?, ?, 'manual', ?, ?, ?, 1)"
   );
-  loc.run("پین شرق", "https://maps.example/e", 35.7, 51.4, east, now, now);
-  westLocId = Number(loc.run("پین غرب", "https://maps.example/w", 35.7, 51.2, west, now, now).lastInsertRowid);
+  await loc.run("پین شرق", "https://maps.example/e", 35.7, 51.4, east, now, now);
+  westLocId = Number((await loc.run("پین غرب", "https://maps.example/w", 35.7, 51.2, west, now, now)).lastInsertRowid);
 
   const list = db.prepare("INSERT INTO lead_lists (name, group_id, created_at, updated_at, organization_id) VALUES (?, ?, ?, ?, 1)");
-  list.run("لیست شرق", east, now, now);
-  westListId = Number(list.run("لیست غرب", west, now, now).lastInsertRowid);
+  await list.run("لیست شرق", east, now, now);
+  westListId = Number((await list.run("لیست غرب", west, now, now)).lastInsertRowid);
 
   const fac = db.prepare(
     "INSERT INTO facilities (slug, kind, name, lat, lng, is_default_origin, group_id, created_at, updated_at, organization_id) VALUES (?, 'other', ?, ?, ?, 0, ?, ?, ?, 1)"
   );
-  fac.run("fac-east", "انبار شرق", 35.7, 51.4, east, now, now);
-  westFacId = Number(fac.run("fac-west", "انبار غرب", 35.7, 51.2, west, now, now).lastInsertRowid);
+  await fac.run("fac-east", "انبار شرق", 35.7, 51.4, east, now, now);
+  westFacId = Number((await fac.run("fac-west", "انبار غرب", 35.7, 51.2, west, now, now)).lastInsertRowid);
   // No group: the company-wide depot every group plans out of.
-  sharedFacId = Number(fac.run("fac-shared", "انبار مرکزی", 35.7, 51.3, null, now, now).lastInsertRowid);
+  sharedFacId = Number((await fac.run("fac-shared", "انبار مرکزی", 35.7, 51.3, null, now, now)).lastInsertRowid);
 
   const rem = db.prepare(
     "INSERT INTO reminders (entity_type, entity_id, due_date, message, resolved, created_at) VALUES ('customer', ?, '2026-09-01', ?, 0, ?)"
   );
-  rem.run(eastCustomerId, "پیگیری شرق", now);
-  westReminderId = Number(rem.run(westCustomerId, "پیگیری غرب", now).lastInsertRowid);
+  await rem.run(eastCustomerId, "پیگیری شرق", now);
+  westReminderId = Number((await rem.run(westCustomerId, "پیگیری غرب", now)).lastInsertRowid);
 
   const ph = db.prepare(
     "INSERT INTO photos (entity_type, entity_id, file_stem, caption, taken_at, created_at) VALUES ('customer', ?, ?, ?, ?, ?)"
   );
-  ph.run(eastCustomerId, "stem-east", "عکس شرق", now, now);
-  westPhotoId = Number(ph.run(westCustomerId, "stem-west", "عکس غرب", now, now).lastInsertRowid);
+  await ph.run(eastCustomerId, "stem-east", "عکس شرق", now, now);
+  westPhotoId = Number((await ph.run(westCustomerId, "stem-west", "عکس غرب", now, now)).lastInsertRowid);
 
   const vp = db.prepare(
     "INSERT INTO visit_plans (entity_type, entity_id, planned_date, status, sort_order, created_at) VALUES ('customer', ?, '2026-09-01', 'planned', 0, ?)"
   );
-  eastPlanId = Number(vp.run(eastCustomerId, now).lastInsertRowid);
-  westPlanId = Number(vp.run(westCustomerId, now).lastInsertRowid);
+  eastPlanId = Number((await vp.run(eastCustomerId, now)).lastInsertRowid);
+  westPlanId = Number((await vp.run(westCustomerId, now)).lastInsertRowid);
 
   const act = db.prepare(
     "INSERT INTO activity_log (entity_type, entity_id, event_type, old_value, new_value, note, changed_by, created_at) VALUES ('customer', ?, 'note', NULL, NULL, ?, 'x', ?)"
   );
-  act.run(eastCustomerId, "رویداد شرق", now);
-  act.run(westCustomerId, "رویداد غرب", now);
+  await act.run(eastCustomerId, "رویداد شرق", now);
+  await act.run(westCustomerId, "رویداد غرب", now);
 });
 
 // The bulk-territory case deliberately moves a district between groups and recomputes
 // customer groups, which nulls these fixtures (they carry no coordinates). Restoring the
 // intended ownership before every test keeps each case independent of the order it runs in.
-beforeEach(() => {
+beforeEach(async () => {
   const db = getDb();
-  db.prepare("UPDATE customers SET group_id = ? WHERE customer_code = 'E1'").run(east);
-  db.prepare("UPDATE customers SET group_id = ? WHERE customer_code = 'W1'").run(west);
-  db.prepare("UPDATE districts SET group_id = ? WHERE id = ?").run(west, westDistrictId);
-  db.prepare("UPDATE districts SET group_id = ? WHERE id = ?").run(east, eastDistrictId);
+  await db.prepare("UPDATE customers SET group_id = ? WHERE customer_code = 'E1'").run(east);
+  await db.prepare("UPDATE customers SET group_id = ? WHERE customer_code = 'W1'").run(west);
+  await db.prepare("UPDATE districts SET group_id = ? WHERE id = ?").run(west, westDistrictId);
+  await db.prepare("UPDATE districts SET group_id = ? WHERE id = ?").run(east, eastDistrictId);
 });
 
 describe("GET /api/districts", () => {
@@ -429,7 +429,7 @@ describe("GET /api/activity", () => {
       headers: { "Content-Type": "application/json" },
     });
     expect((await postActivity(req)).status).toBe(200);
-    const row = getDb()
+    const row = await getDb()
       .prepare("SELECT changed_by, changed_by_user_id FROM activity_log WHERE note = 'ثبت مالک'")
       .get() as { changed_by: string; changed_by_user_id: number };
     expect(row.changed_by).toBe("مالک");
@@ -472,16 +472,16 @@ describe("sales aggregates reach their group through the customer", () => {
   // The dashboard's coverage panels read `sales` directly rather than through a route, and `sales` carries no
   // group of its own. These assert the join those queries depend on, so the page cannot
   // quietly go back to showing province-wide revenue to a group manager.
-  it("attributes a sale to a group only via the customer's business_name", () => {
+  it("attributes a sale to a group only via the customer's business_name", async () => {
     const db = getDb();
-    db.prepare(
+    await db.prepare(
       "INSERT INTO sales (order_no, sale_date, customer_name, amount, imported_at) VALUES ('A1', '2026-08-01', ?, 500, ?)"
     ).run("مشتری شرق", new Date().toISOString());
-    db.prepare(
+    await db.prepare(
       "INSERT INTO sales (order_no, sale_date, customer_name, amount, imported_at) VALUES ('A2', '2026-08-01', ?, 900, ?)"
     ).run("مشتری غرب", new Date().toISOString());
 
-    const scoped = db
+    const scoped = await db
       .prepare(
         `SELECT s.customer_name FROM sales s JOIN customers c ON c.business_name = s.customer_name
          WHERE 1 = 1 AND c.group_id = ? GROUP BY s.customer_name`
@@ -490,12 +490,12 @@ describe("sales aggregates reach their group through the customer", () => {
     expect(scoped.map((r) => r.customer_name)).toEqual(["مشتری شرق"]);
   });
 
-  it("leaves a sale naming no known customer out of every group", () => {
+  it("leaves a sale naming no known customer out of every group", async () => {
     const db = getDb();
-    db.prepare(
+    await db.prepare(
       "INSERT INTO sales (order_no, sale_date, customer_name, amount, imported_at) VALUES ('A3', '2026-08-01', 'کسی که نیست', 100, ?)"
     ).run(new Date().toISOString());
-    const rows = db
+    const rows = await db
       .prepare(
         `SELECT s.customer_name FROM sales s JOIN customers c ON c.business_name = s.customer_name
          WHERE 1 = 1 AND c.group_id = ?`

@@ -1,4 +1,4 @@
-import type { DatabaseSync } from "node:sqlite";
+import type { Db } from "@/lib/database/client";
 import { plain } from "./db";
 import { lineTotalToman, lineKg, type LineSnapshot } from "./orderMath";
 import { customerDebt } from "./repo/payments";
@@ -51,14 +51,14 @@ interface Row extends LineSnapshot {
   customer_id: number;
 }
 
-export function readCustomerSummary(
-  db: DatabaseSync,
+export async function readCustomerSummary(
+  db: Db,
   scope: { sql: string; params: number[] },
   customerId: number,
   windowDays = 90
-): CustomerSummary | null {
+): Promise<CustomerSummary | null> {
   const customer = plain(
-    db
+    await db
       .prepare(
         `SELECT id, business_name, city, province, address, lifecycle, salesperson,
                 organization_id, last_purchase_date, district_id
@@ -82,7 +82,7 @@ export function readCustomerSummary(
     | undefined;
   if (!customer) return null;
 
-  const debt = customerDebt(customer.organization_id, customer.id);
+  const debt = await customerDebt(customer.organization_id, customer.id);
 
   const since = new Date(Date.now() - windowDays * 86_400_000).toISOString().slice(0, 10);
 
@@ -90,7 +90,7 @@ export function readCustomerSummary(
      JS. Two queries -- one for this customer, one for the book -- would be two different
      moments in time, and the share could come out above 100%. */
   const lines = plain(
-    db
+    await db
       .prepare(
         `SELECT ol.packs_ordered, ol.packs_delivered, ol.unit_price_toman, ol.unit_cost_toman,
                 ol.qty_per_pack, ol.kg_per_base_unit,
@@ -128,7 +128,7 @@ export function readCustomerSummary(
   // a rep can read out. Falls through to city/address exactly as before when there is no
   // district -- which is most rows today, since only located customers have one.
   const district = customer.district_id
-    ? (db.prepare("SELECT name, code FROM districts WHERE id = ?").get(customer.district_id) as
+    ? (await db.prepare("SELECT name, code FROM districts WHERE id = ?").get(customer.district_id) as
         | { name: string; code: string | null }
         | undefined)
     : undefined;

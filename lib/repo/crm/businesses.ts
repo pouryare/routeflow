@@ -64,10 +64,10 @@ function viewSql(view: CrmView, session: Session, nowIso: string): { sql: string
   }
 }
 
-export function listBusinesses(
+export async function listBusinesses(
   session: Session,
   opts: { view: CrmView; q?: string; offset?: number; limit?: number; nowIso?: string }
-): { rows: BusinessRow[]; nextOffset: number | null } {
+): Promise<{ rows: BusinessRow[]; nextOffset: number | null }> {
   const now = opts.nowIso ?? new Date().toISOString();
   const limit = Math.min(Math.max(opts.limit ?? 50, 1), 200);
   const offset = Math.max(opts.offset ?? 0, 0);
@@ -77,13 +77,13 @@ export function listBusinesses(
   const order = opts.view === "today"
     ? "t.due_at ASC, c.id"
     : "CASE WHEN t.due_at IS NULL THEN 1 ELSE 0 END, t.due_at ASC, c.last_activity_at DESC, c.id";
-  const rows = getDb()
+  const rows = await getDb()
     .prepare(`${SELECT} WHERE c.merged_into_id IS NULL${f.sql}${v.sql}${s.sql} ORDER BY ${order} LIMIT ? OFFSET ?`)
     .all(...(f.params as never[]), ...(v.params as never[]), ...(s.params as never[]), limit + 1, offset) as unknown as BusinessRow[];
   return { rows: rows.slice(0, limit), nextOffset: rows.length > limit ? offset + limit : null };
 }
 
-export function viewCounts(session: Session, nowIso: string = new Date().toISOString()): Record<CrmView, number> {
+export async function viewCounts(session: Session, nowIso: string = new Date().toISOString()): Promise<Record<CrmView, number>> {
   const f = crmFilter(session, "c");
   // One pass over the visible customers with a conditional count per view, rather than
   // one full query per view. Each view's predicate is the same fragment listBusinesses
@@ -94,7 +94,7 @@ export function viewCounts(session: Session, nowIso: string = new Date().toISOSt
     params.push(...v.params);
     return `COALESCE(SUM(CASE WHEN 1 = 1${v.sql} THEN 1 ELSE 0 END), 0) AS v${i}`;
   });
-  const row = getDb()
+  const row = await getDb()
     .prepare(`SELECT ${columns.join(", ")}
                 FROM customers c LEFT JOIN tasks t ON t.id = c.next_task_id AND t.status = 'open'
                WHERE c.merged_into_id IS NULL${f.sql}`)
@@ -104,13 +104,13 @@ export function viewCounts(session: Session, nowIso: string = new Date().toISOSt
   return out;
 }
 
-export function getBusiness(session: Session, id: number): BusinessRow | null {
-  const row = getDb().prepare(`${SELECT} WHERE c.id = ? AND c.merged_into_id IS NULL`).get(id) as unknown as BusinessRow | undefined;
+export async function getBusiness(session: Session, id: number): Promise<BusinessRow | null> {
+  const row = await getDb().prepare(`${SELECT} WHERE c.id = ? AND c.merged_into_id IS NULL`).get(id) as unknown as BusinessRow | undefined;
   return row && canSeeBusiness(session, row) ? row : null;
 }
 
-export function productsWithPrice(organizationId: number): FlowContext["products"] {
-  return getDb()
+export async function productsWithPrice(organizationId: number): Promise<FlowContext["products"]> {
+  return await getDb()
     .prepare(`SELECT p.id, p.name,
                 (SELECT pp.price_toman FROM product_prices pp WHERE pp.product_id = p.id ORDER BY pp.valid_from DESC, pp.id DESC LIMIT 1) AS price_toman
                 FROM products p WHERE p.organization_id = ? AND p.active = 1 ORDER BY p.name`)
@@ -127,10 +127,10 @@ function searchSql(q: string | undefined): { sql: string; params: string[] } {
 
 const asRole = (r: string | null): ContactRole => (isOneOf(CONTACT_ROLES, r) ? r : "OTHER");
 
-export function flowContextFor(session: Session, id: number, entry: "call" | "talked_now"): { business: BusinessRow; ctx: FlowContext } | null {
-  const business = getBusiness(session, id);
+export async function flowContextFor(session: Session, id: number, entry: "call" | "talked_now"): Promise<{ business: BusinessRow; ctx: FlowContext } | null> {
+  const business = await getBusiness(session, id);
   if (!business) return null;
-  const contacts = (getDb()
+  const contacts = (await getDb()
     .prepare("SELECT id, name, role FROM contacts WHERE customer_id = ? AND organization_id = ? AND active = 1 ORDER BY is_primary DESC, id LIMIT 4")
     .all(id, business.organization_id) as { id: number; name: string | null; role: string }[]).map((c) => ({ id: c.id, name: c.name, role: asRole(c.role) }));
   const first = contacts[0];
@@ -150,21 +150,21 @@ export function flowContextFor(session: Session, id: number, entry: "call" | "ta
         address: business.address ?? business.area_label ?? "",
       },
       knownContacts: contacts,
-      products: productsWithPrice(business.organization_id),
+      products: await productsWithPrice(business.organization_id),
       reps: [],
       recentCustomers: [],
     },
   };
 }
 
-export function addLeadContext(session: Session): FlowContext {
+export async function addLeadContext(session: Session): Promise<FlowContext> {
   const db = getDb();
   const manager = isCrmManager(session.role);
   let reps: FlowContext["reps"] = [];
   if (manager) {
     const byGroup = isOwner(session.role) ? "" : " AND u.group_id = ?";
     const params: number[] = [session.organizationId, ...(byGroup ? [session.groupId ?? -1] : [])];
-    reps = db
+    reps = await db
       .prepare(`SELECT u.id, u.display_name AS name,
                   (SELECT COUNT(*) FROM customers c WHERE c.owner_user_id = u.id AND c.closed_at IS NULL
                      AND COALESCE(c.sales_stage, 'unknown') NOT IN ${CUSTOMER_STAGES_SQL}) AS open
@@ -175,7 +175,7 @@ export function addLeadContext(session: Session): FlowContext {
       .all(...params) as unknown as FlowContext["reps"];
   }
   const f = crmFilter(session, "c");
-  const recentCustomers = db
+  const recentCustomers = await db
     .prepare(`SELECT c.id, c.business_name AS name FROM customers c
                WHERE c.merged_into_id IS NULL${f.sql} AND ${LAST_ORDER} IS NOT NULL
                ORDER BY ${LAST_ORDER} DESC LIMIT 6`)

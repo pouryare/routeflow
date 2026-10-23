@@ -33,12 +33,12 @@ const json = (body: unknown, cookie?: string) =>
 const cookieFor = (uid: number, role: "platform_owner" | "owner", tv = 0) =>
   `${COOKIE_NAME}=${createSessionToken({ uid, role, gid: null, oid: 1, tv, name: "t" })}`;
 
-beforeAll(() => {
+beforeAll(async () => {
   const db = getDb();
   const ins = db.prepare("INSERT INTO users (username, password_hash, display_name, role, active, token_version, created_at, organization_id) VALUES (?, ?, ?, ?, 1, 0, '2026-01-01', 1)");
-  founderId = Number(ins.run("founder", hashPassword("correct horse"), "F", "platform_owner").lastInsertRowid);
-  ownerId = Number(ins.run("plainowner", hashPassword("correct horse"), "O", "owner").lastInsertRowid);
-  db.prepare("INSERT OR IGNORE INTO user_roles (user_id, role) VALUES (?, 'platform_owner')").run(founderId);
+  founderId = Number((await ins.run("founder", hashPassword("correct horse"), "F", "platform_owner")).lastInsertRowid);
+  ownerId = Number((await ins.run("plainowner", hashPassword("correct horse"), "O", "owner")).lastInsertRowid);
+  await db.prepare("INSERT OR IGNORE INTO user_roles (user_id, role) VALUES (?, 'platform_owner')").run(founderId);
 });
 
 const currentCode = (secret: string, offset = 0) => totpAt(secret, stepAt(Date.now()) + offset);
@@ -103,10 +103,10 @@ describe("the founder's second login step", () => {
 
   it("is switched off only with a valid code", async () => {
     const secret = (globalThis as { __secret?: string }).__secret!;
-    const user = getDb().prepare("SELECT token_version FROM users WHERE id = ?").get(founderId) as { token_version: number };
+    const user = await getDb().prepare("SELECT token_version FROM users WHERE id = ?").get(founderId) as { token_version: number };
     const cookie = cookieFor(founderId, "platform_owner", user.token_version);
     expect((await manage(json({ action: "disable", code: "000000" }, cookie))).status).toBe(400);
-    expect(checkSecondFactor(founderId, currentCode(secret, -1))).toBe(false); // an older, already-passed step
+    expect(await checkSecondFactor(founderId, currentCode(secret, -1))).toBe(false); // an older, already-passed step
     const rec = (globalThis as { __rec?: string[] }).__rec!;
     expect((await manage(json({ action: "disable", code: rec[1] }, cookie))).status).toBe(200);
     const res = await login(json({ username: "founder", password: "correct horse" }));
@@ -115,7 +115,7 @@ describe("the founder's second login step", () => {
 
   it("is only for the founder's own session", async () => {
     expect((await manage(json({ action: "begin" }, cookieFor(ownerId, "owner")))).status).toBe(403);
-    expect(beginEnrollment(ownerId, "plainowner")).not.toBeNull(); // the repo itself is role-blind; the route is the gate
-    expect(confirmEnrollment(ownerId, "000000")).toBeNull();
+    expect(await beginEnrollment(ownerId, "plainowner")).not.toBeNull(); // the repo itself is role-blind; the route is the gate
+    expect(await confirmEnrollment(ownerId, "000000")).toBeNull();
   });
 });

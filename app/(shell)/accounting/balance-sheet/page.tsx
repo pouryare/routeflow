@@ -21,7 +21,7 @@ export default async function BalanceSheetPage({
 }) {
   const { asAt } = await searchParams;
   const organizationId = await requireAccounting("/accounting/balance-sheet");
-  const bs = balanceSheet(organizationId, asAt ? { periodKey: asAt } : {});
+  const bs = await balanceSheet(organizationId, asAt ? { periodKey: asAt } : {});
 
   const side = (
     rows: { accountId?: number; code: string; nameFa: string; amountToman: number }[]

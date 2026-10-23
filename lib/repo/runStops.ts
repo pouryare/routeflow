@@ -9,7 +9,7 @@
 // One module rather than four copies of the same UNION, because four copies is how the
 // numbers came to disagree in the first place.
 
-import type { DatabaseSync } from "node:sqlite";
+import type { Db } from "@/lib/database/client";
 
 export type StopStatus = "pending" | "done";
 
@@ -32,11 +32,11 @@ export interface RunStop {
  *  the first stop of the day, and the unload sorts last because it has NO position at all. A
  *  caller listing stops in order therefore shows the load first without special-casing it, and
  *  never shows the unload pretending to be a numbered stop. */
-export function stopsForRuns(db: DatabaseSync, runIds: readonly number[]): RunStop[] {
+export async function stopsForRuns(db: Db, runIds: readonly number[]): Promise<RunStop[]> {
   if (runIds.length === 0) return [];
   const list = runIds.join(",");
 
-  const deliveries = db
+  const deliveries = await db
     .prepare(
       `SELECT run_id, sort_order, status, 'delivery' AS entity,
               NULL AS facility_id, NULL AS role
@@ -44,7 +44,7 @@ export function stopsForRuns(db: DatabaseSync, runIds: readonly number[]): RunSt
     )
     .all() as unknown as RunStop[];
 
-  const facilities = db
+  const facilities = await db
     .prepare(
       `SELECT run_id,
               CASE role WHEN 'load' THEN -1 ELSE 2147483647 END AS sort_order,
@@ -62,12 +62,12 @@ export function stopsForRuns(db: DatabaseSync, runIds: readonly number[]): RunSt
 }
 
 /** Total stops per run id, facility visits included. */
-export function stopCountsByRun(
-  db: DatabaseSync,
+export async function stopCountsByRun(
+  db: Db,
   runIds: readonly number[]
-): Map<number, number> {
+): Promise<Map<number, number>> {
   const counts = new Map<number, number>();
-  for (const s of stopsForRuns(db, runIds)) {
+  for (const s of await stopsForRuns(db, runIds)) {
     counts.set(s.run_id, (counts.get(s.run_id) ?? 0) + 1);
   }
   return counts;
@@ -78,12 +78,12 @@ export function stopCountsByRun(
  *  A facility stop is 'done' only when the driver has confirmed it. A queued-but-unsent
  *  reconciliation stays outstanding on purpose -- the manager's question is "did the extras
  *  physically come back", and that is only true once the server says so. */
-export function remainingByRun(
-  db: DatabaseSync,
+export async function remainingByRun(
+  db: Db,
   runIds: readonly number[]
-): Map<number, number> {
+): Promise<Map<number, number>> {
   const counts = new Map<number, number>();
-  for (const s of stopsForRuns(db, runIds)) {
+  for (const s of await stopsForRuns(db, runIds)) {
     if (s.status !== "pending") continue;
     counts.set(s.run_id, (counts.get(s.run_id) ?? 0) + 1);
   }

@@ -2,6 +2,7 @@
  * Moved out of lib/db.ts's getDb() unchanged; the eras run in numeric order from ../migrate.ts and
  * each statement is idempotent (it inspects the live schema first). */
 import type { DatabaseSync } from "node:sqlite";
+import type { Db } from "../client";
 import { refreshRetiredWording } from "../../repo/retiredWording";
 import {
   seedCapacityFactors,
@@ -15,7 +16,7 @@ import {
   seedSeasonalFactors,
 } from "../seeds";
 
-export function applyNotificationsRolesSeeds(db: DatabaseSync): void {
+export async function applyNotificationsRolesSeeds(db: DatabaseSync, adb: Db): Promise<void> {
   // Notification system (Phase 1): 'notify' joins ('task','alert') as a rule action_kind
   // so a rule can drive fanOutNotifications. CREATE TABLE IF NOT EXISTS never re-applies a
   // CHECK to an already-created table and SQLite has no ALTER for CHECK, so this is the
@@ -308,7 +309,7 @@ export function applyNotificationsRolesSeeds(db: DatabaseSync): void {
   seedNotificationTypes(db);
   seedObjectionCards(db);
   seedKpiDefinitions(db);
-  refreshRetiredWording(db);
+  await refreshRetiredWording(adb);
   seedSeasonalFactors(db);
   seedChurnModel(db);
 }

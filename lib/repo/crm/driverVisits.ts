@@ -26,9 +26,9 @@ const VISIBLE = `t.organization_id = ? AND t.kind = 'verify_visit' AND t.status 
        AND EXISTS (SELECT 1 FROM user_roles ur WHERE ur.user_id = ? AND ur.role = t.role_hint)
        AND t.group_id = ?))`;
 
-export function driverVisitsFor(session: Session): DriverVisit[] {
+export async function driverVisitsFor(session: Session): Promise<DriverVisit[]> {
   if (!isVanRole(session.role)) throw new CrmError(403, "دسترسی لازم را ندارید");
-  const rows = getDb()
+  const rows = await getDb()
     .prepare(`SELECT t.id AS task_id, c.id AS customer_id, c.business_name, c.address, c.area_label, c.lat, c.lng, c.maps_url,
                      c.working_hours_json, t.due_at
                 FROM tasks t JOIN customers c ON c.id = t.entity_id
@@ -39,18 +39,18 @@ export function driverVisitsFor(session: Session): DriverVisit[] {
   return rows.map(({ working_hours_json, ...r }) => ({ ...r, hours: formatHours(parseHours(working_hours_json)) }));
 }
 
-export function applyDriverVisit(
+export async function applyDriverVisit(
   session: Session, taskId: number,
   input: { answers: FlowAnswer[]; pos?: { lat: number; lng: number; accuracy: number } | null; nowIso?: string; clientUuid?: string | null }
-): FlowWriteResult {
+): Promise<FlowWriteResult> {
   if (!isVanRole(session.role)) throw new CrmError(403, "دسترسی لازم را ندارید");
-  const t = getDb()
+  const t = await getDb()
     .prepare(`SELECT t.entity_id AS customer_id, c.business_name, c.address, c.area_label FROM tasks t JOIN customers c ON c.id = t.entity_id WHERE t.id = ? AND ${VISIBLE}`)
     .get(taskId, session.organizationId, session.user.id, session.user.id, session.groupId ?? -1) as
     { customer_id: number; business_name: string; address: string | null; area_label: string | null } | undefined;
   if (!t) throw new CrmError(404, "بازدید پیدا نشد");
   const ctx = { ...EMPTY_CONTEXT, entry: "driver_visit" as const, vars: { name: t.business_name, address: t.address ?? t.area_label ?? "" } };
-  return applyFlowCore(session, driverVisitFlow, ctx, t.customer_id,
+  return await applyFlowCore(session, driverVisitFlow, ctx, t.customer_id,
     { customerId: t.customer_id, answers: input.answers, entry: "call", channel: "visit", taskId, nowIso: input.nowIso, driverPos: input.pos ?? null, clientUuid: input.clientUuid },
     { claim: false });
 }

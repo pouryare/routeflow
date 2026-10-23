@@ -22,24 +22,24 @@ afterAll(() => {
 
 const ctx = { owner: 0, manager: 0, product: 0 };
 
-beforeAll(() => {
+beforeAll(async () => {
   const db = getDb();
   const now = new Date().toISOString();
   ctx.owner = Number(
-    db
+    (await db
       .prepare(
         "INSERT INTO users (username, password_hash, display_name, role, group_id, active, created_at) VALUES ('o', 'x', 'مالک', 'owner', NULL, 1, ?)"
       )
-      .run(now).lastInsertRowid
+      .run(now)).lastInsertRowid
   );
   ctx.manager = Number(
-    db
+    (await db
       .prepare(
         "INSERT INTO users (username, password_hash, display_name, role, group_id, active, created_at) VALUES ('m', 'x', 'مدیر', 'group_manager', NULL, 1, ?)"
       )
-      .run(now).lastInsertRowid
+      .run(now)).lastInsertRowid
   );
-  ctx.product = createProduct(db, { name: "کالای نمونه", kg_per_base_unit: 1, organization_id: 1 });
+  ctx.product = await createProduct(db, { name: "کالای نمونه", kg_per_base_unit: 1, organization_id: 1 });
 });
 
 function cookieFor(uid: number, role: "owner" | "group_manager") {
@@ -77,7 +77,7 @@ describe("PATCH /api/sales/products/[id]/stock-thresholds", () => {
       ctxParams(ctx.product)
     );
     expect(res.status).toBe(200);
-    const row = getDb().prepare("SELECT reorder_point, target_stock FROM products WHERE id = ?").get(ctx.product) as {
+    const row = await getDb().prepare("SELECT reorder_point, target_stock FROM products WHERE id = ?").get(ctx.product) as {
       reorder_point: number;
       target_stock: number;
     };
@@ -91,7 +91,7 @@ describe("PATCH /api/sales/products/[id]/stock-thresholds", () => {
       ctxParams(ctx.product)
     );
     expect(res.status).toBe(200);
-    const row = getDb().prepare("SELECT reorder_point, target_stock FROM products WHERE id = ?").get(ctx.product) as {
+    const row = await getDb().prepare("SELECT reorder_point, target_stock FROM products WHERE id = ?").get(ctx.product) as {
       reorder_point: number | null;
       target_stock: number;
     };

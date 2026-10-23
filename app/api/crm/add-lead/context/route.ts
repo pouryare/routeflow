@@ -4,7 +4,7 @@ import { addLeadContext } from "@/lib/repo/crm/businesses";
 import { CRM_ROLES } from "@/lib/repo/crm/http";
 
 export async function GET(req: NextRequest) {
-  const guard = requireRole(req, [...CRM_ROLES]);
+  const guard = await requireRole(req, [...CRM_ROLES]);
   if (!guard.ok) return guard.response;
-  return NextResponse.json({ ok: true, ctx: addLeadContext(guard.session) });
+  return NextResponse.json({ ok: true, ctx: await addLeadContext(guard.session) });
 }

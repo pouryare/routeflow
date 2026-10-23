@@ -4,18 +4,18 @@ import { listVehicles, createVehicle, RoutingError } from "@/lib/repo/routing";
 import { MANAGE_ROLES } from "@/lib/roles";
 
 export async function GET(req: NextRequest) {
-  const guard = requireRole(req, MANAGE_ROLES);
+  const guard = await requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
-  return NextResponse.json({ ok: true, vehicles: listVehicles(guard.session.organizationId, false) });
+  return NextResponse.json({ ok: true, vehicles: await listVehicles(guard.session.organizationId, false) });
 }
 
 export async function POST(req: NextRequest) {
-  const guard = requireRole(req, MANAGE_ROLES);
+  const guard = await requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
   const b = (await req.json().catch(() => null)) as Record<string, unknown> | null;
   if (!b?.name) return NextResponse.json({ ok: false, error: "نام لازم است" }, { status: 400 });
   try {
-    const id = createVehicle(guard.session.organizationId, {
+    const id = await createVehicle(guard.session.organizationId, {
       name: String(b.name),
       plate: (b.plate as string | null) ?? null,
       driver_default_id: (b.driver_default_id as number | null) ?? null,

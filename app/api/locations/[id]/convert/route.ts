@@ -18,7 +18,7 @@ import { PIN_POOL_ROLES } from "@/lib/roles";
 // lead's first purchase are the same operation, dedup guard and all, rather than two
 // implementations that drift.
 export async function POST(req: NextRequest, ctx: RouteContext<"/api/locations/[id]/convert">) {
-  const guard = requireRole(req, PIN_POOL_ROLES);
+  const guard = await requireRole(req, PIN_POOL_ROLES);
   if (!guard.ok) return guard.response;
 
   const { id } = await ctx.params;
@@ -27,13 +27,13 @@ export async function POST(req: NextRequest, ctx: RouteContext<"/api/locations/[
     return NextResponse.json({ ok: false, error: "شناسه نامعتبر است" }, { status: 400 });
   }
 
-  const owning = findOwnLocation(idNum, orgScopeId(guard.session));
-  if (!owning || !canReachGroup(guard.session, owning.group_id)) {
+  const owning = await findOwnLocation(idNum, orgScopeId(guard.session));
+  if (!owning || !await canReachGroup(guard.session, owning.group_id)) {
     return NextResponse.json({ ok: false, error: "مکان پیدا نشد" }, { status: 404 });
   }
 
   try {
-    const promotion = promoteLeadToCustomer(guard.session.organizationId, idNum, guard.session);
+    const promotion = await promoteLeadToCustomer(guard.session.organizationId, idNum, guard.session);
     return NextResponse.json({
       ok: true,
       customerId: promotion.customerId,

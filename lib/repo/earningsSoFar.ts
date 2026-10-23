@@ -26,10 +26,10 @@ export interface EarningsSoFar {
  *  statementFor the commission page and payroll read, so the card cannot disagree with them.
  *  Only for the selling roles, and only their own statement; null when the month has nothing
  *  credited and nothing is owed, so the briefing does not open on a row of zeros. */
-export function earningsSoFar(session: Session, nowIso = new Date().toISOString()): EarningsSoFar | null {
+export async function earningsSoFar(session: Session, nowIso = new Date().toISOString()): Promise<EarningsSoFar | null> {
   if (!SELLER_ROLES.includes(session.role)) return null;
   const period = jalaliMonthSoFar(nowIso);
-  const s = statementFor(getDb(), session.user.id, period);
+  const s = await statementFor(getDb(), session.user.id, period);
   if (s.orders.length === 0 && s.owed_toman === 0) return null;
   return {
     kg: s.kg,

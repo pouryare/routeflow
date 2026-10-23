@@ -17,14 +17,14 @@ afterAll(() => {
   for (const s of ["", "-wal", "-shm"]) fs.rmSync(`${testDbPath}${s}`, { force: true });
 });
 
-function mkUser(username: string, active = 1): number {
+async function mkUser(username: string, active = 1): Promise<number> {
   return Number(
-    getDb()
+    (await getDb()
       .prepare(
         `INSERT INTO users (username, password_hash, display_name, role, organization_id, active, created_at)
          VALUES (?, ?, ?, 'owner', 1, ?, '2026-01-01')`
       )
-      .run(username, hashPassword("right-pass"), username, active).lastInsertRowid
+      .run(username, hashPassword("right-pass"), username, active)).lastInsertRowid
   );
 }
 
@@ -39,27 +39,27 @@ const login = (username: string, password: string, ip: string) =>
 
 describe("sign-in log", () => {
   it("records a success and a wrong password on a real account, and nothing for an unknown name", async () => {
-    const id = mkUser("le1");
+    const id = await mkUser("le1");
     await login("le1", "wrong", "10.0.0.1");
     await login("le1", "right-pass", "10.0.0.1");
     await login("nobody-here", "whatever", "10.0.0.1");
-    const mine = myRecentLogins(1, id);
+    const mine = await myRecentLogins(1, id);
     expect(mine.map((r) => r.result)).toEqual(["success", "bad_password"]);
     expect(mine[0].ip).toBe("10.0.0.1");
-    expect(recentLogins(1).every((r) => r.display_name !== "nobody-here")).toBe(true);
-    expect(lastSignInByUser(1).get(id)).toBe(mine[0].created_at);
+    expect((await recentLogins(1)).every((r) => r.display_name !== "nobody-here")).toBe(true);
+    expect((await lastSignInByUser(1)).get(id)).toBe(mine[0].created_at);
   });
 
   it("records a deactivated account's attempt", async () => {
-    const id = mkUser("le2", 0);
+    const id = await mkUser("le2", 0);
     await login("le2", "right-pass", "10.0.0.2");
-    expect(myRecentLogins(1, id)[0].result).toBe("inactive");
+    expect((await myRecentLogins(1, id))[0].result).toBe("inactive");
   });
 
-  it("drops rows older than 90 days on the next write", () => {
-    const id = mkUser("le3");
-    recordLogin({ organizationId: 1, userId: id, result: "success", ip: null, userAgent: null, now: new Date("2026-01-01T00:00:00Z") });
-    recordLogin({ organizationId: 1, userId: id, result: "success", ip: null, userAgent: null, now: new Date("2026-06-01T00:00:00Z") });
-    expect(myRecentLogins(1, id)).toHaveLength(1);
+  it("drops rows older than 90 days on the next write", async () => {
+    const id = await mkUser("le3");
+    await recordLogin({ organizationId: 1, userId: id, result: "success", ip: null, userAgent: null, now: new Date("2026-01-01T00:00:00Z") });
+    await recordLogin({ organizationId: 1, userId: id, result: "success", ip: null, userAgent: null, now: new Date("2026-06-01T00:00:00Z") });
+    expect(await myRecentLogins(1, id)).toHaveLength(1);
   });
 });

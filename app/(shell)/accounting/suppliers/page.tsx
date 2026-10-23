@@ -17,8 +17,8 @@ export const dynamic = "force-dynamic";
  *  with the trial balance. */
 export default async function SuppliersPage() {
   const organizationId = await requireAccounting("/accounting/suppliers");
-  const suppliers = listSuppliers(organizationId);
-  const owed = new Map(agedPayables(organizationId).map((r) => [r.supplierId, r.balanceToman]));
+  const suppliers = await listSuppliers(organizationId);
+  const owed = new Map((await agedPayables(organizationId)).map((r) => [r.supplierId, r.balanceToman]));
 
   return (
     <>

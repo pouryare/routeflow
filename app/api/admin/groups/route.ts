@@ -29,16 +29,16 @@ export function slugify(name: string): string {
 }
 
 export async function GET(req: NextRequest) {
-  const guard = requireRole(req, OWNER_ROLES);
+  const guard = await requireRole(req, OWNER_ROLES);
   if (!guard.ok) return guard.response;
 
-  const groups = listGroups(orgScopeId(guard.session));
+  const groups = await listGroups(orgScopeId(guard.session));
 
   return NextResponse.json({ ok: true, groups, palette: GROUP_PALETTE });
 }
 
 export async function POST(req: NextRequest) {
-  const guard = requireRole(req, OWNER_ROLES);
+  const guard = await requireRole(req, OWNER_ROLES);
   if (!guard.ok) return guard.response;
 
   const body = (await req.json().catch(() => null)) as { name?: string; color?: string } | null;
@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
   const color = GROUP_PALETTE.includes(body?.color ?? "") ? body!.color! : GROUP_PALETTE[0];
 
   try {
-    const id = createGroup(guard.session.organizationId, name, slugify(name), color);
+    const id = await createGroup(guard.session.organizationId, name, slugify(name), color);
     return NextResponse.json({ ok: true, id });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "خطا";

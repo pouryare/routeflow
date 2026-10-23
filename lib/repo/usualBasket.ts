@@ -5,9 +5,9 @@ import { usualBasket, USUAL_WINDOW, type BasketLine } from "@/lib/flows/orderQui
  *  (not drafts, cancelled or returned ones, as `pickLastOrder`). `scope` is the caller's
  *  orderFilter fragment on alias `o`, so a salesperson builds it from their own orders only, the
  *  same orders the list beside it shows. */
-export function customerUsualBasket(scope: { sql: string; params: number[] }, customerId: number): BasketLine[] {
+export async function customerUsualBasket(scope: { sql: string; params: number[] }, customerId: number): Promise<BasketLine[]> {
   const db = getDb();
-  const orders = db
+  const orders = await db
     .prepare(
       `SELECT o.id FROM orders o
         WHERE o.customer_id = ? AND o.status NOT IN ('DRAFT', 'CANCELLED', 'RETURNED')${scope.sql}
@@ -17,7 +17,7 @@ export function customerUsualBasket(scope: { sql: string; params: number[] }, cu
     .all(customerId, ...scope.params) as unknown as { id: number }[];
   if (orders.length === 0) return [];
   const ids = orders.map((o) => o.id);
-  const lines = db
+  const lines = await db
     .prepare(
       `SELECT ol.order_id, ol.product_id, ol.packaging_id, ol.packs_ordered
          FROM order_lines ol

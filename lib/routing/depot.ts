@@ -31,13 +31,13 @@ export type Depot = FacilityRow & { lat: number; lng: number };
  *  Throws rather than returning null when there is nothing usable. Every caller needs an
  *  answer before it can do anything useful, and a null here becomes a null map pin or an
  *  unplaced stock movement three frames deeper. The message names the fix. */
-export function pickDepot(organizationId: number): Depot {
+export async function pickDepot(organizationId: number): Promise<Depot> {
   /* Ranked HERE, in the one file that owns the question.
    *
    * The explicit find-chain below already decided priority, so the ORDER BY never changed the
    * answer — but its presence made this a SECOND reader of "which place is the origin", and
    * two readers is how the flag and the kind drifted apart in the first place. */
-  const rows = readOrgFacilities(getDb(), organizationId);
+  const rows = await readOrgFacilities(getDb(), organizationId);
   const found =
     rows.find((f) => f.is_default_origin === 1 && isPlaced(f)) ??
     rows.find((f) => f.kind === "warehouse" && isPlaced(f)) ??
@@ -52,9 +52,9 @@ export function pickDepot(organizationId: number): Depot {
  *  there is none, because those callers have their own "no origin" behaviour already and
  *  inventing one for them would hide the difference between "no origin chosen" and
  *  "origin is here". */
-export function depotFor(organizationId: number): LatLng | null {
+export async function depotFor(organizationId: number): Promise<LatLng | null> {
   try {
-    const d = pickDepot(organizationId);
+    const d = await pickDepot(organizationId);
     return { lat: d.lat, lng: d.lng };
   } catch {
     return null;
@@ -89,9 +89,9 @@ export function originFrom(facilities: readonly FacilityRow[]): Depot | null {
  *
  *  Returns null when they have never loaded anywhere. That is an ordinary state for a new
  *  driver, and callers fall back to the company default. */
-export function lastLoadedFrom(
+export async function lastLoadedFrom(
   organizationId: number,
   driverUserId: number
-): number | null {
-  return readLastLoadFacility(getDb(), organizationId, driverUserId);
+): Promise<number | null> {
+  return await readLastLoadFacility(getDb(), organizationId, driverUserId);
 }

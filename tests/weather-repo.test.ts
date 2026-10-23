@@ -18,18 +18,18 @@ afterAll(() => {
   for (const s of ["", "-wal", "-shm"]) fs.rmSync(`${testDbPath}${s}`, { force: true });
 });
 
-beforeEach(() => {
+beforeEach(async () => {
   const db = getDb();
-  db.exec("DELETE FROM weather_snapshots; DELETE FROM capacity_factors WHERE organization_id IS NOT NULL;");
-  db.prepare("INSERT OR IGNORE INTO organizations (id,name,slug,created_at) VALUES (2,'B','b',?)").run(
+  await db.exec("DELETE FROM weather_snapshots; DELETE FROM capacity_factors WHERE organization_id IS NOT NULL;");
+  await db.prepare("INSERT OR IGNORE INTO organizations (id,name,slug,created_at) VALUES (2,'B','b',?)").run(
     new Date().toISOString()
   );
 });
 
 const CELL = { lat: 35.7, lng: 51.42, date: "2026-03-01" };
 
-function seedRain(precip = 9) {
-  upsertSnapshot({
+async function seedRain(precip = 9) {
+  await upsertSnapshot({
     lat_r: 35.7,
     lng_r: 51.42,
     forecast_date: "2026-03-01",
@@ -47,37 +47,37 @@ function seedRain(precip = 9) {
 }
 
 describe("weather repo", () => {
-  it("upserts a snapshot -- one row, latest values", () => {
-    seedRain(9);
-    seedRain(15);
-    const rows = getDb().prepare("SELECT precip_mm FROM weather_snapshots").all() as { precip_mm: number }[];
+  it("upserts a snapshot -- one row, latest values", async () => {
+    await seedRain(9);
+    await seedRain(15);
+    const rows = await getDb().prepare("SELECT precip_mm FROM weather_snapshots").all() as { precip_mm: number }[];
     expect(rows).toEqual([{ precip_mm: 15 }]);
-    expect(snapshotFor(35.703, 51.418, "2026-03-01")?.precip_mm).toBe(15);
+    expect((await snapshotFor(35.703, 51.418, "2026-03-01"))?.precip_mm).toBe(15);
   });
 
-  it("runWeatherAdjustment reads the snapshot and returns the heavy-rain factor", () => {
-    seedRain();
-    const adj = runWeatherAdjustment(1, CELL);
+  it("runWeatherAdjustment reads the snapshot and returns the heavy-rain factor", async () => {
+    await seedRain();
+    const adj = await runWeatherAdjustment(1, CELL);
     expect(adj.conditions).toContain("heavy_rain");
     expect(adj.factors[0].stop).toBe(0.8); // the shipped default
   });
 
-  it("a tenant capacity_factors override wins over the default", () => {
-    seedRain();
-    getDb()
+  it("a tenant capacity_factors override wins over the default", async () => {
+    await seedRain();
+    await getDb()
       .prepare(
         "INSERT INTO capacity_factors (organization_id, condition_code, stop_factor, service_time_factor, speed_factor, max_duration_factor, note_fa, updated_at) VALUES (1,'heavy_rain',0.5,1.2,0.85,1,'شدید',?)"
       )
       .run(new Date().toISOString());
-    const mine = capacityFactorsFor(1).find((r) => r.condition_code === "heavy_rain");
+    const mine = (await capacityFactorsFor(1)).find((r) => r.condition_code === "heavy_rain");
     expect(mine?.stop_factor).toBe(0.5);
     // org 2 still sees the default
-    expect(capacityFactorsFor(2).find((r) => r.condition_code === "heavy_rain")?.stop_factor).toBe(0.8);
-    expect(runWeatherAdjustment(1, CELL).factors[0].stop).toBe(0.5);
+    expect((await capacityFactorsFor(2)).find((r) => r.condition_code === "heavy_rain")?.stop_factor).toBe(0.8);
+    expect((await runWeatherAdjustment(1, CELL)).factors[0].stop).toBe(0.5);
   });
 
-  it("returns a neutral adjustment when there is no snapshot", () => {
-    const adj = runWeatherAdjustment(1, CELL);
+  it("returns a neutral adjustment when there is no snapshot", async () => {
+    const adj = await runWeatherAdjustment(1, CELL);
     expect(adj).toMatchObject({ conditions: [], factors: [], cold_chain_capped: false });
   });
 });

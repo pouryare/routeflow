@@ -13,11 +13,11 @@ export const dynamic = "force-dynamic";
  *  sees their group, the owner the company. Spend per source is not recorded yet. */
 export default async function LeadSourcesPage() {
   const jar = await cookies();
-  const session = getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
+  const session = await getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
   if (!session) redirect("/login");
   if (!MANAGE_ROLES.includes(session.role)) redirect("/sales");
 
-  const rows = leadSourceReport(session);
+  const rows = await leadSourceReport(session);
   const totals = rows.reduce((t, r) => ({ leads: t.leads + r.leads, converted: t.converted + r.converted }), { leads: 0, converted: 0 });
 
   return (

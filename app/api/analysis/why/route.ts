@@ -11,7 +11,7 @@ const WHY_METRICS: WhyMetric[] = ["net_sales", "gross_profit", "orders"];
 /** The "Why?" ladder for a metric between two Jalali months. Manager+ only — a
  *  decomposition exposes every group's and salesperson's numbers. */
 export async function GET(req: NextRequest) {
-  const guard = requireRole(req, MANAGE_ROLES);
+  const guard = await requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
 
   const sp = req.nextUrl.searchParams;
@@ -31,7 +31,7 @@ export async function GET(req: NextRequest) {
       metric,
       from,
       to,
-      chain: whyChain(guard.session, metric, from, to),
+      chain: await whyChain(guard.session, metric, from, to),
     });
   } catch (e) {
     if (e instanceof WhyError) return NextResponse.json({ ok: false, error: e.message }, { status: 403 });

@@ -7,7 +7,7 @@ import { MANAGE_ROLES } from "@/lib/roles";
 const STATUSES: CreditApprovalRow["status"][] = ["pending", "approved", "rejected", "expired"];
 
 export async function GET(req: NextRequest) {
-  const guard = requireRole(req, MANAGE_ROLES);
+  const guard = await requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
 
   const s = req.nextUrl.searchParams.get("status");
@@ -16,12 +16,12 @@ export async function GET(req: NextRequest) {
     : undefined;
   return NextResponse.json({
     ok: true,
-    approvals: listApprovals(guard.session.organizationId, status),
+    approvals: await listApprovals(guard.session.organizationId, status),
   });
 }
 
 export async function POST(req: NextRequest) {
-  const guard = requireRole(req, [...MANAGE_ROLES, "phone_sales"]);
+  const guard = await requireRole(req, [...MANAGE_ROLES, "phone_sales"]);
   if (!guard.ok) return guard.response;
 
   const body = (await req.json().catch(() => null)) as {
@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const id = requestApproval(guard.session.organizationId, {
+    const id = await requestApproval(guard.session.organizationId, {
       order_id: Number(body.order_id),
       requested_by: guard.session.user.id,
       customer_id: Number(body.customer_id),

@@ -17,7 +17,7 @@ const TENANTS = [
   { slug: "sepehr", name: "سپهر تجارت", phone: "02122220000" },
 ];
 
-export function run(ctx: SeedContext): void {
+export async function run(ctx: SeedContext): Promise<void> {
   const { db, rng } = ctx;
   const now = ctx.stamp(0);
 
@@ -50,7 +50,7 @@ export function run(ctx: SeedContext): void {
   /* The owner row from phase 01 supplies the password hash — re-hashing would need bcrypt and
      a real cost, and the demo password is identical across tenants by design. */
   const hash = (
-    db.prepare(`SELECT password_hash FROM users WHERE id = ?`).get(ctx.staff.owner) as
+    await db.prepare(`SELECT password_hash FROM users WHERE id = ?`).get(ctx.staff.owner) as
       | { password_hash: string }
       | undefined
   )?.password_hash;
@@ -76,7 +76,7 @@ export function run(ctx: SeedContext): void {
   /* Typed as an interface, not `Record<string, unknown>` — node:sqlite's parameter type is
      `SQLInputValue`, so `unknown` is not assignable and every bind is a TS error. */
   const productTemplate: ProductTemplate | null = products.length
-    ? ((db
+    ? ((await db
         .prepare(`SELECT name, base_unit, kg_per_base_unit, avg_cost_toman, reorder_point,
                          target_stock, shelf_life_days, volume_m3_per_base_unit
                     FROM products WHERE id = ?`)
@@ -91,27 +91,27 @@ export function run(ctx: SeedContext): void {
 
   let customers = 0;
 
-  TENANTS.forEach((t, i) => {
+  for (const [i, t] of TENANTS.entries()) {
     const orgId = Number(
-      insOrg.run(t.name, `${t.slug}-demo`, `مدیر ${t.name}`, t.phone, now).lastInsertRowid,
+      (await insOrg.run(t.name, `${t.slug}-demo`, `مدیر ${t.name}`, t.phone, now)).lastInsertRowid,
     );
     tenantOrgIds[t.slug] = orgId;
 
     const username = `${t.slug}.owner`;
     const userId = Number(
-      insUser.run(orgId, username, `مالک ${t.name}`, hash, now).lastInsertRowid,
+      (await insUser.run(orgId, username, `مالک ${t.name}`, hash, now)).lastInsertRowid,
     );
     /* BOTH rows. `createRun` reads user_roles, and the role-gate reads it too — writing only
        `users.role` is the trap the plan flagged. */
-    insRole.run(userId, "owner");
-    insRole.run(userId, "sales_manager");
+    await insRole.run(userId, "owner");
+    await insRole.run(userId, "sales_manager");
 
     /* Printed in the summary. Without this the tenant switcher offers an org nobody can log
        into, which looks like a broken build rather than an unreported one. */
     ctx.logins.push({ username, role: "owner (tenant 2)", password: "demo1234" });
 
     for (let c = 0; c < 6; c++) {
-      insCustomer.run(
+      await insCustomer.run(
         orgId, `${t.slug.toUpperCase()}-C${c + 1}`, `مشتری ${t.name} ${c + 1}`,
         `021${rng.int(1000000, 9999999)}`, now, userId,
       );
@@ -121,7 +121,7 @@ export function run(ctx: SeedContext): void {
     /* A handful of tenant-owned products, so the tenant's screens are not blank shells. */
     if (productTemplate) {
       for (let k = 0; k < 4; k++) {
-        insProduct.run(
+        await insProduct.run(
           orgId,
           `${productTemplate.name} ${t.name}`,
           `${t.slug.toUpperCase()}-SKU-${k + 1}`,
@@ -133,7 +133,7 @@ export function run(ctx: SeedContext): void {
       }
     }
     void i;
-  });
+  }
 
   ctx.progress(
     `${TENANTS.length} tenants (${TENANTS.map((t) => t.slug).join(", ")}), ${customers} customers`,

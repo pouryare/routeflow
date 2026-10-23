@@ -16,6 +16,7 @@ import {
   unpromoteLead,
   type Promotion,
 } from "@/lib/repo/crm/conversion";
+import { everySeq } from "@/lib/seq";
 
 /** Who may read and place an order.
  *
@@ -32,7 +33,7 @@ import {
 const CAN_SELL = SELL_ROLES;
 
 export async function GET(req: NextRequest) {
-  const guard = requireRole(req, [...CAN_SELL]);
+  const guard = await requireRole(req, [...CAN_SELL]);
   if (!guard.ok) return guard.response;
 
   const url = new URL(req.url);
@@ -40,7 +41,7 @@ export async function GET(req: NextRequest) {
   const status = url.searchParams.get("status");
 
   const scope = orderFilter(guard.session);
-  const orders = ordersIn(scope, {
+  const orders = await ordersIn(scope, {
     customerId: customerId ? Number(customerId) : undefined,
     status: status ?? undefined,
     limit: Number(url.searchParams.get("limit") ?? 200),
@@ -49,27 +50,27 @@ export async function GET(req: NextRequest) {
   // Additive, and only when a customer is named: what that shop habitually buys is the
   // question the map's customer panel asks, and it is meaningless across all customers.
   const products = customerId
-    ? orderMixIn(scope, Number(customerId))
+    ? await orderMixIn(scope, Number(customerId))
     : [];
 
   // F89: the last prices this shop paid per product and pack, beside the list price then.
-  const prices = customerId ? customerPriceHistory(scope, Number(customerId)) : [];
+  const prices = customerId ? await customerPriceHistory(scope, Number(customerId)) : [];
 
   // F58: the lines this shop orders most of the time, for the repeat-order flow.
-  const usual = customerId ? customerUsualBasket(scope, Number(customerId)) : [];
+  const usual = customerId ? await customerUsualBasket(scope, Number(customerId)) : [];
 
   // F72: open orders from the last 24 hours, so order entry can ask before a double entry.
-  const recent_open = customerId ? recentOpenOrders(scope, Number(customerId)) : [];
+  const recent_open = customerId ? await recentOpenOrders(scope, Number(customerId)) : [];
 
   // F40: what a new customer is still missing before the first delivery (a warning only).
   const org = orgScopeId(guard.session);
-  const onboarding = customerId && org !== null ? onboardingFor(org, Number(customerId)) : null;
+  const onboarding = customerId && org !== null ? await onboardingFor(org, Number(customerId)) : null;
 
   return NextResponse.json({ ok: true, orders, products, prices, usual, recent_open, onboarding });
 }
 
 export async function POST(req: NextRequest) {
-  const guard = requireRole(req, [...CAN_SELL]);
+  const guard = await requireRole(req, [...CAN_SELL]);
   if (!guard.ok) return guard.response;
   const session = guard.session;
 
@@ -106,7 +107,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: "شناسه مکان نامعتبر است" }, { status: 400 });
     }
     try {
-      promotion = promoteLeadToCustomer(session.organizationId, leadLocationId, session);
+      promotion = await promoteLeadToCustomer(session.organizationId, leadLocationId, session);
     } catch (e) {
       if (e instanceof LeadPromotionError) {
         return NextResponse.json({ ok: false, error: e.message }, { status: e.status });
@@ -116,12 +117,12 @@ export async function POST(req: NextRequest) {
   }
 
   // The customer must be this company's: a customer with no group is reachable by group alone.
-  const customer = findCustomerInOrg(promotion ? promotion.customerId : Number(body?.customer_id), orgScopeId(session));
+  const customer = await findCustomerInOrg(promotion ? promotion.customerId : Number(body?.customer_id), orgScopeId(session));
 
   // 404 rather than 403 for a customer in another group -- a 403 would confirm the row
   // exists, which is the thing being withheld. Same rule as everywhere else here.
-  if (!customer || !canReachGroup(session, customer.group_id)) {
-    if (promotion) unpromoteLead(session.organizationId, promotion);
+  if (!customer || !await canReachGroup(session, customer.group_id)) {
+    if (promotion) await unpromoteLead(session.organizationId, promotion);
     return NextResponse.json({ ok: false, error: "مشتری پیدا نشد" }, { status: 404 });
   }
 
@@ -138,21 +139,21 @@ export async function POST(req: NextRequest) {
   // organisation who can actually sell. Before, any user id was accepted -- including one from
   // another tenant -- which attached the order's commission to a stranger.
   if (salespersonId !== null) {
-    const seller = activeUserWithRoleInOrg(salespersonId, CAN_SELL, session.organizationId);
+    const seller = await activeUserWithRoleInOrg(salespersonId, CAN_SELL, session.organizationId);
     if (!seller) {
-      if (promotion) unpromoteLead(session.organizationId, promotion);
+      if (promotion) await unpromoteLead(session.organizationId, promotion);
       return NextResponse.json({ ok: false, error: "فروشندهٔ انتخاب‌شده معتبر نیست" }, { status: 400 });
     }
   }
 
   // And every product on it, for the same reason.
-  if (!lines.every((line) => productInOrg(Number(line.product_id), orgScopeId(session)))) {
-    if (promotion) unpromoteLead(session.organizationId, promotion);
+  if (!await everySeq(lines, async (line) => await productInOrg(Number(line.product_id), orgScopeId(session)))) {
+    if (promotion) await unpromoteLead(session.organizationId, promotion);
     return NextResponse.json({ ok: false, error: "کالا پیدا نشد" }, { status: 400 });
   }
 
   try {
-    const order = placeOrder({
+    const order = await placeOrder({
       customer_id: customer.id,
       order_date: orderDate,
       requested_day: requestedDay,
@@ -178,7 +179,7 @@ export async function POST(req: NextRequest) {
   } catch (e) {
     // The promotion outlived the order, which would leave a customer who never bought --
     // exactly what rule 1 forbids. Put it back before reporting the failure.
-    if (promotion) unpromoteLead(session.organizationId, promotion);
+    if (promotion) await unpromoteLead(session.organizationId, promotion);
     if (e instanceof OrderError) {
       return NextResponse.json({ ok: false, error: e.message }, { status: 400 });
     }

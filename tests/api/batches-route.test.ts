@@ -26,32 +26,32 @@ let sellerId = 0;
 let prod = 0;
 let otherOrgBatch = 0;
 
-beforeAll(() => {
+beforeAll(async () => {
   const db = getDb();
-  db.exec("INSERT INTO organizations (id,name,slug,created_at) VALUES (2,'Two','two','2026-01-01')");
+  await db.exec("INSERT INTO organizations (id,name,slug,created_at) VALUES (2,'Two','two','2026-01-01')");
   const now = new Date().toISOString();
   mgrId = Number(
-    db
+    (await db
       .prepare(
         "INSERT INTO users (username,password_hash,display_name,role,group_id,active,created_at,organization_id) VALUES (?,?,?,'group_manager',NULL,1,?,1)"
       )
-      .run("b-mgr", "x:y", "م", now).lastInsertRowid
+      .run("b-mgr", "x:y", "م", now)).lastInsertRowid
   );
   sellerId = Number(
-    db
+    (await db
       .prepare(
         "INSERT INTO users (username,password_hash,display_name,role,group_id,active,created_at,organization_id) VALUES (?,?,?,'phone_sales',NULL,1,?,1)"
       )
-      .run("b-seller", "x:y", "ف", now).lastInsertRowid
+      .run("b-seller", "x:y", "ف", now)).lastInsertRowid
   );
   prod = Number(
-    db.prepare("INSERT INTO products (name,sku,created_at,updated_at,organization_id) VALUES ('کره',?,?,?,1)").run(`s${Date.now()}`, now, now).lastInsertRowid
+    (await db.prepare("INSERT INTO products (name,sku,created_at,updated_at,organization_id) VALUES ('کره',?,?,?,1)").run(`s${Date.now()}`, now, now)).lastInsertRowid
   );
   const p2 = Number(
-    db.prepare("INSERT INTO products (name,sku,created_at,updated_at,organization_id) VALUES ('x',?,?,?,2)").run(`s2${Date.now()}`, now, now).lastInsertRowid
+    (await db.prepare("INSERT INTO products (name,sku,created_at,updated_at,organization_id) VALUES ('x',?,?,?,2)").run(`s2${Date.now()}`, now, now)).lastInsertRowid
   );
   otherOrgBatch = Number(
-    db.prepare("INSERT INTO batches (organization_id,product_id,batch_code,qty_received_base,unit_cost_toman,status,created_at,updated_at) VALUES (2,?,?,10,0,'active',?,?)").run(p2, "OTHER", now, now).lastInsertRowid
+    (await db.prepare("INSERT INTO batches (organization_id,product_id,batch_code,qty_received_base,unit_cost_toman,status,created_at,updated_at) VALUES (2,?,?,10,0,'active',?,?)").run(p2, "OTHER", now, now)).lastInsertRowid
   );
 });
 

@@ -45,30 +45,30 @@ process.env.SESSION_SECRET = "test-secret";
 const { getDb } = await import("@/lib/db");
 
 describe.skipIf(!dbPath)("Phase 4 offline-first migration on real data", () => {
-  it("adds client_uuid + sync tables without touching a single row", () => {
+  it("adds client_uuid + sync tables without touching a single row", async () => {
     const db = getDb();
 
-    expect(db.prepare("PRAGMA foreign_key_check").all()).toEqual([]);
+    expect(await db.prepare("PRAGMA foreign_key_check").all()).toEqual([]);
 
     for (const t of ["orders", "payments", "deliveries", "customers"]) {
-      const cols = (db.prepare(`PRAGMA table_info(${t})`).all() as { name: string }[]).map((c) => c.name);
+      const cols = (await db.prepare(`PRAGMA table_info(${t})`).all() as { name: string }[]).map((c) => c.name);
       expect(cols, t).toContain("client_uuid");
       const nulls = (
-        db.prepare(`SELECT COUNT(*) AS n FROM ${t} WHERE client_uuid IS NOT NULL`).get() as { n: number }
+        await db.prepare(`SELECT COUNT(*) AS n FROM ${t} WHERE client_uuid IS NOT NULL`).get() as { n: number }
       ).n;
       expect(nulls, `${t} has non-null client_uuid on a legacy row`).toBe(0);
-      const idx = db
+      const idx = await db
         .prepare("SELECT sql FROM sqlite_master WHERE type='index' AND name = ?")
         .get(`ix_${t}_client_uuid`) as { sql: string } | undefined;
       expect(idx?.sql ?? "", t).toContain("WHERE client_uuid IS NOT NULL");
     }
 
     for (const t of ["sync_mutations", "deleted_rows"]) {
-      expect(db.prepare(`SELECT COUNT(*) AS n FROM ${t}`).get()).toEqual({ n: 0 });
+      expect(await db.prepare(`SELECT COUNT(*) AS n FROM ${t}`).get()).toEqual({ n: 0 });
     }
 
     for (const [t, n] of Object.entries(before)) {
-      expect((db.prepare(`SELECT COUNT(*) AS n FROM ${t}`).get() as { n: number }).n, t).toBe(n);
+      expect((await db.prepare(`SELECT COUNT(*) AS n FROM ${t}`).get() as { n: number }).n, t).toBe(n);
     }
 
     if (temp) for (const s of ["", "-wal", "-shm"]) fs.rmSync(`${dbPath}${s}`, { force: true });

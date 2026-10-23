@@ -19,94 +19,94 @@ afterAll(() => {
 describe("natural keys are unique per tenant, not globally", () => {
   let db: ReturnType<typeof getDb>;
 
-  beforeAll(() => {
+  beforeAll(async () => {
     db = getDb();
-    db.prepare(`INSERT INTO organizations (id, name, slug, created_at) VALUES (2, 'Org Two', 'org-two', ?)`).run(
+    await db.prepare(`INSERT INTO organizations (id, name, slug, created_at) VALUES (2, 'Org Two', 'org-two', ?)`).run(
       "2026-01-01"
     );
     // A real user row, so the orders test's created_by foreign key resolves. id is not
     // assumed -- captured from the insert, the same way the app itself would get it.
-    db.prepare(
+    await db.prepare(
       `INSERT INTO users (username, password_hash, display_name, role, organization_id, created_at)
        VALUES ('fixture', 'x:y', 'Fixture', 'owner', 1, '2026-01-01')`
     ).run();
   });
 
-  it("lets two organisations use the same customer code, but not the same organisation twice", () => {
-    const ins = (org: number) =>
-      db
+  it("lets two organisations use the same customer code, but not the same organisation twice", async () => {
+    const ins = async (org: number) =>
+      await db
         .prepare(
           `INSERT INTO customers (customer_code, business_name, synced_at, organization_id)
            VALUES ('C001', 'x', '2026-01-01', ?)`
         )
         .run(org);
-    ins(1);
-    expect(() => ins(2)).not.toThrow();
-    expect(() => ins(1)).toThrow();
+    await ins(1);
+    await (async () => await ins(2))();
+    await expect((async () => await ins(1))()).rejects.toThrow();
   });
 
-  it("lets two organisations use the same product SKU", () => {
-    const ins = (org: number) =>
-      db
+  it("lets two organisations use the same product SKU", async () => {
+    const ins = async (org: number) =>
+      await db
         .prepare(
           `INSERT INTO products (name, sku, created_at, updated_at, organization_id)
            VALUES ('کره', 'KR250', '2026-01-01', '2026-01-01', ?)`
         )
         .run(org);
-    ins(1);
-    expect(() => ins(2)).not.toThrow();
-    expect(() => ins(1)).toThrow();
+    await ins(1);
+    await (async () => await ins(2))();
+    await expect((async () => await ins(1))()).rejects.toThrow();
   });
 
-  it("lets two organisations use the same group name and the same slug", () => {
-    const insName = (org: number, slug: string) =>
-      db
+  it("lets two organisations use the same group name and the same slug", async () => {
+    const insName = async (org: number, slug: string) =>
+      await db
         .prepare(`INSERT INTO groups (name, slug, created_at, organization_id) VALUES ('فروش', ?, '2026-01-01', ?)`)
         .run(slug, org);
-    insName(1, "sales-a");
-    expect(() => insName(2, "sales-b")).not.toThrow(); // same name, different org: OK
-    expect(() => insName(1, "sales-a2")).toThrow(); // same name, same org: still blocked
+    await insName(1, "sales-a");
+    await (async () => await insName(2, "sales-b"))(); // same name, different org: OK
+    await expect((async () => await insName(1, "sales-a2"))()).rejects.toThrow(); // same name, same org: still blocked
 
-    const insSlug = (org: number, name: string) =>
-      db
+    const insSlug = async (org: number, name: string) =>
+      await db
         .prepare(`INSERT INTO groups (name, slug, created_at, organization_id) VALUES (?, 'same-slug', '2026-01-01', ?)`)
         .run(name, org);
-    insSlug(1, "Alpha");
-    expect(() => insSlug(2, "Beta")).not.toThrow(); // same slug, different org: OK
-    expect(() => insSlug(1, "Gamma")).toThrow(); // same slug, same org: still blocked
+    await insSlug(1, "Alpha");
+    await (async () => await insSlug(2, "Beta"))(); // same slug, different org: OK
+    await expect((async () => await insSlug(1, "Gamma"))()).rejects.toThrow(); // same slug, same org: still blocked
   });
 
-  it("lets two organisations use the same order number", () => {
+  it("lets two organisations use the same order number", async () => {
     const userId = (
-      db.prepare("SELECT id FROM users WHERE username = 'fixture'").get() as { id: number }
+      await db.prepare("SELECT id FROM users WHERE username = 'fixture'").get() as { id: number }
     ).id;
     // A customer per organisation -- an order's customer_id is a foreign key, so both
     // organisations need one to point at, not merely the same id reused.
-    const customerId = (org: number) =>
+    const customerId = async (org: number) =>
       Number(
-        db
+        (await db
           .prepare(
             `INSERT INTO customers (customer_code, business_name, synced_at, organization_id)
              VALUES (?, 'x', '2026-01-01', ?)`
           )
-          .run(`ORD-FIXTURE-${org}`, org).lastInsertRowid
+          .run(`ORD-FIXTURE-${org}`, org)).lastInsertRowid
       );
-    const cust1 = customerId(1);
-    const cust2 = customerId(2);
+    const cust1 = await customerId(1);
+    const cust2 = await customerId(2);
 
-    const ins = (org: number, custId: number) =>
-      db
+    const ins = async (org: number, custId: number) =>
+      await db
         .prepare(
           `INSERT INTO orders (order_no, customer_id, order_date, created_by, created_at, updated_at, organization_id)
            VALUES ('1001', ?, '2026-01-01', ?, '2026-01-01', '2026-01-01', ?)`
         )
         .run(custId, userId, org);
-    ins(1, cust1);
-    expect(() => ins(2, cust2)).not.toThrow();
-    expect(() => ins(1, cust1)).toThrow();
+    await ins(1, cust1);
+    await (async () => await ins(2, cust2))();
+    await expect((async () => await ins(1, cust1))()).rejects.toThrow();
   });
 
-  it("refuses a duplicate district name globally, because districts is shared", () => {
+  it("refuses a duplicate district name globally, because districts is shared", async () => {
     // districts is the ONE natural key that is NOT per-tenant. Tehran's 22 منطقه are the
     // same for every organisation, and per-tenant copies of the same polygons drift apart
     // until منطقه 14 means two different places. So it left TENANT_TABLES, lost its
@@ -116,52 +116,52 @@ describe("natural keys are unique per tenant, not globally", () => {
     // a UNIQUE index, so two rows both carrying parent_name = NULL would never collide
     // regardless of the constraint -- that is SQLite semantics, not tenancy, and testing it
     // would only prove NULL handling.
-    const ins = () =>
-      db
+    const ins = async () =>
+      await db
         .prepare(
           `INSERT INTO districts (name, level, parent_name, boundary_geojson, updated_at)
            VALUES ('محله ۱', 'mahalle', 'منطقه ۱', '{}', '2026-01-01')`
         )
         .run();
-    ins();
-    expect(() => ins()).toThrow();
+    await ins();
+    await expect((async () => await ins())()).rejects.toThrow();
   });
 
-  it("lets two organisations save the same maps link", () => {
-    const loc = (org: number) =>
-      db
+  it("lets two organisations save the same maps link", async () => {
+    const loc = async (org: number) =>
+      await db
         .prepare(
           `INSERT INTO saved_locations (name, maps_url, created_at, organization_id)
            VALUES ('جا', 'https://maps.example/x', '2026-01-01', ?)`
         )
         .run(org);
-    loc(1);
-    expect(() => loc(2)).not.toThrow();
-    expect(() => loc(1)).toThrow();
+    await loc(1);
+    await (async () => await loc(2))();
+    await expect((async () => await loc(1))()).rejects.toThrow();
   });
 
-  it("lets two organisations use the same facility slug", () => {
-    const fac = (org: number) =>
-      db
+  it("lets two organisations use the same facility slug", async () => {
+    const fac = async (org: number) =>
+      await db
         .prepare(
           `INSERT INTO facilities (slug, kind, name, lat, lng, created_at, updated_at, organization_id)
            VALUES ('anbar', 'warehouse', 'انبار', 35.7, 51.4, '2026-01-01', '2026-01-01', ?)`
         )
         .run(org);
-    fac(1);
-    expect(() => fac(2)).not.toThrow();
-    expect(() => fac(1)).toThrow();
+    await fac(1);
+    await (async () => await fac(2))();
+    await expect((async () => await fac(1))()).rejects.toThrow();
   });
 
-  it("keeps usernames globally unique -- one login form, no organisation picker", () => {
-    const ins = (org: number) =>
-      db
+  it("keeps usernames globally unique -- one login form, no organisation picker", async () => {
+    const ins = async (org: number) =>
+      await db
         .prepare(
           `INSERT INTO users (username, password_hash, display_name, role, organization_id, created_at)
            VALUES ('same-username', 'x:y', 'n', 'owner', ?, '2026-01-01')`
         )
         .run(org);
-    ins(1);
-    expect(() => ins(2)).toThrow();
+    await ins(1);
+    await expect((async () => await ins(2))()).rejects.toThrow();
   });
 });

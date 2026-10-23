@@ -26,145 +26,145 @@ afterAll(() => {
 const iso = () => new Date().toISOString();
 const ctx = { org: 1, me: 0, other: 0, driver: 0, orders: [] as number[] };
 
-beforeAll(() => {
+beforeAll(async () => {
   const db = getDb();
-  const user = (username: string) =>
+  const user = async (username: string) =>
     Number(
-      db
+      (await db
         .prepare(
           `INSERT INTO users (username, password_hash, display_name, role, group_id, active, created_at, organization_id)
            VALUES (?, 'x:y', ?, 'group_manager', NULL, 1, ?, ?)`
         )
-        .run(`${username}-${process.pid}`, username, iso(), ctx.org).lastInsertRowid
+        .run(`${username}-${process.pid}`, username, iso(), ctx.org)).lastInsertRowid
     );
-  ctx.me = user("me");
-  ctx.other = user("other");
-  ctx.driver = user("driver");
+  ctx.me = await user("me");
+  ctx.other = await user("other");
+  ctx.driver = await user("driver");
 
   const customer = Number(
-    db
+    (await db
       .prepare(
         `INSERT INTO customers (organization_id, customer_code, business_name, synced_at) VALUES (?, 'RD-1', 'مشتری', ?)`
       )
-      .run(ctx.org, iso()).lastInsertRowid
+      .run(ctx.org, iso())).lastInsertRowid
   );
   for (let i = 1; i <= 4; i++) {
     ctx.orders.push(
       Number(
-        db
+        (await db
           .prepare(
             `INSERT INTO orders (organization_id, customer_id, status, order_no, order_date, created_by, created_at, updated_at)
              VALUES (?, ?, 'CONFIRMED', ?, '2026-11-01', ?, ?, ?)`
           )
-          .run(ctx.org, customer, `RD-${i}`, ctx.me, iso(), iso()).lastInsertRowid
+          .run(ctx.org, customer, `RD-${i}`, ctx.me, iso(), iso())).lastInsertRowid
       )
     );
   }
 });
 
-const mine = (id: number) =>
-  readRunDrafts(getDb(), ctx.org, ctx.me).find((d) => d.id === id)!;
-const add = (draftId: number, orderId: number, userId = ctx.me) =>
-  addOrderToDraft({ organizationId: ctx.org, userId, draftId, orderId });
+const mine = async (id: number) =>
+  (await readRunDrafts(getDb(), ctx.org, ctx.me)).find((d) => d.id === id)!;
+const add = async (draftId: number, orderId: number, userId = ctx.me) =>
+  await addOrderToDraft({ organizationId: ctx.org, userId, draftId, orderId });
 describe("privacy", () => {
-  it("shows nobody else's drafts, even inside the same company", () => {
-    const id = createDraft({ organizationId: ctx.org, userId: ctx.me, bySuggest: true });
-    add(id, ctx.orders[0]);
+  it("shows nobody else's drafts, even inside the same company", async () => {
+    const id = await createDraft({ organizationId: ctx.org, userId: ctx.me, bySuggest: true });
+    await add(id, ctx.orders[0]);
 
-    expect(readRunDrafts(getDb(), ctx.org, ctx.me).some((d) => d.id === id)).toBe(true);
+    expect((await readRunDrafts(getDb(), ctx.org, ctx.me)).some((d) => d.id === id)).toBe(true);
     // This is the whole privacy promise, and it cannot be made by a table that only knows the
     // company. Two managers in one tenant must not see each other's half-formed plans.
-    expect(readRunDrafts(getDb(), ctx.org, ctx.other).some((d) => d.id === id)).toBe(false);
+    expect((await readRunDrafts(getDb(), ctx.org, ctx.other)).some((d) => d.id === id)).toBe(false);
   });
 
-  it("refuses to add to a draft that is not yours", () => {
-    const id = createDraft({ organizationId: ctx.org, userId: ctx.me });
-    expect(() => add(id, ctx.orders[1], ctx.other)).toThrow(/پیدا نشد/);
+  it("refuses to add to a draft that is not yours", async () => {
+    const id = await createDraft({ organizationId: ctx.org, userId: ctx.me });
+    await expect((async () => await add(id, ctx.orders[1], ctx.other))()).rejects.toThrow(/پیدا نشد/);
   });
 
-  it("another user's delete removes nothing", () => {
-    const id = createDraft({ organizationId: ctx.org, userId: ctx.me });
-    deleteDraft({ organizationId: ctx.org, userId: ctx.other, draftId: id });
-    expect(readRunDrafts(getDb(), ctx.org, ctx.me).some((d) => d.id === id)).toBe(true);
+  it("another user's delete removes nothing", async () => {
+    const id = await createDraft({ organizationId: ctx.org, userId: ctx.me });
+    await deleteDraft({ organizationId: ctx.org, userId: ctx.other, draftId: id });
+    expect((await readRunDrafts(getDb(), ctx.org, ctx.me)).some((d) => d.id === id)).toBe(true);
   });
 });
 
 describe("«پیشنهاد بده» fills empty lanes only", () => {
-  it("an untouched suggested lane is empty", () => {
-    expect(isEmpty(mine(createDraft({ organizationId: ctx.org, userId: ctx.me, bySuggest: true })))).toBe(
+  it("an untouched suggested lane is empty", async () => {
+    expect(isEmpty(await mine(await createDraft({ organizationId: ctx.org, userId: ctx.me, bySuggest: true })))).toBe(
       true
     );
   });
 
-  it("the first hand-drag retires it, and NOTHING clears that", () => {
-    const id = createDraft({ organizationId: ctx.org, userId: ctx.me, bySuggest: true });
-    add(id, ctx.orders[2]);
-    expect(isEmpty(mine(id))).toBe(false);
+  it("the first hand-drag retires it, and NOTHING clears that", async () => {
+    const id = await createDraft({ organizationId: ctx.org, userId: ctx.me, bySuggest: true });
+    await add(id, ctx.orders[2]);
+    expect(isEmpty(await mine(id))).toBe(false);
 
     // Taking every order back out again must NOT make it empty again. The person spent time
     // here; a later press of the button must not overwrite that silently.
-    removeOrderFromDraft({
+    await removeOrderFromDraft({
       organizationId: ctx.org,
       userId: ctx.me,
       draftId: id,
       orderId: ctx.orders[2],
     });
-    expect(mine(id).order_ids).toEqual([]);
-    expect(isEmpty(mine(id))).toBe(false);
+    expect((await mine(id)).order_ids).toEqual([]);
+    expect(isEmpty(await mine(id))).toBe(false);
   });
 
-  it("choosing a driver or a date also retires it", () => {
-    const id = createDraft({ organizationId: ctx.org, userId: ctx.me, bySuggest: true });
-    setDraftTarget({ organizationId: ctx.org, userId: ctx.me, draftId: id, driverUserId: ctx.driver });
+  it("choosing a driver or a date also retires it", async () => {
+    const id = await createDraft({ organizationId: ctx.org, userId: ctx.me, bySuggest: true });
+    await setDraftTarget({ organizationId: ctx.org, userId: ctx.me, draftId: id, driverUserId: ctx.driver });
     // Otherwise «پیشنهاد بده» would refill a lane the manager had already decided about.
-    expect(isEmpty(mine(id))).toBe(false);
+    expect(isEmpty(await mine(id))).toBe(false);
   });
 
-  it("a lane a person made is never empty", () => {
-    expect(isEmpty(mine(createDraft({ organizationId: ctx.org, userId: ctx.me })))).toBe(false);
+  it("a lane a person made is never empty", async () => {
+    expect(isEmpty(await mine(await createDraft({ organizationId: ctx.org, userId: ctx.me })))).toBe(false);
   });
 });
 
 describe("an order lives in one lane at a time", () => {
-  it("dragging it elsewhere moves it rather than copying it", () => {
-    const a = createDraft({ organizationId: ctx.org, userId: ctx.me });
-    const b = createDraft({ organizationId: ctx.org, userId: ctx.me });
-    add(a, ctx.orders[3]);
-    add(b, ctx.orders[3]);
+  it("dragging it elsewhere moves it rather than copying it", async () => {
+    const a = await createDraft({ organizationId: ctx.org, userId: ctx.me });
+    const b = await createDraft({ organizationId: ctx.org, userId: ctx.me });
+    await add(a, ctx.orders[3]);
+    await add(b, ctx.orders[3]);
     // Two lanes claiming one order would mean whichever committed first silently loses the other.
-    expect(mine(a).order_ids).not.toContain(ctx.orders[3]);
-    expect(mine(b).order_ids).toEqual([ctx.orders[3]]);
+    expect((await mine(a)).order_ids).not.toContain(ctx.orders[3]);
+    expect((await mine(b)).order_ids).toEqual([ctx.orders[3]]);
   });
 
-  it("refuses the same order twice in one lane", () => {
-    const id = createDraft({ organizationId: ctx.org, userId: ctx.me });
-    add(id, ctx.orders[0]);
-    add(id, ctx.orders[0]);
-    expect(mine(id).order_ids).toEqual([ctx.orders[0]]);
+  it("refuses the same order twice in one lane", async () => {
+    const id = await createDraft({ organizationId: ctx.org, userId: ctx.me });
+    await add(id, ctx.orders[0]);
+    await add(id, ctx.orders[0]);
+    expect((await mine(id)).order_ids).toEqual([ctx.orders[0]]);
   });
 
-  it("keeps the order they were dragged in", () => {
-    const id = createDraft({ organizationId: ctx.org, userId: ctx.me });
-    add(id, ctx.orders[2]);
-    add(id, ctx.orders[1]);
-    expect(mine(id).order_ids).toEqual([ctx.orders[2], ctx.orders[1]]);
+  it("keeps the order they were dragged in", async () => {
+    const id = await createDraft({ organizationId: ctx.org, userId: ctx.me });
+    await add(id, ctx.orders[2]);
+    await add(id, ctx.orders[1]);
+    expect((await mine(id)).order_ids).toEqual([ctx.orders[2], ctx.orders[1]]);
   });
 });
 
 describe("a draft is a lane that is not real yet", () => {
-  it("starts with neither a driver nor a date, and is therefore not ready", () => {
-    const d = mine(createDraft({ organizationId: ctx.org, userId: ctx.me }));
+  it("starts with neither a driver nor a date, and is therefore not ready", async () => {
+    const d = await mine(await createDraft({ organizationId: ctx.org, userId: ctx.me }));
     expect(d.driver_user_id).toBeNull();
     expect(d.run_date).toBeNull();
     expect(isReadyToCommit(d)).toBe(false);
   });
 
-  it("becomes real only when BOTH the driver and the date are chosen", () => {
-    const id = createDraft({ organizationId: ctx.org, userId: ctx.me });
-    setDraftTarget({ organizationId: ctx.org, userId: ctx.me, draftId: id, driverUserId: ctx.driver });
+  it("becomes real only when BOTH the driver and the date are chosen", async () => {
+    const id = await createDraft({ organizationId: ctx.org, userId: ctx.me });
+    await setDraftTarget({ organizationId: ctx.org, userId: ctx.me, draftId: id, driverUserId: ctx.driver });
     // A driver alone is not enough -- a day with no date is not a day.
-    expect(isReadyToCommit(mine(id))).toBe(false);
-    setDraftTarget({ organizationId: ctx.org, userId: ctx.me, draftId: id, runDate: "2026-11-02" });
-    expect(isReadyToCommit(mine(id))).toBe(true);
+    expect(isReadyToCommit(await mine(id))).toBe(false);
+    await setDraftTarget({ organizationId: ctx.org, userId: ctx.me, draftId: id, runDate: "2026-11-02" });
+    expect(isReadyToCommit(await mine(id))).toBe(true);
   });
 });

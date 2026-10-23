@@ -13,9 +13,9 @@ afterAll(() => {
   for (const s of ["", "-wal", "-shm"]) fs.rmSync(`${testDbPath}${s}`, { force: true });
 });
 
-const cols = (t: string) => (getDb().prepare(`PRAGMA table_info(${t})`).all() as { name: string }[]).map((c) => c.name);
-const schema = (t: string) =>
-  (getDb().prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?").get(t) as { sql: string }).sql;
+const cols = async (t: string) => (await getDb().prepare(`PRAGMA table_info(${t})`).all() as { name: string }[]).map((c) => c.name);
+const schema = async (t: string) =>
+  (await getDb().prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?").get(t) as { sql: string }).sql;
 
 /** districts is geography: Tehran's 22 mantaghe are the same for every organisation.
  *
@@ -35,19 +35,19 @@ describe("districts are shared reference data, not tenant data", () => {
     expect((TENANT_TABLES as readonly string[]).includes("districts")).toBe(false);
   });
 
-  it("has no organization_id column after boot", () => {
-    expect(cols("districts")).not.toContain("organization_id");
+  it("has no organization_id column after boot", async () => {
+    expect(await cols("districts")).not.toContain("organization_id");
   });
 
-  it("keeps the plain natural key", () => {
-    expect(schema("districts")).toContain("UNIQUE(name, level, parent_name)");
-    expect(schema("districts")).not.toContain("organization_id");
+  it("keeps the plain natural key", async () => {
+    expect(await schema("districts")).toContain("UNIQUE(name, level, parent_name)");
+    expect(await schema("districts")).not.toContain("organization_id");
   });
 
-  it("keeps every other district column the code and geometry depend on", () => {
+  it("keeps every other district column the code and geometry depend on", async () => {
     // The rebuild replaces the table wholesale, so a column quietly left out of the
     // createSql would vanish here rather than at the point of use.
-    expect(cols("districts")).toEqual(expect.arrayContaining([
+    expect(await cols("districts")).toEqual(expect.arrayContaining([
       "id", "name", "level", "parent_name", "boundary_geojson",
       "coverage_status", "notes", "is_custom", "updated_at",
       "assigned_to", "centroid_lat", "centroid_lng", "group_id",
@@ -58,7 +58,7 @@ describe("districts are shared reference data, not tenant data", () => {
   // about tenancy. In SQLite a NULL never equals another NULL inside a UNIQUE index, so a
   // NULL parent makes INSERT OR IGNORE insert a fresh copy on every run -- which is what all
   // three seed scripts claimed their OR IGNORE prevented. Measured: 3 runs, 3 rows.
-  it("actually dedupes: three identical inserts leave one row", () => {
+  it("actually dedupes: three identical inserts leave one row", async () => {
     const db = getDb();
     const geo = JSON.stringify({
       type: "Polygon",
@@ -69,8 +69,8 @@ describe("districts are shared reference data, not tenant data", () => {
        VALUES (?, ?, ?, ?, 'unknown', 0, ?)`
     );
     const now = new Date().toISOString();
-    for (let i = 0; i < 3; i++) ins.run("منطقه 14", "mantaghe", "", geo, now);
-    const n = (db.prepare("SELECT COUNT(*) c FROM districts WHERE name = ?").get("منطقه 14") as { c: number }).c;
+    for (let i = 0; i < 3; i++) await ins.run("منطقه 14", "mantaghe", "", geo, now);
+    const n = (await db.prepare("SELECT COUNT(*) c FROM districts WHERE name = ?").get("منطقه 14") as { c: number }).c;
     expect(n, "parent_name='' must dedupe; NULL would not").toBe(1);
   });
 });

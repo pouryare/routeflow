@@ -14,17 +14,17 @@ import { MANAGE_ROLES } from "@/lib/roles";
 const STATUSES = Object.keys(CHEQUE_TRANSITIONS) as ChequeStatus[];
 
 export async function GET(req: NextRequest, ctx: RouteContext<"/api/cheques/[id]">) {
-  const guard = requireRole(req, MANAGE_ROLES);
+  const guard = await requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
 
   const { id } = await ctx.params;
-  const cheque = chequesRepo.get(guard.session.organizationId, Number(id));
+  const cheque = await chequesRepo.get(guard.session.organizationId, Number(id));
   if (!cheque) return NextResponse.json({ ok: false, error: "یافت نشد" }, { status: 404 });
   return NextResponse.json({ ok: true, cheque });
 }
 
 export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/cheques/[id]">) {
-  const guard = requireRole(req, MANAGE_ROLES);
+  const guard = await requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
 
   const { id } = await ctx.params;
@@ -38,12 +38,12 @@ export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/cheques/[i
     return NextResponse.json({ ok: false, error: "کنش نامعتبر است" }, { status: 400 });
   }
 
-  if (!chequesRepo.get(guard.session.organizationId, Number(id))) {
+  if (!await chequesRepo.get(guard.session.organizationId, Number(id))) {
     return NextResponse.json({ ok: false, error: "یافت نشد" }, { status: 404 });
   }
 
   try {
-    advanceCheque(
+    await advanceCheque(
       guard.session.organizationId,
       Number(id),
       body.to as ChequeStatus,

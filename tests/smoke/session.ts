@@ -15,11 +15,11 @@ import { getDb } from "@/lib/db";
  *  function the login route calls. SESSION_SECRET comes from .env.local via @next/env,
  *  loaded in vitest.smoke.mts, so the signature matches what the dev server verifies.
  */
-export function sessionCookie(): { name: string; value: string } {
+export async function sessionCookie(): Promise<{ name: string; value: string }> {
   const db = getDb();
   /* The highest-privilege active user, because a فروشنده is shown fewer panels and would
      leave most of the layout untested. Read-only: this suite never writes. */
-  const user = db
+  const user = await db
     .prepare(
       `SELECT id, role, group_id, organization_id, token_version, display_name AS name
          FROM users

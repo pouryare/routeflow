@@ -9,7 +9,7 @@ const testDbPath = path.join(
 );
 process.env.ROUTEFLOW_DB_PATH = testDbPath;
 process.env.SESSION_SECRET = "test-secret";
-const { getDb } = await import("@/lib/db");
+const { getDb, rawSqlite } = await import("@/lib/db");
 
 /* A journal row to point the immutability tests at. The plan's first draft asserted
    `UPDATE ... WHERE id = 1` against an EMPTY table -- a BEFORE trigger fires per matched
@@ -18,32 +18,32 @@ const { getDb } = await import("@/lib/db");
 let journalId = 0;
 let entryId = 0;
 
-beforeAll(() => {
+beforeAll(async () => {
   const db = getDb();
-  const org = db
+  const org = await db
     .prepare("INSERT INTO organizations (name, slug, created_at) VALUES ('A','a','x')")
     .run();
-  const user = db
+  const user = await db
     .prepare(
       "INSERT INTO users (username, password_hash, display_name, organization_id, created_at) VALUES ('u','p','u',?,'x')"
     )
     .run(org.lastInsertRowid);
-  const cash = db.prepare("SELECT id FROM accounts WHERE code = '1101'").get() as { id: number };
+  const cash = await db.prepare("SELECT id FROM accounts WHERE code = '1101'").get() as { id: number };
   journalId = Number(
-    db
+    (await db
       .prepare(
         `INSERT INTO journals (organization_id, seq, posted_at, period_key, source_type, created_by, created_at)
          VALUES (?, 1, '2026-01-01', '1404-10', 'MANUAL', ?, 'x')`
       )
-      .run(org.lastInsertRowid, user.lastInsertRowid).lastInsertRowid
+      .run(org.lastInsertRowid, user.lastInsertRowid)).lastInsertRowid
   );
   entryId = Number(
-    db
+    (await db
       .prepare(
         `INSERT INTO ledger_entries (organization_id, journal_id, account_id, side, amount_toman, created_at)
          VALUES (?, ?, ?, 'D', 1000, 'x')`
       )
-      .run(org.lastInsertRowid, journalId, cash.id).lastInsertRowid
+      .run(org.lastInsertRowid, journalId, cash.id)).lastInsertRowid
   );
 });
 
@@ -52,9 +52,9 @@ afterAll(() => {
 });
 
 describe("ledger schema", () => {
-  it("amount_toman is INTEGER, NOT NULL and strictly positive", () => {
+  it("amount_toman is INTEGER, NOT NULL and strictly positive", async () => {
     const db = getDb();
-    const cols = db.prepare("PRAGMA table_info(ledger_entries)").all() as {
+    const cols = await db.prepare("PRAGMA table_info(ledger_entries)").all() as {
       name: string;
       type: string;
       notnull: number;
@@ -62,92 +62,90 @@ describe("ledger schema", () => {
     const amount = cols.find((c) => c.name === "amount_toman");
     expect(amount?.type).toBe("INTEGER");
     expect(amount?.notnull).toBe(1);
-    expect(() =>
-      db
+    await expect((async () =>
+      await db
         .prepare(
           `INSERT INTO ledger_entries (organization_id, journal_id, account_id, side, amount_toman, created_at)
            VALUES (1, ${journalId}, 1, 'D', 0, 'x')`
         )
-        .run()
-    ).toThrow();
+        .run())()).rejects.toThrow();
   });
 
-  it("refuses a zero and a negative amount, but accepts a real one", () => {
+  it("refuses a zero and a negative amount, but accepts a real one", async () => {
     const db = getDb();
-    const cash = db.prepare("SELECT id FROM accounts WHERE code = '1101'").get() as { id: number };
-    const ins = (n: number) =>
-      db
+    const cash = await db.prepare("SELECT id FROM accounts WHERE code = '1101'").get() as { id: number };
+    const ins = async (n: number) =>
+      await db
         .prepare(
           `INSERT INTO ledger_entries (organization_id, journal_id, account_id, side, amount_toman, created_at)
            VALUES (1, ${journalId}, ?, 'D', ?, 'x')`
         )
         .run(cash.id, n);
-    expect(() => ins(0)).toThrow();
-    expect(() => ins(-500)).toThrow();
-    expect(ins(500).changes).toBe(1);
+    await expect((async () => await ins(0))()).rejects.toThrow();
+    await expect((async () => await ins(-500))()).rejects.toThrow();
+    expect((await ins(500)).changes).toBe(1);
   });
 
-  it("refuses an UPDATE and a DELETE on ledger_entries -- on a row that exists", () => {
+  it("refuses an UPDATE and a DELETE on ledger_entries -- on a row that exists", async () => {
     const db = getDb();
     expect(entryId).toBeGreaterThan(0);
-    const still = db
+    const still = await db
       .prepare("SELECT amount_toman FROM ledger_entries WHERE id = ?")
       .get(entryId) as { amount_toman: number };
     expect(still.amount_toman).toBe(1000);
-    expect(() =>
-      db.prepare("UPDATE ledger_entries SET amount_toman = 5 WHERE id = ?").run(entryId)
-    ).toThrow();
-    expect(() => db.prepare("DELETE FROM ledger_entries WHERE id = ?").run(entryId)).toThrow();
-    const after = db
+    await expect((async () =>
+      await db.prepare("UPDATE ledger_entries SET amount_toman = 5 WHERE id = ?").run(entryId))()).rejects.toThrow();
+    await expect((async () => await db.prepare("DELETE FROM ledger_entries WHERE id = ?").run(entryId))()).rejects.toThrow();
+    const after = await db
       .prepare("SELECT amount_toman FROM ledger_entries WHERE id = ?")
       .get(entryId) as { amount_toman: number };
     expect(after.amount_toman).toBe(1000);
   });
 
-  it("refuses an UPDATE and a DELETE on journals -- on a row that exists", () => {
+  it("refuses an UPDATE and a DELETE on journals -- on a row that exists", async () => {
     const db = getDb();
-    expect(() => db.prepare("UPDATE journals SET memo = 'x' WHERE id = ?").run(journalId)).toThrow();
-    expect(() => db.prepare("DELETE FROM journals WHERE id = ?").run(journalId)).toThrow();
-    expect(db.prepare("SELECT COUNT(*) AS n FROM journals WHERE id = ?").get(journalId)).toEqual({
+    await expect((async () => await db.prepare("UPDATE journals SET memo = 'x' WHERE id = ?").run(journalId))()).rejects.toThrow();
+    await expect((async () => await db.prepare("DELETE FROM journals WHERE id = ?").run(journalId))()).rejects.toThrow();
+    expect(await db.prepare("SELECT COUNT(*) AS n FROM journals WHERE id = ?").get(journalId)).toEqual({
       n: 1,
     });
   });
 
-  it("refuses to delete an account nothing has posted to yet", () => {
+  it("refuses to delete an account nothing has posted to yet", async () => {
     const db = getDb();
     /* 5106 سایر has no legs in this file, so the FOREIGN KEY does NOT protect it --
        deleting it would succeed and take a seeded chart row with it. That is the case
        accounts_no_delete exists for. Deleting 1101 instead would prove nothing: the FK
        blocks that on its own, so the test passes with the trigger deleted. */
-    const unused = db.prepare("SELECT id FROM accounts WHERE code = '5106'").get() as {
+    const unused = await db.prepare("SELECT id FROM accounts WHERE code = '5106'").get() as {
       id: number;
     };
-    const legs = db
+    const legs = await db
       .prepare("SELECT COUNT(*) AS n FROM ledger_entries WHERE account_id = ?")
       .get(unused.id) as { n: number };
     expect(legs.n, "this test needs an account with no legs").toBe(0);
-    expect(() => db.prepare("DELETE FROM accounts WHERE id = ?").run(unused.id)).toThrow();
-    expect(db.prepare("SELECT COUNT(*) AS n FROM accounts WHERE id = ?").get(unused.id)).toEqual({
+    await expect((async () => await db.prepare("DELETE FROM accounts WHERE id = ?").run(unused.id))()).rejects.toThrow();
+    expect(await db.prepare("SELECT COUNT(*) AS n FROM accounts WHERE id = ?").get(unused.id)).toEqual({
       n: 1,
     });
   });
 
-  it("lets an account be DEACTIVATED, which is how one retires", () => {
+  it("lets an account be DEACTIVATED, which is how one retires", async () => {
     const db = getDb();
-    const rent = db.prepare("SELECT id FROM accounts WHERE code = '5102'").get() as { id: number };
-    expect(() => db.prepare("UPDATE accounts SET active = 0 WHERE id = ?").run(rent.id)).not.toThrow();
-    expect((db.prepare("SELECT active FROM accounts WHERE id = ?").get(rent.id) as { active: number }).active).toBe(0);
+    const rent = await db.prepare("SELECT id FROM accounts WHERE code = '5102'").get() as { id: number };
+    await (async () => await db.prepare("UPDATE accounts SET active = 0 WHERE id = ?").run(rent.id))();
+    expect((await db.prepare("SELECT active FROM accounts WHERE id = ?").get(rent.id) as { active: number }).active).toBe(0);
   });
 
-  it("accounts has no organization_id -- the chart is global", () => {
-    const cols = getDb().prepare("PRAGMA table_info(accounts)").all() as { name: string }[];
+  it("accounts has no organization_id -- the chart is global", async () => {
+    const cols = await getDb().prepare("PRAGMA table_info(accounts)").all() as { name: string }[];
     expect(cols.find((c) => c.name === "organization_id")).toBeUndefined();
   });
 
-  it("journals, ledger_entries and fiscal_periods are all tenant-scoped", () => {
+  it("journals, ledger_entries and fiscal_periods are all tenant-scoped", async () => {
     const db = getDb();
     for (const t of ["journals", "ledger_entries", "fiscal_periods"]) {
-      const cols = db.prepare(`PRAGMA table_info(${t})`).all() as {
+      const cols = await db.prepare(`PRAGMA table_info(${t})`).all() as {
         name: string;
         notnull: number;
       }[];
@@ -157,8 +155,8 @@ describe("ledger schema", () => {
     }
   });
 
-  it("seeds the chart, and every code sits in its own statement block", () => {
-    const rows = getDb()
+  it("seeds the chart, and every code sits in its own statement block", async () => {
+    const rows = await getDb()
       .prepare("SELECT code, type FROM accounts WHERE is_system = 1 AND is_postable = 1")
       .all() as { code: string; type: string }[];
     expect(rows.length).toBeGreaterThanOrEqual(22);
@@ -175,22 +173,22 @@ describe("ledger schema", () => {
     }
   });
 
-  it("makes the five group headers non-postable", () => {
+  it("makes the five group headers non-postable", async () => {
     const db = getDb();
-    const rows = db
+    const rows = await db
       .prepare("SELECT code FROM accounts WHERE code IN ('1000','2000','3000','4000','5000')")
       .all() as { code: string }[];
     expect(rows.length).toBe(5);
     for (const r of rows) {
-      const postable = db
+      const postable = await db
         .prepare("SELECT is_postable FROM accounts WHERE code = ?")
         .get(r.code) as { is_postable: number };
       expect(postable.is_postable, `${r.code} is a header and must not be postable`).toBe(0);
     }
   });
 
-  it("gives every account a name in both scripts, and the right normal balance", () => {
-    const rows = getDb()
+  it("gives every account a name in both scripts, and the right normal balance", async () => {
+    const rows = await getDb()
       .prepare("SELECT code, name_fa, name_en, normal_balance FROM accounts")
       .all() as { code: string; name_fa: string; name_en: string; normal_balance: string }[];
     for (const r of rows) {
@@ -201,8 +199,8 @@ describe("ledger schema", () => {
     expect(rows.find((r) => r.code === "2101")!.normal_balance).toBe("CREDIT");
   });
 
-  it("carries the accounts this app needs that a textbook would not", () => {
-    const codes = (getDb().prepare("SELECT code FROM accounts").all() as { code: string }[]).map(
+  it("carries the accounts this app needs that a textbook would not", async () => {
+    const codes = (await getDb().prepare("SELECT code FROM accounts").all() as { code: string }[]).map(
       (r) => r.code
     );
     expect(codes).toContain("2103"); // تعهدات کمیسیون
@@ -211,14 +209,14 @@ describe("ledger schema", () => {
     expect(codes).toContain("2102"); // چک‌های پرداختنی
   });
 
-  it("gives every postable account a unique Persian name", () => {
+  it("gives every postable account a unique Persian name", async () => {
     const db = getDb();
-    const dupeCode = db
+    const dupeCode = await db
       .prepare("SELECT code, COUNT(*) AS n FROM accounts GROUP BY code HAVING n > 1")
       .all();
     expect(dupeCode).toEqual([]);
     // Two postable accounts sharing a Persian label are indistinguishable in a dropdown.
-    const dupeFa = db
+    const dupeFa = await db
       .prepare(
         "SELECT name_fa, COUNT(*) AS n FROM accounts WHERE is_postable = 1 GROUP BY name_fa HAVING n > 1"
       )
@@ -228,9 +226,9 @@ describe("ledger schema", () => {
 
   it("seeding twice does not duplicate the chart", async () => {
     const { seedAccounts } = await import("@/lib/db");
-    const before = (getDb().prepare("SELECT COUNT(*) AS n FROM accounts").get() as { n: number }).n;
-    seedAccounts(getDb());
-    const after = (getDb().prepare("SELECT COUNT(*) AS n FROM accounts").get() as { n: number }).n;
+    const before = (await getDb().prepare("SELECT COUNT(*) AS n FROM accounts").get() as { n: number }).n;
+    seedAccounts(await rawSqlite());
+    const after = (await getDb().prepare("SELECT COUNT(*) AS n FROM accounts").get() as { n: number }).n;
     expect(after).toBe(before);
   });
 });

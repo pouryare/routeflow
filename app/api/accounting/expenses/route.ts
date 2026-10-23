@@ -16,13 +16,13 @@ import { OWNER_ROLES, type Role } from "@/lib/roles";
 const ROLES: Role[] = [...OWNER_ROLES, "group_manager"];
 
 export async function GET(req: NextRequest) {
-  const guard = requireRole(req, ROLES);
+  const guard = await requireRole(req, ROLES);
   if (!guard.ok) return guard.response;
-  return NextResponse.json({ ok: true, categories: expenseCategories() });
+  return NextResponse.json({ ok: true, categories: await expenseCategories() });
 }
 
 export async function POST(req: NextRequest) {
-  const guard = requireRole(req, ROLES);
+  const guard = await requireRole(req, ROLES);
   if (!guard.ok) return guard.response;
 
   const body = (await req.json().catch(() => null)) as {
@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
   /* No BEGIN here on purpose: tests/repo-boundary.test.ts fails the build for raw SQL
      outside lib/repo/, so the transaction lives in recordExpense. */
   try {
-    const id = recordExpense({
+    const id = await recordExpense({
       organizationId: guard.session.organizationId,
       accountId: Number(body.account_id),
       amountToman: body.amount_toman as number,

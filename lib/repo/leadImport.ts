@@ -1,4 +1,4 @@
-import type { DatabaseSync } from "node:sqlite";
+import type { Db } from "@/lib/database/client";
 import { getDb, type LocationResolution } from "@/lib/db";
 import type { DuplicatePool } from "@/lib/duplicateDetection";
 import { tombstone } from "./tombstones";
@@ -60,33 +60,33 @@ export interface ImportItemRow {
   saved_location_id: number | null;
 }
 
-const db = (): DatabaseSync => getDb();
+const db = (): Db => getDb();
 
-export function createJob(
+export async function createJob(
   organizationId: number,
   groupId: number | null,
   total: number,
   createdBy: number | null = null
-): number {
+): Promise<number> {
   return Number(
-    db()
+    (await db()
       .prepare(
         `INSERT INTO lead_import_jobs (organization_id, group_id, status, stage, total, created_by, created_at)
          VALUES (?, ?, 'running', 'parse', ?, ?, ?)`
       )
-      .run(organizationId, groupId, total, createdBy, new Date().toISOString()).lastInsertRowid
+      .run(organizationId, groupId, total, createdBy, new Date().toISOString())).lastInsertRowid
   );
 }
 
-export function getJob(organizationId: number, jobId: number): ImportJobRow | undefined {
-  return db()
+export async function getJob(organizationId: number, jobId: number): Promise<ImportJobRow | undefined> {
+  return await db()
     .prepare(`SELECT * FROM lead_import_jobs WHERE id = ? AND organization_id = ?`)
     .get(jobId, organizationId) as ImportJobRow | undefined;
 }
 
 /** The job a poll should attach to: the newest one still running, else the newest. */
-export function latestJob(organizationId: number): ImportJobRow | undefined {
-  return db()
+export async function latestJob(organizationId: number): Promise<ImportJobRow | undefined> {
+  return await db()
     .prepare(
       `SELECT * FROM lead_import_jobs
         WHERE organization_id = ?
@@ -97,8 +97,8 @@ export function latestJob(organizationId: number): ImportJobRow | undefined {
 }
 
 /** The oldest job still marked running -- the queue head, so ordering is paste order. */
-export function nextQueuedJob(organizationId: number): ImportJobRow | undefined {
-  return db()
+export async function nextQueuedJob(organizationId: number): Promise<ImportJobRow | undefined> {
+  return await db()
     .prepare(
       `SELECT * FROM lead_import_jobs
         WHERE organization_id = ? AND status = 'running'
@@ -107,30 +107,25 @@ export function nextQueuedJob(organizationId: number): ImportJobRow | undefined 
     .get(organizationId) as ImportJobRow | undefined;
 }
 
-export function addItems(
+export async function addItems(
   organizationId: number,
   jobId: number,
   items: { name: string; mapsUrl: string }[]
-): void {
+): Promise<void> {
   const conn = db();
   const stmt = conn.prepare(
     `INSERT INTO lead_import_items (organization_id, job_id, ordinal, name, maps_url)
      VALUES (?, ?, ?, ?, ?)`
   );
-  conn.exec("BEGIN");
-  try {
-    items.forEach((it, i) => {
-      stmt.run(organizationId, jobId, i, it.name ?? "", it.mapsUrl);
-    });
-    conn.exec("COMMIT");
-  } catch (e) {
-    conn.exec("ROLLBACK");
-    throw e;
-  }
+  await conn.tx(async () => {
+    for (const [i, it] of items.entries()) {
+      await stmt.run(organizationId, jobId, i, it.name ?? "", it.mapsUrl);
+    }
+  });
 }
 
-export function listItems(organizationId: number, jobId: number): ImportItemRow[] {
-  return db()
+export async function listItems(organizationId: number, jobId: number): Promise<ImportItemRow[]> {
+  return await db()
     .prepare(
       `SELECT * FROM lead_import_items
         WHERE job_id = ? AND organization_id = ?
@@ -139,8 +134,8 @@ export function listItems(organizationId: number, jobId: number): ImportItemRow[
     .all(jobId, organizationId) as unknown as ImportItemRow[];
 }
 
-export function pendingItems(organizationId: number, jobId: number): ImportItemRow[] {
-  return db()
+export async function pendingItems(organizationId: number, jobId: number): Promise<ImportItemRow[]> {
+  return await db()
     .prepare(
       `SELECT * FROM lead_import_items
         WHERE job_id = ? AND organization_id = ? AND status = 'pending'
@@ -149,8 +144,8 @@ export function pendingItems(organizationId: number, jobId: number): ImportItemR
     .all(jobId, organizationId) as unknown as ImportItemRow[];
 }
 
-export function markResolving(organizationId: number, itemId: number): void {
-  db()
+export async function markResolving(organizationId: number, itemId: number): Promise<void> {
+  await db()
     .prepare(
       `UPDATE lead_import_items SET status = 'resolving'
         WHERE id = ? AND organization_id = ? AND status = 'pending'`
@@ -169,12 +164,12 @@ export interface ResolvedItemUpdate {
   duplicateName?: string | null;
 }
 
-export function markResolved(
+export async function markResolved(
   organizationId: number,
   itemId: number,
   update: ResolvedItemUpdate
-): void {
-  db()
+): Promise<void> {
+  await db()
     .prepare(
       `UPDATE lead_import_items
           SET lat = ?, lng = ?, address = ?, resolved_url = ?, resolution = ?,
@@ -197,8 +192,8 @@ export function markResolved(
 
 /** Recomputes the job's counters from its items. Cheap enough at 1Hz for a 1000-row job
  *  and impossible to drift out of step with the items themselves. */
-export function refreshCounters(organizationId: number, jobId: number): void {
-  db()
+export async function refreshCounters(organizationId: number, jobId: number): Promise<void> {
+  await db()
     .prepare(
       `UPDATE lead_import_jobs SET
          done_count = (SELECT COUNT(*) FROM lead_import_items WHERE job_id = ? AND organization_id = ? AND status = 'done'),
@@ -216,18 +211,18 @@ export function refreshCounters(organizationId: number, jobId: number): void {
     );
 }
 
-export function setStage(organizationId: number, jobId: number, stage: ImportStage): void {
-  db()
+export async function setStage(organizationId: number, jobId: number, stage: ImportStage): Promise<void> {
+  await db()
     .prepare(`UPDATE lead_import_jobs SET stage = ? WHERE id = ? AND organization_id = ?`)
     .run(stage, jobId, organizationId);
 }
 
-export function finishJob(
+export async function finishJob(
   organizationId: number,
   jobId: number,
   status: Extract<ImportJobStatus, "done" | "cancelled">
-): void {
-  db()
+): Promise<void> {
+  await db()
     .prepare(
       `UPDATE lead_import_jobs SET status = ?, stage = 'finish', finished_at = ?
         WHERE id = ? AND organization_id = ?`
@@ -237,8 +232,8 @@ export function finishJob(
 
 /** Marks the slow-job notification as sent. Returns false if another poll got there
  *  first, which is what keeps three open tabs to one notification. */
-export function claimNotification(organizationId: number, jobId: number): boolean {
-  const res = db()
+export async function claimNotification(organizationId: number, jobId: number): Promise<boolean> {
+  const res = await db()
     .prepare(
       `UPDATE lead_import_jobs SET notified_at = ?
         WHERE id = ? AND organization_id = ? AND notified_at IS NULL`
@@ -247,8 +242,8 @@ export function claimNotification(organizationId: number, jobId: number): boolea
   return res.changes > 0;
 }
 
-export function requestCancel(organizationId: number, jobId: number): void {
-  db()
+export async function requestCancel(organizationId: number, jobId: number): Promise<void> {
+  await db()
     .prepare(
       `UPDATE lead_import_jobs SET status = 'cancelled', finished_at = ?
         WHERE id = ? AND organization_id = ? AND status = 'running'`
@@ -256,8 +251,8 @@ export function requestCancel(organizationId: number, jobId: number): void {
     .run(new Date().toISOString(), jobId, organizationId);
 }
 
-export function isCancelled(organizationId: number, jobId: number): boolean {
-  const row = db()
+export async function isCancelled(organizationId: number, jobId: number): Promise<boolean> {
+  const row = await db()
     .prepare(`SELECT status FROM lead_import_jobs WHERE id = ? AND organization_id = ?`)
     .get(jobId, organizationId) as { status: ImportJobStatus } | undefined;
   return row?.status === "cancelled";
@@ -266,18 +261,18 @@ export function isCancelled(organizationId: number, jobId: number): boolean {
 /** Every `running` job across all tenants -- the boot sweep that requeues work orphaned
  *  by a restart. Deliberately unscoped: it is a recovery pass over the whole table, not a
  *  tenant read, and it writes nothing but the status of rows it finds. */
-export function orphanedJobs(): ImportJobRow[] {
-  return db()
+export async function orphanedJobs(): Promise<ImportJobRow[]> {
+  return await db()
     .prepare(`SELECT * FROM lead_import_jobs WHERE status = 'running' ORDER BY id ASC`)
     .all() as unknown as ImportJobRow[];
 }
 
-export function linkSavedLocation(
+export async function linkSavedLocation(
   organizationId: number,
   itemId: number,
   savedLocationId: number
-): void {
-  db()
+): Promise<void> {
+  await db()
     .prepare(
       `UPDATE lead_import_items SET saved_location_id = ?
         WHERE id = ? AND organization_id = ?`
@@ -288,12 +283,12 @@ export function linkSavedLocation(
 /** Everything already stored for this tenant, loaded once per job rather than per item.
  *  The dedupe pass compares every incoming link against this, so it is a per-job read,
  *  not a per-item one. */
-export function loadDuplicatePool(organizationId: number): DuplicatePool[] {
+export async function loadDuplicatePool(organizationId: number): Promise<DuplicatePool[]> {
   // `kind` is selected as a literal per branch, not inferred: it does not exist as a
   // column on either table, and leaving it out made every match come back with
   // existingKind undefined -- so the problem list could say "duplicate" but never
   // whether the thing they already have is a saved pin or a customer.
-  return db()
+  return await db()
     .prepare(
       `SELECT id, name, lat, lng, address, 'location' AS kind
          FROM saved_locations WHERE organization_id = ?
@@ -309,11 +304,11 @@ export function loadDuplicatePool(organizationId: number): DuplicatePool[] {
  *
  *  A link somebody else saved between the dedupe pass and this moment hits the unique
  *  index and is reported back as a duplicate rather than silently counted as added. */
-export function autoAddItems(
+export async function autoAddItems(
   organizationId: number,
   items: ImportItemRow[],
   groupId: number | null
-): void {
+): Promise<void> {
   if (items.length === 0) return;
   const conn = db();
   const insert = conn.prepare(
@@ -323,7 +318,7 @@ export function autoAddItems(
   );
   const now = new Date().toISOString();
   for (const item of items) {
-    const result = insert.run(
+    const result = await insert.run(
       item.name || "مکان بدون نام",
       item.maps_url,
       item.address,
@@ -336,9 +331,9 @@ export function autoAddItems(
       organizationId
     );
     if (result.changes > 0) {
-      linkSavedLocation(organizationId, item.id, Number(result.lastInsertRowid));
+      await linkSavedLocation(organizationId, item.id, Number(result.lastInsertRowid));
     } else {
-      markResolved(organizationId, item.id, {
+      await markResolved(organizationId, item.id, {
         lat: item.lat,
         lng: item.lng,
         address: item.address,
@@ -354,9 +349,9 @@ export function autoAddItems(
 /** Undo: deletes only the saved_locations rows this job recorded, and only those still
  *  untouched. `visit_outcome IS NULL` is the guard -- a pin somebody has since visited is
  *  no longer this import's to remove, and the row is already somebody's record. */
-export function undoJob(organizationId: number, jobId: number): number {
+export async function undoJob(organizationId: number, jobId: number): Promise<number> {
   const conn = db();
-  const victims = conn
+  const victims = await conn
     .prepare(
       `SELECT i.saved_location_id AS id
          FROM lead_import_items i
@@ -370,19 +365,14 @@ export function undoJob(organizationId: number, jobId: number): number {
   const unlink = conn.prepare(
     `UPDATE lead_import_items SET saved_location_id = NULL WHERE job_id = ? AND organization_id = ?`
   );
-  conn.exec("BEGIN");
-  try {
+  await conn.tx(async () => {
     // Unlink before deleting, not after: saved_location_id is a foreign key, so
     // removing the location row first leaves the item pointing at nothing and the
     // delete fails on the constraint.
-    unlink.run(jobId, organizationId);
+    await unlink.run(jobId, organizationId);
     for (const v of victims) {
-      if (del.run(v.id, organizationId).changes > 0) tombstone(organizationId, "saved_locations", v.id, conn);
+      if ((await del.run(v.id, organizationId)).changes > 0) await tombstone(organizationId, "saved_locations", v.id, conn);
     }
-    conn.exec("COMMIT");
-  } catch (e) {
-    conn.exec("ROLLBACK");
-    throw e;
-  }
+  });
   return victims.length;
 }

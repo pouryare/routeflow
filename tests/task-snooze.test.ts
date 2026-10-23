@@ -8,7 +8,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 const dbPath = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "rf-snooze-")), "t.db");
 process.env.ROUTEFLOW_DB_PATH = dbPath;
 process.env.SESSION_SECRET = "test-secret";
-const { getDb } = await import("@/lib/db");
+const { dbReady } = await import("@/lib/db");
 const { createTask, snoozeTask, tasksRepo, TaskError } = await import("@/lib/repo/tasks");
 const { canSnooze, snoozedDue, MAX_SNOOZES } = await import("@/lib/taskSnooze");
 const SnoozeChoices = (await import("@/components/today/SnoozeChoices")).default;
@@ -37,17 +37,17 @@ describe("snooze rules (F142)", () => {
 });
 
 describe("snoozeTask", () => {
-  it("moves the due time, counts the snooze, and refuses the fourth and urgent ones", () => {
-    getDb();
+  it("moves the due time, counts the snooze, and refuses the fourth and urgent ones", async () => {
+    await dbReady();
     const now = "2026-10-23T14:00:00.000Z";
-    const id = createTask(1, { kind: "reminder", title: "زنگ به رضا", due_at: now, priority: "NORMAL" } as never);
-    expect(snoozeTask(1, id, "hour", now)).toBe("2026-10-23T15:00:00.000Z");
-    expect(tasksRepo.get(1, id)).toMatchObject({ due_at: "2026-10-23T15:00:00.000Z", snooze_count: 1 });
-    snoozeTask(1, id, "hour", now);
-    snoozeTask(1, id, "tomorrow", now);
-    expect(() => snoozeTask(1, id, "hour", now)).toThrow(TaskError);
-    const urgent = createTask(1, { kind: "reminder", title: "فوری", due_at: now, priority: "CRITICAL" } as never);
-    expect(() => snoozeTask(1, urgent, "hour", now)).toThrow(TaskError);
-    expect(() => snoozeTask(2, id, "hour", now)).toThrow(TaskError);
+    const id = await createTask(1, { kind: "reminder", title: "زنگ به رضا", due_at: now, priority: "NORMAL" } as never);
+    expect(await snoozeTask(1, id, "hour", now)).toBe("2026-10-23T15:00:00.000Z");
+    expect(await tasksRepo.get(1, id)).toMatchObject({ due_at: "2026-10-23T15:00:00.000Z", snooze_count: 1 });
+    await snoozeTask(1, id, "hour", now);
+    await snoozeTask(1, id, "tomorrow", now);
+    await expect((async () => await snoozeTask(1, id, "hour", now))()).rejects.toThrow(TaskError);
+    const urgent = await createTask(1, { kind: "reminder", title: "فوری", due_at: now, priority: "CRITICAL" } as never);
+    await expect((async () => await snoozeTask(1, urgent, "hour", now))()).rejects.toThrow(TaskError);
+    await expect((async () => await snoozeTask(2, id, "hour", now))()).rejects.toThrow(TaskError);
   });
 });

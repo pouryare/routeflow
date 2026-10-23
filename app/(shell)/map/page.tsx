@@ -22,11 +22,11 @@ export const dynamic = "force-dynamic";
 // proxy.ts only proves someone is signed in, not which group's data they may see.
 export default async function Home() {
   const jar = await cookies();
-  const session = getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
+  const session = await getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
   if (!session) redirect("/login");
   if (isVanRole(session.role)) redirect("/driver");
-  const { districts, customers, facilities, initialLeads, visibleGroups } = mapPageData(session);
-  const version = geometryVersion();
+  const { districts, customers, facilities, initialLeads, visibleGroups } = await mapPageData(session);
+  const version = await geometryVersion();
 
   return (
     <>

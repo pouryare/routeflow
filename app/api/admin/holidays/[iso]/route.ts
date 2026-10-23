@@ -9,7 +9,7 @@ import { deleteHoliday, isRealIsoDate } from "@/lib/repo/holidays";
  *  the generated row in lib/holidays.ts. Only a date nothing generates — every lunar one —
  *  actually disappears. */
 export async function DELETE(req: NextRequest, ctx: { params: Promise<{ iso: string }> }) {
-  const guard = requireRole(req, OWNER_ROLES);
+  const guard = await requireRole(req, OWNER_ROLES);
   if (!guard.ok) return guard.response;
   const { iso } = await ctx.params;
   // Validated before it reaches the DELETE, so a traversal-shaped param cannot become a
@@ -17,6 +17,6 @@ export async function DELETE(req: NextRequest, ctx: { params: Promise<{ iso: str
   if (!isRealIsoDate(iso)) {
     return NextResponse.json({ ok: false, error: "تاریخ نامعتبر است" }, { status: 400 });
   }
-  deleteHoliday(iso);
+  await deleteHoliday(iso);
   return NextResponse.json({ ok: true });
 }

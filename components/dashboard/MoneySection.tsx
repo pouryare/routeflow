@@ -18,7 +18,7 @@ const empty = EMPTY_CHART;
 
 export default async function MoneySection({ session, debt }: { session: Session; debt: { d0_7: number; d8_30: number; over_30: number } }) {
   await yieldToEventLoop();
-  const { commission, driverCommission, managerCommission } = moneyFor(session);
+  const { commission, driverCommission, managerCommission } = await moneyFor(session);
   const owedTotal =
     commission.reduce((sum, c) => sum + c.owed_toman, 0) +
     driverCommission.reduce((sum, c) => sum + c.owed_toman, 0) +

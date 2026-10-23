@@ -17,8 +17,8 @@ function ownerSession(user: UserRow): Session {
   return { user, role: "owner", roles: ["owner"], groupId: null, organizationId: user.organization_id as number, hasRole: (r) => r === "owner" };
 }
 
-function weekLine(session: Session, asOf: Date): string | null {
-  const w = weekVsLast(session, tehranTodayIso(asOf));
+async function weekLine(session: Session, asOf: Date): Promise<string | null> {
+  const w = await weekVsLast(session, tehranTodayIso(asOf));
   if (!w) return null;
   const pct = changePercent(w.now.orders, w.before.orders);
   const change = pct === null ? "" : ` (${pct >= 0 ? "+" : "−"}${faNum(Math.abs(pct))}٪ نسبت به همین روزهای هفتهٔ قبل)`;
@@ -29,13 +29,13 @@ function weekLine(session: Session, asOf: Date): string | null {
  *  and not before DIGEST_FROM. The sweep's flush then delivers it on the owner's loud channels,
  *  under their own quiet hours and their on/off choice for this type in notification settings.
  *  Returns how many were queued. */
-export function queueMorningDigests(organizationId: number, asOfIso: string = new Date().toISOString()): number {
+export async function queueMorningDigests(organizationId: number, asOfIso: string = new Date().toISOString()): Promise<number> {
   const asOf = new Date(asOfIso);
   const hhmm = asOf.toLocaleTimeString("en-GB", { hour12: false, timeZone: TEHRAN }).slice(0, 5);
   if (hhmm < DIGEST_FROM) return 0;
   const db = getDb();
   const groupKey = `${TYPE}:${jalaliYmd(asOfIso)}`;
-  const owners = db
+  const owners = await db
     .prepare(
       `SELECT * FROM users WHERE organization_id = ? AND active = 1 AND role IN (${OWNER_ROLES.map(() => "?").join(", ")})
           AND NOT EXISTS (SELECT 1 FROM notifications n WHERE n.user_id = users.id AND n.group_key = ?)`
@@ -47,8 +47,8 @@ export function queueMorningDigests(organizationId: number, asOfIso: string = ne
   );
   for (const user of owners) {
     const session = ownerSession({ ...user, organization_id: organizationId });
-    const body = digestBody(todayFor(session).panels, weekLine(session, asOf));
-    insert.run(organizationId, user.id, TYPE, DIGEST_TITLE, body, groupKey, asOfIso);
+    const body = digestBody((await todayFor(session)).panels, await weekLine(session, asOf));
+    await insert.run(organizationId, user.id, TYPE, DIGEST_TITLE, body, groupKey, asOfIso);
   }
   return owners.length;
 }

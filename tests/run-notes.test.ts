@@ -44,19 +44,19 @@ describe("runNotes (F101)", () => {
 describe("runForNotes", () => {
   const sess = (id: number, role: string): Session =>
     ({ user: { id } as never, role: role as never, groupId: null, organizationId: 1, roles: [role] as Session["roles"], hasRole: (x) => x === role }) as Session;
-  it("opens for a manager and the run's own driver; not for another driver or company", () => {
+  it("opens for a manager and the run's own driver; not for another driver or company", async () => {
     const db = getDb();
     const now = new Date().toISOString();
     const u = db.prepare("INSERT INTO users (username,password_hash,display_name,role,active,created_at,organization_id) VALUES (?,?,?,?,1,?,1)");
-    const driver = Number(u.run("rd", "x", "رضا", "delivery_driver", now).lastInsertRowid);
-    const other = Number(u.run("od", "x", "علی", "delivery_driver", now).lastInsertRowid);
+    const driver = Number((await u.run("rd", "x", "رضا", "delivery_driver", now)).lastInsertRowid);
+    const other = Number((await u.run("od", "x", "علی", "delivery_driver", now)).lastInsertRowid);
     const runId = Number(
-      db.prepare("INSERT INTO delivery_runs (driver_user_id,run_date,status,created_by,created_at,updated_at,organization_id) VALUES (?,?,'ready',?,?,?,1)")
-        .run(driver, "2026-10-24", driver, now, now).lastInsertRowid
+      (await db.prepare("INSERT INTO delivery_runs (driver_user_id,run_date,status,created_by,created_at,updated_at,organization_id) VALUES (?,?,'ready',?,?,?,1)")
+        .run(driver, "2026-10-24", driver, now, now)).lastInsertRowid
     );
-    expect(runForNotes(sess(99, "owner"), runId)?.run.id).toBe(runId);
-    expect(runForNotes(sess(driver, "delivery_driver"), runId)?.run.driver_name).toBe("رضا");
-    expect(runForNotes(sess(other, "delivery_driver"), runId)).toBeNull();
-    expect(runForNotes({ ...sess(99, "owner"), organizationId: 2 } as Session, runId)).toBeNull();
+    expect((await runForNotes(sess(99, "owner"), runId))?.run.id).toBe(runId);
+    expect((await runForNotes(sess(driver, "delivery_driver"), runId))?.run.driver_name).toBe("رضا");
+    expect(await runForNotes(sess(other, "delivery_driver"), runId)).toBeNull();
+    expect(await runForNotes({ ...sess(99, "owner"), organizationId: 2 } as Session, runId)).toBeNull();
   });
 });

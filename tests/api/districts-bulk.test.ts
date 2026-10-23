@@ -12,10 +12,10 @@ const { PATCH } = await import("@/app/api/districts/bulk/route");
 const { NextRequest } = await import("next/server");
 const { createSessionToken, COOKIE_NAME } = await import("@/lib/auth");
 
-function seedDistrict(status = "unknown") {
+async function seedDistrict(status = "unknown") {
   const db = getDb();
   const now = new Date().toISOString();
-  const result = db
+  const result = await db
     .prepare(
       `INSERT INTO districts (name, level, parent_name, boundary_geojson, coverage_status, notes, is_custom, updated_at)
        VALUES (?, 'mahalle', '', ?, ?, NULL, 0, ?)`
@@ -44,19 +44,19 @@ afterAll(() => {
   fs.rmSync(`${testDbPath}-shm`, { force: true });
 });
 
-beforeAll(() => {
+beforeAll(async () => {
   const db = getDb(); // ensure schema is created before any test seeds rows
   ownerId = Number(
-    db.prepare(
+    (await db.prepare(
       "INSERT INTO users (username, password_hash, display_name, role, group_id, active, created_at, organization_id) VALUES (?, ?, ?, 'owner', NULL, 1, ?, 1)"
-    ).run("bulk-owner", "x:y", "مالک", new Date().toISOString()).lastInsertRowid
+    ).run("bulk-owner", "x:y", "مالک", new Date().toISOString())).lastInsertRowid
   );
 });
 
 describe("PATCH /api/districts/bulk", () => {
   it("updates coverage_status for every selected district and logs one activity row each", async () => {
-    const id1 = seedDistrict();
-    const id2 = seedDistrict();
+    const id1 = await seedDistrict();
+    const id2 = await seedDistrict();
 
     const res = await PATCH(bulkReq({ ids: [id1, id2], coverage_status: "visited" }));
     const data = await res.json();
@@ -64,20 +64,20 @@ describe("PATCH /api/districts/bulk", () => {
     expect(data.updated).toBe(2);
 
     const db = getDb();
-    const rows = db
+    const rows = await db
       .prepare(`SELECT coverage_status FROM districts WHERE id IN (${id1}, ${id2})`)
       .all() as { coverage_status: string }[];
     expect(rows.every((r) => r.coverage_status === "visited")).toBe(true);
 
-    const activity = db.prepare("SELECT * FROM activity_log WHERE entity_id IN (?, ?)").all(id1, id2);
+    const activity = await db.prepare("SELECT * FROM activity_log WHERE entity_id IN (?, ?)").all(id1, id2);
     expect(activity).toHaveLength(2);
   });
 
   it("does not log activity or change status when the district already has the target status", async () => {
-    const id = seedDistrict("visited");
+    const id = await seedDistrict("visited");
     await PATCH(bulkReq({ ids: [id], coverage_status: "visited" }));
     const db = getDb();
-    const activity = db.prepare("SELECT * FROM activity_log WHERE entity_id = ?").all(id);
+    const activity = await db.prepare("SELECT * FROM activity_log WHERE entity_id = ?").all(id);
     expect(activity).toHaveLength(0);
   });
 
@@ -97,7 +97,7 @@ describe("PATCH /api/districts/bulk", () => {
   });
 
   it("skips ids that don't exist, still updating the ones that do", async () => {
-    const id = seedDistrict();
+    const id = await seedDistrict();
     const res = await PATCH(bulkReq({ ids: [id, 999999], coverage_status: "needs_coverage" }));
     const data = await res.json();
     expect(data.updated).toBe(1);
@@ -107,7 +107,7 @@ describe("PATCH /api/districts/bulk", () => {
     // assigned_to used to be the other thing this route could set. Responsibility for an
     // area is a group's now, so a body carrying only that field changes nothing and must
     // not report success.
-    const id = seedDistrict();
+    const id = await seedDistrict();
     const res = await PATCH(bulkReq({ ids: [id], assigned_to: "Ali" }));
     expect(res.status).toBe(400);
   });

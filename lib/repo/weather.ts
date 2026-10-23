@@ -22,8 +22,8 @@ export interface SnapshotRow extends WeatherSnapshotInput {
 
 /** The tenant's own capacity_factors unioned with the NULL-org defaults -- the tenant's
  *  row wins per condition_code. */
-export function capacityFactorsFor(organizationId: number): FactorRow[] {
-  const rows = getDb()
+export async function capacityFactorsFor(organizationId: number): Promise<FactorRow[]> {
+  const rows = await getDb()
     .prepare(
       `SELECT condition_code, stop_factor, service_time_factor, speed_factor, max_duration_factor, note_fa,
               (organization_id IS NOT NULL) AS is_tenant
@@ -40,8 +40,8 @@ export function capacityFactorsFor(organizationId: number): FactorRow[] {
   return [...byCode.values()];
 }
 
-export function snapshotFor(lat: number, lng: number, date: string): SnapshotRow | undefined {
-  return getDb()
+export async function snapshotFor(lat: number, lng: number, date: string): Promise<SnapshotRow | undefined> {
+  return await getDb()
     .prepare(
       "SELECT * FROM weather_snapshots WHERE lat_r = ? AND lng_r = ? AND forecast_date = ?"
     )
@@ -58,8 +58,8 @@ export function snapshotFor(lat: number, lng: number, date: string): SnapshotRow
  *
  *  Raw SQL lives here rather than in the schedule page, which is grandfathered on the
  *  allowlist; new SQL does not join it (tests/repo-boundary.test.ts). */
-export function snapshotsInRange(fromIso: string, toIso: string): ForecastRow[] {
-  return getDb()
+export async function snapshotsInRange(fromIso: string, toIso: string): Promise<ForecastRow[]> {
+  return await getDb()
     .prepare(
       `SELECT forecast_date, temp_min, temp_max, precip_prob, precip_mm, snow_mm,
               wind_kmh, gust_kmh, visibility_m, weather_code
@@ -70,8 +70,8 @@ export function snapshotsInRange(fromIso: string, toIso: string): ForecastRow[] 
     .all(fromIso, toIso) as unknown as ForecastRow[];
 }
 
-export function upsertSnapshot(row: WeatherSnapshotInput): void {
-  getDb()
+export async function upsertSnapshot(row: WeatherSnapshotInput): Promise<void> {
+  await getDb()
     .prepare(
       `INSERT INTO weather_snapshots
          (lat_r, lng_r, forecast_date, temp_min, temp_max, precip_prob, precip_mm, snow_mm,
@@ -104,7 +104,7 @@ export function upsertSnapshot(row: WeatherSnapshotInput): void {
 
 /** Set (or clear) a tenant's override for one condition. Upsert on
  *  (organization_id, condition_code). */
-export function upsertCapacityFactor(
+export async function upsertCapacityFactor(
   organizationId: number,
   input: {
     condition_code: string;
@@ -115,8 +115,8 @@ export function upsertCapacityFactor(
     note_fa?: string | null;
     active?: boolean;
   }
-): void {
-  getDb()
+): Promise<void> {
+  await getDb()
     .prepare(
       `INSERT INTO capacity_factors
          (organization_id, condition_code, stop_factor, service_time_factor, speed_factor,
@@ -141,9 +141,9 @@ export function upsertCapacityFactor(
 }
 
 /** The distinct ~1 km customer cells this session can see. */
-export function customerCellsFor(session: Session, limit = 60): LatLng[] {
-  const gf = groupFilter(session);
-  return getDb()
+export async function customerCellsFor(session: Session, limit = 60): Promise<LatLng[]> {
+  const gf = await groupFilter(session);
+  return await getDb()
     .prepare(
       `SELECT DISTINCT ROUND(lat, 2) AS lat, ROUND(lng, 2) AS lng
          FROM customers WHERE lat IS NOT NULL AND lng IS NOT NULL${gf.sql} LIMIT ${limit}`
@@ -153,7 +153,7 @@ export function customerCellsFor(session: Session, limit = 60): LatLng[] {
 
 /** Refresh the org's customer cells over the next few days. No-op offline. */
 export async function refreshOrgForecast(session: Session, dates?: string[]): Promise<{ written: number; cells: number }> {
-  const cells = customerCellsFor(session);
+  const cells = await customerCellsFor(session);
   const days =
     dates && dates.length > 0
       ? dates.map((d) => d.slice(0, 10))
@@ -168,7 +168,7 @@ export async function refreshOrgForecast(session: Session, dates?: string[]): Pr
 export async function refreshForecast(points: LatLng[], dates: string[]): Promise<number> {
   const rows = await fetchOpenMeteo(points, dates).catch(() => null);
   if (!rows) return 0;
-  for (const r of rows) upsertSnapshot(r);
+  for (const r of rows) await upsertSnapshot(r);
   return rows.length;
 }
 
@@ -203,11 +203,11 @@ export async function fetchAirQuality(
 
 /** The capacity adjustment for a cell + date from the stored snapshot. Neutral when
  *  there is no snapshot. */
-export function runWeatherAdjustment(
+export async function runWeatherAdjustment(
   organizationId: number,
   opts: { lat: number; lng: number; date: string; vehicle_has_refrigeration?: boolean }
-): WeatherAdjustment {
-  const snap = snapshotFor(opts.lat, opts.lng, opts.date);
+): Promise<WeatherAdjustment> {
+  const snap = await snapshotFor(opts.lat, opts.lng, opts.date);
   if (!snap) return neutralAdjustment();
   const reading: WeatherReading = {
     temp_min: snap.temp_min,
@@ -223,7 +223,7 @@ export function runWeatherAdjustment(
   // Phase 10: the resolved set folds in factors the tenant's own routes have learned
   // (once >= MIN_LEARN_N observations); with no learning yet it is identical to
   // capacityFactorsFor, so every Phase 6 reading is unchanged.
-  return weatherAdjustment(reading, resolvedCapacityFactorsFor(organizationId), {
+  return weatherAdjustment(reading, await resolvedCapacityFactorsFor(organizationId), {
     vehicle_has_refrigeration: opts.vehicle_has_refrigeration,
   });
 }

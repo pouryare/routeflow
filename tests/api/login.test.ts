@@ -20,9 +20,9 @@ afterAll(() => {
 
 // There is only one way in now, so the rate-limit cases run through a real account
 // rather than the shared password they used to use.
-beforeAll(() => {
+beforeAll(async () => {
   const db = getDb();
-  db.prepare(
+  await db.prepare(
     "INSERT INTO users (username, password_hash, display_name, role, group_id, active, created_at) VALUES (?, ?, ?, 'owner', NULL, 1, ?)"
   ).run("limiter", hashPassword("hunter2-real"), "محدودیت", new Date().toISOString());
 });
@@ -44,7 +44,7 @@ describe("POST /api/login", () => {
   });
 
   it("pays the same password-hash cost for an unknown, a deactivated and a wrong-password login (no timing tell)", async () => {
-    getDb()
+    await getDb()
       .prepare("INSERT INTO users (username, password_hash, display_name, role, group_id, active, created_at) VALUES ('gone', ?, 'x', 'owner', NULL, 0, ?)")
       .run(hashPassword("gone-pass"), new Date().toISOString());
     const spy = vi.spyOn(crypto, "scryptSync");
@@ -120,17 +120,17 @@ function namedLogin(username: string, password: string, ip: string) {
 
 describe("named account login", () => {
   let gid = 0;
-  beforeAll(() => {
+  beforeAll(async () => {
     const db = getDb();
     const now = new Date().toISOString();
     gid = Number(
-      db.prepare("INSERT INTO groups (name, slug, color, active, created_at) VALUES (?, ?, ?, 1, ?)")
-        .run("گروه تست", "test-group", "#0ff", now).lastInsertRowid
+      (await db.prepare("INSERT INTO groups (name, slug, color, active, created_at) VALUES (?, ?, ?, 1, ?)")
+        .run("گروه تست", "test-group", "#0ff", now)).lastInsertRowid
     );
-    db.prepare(
+    await db.prepare(
       "INSERT INTO users (username, password_hash, display_name, role, group_id, active, created_at) VALUES (?, ?, ?, ?, ?, 1, ?)"
     ).run("sara", hashPassword("sara-pass"), "سارا", "group_manager", gid, now);
-    db.prepare(
+    await db.prepare(
       "INSERT INTO users (username, password_hash, display_name, role, group_id, active, created_at) VALUES (?, ?, ?, ?, ?, 0, ?)"
     ).run("ghost", hashPassword("ghost-pass"), "غایب", "delivery_driver", gid, now);
   });

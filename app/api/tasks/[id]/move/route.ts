@@ -6,7 +6,7 @@ import type { BoardView } from "@/lib/tasks/lenses";
 /** The one lane-move endpoint. The lane→field mapping lives in lib/tasks/lenses
  *  (`movePatch`); this route just authenticates, resolves the org, and delegates. */
 export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
-  const guard = requireRole(req, [
+  const guard = await requireRole(req, [
     "owner",
     "group_manager",
     "rep_manager",
@@ -23,11 +23,11 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
   if (!body?.view || !body?.to_lane) {
     return NextResponse.json({ ok: false, error: "نما و ستون مقصد لازم است" }, { status: 400 });
   }
-  const row = tasksRepo.get(guard.session.organizationId, Number(id));
+  const row = await tasksRepo.get(guard.session.organizationId, Number(id));
   if (!row || !canActOnTask({ role: guard.session.role, userId: guard.session.user.id, groupId: guard.session.groupId }, row)) {
     return NextResponse.json({ ok: false, error: "کار پیدا نشد" }, { status: 404 });
   }
-  const card = moveTask(guard.session.organizationId, Number(id), {
+  const card = await moveTask(guard.session.organizationId, Number(id), {
     view: body.view,
     toLane: body.to_lane,
     actor: guard.session.user.id,

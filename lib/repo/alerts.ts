@@ -18,7 +18,7 @@ export interface AlertRow {
 
 export const alertsRepo = makeRepo<AlertRow>("alerts", { tenant: true });
 
-export function raiseAlert(
+export async function raiseAlert(
   organizationId: number,
   input: {
     severity: AlertRow["severity"];
@@ -28,8 +28,8 @@ export function raiseAlert(
     entity_id?: number | null;
     group_id?: number | null;
   }
-): number {
-  return alertsRepo.insert(organizationId, {
+): Promise<number> {
+  return await alertsRepo.insert(organizationId, {
     organization_id: organizationId,
     severity: input.severity,
     category: input.category,
@@ -43,10 +43,10 @@ export function raiseAlert(
   } as Omit<AlertRow, "id">);
 }
 
-export function listAlerts(
+export async function listAlerts(
   organizationId: number,
   filter: { severity?: string; open?: boolean; limit?: number; groupIds?: number[] } = {}
-): AlertRow[] {
+): Promise<AlertRow[]> {
   const clauses = ["organization_id = ?"];
   const params: unknown[] = [organizationId];
   if (filter.severity) {
@@ -65,7 +65,7 @@ export function listAlerts(
   }
   if (filter.open) clauses.push("resolved_at IS NULL");
   params.push(filter.limit ?? 100);
-  return alertsRepo
+  return await alertsRepo
     .db()
     .prepare(
       `SELECT * FROM alerts WHERE ${clauses.join(" AND ")}
@@ -74,10 +74,10 @@ export function listAlerts(
     .all(...(params as never[])) as unknown as AlertRow[];
 }
 
-export function resolveAlert(organizationId: number, id: number, by: number): void {
-  const row = alertsRepo.get(organizationId, id);
+export async function resolveAlert(organizationId: number, id: number, by: number): Promise<void> {
+  const row = await alertsRepo.get(organizationId, id);
   if (!row) throw new AlertError("هشدار پیدا نشد");
-  alertsRepo.patch(organizationId, id, {
+  await alertsRepo.patch(organizationId, id, {
     resolved_at: new Date().toISOString(),
     resolved_by: by,
   });

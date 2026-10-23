@@ -23,8 +23,8 @@ describe("the Excel customer-import subsystem stays removed", () => {
     expect(hits, `still referenced in:\n${hits}`).toBe("");
   });
 
-  it("has no import_log / import_snapshots tables after migration", () => {
-    const rows = getDb()
+  it("has no import_log / import_snapshots tables after migration", async () => {
+    const rows = await getDb()
       .prepare(
         "SELECT name FROM sqlite_master WHERE type='table' AND name IN ('import_log','import_snapshots')"
       )

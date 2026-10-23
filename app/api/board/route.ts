@@ -8,7 +8,7 @@ const VIEWS: BoardView[] = ["status", "time", "workflow"];
 /** The manager task Board. owner / group_manager / rep_manager (+ platform_owner);
  *  proxy.ts also gates the path. */
 export async function GET(req: NextRequest) {
-  const guard = requireRole(req, ["owner", "group_manager", "rep_manager", "platform_owner"]);
+  const guard = await requireRole(req, ["owner", "group_manager", "rep_manager", "platform_owner"]);
   if (!guard.ok) return guard.response;
   const sp = req.nextUrl.searchParams;
   const viewParam = sp.get("view") as BoardView | null;
@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
   const gid = sp.get("group_id");
   return NextResponse.json({
     ok: true,
-    board: boardFor(guard.session, {
+    board: await boardFor(guard.session, {
       view,
       kind: view === "workflow" ? kind : undefined,
       groupId: gid ? Number(gid) : undefined,

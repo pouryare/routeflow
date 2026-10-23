@@ -220,7 +220,7 @@ function BoardView({ orders, onARun }: { orders: OrderSummary[]; onARun: Set<num
  *  `?mode=all` on the host — a DIFFERENT key from the host's own `?view=`, so
  *  `oneOf(params, VIEWS, "")` still resolves the outer view. Two params both called
  *  `view` would collide, and the reader takes the first, silently losing the mode. */
-function JourneyView({
+async function JourneyView({
   session,
   orders,
   mode,
@@ -233,7 +233,7 @@ function JourneyView({
 }) {
   /* The journey and the funnel are chosen from, and scoped like, the list this session can
      already see (see journeyFor), so neither can be used to probe for an order it hides. */
-  const { focus, journey, nodes, events, funnel } = journeyFor(session, orders, mode, askedOrderId);
+  const { focus, journey, nodes, events, funnel } = await journeyFor(session, orders, mode, askedOrderId);
   const current = nodes.find((n) => n.state === "current");
   const keep = focus ? `&order=${focus.id}` : "";
 
@@ -341,7 +341,7 @@ export default async function OrdersPage({
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
   const jar = await cookies();
-  const session = getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
+  const session = await getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
   if (!session) redirect("/login");
   if (isVanRole(session.role)) redirect("/driver");
 
@@ -351,7 +351,7 @@ export default async function OrdersPage({
   const orderParam = one(params, "order");
   const customerId = customerParam !== undefined && /^\d+$/.test(customerParam) ? Number(customerParam) : undefined;
 
-  const { focused, orders, onARun } = ordersListFor(session, { customerId });
+  const { focused, orders, onARun } = await ordersListFor(session, { customerId });
 
   const mode = one(params, "mode") === "all" ? "all" : "one";
   const askedOrderId = orderParam !== undefined && /^\d+$/.test(orderParam) ? Number(orderParam) : undefined;

@@ -55,7 +55,7 @@ afterAll(async () => {
 describe("the console stays clean", () => {
   it.each(ROUTES)("%s", async (route) => {
     const context = await browser.newContext({ locale: "fa-IR", viewport: { width: 1440, height: 900 } });
-    await context.addCookies([{ ...sessionCookie(), url: BASE }]);
+    await context.addCookies([{ ...await sessionCookie(), url: BASE }]);
     const page = await context.newPage();
     const logged: string[] = [];
     page.on("pageerror", (e) => logged.push(`uncaught: ${e.message}`));

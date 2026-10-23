@@ -25,40 +25,40 @@ let sellerId = 0;
 let custId = 0;
 let otherChequeId = 0;
 
-beforeAll(() => {
+beforeAll(async () => {
   const db = getDb();
-  db.exec("INSERT INTO organizations (id,name,slug,created_at) VALUES (2,'Two','two','2026-01-01')");
+  await db.exec("INSERT INTO organizations (id,name,slug,created_at) VALUES (2,'Two','two','2026-01-01')");
   const now = new Date().toISOString();
   mgrId = Number(
-    db
+    (await db
       .prepare(
         "INSERT INTO users (username,password_hash,display_name,role,group_id,active,created_at,organization_id) VALUES (?,?,?,'group_manager',NULL,1,?,1)"
       )
-      .run("c-mgr", "x:y", "م", now).lastInsertRowid
+      .run("c-mgr", "x:y", "م", now)).lastInsertRowid
   );
   sellerId = Number(
-    db
+    (await db
       .prepare(
         "INSERT INTO users (username,password_hash,display_name,role,group_id,active,created_at,organization_id) VALUES (?,?,?,'phone_sales',NULL,1,?,1)"
       )
-      .run("c-seller", "x:y", "ف", now).lastInsertRowid
+      .run("c-seller", "x:y", "ف", now)).lastInsertRowid
   );
   custId = Number(
-    db
+    (await db
       .prepare(
         "INSERT INTO customers (customer_code,business_name,customer_type,lifecycle,synced_at,organization_id) VALUES ('C1','x','RESTAURANT','active','2026-01-01',1)"
       )
-      .run().lastInsertRowid
+      .run()).lastInsertRowid
   );
   const c2 = Number(
-    db.prepare("INSERT INTO customers (customer_code,business_name,lifecycle,synced_at,organization_id) VALUES ('C2','x','active','2026-01-01',2)").run().lastInsertRowid
+    (await db.prepare("INSERT INTO customers (customer_code,business_name,lifecycle,synced_at,organization_id) VALUES ('C2','x','active','2026-01-01',2)").run()).lastInsertRowid
   );
   otherChequeId = Number(
-    db
+    (await db
       .prepare(
         "INSERT INTO cheques (organization_id,customer_id,amount_toman,cheque_no,due_date,status,received_at,received_by,created_at,updated_at) VALUES (2,?,1000,'X','2026-03-01','in_hand','x',?,?,?)"
       )
-      .run(c2, mgrId, now, now).lastInsertRowid
+      .run(c2, mgrId, now, now)).lastInsertRowid
   );
 });
 

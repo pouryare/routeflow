@@ -29,33 +29,33 @@ function fileBytes(file: string): number {
   }
 }
 
-export function statusFacts(organizationId: number, now: Date = new Date()): StatusFacts {
+export async function statusFacts(organizationId: number, now: Date = new Date()): Promise<StatusFacts> {
   const db = getDb();
-  const one = <T>(sql: string, ...params: (string | number)[]) =>
-    (db.prepare(sql).get(...params) as { t: T } | undefined)?.t ?? null;
+  const one = async <T>(sql: string, ...params: (string | number)[]) =>
+    (await db.prepare(sql).get(...params) as { t: T } | undefined)?.t ?? null;
   const dayAgo = new Date(now.getTime() - 86_400_000).toISOString();
-  const dbBytes = fileBytes(DB_PATH) + fileBytes(`${DB_PATH}-wal`);
-
-  return {
+  const facts = {
     backup: readBackupStatus(),
-    analysisAt: one<string>("SELECT MAX(computed_at) AS t FROM kpi_snapshots WHERE organization_id = ?", organizationId),
-    forecastAt: newestForecastAt(organizationId),
-    lastSyncAt: one<string>("SELECT MAX(received_at) AS t FROM sync_mutations WHERE organization_id = ?", organizationId),
-    customersSyncedAt: one<string>("SELECT MAX(synced_at) AS t FROM customers WHERE organization_id = ?", organizationId),
-    lastNotificationAt: one<string>(
+    analysisAt: await one<string>("SELECT MAX(computed_at) AS t FROM kpi_snapshots WHERE organization_id = ?", organizationId),
+    forecastAt: await newestForecastAt(organizationId),
+    lastSyncAt: await one<string>("SELECT MAX(received_at) AS t FROM sync_mutations WHERE organization_id = ?", organizationId),
+    customersSyncedAt: await one<string>("SELECT MAX(synced_at) AS t FROM customers WHERE organization_id = ?", organizationId),
+    lastNotificationAt: await one<string>(
       `SELECT MAX(d.flushed_at) AS t FROM notification_deliveries d JOIN users u ON u.id = d.user_id WHERE u.organization_id = ?`,
       organizationId
     ),
-    lastDigestAt: one<string>(
+    lastDigestAt: await one<string>(
       "SELECT MAX(created_at) AS t FROM notifications WHERE organization_id = ? AND type_code = 'owner.digest'",
       organizationId
     ),
     failedSignIns24h:
-      one<number>(
+      await one<number>(
         "SELECT COUNT(*) AS t FROM login_events WHERE organization_id = ? AND result <> 'success' AND created_at >= ?",
         organizationId,
         dayAgo
       ) ?? 0,
-    dbBytes: dbBytes > 0 ? dbBytes : null,
   };
+  // Measured after the reads: the database file is opened by the first statement, not before.
+  const dbBytes = fileBytes(DB_PATH) + fileBytes(`${DB_PATH}-wal`);
+  return { ...facts, dbBytes: dbBytes > 0 ? dbBytes : null };
 }

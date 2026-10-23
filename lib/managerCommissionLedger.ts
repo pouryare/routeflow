@@ -9,12 +9,13 @@
  */
 
 import { insertCommissionPayment, insertDatedRate } from "./repo/commissionPayments";
-import type { DatabaseSync } from "node:sqlite";
+import type { Db } from "@/lib/database/client";
 import { effectiveAt } from "./pricing";
 import { allStatements, type Period } from "./commissionLedger";
 import { roundToman } from "./money";
 import { orgClause } from "./orgScope";
 
+import { mapSeq } from "@/lib/seq";
 export interface ManagerOverrideRow {
   id: number;
   /** Null is the company-wide default, same convention as the other rate tables. */
@@ -52,23 +53,23 @@ export interface ManagerStatement {
   owed_toman: number;
 }
 
-export function setManagerOverride(
-  db: DatabaseSync,
+export async function setManagerOverride(
+  db: Db,
   input: {
     manager_user_id?: number | null;
     override_pct: number;
     valid_from: string;
     created_by?: number | null;
   }
-): number {
+): Promise<number> {
   if (!Number.isFinite(input.override_pct) || input.override_pct < 0 || input.override_pct > 100) {
     throw new TypeError(`درصد پورسانت مدیر باید بین ۰ و ۱۰۰ باشد: ${input.override_pct}`);
   }
-  return insertDatedRate(db, "manager", input.manager_user_id, input.override_pct, input);
+  return await insertDatedRate(db, "manager", input.manager_user_id, input.override_pct, input);
 }
 
-export function recordManagerPayment(
-  db: DatabaseSync,
+export async function recordManagerPayment(
+  db: Db,
   input: {
     manager_user_id: number;
     amount_toman: number;
@@ -78,15 +79,15 @@ export function recordManagerPayment(
     notes?: string | null;
     created_by?: number | null;
   }
-): number {
-  return insertCommissionPayment(db, "manager", input.manager_user_id, input, false);
+): Promise<number> {
+  return await insertCommissionPayment(db, "manager", input.manager_user_id, input, false);
 }
 
-export function readManagerOverrides(
-  db: DatabaseSync,
+export async function readManagerOverrides(
+  db: Db,
   organizationId: number
-): (ManagerOverrideRow & { display_name: string | null })[] {
-  return db
+): Promise<(ManagerOverrideRow & { display_name: string | null })[]> {
+  return await db
     .prepare(
       `SELECT mco.*, u.display_name
          FROM manager_commission_overrides mco
@@ -97,12 +98,12 @@ export function readManagerOverrides(
     .all(organizationId) as unknown as (ManagerOverrideRow & { display_name: string | null })[];
 }
 
-export function managerStatementFor(
-  db: DatabaseSync,
+export async function managerStatementFor(
+  db: Db,
   managerId: number,
   period: Period
-): ManagerStatement {
-  const person = db
+): Promise<ManagerStatement> {
+  const person = await db
     .prepare(
       `SELECT u.id, u.display_name, u.group_id, u.organization_id, g.name AS group_name
          FROM users u LEFT JOIN groups g ON g.id = u.group_id
@@ -115,10 +116,10 @@ export function managerStatementFor(
   // A manager with no group has no team to earn a share of -- zero rather than a group
   // sum error, the same "empty means nothing" rule allStatements enforces.
   const periodOrders =
-    person?.group_id == null ? [] : allStatements(db, period, { groupId: person.group_id, organizationId: person.organization_id }).flatMap((s) => s.orders);
+    person?.group_id == null ? [] : (await allStatements(db, period, { groupId: person.group_id, organizationId: person.organization_id })).flatMap((s) => s.orders);
   const groupAccrued = periodOrders.reduce((total, o) => total + o.accrual_toman, 0);
 
-  const overrides = db
+  const overrides = await db
     .prepare("SELECT * FROM manager_commission_overrides")
     .all() as unknown as ManagerOverrideRow[];
   // Valued order by order at the override in force on ITS OWN date, same reasoning as
@@ -134,7 +135,7 @@ export function managerStatementFor(
   // cannot represent a mix of rates that changed mid-period.
   const pct = overrideFor(overrides, managerId, period.to)?.override_pct ?? 0;
 
-  const paidInPeriod = db
+  const paidInPeriod = await db
     .prepare(
       "SELECT COALESCE(SUM(amount_toman), 0) AS total FROM manager_commission_payments WHERE manager_user_id = ? AND paid_on BETWEEN ? AND ?"
     )
@@ -150,14 +151,14 @@ export function managerStatementFor(
     person?.group_id == null
       ? 0
       : roundToman(
-          allStatements(db, { from: "0000-01-01", to: "9999-12-31" }, { groupId: person.group_id, organizationId: person.organization_id })
+          (await allStatements(db, { from: "0000-01-01", to: "9999-12-31" }, { groupId: person.group_id, organizationId: person.organization_id }))
             .flatMap((s) => s.orders)
             .reduce((total, o) => {
               const r = overrideFor(overrides, managerId, o.order_date);
               return total + (o.accrual_toman * (r?.override_pct ?? 0)) / 100;
             }, 0)
         );
-  const lifetimePaid = db
+  const lifetimePaid = await db
     .prepare("SELECT COALESCE(SUM(amount_toman), 0) AS total FROM manager_commission_payments WHERE manager_user_id = ?")
     .get(managerId) as { total: number };
 
@@ -174,10 +175,10 @@ export function managerStatementFor(
   };
 }
 
-export function allManagerStatements(db: DatabaseSync, period: Period, organizationId: number | null): ManagerStatement[] {
+export async function allManagerStatements(db: Db, period: Period, organizationId: number | null): Promise<ManagerStatement[]> {
   const org = orgClause("organization_id", organizationId);
-  const people = db
+  const people = await db
     .prepare(`SELECT id FROM users WHERE role = 'group_manager'${org.sql} ORDER BY display_name`)
     .all(...org.params) as unknown as { id: number }[];
-  return people.map((person) => managerStatementFor(db, person.id, period));
+  return await mapSeq(people, async (person) => await managerStatementFor(db, person.id, period));
 }

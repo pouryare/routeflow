@@ -41,8 +41,8 @@ const CARD_SQL = `SELECT c.id, c.business_name, c.phone, c.instagram, c.area_lab
                          c.last_activity_at AS last_activity
                     FROM customers c LEFT JOIN users u ON u.id = c.owner_user_id`;
 
-const ledgerLines = (id: number): number =>
-  (getDb().prepare("SELECT COUNT(*) AS n FROM ledger_entries WHERE customer_id = ?").get(id) as { n: number }).n;
+const ledgerLines = async (id: number): Promise<number> =>
+  (await getDb().prepare("SELECT COUNT(*) AS n FROM ledger_entries WHERE customer_id = ?").get(id) as { n: number }).n;
 
 const card = (r: Row): DupSideCard => ({
   id: r.id,
@@ -58,9 +58,9 @@ const side = (c: DupSideCard): DupSide => ({ id: c.id, orders: c.orders, lastAct
 
 /** Pairs of live customer records that share a phone number or an Instagram page and have not been
  *  marked «not the same». Only pairs the caller can see on BOTH sides. */
-export function duplicatePairs(session: Session, limit = 30): DupPair[] {
+export async function duplicatePairs(session: Session, limit = 30): Promise<DupPair[]> {
   const db = getDb();
-  const pairs = db
+  const pairs = await db
     .prepare(
       `SELECT a.id AS a_id, b.id AS b_id,
               CASE WHEN a.phone_norm IS NOT NULL AND a.phone_norm = b.phone_norm THEN 'phone' ELSE 'instagram' END AS reason
@@ -78,11 +78,11 @@ export function duplicatePairs(session: Session, limit = 30): DupPair[] {
   const one = db.prepare(`${CARD_SQL} WHERE c.id = ? AND c.organization_id = ?`);
   const out: DupPair[] = [];
   for (const p of pairs) {
-    const a = one.get(p.a_id, session.organizationId) as unknown as Row | undefined;
-    const b = one.get(p.b_id, session.organizationId) as unknown as Row | undefined;
+    const a = await one.get(p.a_id, session.organizationId) as unknown as Row | undefined;
+    const b = await one.get(p.b_id, session.organizationId) as unknown as Row | undefined;
     if (!a || !b || !canSeeBusiness(session, a) || !canSeeBusiness(session, b)) continue;
-    const la = ledgerLines(a.id);
-    const lb = ledgerLines(b.id);
+    const la = await ledgerLines(a.id);
+    const lb = await ledgerLines(b.id);
     if (la > 0 && lb > 0) continue; // both have journal lines: the books cannot be merged, so do not offer it
     // The record that owns accounting lines must survive; otherwise the busier one does.
     const keep = la > 0 ? side(card(a)) : lb > 0 ? side(card(b)) : chooseSurvivor(side(card(a)), side(card(b))).keep;
@@ -93,14 +93,14 @@ export function duplicatePairs(session: Session, limit = 30): DupPair[] {
 }
 
 /** «Not the same business»: remember it, so the pair is not offered again. */
-export function markSeparate(session: Session, aId: number, bId: number): void {
+export async function markSeparate(session: Session, aId: number, bId: number): Promise<void> {
   const [low, high] = pairKey(aId, bId);
   const db = getDb();
   for (const id of [low, high]) {
-    const r = db.prepare(`${CARD_SQL} WHERE c.id = ? AND c.organization_id = ?`).get(id, session.organizationId) as unknown as Row | undefined;
+    const r = await db.prepare(`${CARD_SQL} WHERE c.id = ? AND c.organization_id = ?`).get(id, session.organizationId) as unknown as Row | undefined;
     if (!r || !canSeeBusiness(session, r)) throw new DuplicateError("پرونده پیدا نشد");
   }
-  db.prepare("INSERT OR IGNORE INTO crm_not_duplicates (organization_id, low_id, high_id, decided_by, decided_at) VALUES (?, ?, ?, ?, ?)").run(
+  await db.prepare("INSERT INTO crm_not_duplicates (organization_id, low_id, high_id, decided_by, decided_at) VALUES (?, ?, ?, ?, ?) ON CONFLICT DO NOTHING").run(
     session.organizationId,
     low,
     high,
@@ -123,20 +123,19 @@ const BY_ENTITY = ["activity_log", "reminders", "visit_plans", "tasks", "task_re
  *
  *  Refused when it would silently lose something: both records are representatives, or both have a
  *  cheque with the same number. */
-export function mergeBusinesses(session: Session, keepId: number, dropId: number): void {
+export async function mergeBusinesses(session: Session, keepId: number, dropId: number): Promise<void> {
   if (keepId === dropId) throw new DuplicateError("یک پرونده را نمی‌توان با خودش ادغام کرد");
   const db = getDb();
-  const get = (id: number) => db.prepare(`${CARD_SQL} WHERE c.id = ? AND c.organization_id = ? AND c.merged_into_id IS NULL`).get(id, session.organizationId) as unknown as Row | undefined;
-  const keep = get(keepId);
-  const drop = get(dropId);
+  const get = async (id: number) => await db.prepare(`${CARD_SQL} WHERE c.id = ? AND c.organization_id = ? AND c.merged_into_id IS NULL`).get(id, session.organizationId) as unknown as Row | undefined;
+  const keep = await get(keepId);
+  const drop = await get(dropId);
   if (!keep || !drop || !canSeeBusiness(session, keep) || !canSeeBusiness(session, drop)) throw new DuplicateError("پرونده پیدا نشد");
 
-  db.exec("BEGIN IMMEDIATE");
-  try {
-    const rep = db.prepare("SELECT COUNT(*) AS n FROM representative_profiles WHERE customer_id IN (?, ?)").get(keepId, dropId) as { n: number };
+  await db.tx(async () => {
+    const rep = await db.prepare("SELECT COUNT(*) AS n FROM representative_profiles WHERE customer_id IN (?, ?)").get(keepId, dropId) as { n: number };
     if (rep.n > 1) throw new DuplicateError("هر دو پرونده نماینده هستند و ادغام نمی‌شوند");
-    if (ledgerLines(dropId) > 0) throw new DuplicateError("دفتر حسابداری این پرونده سند دارد؛ پروندهٔ دیگر را نگه دارید");
-    const clash = db
+    if (await ledgerLines(dropId) > 0) throw new DuplicateError("دفتر حسابداری این پرونده سند دارد؛ پروندهٔ دیگر را نگه دارید");
+    const clash = await db
       .prepare(
         `SELECT 1 FROM cheques a JOIN cheques b ON b.cheque_no = a.cheque_no AND b.organization_id = a.organization_id
           WHERE a.customer_id = ? AND b.customer_id = ? LIMIT 1`
@@ -144,17 +143,17 @@ export function mergeBusinesses(session: Session, keepId: number, dropId: number
       .get(keepId, dropId);
     if (clash) throw new DuplicateError("هر دو پرونده چکی با شمارهٔ یکسان دارند؛ ابتدا یکی را اصلاح کنید");
 
-    for (const t of BY_CUSTOMER_ID) db.prepare(`UPDATE ${t} SET customer_id = ? WHERE customer_id = ?`).run(keepId, dropId);
-    db.prepare("UPDATE cheques SET customer_id = ? WHERE customer_id = ?").run(keepId, dropId);
-    db.prepare("UPDATE representative_profiles SET customer_id = ? WHERE customer_id = ?").run(keepId, dropId);
+    for (const t of BY_CUSTOMER_ID) await db.prepare(`UPDATE ${t} SET customer_id = ? WHERE customer_id = ?`).run(keepId, dropId);
+    await db.prepare("UPDATE cheques SET customer_id = ? WHERE customer_id = ?").run(keepId, dropId);
+    await db.prepare("UPDATE representative_profiles SET customer_id = ? WHERE customer_id = ?").run(keepId, dropId);
     // Tags are a set: keep one of each, drop the rest of the other record's.
-    db.prepare("UPDATE OR IGNORE customer_tags SET customer_id = ? WHERE customer_id = ?").run(keepId, dropId);
-    db.prepare("DELETE FROM customer_tags WHERE customer_id = ?").run(dropId);
+    await db.prepare("UPDATE OR IGNORE customer_tags SET customer_id = ? WHERE customer_id = ?").run(keepId, dropId);
+    await db.prepare("DELETE FROM customer_tags WHERE customer_id = ?").run(dropId);
     // A churn score is recomputed from the merged history.
-    db.prepare("DELETE FROM churn_scores WHERE customer_id = ?").run(dropId);
-    for (const t of BY_ENTITY) db.prepare(`UPDATE ${t} SET entity_id = ? WHERE entity_type = 'customer' AND entity_id = ?`).run(keepId, dropId);
+    await db.prepare("DELETE FROM churn_scores WHERE customer_id = ?").run(dropId);
+    for (const t of BY_ENTITY) await db.prepare(`UPDATE ${t} SET entity_id = ? WHERE entity_type = 'customer' AND entity_id = ?`).run(keepId, dropId);
 
-    db.prepare(
+    await db.prepare(
       `UPDATE customers SET
          phone = COALESCE(phone, (SELECT phone FROM customers WHERE id = ?)),
          phone_norm = COALESCE(phone_norm, (SELECT phone_norm FROM customers WHERE id = ?)),
@@ -164,8 +163,8 @@ export function mergeBusinesses(session: Session, keepId: number, dropId: number
          lng = COALESCE(lng, (SELECT lng FROM customers WHERE id = ?))
        WHERE id = ?`
     ).run(dropId, dropId, dropId, dropId, dropId, dropId, keepId);
-    db.prepare("UPDATE customers SET merged_into_id = ? WHERE id = ?").run(keepId, dropId);
-    logActivity(db, {
+    await db.prepare("UPDATE customers SET merged_into_id = ? WHERE id = ?").run(keepId, dropId);
+    await logActivity(db, {
       entity_type: "customer",
       entity_id: keepId,
       event_type: "note",
@@ -175,9 +174,5 @@ export function mergeBusinesses(session: Session, keepId: number, dropId: number
       changed_by: session.user.display_name,
       changed_by_user_id: session.user.id,
     });
-    db.exec("COMMIT");
-  } catch (e) {
-    db.exec("ROLLBACK");
-    throw e;
-  }
+  });
 }

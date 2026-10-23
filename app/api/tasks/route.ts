@@ -6,7 +6,7 @@ import { boundedText, isTimestampWithin } from "@/lib/inputChecks";
 import { MANAGE_ROLES } from "@/lib/roles";
 
 export async function GET(req: NextRequest) {
-  const guard = requireRole(req, [...MANAGE_ROLES, "phone_sales", "field_rep", "delivery_driver", "rep_manager"]);
+  const guard = await requireRole(req, [...MANAGE_ROLES, "phone_sales", "field_rep", "delivery_driver", "rep_manager"]);
   if (!guard.ok) return guard.response;
   const sp = req.nextUrl.searchParams;
   const session = guard.session;
@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
     : undefined;
   return NextResponse.json({
     ok: true,
-    tasks: listTasks(session.organizationId, {
+    tasks: await listTasks(session.organizationId, {
       assignee: ownOnly || sp.get("mine") === "1" ? session.user.id : undefined,
       groupIds: ownOnly ? undefined : groupIds,
       role: sp.get("role") ?? undefined,
@@ -31,7 +31,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const guard = requireRole(req, [...MANAGE_ROLES, "phone_sales", "rep_manager"]);
+  const guard = await requireRole(req, [...MANAGE_ROLES, "phone_sales", "rep_manager"]);
   if (!guard.ok) return guard.response;
   const b = (await req.json().catch(() => null)) as Record<string, unknown> | null;
   if (!b?.title || !b?.kind) return NextResponse.json({ ok: false, error: "عنوان و نوع لازم است" }, { status: 400 });
@@ -44,17 +44,17 @@ export async function POST(req: NextRequest) {
   if (b.due_at != null && !isTimestampWithin(b.due_at, 366, 5 * 366)) {
     return NextResponse.json({ ok: false, error: "تاریخ سررسید معتبر نیست" }, { status: 400 });
   }
-  if (!taskEntityValid(guard.session.organizationId, b.entity_type ?? null, b.entity_id ?? null)) {
+  if (!await taskEntityValid(guard.session.organizationId, b.entity_type ?? null, b.entity_id ?? null)) {
     return NextResponse.json({ ok: false, error: "لینک کار به مشتری یا سفارش معتبر نیست" }, { status: 400 });
   }
   // The assignee must be an active person of THIS organisation; a user id from another tenant was accepted.
-  if (b.assignee_user_id != null && !assigneeInOrg(guard.session.organizationId, Number(b.assignee_user_id))) {
+  if (b.assignee_user_id != null && !await assigneeInOrg(guard.session.organizationId, Number(b.assignee_user_id))) {
     return NextResponse.json({ ok: false, error: "مسئول انتخاب‌شده معتبر نیست" }, { status: 400 });
   }
   // A reminder / note the member adds for themselves lands in their own Pocket.
   const selfKinds = kind === "reminder" || kind === "note";
   try {
-    const id = createTask(guard.session.organizationId, {
+    const id = await createTask(guard.session.organizationId, {
       title,
       kind,
       assignee_user_id:

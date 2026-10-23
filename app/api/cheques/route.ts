@@ -11,14 +11,14 @@ import { MANAGE_ROLES } from "@/lib/roles";
 const STATUSES = Object.keys(CHEQUE_TRANSITIONS) as ChequeStatus[];
 
 export async function GET(req: NextRequest) {
-  const guard = requireRole(req, MANAGE_ROLES);
+  const guard = await requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
 
   const s = req.nextUrl.searchParams.get("status");
   const customerId = req.nextUrl.searchParams.get("customer_id");
   return NextResponse.json({
     ok: true,
-    cheques: listCheques(guard.session.organizationId, {
+    cheques: await listCheques(guard.session.organizationId, {
       status: STATUSES.includes(s as ChequeStatus) ? (s as ChequeStatus) : undefined,
       customer_id: customerId ? Number(customerId) : undefined,
     }),
@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const guard = requireRole(req, MANAGE_ROLES);
+  const guard = await requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
 
   const body = (await req.json().catch(() => null)) as {
@@ -64,7 +64,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const out = recordChequePayment(guard.session.organizationId, {
+    const out = await recordChequePayment(guard.session.organizationId, {
       customer_id: Number(body.customer_id),
       amount_toman: body.amount_toman as number,
       cheque_no: chequeNo,

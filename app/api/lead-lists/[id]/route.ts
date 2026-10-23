@@ -13,7 +13,7 @@ interface PatchInput {
 const MAX_NAME = 60;
 
 export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/lead-lists/[id]">) {
-  const guard = requireRole(req, PIN_POOL_ROLES);
+  const guard = await requireRole(req, PIN_POOL_ROLES);
   if (!guard.ok) return guard.response;
 
   const { id } = await ctx.params;
@@ -30,8 +30,8 @@ export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/lead-lists
   // The company is part of the lookup: a list with no group is reachable by any owner, so the
   // group rule alone would let one company edit another's.
   const organizationId = orgScopeId(guard.session);
-  const owning = findOwnList(idNum, organizationId);
-  if (!owning || !canReachGroup(guard.session, owning.group_id)) {
+  const owning = await findOwnList(idNum, organizationId);
+  if (!owning || !await canReachGroup(guard.session, owning.group_id)) {
     return NextResponse.json({ ok: false, error: "فهرست پیدا نشد" }, { status: 404 });
   }
 
@@ -43,7 +43,7 @@ export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/lead-lists
     if (name.length > MAX_NAME) {
       return NextResponse.json({ ok: false, error: "نام فهرست بیش از حد بلند است" }, { status: 400 });
     }
-    renameLeadList(idNum, organizationId, name);
+    await renameLeadList(idNum, organizationId, name);
   }
 
   if (body.location_ids !== undefined) {
@@ -51,14 +51,14 @@ export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/lead-lists
     if (ids === null) {
       return NextResponse.json({ ok: false, error: "فهرست مکان‌ها نامعتبر است" }, { status: 400 });
     }
-    replaceLeadListItems(idNum, organizationId, ids, groupFilter(guard.session));
+    await replaceLeadListItems(idNum, organizationId, ids, await groupFilter(guard.session));
   }
 
   return NextResponse.json({ ok: true });
 }
 
 export async function DELETE(req: NextRequest, ctx: RouteContext<"/api/lead-lists/[id]">) {
-  const guard = requireRole(req, PIN_POOL_ROLES);
+  const guard = await requireRole(req, PIN_POOL_ROLES);
   if (!guard.ok) return guard.response;
 
   const { id } = await ctx.params;
@@ -67,12 +67,12 @@ export async function DELETE(req: NextRequest, ctx: RouteContext<"/api/lead-list
     return NextResponse.json({ ok: false, error: "شناسه نامعتبر است" }, { status: 400 });
   }
 
-  const row = findOwnList(idNum, orgScopeId(guard.session));
-  if (!row || !canReachGroup(guard.session, row.group_id)) {
+  const row = await findOwnList(idNum, orgScopeId(guard.session));
+  if (!row || !await canReachGroup(guard.session, row.group_id)) {
     return NextResponse.json({ ok: false, error: "فهرست پیدا نشد" }, { status: 404 });
   }
 
-  const locationIds = deleteLeadList(idNum, orgScopeId(guard.session));
+  const locationIds = await deleteLeadList(idNum, orgScopeId(guard.session));
 
   // Handed back so the delete can be undone from the toast, membership and all. Only the
   // list is deleted -- the locations themselves are untouched.

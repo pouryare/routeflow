@@ -7,11 +7,11 @@ import { MANAGE_ROLES } from "@/lib/roles";
 /** The door event. The server owns actual_arrival / completed_at -- a `device_time` in
  *  the body is stored beside them, never used as the time. */
 export async function POST(req: NextRequest, ctx: RouteContext<"/api/sales/deliveries/[id]/complete">) {
-  const guard = requireRole(req, [...MANAGE_ROLES, "field_rep", "delivery_driver"]);
+  const guard = await requireRole(req, [...MANAGE_ROLES, "field_rep", "delivery_driver"]);
   if (!guard.ok) return guard.response;
 
   const { id } = await ctx.params;
-  if (!readDelivery(guard.session.organizationId, Number(id))) {
+  if (!await readDelivery(guard.session.organizationId, Number(id))) {
     return NextResponse.json({ ok: false, error: "یافت نشد" }, { status: 404 });
   }
 
@@ -31,7 +31,7 @@ export async function POST(req: NextRequest, ctx: RouteContext<"/api/sales/deliv
   }
 
   try {
-    completeDelivery(
+    await completeDelivery(
       guard.session.organizationId,
       Number(id),
       { id: guard.session.user.id },
@@ -49,7 +49,7 @@ export async function POST(req: NextRequest, ctx: RouteContext<"/api/sales/deliv
     );
     return NextResponse.json({
       ok: true,
-      delivery: readDelivery(guard.session.organizationId, Number(id)),
+      delivery: await readDelivery(guard.session.organizationId, Number(id)),
     });
   } catch (e) {
     if (e instanceof DeliveryError) {

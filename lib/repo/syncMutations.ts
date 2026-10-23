@@ -1,5 +1,5 @@
 import { inOrg } from "@/lib/repo/orgRefs";
-import type { DatabaseSync } from "node:sqlite";
+import type { Db } from "@/lib/database/client";
 import { boundedText, isDayWithin, isTimestampWithin } from "@/lib/inputChecks";
 import { isToman } from "@/lib/money";
 import { recordChequePayment } from "@/lib/repo/cheques";
@@ -14,6 +14,7 @@ import { completeDelivery, DeliveryError } from "@/lib/delivery";
 import { isOfflineOp, type OfflineOp } from "@/lib/offline/safety";
 import { toServerTime } from "@/lib/offline/clock";
 import type { OrderRole } from "@/lib/orderStateMachine";
+import { everySeq } from "@/lib/seq";
 
 export class SyncError extends Error {}
 
@@ -79,18 +80,18 @@ const ORDER_ROLES = [
  *
  *  Empty (not [primary]) when the account has no rows, because an empty set must mean
  *  "reaches nothing" — never "reaches everything". */
-function rolesForOffline(
-  db: DatabaseSync,
+async function rolesForOffline(
+  db: Db,
   userId: number
-): { roles: OrderRole[]; primary: OrderRole } | null {
-  const u = db.prepare("SELECT role FROM users WHERE id = ?").get(userId) as
+): Promise<{ roles: OrderRole[]; primary: OrderRole } | null> {
+  const u = await db.prepare("SELECT role FROM users WHERE id = ?").get(userId) as
     | { role: string }
     | undefined;
   if (!u) return null;
   const primary = ORDER_ROLES.find((r) => r === u.role);
   if (!primary) return null;
 
-  const rows = db
+  const rows = await db
     .prepare("SELECT role FROM user_roles WHERE user_id = ? ORDER BY role")
     .all(userId) as Array<{ role: string }>;
   const known = ORDER_ROLES as readonly string[];
@@ -126,15 +127,15 @@ function toposort(muts: IncomingMutation[]): IncomingMutation[] {
 
 /** Resolve a client_uuid reference to a server id: this batch first, then any prior
  *  applied mutation, else undefined. */
-function resolveRef(
-  db: DatabaseSync,
+async function resolveRef(
+  db: Db,
   organizationId: number,
   ref: string | undefined,
   resolved: Resolved
-): number | undefined {
+): Promise<number | undefined> {
   if (!ref) return undefined;
   if (resolved.has(ref)) return resolved.get(ref);
-  const row = db
+  const row = await db
     .prepare(
       "SELECT result_json FROM sync_mutations WHERE organization_id = ? AND client_uuid = ? AND status IN ('applied','duplicate')"
     )
@@ -149,7 +150,7 @@ function resolveRef(
   }
   // last resort: the row itself carries the client_uuid
   for (const table of ["orders", "deliveries", "payments", "customers"]) {
-    const hit = db
+    const hit = await db
       .prepare(`SELECT id FROM ${table} WHERE client_uuid = ? AND organization_id = ?`)
       .get(ref, organizationId) as { id: number } | undefined;
     if (hit) return hit.id;
@@ -161,15 +162,15 @@ function isTerminal(status: string): boolean {
   return status === "CANCELLED" || status === "RETURNED" || status === "CLOSED";
 }
 
-function reminder(db: DatabaseSync, customerId: number, message: string): void {
+async function reminder(db: Db, customerId: number, message: string): Promise<void> {
   const now = new Date().toISOString();
-  db.prepare(
+  await db.prepare(
     "INSERT INTO reminders (entity_type, entity_id, due_date, message, resolved, created_at) VALUES ('customer', ?, ?, ?, 0, ?)"
   ).run(customerId, now.slice(0, 10), message, now);
 }
 
 /** Apply a batch of offline mutations idempotently. Returns a verdict per client_uuid. */
-export function applyMutations(
+export async function applyMutations(
   organizationId: number,
   userId: number,
   muts: IncomingMutation[],
@@ -181,9 +182,9 @@ export function applyMutations(
    * queue is attribution lost for good. Passed in rather than looked up, because the
    * session already resolved it and this module has no cookie. */
   actorId?: number
-): Record<string, MutationResult> {
+): Promise<Record<string, MutationResult>> {
   const db = getDb();
-  const auth = rolesForOffline(db, userId);
+  const auth = await rolesForOffline(db, userId);
   /* No recognisable role is "reaches nothing", never "reaches everything" -- the same rule
      groupFilter follows. Defaulting here would be the exact bug this function used to have. */
   if (auth === null) {
@@ -199,7 +200,7 @@ export function applyMutations(
     const cu = mut.client_uuid;
 
     // Idempotency: a client_uuid already decided is returned as its stored verdict.
-    const prior = db
+    const prior = await db
       .prepare(
         "SELECT status, result_json FROM sync_mutations WHERE organization_id = ? AND client_uuid = ?"
       )
@@ -217,7 +218,7 @@ export function applyMutations(
     }
 
     // Record receipt (or reset a prior failed/conflict row for a retry).
-    db.prepare(
+    await db.prepare(
       `INSERT INTO sync_mutations
          (organization_id, client_uuid, user_id, device_id, op, payload_json, occurred_at,
           clock_skew_ms, received_at, status)
@@ -238,7 +239,7 @@ export function applyMutations(
 
     let result: MutationResult;
     try {
-      result = applyOne(db, organizationId, userId, auth.roles, auth.primary, mut, resolved, actorId);
+      result = await applyOne(db, organizationId, userId, auth.roles, auth.primary, mut, resolved, actorId);
     } catch (e) {
       result =
         e instanceof OrderError || e instanceof PaymentError || e instanceof DeliveryError
@@ -249,7 +250,7 @@ export function applyMutations(
     if (result.status === "applied" && result.server_id !== null) {
       resolved.set(cu, result.server_id);
     }
-    db.prepare(
+    await db.prepare(
       `UPDATE sync_mutations SET status = ?, applied_at = ?, result_json = ?, error = ?
         WHERE organization_id = ? AND client_uuid = ?`
     ).run(
@@ -273,7 +274,7 @@ export function applyMutations(
 /** What every offline operation needs to run: the company and person it is applied for, the roles that
  *  person holds, and the queued mutation itself. */
 interface MutationContext {
-  db: DatabaseSync;
+  db: Db;
   organizationId: number;
   userId: number;
   roles: readonly OrderRole[];
@@ -285,18 +286,18 @@ interface MutationContext {
   deviceTime: () => string;
 }
 
-function apply_order_draftCreate(c: MutationContext): MutationResult {
+async function apply_order_draftCreate(c: MutationContext): Promise<MutationResult> {
   const { db, organizationId, userId, mut, p, deviceTime } = c;
   // A queued order is only as trustworthy as the ids on it: the customer and every product
   // must be this company's, exactly as POST /api/sales/orders insists.
   const lines = (p.lines as { product_id?: unknown }[] | undefined) ?? [];
   if (
-    !inOrg("customers", Number(p.customer_id), organizationId) ||
-    !lines.every((l) => inOrg("products", Number(l.product_id), organizationId))
+    !await inOrg("customers", Number(p.customer_id), organizationId) ||
+    !await everySeq(lines, async (l) => await inOrg("products", Number(l.product_id), organizationId))
   ) {
     return { status: "failed", error: "مشتری یا کالا پیدا نشد" };
   }
-  const res = createOrder(db, {
+  const res = await createOrder(db, {
     customer_id: Number(p.customer_id),
     order_date: String(p.order_date ?? deviceTime()),
     created_by: userId,
@@ -309,46 +310,46 @@ function apply_order_draftCreate(c: MutationContext): MutationResult {
   return { status: "applied", server_id: res.id };
 }
 
-function apply_order_draftEdit(c: MutationContext): MutationResult {
+async function apply_order_draftEdit(c: MutationContext): Promise<MutationResult> {
   const { db, organizationId, resolved, p } = c;
-  const orderId = resolveRef(db, organizationId, p.order_ref as string, resolved);
+  const orderId = await resolveRef(db, organizationId, p.order_ref as string, resolved);
   if (orderId === undefined) return { status: "failed", error: "سفارش وابسته هنوز اعمال نشده" };
-  addLine(db, orderId, p.line as never);
+  await addLine(db, orderId, p.line as never);
   return { status: "applied", server_id: orderId };
 }
 
-function apply_order_submit(c: MutationContext): MutationResult {
+async function apply_order_submit(c: MutationContext): Promise<MutationResult> {
   const { db, organizationId, userId, roles, primary, resolved, actorId, p } = c;
   const orderId =
-    resolveRef(db, organizationId, p.order_ref as string, resolved) ??
+    await resolveRef(db, organizationId, p.order_ref as string, resolved) ??
     (p.order_id as number | undefined);
   if (orderId === undefined) return { status: "failed", error: "سفارش وابسته هنوز اعمال نشده" };
-  const before = db
+  const before = await db
     .prepare("SELECT status FROM orders WHERE id = ? AND organization_id = ?")
     .get(orderId, organizationId) as { status: string } | undefined;
   if (!before) return { status: "failed", error: "سفارش پیدا نشد" };
   if (isTerminal(before.status)) return { status: "conflict", reason: "سفارش پیش‌تر بسته شده بود" };
-  submitOrder(organizationId, orderId, { id: userId, role: primary, roles, actorId });
+  await submitOrder(organizationId, orderId, { id: userId, role: primary, roles, actorId });
   return { status: "applied", server_id: orderId };
 }
 
-function apply_delivery_start(c: MutationContext): MutationResult {
+async function apply_delivery_start(c: MutationContext): Promise<MutationResult> {
   const { db, organizationId, userId, roles, primary, resolved, actorId, p } = c;
   const orderId =
-    resolveRef(db, organizationId, p.order_ref as string, resolved) ??
+    await resolveRef(db, organizationId, p.order_ref as string, resolved) ??
     (p.order_id as number | undefined);
   if (orderId === undefined) return { status: "failed", error: "سفارش پیدا نشد" };
-  advanceOrder(organizationId, orderId, "startRoute", { id: userId, role: primary, roles, actorId });
+  await advanceOrder(organizationId, orderId, "startRoute", { id: userId, role: primary, roles, actorId });
   return { status: "applied", server_id: orderId };
 }
 
-function apply_delivery_complete(c: MutationContext): MutationResult {
+async function apply_delivery_complete(c: MutationContext): Promise<MutationResult> {
   const { db, organizationId, userId, resolved, p, deviceTime } = c;
   const deliveryId =
-    resolveRef(db, organizationId, p.delivery_ref as string, resolved) ??
+    await resolveRef(db, organizationId, p.delivery_ref as string, resolved) ??
     (p.delivery_id as number | undefined);
   if (deliveryId === undefined) return { status: "failed", error: "تحویل پیدا نشد" };
-  const link = db
+  const link = await db
     .prepare(
       "SELECT d.order_id, o.status, o.customer_id FROM deliveries d JOIN orders o ON o.id = d.order_id WHERE d.id = ? AND d.organization_id = ?"
     )
@@ -357,14 +358,14 @@ function apply_delivery_complete(c: MutationContext): MutationResult {
     | undefined;
   if (!link) return { status: "failed", error: "تحویل پیدا نشد" };
   if (isTerminal(link.status)) {
-    reminder(
+    await reminder(
       db,
       link.customer_id,
       `تحویل آفلاین برای سفارش ${link.order_id} که سرور آن را بسته بود — بررسی کنید`
     );
     return { status: "conflict", reason: "سفارش روی سرور بسته یا لغو شده بود" };
   }
-  completeDelivery(organizationId, deliveryId, { id: userId }, {
+  await completeDelivery(organizationId, deliveryId, { id: userId }, {
     outcome: (p.outcome as "delivered" | "partial" | "failed") ?? "delivered",
     lines: (p.lines as never[]) ?? undefined,
     fail_reason_id: (p.fail_reason_id as number | null) ?? null,
@@ -378,16 +379,16 @@ function apply_delivery_complete(c: MutationContext): MutationResult {
   return { status: "applied", server_id: deliveryId };
 }
 
-function apply_payment_record(c: MutationContext): MutationResult {
+async function apply_payment_record(c: MutationContext): Promise<MutationResult> {
   const { db, organizationId, userId, mut, resolved, p, deviceTime } = c;
-  const orderRef = resolveRef(db, organizationId, p.order_ref as string, resolved);
+  const orderRef = await resolveRef(db, organizationId, p.order_ref as string, resolved);
   const allocations = (p.allocations as { order_id: number | null; amount_toman: number }[] | undefined)?.map(
     (a) => ({
       order_id: a.order_id === null ? null : (orderRef ?? a.order_id),
       amount_toman: a.amount_toman,
     })
   );
-  const id = recordPayment(organizationId, {
+  const id = await recordPayment(organizationId, {
     customer_id: Number(p.customer_id),
     amount_toman: Number(p.amount_toman),
     method: (p.method as never) ?? "CASH",
@@ -402,7 +403,7 @@ function apply_payment_record(c: MutationContext): MutationResult {
   return { status: "applied", server_id: id };
 }
 
-function apply_cheque_record(c: MutationContext): MutationResult {
+async function apply_cheque_record(c: MutationContext): Promise<MutationResult> {
   const { organizationId, userId, roles, p, deviceTime } = c;
   /* A cheque received with no signal is a fact. Same rules as POST /api/cheques: managers only,
      the same bounds on the number, the dates and the note; the sync ledger (client_uuid) makes a
@@ -422,7 +423,7 @@ function apply_cheque_record(c: MutationContext): MutationResult {
   ) {
     return { status: "failed", error: "اطلاعات چک معتبر نیست" };
   }
-  const out = recordChequePayment(organizationId, {
+  const out = await recordChequePayment(organizationId, {
     customer_id: Number(p.customer_id),
     amount_toman: Number(p.amount_toman),
     cheque_no: chequeNo,
@@ -435,7 +436,7 @@ function apply_cheque_record(c: MutationContext): MutationResult {
   return { status: "applied", server_id: out.cheque_id };
 }
 
-function apply_complaint_record(c: MutationContext): MutationResult {
+async function apply_complaint_record(c: MutationContext): Promise<MutationResult> {
   const { organizationId, userId, roles, p } = c;
   if (!roles.some((r) => r === "owner" || r === "group_manager" || r === "phone_sales")) {
     return { status: "failed", error: "اجازهٔ ثبت شکایت ندارید" };
@@ -447,7 +448,7 @@ function apply_complaint_record(c: MutationContext): MutationResult {
   if (description !== null && description.length > 2000) {
     return { status: "failed", error: "شرح شکایت حداکثر ۲۰۰۰ نویسه است" };
   }
-  const id = fileComplaint(organizationId, {
+  const id = await fileComplaint(organizationId, {
     customer_id: (p.customer_id as number | null) ?? null,
     order_id: (p.order_id as number | null) ?? null,
     product_id: (p.product_id as number | null) ?? null,
@@ -460,15 +461,15 @@ function apply_complaint_record(c: MutationContext): MutationResult {
   return { status: "applied", server_id: id };
 }
 
-function apply_customer_capture(c: MutationContext): MutationResult {
+async function apply_customer_capture(c: MutationContext): Promise<MutationResult> {
   const { db, organizationId, mut, p } = c;
   // A group named by the device must be this company's: an id alone reaches every tenant's groups.
-  if (p.group_id != null && !inOrg("groups", Number(p.group_id), organizationId)) {
+  if (p.group_id != null && !await inOrg("groups", Number(p.group_id), organizationId)) {
     return { status: "failed", error: "گروه پیدا نشد" };
   }
   const now = new Date().toISOString();
   const id = Number(
-    db
+    (await db
       .prepare(
         `INSERT INTO customers (customer_code, business_name, contact_person, phone, address,
                                 lat, lng, lifecycle, client_uuid, synced_at, group_id, organization_id)
@@ -486,12 +487,12 @@ function apply_customer_capture(c: MutationContext): MutationResult {
         now,
         (p.group_id as number | null) ?? null,
         organizationId
-      ).lastInsertRowid
+      )).lastInsertRowid
   );
   return { status: "applied", server_id: id };
 }
 
-const HANDLERS: Partial<Record<OfflineOp, (c: MutationContext) => MutationResult>> = {
+const HANDLERS: Partial<Record<OfflineOp, (c: MutationContext) => Promise<MutationResult>>> = {
   "order.draftCreate": apply_order_draftCreate,
   "order.draftEdit": apply_order_draftEdit,
   "order.submit": apply_order_submit,
@@ -503,8 +504,8 @@ const HANDLERS: Partial<Record<OfflineOp, (c: MutationContext) => MutationResult
   "customer.capture": apply_customer_capture,
 };
 
-function applyOne(
-  db: DatabaseSync,
+async function applyOne(
+  db: Db,
   organizationId: number,
   userId: number,
   roles: readonly OrderRole[],
@@ -512,7 +513,7 @@ function applyOne(
   mut: IncomingMutation,
   resolved: Resolved,
   actorId?: number
-): MutationResult {
+): Promise<MutationResult> {
   if (!isOfflineOp(mut.op)) return { status: "failed", error: "کنش ناشناخته" };
   const p = mut.payload;
   const deviceTime = () => toServerTime(mut.occurred_at, mut.clock_skew_ms);
@@ -520,5 +521,5 @@ function applyOne(
   const handler = HANDLERS[mut.op];
   // claims never reach the outbox; if one is smuggled in (approve, plan, freeze, credit decision), refuse it here too.
   if (!handler) return { status: "failed", error: "این کنش آفلاین اعمال نمی‌شود" };
-  return handler({ db, organizationId, userId, roles, primary, mut, resolved, actorId, p, deviceTime });
+  return await handler({ db, organizationId, userId, roles, primary, mut, resolved, actorId, p, deviceTime });
 }

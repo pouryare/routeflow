@@ -16,8 +16,8 @@ afterAll(() => {
 });
 
 describe("opening balance migration", () => {
-  it("drops the debt_* columns and adds opening_balance_toman defaulting to 0", () => {
-    const cols = getDb().prepare("PRAGMA table_info(customers)").all() as {
+  it("drops the debt_* columns and adds opening_balance_toman defaulting to 0", async () => {
+    const cols = await getDb().prepare("PRAGMA table_info(customers)").all() as {
       name: string;
       type: string;
       notnull: number;
@@ -32,28 +32,28 @@ describe("opening balance migration", () => {
     expect(String(ob?.dflt_value)).toBe("0");
   });
 
-  it("seeds every existing customer at 0", () => {
+  it("seeds every existing customer at 0", async () => {
     const db = getDb();
-    db.prepare(
+    await db.prepare(
       "INSERT INTO customers (customer_code,business_name,lifecycle,synced_at,organization_id) VALUES ('OB1','x','active','2026-01-01',1)"
     ).run();
-    const row = db
+    const row = await db
       .prepare("SELECT opening_balance_toman FROM customers WHERE customer_code='OB1'")
       .get() as { opening_balance_toman: number };
     expect(row.opening_balance_toman).toBe(0);
   });
 
-  it("keeps the per-tenant unique customer_code constraint", () => {
+  it("keeps the per-tenant unique customer_code constraint", async () => {
     const sql = (
-      db_sql()
+      await db_sql()
     );
     expect(sql).toContain("UNIQUE (organization_id, customer_code)");
   });
 });
 
-function db_sql(): string {
+async function db_sql(): Promise<string> {
   return (
-    getDb().prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='customers'").get() as {
+    await getDb().prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='customers'").get() as {
       sql: string;
     }
   ).sql;

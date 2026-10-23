@@ -11,14 +11,14 @@ import { bumpTokenVersion } from "@/lib/repo/userSessions";
  *  Refused under Login-As: an owner acting as someone must not sign that person out of
  *  their own phone. */
 export async function POST(req: NextRequest) {
-  const session = getSession(req);
+  const session = await getSession(req);
   const back = (path: string) => NextResponse.redirect(new URL(path, req.url), 303);
   if (!session) return back("/login");
   if (session.actorId !== undefined) return back("/settings/security?error=impersonating");
 
   const form = await req.formData().catch(() => null);
   const scope = form?.get("scope") === "all" ? "all" : "others";
-  const tv = bumpTokenVersion(session.user.id);
+  const tv = await bumpTokenVersion(session.user.id);
 
   if (scope === "all") {
     const res = back("/login");

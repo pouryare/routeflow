@@ -26,16 +26,16 @@ export default async function DeepAnalysisSection({ session }: { session: Sessio
   // ── تحلیل عمیق — the former /sales/analysis page, folded in below the KPI tiles.
   const aPeriod = currentPeriod();
   const aPrev = shiftPeriod(aPeriod, 1);
-  const kpiCards = kpiBoard(session.organizationId, aPeriod, aPrev, session);
+  const kpiCards = await kpiBoard(session.organizationId, aPeriod, aPrev, session);
   /* Six periods of every metric for the KPI bar's sparklines, oldest first (item 10). */
-  const kpiTrends = kpiHistory(
+  const kpiTrends = await kpiHistory(
     session.organizationId,
     [5, 4, 3, 2, 1, 0].map((n) => shiftPeriod(aPeriod, n)),
     session,
   );
-  const buckets = actionCenterFor(session);
-  const health = customersHealthOverview(session);
-  const kpiComputedAt = newestComputedAt(session.organizationId, aPeriod);
+  const buckets = await actionCenterFor(session);
+  const health = await customersHealthOverview(session);
+  const kpiComputedAt = await newestComputedAt(session.organizationId, aPeriod);
   const isManager = MANAGE_ROLES.includes(session.role);
   const bandCounts = health.reduce<Record<string, number>>((acc, h) => {
     acc[h.band] = (acc[h.band] ?? 0) + 1;

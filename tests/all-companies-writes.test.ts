@@ -19,12 +19,12 @@ afterAll(() => {
 
 let founderId = 0;
 
-beforeAll(() => {
+beforeAll(async () => {
   const db = getDb();
   founderId = Number(
-    db.prepare("INSERT INTO users (username, password_hash, display_name, role, active, token_version, created_at, organization_id) VALUES ('f', 'x:y', 'F', 'platform_owner', 1, 0, '2026-01-01', 1)").run().lastInsertRowid
+    (await db.prepare("INSERT INTO users (username, password_hash, display_name, role, active, token_version, created_at, organization_id) VALUES ('f', 'x:y', 'F', 'platform_owner', 1, 0, '2026-01-01', 1)").run()).lastInsertRowid
   );
-  db.prepare("INSERT OR IGNORE INTO user_roles (user_id, role) VALUES (?, 'platform_owner')").run(founderId);
+  await db.prepare("INSERT OR IGNORE INTO user_roles (user_id, role) VALUES (?, 'platform_owner')").run(founderId);
 });
 
 const req = (method: string, acting?: number) => {
@@ -44,11 +44,11 @@ describe("a platform_owner with «all companies» selected", () => {
     const res = await createGroup(req("POST"));
     expect(res.status).toBe(409);
     expect((await res.json()).error).toContain("سازمان");
-    expect(getDb().prepare("SELECT 1 FROM groups WHERE name = 'گروه آزمایشی'").get()).toBeUndefined();
+    expect(await getDb().prepare("SELECT 1 FROM groups WHERE name = 'گروه آزمایشی'").get()).toBeUndefined();
   });
   it("can write once a company is chosen, and the record lands in that company", async () => {
     const res = await createGroup(req("POST", 1));
     expect(res.status).toBe(200);
-    expect((getDb().prepare("SELECT organization_id o FROM groups WHERE name = 'گروه آزمایشی'").get() as { o: number }).o).toBe(1);
+    expect((await getDb().prepare("SELECT organization_id o FROM groups WHERE name = 'گروه آزمایشی'").get() as { o: number }).o).toBe(1);
   });
 });

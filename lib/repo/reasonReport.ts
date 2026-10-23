@@ -80,13 +80,13 @@ export function foldReasons(events: readonly ReasonEvent[]): ReasonArea[] {
 const LINE_COLUMNS = `order_id, packs_ordered, packs_delivered, unit_price_toman, unit_cost_toman, qty_per_pack, kg_per_base_unit`;
 
 /** Every reasoned event in the window this session may see. `days` counts back from `now`. */
-function reasonEvents(session: Session, days: number, now: Date = new Date()): ReasonEvent[] {
+async function reasonEvents(session: Session, days: number, now: Date = new Date()): Promise<ReasonEvent[]> {
   const db = getDb();
   const since = new Date(now.getTime() - days * 86_400_000).toISOString();
   const scope = orderFilter(session, "o");
   const statuses = Object.keys(STATUS_DOMAIN);
 
-  const fromHistory = db
+  const fromHistory = await db
     .prepare(
       `SELECT e.to_status, rc.domain, rc.label_fa, o.id AS order_id, o.total_toman
          FROM order_events e
@@ -103,7 +103,7 @@ function reasonEvents(session: Session, days: number, now: Date = new Date()): R
     total_toman: number | null;
   }>;
 
-  const delays = db
+  const delays = await db
     .prepare(
       `SELECT rc.label_fa, o.id AS order_id, o.total_toman
          FROM deliveries d
@@ -121,7 +121,7 @@ function reasonEvents(session: Session, days: number, now: Date = new Date()): R
   const missing = [...new Set([...fromHistory, ...delays].filter((r) => r.total_toman === null).map((r) => r.order_id))];
   const computed = new Map<number, number>();
   if (missing.length) {
-    const lines = db
+    const lines = await db
       .prepare(`SELECT ${LINE_COLUMNS} FROM order_lines WHERE order_id IN (${missing.map(() => "?").join(", ")}) ORDER BY id`)
       .all(...missing) as unknown as Array<LineSnapshot & { order_id: number }>;
     for (const id of missing) computed.set(id, orderFiguresOf(lines.filter((l) => l.order_id === id)).total_toman);
@@ -145,6 +145,6 @@ function reasonEvents(session: Session, days: number, now: Date = new Date()): R
   ];
 }
 
-export function reasonReport(session: Session, days: number, now?: Date): ReasonArea[] {
-  return foldReasons(reasonEvents(session, days, now));
+export async function reasonReport(session: Session, days: number, now?: Date): Promise<ReasonArea[]> {
+  return foldReasons(await reasonEvents(session, days, now));
 }

@@ -10,23 +10,23 @@ import { MANAGE_ROLES } from "@/lib/roles";
 // indefinitely-cached /api/districts/geometry, so this response stays around 50KB and
 // a status edit no longer re-sends every polygon in the province.
 export async function GET(req: NextRequest) {
-  const guard = requireRole(req, MANAGE_ROLES);
+  const guard = await requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
-  const scope = scopeGroupIds(guard.session);
+  const scope = await scopeGroupIds(guard.session);
 
-  const sig = districtsSignature();
+  const sig = await districtsSignature();
   // Scope is part of the tag -- see the note in /api/customers.
   const tag = etagFor(`districts:${scope === "all" ? "all" : scope.join(",")}`, sig.c, sig.m);
   const cached = notModified(req, tag);
   if (cached) return cached;
 
-  return etagJson(req, tag, { version: geometryVersion(), districts: districtPropertiesIn(scope) });
+  return etagJson(req, tag, { version: await geometryVersion(), districts: await districtPropertiesIn(scope) });
 }
 
 const VALID_STATUSES = ["visited", "needs_coverage", "not_allowed", "unknown"];
 
 export async function POST(req: NextRequest) {
-  const guard = requireRole(req, MANAGE_ROLES);
+  const guard = await requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
 
   const body = await req.json().catch(() => null);
@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
   try {
     // A custom district carries no organization_id (districts are shared geography); the group_id
     // is what scopes it for territory. See insertCustomDistrict for why parent_name is ''.
-    const id = insertCustomDistrict(name.trim(), geometry, status, notes ?? null, guard.session.groupId);
+    const id = await insertCustomDistrict(name.trim(), geometry, status, notes ?? null, guard.session.groupId);
     return NextResponse.json({ ok: true, id });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "خطا";

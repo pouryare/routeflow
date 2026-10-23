@@ -20,17 +20,17 @@ export interface RefreshResult {
 
 /** Refresh the current and prior Jalali month's KPI snapshots, plus the margin and
  *  health roll-ups for the current month. Idempotent — every write is an upsert. */
-export function refreshAll(organizationId: number, asOfIso: string = new Date().toISOString()): RefreshResult {
+export async function refreshAll(organizationId: number, asOfIso: string = new Date().toISOString()): Promise<RefreshResult> {
   const period = currentPeriod(asOfIso);
   const prev = shiftPeriod(period, 1);
 
   let written = 0;
-  written += refreshSnapshots(organizationId, period).written;
-  written += refreshSnapshots(organizationId, prev).written;
+  written += (await refreshSnapshots(organizationId, period)).written;
+  written += (await refreshSnapshots(organizationId, prev)).written;
   // margin's org/group/salesperson trio overlaps refreshSnapshots by design (same
   // upsert key) — running it too keeps the detail path and the board in lock-step.
-  written += materialiseMargin(organizationId, period);
-  written += materialiseHealth(organizationId, period);
+  written += await materialiseMargin(organizationId, period);
+  written += await materialiseHealth(organizationId, period);
 
   return { period, prev_period: prev, written };
 }

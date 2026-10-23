@@ -9,20 +9,20 @@ import { MANAGE_ROLES } from "@/lib/roles";
  *  balance behind the debt pill. Scoped -- a salesperson sees only a customer in
  *  their own territory; anyone else's customer reads as not found. */
 export async function GET(req: NextRequest, ctx: RouteContext<"/api/customers/[id]/statement">) {
-  const guard = requireRole(req, [...MANAGE_ROLES, "phone_sales"]);
+  const guard = await requireRole(req, [...MANAGE_ROLES, "phone_sales"]);
   if (!guard.ok) return guard.response;
 
   const { id } = await ctx.params;
   const customerId = Number(id);
 
-  const customer = getScopedCustomer(guard.session.organizationId, customerId);
-  if (!customer || !canReachGroup(guard.session, customer.group_id)) {
+  const customer = await getScopedCustomer(guard.session.organizationId, customerId);
+  if (!customer || !await canReachGroup(guard.session, customer.group_id)) {
     return NextResponse.json({ ok: false, error: "یافت نشد" }, { status: 404 });
   }
 
-  const orders = ordersIn(orderFilter(guard.session), { customerId });
-  const payments = listPayments(guard.session.organizationId, { customer_id: customerId });
-  const debt = customerDebt(guard.session.organizationId, customerId);
+  const orders = await ordersIn(orderFilter(guard.session), { customerId });
+  const payments = await listPayments(guard.session.organizationId, { customer_id: customerId });
+  const debt = await customerDebt(guard.session.organizationId, customerId);
 
   return NextResponse.json({
     ok: true,

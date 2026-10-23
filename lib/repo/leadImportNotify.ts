@@ -14,13 +14,14 @@ const TYPE_CODE = "lead_import.slow";
  *
  *  A missing catalogue row makes fanOutNotifications return 0 silently, so without this
  *  the 60-second notification would simply never appear and nothing would say why. */
-function ensureType(organizationId: number): void {
+async function ensureType(organizationId: number): Promise<void> {
   const now = new Date().toISOString();
-  getDb()
+  await getDb()
     .prepare(
-      `INSERT OR IGNORE INTO notification_types
+      `INSERT INTO notification_types
          (organization_id, code, name_fa, category, directedness, priority, group_scope, created_at, updated_at)
-       VALUES (?, ?, 'پردازش لینک‌ها طول کشیده است', 'system', 'ambient', 'LOW', 'type_day', ?, ?)`
+       VALUES (?, ?, 'پردازش لینک‌ها طول کشیده است', 'system', 'ambient', 'LOW', 'type_day', ?, ?)
+       ON CONFLICT DO NOTHING`
     )
     .run(organizationId, TYPE_CODE, now, now);
 }
@@ -30,21 +31,21 @@ function ensureType(organizationId: number): void {
  *  Fires at most once per job: `claimNotification` is a conditional UPDATE, so of the
  *  several tabs polling the same job exactly one wins and the rest get 0. Returns how
  *  many notifications were actually created, which is the testable part. */
-export function maybeNotifySlowJob(organizationId: number, jobId: number, total: number): number {
-  if (!claimNotification(organizationId, jobId)) return 0;
-  ensureType(organizationId);
+export async function maybeNotifySlowJob(organizationId: number, jobId: number, total: number): Promise<number> {
+  if (!await claimNotification(organizationId, jobId)) return 0;
+  await ensureType(organizationId);
 
   const now = new Date().toISOString();
   const eventId = Number(
-    getDb()
+    (await getDb()
       .prepare(
         `INSERT INTO events (organization_id, kind, entity_type, entity_id, occurred_at, metadata_json, created_at)
          VALUES (?, 'lead_import.slow', 'lead_import_job', ?, ?, ?, ?)`
       )
-      .run(organizationId, jobId, now, JSON.stringify({ job_id: jobId, total }), now).lastInsertRowid
+      .run(organizationId, jobId, now, JSON.stringify({ job_id: jobId, total }), now)).lastInsertRowid
   );
 
-  return fanOutNotifications(
+  return await fanOutNotifications(
     organizationId,
     { code: TYPE_CODE, action_json: JSON.stringify({ notification_type: TYPE_CODE }) },
     {

@@ -66,7 +66,7 @@ describe("wiring", () => {
     cleanup.push(dbPath);
     process.env.SESSION_SECRET = "test-secret-".padEnd(40, "x");
     const { organizationName } = await import("@/lib/repo/organizations");
-    expect(organizationName(1)).toBeTruthy();
-    expect(organizationName(987654)).toBeNull();
+    expect(await organizationName(1)).toBeTruthy();
+    expect(await organizationName(987654)).toBeNull();
   });
 });

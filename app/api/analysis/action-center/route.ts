@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 /** The ranked critical / warning / opportunity buckets for this session. */
 export async function GET(req: NextRequest) {
-  const guard = requireRole(req, [...MANAGE_ROLES, "rep_manager", "phone_sales"]);
+  const guard = await requireRole(req, [...MANAGE_ROLES, "rep_manager", "phone_sales"]);
   if (!guard.ok) return guard.response;
-  return NextResponse.json({ ok: true, buckets: actionCenterFor(guard.session) });
+  return NextResponse.json({ ok: true, buckets: await actionCenterFor(guard.session) });
 }

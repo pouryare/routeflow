@@ -11,13 +11,13 @@ import { MANAGE_ROLES, isOwner } from "@/lib/roles";
  *  Purchase history is owner-only: what we paid a supplier is not a selling figure.
  */
 export async function GET(req: NextRequest) {
-  const guard = requireRole(req, [...MANAGE_ROLES, "phone_sales"]);
+  const guard = await requireRole(req, [...MANAGE_ROLES, "phone_sales"]);
   if (!guard.ok) return guard.response;
 
   const org = guard.session.organizationId;
   // Phase 2: soonest expiry per product + a company-wide expiring count.
   // Phase 3: reserved (claimed by confirmed orders) and available-to-promise.
-  const { stock, expiringCount, purchases } = stockView(org, orgScopeId(guard.session), isOwner(guard.session.role));
+  const { stock, expiringCount, purchases } = await stockView(org, orgScopeId(guard.session), isOwner(guard.session.role));
   return NextResponse.json({
     ok: true,
     stock,

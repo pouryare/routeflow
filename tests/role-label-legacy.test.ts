@@ -8,7 +8,7 @@ const testDbPath = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "rf-legacylab
 process.env.ROUTEFLOW_DB_PATH = testDbPath;
 process.env.SESSION_SECRET = "test-secret";
 
-const { getDb } = await import("@/lib/db");
+const { getDb, dbReady } = await import("@/lib/db");
 import type { Role } from "@/lib/roles";
 const { ROLE_LABEL, RETIRED_ROLE_LABEL, ROLES, roleLabel } = await import("@/lib/roles");
 const { rolesFor } = await import("@/lib/repo/userRoles");
@@ -17,8 +17,8 @@ afterAll(() => {
   for (const s of ["", "-wal", "-shm"]) fs.rmSync(`${testDbPath}${s}`, { force: true });
 });
 
-beforeAll(() => {
-  getDb();
+beforeAll(async () => {
+  await dbReady();
 });
 
 /** The names `users.role`'s CHECK still admits but the `Role` union has retired.
@@ -27,19 +27,18 @@ beforeAll(() => {
 const LEGACY_ROLES = ["driver", "salesperson"] as const;
 
 describe("a role name the union retired", () => {
-  it("is still storable in users.role, which is why this is not hypothetical", () => {
+  it("is still storable in users.role, which is why this is not hypothetical", async () => {
     // If this ever starts throwing, the retirement is finished and the labels below
     // become dead code — which is a fine outcome, but it must be a DELIBERATE one.
-    expect(() =>
-      getDb()
+    await (async () =>
+      await getDb()
         .prepare(
           "INSERT INTO users (username, password_hash, display_name, role, created_at) VALUES (?, 'x', ?, ?, '2026-01-01')"
         )
-        .run("legacy-driver", "قدیمی", LEGACY_ROLES[0])
-    ).not.toThrow();
+        .run("legacy-driver", "قدیمی", LEGACY_ROLES[0]))();
   });
 
-  it("is reachable in a session, because the INSERT trigger copies it into the set", () => {
+  it("is reachable in a session, because the INSERT trigger copies it into the set", async () => {
     // Two independent routes, either is enough:
     //   (a) lib/session.ts — `held.length === 0 ? [user.role as Role] : held`, and the cast
     //       is the hazard: the TYPE says Role, the VALUE says 'driver'.
@@ -48,9 +47,9 @@ describe("a role name the union retired", () => {
     // (b) is the stronger one and the one that fires: a migration that widens the users
     // CHECK, or a restored backup, puts the retired name straight into the picker.
     const id = (
-      getDb().prepare("SELECT id FROM users WHERE username = 'legacy-driver'").get() as { id: number }
+      await getDb().prepare("SELECT id FROM users WHERE username = 'legacy-driver'").get() as { id: number }
     ).id;
-    expect(rolesFor(id)).toEqual(["driver"]);
+    expect(await rolesFor(id)).toEqual(["driver"]);
     const asRole = LEGACY_ROLES[0] as Role; // exactly what session.ts does
     expect(asRole).toBe("driver");
     expect((ROLE_LABEL as Record<string, string | undefined>)[asRole]).toBeUndefined();

@@ -3,6 +3,7 @@
  * events, reminder tasks, folded lead pins). Each is idempotent. Moved out of lib/db.ts unchanged;
  * lib/db.ts re-exports the public ones (`export * from "./database/backfills"`). */
 import type { DatabaseSync } from "node:sqlite";
+import type { Db } from "./client";
 import { indexStatementsOf } from "./rebuilds";
 import { FULFILLED_ORDER_STATUSES, sqlStatusList } from "../orderStateMachine";
 import { postJournal } from "../repo/ledgerCore";
@@ -170,7 +171,7 @@ export function seedAccounts(db: DatabaseSync): void {
  *  The receipt is ONLY cash/bank vs receivables. It does not recognise revenue even when
  *  the payment is allocated to orders: the cash arrived and the debt fell, which is a
  *  different event from the goods moving. Recognition posts on delivery (Task 7). */
-export function backfillLedger(db: DatabaseSync): void {
+export async function backfillLedger(db: DatabaseSync, adb: Db): Promise<void> {
   const acct = (code: string) =>
     db.prepare("SELECT id FROM accounts WHERE code = ?").get(code) as { id: number } | undefined;
   const cash = acct("1101");
@@ -211,7 +212,7 @@ export function backfillLedger(db: DatabaseSync): void {
   try {
     for (const p of mappable) {
       const cashAccount = p.method === "CASH" ? cash.id : bank.id;
-      postJournal(db, {
+      await postJournal(adb, {
         organizationId: p.organization_id ?? 1,
         postedAt: p.received_at,
         sourceType: "PAYMENT",

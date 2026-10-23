@@ -16,13 +16,13 @@ const METRICS: ForecastMetric[] = ["demand_base_units", "demand_toman"];
 /** No args → the whole materialised board. With `entity`/`id`/`metric` → a fresh
  *  forecast for that one series. Manager tool. */
 export async function GET(req: NextRequest) {
-  const guard = requireRole(req, MANAGE_ROLES);
+  const guard = await requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
 
   const sp = req.nextUrl.searchParams;
   const entity = sp.get("entity") as ForecastEntityType | null;
   if (!entity) {
-    return NextResponse.json({ ok: true, board: demandBoard(guard.session.organizationId) });
+    return NextResponse.json({ ok: true, board: await demandBoard(guard.session.organizationId) });
   }
   if (!ENTITY_TYPES.includes(entity)) {
     return NextResponse.json({ ok: false, error: "نوع پیش‌بینی نامعتبر است" }, { status: 400 });
@@ -39,6 +39,6 @@ export async function GET(req: NextRequest) {
     entity,
     id,
     metric,
-    points: forecastDemand(guard.session.organizationId, { type: entity, id }, metric, horizon),
+    points: await forecastDemand(guard.session.organizationId, { type: entity, id }, metric, horizon),
   });
 }

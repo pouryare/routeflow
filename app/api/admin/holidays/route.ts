@@ -14,13 +14,13 @@ import {
  *  RECORDING one is an owner act. The lunar dates are lunar, so somebody has to confirm the
  *  sighting each year, and that somebody should not be whoever is driving. */
 export async function GET(req: NextRequest) {
-  const guard = requireRole(req, OWNER_ROLES);
+  const guard = await requireRole(req, OWNER_ROLES);
   if (!guard.ok) return guard.response;
-  return NextResponse.json({ ok: true, holidays: listStoredHolidays() });
+  return NextResponse.json({ ok: true, holidays: await listStoredHolidays() });
 }
 
 export async function POST(req: NextRequest) {
-  const guard = requireRole(req, OWNER_ROLES);
+  const guard = await requireRole(req, OWNER_ROLES);
   if (!guard.ok) return guard.response;
 
   const body = (await req.json().catch(() => null)) as Record<string, unknown> | null;
@@ -45,6 +45,6 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  upsertHoliday({ iso, title_fa: title, kind, lunar: true });
+  await upsertHoliday({ iso, title_fa: title, kind, lunar: true });
   return NextResponse.json({ ok: true });
 }

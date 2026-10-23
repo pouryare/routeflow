@@ -13,15 +13,15 @@ import { OWNER_ROLES } from "@/lib/roles";
  *  treatment the spec gives a platform_owner reading tenant data, and the reason this
  *  feature is accountable rather than invisible. */
 export async function GET(req: NextRequest) {
-  const guard = requireRole(req, OWNER_ROLES);
+  const guard = await requireRole(req, OWNER_ROLES);
   if (!guard.ok) return guard.response;
 
-  const users = impersonatableIn(orgScopeId(guard.session));
+  const users = await impersonatableIn(orgScopeId(guard.session));
 
   // A platform_owner only; logPlatformAccess returns immediately for anyone else, so
   // this is not a per-row cost for an ordinary owner.
   for (const u of users) {
-    logAccess(guard.session, "/api/admin/impersonatable", u.organization_id);
+    await logAccess(guard.session, "/api/admin/impersonatable", u.organization_id);
   }
 
   const self = guard.session.user.id;

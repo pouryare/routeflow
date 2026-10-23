@@ -25,7 +25,7 @@ async function freshPage(reducedMotion: "reduce" | "no-preference" = "no-prefere
     viewport: { width: 1440, height: 900 },
     reducedMotion,
   });
-  const cookie = sessionCookie();
+  const cookie = await sessionCookie();
   await ctx.addCookies([{ ...cookie, domain: "localhost", path: "/" }]);
   page = await ctx.newPage();
   return page;

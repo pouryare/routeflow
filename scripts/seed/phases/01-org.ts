@@ -8,6 +8,7 @@
 
 import { hashPassword } from "@/lib/auth";
 import type { SeedContext } from "../context";
+import { mapSeq } from "@/lib/seq";
 
 const PASSWORD = "demo1234";
 
@@ -27,7 +28,7 @@ const STAFF: { username: string; name: string; role: string; group: number | nul
 
 const GROUP_NAMES = ["شمال", "جنوب", "رانندگان"];
 
-export function run(ctx: SeedContext): void {
+export async function run(ctx: SeedContext): Promise<void> {
   const { db } = ctx;
   const now = ctx.stamp(0);
 
@@ -43,35 +44,33 @@ export function run(ctx: SeedContext): void {
    *  organization_id = 1, and those two are deleted below. `accounts` (27) and `app_meta` (5)
    *  are not org-scoped. So renaming this row is safe and leaves nothing pointing at a
    *  tenant that no longer exists. */
-  const adopt = db.prepare(`SELECT id FROM organizations WHERE slug = ?`).get("tameeno") as
+  const adopt = await db.prepare(`SELECT id FROM organizations WHERE slug = ?`).get("tameeno") as
     | { id: number }
     | undefined;
 
   let orgId: number;
   if (adopt) {
-    db.prepare(`UPDATE organizations SET name = ?, slug = ? WHERE id = ?`).run(
+    await db.prepare(`UPDATE organizations SET name = ?, slug = ? WHERE id = ?`).run(
       "شرکت پخش طعمینو (دمو)", "tameeno-demo", adopt.id,
     );
     orgId = adopt.id;
   } else {
     orgId = Number(
-      db.prepare(
+      (await db.prepare(
         `INSERT INTO organizations (name, slug, plan, active, contact_name, created_at)
          VALUES ('شرکت پخش طعمینو (دمو)', 'tameeno-demo', 'standard', 1, 'مدیر دمو', ?)`,
-      ).run(now).lastInsertRowid,
+      ).run(now)).lastInsertRowid,
     );
   }
   ctx.orgId = orgId;
 
-  const groupIds = GROUP_NAMES.map(
-    (name, i) =>
+  const groupIds = await mapSeq(GROUP_NAMES, async (name, i) =>
       Number(
-        db.prepare(
+        (await db.prepare(
           `INSERT INTO groups (name, slug, active, created_at, organization_id)
            VALUES (?, ?, 1, ?, ?)`,
-        ).run(name, `demo-g${i + 1}`, now, orgId).lastInsertRowid,
-      ),
-  );
+        ).run(name, `demo-g${i + 1}`, now, orgId)).lastInsertRowid,
+      ));
   ctx.ids.groupIds = groupIds;
 
   /* One hash for all seven. scrypt is deliberately slow, so hashing once and reusing the
@@ -86,7 +85,7 @@ export function run(ctx: SeedContext): void {
   );
   for (const s of STAFF) {
     const id = Number(
-      insUser.run(
+      (await insUser.run(
         s.username,
         hash,
         s.name,
@@ -96,7 +95,7 @@ export function run(ctx: SeedContext): void {
         `DEMO-${s.role.slice(0, 3).toUpperCase()}`,
         `0912${String(1000000 + ctx.rng.int(0, 8999999)).slice(0, 7)}`,
         now,
-      ).lastInsertRowid,
+      )).lastInsertRowid,
     );
     ctx.staff[s.role] = id;
     ctx.logins.push({ username: s.username, role: s.role, password: PASSWORD });
@@ -112,12 +111,12 @@ export function run(ctx: SeedContext): void {
    * invented by the phases below. The "lat/lng are NOT NULL" note went with it. */
 
   const facilityId = Number(
-    db.prepare(
+    (await db.prepare(
       `INSERT INTO facilities (slug, kind, name, address, lat, lng, is_default_origin,
                                owner_username, created_at, updated_at, organization_id)
        VALUES ('demo-depot', 'warehouse', 'انبار مرکزی دمو', 'تهران، خیابان آزادی',
                35.7350, 51.4010, 1, 'demo.platform', ?, ?, ?)`,
-    ).run(now, now, orgId).lastInsertRowid,
+    ).run(now, now, orgId)).lastInsertRowid,
   );
   ctx.ids.facility = facilityId;
 

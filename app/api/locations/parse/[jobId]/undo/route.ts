@@ -13,7 +13,7 @@ export async function POST(
   req: NextRequest,
   ctx: RouteContext<"/api/locations/parse/[jobId]/undo">
 ) {
-  const guard = requireRole(req, PIN_POOL_ROLES);
+  const guard = await requireRole(req, PIN_POOL_ROLES);
   if (!guard.ok) return guard.response;
 
   const id = Number((await ctx.params).jobId);
@@ -22,9 +22,9 @@ export async function POST(
   }
 
   const org = guard.session.organizationId;
-  const job = importRepo.getJob(org, id);
+  const job = await importRepo.getJob(org, id);
   if (!job) return NextResponse.json({ ok: false, error: "پردازش پیدا نشد" }, { status: 404 });
 
-  const removed = importRepo.undoJob(org, id);
+  const removed = await importRepo.undoJob(org, id);
   return NextResponse.json({ ok: true, removed });
 }

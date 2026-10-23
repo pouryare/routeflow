@@ -32,14 +32,14 @@ const bare = (url: string) => new NextRequest(`http://localhost${url}`);
 let owner = 0;
 let seller = 0;
 
-beforeEach(() => {
+beforeEach(async () => {
   const db = getDb();
-  db.exec(
+  await db.exec(
     "PRAGMA foreign_keys=OFF; DELETE FROM forecasts; DELETE FROM forecast_models; DELETE FROM churn_scores; DELETE FROM order_lines; DELETE FROM orders; DELETE FROM packagings; DELETE FROM products; DELETE FROM customers; DELETE FROM users WHERE id>0; PRAGMA foreign_keys=ON;"
   );
   const now = new Date().toISOString();
-  owner = Number(db.prepare("INSERT INTO users (username,password_hash,display_name,role,created_at,organization_id) VALUES ('o'||abs(random()),'x','م','owner',?,1)").run(now).lastInsertRowid);
-  seller = Number(db.prepare("INSERT INTO users (username,password_hash,display_name,role,created_at,organization_id) VALUES ('s'||abs(random()),'x','ف','phone_sales',?,1)").run(now).lastInsertRowid);
+  owner = Number((await db.prepare("INSERT INTO users (username,password_hash,display_name,role,created_at,organization_id) VALUES ('o'||abs(random()),'x','م','owner',?,1)").run(now)).lastInsertRowid);
+  seller = Number((await db.prepare("INSERT INTO users (username,password_hash,display_name,role,created_at,organization_id) VALUES ('s'||abs(random()),'x','ف','phone_sales',?,1)").run(now)).lastInsertRowid);
 });
 
 describe("predict routes", () => {

@@ -16,7 +16,7 @@
 // the suggestion made this lane, and nobody has touched it since.
 
 import { getDb } from "@/lib/db";
-import type { DatabaseSync } from "node:sqlite";
+import type { Db } from "@/lib/database/client";
 
 export interface RunDraft {
   id: number;
@@ -60,12 +60,12 @@ export function isReadyToCommit(d: Pick<RunDraft, "driver_user_id" | "run_date">
 }
 
 /** Every lane on this user's board, with their orders, in order. */
-export function readRunDrafts(
-  db: DatabaseSync,
+export async function readRunDrafts(
+  db: Db,
   organizationId: number,
   userId: number
-): RunDraft[] {
-  const drafts = db
+): Promise<RunDraft[]> {
+  const drafts = await db
     .prepare(
       `SELECT * FROM run_drafts
         WHERE organization_id = ? AND user_id = ?
@@ -75,7 +75,7 @@ export function readRunDrafts(
 
   if (drafts.length === 0) return [];
   const ids = drafts.map((d) => d.id);
-  const stops = db
+  const stops = await db
     .prepare(
       `SELECT draft_id, order_id, seq FROM run_draft_stops
         WHERE draft_id IN (${ids.join(",")}) ORDER BY draft_id, seq, id`
@@ -92,20 +92,20 @@ export function readRunDrafts(
 }
 
 /** A lane with neither a driver nor a date: it exists only on this board. */
-export function createDraft(input: {
+export async function createDraft(input: {
   organizationId: number;
   userId: number;
   bySuggest?: boolean;
-}): number {
+}): Promise<number> {
   const db = getDb();
   const now = iso();
   return Number(
-    db
+    (await db
       .prepare(
         `INSERT INTO run_drafts (organization_id, user_id, created_by_suggest, created_at, updated_at)
          VALUES (?, ?, ?, ?, ?)`
       )
-      .run(input.organizationId, input.userId, input.bySuggest ? 1 : 0, now, now).lastInsertRowid
+      .run(input.organizationId, input.userId, input.bySuggest ? 1 : 0, now, now)).lastInsertRowid
   );
 }
 
@@ -114,88 +114,83 @@ export function createDraft(input: {
  *  Also pulls the order out of any OTHER lane it was sitting in, because an order can only
  *  be in one place on this board -- and leaving it in two would make both lanes claim it,
  *  and whichever one committed first would silently lose the other. */
-export function addOrderToDraft(input: {
+export async function addOrderToDraft(input: {
   organizationId: number;
   userId: number;
   draftId: number;
   orderId: number;
   seq?: number;
-}): void {
+}): Promise<void> {
   const db = getDb();
-  assertOwned(input.draftId, input.organizationId, input.userId);
+  await assertOwned(input.draftId, input.organizationId, input.userId);
 
-  db.exec("BEGIN IMMEDIATE");
-  try {
-    db.prepare("DELETE FROM run_draft_stops WHERE order_id = ? AND draft_id != ?").run(
+  await db.tx(async () => {
+    await db.prepare("DELETE FROM run_draft_stops WHERE order_id = ? AND draft_id != ?").run(
       input.orderId,
       input.draftId
     );
     const next =
       input.seq ??
       Number(
-        (db
+        (await db
           .prepare("SELECT COALESCE(MAX(seq), -1) + 1 AS n FROM run_draft_stops WHERE draft_id = ?")
           .get(input.draftId) as { n: number }).n
       );
-    db.prepare(
-      `INSERT OR IGNORE INTO run_draft_stops (draft_id, order_id, seq, created_at) VALUES (?, ?, ?, ?)`
+    await db.prepare(
+      `INSERT INTO run_draft_stops (draft_id, order_id, seq, created_at) VALUES (?, ?, ?, ?) ON CONFLICT DO NOTHING`
     ).run(input.draftId, input.orderId, next, iso());
-    touch(input.draftId);
-    db.exec("COMMIT");
-  } catch (e) {
-    db.exec("ROLLBACK");
-    throw e;
-  }
+    await touch(input.draftId);
+  });
 }
 
-export function removeOrderFromDraft(input: {
+export async function removeOrderFromDraft(input: {
   organizationId: number;
   userId: number;
   draftId: number;
   orderId: number;
-}): void {
-  assertOwned(input.draftId, input.organizationId, input.userId);
-  getDb()
+}): Promise<void> {
+  await assertOwned(input.draftId, input.organizationId, input.userId);
+  await getDb()
     .prepare("DELETE FROM run_draft_stops WHERE draft_id = ? AND order_id = ?")
     .run(input.draftId, input.orderId);
-  touch(input.draftId);
+  await touch(input.draftId);
 }
 
 /** The permanent flag. There is deliberately no un-marking it anywhere in this file. */
-export function markEdited(draftId: number): void {
-  touch(draftId);
+export async function markEdited(draftId: number): Promise<void> {
+  await touch(draftId);
 }
 
-function touch(draftId: number): void {
-  getDb()
+async function touch(draftId: number): Promise<void> {
+  await getDb()
     .prepare(
       "UPDATE run_drafts SET manual_edits = 1, updated_at = ? WHERE id = ? AND manual_edits = 0"
     )
     .run(iso(), draftId);
 }
 
-export function deleteDraft(input: {
+export async function deleteDraft(input: {
   organizationId: number;
   userId: number;
   draftId: number;
-}): void {
+}): Promise<void> {
   // Scoped by user as well as organisation: a draft is private, so deleting one is private.
   // run_draft_stops cascades.
-  getDb()
+  await getDb()
     .prepare("DELETE FROM run_drafts WHERE id = ? AND organization_id = ? AND user_id = ?")
     .run(input.draftId, input.organizationId, input.userId);
 }
 
 /** Set the driver and/or the date. Supplying both makes the lane real. */
-export function setDraftTarget(input: {
+export async function setDraftTarget(input: {
   organizationId: number;
   userId: number;
   draftId: number;
   driverUserId?: number | null;
   runDate?: string | null;
-}): void {
+}): Promise<void> {
   const db = getDb();
-  assertOwned(input.draftId, input.organizationId, input.userId);
+  await assertOwned(input.draftId, input.organizationId, input.userId);
 
   const sets: string[] = ["updated_at = ?"];
   const values: (string | number | null)[] = [iso()];
@@ -207,17 +202,17 @@ export function setDraftTarget(input: {
     sets.push("run_date = ?");
     values.push(input.runDate);
   }
-  db.prepare(`UPDATE run_drafts SET ${sets.join(", ")} WHERE id = ?`).run(...values, input.draftId);
+  await db.prepare(`UPDATE run_drafts SET ${sets.join(", ")} WHERE id = ?`).run(...values, input.draftId);
   // Choosing a driver or a date is a hand on the lane, so it retires it from the suggestion's
   // reach exactly like a drag does. Otherwise pressing «پیشنهاد بده» again would refill a lane
   // the manager had already decided something about.
-  touch(input.draftId);
+  await touch(input.draftId);
 }
 
 /** Assert the lane is this user's. A draft is PRIVATE, so ownership is the first question,
  *  not a filter applied afterwards. */
-function assertOwned(draftId: number, organizationId: number, userId: number): void {
-  const owned = getDb()
+async function assertOwned(draftId: number, organizationId: number, userId: number): Promise<void> {
+  const owned = await getDb()
     .prepare("SELECT id FROM run_drafts WHERE id = ? AND organization_id = ? AND user_id = ?")
     .get(draftId, organizationId, userId);
   if (!owned) throw new Error("پیش‌نویس پیدا نشد");
@@ -243,17 +238,16 @@ export interface CommitInput {
   orderIds: number[];
 }
 
-export function commitDraft(db: DatabaseSync, input: CommitInput): number {
+export async function commitDraft(db: Db, input: CommitInput): Promise<number> {
   const now = new Date().toISOString();
-  db.exec("BEGIN IMMEDIATE");
-  try {
+  return await db.tx(async () => {
     const runId = Number(
-      db
+      (await db
         .prepare(
           `INSERT INTO delivery_runs (driver_user_id, group_id, run_date, created_by, created_at, updated_at, organization_id)
            VALUES (?, NULL, ?, ?, ?, ?, ?)`
         )
-        .run(input.driverUserId, input.runDate, input.userId, now, now, input.organizationId)
+        .run(input.driverUserId, input.runDate, input.userId, now, now, input.organizationId))
         .lastInsertRowid
     );
 
@@ -261,22 +255,17 @@ export function commitDraft(db: DatabaseSync, input: CommitInput): number {
       `INSERT INTO delivery_stops (run_id, order_id, sort_order, status, collected_toman, created_at)
        VALUES (?, ?, ?, 'pending', 0, ?)`
     );
-    input.orderIds.forEach((orderId, i) => {
+    for (const [i, orderId] of input.orderIds.entries()) {
       // UNIQUE (run_id, order_id) will not catch a double-booking on ANOTHER run, so the
       // change count is the check: an order already on a van must not silently join a second
       // one, and the message names it.
-      const r = addStop.run(runId, orderId, i, now);
+      const r = await addStop.run(runId, orderId, i, now);
       if (Number(r.changes) === 0) throw new Error("سفارش در مسیر دیگری ثبت شده است");
-    });
+    }
 
-    db.prepare(
+    await db.prepare(
       "DELETE FROM run_drafts WHERE id = ? AND organization_id = ? AND user_id = ?"
     ).run(input.draftId, input.organizationId, input.userId);
-
-    db.exec("COMMIT");
     return runId;
-  } catch (e) {
-    db.exec("ROLLBACK");
-    throw e;
-  }
+  });
 }

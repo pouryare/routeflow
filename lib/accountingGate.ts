@@ -26,7 +26,7 @@ const MANAGER_READABLE = new Set(["/accounting/journal", "/accounting/expenses"]
 
 export async function requireAccounting(route: string): Promise<number> {
   const jar = await cookies();
-  const session = getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
+  const session = await getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
   if (!session) redirect("/login");
   // A van role has no organisation-wide books to read; send them to their own day, same
   // as every other page that aggregates rather than lists.

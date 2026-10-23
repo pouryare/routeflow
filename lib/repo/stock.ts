@@ -1,4 +1,4 @@
-import type { DatabaseSync } from "node:sqlite";
+import type { Db } from "@/lib/database/client";
 import { makeRepo } from "./base";
 
 /** A refusal the caller shows the user, not a bug. */
@@ -46,21 +46,21 @@ export interface MovementInput {
 
 export const stockMovementsRepo = makeRepo<MovementRow>("stock_movements", { tenant: true });
 
-function assertScoped(db: DatabaseSync, organizationId: number, input: MovementInput): void {
-  const fac = db
+async function assertScoped(db: Db, organizationId: number, input: MovementInput): Promise<void> {
+  const fac = await db
     .prepare("SELECT organization_id FROM facilities WHERE id = ?")
     .get(input.facility_id) as { organization_id: number | null } | undefined;
   if (!fac || (fac.organization_id !== null && fac.organization_id !== organizationId)) {
     throw new StockError("انبار پیدا نشد");
   }
-  const prod = db
+  const prod = await db
     .prepare("SELECT organization_id FROM products WHERE id = ?")
     .get(input.product_id) as { organization_id: number | null } | undefined;
   if (!prod || (prod.organization_id !== null && prod.organization_id !== organizationId)) {
     throw new StockError("کالا پیدا نشد");
   }
   if (input.batch_id !== null) {
-    const batch = db
+    const batch = await db
       .prepare("SELECT organization_id FROM batches WHERE id = ?")
       .get(input.batch_id) as { organization_id: number | null } | undefined;
     if (!batch || (batch.organization_id !== null && batch.organization_id !== organizationId)) {
@@ -73,11 +73,11 @@ function assertScoped(db: DatabaseSync, organizationId: number, input: MovementI
 }
 
 /** Append one or more ledger rows inside a transaction the caller already owns. */
-export function recordMovementsTxn(
-  db: DatabaseSync,
+export async function recordMovementsTxn(
+  db: Db,
   organizationId: number,
   inputs: MovementInput[]
-): number[] {
+): Promise<number[]> {
   const now = new Date().toISOString();
   const stmt = db.prepare(
     `INSERT INTO stock_movements
@@ -87,10 +87,10 @@ export function recordMovementsTxn(
   );
   const ids: number[] = [];
   for (const input of inputs) {
-    assertScoped(db, organizationId, input);
+    await assertScoped(db, organizationId, input);
     ids.push(
       Number(
-        stmt.run(
+        (await stmt.run(
           organizationId,
           input.facility_id,
           input.product_id,
@@ -103,32 +103,27 @@ export function recordMovementsTxn(
           input.created_by ?? null,
           input.notes ?? null,
           now
-        ).lastInsertRowid
+        )).lastInsertRowid
       )
     );
   }
   return ids;
 }
 
-export function recordMovement(organizationId: number, input: MovementInput): number {
+export async function recordMovement(organizationId: number, input: MovementInput): Promise<number> {
   const db = stockMovementsRepo.db();
-  db.exec("BEGIN IMMEDIATE");
-  try {
-    const [id] = recordMovementsTxn(db, organizationId, [input]);
-    db.exec("COMMIT");
+  return await db.tx(async () => {
+    const [id] = await recordMovementsTxn(db, organizationId, [input]);
     return id;
-  } catch (e) {
-    db.exec("ROLLBACK");
-    throw e;
-  }
+  });
 }
 
 /** Net units on hand for any combination of product / batch / facility. May be
  *  negative -- the books lag reality while paper drains; the UI flags it. */
-export function onHand(
+export async function onHand(
   organizationId: number,
   filter: { product_id?: number; batch_id?: number | null; facility_id?: number }
-): number {
+): Promise<number> {
   const clauses: string[] = ["organization_id = ?"];
   const params: unknown[] = [organizationId];
   if (filter.product_id !== undefined) {
@@ -146,7 +141,7 @@ export function onHand(
     clauses.push("facility_id = ?");
     params.push(filter.facility_id);
   }
-  const row = stockMovementsRepo
+  const row = await stockMovementsRepo
     .db()
     .prepare(`SELECT COALESCE(SUM(base_qty), 0) AS n FROM stock_movements WHERE ${clauses.join(" AND ")}`)
     .get(...(params as never[])) as { n: number };
@@ -165,13 +160,13 @@ export interface BatchStockRow {
 
 /** One row per batch of a product, FEFO-ordered (earliest expiry first, undated last),
  *  each carrying its computed on-hand and available-to-promise. */
-export function batchStock(
+export async function batchStock(
   organizationId: number,
   productId: number,
   facilityId?: number
-): BatchStockRow[] {
+): Promise<BatchStockRow[]> {
   const facClause = facilityId !== undefined ? "AND m.facility_id = ?" : "";
-  const rows = stockMovementsRepo
+  const rows = await stockMovementsRepo
     .db()
     .prepare(
       `SELECT b.id AS batch_id, b.batch_code, b.expiry_date, b.status,
@@ -189,18 +184,18 @@ export function batchStock(
         productId,
       ] as never[])
     ) as unknown as Omit<BatchStockRow, "available">[];
-  const reserved = openReservationByBatch(organizationId, productId);
+  const reserved = await openReservationByBatch(organizationId, productId);
   return rows.map((r) => ({ ...r, available: r.on_hand - (reserved.get(r.batch_id) ?? 0) }));
 }
 
 /** Open (un-released) reservation quantity per batch for a product, as a Map keyed by
  *  batch_id. The shortfall bucket (batch_id NULL) is dropped -- it never held real
  *  stock, so it cannot reduce another batch's availability. */
-function openReservationByBatch(
+async function openReservationByBatch(
   organizationId: number,
   productId: number
-): Map<number, number> {
-  const rows = stockMovementsRepo
+): Promise<Map<number, number>> {
+  const rows = await stockMovementsRepo
     .db()
     .prepare(
       `SELECT batch_id, COALESCE(SUM(base_qty), 0) AS n FROM stock_reservations
@@ -217,20 +212,20 @@ function openReservationByBatch(
  *
  *  `excludeReserved` subtracts stock already claimed by an un-released reservation, so
  *  two orders confirmed back-to-back do not both grab the same units. */
-export function allocateFEFO(
+export async function allocateFEFO(
   organizationId: number,
   productId: number,
   baseQty: number,
   facilityId: number,
   opts: { excludeReserved?: boolean } = {}
-): Array<{ batch_id: number | null; base_qty: number }> {
+): Promise<Array<{ batch_id: number | null; base_qty: number }>> {
   if (!(baseQty > 0)) return [];
   const reserved = opts.excludeReserved
-    ? openReservationByBatch(organizationId, productId)
+    ? await openReservationByBatch(organizationId, productId)
     : new Map<number, number>();
   const out: Array<{ batch_id: number | null; base_qty: number }> = [];
   let left = baseQty;
-  for (const b of batchStock(organizationId, productId, facilityId)) {
+  for (const b of await batchStock(organizationId, productId, facilityId)) {
     if (left <= 0) break;
     if (b.status !== "active") continue;
     const free = b.on_hand - (reserved.get(b.batch_id) ?? 0);
@@ -244,10 +239,10 @@ export function allocateFEFO(
 }
 
 /** Sum of un-released reservations for a product (optionally one batch). */
-export function reservedQty(
+export async function reservedQty(
   organizationId: number,
   filter: { product_id: number; batch_id?: number | null }
-): number {
+): Promise<number> {
   const clauses = ["organization_id = ?", "released_at IS NULL", "product_id = ?"];
   const params: unknown[] = [organizationId, filter.product_id];
   if (filter.batch_id !== undefined) {
@@ -257,7 +252,7 @@ export function reservedQty(
       params.push(filter.batch_id);
     }
   }
-  const row = stockMovementsRepo
+  const row = await stockMovementsRepo
     .db()
     .prepare(`SELECT COALESCE(SUM(base_qty), 0) AS n FROM stock_reservations WHERE ${clauses.join(" AND ")}`)
     .get(...(params as never[])) as { n: number };
@@ -265,13 +260,13 @@ export function reservedQty(
 }
 
 /** On-hand minus what confirmed orders have already claimed. */
-export function availableToPromise(
+export async function availableToPromise(
   organizationId: number,
   filter: { product_id: number; batch_id?: number | null; facility_id?: number }
-): number {
+): Promise<number> {
   return (
-    onHand(organizationId, filter) -
-    reservedQty(organizationId, { product_id: filter.product_id, batch_id: filter.batch_id })
+    await onHand(organizationId, filter) -
+    await reservedQty(organizationId, { product_id: filter.product_id, batch_id: filter.batch_id })
   );
 }
 
@@ -279,21 +274,21 @@ export function availableToPromise(
  *  (including the batch_id NULL shortfall slice). Idempotent -- if the order already has
  *  open reservations it is left alone. Runs inside the caller's transaction when `db` is
  *  passed, else opens its own. */
-export function reserveForOrder(
+export async function reserveForOrder(
   organizationId: number,
   orderId: number,
-  db?: DatabaseSync
-): number {
+  db?: Db
+): Promise<number> {
   const conn = db ?? stockMovementsRepo.db();
-  const run = (): number => {
-    const already = conn
+  const run = async (): Promise<number> => {
+    const already = await conn
       .prepare(
         "SELECT 1 FROM stock_reservations WHERE order_id = ? AND organization_id = ? AND released_at IS NULL LIMIT 1"
       )
       .get(orderId, organizationId);
     if (already) return 0;
 
-    const lines = conn
+    const lines = await conn
       .prepare(
         `SELECT ol.id, ol.product_id,
                 (ol.packs_ordered * ol.qty_per_pack) AS base_qty
@@ -303,7 +298,7 @@ export function reserveForOrder(
       .all(orderId) as unknown as { id: number; product_id: number; base_qty: number }[];
     if (lines.length === 0) return 0;
 
-    const facilityId = defaultFacilityId(organizationId);
+    const facilityId = await defaultFacilityId(organizationId);
     const now = new Date().toISOString();
     const ins = conn.prepare(
       `INSERT INTO stock_reservations
@@ -312,37 +307,32 @@ export function reserveForOrder(
     );
     let n = 0;
     for (const line of lines) {
-      const slices = allocateFEFO(organizationId, line.product_id, line.base_qty, facilityId, {
+      const slices = await allocateFEFO(organizationId, line.product_id, line.base_qty, facilityId, {
         excludeReserved: true,
       });
       for (const s of slices) {
-        ins.run(organizationId, orderId, line.id, line.product_id, s.batch_id, s.base_qty, now);
+        await ins.run(organizationId, orderId, line.id, line.product_id, s.batch_id, s.base_qty, now);
         n += 1;
       }
     }
     return n;
   };
 
-  if (db) return run();
-  conn.exec("BEGIN IMMEDIATE");
-  try {
-    const n = run();
-    conn.exec("COMMIT");
+  if (db) return await run();
+  return await conn.tx(async () => {
+    const n = await run();
     return n;
-  } catch (e) {
-    conn.exec("ROLLBACK");
-    throw e;
-  }
+  });
 }
 
 /** Drop an order's claim on stock (cancel, or a failed delivery going back to PLANNED). */
-export function releaseForOrder(
+export async function releaseForOrder(
   organizationId: number,
   orderId: number,
-  db?: DatabaseSync
-): void {
+  db?: Db
+): Promise<void> {
   const conn = db ?? stockMovementsRepo.db();
-  conn
+  await conn
     .prepare(
       "UPDATE stock_reservations SET released_at = ? WHERE order_id = ? AND organization_id = ? AND released_at IS NULL"
     )
@@ -351,20 +341,20 @@ export function releaseForOrder(
 
 /** The goods have actually left: the DELIVERY_OUT movement is now the record, so the
  *  reservation is simply released. Named for the intent it serves in the effect list. */
-export function consumeForOrder(
+export async function consumeForOrder(
   organizationId: number,
   orderId: number,
-  db?: DatabaseSync
-): void {
-  releaseForOrder(organizationId, orderId, db);
+  db?: Db
+): Promise<void> {
+  await releaseForOrder(organizationId, orderId, db);
 }
 
 /** The facility stock lands at and leaves from: a warehouse if there is one, else the
  *  home base, else the lowest-id facility. A tenant that somehow has none gets a
  *  synthetic warehouse created for it -- stock has to live somewhere, and the source
  *  brief wants the warehouse independent even when there is only one. */
-export function defaultFacilityId(organizationId: number): number {
-  const chosen = findDefaultFacilityId(organizationId);
+export async function defaultFacilityId(organizationId: number): Promise<number> {
+  const chosen = await findDefaultFacilityId(organizationId);
   if (chosen !== null) return chosen;
 
   /* GONE: this used to INSERT a warehouse named «انبار» at lat 0, lng 0 and return its id.
@@ -392,9 +382,9 @@ export class NoWarehouseError extends Error {
 
 /** The same choice as defaultFacilityId, or null while the tenant has no facility yet, for
  *  a screen that should explain rather than fail. */
-export function findDefaultFacilityId(organizationId: number): number | null {
+export async function findDefaultFacilityId(organizationId: number): Promise<number | null> {
   const db = stockMovementsRepo.db();
-  const rows = db
+  const rows = await db
     .prepare(
       "SELECT id, kind FROM facilities WHERE organization_id = ? OR organization_id IS NULL ORDER BY id"
     )
@@ -407,10 +397,10 @@ export function findDefaultFacilityId(organizationId: number): number | null {
 }
 
 /** The recent ledger, newest first, optionally filtered. */
-export function listMovements(
+export async function listMovements(
   organizationId: number,
   filter?: { product_id?: number; facility_id?: number; limit?: number }
-): MovementRow[] {
+): Promise<MovementRow[]> {
   const clauses = ["organization_id = ?"];
   const params: unknown[] = [organizationId];
   if (filter?.product_id !== undefined) {
@@ -422,7 +412,7 @@ export function listMovements(
     params.push(filter.facility_id);
   }
   params.push(filter?.limit ?? 200);
-  return stockMovementsRepo
+  return await stockMovementsRepo
     .db()
     .prepare(
       `SELECT * FROM stock_movements WHERE ${clauses.join(" AND ")} ORDER BY occurred_at DESC, id DESC LIMIT ?`
@@ -463,8 +453,8 @@ export interface StockLevel {
 /** Movement-derived on-hand per product, the quantity confirmed orders have claimed,
  *  available-to-promise (on_hand - reserved), and the soonest expiry among its batches
  *  that still hold stock. The replacement core for lib/purchases.stockPosition. */
-export function stockLevels(organizationId: number): StockLevel[] {
-  const rows = stockMovementsRepo
+export async function stockLevels(organizationId: number): Promise<StockLevel[]> {
+  const rows = await stockMovementsRepo
     .db()
     .prepare(
       `SELECT p.id AS product_id,
@@ -489,8 +479,8 @@ export function stockLevels(organizationId: number): StockLevel[] {
 /** Units on hand per product at ONE facility. A shelf count is a count of one place, so what to
  *  compare it with is that place's own balance, not the company-wide figure (which also holds
  *  what is sitting in vans). Products with no movement there are absent: read them as 0. */
-export function onHandByProduct(organizationId: number, facilityId: number): Map<number, number> {
-  const rows = stockMovementsRepo
+export async function onHandByProduct(organizationId: number, facilityId: number): Promise<Map<number, number>> {
+  const rows = await stockMovementsRepo
     .db()
     .prepare(
       `SELECT product_id, COALESCE(SUM(base_qty), 0) AS n

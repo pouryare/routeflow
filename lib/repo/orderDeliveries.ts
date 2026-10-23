@@ -1,4 +1,4 @@
-import type { DatabaseSync } from "node:sqlite";
+import type { Db } from "@/lib/database/client";
 import type { DeliveryStatus } from "./deliveries";
 
 /** One attempt at delivering one order — the row the order's own page shows.
@@ -34,12 +34,12 @@ export interface OrderDeliveryAttempt {
   has_photo: number;
 }
 
-export function readOrderDeliveryHistory(
-  conn: DatabaseSync,
+export async function readOrderDeliveryHistory(
+  conn: Db,
   organizationId: number,
   orderId: number,
-): OrderDeliveryAttempt[] {
-  return conn
+): Promise<OrderDeliveryAttempt[]> {
+  return await conn
     .prepare(
       `SELECT d.id, d.seq, d.status, d.planned_arrival, d.actual_arrival, d.completed_at,
               fr.label_fa AS fail_reason, dr.label_fa AS delay_reason,

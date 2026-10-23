@@ -11,13 +11,13 @@ import { isVanRole, PIN_POOL_ROLES } from "@/lib/roles";
 
 /** GET: the location + a flow context for a driver standing in front of it. */
 export async function GET(req: NextRequest, ctx: RouteContext<"/api/leads/locations/[id]/visit">) {
-  const guard = requireRole(req, [...PIN_POOL_ROLES, "field_rep", "delivery_driver"]);
+  const guard = await requireRole(req, [...PIN_POOL_ROLES, "field_rep", "delivery_driver"]);
   if (!guard.ok) return guard.response;
   const id = Number((await ctx.params).id);
   if (!Number.isInteger(id)) return NextResponse.json({ ok: false, error: "شناسه نامعتبر است" }, { status: 400 });
 
-  const loc = readLeadLocation(id, orgScopeId(guard.session));
-  if (!loc || !canReachGroup(guard.session, loc.group_id)) {
+  const loc = await readLeadLocation(id, orgScopeId(guard.session));
+  if (!loc || !await canReachGroup(guard.session, loc.group_id)) {
     return NextResponse.json({ ok: false, error: "مکان پیدا نشد" }, { status: 404 });
   }
 
@@ -38,13 +38,13 @@ export async function GET(req: NextRequest, ctx: RouteContext<"/api/leads/locati
 
 /** POST: save the driver's visit answers. */
 export async function POST(req: NextRequest, ctx: RouteContext<"/api/leads/locations/[id]/visit">) {
-  const guard = requireRole(req, [...PIN_POOL_ROLES, "field_rep", "delivery_driver"]);
+  const guard = await requireRole(req, [...PIN_POOL_ROLES, "field_rep", "delivery_driver"]);
   if (!guard.ok) return guard.response;
   const id = Number((await ctx.params).id);
   if (!Number.isInteger(id)) return NextResponse.json({ ok: false, error: "شناسه نامعتبر است" }, { status: 400 });
 
-  const loc = readLeadLocation(id, orgScopeId(guard.session));
-  if (!loc || !canReachGroup(guard.session, loc.group_id)) {
+  const loc = await readLeadLocation(id, orgScopeId(guard.session));
+  if (!loc || !await canReachGroup(guard.session, loc.group_id)) {
     return NextResponse.json({ ok: false, error: "مکان پیدا نشد" }, { status: 404 });
   }
 
@@ -53,12 +53,12 @@ export async function POST(req: NextRequest, ctx: RouteContext<"/api/leads/locat
 
   // A driver may only record against a stop on their own run. A manager is not bound by one.
   // The query is in lib/repo/leadRuns.ts: raw SQL does not live in a route.
-  if (isVanRole(guard.session.role) && !isOnDriversRun(guard.session.user.id, guard.session.organizationId, id)) {
+  if (isVanRole(guard.session.role) && !await isOnDriversRun(guard.session.user.id, guard.session.organizationId, id)) {
     return NextResponse.json({ ok: false, error: "این توقف در مسیر شما نیست" }, { status: 403 });
   }
 
   try {
-    const r = applyLeadVisit(guard.session, {
+    const r = await applyLeadVisit(guard.session, {
       locationId: id,
       answers: b.answers as never[],
       clientUuid: b.client_uuid ?? null,

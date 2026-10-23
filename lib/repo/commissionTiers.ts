@@ -1,6 +1,6 @@
 import { getDb } from "@/lib/db";
 import { userInOrg } from "./organizations";
-import type { DatabaseSync } from "node:sqlite";
+import type { Db } from "@/lib/database/client";
 
 import {
   validatePlan,
@@ -70,12 +70,12 @@ function toPlan(rows: TierRow[]): StoredPlan | null {
 const SELECT_COLS = `id, salesperson_user_id, organization_id, mode, metric, from_value,
        to_value, rate_type, rate_value, valid_from`;
 
-function rowsFor(
-  db: DatabaseSync,
+async function rowsFor(
+  db: Db,
   organizationId: number,
   salespersonId: number | null,
-): TierRow[] {
-  return db
+): Promise<TierRow[]> {
+  return await db
     .prepare(
       `SELECT ${SELECT_COLS} FROM commission_tiers
         WHERE organization_id = ? AND salesperson_user_id IS ?
@@ -93,25 +93,25 @@ const atStart = (rows: TierRow[], start: TierRow): TierRow[] =>
  *  A personal plan beats the company default, but only where one is actually in force — so
  *  someone whose own plan starts in Khordad is on the company default before that, rather
  *  than on no plan at all. Same precedence rule as `rateFor`. */
-export function planFor(
+export async function planFor(
   organizationId: number,
   salespersonId: number | null,
   onDate: string,
-  db: DatabaseSync = getDb(),
-): StoredPlan | null {
-  const personal = salespersonId === null ? [] : rowsFor(db, organizationId, salespersonId);
+  db: Db = getDb(),
+): Promise<StoredPlan | null> {
+  const personal = salespersonId === null ? [] : await rowsFor(db, organizationId, salespersonId);
   const personalStart = effectiveAt(personal, onDate);
   if (personalStart) return toPlan(atStart(personal, personalStart));
 
-  const shared = rowsFor(db, organizationId, null);
+  const shared = await rowsFor(db, organizationId, null);
   const sharedStart = effectiveAt(shared, onDate);
   if (!sharedStart) return null;
   return toPlan(atStart(shared, sharedStart));
 }
 
 /** Every plan in an organisation, newest first — for the admin screen. */
-export function listPlans(organizationId: number, db: DatabaseSync = getDb()): StoredPlan[] {
-  const rows = db
+export async function listPlans(organizationId: number, db: Db = getDb()): Promise<StoredPlan[]> {
+  const rows = await db
     .prepare(
       `SELECT ${SELECT_COLS} FROM commission_tiers
         WHERE organization_id = ?
@@ -142,22 +142,21 @@ export function listPlans(organizationId: number, db: DatabaseSync = getDb()): S
  *
  *  Validated BEFORE anything is written, and inside the same transaction as the delete, so a
  *  rejected plan cannot leave a half-written one behind. */
-export function savePlan(input: {
+export async function savePlan(input: {
   salesperson_user_id: number | null;
   organization_id: number;
   plan: Plan;
   valid_from: string;
   created_by: number | null;
-  db?: DatabaseSync;
-}): void {
+  db?: Db;
+}): Promise<void> {
   const db = input.db ?? getDb();
   const problem = validatePlan(input.plan);
   if (problem) throw new Error(problem);
   const validFrom = input.valid_from.slice(0, 10);
 
-  db.exec("BEGIN");
-  try {
-    db.prepare(
+  await db.tx(async () => {
+    await db.prepare(
       `DELETE FROM commission_tiers
         WHERE organization_id = ? AND salesperson_user_id IS ? AND valid_from = ?`,
     ).run(input.organization_id, input.salesperson_user_id, validFrom);
@@ -169,7 +168,7 @@ export function savePlan(input: {
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     );
     for (const t of input.plan.tiers) {
-      ins.run(
+      await ins.run(
         input.salesperson_user_id,
         input.organization_id,
         input.plan.mode,
@@ -183,22 +182,18 @@ export function savePlan(input: {
         new Date().toISOString(),
       );
     }
-    db.exec("COMMIT");
-  } catch (e) {
-    db.exec("ROLLBACK");
-    throw e;
-  }
+  });
 }
 
 /** Remove one person's plan from a given start date — an override removal, mirroring
  *  `deleteHoliday` in the weather plan. */
-export function deletePlan(
+export async function deletePlan(
   organizationId: number,
   salespersonUserId: number | null,
   validFrom: string,
-  db: DatabaseSync = getDb(),
-): void {
-  db.prepare(
+  db: Db = getDb(),
+): Promise<void> {
+  await db.prepare(
     `DELETE FROM commission_tiers
       WHERE organization_id = ? AND salesperson_user_id IS ? AND valid_from = ?`,
   ).run(organizationId, salespersonUserId, validFrom.slice(0, 10));
@@ -210,10 +205,10 @@ export function deletePlan(
  *  would sit in the table naming someone this owner cannot see, and `planFor` would never
  *  reach it — a row that pays nobody and looks configured. Raw SQL lives in lib/repo, not in the
  *  route (tests/repo-boundary.test.ts, whose allowlist only shrinks). */
-export function userInOrganization(
+export async function userInOrganization(
   organizationId: number,
   userId: number,
-  db: DatabaseSync = getDb(),
-): boolean {
-  return userInOrg(db, userId, organizationId);
+  db: Db = getDb(),
+): Promise<boolean> {
+  return await userInOrg(db, userId, organizationId);
 }

@@ -35,26 +35,26 @@ const ctx = {
   driver: 0,
 };
 
-beforeAll(() => {
+beforeAll(async () => {
   const db = getDb();
   const now = new Date().toISOString();
   const group = db.prepare(
     "INSERT INTO groups (name, slug, color, active, created_at) VALUES (?, ?, ?, 1, ?)"
   );
-  ctx.east = Number(group.run("شرق", "east", "#0ff", now).lastInsertRowid);
-  ctx.west = Number(group.run("غرب", "west", "#f0f", now).lastInsertRowid);
+  ctx.east = Number((await group.run("شرق", "east", "#0ff", now)).lastInsertRowid);
+  ctx.west = Number((await group.run("غرب", "west", "#f0f", now)).lastInsertRowid);
 
   const user = db.prepare(
     "INSERT INTO users (username, password_hash, display_name, role, group_id, active, created_at) VALUES (?, 'x', ?, ?, ?, 1, ?)"
   );
-  ctx.owner = Number(user.run("o", "مالک", "owner", null, now).lastInsertRowid);
-  ctx.eastManager = Number(user.run("em", "مدیر شرق", "group_manager", ctx.east, now).lastInsertRowid);
-  ctx.nazanin = Number(user.run("nazanin", "نازنین", "phone_sales", ctx.east, now).lastInsertRowid);
-  ctx.yasamin = Number(user.run("yasamin", "یاسمین", "phone_sales", ctx.east, now).lastInsertRowid);
-  ctx.westSeller = Number(user.run("w", "فروشنده غرب", "phone_sales", ctx.west, now).lastInsertRowid);
-  ctx.driver = Number(user.run("d", "راننده", "delivery_driver", ctx.east, now).lastInsertRowid);
+  ctx.owner = Number((await user.run("o", "مالک", "owner", null, now)).lastInsertRowid);
+  ctx.eastManager = Number((await user.run("em", "مدیر شرق", "group_manager", ctx.east, now)).lastInsertRowid);
+  ctx.nazanin = Number((await user.run("nazanin", "نازنین", "phone_sales", ctx.east, now)).lastInsertRowid);
+  ctx.yasamin = Number((await user.run("yasamin", "یاسمین", "phone_sales", ctx.east, now)).lastInsertRowid);
+  ctx.westSeller = Number((await user.run("w", "فروشنده غرب", "phone_sales", ctx.west, now)).lastInsertRowid);
+  ctx.driver = Number((await user.run("d", "راننده", "delivery_driver", ctx.east, now)).lastInsertRowid);
 
-  setRate(db, { rate_per_kg_toman: 2000, valid_from: "2026-01-01", created_by: ctx.owner });
+  await setRate(db, { rate_per_kg_toman: 2000, valid_from: "2026-01-01", created_by: ctx.owner });
 });
 
 function cookieFor(uid: number, role: Role, gid: number | null) {
@@ -177,7 +177,7 @@ describe("POST /api/sales/commission/payments", () => {
 
   it("records who entered it", async () => {
     await POST_PAYMENT(post("/api/sales/commission/payments", AS.owner(), body()));
-    const row = getDb()
+    const row = await getDb()
       .prepare("SELECT created_by FROM commission_payments ORDER BY id DESC LIMIT 1")
       .get() as { created_by: number };
     expect(row.created_by).toBe(ctx.owner);
@@ -221,9 +221,9 @@ describe("POST /api/sales/commission/rates -- kind: driver", () => {
   });
 
   it("does not write into the فروشنده rate table", async () => {
-    const before = (getDb().prepare("SELECT COUNT(*) AS n FROM commission_rates").get() as { n: number }).n;
+    const before = (await getDb().prepare("SELECT COUNT(*) AS n FROM commission_rates").get() as { n: number }).n;
     await POST_RATE(post("/api/sales/commission/rates", AS.owner(), body));
-    const after = (getDb().prepare("SELECT COUNT(*) AS n FROM commission_rates").get() as { n: number }).n;
+    const after = (await getDb().prepare("SELECT COUNT(*) AS n FROM commission_rates").get() as { n: number }).n;
     expect(after).toBe(before);
   });
 });
@@ -295,7 +295,7 @@ describe("POST /api/sales/commission/payments -- kind: driver and manager", () =
   });
 
   it("writes a driver payment into the driver table, not the فروشنده one", async () => {
-    const before = (getDb().prepare("SELECT COUNT(*) AS n FROM driver_commission_payments").get() as { n: number }).n;
+    const before = (await getDb().prepare("SELECT COUNT(*) AS n FROM driver_commission_payments").get() as { n: number }).n;
     await POST_PAYMENT(
       post("/api/sales/commission/payments", AS.owner(), {
         kind: "driver",
@@ -304,7 +304,7 @@ describe("POST /api/sales/commission/payments -- kind: driver and manager", () =
         paid_on: "2026-08-02",
       })
     );
-    const after = (getDb().prepare("SELECT COUNT(*) AS n FROM driver_commission_payments").get() as { n: number }).n;
+    const after = (await getDb().prepare("SELECT COUNT(*) AS n FROM driver_commission_payments").get() as { n: number }).n;
     expect(after).toBe(before + 1);
   });
 });

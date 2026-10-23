@@ -33,18 +33,18 @@ function ctxFor(id: number) {
   return { params: Promise.resolve({ id: String(id) }) } as never;
 }
 
-beforeEach(() => {
+beforeEach(async () => {
   const db = getDb();
-  db.exec(
+  await db.exec(
     "PRAGMA foreign_keys=OFF; DELETE FROM lesson_progress; DELETE FROM representative_onboarding_steps; DELETE FROM representative_profiles; DELETE FROM customers; DELETE FROM users WHERE id>0; PRAGMA foreign_keys=ON;"
   );
   const now = new Date().toISOString();
   const u = db.prepare("INSERT INTO users (username,password_hash,display_name,role,created_at,organization_id) VALUES (?,?,?,?,?,1)");
-  owner = Number(u.run(`o${Date.now()}`, "x", "م", "owner", now).lastInsertRowid);
-  seller = Number(u.run(`s${Date.now()}`, "x", "ف", "phone_sales", now).lastInsertRowid);
-  const cust = Number(db.prepare("INSERT INTO customers (customer_code,business_name,customer_type,lifecycle,synced_at,organization_id) VALUES ('R','نمایندهٔ الف','WHOLESALE','active',?,1)").run(now).lastInsertRowid);
-  repId = Number(db.prepare("INSERT INTO representative_profiles (organization_id,customer_id,rep_code,stage,credit_terms_days,created_at,updated_at) VALUES (1,?,'REP-1','onboarding',0,?,?)").run(cust, now, now).lastInsertRowid);
-  db.prepare("INSERT INTO representative_onboarding_steps (representative_id,step_code,label_fa) VALUES (?,'contract','قرارداد')").run(repId);
+  owner = Number((await u.run(`o${Date.now()}`, "x", "م", "owner", now)).lastInsertRowid);
+  seller = Number((await u.run(`s${Date.now()}`, "x", "ف", "phone_sales", now)).lastInsertRowid);
+  const cust = Number((await db.prepare("INSERT INTO customers (customer_code,business_name,customer_type,lifecycle,synced_at,organization_id) VALUES ('R','نمایندهٔ الف','WHOLESALE','active',?,1)").run(now)).lastInsertRowid);
+  repId = Number((await db.prepare("INSERT INTO representative_profiles (organization_id,customer_id,rep_code,stage,credit_terms_days,created_at,updated_at) VALUES (1,?,'REP-1','onboarding',0,?,?)").run(cust, now, now)).lastInsertRowid);
+  await db.prepare("INSERT INTO representative_onboarding_steps (representative_id,step_code,label_fa) VALUES (?,'contract','قرارداد')").run(repId);
 });
 
 describe("reps + academy routes", () => {

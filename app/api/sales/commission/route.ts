@@ -16,7 +16,7 @@ import { MANAGE_ROLES } from "@/lib/roles";
  *  behind the figures. All of that lives in lib/repo/commissionView.ts, shared with the page.
  */
 export async function GET(req: NextRequest) {
-  const guard = requireRole(req, [...MANAGE_ROLES, "phone_sales"]);
+  const guard = await requireRole(req, [...MANAGE_ROLES, "phone_sales"]);
   if (!guard.ok) return guard.response;
   const session = guard.session;
 
@@ -26,8 +26,8 @@ export async function GET(req: NextRequest) {
     to: url.searchParams.get("to") ?? tehranTodayIso(),
   };
 
-  const { statements, driverStatements, managerStatements } = commissionStatementsFor(session, period);
-  const { rates, driverRates, managerOverrides } = commissionRatesFor(session);
+  const { statements, driverStatements, managerStatements } = await commissionStatementsFor(session, period);
+  const { rates, driverRates, managerOverrides } = await commissionRatesFor(session);
   return NextResponse.json({
     ok: true,
     statements,

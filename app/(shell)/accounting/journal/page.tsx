@@ -31,14 +31,14 @@ export default async function JournalPage({
   const { period, source, page: pageParam } = await searchParams;
   const organizationId = await requireAccounting("/accounting/journal");
   const filter = { periodKey: period, sourceType: source };
-  let report = journalReport(organizationId, { ...filter, limit: PAGE_SIZE, offset: (requestedPage(pageParam) - 1) * PAGE_SIZE });
+  let report = await journalReport(organizationId, { ...filter, limit: PAGE_SIZE, offset: (requestedPage(pageParam) - 1) * PAGE_SIZE });
   const paging = pagingFor(pageParam, report.total, PAGE_SIZE);
   // A page past the end is clamped to the last one, which needs one more read.
   if (paging.page !== requestedPage(pageParam)) {
-    report = journalReport(organizationId, { ...filter, limit: PAGE_SIZE, offset: paging.offset });
+    report = await journalReport(organizationId, { ...filter, limit: PAGE_SIZE, offset: paging.offset });
   }
-  const periods = listPeriods(organizationId);
-  const withReceipt = journalsWithReceipt(organizationId, report.rows.map((r) => r.journalId));
+  const periods = await listPeriods(organizationId);
+  const withReceipt = await journalsWithReceipt(organizationId, report.rows.map((r) => r.journalId));
   const reversed = report.rows.filter((r) => r.reversedByJournalId !== null).length;
 
   const link = (active: string, base: string, key: "period" | "source") =>

@@ -26,11 +26,11 @@ export const dynamic = "force-dynamic";
  */
 export default async function ProductsPage() {
   const jar = await cookies();
-  const session = getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
+  const session = await getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
   if (!session) redirect("/login");
   if (isVanRole(session.role)) redirect("/driver");
 
-  const products = catalogueFor(session, { includeInactive: isOwner(session.role) });
+  const products = await catalogueFor(session, { includeInactive: isOwner(session.role) });
 
   /* ONE date for the whole page. The drawer resolves cost and commission against it, and
      the drawer resolves the price against it too -- three separate effective-dated series
@@ -38,7 +38,7 @@ export default async function ProductsPage() {
      midnight rollover mid-render would make them disagree. */
   const today = tehranTodayIso();
 
-  const allPriceRows = priceHistoryFor(session);
+  const allPriceRows = await priceHistoryFor(session);
 
   const priceRows = allPriceRows.slice(0, 10);
 
@@ -60,9 +60,9 @@ export default async function ProductsPage() {
   ).filter((s) => s.rows.length >= 2);
 
   // The owner's costing inputs are read only for an owner: cost never reaches anyone else.
-  const costing = isOwner(session.role) ? ownerCostingFor(session, products, today) : null;
+  const costing = isOwner(session.role) ? await ownerCostingFor(session, products, today) : null;
   // F99: who added a product or packaging, or moved a reorder line. Owner-only, like the editor.
-  const changes = isOwner(session.role) ? recentProductChanges(session) : [];
+  const changes = isOwner(session.role) ? await recentProductChanges(session) : [];
 
   return (
     <>

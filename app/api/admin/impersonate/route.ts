@@ -18,13 +18,13 @@ const cookieBase = { httpOnly: true, sameSite: "lax" as const, path: "/", secure
  *  The owner's own session waits in ACTOR_COOKIE (httpOnly, two hours). Both the start
  *  and the end are written to the events log with the owner as the actor. */
 export async function POST(req: NextRequest) {
-  const guard = requireRole(req, OWNER_ROLES);
+  const guard = await requireRole(req, OWNER_ROLES);
   if (!guard.ok) return guard.response;
   const own = req.cookies.get(COOKIE_NAME)?.value;
   const body = (await req.json().catch(() => null)) as { user_id?: unknown } | null;
   const targetId = Number(body?.user_id);
 
-  const target = impersonationTarget(targetId);
+  const target = await impersonationTarget(targetId);
   const refusal = impersonationRefusal(
     { id: guard.session.user.id, role: guard.session.role, organization_id: guard.session.organizationId, active: guard.session.user.active },
     target,
@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
 
   /* The impersonated session starts at the target's PRIMARY role, so the founder lands where
      that person lands by default — not at a random pick from their set. */
-  const held = rolesFor(target.id);
+  const held = await rolesFor(target.id);
   const primary = held.includes(target.role as never) ? (target.role as Role) : (held[0] ?? (target.role as Role));
 
   const token = createSessionToken({
@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
   /* The full set travels with the session, so the founder can switch the target's active
      role from the picker without ending the impersonation. Without it, a dual-hat driver
      could only ever be seen as one of their two hats. */
-  emitEvent(guard.session.organizationId, {
+  await emitEvent(guard.session.organizationId, {
     kind: "auth.impersonation_started",
     entity_type: "user",
     entity_id: target.id,
@@ -72,7 +72,7 @@ export async function POST(req: NextRequest) {
 export async function DELETE(req: NextRequest) {
   const current = parseSessionToken(req.cookies.get(COOKIE_NAME)?.value);
   const savedToken = req.cookies.get(ACTOR_COOKIE)?.value;
-  const owner = getSessionFromCookies(savedToken);
+  const owner = await getSessionFromCookies(savedToken);
 
   const res = NextResponse.json({ ok: true });
   // The saved session may belong to a platform_owner as well as an owner — the founder
@@ -83,7 +83,7 @@ export async function DELETE(req: NextRequest) {
     return res;
   }
 
-  emitEvent(owner.organizationId, {
+  await emitEvent(owner.organizationId, {
     kind: "auth.impersonation_ended",
     entity_type: "user",
     entity_id: current.uid,

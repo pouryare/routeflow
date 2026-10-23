@@ -14,7 +14,7 @@ const empty = EMPTY_CHART;
 export default async function StockSection({ session }: { session: Session }) {
   await yieldToEventLoop();
   if (session.role === "phone_sales") return null;
-  const { stock, drivers } = stockFor(session);
+  const { stock, drivers } = await stockFor(session);
   const stockValue = stock.reduce((sum, r) => sum + r.value_toman, 0);
   const negatives = stock.filter((r) => r.negative);
 

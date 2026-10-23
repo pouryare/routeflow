@@ -17,11 +17,11 @@ const GAP_LABEL: Record<Gap, string> = { location: "بدون مکان", phone: "
  *  own group; the owner sees the company. */
 export default async function DataQualityPage() {
   const jar = await cookies();
-  const session = getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
+  const session = await getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
   if (!session) redirect("/login");
   if (!MANAGE_ROLES.includes(session.role)) redirect("/sales");
 
-  const { groups, rows, total } = dataQuality(session);
+  const { groups, rows, total } = await dataQuality(session);
 
   return (
     <>

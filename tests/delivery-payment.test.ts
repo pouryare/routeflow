@@ -13,7 +13,7 @@ process.env.SESSION_SECRET = "test-secret";
 
 const { getDb } = await import("@/lib/db");
 const { ensureWarehouse } = await import("./helpers/ensureWarehouse");
-ensureWarehouse(getDb());
+await ensureWarehouse(getDb());
 const { createProduct, createPackaging, setPrice } = await import("@/lib/catalogue");
 const { createOrder, confirmOrder } = await import("@/lib/orders");
 const { createRun, addStop, readRun, recordDelivery } = await import("@/lib/delivery");
@@ -28,7 +28,7 @@ let customer = 0;
 let product = 0;
 let packaging = 0;
 
-beforeEach(() => {
+beforeEach(async () => {
   const db = getDb();
   /* FIRST: the ledger is append-only and its AR leg holds a real FK to customers, so the
      `DELETE FROM customers` below would fail once a receipt has been posted. Children
@@ -36,9 +36,9 @@ beforeEach(() => {
      a DIFFERENT table and a long-standing fixture convenience -- nothing to do with the
      ledger, whose triggers this helper works around by recreating the table rather than
      disabling the guarantee. */
-  clearLedger(db);
+  await clearLedger(db);
 
-  db.exec(
+  await db.exec(
     "DROP TRIGGER IF EXISTS activities_no_update; DROP TRIGGER IF EXISTS activities_no_delete; DELETE FROM activities; DELETE FROM order_events; DELETE FROM stock_reservations; DELETE FROM deliveries; DELETE FROM delivery_lines; DELETE FROM delivery_line_batches; DELETE FROM stock_movements; DELETE FROM batches; DELETE FROM payment_allocations; DELETE FROM payments; DELETE FROM delivery_stops; DELETE FROM delivery_runs; DELETE FROM order_lines; DELETE FROM orders; DELETE FROM packagings; DELETE FROM products; DELETE FROM customers; DELETE FROM users WHERE id > 0;"
   );
 
@@ -46,52 +46,52 @@ beforeEach(() => {
   const u = db.prepare(
     "INSERT INTO users (username,password_hash,display_name,role,group_id,active,created_at,organization_id) VALUES (?,?,?,?,NULL,1,?,1)"
   );
-  owner = Number(u.run(`o${Date.now()}`, "x:y", "م", "owner", now).lastInsertRowid);
-  driver = Number(u.run(`d${Date.now()}`, "x:y", "ر", "delivery_driver", now).lastInsertRowid);
+  owner = Number((await u.run(`o${Date.now()}`, "x:y", "م", "owner", now)).lastInsertRowid);
+  driver = Number((await u.run(`d${Date.now()}`, "x:y", "ر", "delivery_driver", now)).lastInsertRowid);
   customer = Number(
-    db
+    (await db
       .prepare(
         "INSERT INTO customers (customer_code,business_name,customer_type,lifecycle,synced_at,organization_id) VALUES (?,?,'RESTAURANT','active','2026-01-01',1)"
       )
-      .run(`C${Date.now()}`, "x").lastInsertRowid
+      .run(`C${Date.now()}`, "x")).lastInsertRowid
   );
-  product = createProduct(db, { name: "کره", kg_per_base_unit: 0.25, organization_id: 1 });
-  packaging = createPackaging(db, { product_id: product, name: "جعبه", qty_per_pack: 100 });
-  setPrice(db, { product_id: product, price_toman: 10_000, valid_from: "2026-01-01" });
+  product = await createProduct(db, { name: "کره", kg_per_base_unit: 0.25, organization_id: 1 });
+  packaging = await createPackaging(db, { product_id: product, name: "جعبه", qty_per_pack: 100 });
+  await setPrice(db, { product_id: product, price_toman: 10_000, valid_from: "2026-01-01" });
 });
 
 /** A confirmed 3-pack order (total 30_000), a run, and its one stop. */
-function stagedOrder(): { orderId: number; stopId: number; lineId: number } {
+async function stagedOrder(): Promise<{ orderId: number; stopId: number; lineId: number }> {
   const db = getDb();
-  const order = createOrder(db, {
+  const order = await createOrder(db, {
     customer_id: customer,
     order_date: "2026-08-26",
     created_by: owner,
     organization_id: 1,
     lines: [{ product_id: product, packaging_id: packaging, packs: 3 }],
   });
-  confirmOrder(db, order.id);
-  const run = createRun(db, {
+  await confirmOrder(db, order.id);
+  const run = await createRun(db, {
     driver_user_id: driver,
     run_date: "2026-08-26",
     created_by: owner,
     organization_id: 1,
   });
-  const stopId = addStop(db, run, order.id);
-  const lineId = readRun(db, run)!.stops.find((s) => s.id === stopId)!.lines[0].id;
+  const stopId = await addStop(db, run, order.id);
+  const lineId = (await readRun(db, run))!.stops.find((s) => s.id === stopId)!.lines[0].id;
   return { orderId: order.id, stopId, lineId };
 }
 
 describe("recordDelivery payment", () => {
-  it("turns a door collection into a CASH payment allocated to the order", () => {
+  it("turns a door collection into a CASH payment allocated to the order", async () => {
     const db = getDb();
-    const { orderId, stopId, lineId } = stagedOrder();
-    recordDelivery(db, stopId, {
+    const { orderId, stopId, lineId } = await stagedOrder();
+    await recordDelivery(db, stopId, {
       lines: [{ line_id: lineId, packs_delivered: 3 }],
       collected_toman: 25_000,
       by: driver,
     });
-    const pay = db.prepare("SELECT * FROM payments WHERE customer_id = ?").get(customer) as {
+    const pay = await db.prepare("SELECT * FROM payments WHERE customer_id = ?").get(customer) as {
       id: number;
       method: string;
       amount_toman: number;
@@ -99,26 +99,26 @@ describe("recordDelivery payment", () => {
     };
     expect(pay).toMatchObject({ method: "CASH", amount_toman: 25_000, received_by: driver });
     expect(
-      db.prepare("SELECT order_id, amount_toman FROM payment_allocations WHERE payment_id = ?").get(pay.id)
+      await db.prepare("SELECT order_id, amount_toman FROM payment_allocations WHERE payment_id = ?").get(pay.id)
     ).toMatchObject({ order_id: orderId, amount_toman: 25_000 });
     expect(
-      db.prepare("SELECT paid_toman, payment_status FROM orders WHERE id = ?").get(orderId)
+      await db.prepare("SELECT paid_toman, payment_status FROM orders WHERE id = ?").get(orderId)
     ).toMatchObject({ paid_toman: 25_000, payment_status: "partial" });
   });
 
-  it("recognises revenue AND cost in the ledger when the goods move", () => {
+  it("recognises revenue AND cost in the ledger when the goods move", async () => {
     /* The end-to-end proof that the wiring actually fires. Every other recognition test
        calls postDeliveryRecognition directly; without this one, deleting the whole call
        from lib/delivery.ts would leave them all green and nothing would ever be
        recognised in the running app. */
     const db = getDb();
-    const { stopId, lineId } = stagedOrder();
-    recordDelivery(db, stopId, {
+    const { stopId, lineId } = await stagedOrder();
+    await recordDelivery(db, stopId, {
       lines: [{ line_id: lineId, packs_delivered: 3 }],
       collected_toman: 25_000,
       by: driver,
     });
-    const legs = db
+    const legs = await db
       .prepare(
         `SELECT a.code, e.side, e.amount_toman AS amount FROM ledger_entries e
            JOIN journals j ON j.id = e.journal_id
@@ -134,18 +134,18 @@ describe("recordDelivery payment", () => {
     expect(legs.map((l) => l.code).sort()).toEqual(["1201", "4101"]);
   });
 
-  it("recognises only the PARTIAL value when the driver delivers short", () => {
+  it("recognises only the PARTIAL value when the driver delivers short", async () => {
     /* A mutation that swapped delivered-for-ordered PASSED against the full-delivery test
        above, because there ordered == delivered. This is the case that tells them apart:
        2 of 3 packs leaves the van, so 20,000 is earned and 10,000 is not. */
     const db = getDb();
-    const { stopId, lineId } = stagedOrder();
-    recordDelivery(db, stopId, {
+    const { stopId, lineId } = await stagedOrder();
+    await recordDelivery(db, stopId, {
       lines: [{ line_id: lineId, packs_delivered: 2 }],
       collected_toman: 15_000,
       by: driver,
     });
-    const revenue = db
+    const revenue = await db
       .prepare(
         `SELECT e.amount_toman AS amount FROM ledger_entries e
            JOIN journals j ON j.id = e.journal_id
@@ -156,30 +156,30 @@ describe("recordDelivery payment", () => {
     expect(revenue.amount).toBe(20_000); // NOT 30,000
   });
 
-  it("records nothing when collected_toman is 0", () => {
+  it("records nothing when collected_toman is 0", async () => {
     const db = getDb();
-    const { stopId, lineId } = stagedOrder();
-    recordDelivery(db, stopId, {
+    const { stopId, lineId } = await stagedOrder();
+    await recordDelivery(db, stopId, {
       lines: [{ line_id: lineId, packs_delivered: 3 }],
       collected_toman: 0,
       by: driver,
     });
-    expect(db.prepare("SELECT COUNT(*) n FROM payments").get()).toEqual({ n: 0 });
+    expect(await db.prepare("SELECT COUNT(*) n FROM payments").get()).toEqual({ n: 0 });
     expect(
-      db.prepare("SELECT payment_status FROM orders WHERE id = (SELECT MAX(id) FROM orders)").get()
+      await db.prepare("SELECT payment_status FROM orders WHERE id = (SELECT MAX(id) FROM orders)").get()
     ).toMatchObject({ payment_status: "unpaid" });
   });
 
-  it("puts an over-the-door overpayment on account", () => {
+  it("puts an over-the-door overpayment on account", async () => {
     const db = getDb();
-    const { orderId, stopId, lineId } = stagedOrder();
-    recordDelivery(db, stopId, {
+    const { orderId, stopId, lineId } = await stagedOrder();
+    await recordDelivery(db, stopId, {
       lines: [{ line_id: lineId, packs_delivered: 3 }],
       collected_toman: 40_000,
       by: driver,
     });
-    const pid = (db.prepare("SELECT id FROM payments").get() as { id: number }).id;
-    const allocs = db
+    const pid = (await db.prepare("SELECT id FROM payments").get() as { id: number }).id;
+    const allocs = await db
       .prepare("SELECT order_id, amount_toman FROM payment_allocations WHERE payment_id = ? ORDER BY id")
       .all(pid);
     expect(allocs).toEqual([
@@ -187,7 +187,7 @@ describe("recordDelivery payment", () => {
       { order_id: null, amount_toman: 10_000 },
     ]);
     expect(
-      db.prepare("SELECT payment_status FROM orders WHERE id = ?").get(orderId)
+      await db.prepare("SELECT payment_status FROM orders WHERE id = ?").get(orderId)
     ).toMatchObject({ payment_status: "paid" });
   });
 });

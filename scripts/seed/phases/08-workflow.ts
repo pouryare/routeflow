@@ -36,11 +36,11 @@ const TITLE: Record<(typeof KINDS)[number], string> = {
   reminder: "یادآوری پیگیری",
 };
 
-export function run(ctx: SeedContext): void {
+export async function run(ctx: SeedContext): Promise<void> {
   const { db, rng } = ctx;
   const owner = ctx.staff.owner;
 
-  const assignees = (db
+  const assignees = (await db
     .prepare(
       `SELECT u.id FROM users u
          JOIN user_roles ur ON ur.user_id = u.id
@@ -51,7 +51,7 @@ export function run(ctx: SeedContext): void {
 
   /* Recent orders to hang tasks off, so a task links to a real entity rather than a dangling
      id. Old orders are excluded — an overdue task on a 2-year-old order is noise. */
-  const recentOrders = db
+  const recentOrders = await db
     .prepare(
       `SELECT id, customer_id, status FROM orders
         WHERE organization_id = ? AND order_date >= ?
@@ -72,7 +72,7 @@ export function run(ctx: SeedContext): void {
        `order` has been proven null inside the else. */
     const customerId = order ? order.customer_id : (customers.length > 0 ? rng.pick(customers) : 0);
     try {
-      createTask(ctx.orgId, {
+      await createTask(ctx.orgId, {
         title: TITLE[kind],
         kind,
         assignee_user_id: assignees.length > 0 ? rng.pick(assignees) : null,

@@ -58,6 +58,13 @@ _Condensed 2026-10-23. Each finished piece of work is one line here; the full ea
   - [x] `/sales/stock` with no warehouse yet says where to add one (owners get a link to «مکان‌های ما») instead of crashing; count and receive wait for it
   - [x] Confirming an order with no warehouse answers 409 with that message instead of a bare 500 (`NoWarehouseError`)
   - [x] Sheet tests measure the sheet that opened (the phone nav's closed sheets are in the DOM); the settings-menu test allows the 3-link menu; the order-drag test brings its own price and warehouse
+- [x] PostgreSQL migration plan published (self-hosted, all extensions, pg + Kysely, node-pg-migrate, kysely-codegen, Squawk, RLS before cut-over, SSH off-site backup); decisions in `docs/roadmap.md` 10.1
+- [x] Wave P phase 1 (PR #63), still on SQLite:
+  - [x] Every database call is awaited through an asynchronous `Db` interface (`lib/database/client.ts`); boot-time migrations wait behind `dbReady()`
+  - [x] All 53 hand-written `BEGIN`/`COMMIT` blocks go through `db.tx()`, which joins an outer transaction and keeps other callers' statements out; tests in `tests/db-client.test.ts` (they found and fixed a race)
+  - [x] Lint catches a forgotten `await` on server code (`no-floating-promises`, `no-misused-promises`, `await-thenable`); it found the credit-approval and backorder effects running outside their order's transaction, now fixed
+  - [x] No SQLite-only SQL outside `lib/database/` (`stringAgg`, `daysBetween` in `lib/database/dialect.ts`; `ON CONFLICT`); guarded by `tests/sql-dialect-guard.test.ts`
+  - [x] «Today» in SQL is now the Tehran day, not the UTC day (overdue reminders, expired batches, complaint window, quiet customers)
 - [x] HeroUI move, phase 0 and pilot (owner chose the full HeroUI look, 2026-10-23; plan: https://claude.ai/artifact/BzK8CYpZZC5FHpEKw9P36f):
   - [x] HeroUI 3.2.6 installed; styles imported part by part; HeroUI buttons and calendar cells at 44 px, large buttons 52 px
   - [x] Persian calendar and digits for every HeroUI part (`components/HeroUIProvider.tsx`); `data-theme` written for dark too
@@ -81,7 +88,10 @@ _Condensed 2026-10-23. Each finished piece of work is one line here; the full ea
 - [ ] Amount in words not yet on cheque entries or the payments list; no rial wording
 - [ ] Founder's second login step off until turned on at `/switch`; confirm the live `SESSION_SECRET` is 32+ characters
 - [ ] Unverified claims in parked features: F51, F56, F57, F67, F69, F71, F73, F75, F97, F102, F113, F147 (`docs/roadmap.md` section 8)
-- [ ] Open decisions: Android distribution route and iPhone support; off-site backup location; row-level security timing; charts library vs custom
+- [ ] Open decisions: Android distribution route and iPhone support; off-site backup machine (decided: a second owned machine over SSH; which one is open); charts library vs custom
+- [ ] PostgreSQL phases 2–5 not started: baseline schema, `pg` adapter, CI against Postgres, `xid8` sync watermark, row-level security, server and cut-over
+- [ ] Seed scripts in `scripts/` still write SQLite directly (`INSERT OR IGNORE`); they move with the seeds in phase 2
+- [ ] Client screens (`app/(shell)` pages, `components`) are outside the forgotten-await lint; they start fetches on purpose without waiting
 - [ ] Nothing tested from Iran (weather, Telegram, push, map tiles, OSRM, registries)
 - [ ] The smoke suite is not in CI, which is how four of its tests went stale; in the cloud container it runs once Playwright's expected headless shell is pointed at the installed one, but map tiles (tile.openstreetmap.org) cannot load there, so `/map`, `/leads` and the CRM profile test fail on console errors
 - [ ] Other actions that need a warehouse (stock movements, purchases, route planning, delivery) still answer 500 when there is none
@@ -97,12 +107,12 @@ _Condensed 2026-10-23. Each finished piece of work is one line here; the full ea
 - [ ] Left for later: F104 (not reached; nothing blocks it), and, waiting on a missing prerequisite, F74, F77, F85, F86, F91, F114, F69, F31, F42, F34, F95, F140, F2, F5, F117, F38
 
 ## Next steps
-1. Merge the HeroUI phase 0 and pilot PR once CI is green (merge commit)
+1. Merge PR #63 (PostgreSQL phase 1) once CI is green (merge commit)
 2. HeroUI phase 2: the remaining sheets and the overlays (BottomSheet and its users, CardHelp, profile menu, notifications, banners)
 3. HeroUI token hand-over: HeroUI's palette and radii as the source, Meridian names as aliases, then remove dead CSS
-4. Decide whether the smoke suite joins CI (needs Chromium on the runner; map tiles stubbed)
-5. Owner checks the backup folder and picks an off-site destination (F138 part 2)
-6. Record delay reasons on deliveries so the reason report's delay section fills
-7. Check the outside services from the Iranian server
-8. Decide the Android distribution route before F6 starts
-9. Data-layer decision record, then the PostgreSQL spike
+4. PostgreSQL phase 2: Dockerfile with the extensions, baseline schema, `pg` adapter behind `Db`, CI job against Postgres
+5. Decide whether the smoke suite joins CI (needs Chromium on the runner; map tiles stubbed)
+6. Owner checks the backup folder and picks an off-site destination (F138 part 2)
+7. Record delay reasons on deliveries so the reason report's delay section fills
+8. Check the outside services from the Iranian server
+9. Decide the Android distribution route before F6 starts

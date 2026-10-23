@@ -12,7 +12,7 @@ process.env.SESSION_SECRET = "test-secret";
 
 const { getDb } = await import("@/lib/db");
 const { ensureWarehouse } = await import("./helpers/ensureWarehouse");
-ensureWarehouse(getDb());
+await ensureWarehouse(getDb());
 const { createProduct, createPackaging, setPrice } = await import("@/lib/catalogue");
 const { createOrder, confirmOrder } = await import("@/lib/orders");
 const { createRun, addStop, readRun, recordDelivery } = await import("@/lib/delivery");
@@ -40,9 +40,9 @@ const ctx = {
 
 /** Sells 2000 تومان × kg to the shared فروشنده and delivers it same-day, so every call
  *  produces a known, round accrual to check the override percentage against. */
-function sellAndDeliver(packs: number, orderDate: string): number {
+async function sellAndDeliver(packs: number, orderDate: string): Promise<number> {
   const db = getDb();
-  const order = createOrder(db, {
+  const order = await createOrder(db, {
     customer_id: ctx.customer,
     order_date: orderDate,
     created_by: ctx.owner,
@@ -50,11 +50,11 @@ function sellAndDeliver(packs: number, orderDate: string): number {
     salesperson_user_id: ctx.seller,
     lines: [{ product_id: ctx.product, packaging_id: ctx.packaging, packs }],
   });
-  confirmOrder(db, order.id);
-  const run = createRun(db, { driver_user_id: ctx.driver, run_date: orderDate, created_by: ctx.owner, organization_id: 1 });
-  const stopId = addStop(db, run, order.id);
-  const stop = readRun(db, run)!.stops.find((s) => s.id === stopId)!;
-  recordDelivery(db, stopId, {
+  await confirmOrder(db, order.id);
+  const run = await createRun(db, { driver_user_id: ctx.driver, run_date: orderDate, created_by: ctx.owner, organization_id: 1 });
+  const stopId = await addStop(db, run, order.id);
+  const stop = (await readRun(db, run))!.stops.find((s) => s.id === stopId)!;
+  await recordDelivery(db, stopId, {
     lines: stop.lines.map((l) => ({ line_id: l.id, packs_delivered: packs })),
     collected_toman: 0,
     by: ctx.driver,
@@ -62,114 +62,114 @@ function sellAndDeliver(packs: number, orderDate: string): number {
   return order.id;
 }
 
-beforeAll(() => {
+beforeAll(async () => {
   const db = getDb();
   const now = new Date().toISOString();
 
   const group = db.prepare(
     "INSERT INTO groups (name, slug, color, active, created_at) VALUES (?, ?, ?, 1, ?)"
   );
-  ctx.east = Number(group.run("شرق", "east", "#0ff", now).lastInsertRowid);
-  ctx.west = Number(group.run("غرب", "west", "#f0f", now).lastInsertRowid);
+  ctx.east = Number((await group.run("شرق", "east", "#0ff", now)).lastInsertRowid);
+  ctx.west = Number((await group.run("غرب", "west", "#f0f", now)).lastInsertRowid);
 
   const user = db.prepare(
     "INSERT INTO users (username, password_hash, display_name, role, group_id, active, created_at, organization_id) VALUES (?, 'x', ?, ?, ?, 1, ?, 1)"
   );
-  ctx.owner = Number(user.run("o", "مالک", "owner", null, now).lastInsertRowid);
-  ctx.eastManager = Number(user.run("me", "مدیر شرق", "group_manager", ctx.east, now).lastInsertRowid);
-  ctx.westManager = Number(user.run("mw", "مدیر غرب", "group_manager", ctx.west, now).lastInsertRowid);
-  ctx.seller = Number(user.run("s", "فروشنده", "phone_sales", ctx.east, now).lastInsertRowid);
-  ctx.driver = Number(user.run("d", "راننده", "delivery_driver", ctx.east, now).lastInsertRowid);
+  ctx.owner = Number((await user.run("o", "مالک", "owner", null, now)).lastInsertRowid);
+  ctx.eastManager = Number((await user.run("me", "مدیر شرق", "group_manager", ctx.east, now)).lastInsertRowid);
+  ctx.westManager = Number((await user.run("mw", "مدیر غرب", "group_manager", ctx.west, now)).lastInsertRowid);
+  ctx.seller = Number((await user.run("s", "فروشنده", "phone_sales", ctx.east, now)).lastInsertRowid);
+  ctx.driver = Number((await user.run("d", "راننده", "delivery_driver", ctx.east, now)).lastInsertRowid);
 
   ctx.customer = Number(
-    db
+    (await db
       .prepare("INSERT INTO customers (customer_code, business_name, group_id, synced_at) VALUES (?, ?, ?, ?)")
-      .run("C1", "رستوران نمونه", ctx.east, now).lastInsertRowid
+      .run("C1", "رستوران نمونه", ctx.east, now)).lastInsertRowid
   );
 
-  ctx.product = createProduct(db, { name: "دوغ", kg_per_base_unit: 1, organization_id: 1 });
-  ctx.packaging = createPackaging(db, { product_id: ctx.product, name: "کارتن", qty_per_pack: 10 });
-  setPrice(db, { product_id: ctx.product, price_toman: 50000, valid_from: "2026-01-01" });
+  ctx.product = await createProduct(db, { name: "دوغ", kg_per_base_unit: 1, organization_id: 1 });
+  ctx.packaging = await createPackaging(db, { product_id: ctx.product, name: "کارتن", qty_per_pack: 10 });
+  await setPrice(db, { product_id: ctx.product, price_toman: 50000, valid_from: "2026-01-01" });
 
   // 2000 تومان/kg for the فروشنده -- 10 packs x 10 x 1kg = 100kg = 200,000 تومان accrued.
-  setRate(db, { rate_per_kg_toman: 2000, valid_from: "2026-01-01", created_by: ctx.owner });
+  await setRate(db, { rate_per_kg_toman: 2000, valid_from: "2026-01-01", created_by: ctx.owner });
 });
 
 describe("managerStatementFor", () => {
-  it("is a percentage of the whole group's فروشنده accrual, not a weight of their own", () => {
-    setManagerOverride(getDb(), {
+  it("is a percentage of the whole group's فروشنده accrual, not a weight of their own", async () => {
+    await setManagerOverride(getDb(), {
       manager_user_id: ctx.eastManager,
       override_pct: 10,
       valid_from: "2026-01-01",
       created_by: ctx.owner,
     });
-    sellAndDeliver(10, "2026-05-10");
+    await sellAndDeliver(10, "2026-05-10");
 
-    const s = managerStatementFor(getDb(), ctx.eastManager, { from: "2026-05-01", to: "2026-05-31" });
+    const s = await managerStatementFor(getDb(), ctx.eastManager, { from: "2026-05-01", to: "2026-05-31" });
     expect(s.group_accrued_toman).toBe(200000);
     expect(s.accrued_toman).toBe(20000); // 10% of 200,000
   });
 
-  it("uses the override in force on each order's OWN date, not today's", () => {
+  it("uses the override in force on each order's OWN date, not today's", async () => {
     const db = getDb();
     // Raise the override mid-year -- June's orders earn the new rate, May's do not.
-    setManagerOverride(db, {
+    await setManagerOverride(db, {
       manager_user_id: ctx.eastManager,
       override_pct: 25,
       valid_from: "2026-06-01",
       created_by: ctx.owner,
     });
-    sellAndDeliver(10, "2026-06-10"); // another 200,000 group accrual, at 25%
+    await sellAndDeliver(10, "2026-06-10"); // another 200,000 group accrual, at 25%
 
-    const june = managerStatementFor(db, ctx.eastManager, { from: "2026-06-01", to: "2026-06-30" });
+    const june = await managerStatementFor(db, ctx.eastManager, { from: "2026-06-01", to: "2026-06-30" });
     expect(june.accrued_toman).toBe(50000); // 25% of 200,000
 
-    const lifetime = managerStatementFor(db, ctx.eastManager, { from: "2026-01-01", to: "2026-12-29" });
+    const lifetime = await managerStatementFor(db, ctx.eastManager, { from: "2026-01-01", to: "2026-12-29" });
     // May's 200,000 at 10% (20,000) plus June's 200,000 at 25% (50,000) -- never the
     // later rate applied to both, which a naive "today's rate x lifetime total" would do.
     expect(lifetime.accrued_toman).toBe(70000);
   });
 
-  it("is zero for a manager with no group", () => {
+  it("is zero for a manager with no group", async () => {
     const db = getDb();
     const now = new Date().toISOString();
     const orphan = Number(
-      db
+      (await db
         .prepare(
           "INSERT INTO users (username, password_hash, display_name, role, group_id, active, created_at, organization_id) VALUES (?, 'x', ?, 'group_manager', NULL, 1, ?, 1)"
         )
-        .run("orphan", "مدیر بی‌گروه", now).lastInsertRowid
+        .run("orphan", "مدیر بی‌گروه", now)).lastInsertRowid
     );
-    setManagerOverride(db, { manager_user_id: orphan, override_pct: 50, valid_from: "2026-01-01", created_by: ctx.owner });
-    const s = managerStatementFor(db, orphan, { from: "2026-01-01", to: "2026-12-29" });
+    await setManagerOverride(db, { manager_user_id: orphan, override_pct: 50, valid_from: "2026-01-01", created_by: ctx.owner });
+    const s = await managerStatementFor(db, orphan, { from: "2026-01-01", to: "2026-12-29" });
     expect(s.group_accrued_toman).toBe(0);
     expect(s.accrued_toman).toBe(0);
   });
 
-  it("nets payments off against the lifetime balance", () => {
+  it("nets payments off against the lifetime balance", async () => {
     const db = getDb();
-    const before = managerStatementFor(db, ctx.eastManager, { from: "2026-01-01", to: "2026-12-29" });
-    recordManagerPayment(db, {
+    const before = await managerStatementFor(db, ctx.eastManager, { from: "2026-01-01", to: "2026-12-29" });
+    await recordManagerPayment(db, {
       manager_user_id: ctx.eastManager,
       amount_toman: 10000,
       paid_on: "2026-09-10",
       created_by: ctx.owner,
     });
-    const after = managerStatementFor(db, ctx.eastManager, { from: "2026-01-01", to: "2026-12-29" });
+    const after = await managerStatementFor(db, ctx.eastManager, { from: "2026-01-01", to: "2026-12-29" });
     expect(after.paid_toman).toBe(before.paid_toman + 10000);
     expect(after.owed_toman).toBe(after.accrued_toman - after.paid_toman);
   });
 
-  it("is all zeroes for a manager with no override set, rather than throwing", () => {
-    const s = managerStatementFor(getDb(), ctx.westManager, { from: "2026-01-01", to: "2026-12-29" });
+  it("is all zeroes for a manager with no override set, rather than throwing", async () => {
+    const s = await managerStatementFor(getDb(), ctx.westManager, { from: "2026-01-01", to: "2026-12-29" });
     expect(s.override_pct).toBe(0);
     expect(s.accrued_toman).toBe(0);
   });
 });
 
 describe("allManagerStatements", () => {
-  it("returns a row per مدیر گروه", () => {
-    const rows = allManagerStatements(getDb(), { from: "2026-01-01", to: "2026-12-29" }, 1);
+  it("returns a row per مدیر گروه", async () => {
+    const rows = await allManagerStatements(getDb(), { from: "2026-01-01", to: "2026-12-29" }, 1);
     const names = rows.map((r) => r.display_name);
     expect(names).toContain("مدیر شرق");
     expect(names).toContain("مدیر غرب");

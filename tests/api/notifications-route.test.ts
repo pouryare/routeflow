@@ -35,42 +35,42 @@ function req(method: string, token: string, body?: unknown) {
   });
 }
 
-beforeEach(() => {
+beforeEach(async () => {
   const db = getDb();
   // Reset the transactional tables only -- notification_types is the seeded catalogue.
-  db.exec(
+  await db.exec(
     "PRAGMA foreign_keys=OFF; DELETE FROM notifications; DELETE FROM events; DELETE FROM rule_runs; DELETE FROM tasks; DELETE FROM alerts; DELETE FROM orders; DELETE FROM customers; DELETE FROM groups; DELETE FROM users WHERE id>0; PRAGMA foreign_keys=ON;"
   );
   const now = new Date().toISOString();
   const u = db.prepare(
     "INSERT INTO users (username,password_hash,display_name,role,active,created_at,organization_id) VALUES (?,?,?,?,1,?,1)"
   );
-  seller = Number(u.run(`s${Date.now()}`, "x:y", "ف", "phone_sales", now).lastInsertRowid);
-  manager = Number(u.run(`m${Date.now()}`, "x:y", "مد", "group_manager", now).lastInsertRowid);
+  seller = Number((await u.run(`s${Date.now()}`, "x:y", "ف", "phone_sales", now)).lastInsertRowid);
+  manager = Number((await u.run(`m${Date.now()}`, "x:y", "مد", "group_manager", now)).lastInsertRowid);
   custId = Number(
-    db
+    (await db
       .prepare(
         "INSERT INTO customers (customer_code,business_name,lifecycle,synced_at,organization_id) VALUES ('C1','x','active','2026-01-01',1)"
       )
-      .run().lastInsertRowid
+      .run()).lastInsertRowid
   );
   g = Number(
-    db.prepare("INSERT INTO groups (name, slug, created_at, organization_id) VALUES ('گ', 'g', ?, 1)").run(now)
+    (await db.prepare("INSERT INTO groups (name, slug, created_at, organization_id) VALUES ('گ', 'g', ?, 1)").run(now))
       .lastInsertRowid
   );
-  db.prepare("UPDATE users SET group_id = ? WHERE id = ?").run(g, manager);
+  await db.prepare("UPDATE users SET group_id = ? WHERE id = ?").run(g, manager);
   ord = Number(
-    db
+    (await db
       .prepare(
         `INSERT INTO orders (order_no, customer_id, group_id, salesperson_user_id, status, order_date, created_by, created_at, updated_at, organization_id)
          VALUES ('9001', ?, ?, ?, 'CONFIRMED', '2026-06-01', ?, ?, ?, 1)`
       )
-      .run(custId, g, seller, manager, now, now).lastInsertRowid
+      .run(custId, g, seller, manager, now, now)).lastInsertRowid
   );
 
   // One unread feed row for `seller`. The actor is the manager, so `seller` -- the
   // order's salesperson -- is a recipient of order.confirmed.
-  fanOutNotifications(
+  await fanOutNotifications(
     1,
     { code: "t7", action_json: JSON.stringify({ notification_type: "order.confirmed" }) },
     {

@@ -21,10 +21,10 @@ import { refreshAll } from "@/lib/repo/analysisRefresh";
 import { refreshPredictions } from "@/lib/repo/predictionRefresh";
 import type { SeedContext } from "../context";
 
-export function run(ctx: SeedContext): void {
+export async function run(ctx: SeedContext): Promise<void> {
   const asOf = ctx.stamp(0);
-  const analysis = refreshAll(ctx.orgId, asOf);
-  const preds = refreshPredictions(ctx.orgId, asOf);
+  const analysis = await refreshAll(ctx.orgId, asOf);
+  const preds = await refreshPredictions(ctx.orgId, asOf);
 
   ctx.progress(
     `analysis: ${analysis.written} roll-ups for ${analysis.period}/${analysis.prev_period}` +

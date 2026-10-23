@@ -21,7 +21,7 @@ afterAll(() => {
 // the ids defined in tests/api/scoping.test.ts do not exist here.
 let east = 0, west = 0, ownerId = 0, eastMgrId = 0;
 
-beforeAll(() => {
+beforeAll(async () => {
   const db = getDb();
   const now = new Date().toISOString();
   // organization_id stamped explicitly on both: the groups uniqueness this file tests
@@ -31,14 +31,14 @@ beforeAll(() => {
   const g = db.prepare(
     "INSERT INTO groups (name, slug, active, created_at, organization_id) VALUES (?, ?, 1, ?, 1)"
   );
-  east = Number(g.run("شرق", "east", now).lastInsertRowid);
-  west = Number(g.run("غرب", "west", now).lastInsertRowid);
+  east = Number((await g.run("شرق", "east", now)).lastInsertRowid);
+  west = Number((await g.run("غرب", "west", now)).lastInsertRowid);
 
   const u = db.prepare(
     "INSERT INTO users (username, password_hash, display_name, role, group_id, active, created_at, organization_id) VALUES (?, ?, ?, ?, ?, 1, ?, 1)"
   );
-  ownerId = Number(u.run("owner", "x:y", "مالک", "owner", null, now).lastInsertRowid);
-  eastMgrId = Number(u.run("east-mgr", "x:y", "شرقی", "group_manager", east, now).lastInsertRowid);
+  ownerId = Number((await u.run("owner", "x:y", "مالک", "owner", null, now)).lastInsertRowid);
+  eastMgrId = Number((await u.run("east-mgr", "x:y", "شرقی", "group_manager", east, now)).lastInsertRowid);
 });
 
 type ReqInit = NonNullable<ConstructorParameters<typeof NextRequest>[1]>;
@@ -84,7 +84,7 @@ describe("POST /api/admin/groups", () => {
     const req = as(ownerId, "owner", null, "http://localhost/api/admin/groups",
       body("POST", { name: "گروه جنوب" }));
     const { id } = await (await createGroup(req)).json();
-    const row = getDb().prepare("SELECT slug FROM groups WHERE id = ?").get(id) as { slug: string };
+    const row = await getDb().prepare("SELECT slug FROM groups WHERE id = ?").get(id) as { slug: string };
     expect(row.slug.length).toBeGreaterThan(0);
   });
 
@@ -114,7 +114,7 @@ describe("PATCH /api/admin/groups/[id]", () => {
       body("PATCH", { name: "شرق تهران" }));
     const res = await patchGroup(req, idCtx(east));
     expect(res.status).toBe(200);
-    const row = getDb().prepare("SELECT name FROM groups WHERE id = ?").get(east) as { name: string };
+    const row = await getDb().prepare("SELECT name FROM groups WHERE id = ?").get(east) as { name: string };
     expect(row.name).toBe("شرق تهران");
   });
 
@@ -143,16 +143,16 @@ describe("DELETE /api/admin/groups/[id]", () => {
     const db = getDb();
     const now = new Date().toISOString();
     const gid = Number(
-      db.prepare("INSERT INTO groups (name, slug, active, created_at, organization_id) VALUES (?, ?, 1, ?, 1)")
-        .run("گروه موقت", "temp", now).lastInsertRowid
+      (await db.prepare("INSERT INTO groups (name, slug, active, created_at, organization_id) VALUES (?, ?, 1, ?, 1)")
+        .run("گروه موقت", "temp", now)).lastInsertRowid
     );
     const did = Number(
-      db.prepare("INSERT INTO districts (name, level, boundary_geojson, coverage_status, group_id, updated_at) VALUES (?, 'mahalle', '{}', 'unknown', ?, ?)")
-        .run("محله موقت", gid, now).lastInsertRowid
+      (await db.prepare("INSERT INTO districts (name, level, boundary_geojson, coverage_status, group_id, updated_at) VALUES (?, 'mahalle', '{}', 'unknown', ?, ?)")
+        .run("محله موقت", gid, now)).lastInsertRowid
     );
     const req = as(ownerId, "owner", null, `http://localhost/api/admin/groups/${gid}`, { method: "DELETE" });
     expect((await deleteGroup(req, idCtx(gid))).status).toBe(200);
-    const row = db.prepare("SELECT group_id FROM districts WHERE id = ?").get(did) as { group_id: number | null };
+    const row = await db.prepare("SELECT group_id FROM districts WHERE id = ?").get(did) as { group_id: number | null };
     expect(row.group_id).toBeNull();
   });
 

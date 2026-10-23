@@ -32,8 +32,8 @@ const ins = db.prepare(
 const now = new Date().toISOString();
 // A coarse بخش seeded first, and a hand-drawn district nested inside it -- which is the real
 // shape of every future refinement: the operator draws a tighter boundary after the fact.
-const coarse = Number(ins.run("بخش رودهن", "mantaghe", square(51.93, 35.73, 0.4), 0, now).lastInsertRowid);
-const custom = Number(ins.run("هراز", "mantaghe", square(51.93, 35.73, 0.04), 1, now).lastInsertRowid);
+const coarse = Number((await ins.run("بخش رودهن", "mantaghe", square(51.93, 35.73, 0.4), 0, now)).lastInsertRowid);
+const custom = Number((await ins.run("هراز", "mantaghe", square(51.93, 35.73, 0.04), 1, now)).lastInsertRowid);
 
 /** A hand-drawn district must beat the coarse administrative polygon containing it.
  *
@@ -43,27 +43,27 @@ const custom = Number(ins.run("هراز", "mantaghe", square(51.93, 35.73, 0.04)
  *  `ORDER BY CASE level ... END, id` falls through to id and the custom district, always
  *  inserted later, always loses. The point still matches something, so nothing errors. */
 describe("a hand-drawn district beats the coarse one containing it", () => {
-  it("resolves a point inside the custom district to the custom district", () => {
-    expect(districtIdForPoint(db, 35.73, 51.93)).toBe(custom);
+  it("resolves a point inside the custom district to the custom district", async () => {
+    expect(await districtIdForPoint(db, 35.73, 51.93)).toBe(custom);
   });
 
-  it("still resolves a point outside it to the coarse district", () => {
-    expect(districtIdForPoint(db, 35.85, 51.93)).toBe(coarse);
+  it("still resolves a point outside it to the coarse district", async () => {
+    expect(await districtIdForPoint(db, 35.85, 51.93)).toBe(coarse);
   });
 
-  it("agrees with recomputeCustomerGroups on the same point", () => {
+  it("agrees with recomputeCustomerGroups on the same point", async () => {
     // The two carry the same ORDER BY. If they drift, the backfill and the running app
     // classify one point two different ways -- worse than either being wrong alone.
-    db.prepare("INSERT INTO customers (customer_code, business_name, lat, lng, organization_id, synced_at) VALUES ('C1','ت',?,?,1,?)")
+    await db.prepare("INSERT INTO customers (customer_code, business_name, lat, lng, organization_id, synced_at) VALUES ('C1','ت',?,?,1,?)")
       .run(35.73, 51.93, now);
     // A real group row: districts.group_id is a foreign key, so a bare 7 would fail the
     // insert rather than exercise the code path this test is about.
-    db.prepare("INSERT INTO groups (name, slug, created_at, organization_id) VALUES ('territory','territory',?,1)").run(now);
-    const gid = Number((db.prepare("SELECT id FROM groups WHERE slug = 'territory'").get() as { id: number }).id);
-    db.prepare("UPDATE districts SET group_id = ? WHERE id = ?").run(gid, custom);
-    recomputeCustomerGroups(db, 1);
-    const row = db.prepare("SELECT group_id FROM customers WHERE customer_code = 'C1'").get() as { group_id: number | null };
-    expect(row.group_id).toBe(groupForPoint(db, 35.73, 51.93, 1));
+    await db.prepare("INSERT INTO groups (name, slug, created_at, organization_id) VALUES ('territory','territory',?,1)").run(now);
+    const gid = Number((await db.prepare("SELECT id FROM groups WHERE slug = 'territory'").get() as { id: number }).id);
+    await db.prepare("UPDATE districts SET group_id = ? WHERE id = ?").run(gid, custom);
+    await recomputeCustomerGroups(db, 1);
+    const row = await db.prepare("SELECT group_id FROM customers WHERE customer_code = 'C1'").get() as { group_id: number | null };
+    expect(row.group_id).toBe(await groupForPoint(db, 35.73, 51.93, 1));
   });
 
   it("keeps the two functions' ORDER BY identical", () => {

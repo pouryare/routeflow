@@ -26,45 +26,45 @@ let custId = 0;
 let orderId = 0;
 let otherApprovalId = 0;
 
-beforeAll(() => {
+beforeAll(async () => {
   const db = getDb();
-  db.exec(`INSERT INTO organizations (id,name,slug,created_at) VALUES (2,'Two','two','2026-01-01')`);
+  await db.exec(`INSERT INTO organizations (id,name,slug,created_at) VALUES (2,'Two','two','2026-01-01')`);
   const now = new Date().toISOString();
   mgrId = Number(
-    db
+    (await db
       .prepare(
         "INSERT INTO users (username,password_hash,display_name,role,group_id,active,created_at,organization_id) VALUES (?,?,?,'group_manager',NULL,1,?,1)"
       )
-      .run("ca-mgr", "x:y", "مدیر", now).lastInsertRowid
+      .run("ca-mgr", "x:y", "مدیر", now)).lastInsertRowid
   );
   sellerId = Number(
-    db
+    (await db
       .prepare(
         "INSERT INTO users (username,password_hash,display_name,role,group_id,active,created_at,organization_id) VALUES (?,?,?,'phone_sales',NULL,1,?,1)"
       )
-      .run("ca-seller", "x:y", "فروشنده", now).lastInsertRowid
+      .run("ca-seller", "x:y", "فروشنده", now)).lastInsertRowid
   );
   custId = Number(
-    db
+    (await db
       .prepare(
         "INSERT INTO customers (customer_code,business_name,customer_type,lifecycle,synced_at,organization_id) VALUES ('C1','x','RESTAURANT','active','2026-01-01',1)"
       )
-      .run().lastInsertRowid
+      .run()).lastInsertRowid
   );
   orderId = Number(
-    db
+    (await db
       .prepare(
         "INSERT INTO orders (order_no,customer_id,order_date,status,credit_hold,created_by,created_at,updated_at,organization_id) VALUES ('o1',?,?,'PENDING_CREDIT',1,?,?,?,1)"
       )
-      .run(custId, "2026-01-01", mgrId, now, now).lastInsertRowid
+      .run(custId, "2026-01-01", mgrId, now, now)).lastInsertRowid
   );
   // An approval belonging to org 2.
   otherApprovalId = Number(
-    db
+    (await db
       .prepare(
         "INSERT INTO credit_approvals (organization_id,order_id,requested_by,requested_at,customer_balance_toman,credit_limit_toman,overage_toman,status) VALUES (2,?,?,?,1,0,1,'pending')"
       )
-      .run(orderId, mgrId, now).lastInsertRowid
+      .run(orderId, mgrId, now)).lastInsertRowid
   );
 });
 

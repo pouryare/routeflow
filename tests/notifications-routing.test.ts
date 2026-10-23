@@ -18,19 +18,19 @@ const { priorityRank, effectiveRouting } = await import("@/lib/repo/notification
 afterAll(() => { for (const s of ["", "-wal", "-shm"]) fs.rmSync(`${testDbPath}${s}`, { force: true }); });
 
 let uid = 0;
-beforeEach(() => {
+beforeEach(async () => {
   const db = getDb();
-  db.exec("PRAGMA foreign_keys=OFF; DELETE FROM users WHERE id>0; DELETE FROM notification_prefs; DELETE FROM notification_channels; DELETE FROM push_subscriptions; PRAGMA foreign_keys=ON;");
+  await db.exec("PRAGMA foreign_keys=OFF; DELETE FROM users WHERE id>0; DELETE FROM notification_prefs; DELETE FROM notification_channels; DELETE FROM push_subscriptions; PRAGMA foreign_keys=ON;");
   // users has no `name` column; username/password_hash/display_name are the NOT NULL cols.
-  uid = Number(db.prepare("INSERT INTO users (username, password_hash, display_name, role, active, created_at, organization_id) VALUES (?, 'x:y', 'ک', 'phone_sales', 1, ?, 1)").run(`u${Date.now()}`, new Date().toISOString()).lastInsertRowid);
+  uid = Number((await db.prepare("INSERT INTO users (username, password_hash, display_name, role, active, created_at, organization_id) VALUES (?, 'x:y', 'ک', 'phone_sales', 1, ?, 1)").run(`u${Date.now()}`, new Date().toISOString())).lastInsertRowid);
 });
 
-function connectPush() {
-  getDb().prepare("INSERT INTO push_subscriptions (endpoint, p256dh, auth, created_at, user_id) VALUES (?,?,?,?,?)")
+async function connectPush() {
+  await getDb().prepare("INSERT INTO push_subscriptions (endpoint, p256dh, auth, created_at, user_id) VALUES (?,?,?,?,?)")
     .run("e" + Math.random(), "p", "a", new Date().toISOString(), uid);
 }
-function connectTelegram() {
-  getDb().prepare("UPDATE users SET telegram_chat_id = '123' WHERE id = ?").run(uid);
+async function connectTelegram() {
+  await getDb().prepare("UPDATE users SET telegram_chat_id = '123' WHERE id = ?").run(uid);
 }
 
 describe("priorityRank", () => {
@@ -42,37 +42,37 @@ describe("priorityRank", () => {
 });
 
 describe("effectiveRouting", () => {
-  it("uses the type default when there is no pref row (directed HIGH → loud)", () => {
-    connectPush();
-    expect(effectiveRouting(uid, "task.escalated", "push")).toBe(true);   // default_push = 1
-    expect(effectiveRouting(uid, "order.created", "push")).toBe(false);   // ambient NORMAL → default 0
+  it("uses the type default when there is no pref row (directed HIGH → loud)", async () => {
+    await connectPush();
+    expect(await effectiveRouting(uid, "task.escalated", "push")).toBe(true);   // default_push = 1
+    expect(await effectiveRouting(uid, "order.created", "push")).toBe(false);   // ambient NORMAL → default 0
   });
 
-  it("a pref row overrides the default both ways", () => {
-    connectPush();
-    getDb().prepare("INSERT INTO notification_prefs (user_id, type_code, channel, enabled, updated_at) VALUES (?, 'order.created', 'push', 1, ?)").run(uid, new Date().toISOString());
-    expect(effectiveRouting(uid, "order.created", "push")).toBe(true);
-    getDb().prepare("INSERT INTO notification_prefs (user_id, type_code, channel, enabled, updated_at) VALUES (?, 'task.escalated', 'push', 0, ?)").run(uid, new Date().toISOString());
-    expect(effectiveRouting(uid, "task.escalated", "push")).toBe(false);
+  it("a pref row overrides the default both ways", async () => {
+    await connectPush();
+    await getDb().prepare("INSERT INTO notification_prefs (user_id, type_code, channel, enabled, updated_at) VALUES (?, 'order.created', 'push', 1, ?)").run(uid, new Date().toISOString());
+    expect(await effectiveRouting(uid, "order.created", "push")).toBe(true);
+    await getDb().prepare("INSERT INTO notification_prefs (user_id, type_code, channel, enabled, updated_at) VALUES (?, 'task.escalated', 'push', 0, ?)").run(uid, new Date().toISOString());
+    expect(await effectiveRouting(uid, "task.escalated", "push")).toBe(false);
   });
 
-  it("master switch off kills the channel regardless of pref/default", () => {
-    connectPush();
-    getDb().prepare("INSERT INTO notification_channels (user_id, channel, enabled, updated_at) VALUES (?, 'push', 0, ?)").run(uid, new Date().toISOString());
-    expect(effectiveRouting(uid, "task.escalated", "push")).toBe(false);
+  it("master switch off kills the channel regardless of pref/default", async () => {
+    await connectPush();
+    await getDb().prepare("INSERT INTO notification_channels (user_id, channel, enabled, updated_at) VALUES (?, 'push', 0, ?)").run(uid, new Date().toISOString());
+    expect(await effectiveRouting(uid, "task.escalated", "push")).toBe(false);
   });
 
-  it("an unconnected channel is always false", () => {
+  it("an unconnected channel is always false", async () => {
     // push not connected
-    expect(effectiveRouting(uid, "task.escalated", "push")).toBe(false);
+    expect(await effectiveRouting(uid, "task.escalated", "push")).toBe(false);
     // telegram not connected
-    expect(effectiveRouting(uid, "task.escalated", "telegram")).toBe(false);
-    connectTelegram();
-    expect(effectiveRouting(uid, "task.escalated", "telegram")).toBe(true);
+    expect(await effectiveRouting(uid, "task.escalated", "telegram")).toBe(false);
+    await connectTelegram();
+    expect(await effectiveRouting(uid, "task.escalated", "telegram")).toBe(true);
   });
 
-  it("returns false when the channel's server config is absent", () => {
-    connectPush();
+  it("returns false when the channel's server config is absent", async () => {
+    await connectPush();
     const saved = process.env.VAPID_PUBLIC_KEY;
     delete process.env.VAPID_PUBLIC_KEY;
     // configureWebPush caches; re-import in isolation is overkill here — assert the intent
@@ -80,8 +80,8 @@ describe("effectiveRouting", () => {
     process.env.VAPID_PUBLIC_KEY = saved;
     const savedT = process.env.TELEGRAM_BOT_TOKEN;
     delete process.env.TELEGRAM_BOT_TOKEN;
-    connectTelegram();
-    expect(effectiveRouting(uid, "task.escalated", "telegram")).toBe(false);
+    await connectTelegram();
+    expect(await effectiveRouting(uid, "task.escalated", "telegram")).toBe(false);
     process.env.TELEGRAM_BOT_TOKEN = savedT;
   });
 });

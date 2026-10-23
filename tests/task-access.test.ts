@@ -15,14 +15,14 @@ afterAll(() => {
 });
 
 let userOrg1 = 0, userOrg2 = 0, inactive = 0;
-beforeAll(() => {
+beforeAll(async () => {
   const db = getDb();
-  db.exec("INSERT INTO organizations (id,name,slug,created_at) VALUES (2,'Two','two','2026-01-01')");
+  await db.exec("INSERT INTO organizations (id,name,slug,created_at) VALUES (2,'Two','two','2026-01-01')");
   const now = new Date().toISOString();
   const ins = db.prepare("INSERT INTO users (username,password_hash,display_name,role,active,created_at,organization_id) VALUES (?,?,?,?,?,?,?)");
-  userOrg1 = Number(ins.run("a", "x", "ا", "phone_sales", 1, now, 1).lastInsertRowid);
-  userOrg2 = Number(ins.run("b", "x", "ب", "phone_sales", 1, now, 2).lastInsertRowid);
-  inactive = Number(ins.run("c", "x", "ج", "phone_sales", 0, now, 1).lastInsertRowid);
+  userOrg1 = Number((await ins.run("a", "x", "ا", "phone_sales", 1, now, 1)).lastInsertRowid);
+  userOrg2 = Number((await ins.run("b", "x", "ب", "phone_sales", 1, now, 2)).lastInsertRowid);
+  inactive = Number((await ins.run("c", "x", "ج", "phone_sales", 0, now, 1)).lastInsertRowid);
 });
 
 const row = (o: Partial<{ assignee_user_id: number | null; group_id: number | null; role_hint: string | null }> = {}) =>
@@ -51,12 +51,12 @@ describe("who may act on a task", () => {
 });
 
 describe("assignee must belong to the organisation", () => {
-  it("accepts an active colleague and refuses a stranger, an inactive user and junk", () => {
-    expect(assigneeInOrg(1, userOrg1)).toBe(true);
-    expect(assigneeInOrg(1, userOrg2)).toBe(false);
-    expect(assigneeInOrg(1, inactive)).toBe(false);
-    expect(assigneeInOrg(1, 99999)).toBe(false);
-    expect(assigneeInOrg(1, 1.5)).toBe(false);
+  it("accepts an active colleague and refuses a stranger, an inactive user and junk", async () => {
+    expect(await assigneeInOrg(1, userOrg1)).toBe(true);
+    expect(await assigneeInOrg(1, userOrg2)).toBe(false);
+    expect(await assigneeInOrg(1, inactive)).toBe(false);
+    expect(await assigneeInOrg(1, 99999)).toBe(false);
+    expect(await assigneeInOrg(1, 1.5)).toBe(false);
   });
 });
 
@@ -65,16 +65,16 @@ describe("a task's linked record must be real and in the organisation", () => {
     const { taskEntityValid } = await import("@/lib/repo/tasks");
     const db = getDb();
     const now = new Date().toISOString();
-    const c1 = Number(db.prepare("INSERT INTO customers (customer_code,business_name,lifecycle,synced_at,organization_id) VALUES ('T1','x','active',?,1)").run(now).lastInsertRowid);
-    const c2 = Number(db.prepare("INSERT INTO customers (customer_code,business_name,lifecycle,synced_at,organization_id) VALUES ('T2','y','active',?,2)").run(now).lastInsertRowid);
-    expect(taskEntityValid(1, null, null)).toBe(true);
-    expect(taskEntityValid(1, undefined, undefined)).toBe(true);
-    expect(taskEntityValid(1, "customer", c1)).toBe(true);
-    expect(taskEntityValid(1, "customer", c2)).toBe(false); // another tenant
-    expect(taskEntityValid(1, "customer", 999999)).toBe(false);
-    expect(taskEntityValid(1, "district", c1)).toBe(false); // not a linkable type
-    expect(taskEntityValid(1, "customer", null)).toBe(false); // half a link
-    expect(taskEntityValid(1, null, c1)).toBe(false);
-    expect(taskEntityValid(1, "customer; DROP TABLE x", c1)).toBe(false);
+    const c1 = Number((await db.prepare("INSERT INTO customers (customer_code,business_name,lifecycle,synced_at,organization_id) VALUES ('T1','x','active',?,1)").run(now)).lastInsertRowid);
+    const c2 = Number((await db.prepare("INSERT INTO customers (customer_code,business_name,lifecycle,synced_at,organization_id) VALUES ('T2','y','active',?,2)").run(now)).lastInsertRowid);
+    expect(await taskEntityValid(1, null, null)).toBe(true);
+    expect(await taskEntityValid(1, undefined, undefined)).toBe(true);
+    expect(await taskEntityValid(1, "customer", c1)).toBe(true);
+    expect(await taskEntityValid(1, "customer", c2)).toBe(false); // another tenant
+    expect(await taskEntityValid(1, "customer", 999999)).toBe(false);
+    expect(await taskEntityValid(1, "district", c1)).toBe(false); // not a linkable type
+    expect(await taskEntityValid(1, "customer", null)).toBe(false); // half a link
+    expect(await taskEntityValid(1, null, c1)).toBe(false);
+    expect(await taskEntityValid(1, "customer; DROP TABLE x", c1)).toBe(false);
   });
 });

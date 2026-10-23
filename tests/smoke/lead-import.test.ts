@@ -23,7 +23,7 @@ beforeAll(async () => {
   stop = await startDevServer();
   browser = await chromium.launch();
   const context = await browser.newContext({ locale: "fa-IR", viewport: { width: 1440, height: 900 } });
-  await context.addCookies([{ ...sessionCookie(), url: BASE }]);
+  await context.addCookies([{ ...await sessionCookie(), url: BASE }]);
   page = await context.newPage();
 }, 240_000);
 

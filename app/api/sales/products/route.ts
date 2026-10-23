@@ -14,11 +14,11 @@ import { logProductChange } from "@/lib/repo/productLog";
  *  rep, and a rep who cannot read a price cannot quote one at the door. Writing a price
  *  stays owner-only either way. */
 export async function GET(req: NextRequest) {
-  const guard = requireRole(req, [...MANAGE_ROLES, "phone_sales", "field_rep", "delivery_driver"]);
+  const guard = await requireRole(req, [...MANAGE_ROLES, "phone_sales", "field_rep", "delivery_driver"]);
   if (!guard.ok) return guard.response;
 
   const url = new URL(req.url);
-  const products = catalogueFor(guard.session.organizationId, {
+  const products = await catalogueFor(guard.session.organizationId, {
     includeInactive: url.searchParams.get("all") === "1",
     onDate: url.searchParams.get("on") ?? undefined,
   });
@@ -27,7 +27,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const guard = requireRole(req, OWNER_ROLES);
+  const guard = await requireRole(req, OWNER_ROLES);
   if (!guard.ok) return guard.response;
 
   const body = (await req.json().catch(() => null)) as {
@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const id = addProduct({
+    const id = await addProduct({
       name,
       kg_per_base_unit: kg,
       organization_id: guard.session.organizationId,
@@ -62,7 +62,7 @@ export async function POST(req: NextRequest) {
       sku: typeof body?.sku === "string" ? body.sku : null,
       notes: typeof body?.notes === "string" ? body.notes : null,
     });
-    logProductChange(id, "created", { new: name }, { id: guard.session.user.id, name: guard.session.user.display_name, impersonatedBy: guard.session.actorId ?? null });
+    await logProductChange(id, "created", { new: name }, { id: guard.session.user.id, name: guard.session.user.display_name, impersonatedBy: guard.session.actorId ?? null });
     return NextResponse.json({ ok: true, id }, { status: 201 });
   } catch (e) {
     const message =

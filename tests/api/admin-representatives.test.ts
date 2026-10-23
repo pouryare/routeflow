@@ -25,40 +25,40 @@ let ownerId = 0;
 let sellerId = 0;
 let custId = 0;
 
-beforeAll(() => {
+beforeAll(async () => {
   const db = getDb();
-  db.exec(`INSERT INTO organizations (id,name,slug,created_at) VALUES (2,'Two','two','2026-01-01')`);
+  await db.exec(`INSERT INTO organizations (id,name,slug,created_at) VALUES (2,'Two','two','2026-01-01')`);
   const now = new Date().toISOString();
   ownerId = Number(
-    db
+    (await db
       .prepare(
         "INSERT INTO users (username,password_hash,display_name,role,group_id,active,created_at,organization_id) VALUES (?,?,?,'owner',NULL,1,?,1)"
       )
-      .run("ar-owner", "x:y", "مالک", now).lastInsertRowid
+      .run("ar-owner", "x:y", "مالک", now)).lastInsertRowid
   );
   sellerId = Number(
-    db
+    (await db
       .prepare(
         "INSERT INTO users (username,password_hash,display_name,role,group_id,active,created_at,organization_id) VALUES (?,?,?,'phone_sales',NULL,1,?,1)"
       )
-      .run("ar-seller", "x:y", "فروشنده", now).lastInsertRowid
+      .run("ar-seller", "x:y", "فروشنده", now)).lastInsertRowid
   );
   custId = Number(
-    db
+    (await db
       .prepare(
         "INSERT INTO customers (customer_code,business_name,customer_type,lifecycle,synced_at,organization_id) VALUES ('W1','عمده‌فروش','WHOLESALE','qualified','2026-01-01',1)"
       )
-      .run().lastInsertRowid
+      .run()).lastInsertRowid
   );
   // A rep in org 2 with the same rep_code -- collision must be allowed across orgs.
   const otherCust = Number(
-    db
+    (await db
       .prepare(
         "INSERT INTO customers (customer_code,business_name,customer_type,lifecycle,synced_at,organization_id) VALUES ('W1','x','WHOLESALE','active','2026-01-01',2)"
       )
-      .run().lastInsertRowid
+      .run()).lastInsertRowid
   );
-  db.prepare(
+  await db.prepare(
     "INSERT INTO representative_profiles (organization_id,customer_id,rep_code,stage,credit_terms_days,created_at,updated_at) VALUES (2,?,'R1','active',0,?,?)"
   ).run(otherCust, now, now);
 });
@@ -97,11 +97,11 @@ describe("/api/admin/representatives", () => {
 
   it("rejects a duplicate rep_code within the org", async () => {
     const c2 = Number(
-      getDb()
+      (await getDb()
         .prepare(
           "INSERT INTO customers (customer_code,business_name,customer_type,lifecycle,synced_at,organization_id) VALUES ('W2','y','WHOLESALE','qualified','2026-01-01',1)"
         )
-        .run().lastInsertRowid
+        .run()).lastInsertRowid
     );
     const res = await POST(
       req("/api/admin/representatives", { method: "POST", body: JSON.stringify({ customer_id: c2, rep_code: "R1" }) })
@@ -145,7 +145,7 @@ describe("/api/admin/representatives", () => {
   });
 
   it("404s another org's representative id", async () => {
-    const other = getDb().prepare("SELECT id FROM representative_profiles WHERE organization_id = 2").get() as {
+    const other = await getDb().prepare("SELECT id FROM representative_profiles WHERE organization_id = 2").get() as {
       id: number;
     };
     const res = await GET_ONE(req(`/api/admin/representatives/${other.id}`), ctx(other.id));

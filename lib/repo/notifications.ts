@@ -1,4 +1,4 @@
-import type { DatabaseSync } from "node:sqlite";
+import type { Db } from "@/lib/database/client";
 import { randomBytes } from "node:crypto";
 import { getDb } from "@/lib/db";
 import { faNum } from "@/lib/format";
@@ -7,6 +7,7 @@ import { pushActionFor, type PushAction } from "@/lib/pushActions";
 import type { ChequeStatus } from "@/lib/chequeStates";
 import { configureWebPush, webpush } from "@/lib/push";
 import { editTelegram, sendTelegram, telegramConfigured } from "@/lib/telegram";
+import { filterSeq } from "@/lib/seq";
 
 export type Priority = "CRITICAL" | "HIGH" | "NORMAL" | "LOW";
 
@@ -17,40 +18,40 @@ export function priorityRank(p: string): number {
 
 /** Would this user get `typeCode` loud on `channel` right now? Pref row > stored default,
  *  AND master switch on, AND the channel actually connected, AND the channel configured. */
-export function effectiveRouting(
+export async function effectiveRouting(
   userId: number,
   typeCode: string,
   channel: "push" | "telegram",
-  db?: DatabaseSync
-): boolean {
+  db?: Db
+): Promise<boolean> {
   if (channel === "push" && !configureWebPush()) return false;
   if (channel === "telegram" && !telegramConfigured()) return false;
   const conn = db ?? getDb();
 
-  const master = conn
+  const master = await conn
     .prepare("SELECT enabled FROM notification_channels WHERE user_id = ? AND channel = ?")
     .get(userId, channel) as { enabled: number } | undefined;
   if (master && master.enabled === 0) return false;
 
-  const pref = conn
+  const pref = await conn
     .prepare("SELECT enabled FROM notification_prefs WHERE user_id = ? AND type_code = ? AND channel = ?")
     .get(userId, typeCode, channel) as { enabled: number } | undefined;
 
   let want: boolean;
   if (pref) want = pref.enabled === 1;
   else {
-    const orgId = orgOf(userId, conn);
-    const t = catalogueRow(orgId, typeCode, conn);
+    const orgId = await orgOf(userId, conn);
+    const t = await catalogueRow(orgId, typeCode, conn);
     const d = channel === "push" ? t?.default_push : t?.default_telegram;
     want = (d ?? 0) === 1;
   }
   if (!want) return false;
 
   if (channel === "push") {
-    const has = conn.prepare("SELECT 1 FROM push_subscriptions WHERE user_id = ? LIMIT 1").get(userId);
+    const has = await conn.prepare("SELECT 1 FROM push_subscriptions WHERE user_id = ? LIMIT 1").get(userId);
     return !!has;
   }
-  const chat = conn
+  const chat = await conn
     .prepare("SELECT telegram_chat_id FROM users WHERE id = ?")
     .get(userId) as { telegram_chat_id: string | null } | undefined;
   return !!chat?.telegram_chat_id;
@@ -131,17 +132,17 @@ export function renderNotification(
 }
 
 /** The one user credited with a given order, scoped to the tenant. */
-function orderSalesperson(orgId: number, orderId: number): number | null {
-  const row = getDb()
+async function orderSalesperson(orgId: number, orderId: number): Promise<number | null> {
+  const row = await getDb()
     .prepare("SELECT salesperson_user_id FROM orders WHERE id = ? AND organization_id = ?")
     .get(orderId, orgId) as { salesperson_user_id: number | null } | undefined;
   return row?.salesperson_user_id ?? null;
 }
 
 /** Active group_manager user ids sitting in the same group as the given order. */
-function orderGroupManagers(orgId: number, orderId: number): number[] {
+async function orderGroupManagers(orgId: number, orderId: number): Promise<number[]> {
   return (
-    getDb()
+    await getDb()
       .prepare(
         `SELECT u.id FROM users u
            JOIN orders o ON o.group_id = u.group_id
@@ -152,8 +153,8 @@ function orderGroupManagers(orgId: number, orderId: number): number[] {
 }
 
 /** The one salesperson credited with this customer's most recent attributed order. */
-function customerSalesperson(orgId: number, customerId: number): number | null {
-  const row = getDb()
+async function customerSalesperson(orgId: number, customerId: number): Promise<number | null> {
+  const row = await getDb()
     .prepare(
       `SELECT salesperson_user_id FROM orders
         WHERE customer_id = ? AND organization_id = ? AND salesperson_user_id IS NOT NULL
@@ -164,9 +165,9 @@ function customerSalesperson(orgId: number, customerId: number): number | null {
 }
 
 /** Active group_manager user ids for the group that owns the given district. */
-function districtGroupManagers(orgId: number, districtId: number): number[] {
+async function districtGroupManagers(orgId: number, districtId: number): Promise<number[]> {
   return (
-    getDb()
+    await getDb()
       .prepare(
         `SELECT u.id FROM users u
            JOIN districts d ON d.group_id = u.group_id
@@ -177,9 +178,9 @@ function districtGroupManagers(orgId: number, districtId: number): number[] {
 }
 
 /** Everyone in the tenant who can sign off a credit decision: owners + group managers. */
-function orgApprovers(orgId: number): number[] {
+async function orgApprovers(orgId: number): Promise<number[]> {
   return (
-    getDb()
+    await getDb()
       .prepare(
         "SELECT id FROM users WHERE organization_id = ? AND role IN ('owner','group_manager') AND active = 1"
       )
@@ -188,12 +189,12 @@ function orgApprovers(orgId: number): number[] {
 }
 
 /** Distinct user ids that should hear about one event, with the actor removed. */
-export function recipientsFor(
+export async function recipientsFor(
   organizationId: number,
   typeCode: string,
   ctx: FanoutContext,
   actorUserId: number | null
-): number[] {
+): Promise<number[]> {
   const out = new Set<number>();
   const orderId = ctx.entity_type === "order" && ctx.entity_id != null ? ctx.entity_id : null;
 
@@ -202,19 +203,19 @@ export function recipientsFor(
     if (typeof a === "number") out.add(a);
   } else if (typeCode === "order.confirmed" || typeCode === "order.rejected") {
     if (orderId) {
-      const sp = orderSalesperson(organizationId, orderId);
+      const sp = await orderSalesperson(organizationId, orderId);
       if (sp) out.add(sp);
     }
   } else if (typeCode === "delivery.succeeded" || typeCode === "delivery.failed") {
     // Spec catalogue: both delivery outcomes go to the order's salesperson + the
     // group_manager (ambient). The driver recipient for delivery.failed is Phase 2.
     if (orderId) {
-      const sp = orderSalesperson(organizationId, orderId);
+      const sp = await orderSalesperson(organizationId, orderId);
       if (sp) out.add(sp);
-      for (const m of orderGroupManagers(organizationId, orderId)) out.add(m);
+      for (const m of await orderGroupManagers(organizationId, orderId)) out.add(m);
     }
   } else if (typeCode === "order.created") {
-    if (orderId) for (const m of orderGroupManagers(organizationId, orderId)) out.add(m);
+    if (orderId) for (const m of await orderGroupManagers(organizationId, orderId)) out.add(m);
   } else if (typeCode === "payment.recorded") {
     // The payment.recorded event carries entity_type "payment"; one payment can be
     // allocated across several orders, so Task 6 threads the distinct non-null
@@ -222,7 +223,7 @@ export function recipientsFor(
     const ids = Array.isArray(ctx.meta["order_ids"]) ? (ctx.meta["order_ids"] as unknown[]) : [];
     for (const oid of ids) {
       if (typeof oid === "number") {
-        const sp = orderSalesperson(organizationId, oid);
+        const sp = await orderSalesperson(organizationId, oid);
         if (sp) out.add(sp);
       }
     }
@@ -232,19 +233,19 @@ export function recipientsFor(
     if (typeof a === "number") out.add(a);
   } else if (typeCode === "customer.overdue") {
     if (ctx.entity_type === "customer" && ctx.entity_id != null) {
-      const sp = customerSalesperson(organizationId, ctx.entity_id);
+      const sp = await customerSalesperson(organizationId, ctx.entity_id);
       if (sp) out.add(sp);
     }
   } else if (typeCode === "credit_approval.waiting") {
-    for (const u of orgApprovers(organizationId)) out.add(u);
+    for (const u of await orgApprovers(organizationId)) out.add(u);
   } else if (typeCode === "cheque.due_soon") {
     if (ctx.entity_type === "cheque" && ctx.entity_id != null) {
-      const row = getDb()
+      const row = await getDb()
         .prepare("SELECT received_by, customer_id FROM cheques WHERE id = ? AND organization_id = ?")
         .get(ctx.entity_id, organizationId) as { received_by: number | null; customer_id: number } | undefined;
       if (row?.received_by) out.add(row.received_by);
       else if (row) {
-        const sp = customerSalesperson(organizationId, row.customer_id);
+        const sp = await customerSalesperson(organizationId, row.customer_id);
         if (sp) out.add(sp);
       }
     }
@@ -252,17 +253,17 @@ export function recipientsFor(
     // The person who pasted the links is the one waiting on them.
     const jobId = ctx.meta["job_id"];
     if (typeof jobId === "number") {
-      const row = getDb()
+      const row = await getDb()
         .prepare("SELECT created_by FROM lead_import_jobs WHERE id = ? AND organization_id = ?")
         .get(jobId, organizationId) as { created_by: number | null } | undefined;
       if (row?.created_by != null) out.add(row.created_by);
     }
   } else if (typeCode === "reminder.due") {
     if (ctx.entity_type === "customer" && ctx.entity_id != null) {
-      const sp = customerSalesperson(organizationId, ctx.entity_id);
+      const sp = await customerSalesperson(organizationId, ctx.entity_id);
       if (sp) out.add(sp);
     } else if (ctx.entity_type === "district" && ctx.entity_id != null) {
-      for (const m of districtGroupManagers(organizationId, ctx.entity_id)) out.add(m);
+      for (const m of await districtGroupManagers(organizationId, ctx.entity_id)) out.add(m);
     }
   }
 
@@ -283,9 +284,9 @@ interface CatalogueRow {
 }
 
 /** The tenant a user belongs to (0 if somehow unset), for the catalogue lookup. */
-function orgOf(userId: number, db?: DatabaseSync): number {
+async function orgOf(userId: number, db?: Db): Promise<number> {
   return (
-    ((db ?? getDb()).prepare("SELECT organization_id FROM users WHERE id = ?").get(userId) as
+    (await (db ?? getDb()).prepare("SELECT organization_id FROM users WHERE id = ?").get(userId) as
       | { organization_id: number | null }
       | undefined)?.organization_id ?? 0
   );
@@ -294,8 +295,8 @@ function orgOf(userId: number, db?: DatabaseSync): number {
 /** One catalogue type by code, tenant row winning over the NULL-org default. The single
  *  source of the tenant-override SELECT — `effectiveRouting`, `setPref` and
  *  `fanOutNotifications` all read the catalogue through here. */
-function catalogueRow(organizationId: number, code: string, db?: DatabaseSync): CatalogueRow | undefined {
-  return (db ?? getDb())
+async function catalogueRow(organizationId: number, code: string, db?: Db): Promise<CatalogueRow | undefined> {
+  return await (db ?? getDb())
     .prepare(
       `SELECT code, name_fa, category, directedness, priority, group_scope, default_push, default_telegram, active
          FROM notification_types
@@ -310,7 +311,7 @@ export interface FanoutRule {
   action_json: string | null;
 }
 
-export function fanOutNotifications(
+export async function fanOutNotifications(
   organizationId: number,
   rule: FanoutRule,
   event: {
@@ -323,12 +324,12 @@ export function fanOutNotifications(
     occurred_at: string;
   },
   ruleRunId: number | null,
-  db?: DatabaseSync
-): number {
+  db?: Db
+): Promise<number> {
   const spec = rule.action_json ? (JSON.parse(rule.action_json) as { notification_type?: string }) : {};
   const typeCode = spec.notification_type;
   if (!typeCode) return 0;
-  const type = catalogueRow(organizationId, typeCode, db);
+  const type = await catalogueRow(organizationId, typeCode, db);
   if (!type || !type.active) return 0;
 
   const ctx: FanoutContext = {
@@ -339,7 +340,7 @@ export function fanOutNotifications(
     meta: event.metadata_json ? (JSON.parse(event.metadata_json) as Record<string, unknown>) : {},
   };
 
-  const recipients = recipientsFor(organizationId, typeCode, ctx, event.actor_user_id);
+  const recipients = await recipientsFor(organizationId, typeCode, ctx, event.actor_user_id);
   if (recipients.length === 0) return 0;
 
   const groupKey = groupKeyFor(type.group_scope, ctx, typeCode);
@@ -355,7 +356,7 @@ export function fanOutNotifications(
   );
   let n = 0;
   for (const uid of recipients) {
-    insert.run(
+    await insert.run(
       organizationId,
       uid,
       typeCode,
@@ -388,12 +389,12 @@ export interface FeedGroup {
   items: { id: number; title_fa: string; body_fa: string | null; created_at: string; read_at: string | null }[];
 }
 
-export function listNotificationGroups(
+export async function listNotificationGroups(
   organizationId: number,
   userId: number,
   opts: { limit?: number } = {}
-): FeedGroup[] {
-  const rows = getDb()
+): Promise<FeedGroup[]> {
+  const rows = await getDb()
     .prepare(
       `SELECT id, type_code, title_fa, body_fa, entity_type, entity_id, group_key, priority, created_at, read_at
          FROM notifications
@@ -442,8 +443,8 @@ export function listNotificationGroups(
   return opts.limit ? groups.slice(0, opts.limit) : groups;
 }
 
-export function unreadGroupCount(organizationId: number, userId: number): number {
-  const row = getDb()
+export async function unreadGroupCount(organizationId: number, userId: number): Promise<number> {
+  const row = await getDb()
     .prepare(
       `SELECT COUNT(DISTINCT group_key) c FROM notifications
         WHERE organization_id = ? AND user_id = ? AND read_at IS NULL`
@@ -452,17 +453,17 @@ export function unreadGroupCount(organizationId: number, userId: number): number
   return row.c;
 }
 
-export function markGroupsRead(organizationId: number, userId: number, groupKeys: string[] | "all"): void {
+export async function markGroupsRead(organizationId: number, userId: number, groupKeys: string[] | "all"): Promise<void> {
   const now = new Date().toISOString();
   if (groupKeys === "all") {
-    getDb()
+    await getDb()
       .prepare("UPDATE notifications SET read_at = ? WHERE organization_id = ? AND user_id = ? AND read_at IS NULL")
       .run(now, organizationId, userId);
     return;
   }
   if (groupKeys.length === 0) return;
   const ph = groupKeys.map(() => "?").join(",");
-  getDb()
+  await getDb()
     .prepare(
       `UPDATE notifications SET read_at = ?
         WHERE organization_id = ? AND user_id = ? AND read_at IS NULL AND group_key IN (${ph})`
@@ -532,19 +533,19 @@ function channelPatchValue(
 /** Master switch + quiet-hours window for one channel, plus whether it is connected and
  *  server-configured. Returns the spec defaults when the user has no `notification_channels`
  *  row — it never lazily inserts one (only `putChannelState` writes). */
-export function getChannelState(userId: number, channel: "push" | "telegram"): ChannelState {
+export async function getChannelState(userId: number, channel: "push" | "telegram"): Promise<ChannelState> {
   const db = getDb();
   const configured = channel === "push" ? configureWebPush() : telegramConfigured();
   const connected =
     channel === "push"
-      ? !!db.prepare("SELECT 1 FROM push_subscriptions WHERE user_id = ? LIMIT 1").get(userId)
+      ? !!await db.prepare("SELECT 1 FROM push_subscriptions WHERE user_id = ? LIMIT 1").get(userId)
       : !!(
-          db.prepare("SELECT telegram_chat_id FROM users WHERE id = ?").get(userId) as
+          await db.prepare("SELECT telegram_chat_id FROM users WHERE id = ?").get(userId) as
             | { telegram_chat_id: string | null }
             | undefined
         )?.telegram_chat_id;
 
-  const row = db
+  const row = await db
     .prepare(
       "SELECT enabled, quiet_start, quiet_end, critical_breaks_quiet FROM notification_channels WHERE user_id = ? AND channel = ?"
     )
@@ -566,7 +567,7 @@ export function getChannelState(userId: number, channel: "push" | "telegram"): C
  *  spec defaults (21:00 / 08:00, enabled, critical_breaks_quiet); a later write patches only
  *  the keys present in `patch`. `updated_at` is always bumped. Throws `NotifInputError` on a
  *  non-null `quiet_start` / `quiet_end` that is not HH:MM (null clears the bound). */
-export function putChannelState(userId: number, channel: "push" | "telegram", patch: ChannelPatch): void {
+export async function putChannelState(userId: number, channel: "push" | "telegram", patch: ChannelPatch): Promise<void> {
   for (const k of ["quiet_start", "quiet_end"] as const) {
     if (k in patch) {
       const v = patch[k];
@@ -587,7 +588,7 @@ export function putChannelState(userId: number, channel: "push" | "telegram", pa
     if (provided) set.push(`${key} = excluded.${key}`);
   }
 
-  getDb()
+  await getDb()
     .prepare(
       `INSERT INTO notification_channels (${cols.join(", ")}) VALUES (${ph.join(", ")})
        ON CONFLICT(user_id, channel) DO UPDATE SET ${set.join(", ")}`
@@ -599,22 +600,22 @@ export function putChannelState(userId: number, channel: "push" | "telegram", pa
  *  the pref row is deleted (the catalogue default is the source of truth); otherwise it is
  *  upserted. Throws `NotifInputError` on an unknown `typeCode` or a `channel` outside
  *  {push, telegram}. */
-export function setPref(userId: number, typeCode: string, channel: "push" | "telegram", enabled: boolean): void {
+export async function setPref(userId: number, typeCode: string, channel: "push" | "telegram", enabled: boolean): Promise<void> {
   if (channel !== "push" && channel !== "telegram") throw new NotifInputError("کانال نامعتبر است");
   const db = getDb();
-  const type = catalogueRow(orgOf(userId, db), typeCode, db);
+  const type = await catalogueRow(await orgOf(userId, db), typeCode, db);
   if (!type) throw new NotifInputError("نوع اعلان ناشناخته است");
 
   const def = channel === "push" ? type.default_push : type.default_telegram;
   if (Number(enabled) === def) {
-    db.prepare("DELETE FROM notification_prefs WHERE user_id = ? AND type_code = ? AND channel = ?").run(
+    await db.prepare("DELETE FROM notification_prefs WHERE user_id = ? AND type_code = ? AND channel = ?").run(
       userId,
       typeCode,
       channel
     );
     return;
   }
-  db.prepare(
+  await db.prepare(
     `INSERT INTO notification_prefs (user_id, type_code, channel, enabled, updated_at) VALUES (?, ?, ?, ?, ?)
      ON CONFLICT(user_id, type_code, channel) DO UPDATE SET enabled = excluded.enabled, updated_at = excluded.updated_at`
   ).run(userId, typeCode, channel, Number(enabled), new Date().toISOString());
@@ -623,12 +624,12 @@ export function setPref(userId: number, typeCode: string, channel: "push" | "tel
 /** The settings screen's whole payload: every active catalogue type (tenant row winning
  *  over the NULL-org default, `system.test` excluded) with its effective push/telegram
  *  on/off, plus the two channel states. */
-export function getPrefsMatrix(
+export async function getPrefsMatrix(
   userId: number,
   orgId: number
-): { channels: Record<"push" | "telegram", ChannelState>; types: MatrixRow[] } {
+): Promise<{ channels: Record<"push" | "telegram", ChannelState>; types: MatrixRow[] }> {
   const db = getDb();
-  const rows = db
+  const rows = await db
     .prepare(
       `SELECT code, name_fa, category, default_push, default_telegram
          FROM notification_types
@@ -643,7 +644,7 @@ export function getPrefsMatrix(
     default_telegram: number;
   }[];
 
-  const prefs = db
+  const prefs = await db
     .prepare("SELECT type_code, channel, enabled FROM notification_prefs WHERE user_id = ?")
     .all(userId) as { type_code: string; channel: string; enabled: number }[];
   const prefBy = new Map<string, number>();
@@ -668,22 +669,22 @@ export function getPrefsMatrix(
   }
 
   return {
-    channels: { push: getChannelState(userId, "push"), telegram: getChannelState(userId, "telegram") },
+    channels: { push: await getChannelState(userId, "push"), telegram: await getChannelState(userId, "telegram") },
     types,
   };
 }
 
 /** Mint (and store on `users.telegram_link_nonce`) a fresh deep-link nonce; a second call
  *  replaces the first. The bot's /start handler (Task 5) matches it to bind the chat. */
-export function mintTelegramNonce(userId: number): string {
+export async function mintTelegramNonce(userId: number): Promise<string> {
   const nonce = randomBytes(16).toString("base64url");
-  getDb().prepare("UPDATE users SET telegram_link_nonce = ? WHERE id = ?").run(nonce, userId);
+  await getDb().prepare("UPDATE users SET telegram_link_nonce = ? WHERE id = ?").run(nonce, userId);
   return nonce;
 }
 
 /** Unbind telegram: null both the chat id and any pending link nonce. */
-export function clearTelegram(userId: number): void {
-  getDb().prepare("UPDATE users SET telegram_chat_id = NULL, telegram_link_nonce = NULL WHERE id = ?").run(userId);
+export async function clearTelegram(userId: number): Promise<void> {
+  await getDb().prepare("UPDATE users SET telegram_chat_id = NULL, telegram_link_nonce = NULL WHERE id = ?").run(userId);
 }
 
 /* -------------------------------------------------------------------------- *
@@ -778,9 +779,9 @@ function deliveredIds(json: string): number[] {
 /** Push the digest to every current subscription of `userId`; returns how many landed.
  *  A `404`/`410` means the browser threw the subscription away — delete it here, which is
  *  the only garbage collection push subscriptions get. */
-async function sendPushDigest(conn: DatabaseSync, userId: number, text: string, act: PushAction | null = null): Promise<number> {
+async function sendPushDigest(conn: Db, userId: number, text: string, act: PushAction | null = null): Promise<number> {
   if (!configureWebPush()) return 0;
-  const subs = conn
+  const subs = await conn
     .prepare("SELECT id, endpoint, p256dh, auth FROM push_subscriptions WHERE user_id = ?")
     .all(userId) as { id: number; endpoint: string; p256dh: string; auth: string }[];
 
@@ -793,7 +794,7 @@ async function sendPushDigest(conn: DatabaseSync, userId: number, text: string, 
     } catch (e) {
       const code = (e as { statusCode?: number } | null)?.statusCode;
       if (code === 404 || code === 410) {
-        conn.prepare("DELETE FROM push_subscriptions WHERE id = ?").run(s.id);
+        await conn.prepare("DELETE FROM push_subscriptions WHERE id = ?").run(s.id);
       } else {
         console.warn(`[notif-flush] push send failed for subscription ${s.id}`, e);
       }
@@ -806,7 +807,7 @@ async function sendPushDigest(conn: DatabaseSync, userId: number, text: string, 
  *  "off" channel or a failed send all return without stamping, so the rows come back
  *  next tick. Throws only on a genuine programming/DB error — the caller logs it. */
 async function flushChannel(
-  conn: DatabaseSync,
+  conn: Db,
   organizationId: number,
   userId: number,
   channel: LoudChannel,
@@ -816,7 +817,7 @@ async function flushChannel(
   const none = { sent: 0, edited: 0, held: 0 };
   const col = FLUSHED_COL[channel];
 
-  const candidates = conn
+  const candidates = await conn
     .prepare(
       `SELECT id, type_code, entity_type, entity_id, ref_id, priority, group_key, title_fa, body_fa
          FROM notifications
@@ -824,12 +825,12 @@ async function flushChannel(
         ORDER BY created_at, id`
     )
     .all(organizationId, userId) as FlushRow[];
-  const rows = candidates.filter((r) => effectiveRouting(userId, r.type_code, channel, conn));
+  const rows = await filterSeq(candidates, async (r) => await effectiveRouting(userId, r.type_code, channel, conn));
   if (rows.length === 0) return none;
 
   // Quiet hours belong to the channel, not the type: hold the whole batch unless the user
   // asked for CRITICAL to break through and this batch actually carries one.
-  const cs = getChannelState(userId, channel);
+  const cs = await getChannelState(userId, channel);
   const breaks = cs.critical_breaks_quiet && rows.some((r) => r.priority === "CRITICAL");
   if (inQuietWindow(nowHHMM, cs.quiet_start, cs.quiet_end) && !breaks) {
     return { sent: 0, edited: 0, held: rows.length };
@@ -838,7 +839,7 @@ async function flushChannel(
   const text = composeDigest(rows);
   const ids = rows.map((r) => r.id);
 
-  const prev = conn
+  const prev = await conn
     .prepare(
       `SELECT id, flushed_at, notification_ids_json, provider_ref, target
          FROM notification_deliveries
@@ -848,14 +849,14 @@ async function flushChannel(
     .get(userId, channel) as DeliveryRow | undefined;
   const reusable = !!prev && Date.parse(prev.flushed_at) >= Date.parse(asOfIso) - EDIT_WINDOW_MS;
 
-  const updateDelivery = (row: DeliveryRow) => {
+  const updateDelivery = async (row: DeliveryRow) => {
     const union = [...new Set([...deliveredIds(row.notification_ids_json), ...ids])];
-    conn
+    await conn
       .prepare("UPDATE notification_deliveries SET notification_ids_json = ?, flushed_at = ? WHERE id = ?")
       .run(JSON.stringify(union), asOfIso, row.id);
   };
-  const insertDelivery = (providerRef: string, target: string) => {
-    conn
+  const insertDelivery = async (providerRef: string, target: string) => {
+    await conn
       .prepare(
         `INSERT INTO notification_deliveries (user_id, channel, flushed_at, notification_ids_json, provider_ref, target)
          VALUES (?, ?, ?, ?, ?, ?)`
@@ -876,27 +877,27 @@ async function flushChannel(
     const only = rows.length === 1 ? rows[0] : null;
     const chequeStatus =
       only?.entity_type === "cheque" && only.entity_id !== null
-        ? ((conn.prepare("SELECT status FROM cheques WHERE id = ? AND organization_id = ?").get(only.entity_id, organizationId) as { status: ChequeStatus } | undefined)?.status ?? null)
+        ? ((await conn.prepare("SELECT status FROM cheques WHERE id = ? AND organization_id = ?").get(only.entity_id, organizationId) as { status: ChequeStatus } | undefined)?.status ?? null)
         : null;
     const landed = await sendPushDigest(conn, userId, text, only ? pushActionFor(only, chequeStatus) : null);
     if (landed === 0) return none; // nothing reached a device -> retry next tick
     if (reusable && prev) {
-      updateDelivery(prev);
+      await updateDelivery(prev);
       edited = 1;
     } else {
-      insertDelivery(PUSH_TAG, "push");
+      await insertDelivery(PUSH_TAG, "push");
       sent = 1;
     }
   } else {
     const chatId = (
-      conn.prepare("SELECT telegram_chat_id FROM users WHERE id = ?").get(userId) as
+      await conn.prepare("SELECT telegram_chat_id FROM users WHERE id = ?").get(userId) as
         | { telegram_chat_id: string | null }
         | undefined
     )?.telegram_chat_id;
     if (!chatId) return none; // effectiveRouting already required one; belt and braces
 
     if (reusable && prev?.provider_ref && (await editTelegram(chatId, Number(prev.provider_ref), text))) {
-      updateDelivery(prev);
+      await updateDelivery(prev);
       edited = 1;
     } else {
       // No recent message, or the edit was refused (message deleted / too old) -> a new one.
@@ -905,12 +906,12 @@ async function flushChannel(
         console.warn(`[notif-flush] telegram send returned null for user ${userId}`);
         return none;
       }
-      insertDelivery(String(r.message_id), chatId);
+      await insertDelivery(String(r.message_id), chatId);
       sent = 1;
     }
   }
 
-  conn
+  await conn
     .prepare(`UPDATE notifications SET ${col} = ? WHERE id IN (${ids.map(() => "?").join(",")})`)
     .run(asOfIso, ...ids);
   return { sent, edited, held: 0 };
@@ -927,7 +928,7 @@ async function flushChannel(
 export async function flushNotifications(
   organizationId: number,
   asOfIso: string = new Date().toISOString(),
-  db?: DatabaseSync
+  db?: Db
 ): Promise<{ sent: number; edited: number; held: number }> {
   const conn = db ?? getDb();
   const asOfMs = Date.parse(asOfIso);
@@ -937,7 +938,7 @@ export async function flushNotifications(
   const nowHHMM = new Date(asOfIso).toLocaleTimeString("en-GB", { hour12: false, timeZone: TEHRAN }).slice(0, 5);
   const total = { sent: 0, edited: 0, held: 0 };
 
-  const users = conn
+  const users = await conn
     .prepare(
       `SELECT DISTINCT user_id FROM notifications
         WHERE organization_id = ? AND (push_flushed_at IS NULL OR tg_flushed_at IS NULL)`
@@ -945,7 +946,7 @@ export async function flushNotifications(
     .all(organizationId) as { user_id: number }[];
 
   for (const { user_id: userId } of users) {
-    const newest = conn
+    const newest = await conn
       .prepare(
         `SELECT MAX(created_at) m FROM notifications
           WHERE organization_id = ? AND user_id = ? AND (push_flushed_at IS NULL OR tg_flushed_at IS NULL)`

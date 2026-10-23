@@ -64,7 +64,7 @@ async function runJob(organizationId: number, jobId: number): Promise<void> {
     activeJobId = null;
     await browserLifecycle.closeBrowser().catch(() => {});
     // A paste that arrived while this job ran is still marked running. Take it now.
-    const next = repo.nextQueuedJob(organizationId);
+    const next = await repo.nextQueuedJob(organizationId);
     if (next && next.id !== jobId) startJob(organizationId, next.id);
   }
 }
@@ -90,13 +90,13 @@ export async function drainJob(
   jobId: number,
   resolve: LinkResolver = resolveMapsLink
 ): Promise<void> {
-  const pool = repo.loadDuplicatePool(organizationId);
+  const pool = await repo.loadDuplicatePool(organizationId);
 
   try {
     for (;;) {
-      if (repo.isCancelled(organizationId, jobId)) return;
+      if (await repo.isCancelled(organizationId, jobId)) return;
 
-      const pending = repo.pendingItems(organizationId, jobId);
+      const pending = await repo.pendingItems(organizationId, jobId);
       if (pending.length === 0) break;
 
       // Cheapest tier first -- see lib/leadImport/scheduler.ts for why this is the
@@ -104,24 +104,24 @@ export async function drainJob(
       // batch in this same tick may have consumed the cheapest items.
       const batch: repo.ImportItemRow[] = [];
       for (let i = 0; i < CONCURRENCY; i++) {
-        const pick = nextItem(repo.pendingItems(organizationId, jobId));
+        const pick = nextItem(await repo.pendingItems(organizationId, jobId));
         if (!pick) break;
-        repo.markResolving(organizationId, pick.id);
+        await repo.markResolving(organizationId, pick.id);
         batch.push(pick);
       }
       if (batch.length === 0) break;
 
       await Promise.all(batch.map((item) => resolveOne(organizationId, item, pool, resolve)));
 
-      repo.refreshCounters(organizationId, jobId);
+      await repo.refreshCounters(organizationId, jobId);
     }
 
-    autoAddAll(organizationId, jobId);
-    repo.refreshCounters(organizationId, jobId);
-    if (!repo.isCancelled(organizationId, jobId)) repo.finishJob(organizationId, jobId, "done");
+    await autoAddAll(organizationId, jobId);
+    await repo.refreshCounters(organizationId, jobId);
+    if (!await repo.isCancelled(organizationId, jobId)) await repo.finishJob(organizationId, jobId, "done");
   } catch (err) {
     console.error("[lead-import] drain failed", { organizationId, jobId, err });
-    if (!repo.isCancelled(organizationId, jobId)) repo.finishJob(organizationId, jobId, "cancelled");
+    if (!await repo.isCancelled(organizationId, jobId)) await repo.finishJob(organizationId, jobId, "cancelled");
   }
 }
 
@@ -145,7 +145,7 @@ async function resolveOne(
       pool,
     });
 
-    repo.markResolved(organizationId, item.id, {
+    await repo.markResolved(organizationId, item.id, {
       lat: r.lat,
       lng: r.lng,
       address: r.address,
@@ -159,7 +159,7 @@ async function resolveOne(
     // resolveMapsLink should never throw, but a Chromium crash or a malformed URL that
     // slips past its guards must not take the other 999 links down with it.
     console.error("[lead-import] item failed", { itemId: item.id, err });
-    repo.markResolved(organizationId, item.id, {
+    await repo.markResolved(organizationId, item.id, {
       lat: null,
       lng: null,
       address: null,
@@ -171,17 +171,17 @@ async function resolveOne(
 }
 
 /** Saves everything the dedupe pass cleared for auto-add. */
-function autoAddAll(organizationId: number, jobId: number): void {
-  const items = repo
-    .listItems(organizationId, jobId)
+async function autoAddAll(organizationId: number, jobId: number): Promise<void> {
+  const items = (await repo
+    .listItems(organizationId, jobId))
     .filter((i) => i.status === "done" && i.saved_location_id === null);
-  const groupId = repo.getJob(organizationId, jobId)?.group_id ?? null;
-  repo.autoAddItems(organizationId, items, groupId);
+  const groupId = (await repo.getJob(organizationId, jobId))?.group_id ?? null;
+  await repo.autoAddItems(organizationId, items, groupId);
 }
 
 /** The boot sweep: requeues work a restart orphaned. Called from instrumentation.ts. */
-export function resumeOrphanedJobs(): void {
-  for (const job of repo.orphanedJobs()) {
+export async function resumeOrphanedJobs(): Promise<void> {
+  for (const job of await repo.orphanedJobs()) {
     startJob(job.organization_id, job.id);
   }
 }

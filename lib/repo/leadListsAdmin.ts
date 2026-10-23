@@ -6,11 +6,11 @@ import { getDb, setLeadListItems } from "@/lib/db";
 import { orgClause } from "@/lib/orgScope";
 
 /** Saved pins the caller may put on a list: this company's, within `groupSql`'s group scope. */
-function usableLocationIds(ids: number[], organizationId: number | null, groupSql: { sql: string; params: (string | number)[] }): number[] {
+async function usableLocationIds(ids: number[], organizationId: number | null, groupSql: { sql: string; params: (string | number)[] }): Promise<number[]> {
   const org = orgClause("organization_id", organizationId);
   const known = new Set(
     (
-      getDb()
+      await getDb()
         .prepare(`SELECT id FROM saved_locations WHERE 1 = 1${groupSql.sql}${org.sql}`)
         .all(...groupSql.params, ...org.params) as unknown as { id: number }[]
     ).map((r) => r.id)
@@ -18,22 +18,22 @@ function usableLocationIds(ids: number[], organizationId: number | null, groupSq
   return ids.filter((id) => known.has(id));
 }
 
-export function createLeadList(
+export async function createLeadList(
   name: string,
   groupId: number | null,
   organizationId: number,
   locationIds: number[],
   groupSql: { sql: string; params: (string | number)[] }
-): number {
+): Promise<number> {
   const db = getDb();
   const now = new Date().toISOString();
-  const result = db
+  const result = await db
     .prepare("INSERT INTO lead_lists (name, group_id, created_at, updated_at, organization_id) VALUES (?, ?, ?, ?, ?)")
     .run(name, groupId, now, now, organizationId);
   const id = Number(result.lastInsertRowid);
   // Filtered like a replace: pins of another group or company cannot be pulled onto a list and read back.
-  const usable = usableLocationIds(locationIds, organizationId, groupSql);
-  if (usable.length) setLeadListItems(db, id, usable);
+  const usable = await usableLocationIds(locationIds, organizationId, groupSql);
+  if (usable.length) await setLeadListItems(db, id, usable);
   return id;
 }
 
@@ -43,34 +43,34 @@ export interface OwnList {
   group_id: number | null;
 }
 
-export function findOwnList(id: number, organizationId: number | null): OwnList | undefined {
+export async function findOwnList(id: number, organizationId: number | null): Promise<OwnList | undefined> {
   const org = orgClause("organization_id", organizationId);
-  return getDb().prepare(`SELECT id, name, group_id FROM lead_lists WHERE id = ?${org.sql}`).get(id, ...org.params) as OwnList | undefined;
+  return await getDb().prepare(`SELECT id, name, group_id FROM lead_lists WHERE id = ?${org.sql}`).get(id, ...org.params) as OwnList | undefined;
 }
 
-export function renameLeadList(id: number, organizationId: number | null, name: string): void {
+export async function renameLeadList(id: number, organizationId: number | null, name: string): Promise<void> {
   const org = orgClause("organization_id", organizationId);
-  getDb().prepare(`UPDATE lead_lists SET name = ?, updated_at = ? WHERE id = ?${org.sql}`).run(name, new Date().toISOString(), id, ...org.params);
+  await getDb().prepare(`UPDATE lead_lists SET name = ?, updated_at = ? WHERE id = ?${org.sql}`).run(name, new Date().toISOString(), id, ...org.params);
 }
 
 /** Replaces the membership with exactly `ids`, minus pins that no longer exist or are out of scope
  *  (a dead entry would violate the foreign key and roll back the whole reorder). */
-export function replaceLeadListItems(
+export async function replaceLeadListItems(
   id: number,
   organizationId: number | null,
   ids: number[],
   groupSql: { sql: string; params: (string | number)[] }
-): void {
-  setLeadListItems(getDb(), id, usableLocationIds(ids, organizationId, groupSql));
+): Promise<void> {
+  await setLeadListItems(getDb(), id, await usableLocationIds(ids, organizationId, groupSql));
 }
 
 /** Deletes the list and returns its membership so the delete can be undone from the toast. */
-export function deleteLeadList(id: number, organizationId: number | null): number[] {
+export async function deleteLeadList(id: number, organizationId: number | null): Promise<number[]> {
   const db = getDb();
   const org = orgClause("organization_id", organizationId);
-  const items = db
+  const items = await db
     .prepare("SELECT location_id FROM lead_list_items WHERE list_id = ? ORDER BY sort_order, id")
     .all(id) as unknown as { location_id: number }[];
-  db.prepare(`DELETE FROM lead_lists WHERE id = ?${org.sql}`).run(id, ...org.params);
+  await db.prepare(`DELETE FROM lead_lists WHERE id = ?${org.sql}`).run(id, ...org.params);
   return items.map((i) => i.location_id);
 }

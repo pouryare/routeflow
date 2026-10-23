@@ -17,7 +17,7 @@ import { cache } from "react";
 import { getDb } from "./db";
 import { linesByOrder } from "./repo/orderLines";
 import { orderKgOf } from "./repo/orderFigures";
-import type { DatabaseSync } from "node:sqlite";
+import type { Db } from "@/lib/database/client";
 import { rateFor, accrualToman, type RateRow } from "./commission";
 import { FULFILLED_ORDER_STATUSES, sqlStatusList } from "./orderStateMachine";
 import { isToman, roundToman } from "./money";
@@ -28,6 +28,7 @@ import { measureFor, type MeasurableOrder } from "./commission/measure";
 import { planFor } from "./repo/commissionTiers";
 import { orgClause } from "./orgScope";
 
+import { mapSeq } from "@/lib/seq";
 export interface Period {
   from: string;
   to: string;
@@ -59,8 +60,8 @@ export interface Statement {
   orders: StatementOrder[];
 }
 
-export function setRate(
-  db: DatabaseSync,
+export async function setRate(
+  db: Db,
   input: {
     salesperson_user_id?: number | null;
     rate_per_kg_toman: number;
@@ -68,12 +69,12 @@ export function setRate(
     valid_from: string;
     created_by?: number | null;
   }
-): number {
+): Promise<number> {
   if (!isToman(input.rate_per_kg_toman)) {
     throw new TypeError("نرخ پورسانت را به تومان و بدون اعشار وارد کنید");
   }
   return Number(
-    db
+    (await db
       .prepare(
         `INSERT INTO commission_rates (salesperson_user_id, rate_per_kg_toman,
                                        urgent_rate_per_kg_toman, valid_from, created_by, created_at,
@@ -87,13 +88,13 @@ export function setRate(
         input.valid_from.slice(0, 10),
         input.created_by ?? null,
         new Date().toISOString(),
-        orgOfUser(db, input.salesperson_user_id, input.created_by)
-      ).lastInsertRowid
+        await orgOfUser(db, input.salesperson_user_id, input.created_by)
+      )).lastInsertRowid
   );
 }
 
-export function recordPayment(
-  db: DatabaseSync,
+export async function recordPayment(
+  db: Db,
   input: {
     salesperson_user_id: number;
     amount_toman: number;
@@ -103,15 +104,15 @@ export function recordPayment(
     notes?: string | null;
     created_by?: number | null;
   }
-): number {
-  return insertCommissionPayment(db, "sales", input.salesperson_user_id, input, true);
+): Promise<number> {
+  return await insertCommissionPayment(db, "sales", input.salesperson_user_id, input, true);
 }
 
-export function readRates(
-  db: DatabaseSync,
+export async function readRates(
+  db: Db,
   organizationId: number
-): (RateRow & { display_name: string | null })[] {
-  return db
+): Promise<(RateRow & { display_name: string | null })[]> {
+  return await db
     .prepare(
       `SELECT cr.*, u.display_name
          FROM commission_rates cr
@@ -132,30 +133,30 @@ export function readRates(
  *  inside a single render and drops it afterwards; outside a render (route handlers, scripts,
  *  tests) it simply calls through, and a handle other than the app's own is never memoised, so
  *  nothing can go stale. Callers must treat the result as read-only. */
-const accrualsMemo = cache((salespersonId: number, from: string, to: string): StatementOrder[] => {
+const accrualsMemo = cache(async (salespersonId: number, from: string, to: string): Promise<StatementOrder[]> => {
   const db = getDb();
-  const rates = db.prepare("SELECT * FROM commission_rates").all() as unknown as RateRow[];
-  return computeAccruals(db, salespersonId, { from, to }, rates);
+  const rates = await db.prepare("SELECT * FROM commission_rates").all() as unknown as RateRow[];
+  return await computeAccruals(db, salespersonId, { from, to }, rates);
 });
 
-function accrualsFor(
-  db: DatabaseSync,
+async function accrualsFor(
+  db: Db,
   salespersonId: number,
   period: Period,
   rates: RateRow[]
-): StatementOrder[] {
+): Promise<StatementOrder[]> {
   return db === getDb()
-    ? accrualsMemo(salespersonId, period.from, period.to)
-    : computeAccruals(db, salespersonId, period, rates);
+    ? await accrualsMemo(salespersonId, period.from, period.to)
+    : await computeAccruals(db, salespersonId, period, rates);
 }
 
-function computeAccruals(
-  db: DatabaseSync,
+async function computeAccruals(
+  db: Db,
   salespersonId: number,
   period: Period,
   rates: RateRow[]
-): StatementOrder[] {
-  const orders = db
+): Promise<StatementOrder[]> {
+  const orders = await db
     .prepare(
       `SELECT o.id AS order_id, o.order_no, o.order_date, c.business_name AS customer_name, o.kg_total
          FROM orders o
@@ -177,8 +178,8 @@ function computeAccruals(
      everyone else an order's weight is read from `orders.kg_total` (lib/repo/orderKg.ts) and the
      lines are loaded only for orders where it is empty -- which is what keeps "owed", a lifetime
      figure, from re-adding every line a person ever sold. Same value either way, to the bit. */
-  const plan = planFor(orgOf(db, salespersonId), salespersonId, period.to, db);
-  const lineMap = linesByOrder(
+  const plan = await planFor(await orgOf(db, salespersonId), salespersonId, period.to, db);
+  const lineMap = await linesByOrder(
     db,
     orders.filter((o) => plan !== null || o.kg_total === null).map((o) => o.order_id)
   );
@@ -236,28 +237,28 @@ function computeAccruals(
  *  `planFor` is tenant-scoped, so the lookup has to know the tenant. Taken from the user row
  *  rather than passed in, because a caller that supplied the wrong one would read another
  *  company's plan. */
-function orgOf(db: DatabaseSync, userId: number): number {
-  const row = db
+async function orgOf(db: Db, userId: number): Promise<number> {
+  const row = await db
     .prepare("SELECT organization_id FROM users WHERE id = ?")
     .get(userId) as { organization_id: number } | undefined;
   return row?.organization_id ?? 1;
 }
 
-export function statementFor(
-  db: DatabaseSync,
+export async function statementFor(
+  db: Db,
   salespersonId: number,
   period: Period
-): Statement {
-  const person = db
+): Promise<Statement> {
+  const person = await db
     .prepare("SELECT id, display_name FROM users WHERE id = ?")
     .get(salespersonId) as { id: number; display_name: string } | undefined;
 
-  const rates = db.prepare("SELECT * FROM commission_rates").all() as unknown as RateRow[];
-  const orders = accrualsFor(db, salespersonId, period, rates);
+  const rates = await db.prepare("SELECT * FROM commission_rates").all() as unknown as RateRow[];
+  const orders = await accrualsFor(db, salespersonId, period, rates);
 
   const accrued = orders.reduce((total, o) => total + o.accrual_toman, 0);
 
-  const paidInPeriod = db
+  const paidInPeriod = await db
     .prepare(
       "SELECT COALESCE(SUM(amount_toman), 0) AS total FROM commission_payments WHERE salesperson_user_id = ? AND paid_on BETWEEN ? AND ?"
     )
@@ -265,13 +266,13 @@ export function statementFor(
 
   // Owed is deliberately lifetime rather than period: what somebody is still due does
   // not reset because a report window moved.
-  const lifetimeAccrued = accrualsFor(
+  const lifetimeAccrued = (await accrualsFor(
     db,
     salespersonId,
     { from: "0000-01-01", to: "9999-12-31" },
     rates
-  ).reduce((total, o) => total + o.accrual_toman, 0);
-  const lifetimePaid = db
+  )).reduce((total, o) => total + o.accrual_toman, 0);
+  const lifetimePaid = await db
     .prepare(
       "SELECT COALESCE(SUM(amount_toman), 0) AS total FROM commission_payments WHERE salesperson_user_id = ?"
     )
@@ -286,7 +287,7 @@ export function statementFor(
     owed_toman: lifetimeAccrued - lifetimePaid.total,
     // Read from the same lookup the accrual used, so the label cannot disagree with the
     // number it labels. Null means the flat rate path ran, unchanged.
-    plan_mode: planFor(orgOf(db, salespersonId), salespersonId, period.to, db)?.mode ?? null,
+    plan_mode: (await planFor(await orgOf(db, salespersonId), salespersonId, period.to, db))?.mode ?? null,
     orders,
   };
 }
@@ -298,11 +299,11 @@ export function statementFor(
  *  answer for a manager who has not been given a group yet. Same shape of reasoning as
  *  groupFilter: the empty case must read as "nothing", never as "everything".
  */
-export function allStatements(
-  db: DatabaseSync,
+export async function allStatements(
+  db: Db,
   period: Period,
   opts: { groupId?: number | null; organizationId: number | null }
-): Statement[] {
+): Promise<Statement[]> {
   const groupId = opts.groupId;
   const org = orgClause("u.organization_id", opts.organizationId);
   // A manager with no group can reach nobody. Returning [] rather than falling through
@@ -322,13 +323,13 @@ export function allStatements(
    * duplicate to be deduplicated. */
   const people = (
     groupId === undefined
-      ? db
+      ? await db
           .prepare(
             `SELECT u.id FROM users u JOIN user_roles r ON r.user_id = u.id AND r.role = 'phone_sales'
               WHERE u.active = 1${org.sql} ORDER BY u.display_name`
           )
           .all(...org.params)
-      : db
+      : await db
           .prepare(
             `SELECT u.id FROM users u JOIN user_roles r ON r.user_id = u.id AND r.role = 'phone_sales'
               WHERE u.active = 1 AND u.group_id = ?${org.sql} ORDER BY u.display_name`
@@ -336,5 +337,5 @@ export function allStatements(
           .all(groupId, ...org.params)
   ) as unknown as { id: number }[];
 
-  return people.map((person) => statementFor(db, person.id, period));
+  return await mapSeq(people, async (person) => await statementFor(db, person.id, period));
 }

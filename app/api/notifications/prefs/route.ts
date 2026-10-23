@@ -9,18 +9,18 @@ const ROLES = ["platform_owner", "owner", "group_manager", "rep_manager", "phone
 /** The settings screen's whole payload for the caller: the two channel states plus every
  *  catalogue type with its effective push/telegram flags. */
 export async function GET(req: NextRequest) {
-  const guard = requireRole(req, [...ROLES]);
+  const guard = await requireRole(req, [...ROLES]);
   if (!guard.ok) return guard.response;
   const { organizationId, user } = guard.session;
   // `getPrefsMatrix` trusts its orgId argument -- it must come from the signed session,
   // never from the request, or one tenant could read another's catalogue overrides.
-  return NextResponse.json({ ok: true, ...getPrefsMatrix(user.id, organizationId) });
+  return NextResponse.json({ ok: true, ...await getPrefsMatrix(user.id, organizationId) });
 }
 
 /** Flip one (type, channel) pref for the caller. `setPref` deletes the row again when the
  *  value matches the catalogue default, so "back to default" is the same call. */
 export async function PUT(req: NextRequest) {
-  const guard = requireRole(req, [...ROLES]);
+  const guard = await requireRole(req, [...ROLES]);
   if (!guard.ok) return guard.response;
   const { user } = guard.session;
 
@@ -44,7 +44,7 @@ export async function PUT(req: NextRequest) {
   }
 
   try {
-    setPref(user.id, typeCode, channel, enabled);
+    await setPref(user.id, typeCode, channel, enabled);
   } catch (e) {
     // NotifInputError carries an already-Persian message (unknown type / bad channel).
     if (e instanceof NotifInputError) {

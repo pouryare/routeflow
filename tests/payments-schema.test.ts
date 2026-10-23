@@ -13,9 +13,9 @@ afterAll(() => {
 });
 
 describe("payments schema", () => {
-  it("creates payments with an INTEGER NOT NULL amount and a method CHECK", () => {
+  it("creates payments with an INTEGER NOT NULL amount and a method CHECK", async () => {
     const db = getDb();
-    const cols = db.prepare("PRAGMA table_info(payments)").all() as {
+    const cols = await db.prepare("PRAGMA table_info(payments)").all() as {
       name: string;
       type: string;
       notnull: number;
@@ -23,18 +23,17 @@ describe("payments schema", () => {
     const amount = cols.find((c) => c.name === "amount_toman");
     expect(amount?.type).toBe("INTEGER");
     expect(amount?.notnull).toBe(1);
-    expect(() =>
-      db
+    await expect((async () =>
+      await db
         .prepare(
           "INSERT INTO payments (organization_id,customer_id,amount_toman,method,received_at,received_by,created_at) VALUES (1,1,1000,'WIRE','x',1,'x')"
         )
-        .run()
-    ).toThrow();
+        .run())()).rejects.toThrow();
   });
 
-  it("creates payment_allocations with a nullable order_id and a NOT NULL amount", () => {
+  it("creates payment_allocations with a nullable order_id and a NOT NULL amount", async () => {
     const db = getDb();
-    const cols = db.prepare("PRAGMA table_info(payment_allocations)").all() as {
+    const cols = await db.prepare("PRAGMA table_info(payment_allocations)").all() as {
       name: string;
       notnull: number;
     }[];
@@ -42,10 +41,10 @@ describe("payments schema", () => {
     expect(cols.find((c) => c.name === "amount_toman")?.notnull).toBe(1);
   });
 
-  it("lets photos.entity_type be 'payment'", () => {
+  it("lets photos.entity_type be 'payment'", async () => {
     const db = getDb();
     const sql = (
-      db.prepare("SELECT sql FROM sqlite_master WHERE name='photos'").get() as { sql: string }
+      await db.prepare("SELECT sql FROM sqlite_master WHERE name='photos'").get() as { sql: string }
     ).sql;
     expect(sql).toContain("'payment'");
   });
