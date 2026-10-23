@@ -210,7 +210,7 @@ export function proxy(req: NextRequest) {
     pathname === "/api/me" ||
     pathname === "/api/prefs" ||
     pathname.startsWith("/api/crm/driver-visits") ||
-    pathname === "/today" ||
+    pathname === "/start" ||
     pathname === "/api/today" ||
     pathname.startsWith("/api/tasks") ||
     // Phase 8: the objection library is useful at the door.

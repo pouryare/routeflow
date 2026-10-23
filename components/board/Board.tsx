@@ -84,7 +84,7 @@ export default function Board({
   );
 
   /** A drop into a lane that closes an outreach task asks for an outcome first (reusing
-   *  the /today chips); every other move commits straight away. */
+   *  the /start chips); every other move commits straight away. */
   const move = useCallback(
     (card: TaskCard, toLane: string) => {
       const patch = movePatch(card, view, toLane, new Date().toISOString());

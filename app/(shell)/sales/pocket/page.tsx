@@ -11,7 +11,7 @@ import { appTabs } from "@/lib/appNav";
 
 export const dynamic = "force-dynamic";
 
-/** The member's personal home — the /today briefing shaped like the /sales dashboard.
+/** The member's personal home — the /start briefing shaped like the /sales dashboard.
  *  Everyone but a driver (who has their own screen); a manager also gets a team strip. */
 export default async function PocketPage() {
   const jar = await cookies();

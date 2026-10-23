@@ -86,7 +86,7 @@ export default async function DriverPage() {
       <header className="mb-[var(--space-4)] flex items-start justify-between gap-[var(--space-3)]">
         <div>
           <h1 className="m-0 text-[length:var(--text-lg)] font-medium text-[var(--text)]">
-            <a href="/today" className="text-[var(--text)] no-underline hover:text-[var(--accent)]">
+            <a href="/start" className="text-[var(--text)] no-underline hover:text-[var(--accent)]">
               مسیر امروز ›
             </a>
           </h1>
