@@ -6,7 +6,13 @@ import { labelCells } from "@/lib/tableCards";
  *  Hand-rolled per page would be eleven near-identical tables, and the one that drifted
  *  would be the balance sheet's total row. `tnum` is on the numeric cells so figures line
  *  up in a column — Persian digits are proportional, and a money column that does not line
- *  up cannot be scanned. */
+ *  up cannot be scanned.
+ *
+ *  HeroUI's table look on our own markup: the `table-root`, `table__header` and
+ *  `table__column` classes from HeroUI's sheet, not its Table component. That component is a
+ *  React Aria grid built from a client collection; these reports are server pages whose rows
+ *  are plain `<tr>`s, and on a phone the same rows turn into cards (`labelCells`), which a
+ *  grid's rows cannot. */
 export default function AcctTable({
   head,
   children,
@@ -21,25 +27,31 @@ export default function AcctTable({
   compact?: boolean;
 }) {
   return (
-    <div className="overflow-x-auto rounded-[var(--radius-md)] border border-border">
-      <table className={`acct-cards w-full ${compact ? "" : "md:min-w-[40rem]"} border-collapse text-[length:var(--text-sm)] [&_.tnum]:whitespace-nowrap`}>
-        <thead>
-          <tr className="border-b border-border bg-surface text-right text-text-muted">
-            {head.map((h, i) => (
-              <th
-                key={i}
-                className={`px-3 py-2 font-medium ${i > 0 ? "text-left tnum" : ""}`}
-              >
-                {h}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>{labelCells(children, head)}</tbody>
-        {foot ? (
-          <tfoot className="border-t-2 border-border font-medium">{labelCells(foot, head)}</tfoot>
-        ) : null}
-      </table>
+    <div className="table-root table-root--secondary acct-table">
+      <div className="table__scroll-container">
+        <table
+          className={`table__content acct-cards ${compact ? "" : "md:min-w-[40rem]"} text-[length:var(--text-sm)] [&_.tnum]:whitespace-nowrap`}
+        >
+          <thead className="table__header">
+            <tr>
+              {head.map((h, i) => (
+                <th
+                  key={i}
+                  className={`table__column ${i > 0 ? "text-left tnum" : ""}`}
+                >
+                  {h}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>{labelCells(children, head)}</tbody>
+          {foot ? (
+            <tfoot className="border-t-2 border-border font-medium">
+              {labelCells(foot, head)}
+            </tfoot>
+          ) : null}
+        </table>
+      </div>
     </div>
   );
 }
@@ -58,9 +70,9 @@ export function CostIncompleteNote() {
       role="status"
       className="mb-3 rounded-[var(--radius-md)] border border-warn/40 bg-warn/10 px-3 py-2 text-[length:var(--text-sm)]"
     >
-      <strong className="font-medium">ناقص از نظر بهای تمام‌شده.</strong> بخشی از فروش‌های این
-      دوره پیش از راه‌اندازی دفتر بوده‌اند و بهای تمام‌شده‌ای برایشان ثبت نشده است. سود نمایش‌داده‌شده
-      بیش از واقع برآورد می‌شود.
+      <strong className="font-medium">ناقص از نظر بهای تمام‌شده.</strong> بخشی
+      از فروش‌های این دوره پیش از راه‌اندازی دفتر بوده‌اند و بهای تمام‌شده‌ای
+      برایشان ثبت نشده است. سود نمایش‌داده‌شده بیش از واقع برآورد می‌شود.
     </div>
   );
 }
@@ -77,8 +89,8 @@ export function UnbalancedBanner({ difference }: { difference: number }) {
       className="mb-3 rounded-[var(--radius-md)] border border-danger/50 bg-danger/10 px-3 py-2 text-[length:var(--text-sm)]"
     >
       <strong className="font-medium">ترازنامه تراز نیست.</strong> اختلاف{" "}
-      <span className="tnum">{difference.toLocaleString("fa-IR")}</span> تومان است. این یعنی دفتر
-      خراب است؛ ارقام زیر را مبنای تصمیم‌گیری نگذارید.
+      <span className="tnum">{difference.toLocaleString("fa-IR")}</span> تومان
+      است. این یعنی دفتر خراب است؛ ارقام زیر را مبنای تصمیم‌گیری نگذارید.
     </div>
   );
 }
