@@ -17,6 +17,8 @@ import RolePicker from "@/components/today/RolePicker";
 import SweepButton from "@/components/SweepButton";
 import PageHeader from "@/components/meridian/PageHeader";
 import { isVanRole, roleLabel, MANAGE_ROLES } from "@/lib/roles";
+import { earningsSoFar } from "@/lib/repo/earningsSoFar";
+import EarningsCard from "@/components/today/EarningsCard";
 
 
 export const dynamic = "force-dynamic";
@@ -31,6 +33,7 @@ export default async function SalesTodayPage() {
   if (isVanRole(session.role)) redirect("/driver");
 
   const data = todayFor(session);
+  const earnings = earningsSoFar(session);
 
   return (
     <>
@@ -76,6 +79,8 @@ export default async function SalesTodayPage() {
       )}
 
       <ActionCards cards={suggestionsFor(session)} />
+
+      {earnings && <EarningsCard e={earnings} />}
 
       <Briefing data={data} variant="meridian" />
     </div>    </>
