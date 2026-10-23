@@ -90,7 +90,7 @@ export function detectArabicChars(str) {
   return null;
 }
 function detectStaleSurface(route) {
-  if (["/analytics", "/sales/analysis", "/sales/admin/representatives"].includes(route)) return { status: "STALE-SURFACE", note: "retired page — confirm deletion" };
+  if (["/sales/analysis", "/sales/admin/representatives"].includes(route)) return { status: "STALE-SURFACE", note: "retired page — confirm deletion" };
   return null;
 }
 function detectUnlabelledEnum(str) {

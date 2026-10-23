@@ -229,12 +229,6 @@ export const PAGE_META: Record<string, PageMeta> = {
 
   // تحلیل سرنخ‌ها -- a client page over the whole lead pool: where they are, how they score,
   // how they are distributed by status, and how many convert.
-  "/analytics": {
-    title: "تحلیل سرنخ‌ها",
-    titleEn: "Lead analytics",
-    overview:
-      "پراکندگی جغرافیایی سرنخ‌ها، توزیع امتیاز، وضعیت هرکدام و قیف تبدیل. برای اینکه بدانید کجا سرنخ بیشتری لازم دارید و کدام مسیر جواب می‌دهد.",
-  },
 
   // انبار
   "/sales/stock": {

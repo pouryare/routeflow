@@ -137,11 +137,11 @@ export function proxy(req: NextRequest) {
      is still denied, because they were not invited to inspect a driver's day. */
   if (isDriver && !isVanRole(claims.role) && claims.role !== "platform_owner") return deny("/sales");
 
-  // /analytics and /report aggregate a whole group's revenue, debt and coverage, and
-  // /report hands the reader a CSV of every row behind the totals. A salesperson is
+  // /report aggregates a whole group's revenue, debt and coverage, and hands the reader a
+  // CSV of every row behind the totals. A salesperson is
   // scoped to their own orders, so for them these are not a wider view of their own data
   // but somebody else's -- they get their own figures at /sales/me instead.
-  const isGroupWide = pathname.startsWith("/analytics") || pathname.startsWith("/report");
+  const isGroupWide = pathname.startsWith("/report");
   if (isGroupWide && claims.role === "phone_sales") return deny("/sales");
 
   // The reason report counts a whole group's failures and cancellations; a manager/owner view.
