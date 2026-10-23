@@ -5,9 +5,8 @@
  *  indistinguishable from a real bug and costs an hour to diagnose.
  */
 
-import fs from "node:fs";
-import path from "node:path";
 import { getDb } from "@/lib/db";
+import { dialect } from "@/lib/database/dialect";
 import { HEAVY, SMOKE, DAY_MS, type ScaleProfile, type SeedContext } from "./context";
 import { makeRng, seedFromDate } from "./rng";
 
@@ -41,16 +40,20 @@ const PHASES = [
 export async function runSeed(opts: {
   scaleName: string;
   asOf: string | null;
+  /** Where the demo goes, as the summary names it. */
   target: string;
+  /** Empties the target (an SQLite file is deleted, a PostgreSQL database rebuilt). */
+  fresh: () => Promise<void>;
+  /** Removes a half-built target after a failure. */
+  discard: () => Promise<void>;
 }): Promise<void> {
   const scale = SCALES[opts.scaleName];
   if (!scale) throw new Error(`unknown scale "${opts.scaleName}" — use heavy or smoke`);
 
-  /* A build always starts from nothing. `getDb()` opens whatever is there and every schema
-     statement is IF NOT EXISTS, so a stale file would blend old rows into the new build.
-     This is also why INSERT OR IGNORE cannot be relied on anywhere: the seeds' unique keys
-     are NULL on some rows, and NULL != NULL in a SQLite UNIQUE index. */
-  for (const suffix of ["", "-wal", "-shm"]) fs.rmSync(`${opts.target}${suffix}`, { force: true });
+  /* A build always starts from nothing: stale rows would blend into the new build. This is
+     also why INSERT OR IGNORE cannot be relied on anywhere: the seeds' unique keys are NULL
+     on some rows, and NULL != NULL in a UNIQUE index. */
+  await opts.fresh();
 
   const asOf = opts.asOf ?? new Date().toISOString().slice(0, 10);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(asOf)) {
@@ -65,7 +68,7 @@ export async function runSeed(opts: {
   /* The target is a disposable demo file (seed-demo refuses the real one): if the machine dies
      mid-build the answer is to build again, so there is nothing for an fsync per commit to
      protect. Thousands of order/delivery/payment transactions make that the main cost. */
-  await db.exec("PRAGMA synchronous = OFF;");
+  if (dialect() === "sqlite") await db.exec("PRAGMA synchronous = OFF;");
   const ctx: SeedContext = {
     db,
     rng: makeRng(seedFromDate(`${asOf}:${scale.name}`)),
@@ -83,7 +86,7 @@ export async function runSeed(opts: {
 
   const started = Date.now();
   console.log(
-    `seeding ${scale.name} demo -> ${path.relative(process.cwd(), opts.target)} (as of ${asOf})`
+    `seeding ${scale.name} demo -> ${opts.target} (as of ${asOf})`
   );
 
   /* NO OUTER TRANSACTION, and this is deliberate — an earlier version of this file wrapped
@@ -112,7 +115,7 @@ export async function runSeed(opts: {
     const { assertInvariants } = await import("./invariants");
     await assertInvariants(ctx);
   } catch (err) {
-    for (const suffix of ["", "-wal", "-shm"]) fs.rmSync(`${opts.target}${suffix}`, { force: true });
+    await opts.discard();
     console.error(`\nseed FAILED and the database was deleted — nothing was left behind.\n${String(err)}`);
     throw err;
   }
