@@ -14,6 +14,8 @@ import {
   type MarginInputs,
 } from "@/lib/margin/solve";
 import { commissionForUnit } from "@/lib/margin/commission";
+import SmartPicker from "@/components/mobile/SmartPicker";
+import { ChipGroup } from "@/components/mobile/ChipGroup";
 
 export interface DrawerPackaging {
   id: number;
@@ -210,40 +212,27 @@ export default function MarginHelperDrawer({
         <div className="flex flex-col gap-[var(--space-3)] border-t border-[var(--border)] px-[var(--space-3)] py-[var(--space-3)]">
           <div className="grid gap-[var(--space-3)] md:grid-cols-2">
             <div>
-              <label className={LABEL} htmlFor="mh-product">
+              <span className={LABEL}>
                 کالا
-              </label>
-              <select
-                id="mh-product"
-                className={FIELD}
+              </span>
+              <SmartPicker
+                scope="products"
+                label="کالا"
+                items={products.map((p) => ({ id: String(p.id), label: p.name }))}
                 value={selectedProductId}
-                onChange={(e) => onSelectProduct(e.target.value)}
-              >
-                <option value="">انتخاب کنید…</option>
-                {products.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))}
-              </select>
+                onChange={onSelectProduct}
+                placeholder="انتخاب کنید…"
+              />
             </div>
             <div>
-              <label className={LABEL} htmlFor="mh-packaging">
+              <span className={LABEL}>
                 بسته‌بندی
-              </label>
-              <select
-                id="mh-packaging"
-                className={FIELD}
-                value={selectedPackagingId}
-                onChange={(e) => onSelectPackaging(e.target.value)}
-              >
-                <option value="">همه بسته‌بندی‌ها</option>
-                {packagings.map((k) => (
-                  <option key={k.id} value={k.id}>
-                    {k.name}
-                  </option>
-                ))}
-              </select>
+              </span>
+              <ChipGroup
+                wrap
+                group={{ id: "mh-packaging", label: "بسته‌بندی", mode: "single", value: selectedPackagingId, onChange: (v) => onSelectPackaging(v as string),
+                  options: [{ id: "", label: "همه بسته‌بندی‌ها" }, ...packagings.map((k) => ({ id: String(k.id), label: k.name }))] }}
+              />
             </div>
           </div>
 

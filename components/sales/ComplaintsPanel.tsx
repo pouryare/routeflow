@@ -12,6 +12,8 @@ import ComplaintFlow from "@/components/flows/ComplaintFlow";
 import { autoOpenFlow, currentSearch } from "@/lib/flows/autoOpen";
 import { CATEGORY_LABEL, SEVERITY_LABEL } from "@/lib/flows/complaint";
 import CustomerName from "@/components/CustomerName";
+import SmartPicker from "@/components/mobile/SmartPicker";
+import { ChipGroup } from "@/components/mobile/ChipGroup";
 
 /* Category and severity words live with the flow that also uses them. Widened to plain string
    maps here because the rows below come from JSON, not from the server's unions. */
@@ -204,36 +206,10 @@ export default function ComplaintsPanel({
       )}
 
       <form onSubmit={file} className="hidden gap-3 rounded-lg border border-border bg-surface p-4 md:grid md:grid-cols-3">
-        <select aria-label="مشتری" className="rounded border border-border bg-bg p-2 text-sm" value={form.customer_id} onChange={(e) => setForm((f) => ({ ...f, customer_id: e.target.value }))}>
-          <option value="">— مشتری —</option>
-          {customers.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.business_name ?? c.name}
-            </option>
-          ))}
-        </select>
-        <select aria-label="کالا" className="rounded border border-border bg-bg p-2 text-sm" value={form.product_id} onChange={(e) => setForm((f) => ({ ...f, product_id: e.target.value }))}>
-          <option value="">— کالا —</option>
-          {products.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name ?? p.business_name}
-            </option>
-          ))}
-        </select>
-        <select aria-label="دستهٔ شکایت" className="rounded border border-border bg-bg p-2 text-sm" value={form.category} onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}>
-          {Object.entries(CATEGORY_TEXT).map(([k, v]) => (
-            <option key={k} value={k}>
-              {v}
-            </option>
-          ))}
-        </select>
-        <select aria-label="شدت شکایت" className="rounded border border-border bg-bg p-2 text-sm" value={form.severity} onChange={(e) => setForm((f) => ({ ...f, severity: e.target.value }))}>
-          {Object.entries(SEVERITY_TEXT).map(([k, v]) => (
-            <option key={k} value={k}>
-              {v}
-            </option>
-          ))}
-        </select>
+        <SmartPicker scope="customers" label="مشتری" items={customers.map((c) => ({ id: String(c.id), label: String(c.business_name ?? c.name) }))} value={form.customer_id} onChange={(id) => setForm((f) => ({ ...f, customer_id: id }))} />
+        <SmartPicker scope="products" label="کالا" items={products.map((p) => ({ id: String(p.id), label: String(p.name ?? p.business_name) }))} value={form.product_id} onChange={(id) => setForm((f) => ({ ...f, product_id: id }))} clearLabel="بدون کالا" />
+        <ChipGroup wrap group={{ id: "category", label: "دستهٔ شکایت", mode: "single", neutral: "__none", value: form.category, onChange: (v) => { if (v !== "__none") setForm((f) => ({ ...f, category: v as string })); }, options: Object.entries(CATEGORY_TEXT).map(([k, v]) => ({ id: k, label: v })) }} />
+        <ChipGroup wrap group={{ id: "severity", label: "شدت شکایت", mode: "single", neutral: "__none", value: form.severity, onChange: (v) => { if (v !== "__none") setForm((f) => ({ ...f, severity: v as string })); }, options: Object.entries(SEVERITY_TEXT).map(([k, v]) => ({ id: k, label: v })) }} />
         <label className="flex flex-col gap-1 text-xs text-text-muted col-span-2 md:col-span-1">توضیح<input className="rounded border border-border bg-bg p-2 text-sm w-full" value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} /></label>
         <button type="submit" className="inline-flex items-center justify-center gap-[var(--space-2)] rounded bg-accent px-4 py-2 text-sm text-white">
           <Icon name="check" size="md" />

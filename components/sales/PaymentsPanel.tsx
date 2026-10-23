@@ -17,6 +17,8 @@ import PaymentTotalsCards from "@/components/sales/PaymentTotalsCards";
 import AllocationEditor from "@/components/sales/AllocationEditor";
 import { METHOD_LABEL, filterPayments, groupByMonth, paymentTotals, paymentsCsv, type AllocationDraft, type Customer, type OpenOrder, type Payment } from "@/lib/paymentsView";
 import CustomerName from "@/components/CustomerName";
+import SmartPicker from "@/components/mobile/SmartPicker";
+import { ChipGroup } from "@/components/mobile/ChipGroup";
 
 const PAGE_SIZE = 25;
 
@@ -217,18 +219,13 @@ export default function PaymentsPanel({ customers }: { customers: Customer[] }) 
       <form onSubmit={submit} className="hidden flex-col gap-3 rounded-lg border border-border bg-surface p-4 md:flex">
         <label className="flex flex-col gap-1 text-sm">
           مشتری
-          <select
-            className="rounded border border-border bg-bg p-2"
+          <SmartPicker
+            scope="customers"
+            label="مشتری"
+            items={customers.map((c) => ({ id: String(c.id), label: `${c.business_name} (${c.customer_code})` }))}
             value={customerId}
-            onChange={(e) => setCustomerId(e.target.value)}
-          >
-            <option value="">— انتخاب —</option>
-            {customers.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.business_name} ({c.customer_code})
-              </option>
-            ))}
-          </select>
+            onChange={setCustomerId}
+          />
         </label>
 
         <div className="grid grid-cols-2 gap-3">
@@ -243,17 +240,11 @@ export default function PaymentsPanel({ customers }: { customers: Customer[] }) 
           </label>
           <label className="flex flex-col gap-1 text-sm">
             روش
-            <select
-              className="rounded border border-border bg-bg p-2"
-              value={method}
-              onChange={(e) => setMethod(e.target.value)}
-            >
-              {Object.entries(METHOD_LABEL).map(([k, v]) => (
-                <option key={k} value={k}>
-                  {v}
-                </option>
-              ))}
-            </select>
+            <ChipGroup
+              wrap
+              group={{ id: "method", label: "روش", mode: "single", neutral: "__none", value: method, onChange: (v) => { if (v !== "__none") setMethod(v as string); },
+                options: Object.entries(METHOD_LABEL).map(([k, v]) => ({ id: k, label: v })) }}
+            />
           </label>
         </div>
 

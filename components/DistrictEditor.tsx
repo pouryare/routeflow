@@ -10,6 +10,7 @@ import PhotoGallery from "./PhotoGallery";
 import { useToast } from "./ToastProvider";
 import { Icon } from "@/components/meridian/Icon";
 import BottomSheet from "@/components/mobile/BottomSheet";
+import { ChipGroup } from "@/components/mobile/ChipGroup";
 
 export default function DistrictEditor({
   district,
@@ -50,17 +51,11 @@ export default function DistrictEditor({
   return (
     <BottomSheet open title={district.properties.name} subtitle={district.properties.parent_name ? `منطقه: ${district.properties.parent_name}` : undefined} onClose={onClose} closeLabel="بستن ویرایش" bodyClassName="district-sheet">
       <label className="mb-1.5 block text-[length:var(--text-sm)] font-medium text-text">وضعیت پوشش</label>
-      <select
-        value={status}
-        onChange={(e) => setStatus(e.target.value as CoverageStatus)}
-        className="mb-2 w-full rounded-[var(--radius-md)] border border-border bg-surface px-3 py-2 text-[length:var(--text-base)] text-text outline-none transition-[border-color,box-shadow] duration-[var(--dur-base)] ease-[var(--ease-out)] focus:border-accent focus:elevate-accent"
-      >
-        {(Object.keys(STATUS_LABEL) as CoverageStatus[]).map((s) => (
-          <option key={s} value={s}>
-            {STATUS_LABEL[s]}
-          </option>
-        ))}
-      </select>
+      <ChipGroup
+        wrap
+        group={{ id: "coverage_status", label: "وضعیت پوشش", mode: "single", neutral: "__none", value: status, onChange: (v) => { if (v !== "__none") setStatus(v as CoverageStatus); },
+          options: (Object.keys(STATUS_LABEL) as CoverageStatus[]).map((s) => ({ id: s, label: STATUS_LABEL[s] })) }}
+      />
       <div className="mb-4">
         <StatusPill color={STATUS_COLOR[status]} label={STATUS_LABEL[status]} />
       </div>
