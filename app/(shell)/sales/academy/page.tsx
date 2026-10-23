@@ -3,8 +3,9 @@ import { redirect } from "next/navigation";
 import { COOKIE_NAME } from "@/lib/auth";
 import { getSessionFromCookies } from "@/lib/session";
 
-import { listObjectionCards, academyManifest, lessonProgress } from "@/lib/repo/academy";
+import { listObjectionCards, academyManifest, lessonProgress, trainingStatus } from "@/lib/repo/academy";
 import AcademyPath from "@/components/sales/AcademyPath";
+import TrainingTable from "@/components/sales/TrainingTable";
 import PageHeader from "@/components/meridian/PageHeader";
 
 export const dynamic = "force-dynamic";
@@ -19,6 +20,8 @@ export default async function AcademyPage() {
   );
   const modules = academyManifest();
   const done = lessonProgress(session.organizationId, session.user.id).map((p) => p.lesson_slug);
+  // F133: managers and the owner also see who has finished the lessons their roles require.
+  const training = trainingStatus(session);
 
   return (
     <>
@@ -33,6 +36,20 @@ export default async function AcademyPage() {
       <div className="kblock__body">
         <AcademyPath cards={cards} modules={modules} done={done} />
       </div>
-    </div>    </>
+    </div>
+    {training && (
+      <div className="kblock p-[var(--space-4)]" dir="rtl" style={{ marginTop: 14 }}>
+        <div className="bhead">
+          <div>
+            <h2>درس‌های اجباری تیم</h2>
+            <div className="n">چه کسی درس‌های لازمِ نقشش را تمام کرده است</div>
+          </div>
+        </div>
+        <div className="kblock__body">
+          <TrainingTable lessons={training.lessons} people={training.people} />
+        </div>
+      </div>
+    )}
+    </>
   );
 }
