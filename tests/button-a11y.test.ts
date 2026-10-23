@@ -426,12 +426,9 @@ describe("every button a reader can identify", () => {
  *
  *  - `gallery/page.tsx` — the button IS a photo. The image is the content; a camera glyph
  *    beside it says nothing the picture does not.
- *  - `JalaliDatePicker` — a calendar DAY CELL. It is a cell in a grid, not an action. Every
- *    one of the 31 has the same glyph; an icon repeated 31 times is decoration.
  */
 const ALLOWED_ICONLESS = [
   "app/(shell)/gallery/page.tsx",
-  "components/JalaliDatePicker.tsx",
 ];
 
 /** A recorded reason, written as a comment INSIDE the button.
