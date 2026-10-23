@@ -35,12 +35,14 @@ export const PAGE_META: Record<string, PageMeta> = {
   "/planner": {
     title: "برنامه‌ریز مسیر",
     titleEn: "Route planner",
+    help: "page.planner",
     overview:
       "مقصدهای یک روز را انتخاب کنید و ترتیب بهینهٔ بازدید را بگیرید. ترتیب پیشنهادی بازدیدها را می‌توانید جابه‌جا کنید و در پایان به ناوبری گوشی بفرستید.",
   },
   "/crm": {
     title: "مشتریان و سرنخ‌ها",
     titleEn: "Customers and leads",
+    help: "page.crm",
     overview:
       "همهٔ کسب‌وکارهایی که با آن‌ها کار دارید، از سرنخ تازه تا مشتری دائمی. تماس بگیرید، نتیجه را با چند لمس ثبت کنید، و ببینید امروز با چه کسی کار دارید.",
   },
@@ -59,6 +61,7 @@ export const PAGE_META: Record<string, PageMeta> = {
   "/sales/today": {
     title: "امروز",
     titleEn: "Today",
+    help: "page.today",
     overview:
       "خلاصهٔ روز شما در یک صفحه: کارهای سررسیدشده، سفارش‌های منتظر، و هشدارهایی که همین امروز باید دیده شوند. از بالا به پایین کار کنید.",
   },
@@ -143,6 +146,7 @@ export const PAGE_META: Record<string, PageMeta> = {
   "/sales/runs": {
     title: "سفرهای تحویل",
     titleEn: "Delivery runs",
+    help: "page.runs",
     overview:
       "این نمای از «برنامهٔ تحویل» است. سفرهای تحویل روز: هر سفر با راننده و توقف‌هایش.",
   },
@@ -211,6 +215,7 @@ export const PAGE_META: Record<string, PageMeta> = {
   "/sales/payments": {
     title: "دریافت‌ها",
     titleEn: "Payments received",
+    help: "page.payments",
     overview:
       "ثبت و پیگیری دریافتی‌ها از مشتریان. مانده و سررسید هر مشتری کنار فرم می‌آید تا پیش از ثبت، تصویر کامل را ببینید.",
   },
