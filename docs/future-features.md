@@ -2877,6 +2877,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 **Suggested first slice:** after the local backup, run an integrity check on the new snapshot and write a status file with the time and result that the status page (F108) can read; add an optional step that copies the encrypted files to a configured destination. Restore rehearsal documented.
 
+**Built (2026-10-23, first half of the slice):** `scripts/backup.mjs` now checks each snapshot (`PRAGMA integrity_check` on the copy, `tar -t` on the photos) and writes `backup-status.json` in the backup folder, which `/sales/admin/status` reads; a failure still writes the file and exits non-zero. While doing this the script was found to be broken: it called `db.serialize()`, which `node:sqlite` does not have, so every run threw before writing anything. It now uses `VACUUM INTO`. Check the server's backup folder: if it holds no recent `routeflow-*.db`, there were no database backups. Still open: the off-site copy, its encryption and its destination (owner decision).
+
 **Prerequisites:** F108 for the status display; F34 for restore tooling.
 
 ---
