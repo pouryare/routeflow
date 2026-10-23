@@ -4703,19 +4703,23 @@ body {
 .meridian .tapflow { display: grid; gap: 12px; padding: 4px 20px 24px; }
 /* Every bottom sheet is a HeroUI Drawer now (mobile/BottomSheet.tsx). HeroUI draws the panel, the
    backdrop, the handle and the slide; these rules only fit it to a flow: centred and capped
-   on a desk, clear of the phone's home indicator, the title on the sheet's centre line with
-   the close button at the inline end, and body text at reading colour rather than HeroUI's
+   on a desk, clear of the phone's home indicator, the title at the inline start with the
+   close button at the inline end, and body text at reading colour rather than HeroUI's
    muted default for drawer copy. */
 .meridian .flow-drawer { justify-content: center; }
 .meridian .flow-drawer__dialog {
   width: 100%; max-width: 640px; padding: 8px 0 env(safe-area-inset-bottom, 0px);
   direction: rtl;
+  /* The page ground, not HeroUI's white overlay: the cards a sheet holds (the customer's bento
+     tiles, a flow's answers) are var(--card), and on white they lost their edges in light. */
+  background: var(--bg);
 }
-.meridian .flow-drawer__header { position: relative; align-items: center; gap: 2px; padding: 6px 20px 8px; text-align: center; }
-/* 116 px each side of the title: the labelled close button is about 104 px wide and sits on
-   the title's row, and the title stays centred on the sheet, so the other side keeps the same
-   room. The subtitle runs on the next row, clear of the button, at full width. */
-.meridian .flow-drawer__header .drawer__heading { min-height: 44px; display: flex; align-items: center; padding-inline: 116px; font-size: var(--text-lg); font-weight: 600; letter-spacing: -.015em; }
+.meridian .flow-drawer__header { position: relative; align-items: stretch; gap: 2px; padding: 6px 20px 8px; text-align: start; }
+/* 116 px at the title's inline end: the labelled close button is about 104 px wide and sits on
+   the title's row. A centred title had to keep the same room on its other side too, which left
+   a 390 px phone 158 px for a customer's name and wrapped most of them. The subtitle runs on
+   the next row, clear of the button, at full width. */
+.meridian .flow-drawer__header .drawer__heading { min-height: 44px; display: flex; align-items: center; padding-inline: 0 116px; font-size: var(--text-lg); font-weight: 600; letter-spacing: -.015em; }
 .meridian .flow-drawer__sub { margin: 0; font-size: var(--text-sm); color: var(--muted); }
 .meridian .flow-drawer__close { position: absolute; inset-block-start: 0; inset-inline-end: 12px; gap: 4px; }
 /* A sheet's body text is at reading colour too, and every body but a tap flow's (which sets its
