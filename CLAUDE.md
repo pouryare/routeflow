@@ -11,6 +11,19 @@ Finish the whole list of tasks first, then merge. CI is slow, so do not stop and
 - If the branch has no open PR when the tasks are finished, open one (merging was asked for); if the task list was only a question, do not create one.
 - This replaces the earlier rule of merging after every commit and push.
 
+# Always-on: look for existing solutions before building
+
+Before adding any new functionality (a feature, helper, integration, UI primitive, parser, algorithm or script), search for something that already exists. Do not start writing it first.
+
+1. **Search.** Use the web (WebSearch, WebFetch), the npm registry (`npm view <package> version time.modified`) and this repo (it may already have it). Look for open-source libraries, plugins, example code and self-hostable services.
+2. **Analyze** each serious candidate on: what it covers of the need, licence, last release and maintenance, size, security record, fit with this stack (Next.js 16, TypeScript, PostgreSQL), Persian and right-to-left support, and the project's constraints: the server is in Iran, so no paid foreign API or key, and it must be self-hostable and installable from there.
+3. **Ask the user to decide.** Give a short comparison and your recommendation: use library A, use B, or build from scratch (say what building costs and what it buys). Use AskUserQuestion. Do not add a dependency or start building until they answer.
+4. **Record** the decision in the relevant doc (`docs/roadmap.md` section 10 or the feature's entry) and in `TODO-REPORT.md`.
+
+When a batch of tasks is given (see the batch rule), do the search for all of them first and ask all the questions in one round, so the work is not interrupted between tasks.
+
+Skip the search for: bug fixes, edits inside existing code, a few lines of glue, and anything the user has already told you to build or to use a named library for.
+
 # Always-on: to-do report after every prompt
 
 At the end of every reply, update `TODO-REPORT.md` at the repo root and show the same content concisely in the reply. Three lists, in this order:

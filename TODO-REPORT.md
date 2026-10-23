@@ -357,6 +357,7 @@ Full write-up: `docs/architecture-audit-2026-10-22.md`. Steps 1 to 3 are merged 
 ## Libraries to add and hand-rolled code a library does better (2026-10-23, docs only, no code changed)
 
 ### Done
+- [x] Always-on rule added to `CLAUDE.md`: search for existing code, libraries and plugins before building, analyze them, and ask you to choose between using one and building from scratch
 - [x] Second pass of libraries (passkeys, barcode scan, labels, own map tiles, CSV and encoding, zip export, OpenTelemetry, throttling, test tools) added to `docs/roadmap.md` section 10 and as notes on F1, F10, F34, F106 and F108
 - [x] Recorded the library review in `docs/roadmap.md` (section 10, "Libraries: replace, add, keep") and as library notes on F4, F10, F116, F124 and F143 in `docs/future-features.md`
 - [x] Reviewed what the codebase builds by hand (it has almost no third-party libraries beyond Leaflet and its plugins, framer-motion, sharp, exceljs, web-push, Playwright); checked package freshness on the npm registry
