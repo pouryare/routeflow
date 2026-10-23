@@ -3,6 +3,7 @@ import { chromium, type Browser } from "playwright";
 import { DatabaseSync } from "node:sqlite";
 import { startDevServer, BASE } from "./server";
 import { sessionCookie } from "./session";
+import { ensureWarehouse } from "../helpers/ensureWarehouse";
 
 /** Geometric invariants that survive a redesign.
  *
@@ -379,16 +380,28 @@ describe("order pipeline drag", () => {
      where the card was grabbed («۵ سانت دورتر»), and with no draft orders nothing on the
      board could move while every card still wore the grab cursor. */
   it("a draft dragged to «تأییدشده» follows the grab point and is confirmed", async () => {
-    const db = new DatabaseSync(process.env.ROUTEFLOW_DB_PATH!, { readOnly: true });
+    // The snapshot, never production (startDevServer), so it may take a price and a warehouse
+    // it lacks: confirming reserves stock, and a copy without either would fail for want of data.
+    const db = new DatabaseSync(process.env.ROUTEFLOW_DB_PATH!);
     const org = (db.prepare("SELECT organization_id AS o FROM users WHERE role = 'owner' AND active = 1 ORDER BY id LIMIT 1").get() as { o: number }).o;
-    const line = db
-      .prepare(
-        `SELECT pp.product_id, pk.id AS packaging_id FROM product_prices pp
-           JOIN products p ON p.id = pp.product_id AND p.active = 1 AND p.organization_id = ?
-           JOIN packagings pk ON pk.product_id = p.id
-          LIMIT 1`,
-      )
-      .get(org) as { product_id: number; packaging_id: number } | undefined;
+    const pricedLine = () =>
+      db
+        .prepare(
+          `SELECT pp.product_id, pk.id AS packaging_id FROM product_prices pp
+             JOIN products p ON p.id = pp.product_id AND p.active = 1 AND p.organization_id = ?
+             JOIN packagings pk ON pk.product_id = p.id
+            LIMIT 1`,
+        )
+        .get(org) as { product_id: number; packaging_id: number } | undefined;
+    if (!pricedLine()) {
+      const product = db
+        .prepare("SELECT p.id FROM products p JOIN packagings pk ON pk.product_id = p.id WHERE p.active = 1 AND p.organization_id = ? LIMIT 1")
+        .get(org) as { id: number } | undefined;
+      const now = new Date().toISOString();
+      if (product) db.prepare("INSERT INTO product_prices (product_id, price_toman, valid_from, created_at) VALUES (?, 100000, ?, ?)").run(product.id, now.slice(0, 10), now);
+    }
+    ensureWarehouse(db, org);
+    const line = pricedLine();
     const customer = db.prepare("SELECT id FROM customers WHERE organization_id = ? ORDER BY id LIMIT 1").get(org) as { id: number } | undefined;
     db.close();
     expect(line, "the snapshot has no priced product to order").toBeTruthy();
@@ -587,8 +600,10 @@ describe("panels and controls stay where they belong", () => {
 
   it("/settings/notifications has neither a stray one-link menu nor another section's tabs", async () => {
     const { page, close } = await open("/settings/notifications", { width: 1280, height: 800 });
+    // A menu of the settings pages is right once there are two or more (there are three:
+    // notifications, security, what's new); a menu holding one link is the bug.
     const found = await page.evaluate(() => ({
-      menu: document.querySelectorAll('nav[aria-label="بخش‌های تنظیمات"]').length,
+      menu: [...document.querySelectorAll('nav[aria-label="بخش‌های تنظیمات"]')].filter((n) => n.querySelectorAll("a").length < 2).length,
       tabs: document.querySelectorAll(".phc__tabs").length,
     }));
     await close();
@@ -655,7 +670,9 @@ describe("the customer sheet opens and closes for real", () => {
      nothing. Only the geometry shows it. */
   const offscreen = (page: import("playwright").Page) =>
     page.evaluate(() => {
-      const sheet = document.querySelector<HTMLElement>(".sheet");
+      // The sheet that opened, not the first in the page: the phone nav's «بیشتر» and
+      // quick-action sheets sit closed in the DOM too.
+      const sheet = document.querySelector<HTMLElement>(".sheet[data-smoke-watch]");
       if (!sheet) return null;
       return { on: sheet.classList.contains("on"), top: Math.round(sheet.getBoundingClientRect().top), vh: innerHeight };
     });
@@ -665,6 +682,7 @@ describe("the customer sheet opens and closes for real", () => {
     await page.locator(".pockets > *").first().click();
     const x = page.locator('.sheet.on button[aria-label^="بستن"]');
     await x.waitFor({ state: "visible", timeout: 10_000 });
+    await page.evaluate(() => document.querySelector(".sheet.on")?.setAttribute("data-smoke-watch", ""));
     // Poll for the slide-in instead of sleeping a fixed time: on a long page under load the
     // transition starts late. A sheet that never reaches the screen (the bug this test exists
     // for: a fixed sheet captured by a transformed card) still fails, after the timeout.
