@@ -37,7 +37,27 @@ export interface Suggestion {
 export const MAX_SUGGESTIONS = 3;
 export const SUPPRESS_DAYS = 7;
 
-const orderHref = (customerId: number) => `/sales/orders/new?customer=${customerId}&quick=1`;
+/** The quick order flow, opened on this customer with their usual basket to repeat. */
+export const orderHref = (customerId: number) => `/sales/orders/new?customer=${customerId}&quick=1`;
+
+/** Past this many usual gaps a customer is no longer "due": they have lapsed, and the call
+ *  list and the churn board are where they belong. */
+const LAPSED_AFTER_GAPS = 2;
+
+/** F8: the customers due to order today, from their own rhythm. Due means at least one usual gap
+ *  since the last order and not yet two, with no order already open. Most overdue first,
+ *  measured in gaps so a weekly buyer three days late outranks a monthly one three days late. */
+export function dueToday(reorder: ReorderSignal[], openCustomerIds: ReadonlySet<number>): ReorderSignal[] {
+  return reorder
+    .filter(
+      (r) =>
+        r.typicalGapDays > 0 &&
+        r.daysSinceLast >= r.typicalGapDays &&
+        r.daysSinceLast <= r.typicalGapDays * LAPSED_AFTER_GAPS &&
+        !openCustomerIds.has(r.customerId)
+    )
+    .sort((a, b) => b.daysSinceLast / b.typicalGapDays - a.daysSinceLast / a.typicalGapDays);
+}
 
 export function median(xs: number[]): number {
   const s = [...xs].sort((a, b) => a - b);

@@ -13,7 +13,6 @@ export function suggestionsFor(session: Session): Suggestion[] {
   const org = session.organizationId;
   const user = session.user.id;
   const today = tehranTodayIso();
-  const todayMs = Date.parse(`${today}T00:00:00Z`);
 
   const churn = db
     .prepare(
@@ -25,6 +24,16 @@ export function suggestionsFor(session: Session): Suggestion[] {
     )
     .all(org, org, user) as unknown as ChurnSignal[];
 
+  const reorder = reorderSignals(org, user, today);
+  return buildSuggestions({ churn, reorder });
+}
+
+/** Every customer this salesperson has sold to with a regular rhythm (typicalGap): days since
+ *  their last fulfilled order against their usual gap. Shared by the suggestion cards and the
+ *  briefing's «موعد سفارش امروز» panel (F8), so the two cannot disagree about who is due. */
+export function reorderSignals(org: number, user: number, today: string): ReorderSignal[] {
+  const db = getDb();
+  const todayMs = Date.parse(`${today}T00:00:00Z`);
   const rows = db
     .prepare(
       `SELECT c.id AS customerId, c.business_name AS name, c.phone, o.order_date AS day
@@ -54,5 +63,5 @@ export function suggestionsFor(session: Session): Suggestion[] {
       typicalGapDays: gap,
     });
   }
-  return buildSuggestions({ churn, reorder });
+  return reorder;
 }
