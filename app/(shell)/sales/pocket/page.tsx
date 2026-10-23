@@ -6,11 +6,12 @@ import { getSessionFromCookies } from "@/lib/session";
 import { pocketFor, pocketTeam } from "@/lib/repo/pocket";
 import Pocket from "@/components/pocket/Pocket";
 import PageHeader from "@/components/meridian/PageHeader";
-import { isVanRole } from "@/lib/roles";
+import { canSell, isVanRole } from "@/lib/roles";
+import { appTabs } from "@/lib/appNav";
 
 export const dynamic = "force-dynamic";
 
-/** The member's personal home — the /today briefing shaped like the /sales dashboard.
+/** The member's personal home — the /start briefing shaped like the /sales dashboard.
  *  Everyone but a driver (who has their own screen); a manager also gets a team strip. */
 export default async function PocketPage() {
   const jar = await cookies();
@@ -26,6 +27,8 @@ export default async function PocketPage() {
       initial={pocketFor(session, {})}
       team={pocketTeam(session)}
       viewerName={session.user.display_name}
+      canOrder={canSell(session.role)}
+      canPlan={appTabs(session).some((t) => t.ready && t.href === "/planner")}
     />    </>
   );
 }

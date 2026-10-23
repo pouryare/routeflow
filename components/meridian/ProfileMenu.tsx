@@ -9,6 +9,7 @@ import SkinToggle from "@/components/meridian/SkinToggle";
 import FontPicker from "@/components/FontPicker";
 import AccentPicker from "@/components/AccentPicker";
 import Avatar from "@/components/meridian/Avatar";
+import type { AccountLink } from "@/lib/accountLinks";
 
 /** The one control at the end of the top bar: the viewer's avatar, opening a dropdown
  *  that holds everything that used to sit loose beside it -- the map link and the
@@ -28,10 +29,13 @@ export default function ProfileMenu({
   userId,
   name,
   roleLabel,
+  links,
 }: {
   userId: number;
   name: string;
   roleLabel: string;
+  /** From lib/accountLinks: only what this role can open. */
+  links: AccountLink[];
 }) {
   const [open, setOpen] = useState(false);
   const root = useRef<HTMLDivElement>(null);
@@ -94,25 +98,13 @@ export default function ProfileMenu({
             </div>
           </div>
 
-          {/* The switcher: a RARE, deliberate, consequential action, so it lives here among
-              "things about this account" rather than as a nav tab. A tab is a place you
-              work; this is a place you observe. The full list is /switch — a link, not a
-              second copy, so the two mounts cannot drift. */}
-          <Link className="pm__link" href="/switch" onClick={() => setOpen(false)}>
-            <Icon name="repeat" size="sm" /> ورود به‌عنوان…
-          </Link>
-
-          <Link className="pm__link" href="/map" onClick={() => setOpen(false)}>
-            <Icon name="arrow-up-right" size="sm" /> نقشهٔ پوشش
-          </Link>
-
-          <Link className="pm__link" href="/settings/notifications" onClick={() => setOpen(false)}>
-            <Icon name="arrow-up-right" size="sm" /> تنظیمات اعلان‌ها
-          </Link>
-
-          <Link className="pm__link" href="/settings/security" onClick={() => setOpen(false)}>
-            <Icon name="arrow-up-right" size="sm" /> امنیت و ورود
-          </Link>
+          {/* The switcher (owners only) is a RARE, deliberate, consequential action, so it lives
+              here among "things about this account" rather than as a nav tab. */}
+          {links.map((l) => (
+            <Link key={l.href} className="pm__link" href={l.href} onClick={() => setOpen(false)}>
+              <Icon name={l.icon} size="sm" /> {l.label}
+            </Link>
+          ))}
 
           <div className="pm__sep" />
 

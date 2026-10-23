@@ -16,6 +16,8 @@ import { Icon } from "@/components/meridian/Icon";
 import SectionHead from "@/components/meridian/SectionHead";
 import { isVanRole } from "@/lib/roles";
 import NotAVanNotice from "@/components/meridian/NotAVanNotice";
+import DriverLinks from "@/components/driver/DriverLinks";
+import { driverLinks } from "@/lib/driverLinks";
 
 export const dynamic = "force-dynamic";
 
@@ -84,7 +86,7 @@ export default async function DriverPage() {
       <header className="mb-[var(--space-4)] flex items-start justify-between gap-[var(--space-3)]">
         <div>
           <h1 className="m-0 text-[length:var(--text-lg)] font-medium text-[var(--text)]">
-            <a href="/today" className="text-[var(--text)] no-underline hover:text-[var(--accent)]">
+            <a href="/start" className="text-[var(--text)] no-underline hover:text-[var(--accent)]">
               مسیر امروز ›
             </a>
           </h1>
@@ -103,6 +105,7 @@ export default async function DriverPage() {
           </button>
         </form>
       </header>
+      <DriverLinks links={driverLinks(session)} />
 
       {/* ── Section 1: deliveries ─────────────────────────────────────────── */}
       {sections.includes("deliveries") && (

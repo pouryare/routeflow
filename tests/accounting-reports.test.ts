@@ -87,6 +87,7 @@ describe("accounting reports", () => {
   it("counts COGS once, not twice: expenses exclude it", () => {
     const is = R.incomeStatement(ORG, { periodKey: "1405-06" });
     expect(is.expenses.map((e) => e.code)).not.toContain("5101");
+    for (const e of is.expenses) expect(e.accountId, e.code).toBeGreaterThan(0);
     expect(is.netProfitToman).toBe(is.revenueToman - is.cogsToman - is.totalExpensesToman);
   });
 
@@ -133,6 +134,13 @@ describe("accounting reports", () => {
     const bs = R.balanceSheet(ORG);
     expect(bs.difference).toBe(0);
     expect(bs.totals.assets).toBeGreaterThan(0);
+  });
+
+  it("every balance-sheet account line names its account, so the screen can open its ledger", () => {
+    const bs = R.balanceSheet(ORG);
+    for (const r of [...bs.assets, ...bs.liabilities]) expect(r.accountId, r.code).toBeGreaterThan(0);
+    // Only the derived earnings line (3900) may lack one: no account sits behind it.
+    for (const r of bs.equity) if (r.code !== "3900") expect(r.accountId, r.code).toBeGreaterThan(0);
   });
 
   it("reports a NON-ZERO difference when a ledger is broken -- it is not hardcoded to 0", () => {

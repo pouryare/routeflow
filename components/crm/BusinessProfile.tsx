@@ -39,7 +39,9 @@ const FIELDS = [{ key: "business_name", label: "نام کسب‌وکار" }, { k
 const usesNames = (profile: Profile): string[] => {
   try { const ids = JSON.parse(profile.business.uses_products_json ?? "[]") as unknown; return Array.isArray(ids) ? profile.products.filter(p => ids.includes(p.id)).map(p => p.name) : []; } catch { return []; }
 };
-export default function BusinessProfile({ initial, initialTimeline }: { initial: Profile; initialTimeline: History }) {
+/** `canOrder` is lib/roles canSell for the viewer, decided by the page that has the session: a
+ *  rep manager reads profiles but the order API refuses their sale, so they get no order button. */
+export default function BusinessProfile({ initial, initialTimeline, canOrder }: { initial: Profile; initialTimeline: History; canOrder: boolean }) {
   const [profile, setProfile] = useState(initial), [history, setHistory] = useState(initialTimeline);
   const [edit, setEdit] = useState<Edit | null>(null), [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -93,7 +95,7 @@ export default function BusinessProfile({ initial, initialTimeline }: { initial:
   return <main dir="rtl" style={{ padding: "24px 16px 96px", display: "grid", gap: 18, maxWidth: 900, margin: "auto" }}>
     <div className="profile-topbar">
       <Link href="/crm" className="btn ghost" style={TOUCH}>بازگشت به فهرست</Link>
-      <Link className="btn solid" style={TOUCH} href={`/sales/orders/new?customer=${profile.business.id}`}>ثبت سفارش تازه</Link>
+      {canOrder && <Link className="btn solid" style={TOUCH} href={`/sales/orders/new?customer=${profile.business.id}`}>ثبت سفارش تازه</Link>}
     </div>
     <h1>{profile.business.business_name}</h1>
     {error && <div role="alert">{error} <button className="inline-flex items-center justify-center gap-[var(--space-2)] btn ghost" style={TOUCH} disabled={busy} onClick={() => { setError(null); void reload().catch(e => setError(e.message)); }}>

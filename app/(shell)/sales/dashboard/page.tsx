@@ -17,13 +17,14 @@ import GradientStat from "@/components/meridian/GradientStat";
 import CountUp from "@/components/meridian/CountUp";
 import PageHeader from "@/components/meridian/PageHeader";
 import CoveragePanels from "@/components/analysis/CoveragePanels";
+import LeadPanels from "@/components/analysis/LeadPanels";
 import DeepAnalysisSection from "@/components/dashboard/DeepAnalysisSection";
 import MoneySection from "@/components/dashboard/MoneySection";
 import StockSection from "@/components/dashboard/StockSection";
 import SectionSkeleton from "@/components/dashboard/SectionSkeleton";
 import { compactToman, EMPTY_CHART } from "@/components/dashboard/format";
 import { coverageAnalytics } from "@/lib/repo/coverageAnalytics";
-import { isVanRole } from "@/lib/roles";
+import { PIN_POOL_ROLES, isVanRole } from "@/lib/roles";
 
 
 export const dynamic = "force-dynamic";
@@ -278,6 +279,13 @@ export default async function DashboardPage() {
       {coverage && (
         <CollapsibleSection title="پوشش و میدان" icon="compass" storageKey="dash-coverage">
           <CoveragePanels data={coverage} now={coverageNow} />
+        </CollapsibleSection>
+      )}
+
+      {/* The pinned leads: /api/locations admits PIN_POOL_ROLES, so only they get the panel. */}
+      {PIN_POOL_ROLES.includes(session.role) && (
+        <CollapsibleSection title="سرنخ‌ها" icon="target" storageKey="dash-leads">
+          <LeadPanels />
         </CollapsibleSection>
       )}
     </div>    </>

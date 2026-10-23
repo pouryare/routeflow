@@ -21,6 +21,8 @@ import ComplaintFromOrder from "@/components/flows/ComplaintFromOrder";
 import OrderPriorityToggle from "@/components/sales/OrderPriorityToggle";
 import PriorityTag from "@/components/sales/PriorityTag";
 import { canSetPriority } from "@/lib/orderPriority";
+import CustomerName from "@/components/CustomerName";
+import { Icon } from "@/components/meridian/Icon";
 
 export const dynamic = "force-dynamic";
 
@@ -61,16 +63,18 @@ export default async function OrderDetailPage({
             سفارش {faNum(Number(order.order_no.split("-")[1]))}#
           </h2>
           <p className="m-0 mt-[var(--space-1)] text-[length:var(--text-sm)] text-[var(--text-muted)]">
-            {/* Back to the shop on the map. buildMapLink is the same format the map's
-                own share links use and parseMapLink already reads on load, so this
-                needs no new plumbing on the receiving side. */}
+            {/* The name opens the customer (who they are, their other orders, what they owe);
+                the pin beside it is the shop on the map. buildMapLink is the same format the
+                map's own share links use and parseMapLink already reads on load. */}
+            <CustomerName id={order.customer_id} name={order.customer_name} />{" "}
             <Link
               /* buildMapLink already includes the leading "?" -- see lib/deepLink.ts. */
               href={`/map${buildMapLink({ customerId: order.customer_id })}`}
-              className="text-[var(--text)] no-underline underline-offset-2 hover:text-[var(--accent)] hover:underline"
+              className="touch inline-flex min-h-11 min-w-11 items-center justify-center align-middle text-[var(--text-muted)] hover:text-[var(--accent)]"
+              aria-label="نمایش روی نقشه"
               title="نمایش روی نقشه"
             >
-              {order.customer_name}
+              <Icon name="map-pin" size="sm" />
             </Link>{" "}
             · {faJalaliDate(order.order_date)} ·{" "}
             {statusLabel(order.status)}

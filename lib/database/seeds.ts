@@ -267,7 +267,7 @@ export function seedNotificationTypes(db: DatabaseSync): void {
   }
 }
 
-/** Phase 8: starter objection cards, NULL-org. Keyed to the outcome codes the /today
+/** Phase 8: starter objection cards, NULL-org. Keyed to the outcome codes the /start
  *  TaskRow emits plus a few classics. INSERT ... WHERE NOT EXISTS per row. */
 export const OBJECTION_CARD_SEED: {
   outcome_code: string;

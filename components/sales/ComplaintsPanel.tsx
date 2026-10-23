@@ -11,6 +11,7 @@ import { faJalaliDateTime } from "@/lib/jalali";
 import ComplaintFlow from "@/components/flows/ComplaintFlow";
 import { autoOpenFlow, currentSearch } from "@/lib/flows/autoOpen";
 import { CATEGORY_LABEL, SEVERITY_LABEL } from "@/lib/flows/complaint";
+import CustomerName from "@/components/CustomerName";
 
 /* Category and severity words live with the flow that also uses them. Widened to plain string
    maps here because the rows below come from JSON, not from the server's unions. */
@@ -261,7 +262,7 @@ export default function ComplaintsPanel({
           <tbody>
             {complaints.map((c) => (
               <tr key={c.id} className="border-b border-border last:border-0">
-                <td className="p-2">{label.customer(c.customer_id)}</td>
+                <td className="p-2"><CustomerName id={c.customer_id} name={label.customer(c.customer_id)} /></td>
                 <td className="p-2">{label.product(c.product_id)}</td>
                 <td className="p-2">{CATEGORY_TEXT[c.category] ?? "نامشخص"}</td>
                 <td className="p-2">{SEVERITY_TEXT[c.severity] ?? "نامشخص"}</td>

@@ -4,7 +4,7 @@ import BriefingCardTile from "./BriefingCardTile";
 import { cardFor, type BriefingCard } from "@/lib/repo/briefingCards";
 import type { Briefing as BriefingData, BriefingItem } from "@/lib/repo/briefing";
 
-/** "plain" is the driver's standalone /today (generic tokens, phone-width column).
+/** "plain" is the driver's standalone /start (generic tokens, phone-width column).
  *  "meridian" is the /sales/today tab — the same panels dressed in the workshop skin so it
  *  sits flush with every other sales screen. */
 type Variant = "plain" | "meridian";

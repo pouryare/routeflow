@@ -9,7 +9,7 @@ import { homePathFor } from "@/lib/roles";
  *  Phase 7: the briefing is the landing page after login -- it is where the day's
  *  actionable items live, role-branched. A driver goes to /driver, everyone else to
  *  /sales/today (the briefing as a sales tab); a logged-out visitor to /login. The bare
- *  /today route still serves the driver's briefing.
+ *  /start route still serves the briefing and, for someone with several roles, the role picker.
  */
 export default async function Home() {
   const jar = await cookies();

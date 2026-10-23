@@ -40,8 +40,23 @@ _Condensed 2026-10-23. Each finished piece of work is one line here; the full ea
   - [x] F112 what's-new card shown once, history at `/settings/updates`
   - [x] Built markers in `docs/future-features.md` for these and PR #57's items; roadmap section 1 status and 1a
 - [x] Owner delegated the two open points: required lessons decided (module 1 for phone sales, field reps and group managers; module 2 for phone sales), and a «خلاصهٔ صبح» line on the status page shows whether the morning digest goes out
+- [x] UI reachability batch (every page reachable, no dead-end links; plan in the "UI reachability test ideas" doc):
+  - [x] Avatar menu shows only links the role can open (`lib/accountLinks.ts`): «ورود به‌عنوان…» for owners only, no map link for van roles
+  - [x] Offline page: «تلاش دوباره» retries the page asked for, «صفحهٔ اصلی» goes to the role's home (was a map link drivers cannot open)
+  - [x] Change your own password on `/settings/security`, asking for the current one (rate-limited); `/password` and this share `components/PasswordForm.tsx`
+  - [x] «حساب من» (settings, and «ورود به‌عنوان…» for owners) at the end of the phone's «بیشتر» sheet; `/driver` gets a row of links to the academy and settings, which it had no way to reach
+  - [x] Holidays screen (`/sales/admin/holidays`) linked as «تعطیلات» under «تنظیمات سازمان» for owners; nothing linked to it before
+  - [x] Names open what they name: customer names on the order page, payments and complaints open the customer (the order page keeps a map pin); supplier names on payables open the supplier; account names on the balance sheet and profit and loss open the ledger
+  - [x] A ledger page lights «حسابداری» and shows its sibling tabs (`NAV_PARENT` + `currentTab` in `lib/appNav.ts`, one rule for the pill, page header and phone bar)
+  - [x] «ثبت سفارش تازه» only for roles that can sell (`SELL_ROLES` / `canSell` in `lib/roles`, shared with the order API): hidden for rep managers on the orders page, customer sheet, profile, purchase history and pocket; the form itself explains instead of failing on save. The pocket offers the planner only to roles that can open it
+  - [x] Lead charts moved from the retired `/analytics` to «سرنخ‌ها» on the sales dashboard (status, funnel, average score; `lib/leadStats.ts`); the fake «تبدیل شده» funnel step and the distance-coloured pin map dropped; `/analytics` deleted; with no scored leads the score chart says so instead of showing blank space
+  - [x] Six redirect stub pages deleted with no redirects (the app has no users yet): `/sales/board`, `/sales/journey`, `/sales/deliveries`, `/sales/runs`, `/sales/analysis`, `/sales/admin/representatives`; their meta, the proxy special case and the stale-surface audit entries went with them; the runs view keeps its copy in `VIEW_META`
+  - [x] `/today` (briefing and multi-role picker) renamed to `/start`, so it no longer shares a name with `/sales/today`; no redirect
+  - [x] Guard test `tests/every-page-reachable.test.ts`: every page is a nav destination for some role, linked from rendering code, or exempt with a written reason (checked: it fails when the holidays tab is removed)
+  - [x] `CLAUDE.md` rule "a UI feature is not done until a person can reach it and it looks right" (placement first, every page reachable, no button to a refusal, names open things, shared parts, self-screenshot, batch tour, no redirects while there are no users)
 
 ## Not done / gaps
+- [ ] Cheque cards and the cheque deck still show the customer as plain text: the card itself is the tap target (select / decide), so a link inside it would fight it
 - [ ] Check the server's backup folder: before this batch the backup script never produced a database copy
 - [ ] Off-site backup copy (F138 part 2) waits on a destination and key holder
 - [ ] Nothing writes `deliveries.delay_reason_id`, so the reason report's delay section stays empty
@@ -67,10 +82,9 @@ _Condensed 2026-10-23. Each finished piece of work is one line here; the full ea
 - [ ] Left for later: F104 (not reached; nothing blocks it), and, waiting on a missing prerequisite, F74, F77, F85, F86, F91, F114, F69, F31, F42, F34, F95, F140, F2, F5, F117, F38
 
 ## Next steps
-1. After the first morning on the server, check the status page's «خلاصهٔ صبح» line is green
+1. Merge the UI reachability PR once CI is green (merge commit)
 2. Owner checks the backup folder and picks an off-site destination (F138 part 2)
 3. Record delay reasons on deliveries so the reason report's delay section fills
-4. F104 customer snapshot sheet (small, nothing blocks it)
-5. Check the outside services from the Iranian server
-6. Decide the Android distribution route before F6 starts
-7. Data-layer decision record, then the PostgreSQL spike
+4. Check the outside services from the Iranian server
+5. Decide the Android distribution route before F6 starts
+6. Data-layer decision record, then the PostgreSQL spike

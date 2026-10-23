@@ -1,3 +1,4 @@
+import Link from "next/link";
 import PageHeader from "@/components/meridian/PageHeader";
 import SectionHead from "@/components/meridian/SectionHead";
 import AcctTable, { CELL, NUM, UnbalancedBanner } from "@/components/accounting/AcctTable";
@@ -23,12 +24,21 @@ export default async function BalanceSheetPage({
   const bs = balanceSheet(organizationId, asAt ? { periodKey: asAt } : {});
 
   const side = (
-    rows: { code: string; nameFa: string; amountToman: number }[]
+    rows: { accountId?: number; code: string; nameFa: string; amountToman: number }[]
   ) =>
     rows.map((r) => (
       <tr key={r.code} className="border-t border-border">
         <td className={`${CELL} tnum`}>{r.code}</td>
-        <td className={CELL}>{r.nameFa}</td>
+        <td className={CELL}>
+          {/* Each account opens its ledger; the derived earnings line has no account to open. */}
+          {r.accountId ? (
+            <Link href={`/accounting/ledger/${r.accountId}`} className="text-[var(--accent-text)] hover:underline">
+              {r.nameFa}
+            </Link>
+          ) : (
+            r.nameFa
+          )}
+        </td>
         <td className={NUM}>{faNum(r.amountToman)}</td>
       </tr>
     ));

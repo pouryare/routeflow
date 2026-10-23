@@ -151,7 +151,8 @@ export interface IncomeStatement {
   revenueToman: number;
   cogsToman: number;
   grossProfitToman: number;
-  expenses: { code: string; nameFa: string; amountToman: number }[];
+  /** `accountId` opens the account's ledger from the report. */
+  expenses: { accountId: number; code: string; nameFa: string; amountToman: number }[];
   totalExpensesToman: number;
   netProfitToman: number;
   /** FALSE when any sale in the period recognised revenue with no cost alongside it.
@@ -198,7 +199,7 @@ export function incomeStatement(
      counting it again here would subtract it twice. */
   const expenseRows = db
     .prepare(
-      `SELECT a.code, a.name_fa AS nameFa, COALESCE(SUM(e.amount_toman), 0) AS amountToman
+      `SELECT a.id AS accountId, a.code, a.name_fa AS nameFa, COALESCE(SUM(e.amount_toman), 0) AS amountToman
          FROM ledger_entries e
          JOIN journals j ON j.id = e.journal_id
          JOIN accounts a ON a.id = e.account_id
@@ -235,9 +236,10 @@ export function incomeStatement(
 
 export interface BalanceSheet {
   asAt: string;
-  assets: { code: string; nameFa: string; amountToman: number }[];
-  liabilities: { code: string; nameFa: string; amountToman: number }[];
-  equity: { code: string; nameFa: string; amountToman: number }[];
+  assets: { accountId: number; code: string; nameFa: string; amountToman: number }[];
+  liabilities: { accountId: number; code: string; nameFa: string; amountToman: number }[];
+  /** The derived «سود و زیان دوره» line has no account behind it, hence no `accountId`. */
+  equity: { accountId?: number; code: string; nameFa: string; amountToman: number }[];
   totals: { assets: number; liabilities: number; equity: number };
   /** Assets − (liabilities + equity). A ledger that does not balance is broken, and this
    *  must be visibly 0 rather than quietly absorbed into a total. */
@@ -267,7 +269,7 @@ export function balanceSheet(
     }
     return db
       .prepare(
-        `SELECT a.code, a.name_fa AS nameFa,
+        `SELECT a.id AS accountId, a.code, a.name_fa AS nameFa,
                 COALESCE(SUM(CASE
                   WHEN e.side = CASE a.normal_balance WHEN 'DEBIT' THEN 'D' ELSE 'C' END
                     THEN e.amount_toman

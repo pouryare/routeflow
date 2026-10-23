@@ -9,6 +9,8 @@ import { faJalaliDate } from "@/lib/jalali";
 import { SkeletonLabel, SkeletonRows } from "./Skeleton";
 import { PriceHistoryList } from "./PriceHistoryList";
 import type { ProductPrices } from "@/lib/repo/customerPrices";
+import { useSession } from "@/lib/useSession";
+import { canSell } from "@/lib/roles";
 
 interface OrderSummary {
   id: number;
@@ -52,6 +54,7 @@ export default function PurchaseHistory({
   customerName: string;
 }) {
   const [orders, setOrders] = useState<OrderSummary[] | null>(null);
+  const { role } = useSession();
   const [products, setProducts] = useState<ProductMix[]>([]);
   const [prices, setPrices] = useState<ProductPrices[]>([]);
   const [open, setOpen] = useState(false);
@@ -162,12 +165,12 @@ export default function PurchaseHistory({
               Rendered even with no history: the commonest reason a shop has none is that
               nobody has recorded its first order yet. */}
           <div className="mt-3 flex flex-wrap gap-2">
-            <Link
+            {canSell(role) && <Link
               href={`/sales/orders/new?customer=${customerId}`}
               className="rounded-[var(--radius-md)] border border-accent bg-accent px-3 py-1.5 text-[length:var(--text-xs)] font-medium text-accent-ink no-underline transition-[filter] duration-[var(--dur-base)] hover:brightness-110"
             >
               ثبت سفارش تازه
-            </Link>
+            </Link>}
             <Link
               href={`/sales/orders?customer=${customerId}`}
               className="rounded-[var(--radius-md)] border border-border px-3 py-1.5 text-[length:var(--text-xs)] text-text-muted no-underline transition-colors duration-[var(--dur-base)] hover:border-border-strong hover:text-text"
