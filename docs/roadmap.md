@@ -436,6 +436,7 @@ How to read it: **10.1 is fact and decision** (the owner's words). **10.2 to 10.
 | Schema tooling: node-pg-migrate (plain SQL files), kysely-codegen (types, checked for drift in CI), Squawk (lints each migration in CI), and a committed `db/schema.sql` from `pg_dump --schema-only`. | Decided 2026-10-23. Atlas was rejected: it is a Go binary downloaded from abroad, which is hard from Iran. |
 | Row-level security is enforced before the cut-over, not after. | Decided 2026-10-23. |
 | Off-site backup goes to a second machine the owner controls, over SSH; self-hosted S3 can come later. | Decided 2026-10-23. |
+| The UI moves to HeroUI v3 with the full HeroUI look. | Decided 2026-10-23 (owner chose "full HeroUI look" over keeping the Meridian look on HeroUI parts). `@heroui/react` and `@heroui/styles` 3.2.6, MIT, built on React Aria Components; no HeroUI Pro (paid, foreign). HeroUI's theme becomes the visual system and MASTER.md's colour, radius and base-component rules are retired as screens move. Our component names (`BottomSheet`, `useToast`, `FilterChips` …) stay during the move so callers change once. Persian calendar and digits through `I18nProvider locale="fa-IR-u-ca-persian"`; `lib/jalali.ts` stays for storage. Styles are imported part by part, because the full sheet restyles `.card`, `.chip`, `.badge`, `.modal` and `.skeleton`. Phase 0 and the payment-flow pilot are done (TapFlow sheet, date step, buttons, toasts); the per-component map and order are in the plan page linked from `TODO-REPORT.md`. |
 
 ### 10.2 Proposed platform choices
 
@@ -513,7 +514,7 @@ From the 2026-10-23 review of what the code builds by hand. The codebase has alm
 | Password hashing | `scryptSync` at Node's default cost (N=16384), stored as `salt:hash`; below OWASP's current minimum (N=2^17) and the format cannot carry parameters | Argon2id (a native package: check it installs from Iran) or scrypt with proper parameters and a self-describing format. Cheap now because the data is dummy |
 | Maps | Two stacks: 22 files on Leaflet with 8 Leaflet packages, 1 file on MapLibre; `leaflet-routing-machine` and `leaflet.heat` last published 2022 | Standardise on MapLibre before F6, F68 and F92 (clustering, heatmap, fullscreen and geolocation are built in; handles many moving points; fits PostGIS vector tiles) |
 | Geometry | `lib/geo.ts` and `lib/simplify.ts` (about 450 lines); the corridor band only approximates a buffer | PostGIS (`ST_Distance`, `ST_Buffer`, `ST_Simplify`) on the server; no new library |
-| Overlays and date picker | Hand-built toasts, hotkeys, Jalali date picker and sheets with hand-set ARIA | React Aria (its date picker supports the Persian calendar) or Radix, adopted gradually; start with the date picker and keep `lib/jalali.ts` for storage and conversion |
+| Overlays and date picker | Hand-built toasts, hotkeys, Jalali date picker and sheets with hand-set ARIA | Decided: HeroUI v3 on React Aria (see 10.1). Toasts and the tap-flow sheet and date step have moved; the other sheets, the Jalali pickers and the menus follow |
 
 Lower priority: the hand-written service worker (`public/sw.js`, manual cache versions) could move to Serwist if stale-cache bugs appear.
 

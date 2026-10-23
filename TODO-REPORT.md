@@ -65,8 +65,18 @@ _Condensed 2026-10-23. Each finished piece of work is one line here; the full ea
   - [x] Lint catches a forgotten `await` on server code (`no-floating-promises`, `no-misused-promises`, `await-thenable`); it found the credit-approval and backorder effects running outside their order's transaction, now fixed
   - [x] No SQLite-only SQL outside `lib/database/` (`stringAgg`, `daysBetween` in `lib/database/dialect.ts`; `ON CONFLICT`); guarded by `tests/sql-dialect-guard.test.ts`
   - [x] «Today» in SQL is now the Tehran day, not the UTC day (overdue reminders, expired batches, complaint window, quiet customers)
+- [x] HeroUI move, phase 0 and pilot (owner chose the full HeroUI look, 2026-10-23; plan: https://claude.ai/artifact/BzK8CYpZZC5FHpEKw9P36f):
+  - [x] HeroUI 3.2.6 installed; styles imported part by part; HeroUI buttons and calendar cells at 44 px, large buttons 52 px
+  - [x] Persian calendar and digits for every HeroUI part (`components/HeroUIProvider.tsx`); `data-theme` written for dark too
+  - [x] `check:mobile` blocks new imports of HeroUI's centred overlays and dropdowns on phone paths
+  - [x] Tap-flow sheet is a HeroUI Drawer (every flow, payment flow included); due-date step is HeroUI's Persian Calendar; confirm, back, skip and close are HeroUI Buttons; toasts are HeroUI toasts with the same `useToast()`
 
 ## Not done / gaps
+- [ ] HeroUI move: `BottomSheet`, `FilterSheet`, `DrillSheet`, `CustomerSheet` and the other sheets are still hand-built; answer buttons (`tf-opt`), chips, tabs, tables, Jalali pickers outside the date step and menus are not moved yet
+- [ ] HeroUI look is partial: inside `.meridian` HeroUI parts still read Meridian's `--accent`, `--surface`, `--border`, `--muted` and `--radius-*`; the token hand-over (and the dead `.island` / `.toast` / `.sheet` CSS) is its own step
+- [ ] The toast no longer shows the draining bar for the undo window; HeroUI's toast has none
+- [ ] HeroUI's Persian year picker looks off by about 21 years (`getGregorianYearOffset("persian")` is -600); not used yet, test before using it
+- [ ] `npm run seed:demo` fails when run with today as the as-of date («تاریخ سفارش خارج از بازهٔ مجاز است»); an earlier `--as-of` works
 - [ ] Cheque cards and the cheque deck still show the customer as plain text: the card itself is the tap target (select / decide), so a link inside it would fight it
 - [ ] Check the server's backup folder: before this batch the backup script never produced a database copy
 - [ ] Off-site backup copy (F138 part 2) waits on a destination and key holder
@@ -98,9 +108,11 @@ _Condensed 2026-10-23. Each finished piece of work is one line here; the full ea
 
 ## Next steps
 1. Merge PR #63 (PostgreSQL phase 1) once CI is green (merge commit)
-2. Decide whether the smoke suite joins CI (needs Chromium on the runner; map tiles stubbed)
-3. Owner checks the backup folder and picks an off-site destination (F138 part 2)
-4. Record delay reasons on deliveries so the reason report's delay section fills
-5. Check the outside services from the Iranian server
-6. Decide the Android distribution route before F6 starts
-7. PostgreSQL phase 2: Dockerfile with the extensions, baseline schema, `pg` adapter behind `Db`, CI job against Postgres
+2. HeroUI phase 2: the remaining sheets and the overlays (BottomSheet and its users, CardHelp, profile menu, notifications, banners)
+3. HeroUI token hand-over: HeroUI's palette and radii as the source, Meridian names as aliases, then remove dead CSS
+4. PostgreSQL phase 2: Dockerfile with the extensions, baseline schema, `pg` adapter behind `Db`, CI job against Postgres
+5. Decide whether the smoke suite joins CI (needs Chromium on the runner; map tiles stubbed)
+6. Owner checks the backup folder and picks an off-site destination (F138 part 2)
+7. Record delay reasons on deliveries so the reason report's delay section fills
+8. Check the outside services from the Iranian server
+9. Decide the Android distribution route before F6 starts

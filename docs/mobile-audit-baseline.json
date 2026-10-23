@@ -17,5 +17,6 @@
     "components/sales/RoutingPlanner.tsx",
     "components/tapflow/DateStep.tsx",
     "components/tapflow/TapFlow.tsx"
-  ]
+  ],
+  "heroOverlayImporters": []
 }

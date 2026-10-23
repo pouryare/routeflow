@@ -2,7 +2,8 @@
 // Enforces docs/mobile-first-principles.md. Three checks, each failure naming the rule it breaks:
 //   1. the audit ratchet (selects, native dates, text fields, tiny targets, confirm dialogs may only fall);
 //   2. every components/mobile/*.tsx is covered by a test (or listed as presentational-only);
-//   3. JalaliDateInput is imported only by the files already recorded in the baseline.
+//   3. JalaliDateInput is imported only by the files already recorded in the baseline;
+//   4. HeroUI's centred overlays and dropdowns are imported only by files recorded in the baseline.
 //   node scripts/check-mobile-rules.mjs            run all checks
 //   node scripts/check-mobile-rules.mjs --write    record today's importer list (with the audit baseline)
 import fs from "node:fs";
@@ -27,6 +28,7 @@ const RULE = {
   audit: "قانون ۴ و ۵ و ۶ (principles: chips, days, undo, 44px)",
   covered: "قانون ۱۶ (pure model + thin component + test)",
   dateInput: "قانون ۵ (days as words; the calendar only through DayChips or a desk form)",
+  heroOverlay: "قانون ۹ و ۴ (sheets, not modals; chips before dropdowns): on a phone use Drawer, TagGroup or SmartPicker",
   allowlist: "بخش ۸ (every exemption needs a written reason)",
 };
 
@@ -45,6 +47,27 @@ export function jalaliImporters() {
       const rel = path.relative(ROOT, f).split(path.sep).join("/");
       if (rel === "components/meridian/JalaliDateInput.tsx") continue;
       if (/from\s+["'][^"']*JalaliDateInput["']/.test(fs.readFileSync(f, "utf8"))) out.push(rel);
+    }
+  }
+  return out.sort();
+}
+
+/** HeroUI parts that open in the middle of the screen or beside their trigger, or that are a
+ *  dropdown. Each is right on a desk and wrong on a phone path, where a bottom Drawer, chips or
+ *  the SmartPicker do the job. HeroUI's Select is a button and a list box, not a native
+ *  `<select>`, so the audit's select count never sees it; this list does. */
+export const HERO_OVERLAYS = ["Modal", "AlertDialog", "Popover", "Dropdown", "Tooltip", "Select", "ComboBox"];
+
+export function heroOverlayImporters() {
+  const out = [];
+  const named = new RegExp(`\\b(${HERO_OVERLAYS.join("|")})\\b`);
+  for (const d of ["app", "components"]) {
+    for (const f of walk(path.join(ROOT, d))) {
+      const rel = path.relative(ROOT, f).split(path.sep).join("/");
+      const src = fs.readFileSync(f, "utf8");
+      for (const m of src.matchAll(/import\s*\{([^}]*)\}\s*from\s*["']@heroui\/react["']/g)) {
+        if (named.test(m[1])) { out.push(rel); break; }
+      }
     }
   }
   return out.sort();
@@ -80,6 +103,8 @@ export function check() {
   for (const f of untestedMobileComponents()) problems.push(`components/mobile/${f} has no test that names it — ${RULE.covered}`);
   const known = new Set(base.jalaliImporters ?? []);
   for (const f of jalaliImporters()) if (!known.has(f)) problems.push(`${f} imports JalaliDateInput — ${RULE.dateInput}`);
+  const overlays = new Set(base.heroOverlayImporters ?? []);
+  for (const f of heroOverlayImporters()) if (!overlays.has(f)) problems.push(`${f} imports a HeroUI overlay or dropdown — ${RULE.heroOverlay}`);
   for (const p of allowlistProblems()) problems.push(`${p} — ${RULE.allowlist}`);
   return problems;
 }
@@ -87,7 +112,7 @@ export function check() {
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   if (process.argv[2] === "--write") {
     const { total } = auditTree();
-    fs.writeFileSync(BASELINE, JSON.stringify({ total, jalaliImporters: jalaliImporters() }, null, 2) + "\n");
+    fs.writeFileSync(BASELINE, JSON.stringify({ total, jalaliImporters: jalaliImporters(), heroOverlayImporters: heroOverlayImporters() }, null, 2) + "\n");
     console.log("baseline written", total);
   } else {
     const problems = check();

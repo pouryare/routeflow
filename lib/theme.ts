@@ -10,10 +10,13 @@ export type Theme = "dark" | "light";
 export const THEME_KEY = "coverage-theme";
 /** The same stored preference, surfaced to /sales under its own attribute.
  *
- *  The map reads `data-theme`, where dark is the ABSENCE of the attribute. The مریدین
- *  scope needs a positive signal for dark instead, because `.meridian` defaults to light
- *  and its dark block is selected by `:root[data-skin="dark"] .meridian`. Writing both
- *  from one place is what stops the two scopes drifting apart. */
+ *  The map reads `data-theme`; the مریدین scope reads `data-skin`, because `.meridian`
+ *  defaults to light and its dark block is selected by `:root[data-skin="dark"] .meridian`.
+ *  Writing both from one place is what stops the two scopes drifting apart.
+ *
+ *  `data-theme` is written for dark too (it used to be removed). HeroUI treats a missing
+ *  attribute as its LIGHT theme and selects dark only on `[data-theme="dark"]`, so an
+ *  absent attribute painted HeroUI's light tokens on our dark skin. */
 export const SKIN_KEY = THEME_KEY;
 export const DEFAULT_THEME: Theme = "dark";
 export const THEME_CHANGE_EVENT = "coverage-theme-change";
@@ -39,8 +42,8 @@ export const THEME_INIT_SCRIPT = `(function(){try{
 var k=${JSON.stringify(THEME_KEY)},s=localStorage.getItem(k);
 if(s!=="dark"&&s!=="light"){s=matchMedia("(prefers-color-scheme: light)").matches?"light":"dark";localStorage.setItem(k,s);}
 document.documentElement.setAttribute("data-skin",s);
-if(s==="light"){document.documentElement.setAttribute("data-theme","light");
-var m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute("content","#f1f4f7");}
+document.documentElement.setAttribute("data-theme",s);
+if(s==="light"){var m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute("content","#f1f4f7");}
 }catch(e){}})();`;
 
 /** Writes the choice and tells every mounted consumer in this tab.
@@ -54,10 +57,8 @@ var m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute("co
 const THEME_COLOR: Record<Theme, string> = { dark: "#0a0e14", light: "#f1f4f7" };
 
 export function applyTheme(theme: Theme) {
-  if (theme === "light") document.documentElement.setAttribute("data-theme", "light");
-  else document.documentElement.removeAttribute("data-theme");
-
-  // Positive on both sides, unlike data-theme -- see SKIN_KEY.
+  // Both attributes, positive on both sides -- see SKIN_KEY.
+  document.documentElement.setAttribute("data-theme", theme);
   document.documentElement.setAttribute("data-skin", theme);
 
   // Keeps the phone's status bar and the PWA's title bar in step. Installed to the home
