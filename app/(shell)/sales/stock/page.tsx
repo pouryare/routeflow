@@ -13,7 +13,8 @@ import { expiringBatches, listBatchesWithProduct } from "@/lib/repo/batches";
 import BatchList from "@/components/sales/BatchList";
 import PageHeader from "@/components/meridian/PageHeader";
 import { isVanRole, isOwner, MANAGE_ROLES } from "@/lib/roles";
-import { defaultFacilityId, onHandByProduct } from "@/lib/repo/stock";
+import { findDefaultFacilityId, onHandByProduct } from "@/lib/repo/stock";
+import Link from "next/link";
 import StockCountEntry from "@/components/flows/StockCountEntry";
 import ReceiveEntry from "@/components/flows/ReceiveEntry";
 
@@ -58,8 +59,12 @@ export default async function StockPage() {
 
   /* A shelf count compares with that shelf's own balance, not the company-wide figure (which
      also holds what is in the vans). The default facility is the warehouse. */
-  const canCount = MANAGE_ROLES.includes(session.role) && stock.length > 0;
-  const warehouseId = canCount ? defaultFacilityId(session.organizationId) : 0;
+  /* A company with no facility yet has nowhere for a count or a delivery to land, so both
+     buttons wait for one and the page says where to add it instead of failing. */
+  const warehouse = findDefaultFacilityId(session.organizationId);
+  const canCount = MANAGE_ROLES.includes(session.role) && stock.length > 0 && warehouse !== null;
+  const canReceive = isOwner(session.role) && warehouse !== null;
+  const warehouseId = warehouse ?? 0;
   const warehouseOnHand = canCount ? onHandByProduct(session.organizationId, warehouseId) : new Map<number, number>();
   const warehouseName = canCount
     ? (facilityName(warehouseId, orgScopeId(session)) ?? "انبار")
@@ -153,10 +158,23 @@ export default async function StockPage() {
         </p>
       )}
 
-      {(canCount || isOwner(session.role)) && (
+      {warehouse === null && MANAGE_ROLES.includes(session.role) && (
+        <p className="m-0 rounded-[var(--radius-md)] border border-dashed border-[var(--border)] p-[var(--space-3)] text-[length:var(--text-sm)] leading-6 text-[var(--text-muted)]">
+          هنوز انباری تعریف نشده است؛ شمارش و ثبت کالای رسیده پس از آن باز می‌شود.{" "}
+          {isOwner(session.role) ? (
+            <Link href="/facilities" className="inline-flex min-h-11 items-center font-medium text-[var(--accent)]">
+              تعریف انبار در «مکان‌های ما»
+            </Link>
+          ) : (
+            "از مالک بخواهید آن را در «مکان‌های ما» تعریف کند."
+          )}
+        </p>
+      )}
+
+      {(canCount || canReceive) && (
         <div className="flex flex-wrap gap-[var(--space-2)]">
           {canCount && <StockCountEntry rows={countRows} facility={{ id: warehouseId, name: warehouseName }} />}
-          {isOwner(session.role) && (
+          {canReceive && (
             <ReceiveEntry
               products={stock.map((r) => ({ id: r.product_id, name: r.name, base_unit: r.base_unit, avg_cost_toman: r.avg_cost_toman }))}
               suppliers={[...new Set(purchases.map((p) => p.supplier).filter((x): x is string => !!x))].slice(0, 6)}

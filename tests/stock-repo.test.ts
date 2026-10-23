@@ -11,7 +11,7 @@ process.env.ROUTEFLOW_DB_PATH = testDbPath;
 process.env.SESSION_SECRET = "test-secret";
 
 const { getDb } = await import("@/lib/db");
-const { recordMovement, onHand, allocateFEFO, defaultFacilityId, batchStock, stockLevels, onHandByProduct } =
+const { recordMovement, onHand, allocateFEFO, defaultFacilityId, findDefaultFacilityId, batchStock, stockLevels, onHandByProduct } =
   await import("@/lib/repo/stock");
 
 afterAll(() => {
@@ -124,6 +124,12 @@ describe("defaultFacilityId", () => {
       "INSERT INTO facilities (slug, kind, name, lat, lng, updated_at, organization_id, created_at) VALUES (?,?,?,35,51,?,1,?)"
     ).run(`h${Date.now()}`, "home", "خانه", now, now);
     expect(defaultFacilityId(1)).toBe(fac); // the warehouse, not the home
+  });
+
+  it("a company with no facility yet: the finder says null, so /sales/stock explains instead of crashing", () => {
+    expect(findDefaultFacilityId(4242)).toBeNull();
+    expect(() => defaultFacilityId(4242)).toThrow("انبار تعریف نشده است");
+    expect(findDefaultFacilityId(1)).toBe(fac);
   });
 });
 
