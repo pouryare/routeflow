@@ -19,6 +19,7 @@ import { useToast } from "@/components/ToastProvider";
 import CustomerBento from "@/components/meridian/CustomerBento";
 import CustomerPriceHistory from "@/components/PriceHistoryList";
 import BusinessDetails from "./BusinessDetails";
+import CustomerOpenItems from "./CustomerOpenItems";
 import HoursPicker from "./HoursPicker";
 import type { FlowConfig } from "@/lib/crm/flows/types";
 
@@ -141,6 +142,7 @@ export default function BusinessProfile({ initial, initialTimeline }: { initial:
       <Icon name="plus" size="md" />
       افزودن مخاطب</button>}
     </section><CustomerBento data={profile.summary} />
+    <CustomerOpenItems data={profile.open} />
     <CustomerPriceHistory customerId={profile.business.id} />
     <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}><Link className="btn ghost" style={TOUCH} href={`/sales/orders?customer=${profile.business.id}`}>همهٔ سفارش‌ها</Link></div>
     <section className="tile"><h2>تاریخچه</h2>{!history.items.length && <p>رویدادی ثبت نشده است.</p>}
