@@ -22,6 +22,14 @@ Totals: 46 small, 73 medium, 27 large first slices; 123 entries carry an "Alread
 8. [Claims not yet verified](#8-claims-not-yet-verified)
 9. [Every entry by theme](#9-every-entry-by-theme)
 10. [Platform facts and decisions (not features)](#10-platform-facts-and-decisions-not-features)
+    - [10.1 Stated and decided by the owner](#101-stated-and-decided-by-the-owner)
+    - [10.2 Proposed platform choices](#102-proposed-platform-choices)
+    - [10.3 Not adding yet, and what would change that](#103-not-adding-yet-and-what-would-change-that)
+    - [10.4 Driver count unknown: how to size](#104-driver-count-unknown-how-to-size)
+    - [10.5 Outside services to check from Iran](#105-outside-services-to-check-from-iran)
+    - [10.6 Libraries: replace, add, keep](#106-libraries-replace-add-keep)
+    - [10.7 Live updates: where they would be used](#107-live-updates-where-they-would-be-used)
+    - [10.8 Interesting technologies (not decided)](#108-interesting-technologies-not-decided)
 
 ## 1. Build these first
 
@@ -102,9 +110,11 @@ Groups of entries that cover the same ground from different angles. Design each 
 
 A suggestion in waves. Within a wave the order is flexible; across waves it follows the dependencies above.
 
+**Wave P — platform.** The move to PostgreSQL and the platform choices in [section 10](#10-platform-facts-and-decisions-not-features) come first, because every later entry is written against the new database. They are not F-entries.
+
 **Wave 0 — quick wins.** The 22 items in section 1. They add visible value, touch little, and several (F99, F100, F110, F108, F138) are groundwork for later waves.
 
-**Wave 1 — foundations.** First slices of F27 (audit record), F48 (one approval type), F107 → F106 (sessions, then two-step login), F66 (purchase orders, once the ordering practice is confirmed) and the single decision on the customer message channel (F6/F79).
+**Wave 1 — foundations.** First slices of F27 (audit record), F48 (one approval type), F107 → F106 (sessions, then two-step login), F66 (purchase orders, once the ordering practice is confirmed) and the single decision on the customer message channel (F6/F79). The SMS provider is decided (Farazsms); consent, opt-out and any other channel are still open.
 
 **Wave 2 — money and orders.** F83 (payment terms) → F50 (promises) → F18 (statements) → F46 (risk) → F49 (cash-flow forecast); F58 → F60/F62/F131 (order shortcuts); F44 (standing orders); F56/F64/F65 (pricing) together; F61 (backorders) and F71/F76 (holds and approval by value).
 
@@ -116,19 +126,19 @@ A suggestion in waves. Within a wave the order is flexible; across waves it foll
 
 Entries blocked by a choice, not by code. Settle these once and several entries unblock.
 
-| Decision | Entries it unblocks |
-|---|---|
-| Customer message channel, provider and consent | F6, F79, F18, F45, F120, F136, F55, F70, F141 |
-| Staff location: collect, keep and show positions | F6, F38, F68, F103 |
-| Where Persian text and images may be processed (device, server, a model) | F1, F3, F5, F14, F2 |
-| Telephony infrastructure and carrier | F4, F60 |
-| Bank statement formats or a payment gateway | F10 |
-| Pricing policy: uplift, minimum order, early-payment discount, campaigns | F21, F56, F64, F65, F83 |
-| Legal and tax: e-invoicing, document numbering, payroll outputs | F147, F90 |
-| Off-site backup destination and who holds the key | F138, F34 |
-| Credit policy: auto-pass thresholds, holds, starter limits, approvals | F46, F71, F76, F48, F129 |
-| How commission works across groups | F96, F134 |
-| Real-device testing before any build | F113, F115, F117 |
+| Decision | Entries it unblocks | Status |
+|---|---|---|
+| Customer message channel, provider and consent | F6, F79, F18, F45, F120, F136, F55, F70, F141 | Partly decided 2026-10-23: SMS provider is Farazsms. Consent, opt-out and other channels open |
+| Staff location: collect, keep and show positions | F6, F38, F68, F103 | Partly decided 2026-10-23: source is the phone's GPS (Capacitor shell). Keeping and showing policy open |
+| Where Persian text and images may be processed (device, server, a model) | F1, F3, F5, F14, F2 | Narrowed 2026-10-23: the server is in Iran, so a hosted foreign model is unlikely; device or self-hosted. Open |
+| Telephony infrastructure and carrier | F4, F60 | Open (an Iranian carrier is assumed in F4) |
+| Bank statement formats or a payment gateway | F10 | Open |
+| Pricing policy: uplift, minimum order, early-payment discount, campaigns | F21, F56, F64, F65, F83 | Open |
+| Legal and tax: e-invoicing, document numbering, payroll outputs | F147, F90 | Open |
+| Off-site backup destination and who holds the key | F138, F34 | Open (the server is in Iran) |
+| Credit policy: auto-pass thresholds, holds, starter limits, approvals | F46, F71, F76, F48, F129 | Open |
+| How commission works across groups | F96, F134 | Open |
+| Real-device testing before any build | F113, F115, F117 | Open (Maestro with one physical phone is suggested in section 10.8) |
 
 ## 6. Already partly built
 
@@ -176,6 +186,16 @@ Statements in the entries that I could not confirm from the code. Check them bef
 - F67: the assumption that "for Friday" means a week-end report on Friday.
 - Whether any screen closes a fiscal period.
 - F113: gestures need testing on real phones; not possible in the build container.
+
+Platform claims in [section 10](#10-platform-facts-and-decisions-not-features), all unverified:
+
+- Nothing has been tested from Iran: the outside services in 10.5, package registries, Firebase push, map tiles.
+- Package versions and dates come from the npm registry; no package was installed or run.
+- The official `farazsms` client was found on npm but not inspected.
+- Whether Centrifugo can read events from a Postgres outbox table.
+- Whether the Postgres extension `pg_duckdb` fits, and DuckDB's npm "latest" tag being a development build.
+- Whether the current MapLibre version still needs the right-to-left text plugin, and how Persian labels look on the vector basemap today.
+- Whether Google Play and Cafe Bazaar or Myket rules allow updating web code inside the Android app.
 
 ## 9. Every entry by theme
 
@@ -385,11 +405,13 @@ Statements in the entries that I could not confirm from the code. Check them bef
 
 ## 10. Platform facts and decisions (not features)
 
-Not an F-entry. This records what the owner stated on 2026-10-23 and what follows from it for the entries above. The first table is fact; everything after it is a proposal, meant to be argued with.
+Not an F-entry. This records what the owner stated and decided on 2026-10-23 and what follows from it for the entries above.
 
-### Stated by the owner
+How to read it: **10.1 is fact and decision** (the owner's words). **10.2 to 10.8 are proposals**, meant to be argued with. Package versions and dates were read from the npm registry on 2026-10-23; nothing was installed or tested, including from Iran. Per the "look for existing solutions" rule in `CLAUDE.md`, each proposal is compared with alternatives and put to the owner before anything is adopted.
 
-| Fact | What it means |
+### 10.1 Stated and decided by the owner
+
+| Fact or decision | What it means |
 |---|---|
 | The database moves from SQLite to PostgreSQL. | Decided. It replaces "stay on SQLite" in `docs/crm-erp-plan.md` (Part 0 row 12, Part 2). The condition set there, every query behind `lib/repo`, is met. |
 | The data in the current database is dummy. | Nothing has to be carried over. Postgres starts from one clean baseline schema and is filled from the seed scripts. The eight step-by-step migrations, the table-rebuild code, the boot-time backfills and the real-data migration tests exist to upgrade old SQLite files and are not needed (check each backfill before dropping it); the reference-data seeds (roles, reason codes, notification types, chart of accounts) are. |
@@ -400,7 +422,7 @@ Not an F-entry. This records what the owner stated on 2026-10-23 and what follow
 | SMS provider: Farazsms. | Decided. The official npm client `farazsms` (1.1.0, 2026-06-21) exists and has not been inspected; decide between it and a thin wrapper when the SMS slice starts. Consent, opt-out and any other customer channel stay open. |
 | Staff positions come from the phone's GPS for now. | Decided. No dedicated trackers, so a tracker server such as Traccar is not needed yet. Revisit if vehicles get hardware trackers. |
 
-### Proposed platform choices
+### 10.2 Proposed platform choices
 
 | Choice | Serves | When |
 |---|---|---|
@@ -420,16 +442,16 @@ Not an F-entry. This records what the owner stated on 2026-10-23 and what follow
 | OCR, speech and language models on the device or a self-hosted server, behind an interface | F1, F2, F3, F5, F14 | wave 4 |
 | A read replica and materialised views for reports | F14, F123, F32, F134 | when reports get heavy |
 
-### Not adding yet, and what would change that
+### 10.3 Not adding yet, and what would change that
 
 | Not now | Why | Revisit when |
 |---|---|---|
 | Elasticsearch, Meilisearch | Search here is short names, phones, notes and product names, and the Persian letter and digit folding already lives in `lib/persian.ts`. `pg_trgm` on a normalised column does fuzzy matching in SQL. A second search copy has to be kept in sync and does not obey row-level security, so every query would repeat the tenant filter, the kind of leak the 2026-10-22 audit found about twenty times. | Search over the real row counts stays slower than about 150 ms after indexing, or instant typo-tolerant search across many entity types with facets is wanted. Try Meilisearch first and test its Persian handling. |
-| Kafka, RabbitMQ | A broker is a second system whose messages can disagree with the database (an order saved with no message, or the reverse). pg-boss queues the job in the same transaction as the write. Volumes are far below what a Postgres queue handles: orders are hundreds per day, and GPS pings are a few dozen inserts per second even with a thousand drivers. Kafka also needs a cluster to run, and container images are hard to pull from Iran. | Several independent services must consume the same event stream, or a Postgres queue shows contention at sustained thousands of jobs per second. NATS JetStream or Valkey Streams are the lighter step before Kafka. |
+| Kafka, RabbitMQ | A broker is a second system whose messages can disagree with the database (an order saved with no message, or the reverse). pg-boss queues the job in the same transaction as the write. Volumes are far below what a Postgres queue handles: orders are hundreds per day, and GPS pings are a few dozen inserts per second even with a thousand drivers. Kafka also needs a cluster to run, and container images can be hard to pull from Iran. | Several independent services must consume the same event stream, or a Postgres queue shows contention at sustained thousands of jobs per second. NATS JetStream or Valkey Streams are the lighter step before Kafka. |
 | Kubernetes | One Next.js process behind Caddy, one Postgres, one worker and a few helpers fit on one or two machines under systemd or docker compose. Kubernetes adds a control plane, networking, storage and upgrades to run yourself, and the big clouds' managed offerings are not an option from Iran. More companies do not need it: they share one deployment through `organization_id`. | More than three or four app nodes, autoscaling, a dedicated operations person, or a customer who needs its own isolated deployment. |
 | Microservices | Orders, ledger postings, stock reservations and commission must commit together; splitting them turns one transaction into distributed sagas. `lib/repo` and the architecture checks already give module boundaries inside one deployable. The worker, OSRM, VROOM, the Telegram poller and the Wazo listener are extra processes of the same codebase or stateless helpers, not services with their own databases. | Separate teams, or a part that needs a different runtime or independent scaling (for example a Python OCR helper with a narrow API). |
 
-### Driver count unknown: how to size
+### 10.4 Driver count unknown: how to size
 
 Position pings per day = drivers × hours on the road × 3600 ÷ ping interval in seconds. At a 30 second interval and 8 hours that is 960 pings per driver per day, about 350,000 per driver per year.
 
@@ -445,7 +467,7 @@ A rough ladder, from judgement and not from measurement:
 - **Around a thousand:** move "last position" to Valkey, write pings in batches, read from a replica.
 - **Several thousand:** revisit with real numbers. This is where a dedicated time-series or streaming store becomes a topic.
 
-### Outside services to check from Iran
+### 10.5 Outside services to check from Iran
 
 Nothing here has been tested from Iran. Check each from the server and, where a phone calls it, from a phone on an Iranian mobile network.
 
@@ -461,9 +483,9 @@ Nothing here has been tested from Iran. Check each from the server and, where a 
 
 If one fails: self-hosted OSRM and VROOM and own map tiles move earlier in the order; an Iranian SMS gateway or a domestic messenger (for example Bale or Eitaa, to be evaluated) takes over staff messages from Telegram. Most hosted foreign model APIs are not available from Iran, so F1, F2, F3, F5 and F14 plan for on-device or self-hosted models.
 
-### Libraries: replace, add, keep
+### 10.6 Libraries: replace, add, keep
 
-From the 2026-10-23 review of what the code builds by hand. The codebase has almost no third-party libraries besides Leaflet and its plugins, framer-motion, sharp, exceljs, web-push and Playwright. Package dates were read from the npm registry on that day; nothing was installed or tested, including from Iran.
+From the 2026-10-23 review of what the code builds by hand. The codebase has almost no third-party libraries besides Leaflet and its plugins, framer-motion, sharp, exceljs, web-push and Playwright.
 
 **Where a library does better than the current code**
 
@@ -489,15 +511,6 @@ Lower priority: the hand-written service worker (`public/sw.js`, manual cache ve
 | `@tanstack/react-virtual` | long lists on phones; no list is virtualised today | `content-visibility: auto` is a free first step |
 | One SVG chart library | F123, F146, F32 | Keep the 4 custom charts (749 lines); decide before writing more chart types; test Persian digits and right-to-left first |
 | `rate-limiter-flexible` with a Valkey or Postgres store | shared rate limits once there is more than one app instance | `lib/rateLimit.ts` is in-memory and right for one process |
-
-**Keep as is**: `lib/jalali.ts` (tested against Intl over twenty years), TOTP, UUIDv7, the thermal-receipt PDF and ESC/POS code (Chromium print-to-PDF only for A4 documents), the offline outbox, the VROOM fallback.
-
-**More libraries for roadmap features (second pass, 2026-10-23)**
-
-Versions and dates were read from the npm registry on that day. Nothing was installed or tested, including from Iran.
-
-| Library | Serves | Note |
-|---|---|---|
 | `@simplewebauthn/server` | F106 two-step login | Passkeys on top of the existing TOTP; test on the real Android phones |
 | `zxing-wasm` | F1 and F30 barcode scanning | For browsers without `BarcodeDetector`; try the browser API first |
 | `bwip-js` | Batch and bin labels (F30, F93) | QR and Code 128 as image or SVG; also the way to draw a QR code, which the app does not do today |
@@ -506,23 +519,20 @@ Versions and dates were read from the npm registry on that day. Nothing was inst
 | `archiver` | F34 data export | Streams a zip of many CSV files without holding them in memory |
 | `@opentelemetry/sdk-node` | F108 status page, tracing | Next.js supports it through `instrumentation.ts`; send to a self-hosted collector |
 | `p-queue` | Throttling of outside calls | Replaces the hand-written gate in `lib/resolveMapsLink.ts`; also useful for SMS and OSRM limits |
-
-For building and testing: `@testcontainers/postgresql` (a real Postgres with PostGIS per test run), `fast-check` (property tests for money, ledger and commission), `@faker-js/faker` with the Persian locale (the demo seeding fetches portraits from `randomuser.me` today), `@axe-core/playwright` (accessibility checks in CI). Only if the need appears: `jose` (signed one-time links, wallboard display keys), `ical-generator` (F87). Not needed: client-side search libraries (`pg_trgm` does it), `node-cron` and BullMQ (pg-boss), date libraries (`Intl` and `lib/jalali.ts`).
-
-**Rules, reports and screens (2026-10-23)**
-
-Versions and dates were read from the npm registry on that day. Nothing was installed or tested.
-
-| Library | Serves | Note |
-|---|---|---|
 | `react-querybuilder` (8.25.0) | F130 rule builder, F123 report builder | Builds a validated filter structure that is turned into parameterised SQL, which fits the rule "never raw SQL from the user" |
 | `json-logic-js` (2.0.5, last release July 2024) | F130 stored rule conditions | Option for storing conditions as JSON; check whether the query-builder format is enough before adding it |
 | AG Grid Community (36.2.0) | F131 keyboard-first desk order entry | Spreadsheet-style editing; check right-to-left and Persian digit behaviour first |
 | `web-vitals` (6.2.3), sent to the own server | real-user timings from phones on Iranian networks | Lab tests cannot show these |
 
-### Live updates: where they would be used
+**Keep as is**: `lib/jalali.ts` (tested against Intl over twenty years), TOTP, UUIDv7, the thermal-receipt PDF and ESC/POS code (Chromium print-to-PDF only for A4 documents), the offline outbox, the VROOM fallback.
 
-Added 2026-10-23 from a review of the code and these docs. The candidates in the last group are inferred, not stated in the entries. Nothing was installed or tested, including from Iran.
+**Building and testing, and only if needed**
+
+`@testcontainers/postgresql` (a real Postgres with PostGIS per test run), `fast-check` (property tests for money, ledger and commission), `@faker-js/faker` with the Persian locale (the demo seeding fetches portraits from `randomuser.me` today), `@axe-core/playwright` (accessibility checks in CI). Only if the need appears: `jose` (signed one-time links, wallboard display keys), `ical-generator` (F87). Not needed: client-side search libraries (`pg_trgm` does it), `node-cron` and BullMQ (pg-boss), date libraries (`Intl` and `lib/jalali.ts`).
+
+### 10.7 Live updates: where they would be used
+
+Added 2026-10-23 from a review of the code and these docs. The candidates in the last group are inferred, not stated in the entries.
 
 **What polls today (current code)**
 
@@ -554,9 +564,9 @@ Added 2026-10-23 from a review of the code and these docs. The candidates in the
 
 **Recommendation**: start with server-sent events on one server; bring in Centrifugo when more than one app server runs or presence is wanted.
 
-### Interesting technologies (not decided)
+### 10.8 Interesting technologies (not decided)
 
-Added 2026-10-23. Versions and dates were read from the npm registry that day. Nothing was installed or tested, including from Iran. Per the "look for existing solutions" rule in `CLAUDE.md`, each one is compared with the alternatives and put to the owner before anything is adopted.
+Ideas that are interesting for this app but not chosen. None is decided; the owner picks which to pursue (see the intro to section 10).
 
 | Technology | What it is, in plain words | Where it could help | Note |
 |---|---|---|---|

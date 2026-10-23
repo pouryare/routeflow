@@ -434,6 +434,7 @@ Full write-up: `docs/architecture-audit-2026-10-22.md`. Steps 1 to 3 are merged 
 ## Interesting technologies recorded (2026-10-23, docs only)
 
 ### Done
+- [x] Cleaned up `docs/roadmap.md`: section 10 numbered 10.1 to 10.8 with sub-links in the contents and a how-to-read note; the three library tables merged into one; section 5 now has a status column; a platform wave added to section 4; platform claims added to section 8; duplicated intros removed; one overstated line about Iran softened
 - [x] Forms generated from data (JSON Forms or `@rjsf/core`) added to the roadmap table, with notes on F40, F122, F141
 - [x] Persian map labels (right-to-left text plugin) added to the roadmap table with notes on F68 and F92; found no `setRTLTextPlugin` call in the code
 - [x] Suggested seven more (import wizard, forms from data, per-company subdomain and branding, backup fire drill, call detection on the phone, straighten photos before OCR, contact picker)
