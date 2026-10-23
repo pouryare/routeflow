@@ -57,7 +57,7 @@ async function routeLoud(typeCode: string): Promise<void> {
   for (const ch of ["push", "telegram"]) {
     await getDb()
       .prepare(
-        "INSERT OR REPLACE INTO notification_prefs (user_id, type_code, channel, enabled, updated_at) VALUES (?,?,?,1,?)"
+        "INSERT INTO notification_prefs (user_id, type_code, channel, enabled, updated_at) VALUES (?,?,?,1,?) ON CONFLICT (user_id, type_code, channel) DO UPDATE SET enabled = excluded.enabled, updated_at = excluded.updated_at"
       )
       .run(uid, typeCode, ch, now);
   }
@@ -93,9 +93,11 @@ async function connectPush(): Promise<number> {
 async function setQuiet(channel: "push" | "telegram", start: string, end: string, criticalBreaks: 0 | 1): Promise<void> {
   await getDb()
     .prepare(
-      `INSERT OR REPLACE INTO notification_channels
+      `INSERT INTO notification_channels
          (user_id, channel, enabled, quiet_start, quiet_end, critical_breaks_quiet, updated_at)
-       VALUES (?, ?, 1, ?, ?, ?, ?)`
+       VALUES (?, ?, 1, ?, ?, ?, ?)
+       ON CONFLICT (user_id, channel) DO UPDATE SET enabled = excluded.enabled, quiet_start = excluded.quiet_start,
+         quiet_end = excluded.quiet_end, critical_breaks_quiet = excluded.critical_breaks_quiet, updated_at = excluded.updated_at`
     )
     .run(uid, channel, start, end, criticalBreaks, new Date().toISOString());
 }

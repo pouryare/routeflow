@@ -19,8 +19,8 @@ let customerId = 0;
 beforeAll(async () => {
   const db = getDb();
   await db.prepare(
-    `INSERT OR IGNORE INTO users (id, username, password_hash, display_name, role, organization_id, created_at)
-     VALUES (?, 'recog-tester', 'x', 'Recog Tester', 'owner', ?, '2026-01-01')`
+    `INSERT INTO users (id, username, password_hash, display_name, role, organization_id, created_at)
+     VALUES (?, 'recog-tester', 'x', 'Recog Tester', 'owner', ?, '2026-01-01') ON CONFLICT DO NOTHING`
   ).run(1, ORG);
   customerId = Number(
     (await db
@@ -129,7 +129,7 @@ describe("delivery recognition", () => {
   it("refuses a recognition for a DIFFERENT tenant's stop", async () => {
     await getDb()
       .prepare(
-        "INSERT OR IGNORE INTO organizations (id, name, slug, created_at) VALUES (2, 'Second', 'second', '2026-01-01')"
+        "INSERT INTO organizations (id, name, slug, created_at) VALUES (2, 'Second', 'second', '2026-01-01') ON CONFLICT DO NOTHING"
       )
       .run();
     // A journal for org 1 must not be found when org 2 asks whether it already posted.

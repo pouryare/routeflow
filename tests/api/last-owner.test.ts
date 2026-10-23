@@ -32,7 +32,7 @@ beforeAll(async () => {
       .prepare("INSERT INTO users (username, password_hash, display_name, role, group_id, active, created_at, organization_id) VALUES ('owner-b2', 'x:y', 'b2', 'owner', NULL, 1, '2026-01-01', 2)")
       .run()).lastInsertRowid
   );
-  await getDb().prepare("INSERT OR IGNORE INTO user_roles (user_id, role) VALUES (?, 'owner')").run(secondOwnerB);
+  await getDb().prepare("INSERT INTO user_roles (user_id, role) VALUES (?, 'owner') ON CONFLICT DO NOTHING").run(secondOwnerB);
 });
 
 const req = (actor: number, oid: number, target: number, method: "PATCH" | "DELETE", body?: unknown) =>

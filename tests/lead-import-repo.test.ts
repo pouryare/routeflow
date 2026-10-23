@@ -21,7 +21,7 @@ async function seedOrg(id: number): Promise<void> {
   // references it -- seeding without it fails the foreign key, not the insert.
   await getDb()
     .prepare(
-      `INSERT OR IGNORE INTO organizations (id, name, slug, created_at) VALUES (?, ?, ?, ?)`
+      `INSERT INTO organizations (id, name, slug, created_at) VALUES (?, ?, ?, ?) ON CONFLICT DO NOTHING`
     )
     .run(id, `org-${id}`, `org-${id}`, new Date().toISOString());
 }

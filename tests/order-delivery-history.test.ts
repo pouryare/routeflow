@@ -29,13 +29,13 @@ describe("an order's delivery history", () => {
     /* Idempotent: several tests call this, and they share one database. `INSERT OR
        IGNORE` rather than a once-only guard, because a guard that decides whether to seed
        hides the second call's failure instead of letting it surface. */
-    await db.exec(`INSERT OR IGNORE INTO organizations (id,name,slug,created_at) VALUES (${org},'H','h','2026-01-01')`);
-    await db.exec(`INSERT OR IGNORE INTO groups (id,name,slug,created_at,organization_id) VALUES (40,'G','g','2026-01-01',${org})`);
+    await db.exec(`INSERT INTO organizations (id,name,slug,created_at) VALUES (${org},'H','h','2026-01-01') ON CONFLICT DO NOTHING`);
+    await db.exec(`INSERT INTO groups (id,name,slug,created_at,organization_id) VALUES (40,'G','g','2026-01-01',${org}) ON CONFLICT DO NOTHING`);
     /* orders.created_by REFERENCES users(id), so the owner row has to exist first. */
-    await db.exec(`INSERT OR IGNORE INTO users (id, username, display_name, password_hash, role, active, created_at, organization_id)
-             VALUES (1, 'o1', 'مالک', 'x', 'owner', 1, '2026-01-01', ${org})`);
-    await db.exec(`INSERT OR IGNORE INTO customers (id,customer_code,business_name,lat,lng,synced_at,organization_id,group_id)
-             VALUES (60,'C-1','فروشگاه',35.7,51.4,'2026-01-01',${org},40)`);
+    await db.exec(`INSERT INTO users (id, username, display_name, password_hash, role, active, created_at, organization_id)
+             VALUES (1, 'o1', 'مالک', 'x', 'owner', 1, '2026-01-01', ${org}) ON CONFLICT DO NOTHING`);
+    await db.exec(`INSERT INTO customers (id,customer_code,business_name,lat,lng,synced_at,organization_id,group_id)
+             VALUES (60,'C-1','فروشگاه',35.7,51.4,'2026-01-01',${org},40) ON CONFLICT DO NOTHING`);
     return db;
   }
 

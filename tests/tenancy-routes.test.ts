@@ -257,7 +257,7 @@ beforeAll(async () => {
         )
         .run(`b-${role}`, `${role} b`, role, b.groupId)).lastInsertRowid
     );
-    await db.prepare("INSERT OR IGNORE INTO user_roles (user_id, role) VALUES (?, ?)").run(id, role);
+    await db.prepare("INSERT INTO user_roles (user_id, role) VALUES (?, ?) ON CONFLICT DO NOTHING").run(id, role);
   }
   /* Rows that can actually be changed or deleted: a group with no users (a group with members
      refuses deletion for a different reason) and a second facility (the last one is protected). */

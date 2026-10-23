@@ -411,7 +411,7 @@ export async function readPurchases(db: Db, organizationId: number, limit = 100)
          LEFT JOIN purchase_lines pl ON pl.purchase_id = pu.id
          LEFT JOIN users u ON u.id = pu.created_by
         WHERE pu.organization_id = ?
-        GROUP BY pu.id
+        GROUP BY pu.id, u.id
         ORDER BY pu.purchase_date DESC, pu.id DESC
         LIMIT ?`
     )

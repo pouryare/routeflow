@@ -24,7 +24,7 @@ let seller = 0;
 beforeEach(async () => {
   const db = getDb();
   await db.exec("DELETE FROM rule_runs; DELETE FROM tasks; DELETE FROM alerts; DELETE FROM users WHERE id>0;");
-  await db.prepare("INSERT OR IGNORE INTO organizations (id,name,slug,created_at) VALUES (2,'B','b',?)").run(
+  await db.prepare("INSERT INTO organizations (id,name,slug,created_at) VALUES (2,'B','b',?) ON CONFLICT DO NOTHING").run(
     new Date().toISOString()
   );
   const now = new Date().toISOString();

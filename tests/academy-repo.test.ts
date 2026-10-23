@@ -29,7 +29,7 @@ let uid = 0;
 beforeEach(async () => {
   const db = getDb();
   await db.exec("DELETE FROM objection_cards WHERE organization_id IS NOT NULL; DELETE FROM lesson_progress; DELETE FROM users WHERE id>0;");
-  await db.prepare("INSERT OR IGNORE INTO organizations (id,name,slug,created_at) VALUES (2,'B','b',?)").run(
+  await db.prepare("INSERT INTO organizations (id,name,slug,created_at) VALUES (2,'B','b',?) ON CONFLICT DO NOTHING").run(
     new Date().toISOString()
   );
   uid = Number(

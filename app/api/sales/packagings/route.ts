@@ -3,6 +3,7 @@ import { orgScopeId, requireRole } from "@/lib/session";
 import { addPackaging, productInOrg } from "@/lib/repo/catalogueAdmin";
 import { OWNER_ROLES } from "@/lib/roles";
 import { logProductChange } from "@/lib/repo/productLog";
+import { isUniqueViolation } from "@/lib/database/errors";
 
 export async function POST(req: NextRequest) {
   const guard = await requireRole(req, OWNER_ROLES);
@@ -49,7 +50,7 @@ export async function POST(req: NextRequest) {
     const message =
       e instanceof TypeError
         ? e.message
-        : e instanceof Error && /UNIQUE/.test(e.message)
+        : isUniqueViolation(e)
           ? "این بسته‌بندی برای همین کالا قبلاً ثبت شده"
           : "ثبت بسته‌بندی ممکن نشد";
     return NextResponse.json({ ok: false, error: message }, { status: 400 });

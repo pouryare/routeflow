@@ -30,8 +30,8 @@ async function seedPinOnRun() {
   const runDate = `2026-01-${String(nextDay++).padStart(2, "0")}`;
   /* delivery_runs.driver_user_id REFERENCES users(id), so the driver has to exist. The first
      test in this file already creates org 3 and a group, so those are present. */
-  await db.exec(`INSERT OR IGNORE INTO users (id, username, display_name, password_hash, role, active, created_at, organization_id)
-           VALUES (1, 'd1', 'راننده', 'x', 'delivery_driver', 1, '2026-01-01', 3)`);
+  await db.exec(`INSERT INTO users (id, username, display_name, password_hash, role, active, created_at, organization_id)
+           VALUES (1, 'd1', 'راننده', 'x', 'delivery_driver', 1, '2026-01-01', 3) ON CONFLICT DO NOTHING`);
   await db.exec(`INSERT INTO delivery_runs (id, driver_user_id, run_date, status, created_by, organization_id, created_at, updated_at)
            VALUES (${runId}, 1, '${runDate}', 'planned', 1, 3, '${runDate}', '${runDate}')`);
   await db.exec(`INSERT INTO saved_locations (id, name, maps_url, resolution, group_id, created_at, updated_at, organization_id)
@@ -154,8 +154,8 @@ describe("lead-pin fold-in", () => {
      * A guard that only consults CASCADE referrers is a guard that passes while the
      * database is unusable. The question is "does ANY row point at this pin". */
     const db = getDb();
-    await db.exec(`INSERT OR IGNORE INTO lead_import_jobs (id, organization_id, status, created_at)
-             VALUES (700, 3, 'done', '2026-01-01')`);
+    await db.exec(`INSERT INTO lead_import_jobs (id, organization_id, status, created_at)
+             VALUES (700, 3, 'done', '2026-01-01') ON CONFLICT DO NOTHING`);
     await db.exec(`INSERT INTO saved_locations (id, name, maps_url, resolution, group_id, created_at, updated_at, organization_id)
              VALUES (940, 'پین وارداتی', 'https://maps.example/imp-940', 'manual', 30, '2026-01-01', '2026-01-01', 3)`);
     await db.exec(`INSERT INTO lead_list_items (list_id, location_id, sort_order, created_at) VALUES (40, 940, 2, '2026-01-01')`);
@@ -185,7 +185,7 @@ describe("lead-pin fold-in", () => {
      * This asserts the FUNCTION's behaviour; the next test is what checks the call site,
      * because that is where the guard actually was. */
     const db = getDb();
-    await db.exec(`INSERT OR REPLACE INTO app_meta (key, value) VALUES ('lead_pin_foldin_done', '2020-01-01T00:00:00Z')`);
+    await db.exec(`INSERT INTO app_meta (key, value) VALUES ('lead_pin_foldin_done', '2020-01-01T00:00:00Z') ON CONFLICT (key) DO UPDATE SET value = excluded.value`);
 
     // A pin that entered the business AFTER the marker was written.
     await db.exec(`INSERT INTO saved_locations (id, name, maps_url, resolution, group_id, created_at, updated_at, organization_id)

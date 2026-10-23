@@ -21,7 +21,7 @@ let userId = 0;
 async function seedOrgCustomer(orgId: number, code: string): Promise<number> {
   const db = getDb();
   await db.exec(
-    `INSERT OR IGNORE INTO organizations (id,name,slug,created_at) VALUES (${orgId},'O${orgId}','o${orgId}','2026-01-01')`
+    `INSERT INTO organizations (id,name,slug,created_at) VALUES (${orgId},'O${orgId}','o${orgId}','2026-01-01') ON CONFLICT DO NOTHING`
   );
   if (!userId) {
     userId = Number(

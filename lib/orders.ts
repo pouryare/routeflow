@@ -35,6 +35,7 @@ import {
 } from "./orderMath";
 
 import { mapSeq } from "@/lib/seq";
+import { greatest } from "@/lib/database/dialect";
 export { OrderError, OrderTransitionError, OrderRoleError };
 
 export interface LineInput {
@@ -467,10 +468,7 @@ export async function confirmOrder(db: Db, orderId: number): Promise<void> {
 async function stampLastPurchase(db: Db, orderId: number): Promise<void> {
   await db.prepare(
     `UPDATE customers
-        SET last_purchase_date = MAX(
-              COALESCE(last_purchase_date, ''),
-              (SELECT order_date FROM orders WHERE id = ?)
-            )
+        SET last_purchase_date = ${greatest("COALESCE(last_purchase_date, '')", "(SELECT order_date FROM orders WHERE id = ?)")}
       WHERE id = (SELECT customer_id FROM orders WHERE id = ?)`
   ).run(orderId, orderId);
 }

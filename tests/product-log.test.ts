@@ -28,7 +28,7 @@ describe("product change log", () => {
 
   it("records a change and reads it back for the product's organisation only", async () => {
     const db = getDb();
-    await db.prepare("INSERT OR IGNORE INTO organizations (id,name,slug,created_at) VALUES (2,'B','b',?)").run(new Date().toISOString());
+    await db.prepare("INSERT INTO organizations (id,name,slug,created_at) VALUES (2,'B','b',?) ON CONFLICT DO NOTHING").run(new Date().toISOString());
     const uid = Number(
       (await db
         .prepare("INSERT INTO users (username,password_hash,display_name,role,active,created_at,organization_id) VALUES (?,?,?,?,1,?,1)")

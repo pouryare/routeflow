@@ -151,7 +151,7 @@ export async function complaintClusters(
           AND qc.batch_id IS NOT NULL
           AND qc.status IN ('open', 'investigating')
           AND qc.reported_at >= ?
-        GROUP BY qc.batch_id
+        GROUP BY qc.batch_id, b.id
         HAVING COUNT(*) >= ?
         ORDER BY count DESC`
     )

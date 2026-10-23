@@ -24,7 +24,7 @@ async function mkUser(username: string, primary: string, roles: string[], org = 
   // organization_id FK then fails with "FOREIGN KEY constraint failed". Three separate
   // failures in this file traced back to this one line. The slug must be per-org.
   await db.exec(
-    `INSERT OR IGNORE INTO organizations (id,name,slug,created_at) VALUES (${org},'O-${org}','o-${org}','2026-01-01')`
+    `INSERT INTO organizations (id,name,slug,created_at) VALUES (${org},'O-${org}','o-${org}','2026-01-01') ON CONFLICT DO NOTHING`
   );
   // `groups` has NO organization_id column in the schema block (name/slug/color/active/
   // created_at only) — the plan's helper assumed it did, which is why these two tests died
@@ -33,7 +33,7 @@ async function mkUser(username: string, primary: string, roles: string[], org = 
   // per org, id = 100 + org, and tokenFor claims that same id.
   const gid = 100 + org;
   await db.exec(
-    `INSERT OR IGNORE INTO groups (id,name,slug,color,active,created_at) VALUES (${gid},'G-${org}','g-${org}','#000000',1,'2026-01-01')`
+    `INSERT INTO groups (id,name,slug,color,active,created_at) VALUES (${gid},'G-${org}','g-${org}','#000000',1,'2026-01-01') ON CONFLICT DO NOTHING`
   );
   await db.prepare(
     `INSERT INTO users (username, password_hash, display_name, role, group_id, organization_id, active, token_version, created_at)

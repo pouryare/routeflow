@@ -16,7 +16,7 @@ afterAll(() => {
 
 async function mkUser(username: string, role: string, org = 8): Promise<number> {
   const db = getDb();
-  await db.exec(`INSERT OR IGNORE INTO organizations (id,name,slug,created_at) VALUES (${org},'O','o','2026-01-01')`);
+  await db.exec(`INSERT INTO organizations (id,name,slug,created_at) VALUES (${org},'O','o','2026-01-01') ON CONFLICT DO NOTHING`);
   await db.prepare(
     `INSERT INTO users (username, password_hash, display_name, role, organization_id, active, created_at)
      VALUES (?, 'x', ?, ?, ?, 1, '2026-01-01')`

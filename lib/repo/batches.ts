@@ -8,6 +8,8 @@ import {
   type BatchStatus,
 } from "@/lib/batchStates";
 import { tehranTodayIso } from "@/lib/jalali";
+import { isUniqueViolation } from "@/lib/database/errors";
+import { addDaysIso } from "@/lib/flows/dates";
 
 /** A refusal the caller shows the user, not a bug. */
 export class BatchError extends Error {}
@@ -88,11 +90,7 @@ export async function createBatchTxn(
       .prepare("SELECT shelf_life_days FROM products WHERE id = ?")
       .get(input.product_id) as { shelf_life_days: number | null } | undefined;
     if (shelf?.shelf_life_days && shelf.shelf_life_days > 0) {
-      expiry = (
-        await db
-          .prepare("SELECT date(?, ?) AS d")
-          .get(producedAt.slice(0, 10), `+${shelf.shelf_life_days} days`) as { d: string }
-      ).d;
+      expiry = addDaysIso(producedAt.slice(0, 10), shelf.shelf_life_days);
     }
   }
 
@@ -138,7 +136,7 @@ export async function createBatchTxn(
         )).lastInsertRowid
     );
   } catch (e) {
-    if (e instanceof Error && /UNIQUE/i.test(e.message)) {
+    if (isUniqueViolation(e)) {
       throw new BatchError(`سری ساخت «${code}» برای این کالا قبلاً ثبت شده است`);
     }
     throw e;

@@ -1,0 +1,15 @@
+# Local PostgreSQL for development: docker compose -f db/compose.yml up -d
+# Then: DATABASE_URL=postgres://routeflow:routeflow@localhost:5432/routeflow npm run db:pg:migrate
+services:
+  postgres:
+    build: .
+    environment:
+      POSTGRES_USER: routeflow
+      POSTGRES_PASSWORD: routeflow
+      POSTGRES_DB: routeflow
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql
+volumes:
+  pgdata:

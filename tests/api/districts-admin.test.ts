@@ -22,7 +22,7 @@ let ownerId = 0, ownGroup = 0, foreignGroup = 0, ownDistrict = 0, foreignDistric
 beforeAll(async () => {
   const db = getDb();
   const now = new Date().toISOString();
-  await db.prepare("INSERT OR IGNORE INTO organizations (id, name, slug, active, created_at) VALUES (2, 'other', 'other', 1, ?)").run(now);
+  await db.prepare("INSERT INTO organizations (id, name, slug, active, created_at) VALUES (2, 'other', 'other', 1, ?) ON CONFLICT DO NOTHING").run(now);
   const g = db.prepare("INSERT INTO groups (name, slug, active, created_at, organization_id) VALUES (?, ?, 1, ?, ?)");
   ownGroup = Number((await g.run("own", "own", now, 1)).lastInsertRowid);
   foreignGroup = Number((await g.run("foreign", "foreign", now, 2)).lastInsertRowid);

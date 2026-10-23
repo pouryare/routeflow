@@ -31,7 +31,7 @@ describe("queueMorningDigests", () => {
   it("queues one digest per owner per Tehran day, from 07:00, and only for that company's owners", async () => {
     const db = getDb();
     const now = new Date().toISOString();
-    await db.prepare("INSERT OR IGNORE INTO organizations (id, name, slug, created_at) VALUES (2, 'دیگر', 'other', ?)").run(now);
+    await db.prepare("INSERT INTO organizations (id, name, slug, created_at) VALUES (2, 'دیگر', 'other', ?) ON CONFLICT DO NOTHING").run(now);
     const user = db.prepare("INSERT INTO users (username,password_hash,display_name,role,active,created_at,organization_id) VALUES (?,'x',?,?,?,?,?)");
     const owner = Number((await user.run("o1", "مالک", "owner", 1, now, 1)).lastInsertRowid);
     await user.run("o0", "مالک قبلی", "owner", 0, now, 1);

@@ -73,7 +73,7 @@ describe("a Login-As session", () => {
     /* slug is UNIQUE NOT NULL: without it the row is silently skipped and the UPDATE
        below fails on the foreign key instead of testing the rule. */
     await getDb()
-      .prepare("INSERT OR IGNORE INTO organizations (id, name, slug, created_at) VALUES (2, 'دیگر', 'other-org', ?)")
+      .prepare("INSERT INTO organizations (id, name, slug, created_at) VALUES (2, 'دیگر', 'other-org', ?) ON CONFLICT DO NOTHING")
       .run(new Date().toISOString());
     await getDb().prepare("UPDATE users SET organization_id = 2 WHERE id = ?").run(owner.id);
     expect(await getSessionFromCookies(actingAs(seller, owner.id))).toBeNull();

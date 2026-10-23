@@ -38,7 +38,7 @@ beforeAll(async () => {
   const ins = db.prepare("INSERT INTO users (username, password_hash, display_name, role, active, token_version, created_at, organization_id) VALUES (?, ?, ?, ?, 1, 0, '2026-01-01', 1)");
   founderId = Number((await ins.run("founder", hashPassword("correct horse"), "F", "platform_owner")).lastInsertRowid);
   ownerId = Number((await ins.run("plainowner", hashPassword("correct horse"), "O", "owner")).lastInsertRowid);
-  await db.prepare("INSERT OR IGNORE INTO user_roles (user_id, role) VALUES (?, 'platform_owner')").run(founderId);
+  await db.prepare("INSERT INTO user_roles (user_id, role) VALUES (?, 'platform_owner') ON CONFLICT DO NOTHING").run(founderId);
 });
 
 const currentCode = (secret: string, offset = 0) => totpAt(secret, stepAt(Date.now()) + offset);

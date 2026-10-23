@@ -26,7 +26,7 @@ const now = new Date().toISOString();
 beforeEach(async () => {
   const db = getDb();
   await db.exec("PRAGMA foreign_keys=OFF; DELETE FROM crm_not_duplicates; DELETE FROM customer_tags; DELETE FROM payments; DELETE FROM orders; DELETE FROM activity_log; DELETE FROM customers; DELETE FROM users; PRAGMA foreign_keys=ON;");
-  await db.exec("INSERT OR IGNORE INTO organizations (id,name,slug,created_at) VALUES (2,'Two','two','2026-01-01')");
+  await db.exec("INSERT INTO organizations (id,name,slug,created_at) VALUES (2,'Two','two','2026-01-01') ON CONFLICT DO NOTHING");
   const u = db.prepare("INSERT INTO users (username,password_hash,display_name,role,group_id,active,created_at,organization_id) VALUES (?,?,?,?,NULL,1,?,1)");
   owner = Number((await u.run("d-owner", "x:y", "م", "owner", now)).lastInsertRowid);
   seller = Number((await u.run("d-seller", "x:y", "ف", "phone_sales", now)).lastInsertRowid);

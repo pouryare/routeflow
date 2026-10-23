@@ -18,6 +18,7 @@ import type { LatLng } from "@/lib/geo";
 import { effectiveCapacity } from "@/lib/routing/capacity";
 import { runWeatherAdjustment } from "./weather";
 import type { WeatherAdjustment } from "@/lib/weather/capacityAdjust";
+import { isUniqueViolation } from "@/lib/database/errors";
 
 export class RoutingError extends Error {}
 
@@ -97,7 +98,7 @@ export async function createVehicle(
       updated_at: now,
     } as Omit<VehicleRow, "id">);
   } catch (e) {
-    if (e instanceof Error && /UNIQUE/.test(e.message)) throw new RoutingError("پلاک تکراری است");
+    if (isUniqueViolation(e)) throw new RoutingError("پلاک تکراری است");
     throw e;
   }
 }
@@ -144,7 +145,7 @@ export async function createRouteTemplate(
       updated_at: now,
     } as Omit<RouteTemplateRow, "id">);
   } catch (e) {
-    if (e instanceof Error && /UNIQUE/.test(e.message)) throw new RoutingError("کد قالب تکراری است");
+    if (isUniqueViolation(e)) throw new RoutingError("کد قالب تکراری است");
     throw e;
   }
 }
@@ -365,7 +366,7 @@ export async function commitPlan(
         await addStop(db, run.id, orderId.order_id, s.sort_order);
       } catch (e) {
         // a stop already on this run (idempotent re-commit) or a credit hold -- skip it.
-        if (!(e instanceof Error && /UNIQUE|قطعی|اعتبار/.test(e.message))) throw e;
+        if (!(isUniqueViolation(e) || (e instanceof Error && /قطعی|اعتبار/.test(e.message)))) throw e;
       }
     }
     runIds.push(run.id);

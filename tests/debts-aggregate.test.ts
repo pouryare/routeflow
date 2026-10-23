@@ -20,7 +20,7 @@ const iso = (daysAgo: number) => new Date(Date.parse(NOW) - daysAgo * 86_400_000
 
 const db = getDb();
 const stamp = "2026-01-01T00:00:00.000Z";
-await db.prepare("INSERT OR IGNORE INTO organizations (id,name,slug,created_at) VALUES (2,'B','b',?)").run(stamp);
+await db.prepare("INSERT INTO organizations (id,name,slug,created_at) VALUES (2,'B','b',?) ON CONFLICT DO NOTHING").run(stamp);
 const owner = Number((await db.prepare("INSERT INTO users (username,password_hash,display_name,role,created_at,organization_id) VALUES ('o','x','م','owner',?,1)").run(stamp)).lastInsertRowid);
 const product = Number((await db.prepare("INSERT INTO products (name,sku,kg_per_base_unit,created_at,updated_at,organization_id) VALUES ('کره','K',0.25,?,?,1)").run(stamp, stamp)).lastInsertRowid);
 const pkg = Number((await db.prepare("INSERT INTO packagings (product_id,name,qty_per_pack,created_at) VALUES (?,'ج',1,?)").run(product, stamp)).lastInsertRowid);

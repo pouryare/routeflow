@@ -25,7 +25,7 @@ let east = 0, ownerId = 0, eastMgrId = 0, foreignGroup = 0;
 beforeAll(async () => {
   const db = getDb();
   const now = new Date().toISOString();
-  await db.prepare("INSERT OR IGNORE INTO organizations (id, name, slug, active, created_at) VALUES (2, 'other', 'other', 1, ?)").run(now);
+  await db.prepare("INSERT INTO organizations (id, name, slug, active, created_at) VALUES (2, 'other', 'other', 1, ?) ON CONFLICT DO NOTHING").run(now);
   // Stamped with their company: group lookups are tenant-scoped, so an unstamped row would be unreachable.
   const g = db.prepare("INSERT INTO groups (name, slug, active, created_at, organization_id) VALUES (?, ?, 1, ?, ?)");
   east = Number((await g.run("شرق", "east", now, 1)).lastInsertRowid);

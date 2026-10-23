@@ -126,7 +126,7 @@ describe("coverageAnalytics scoping", () => {
       "INSERT INTO sales (customer_name,amount,sale_date,imported_at,organization_id) VALUES ('ناشناخته',900,?,?,1)",
     ).run(iso(3).slice(0, 10), iso(0));
     // Another company's unmatched row must not be counted for this one.
-    await db.prepare("INSERT OR IGNORE INTO organizations (id, name, slug, active, created_at) VALUES (2, 'other', 'other', 1, ?)").run(iso(0));
+    await db.prepare("INSERT INTO organizations (id, name, slug, active, created_at) VALUES (2, 'other', 'other', 1, ?) ON CONFLICT DO NOTHING").run(iso(0));
     await db.prepare(
       "INSERT INTO sales (customer_name,amount,sale_date,imported_at,organization_id) VALUES ('بیگانه',555,?,?,2)",
     ).run(iso(3).slice(0, 10), iso(0));

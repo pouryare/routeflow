@@ -1,6 +1,7 @@
 import type { Db } from "@/lib/database/client";
 
 import { mapSeq } from "@/lib/seq";
+import { dialect } from "@/lib/database/dialect";
 /** Clear the ledger so a test fixture can reset the tables it owns.
  *
  *  `journals` and `ledger_entries` are APPEND-ONLY by trigger -- that is the feature, and
@@ -29,6 +30,18 @@ import { mapSeq } from "@/lib/seq";
  *  and recreate the ledger tables in production on every test run. That was tried and
  *  reverted; see `.cline/journal.md`. Keep this an explicit, per-suite call. */
 export async function clearLedger(db: Db): Promise<void> {
+  /* PostgreSQL: replica mode skips the append-only triggers and the foreign-key checks for
+     this one statement batch, and the identities restart as sqlite_sequence's rows did. */
+  if (dialect() === "postgres") {
+    await db.exec(
+      `SET session_replication_role = replica;
+       DELETE FROM ledger_entries; DELETE FROM journals; DELETE FROM fiscal_periods;
+       SET session_replication_role = DEFAULT;
+       ALTER TABLE ledger_entries ALTER COLUMN id RESTART; ALTER TABLE journals ALTER COLUMN id RESTART;
+       ALTER TABLE fiscal_periods ALTER COLUMN id RESTART;`
+    );
+    return;
+  }
   const ddl = async (name: string) =>
     await db
       .prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?")
