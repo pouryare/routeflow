@@ -6,6 +6,8 @@ import { outcomeLabel, taskKindLabel } from "@/lib/tasks/labels";
 import { faToman } from "@/lib/format";
 import { activityLine, compareTimeline, decodeTimelineCursor, encodeTimelineCursor, type TimelineItem, type TimelineKind } from "@/lib/crm/timeline";
 import { addLeadContext, getBusiness, productsWithPrice, type BusinessRow } from "./businesses";
+import { onboardingFor } from "@/lib/repo/onboarding";
+import type { Onboarding } from "@/lib/onboarding";
 
 export interface ContactRow {
   id: number; name: string | null; role: string; phone_norm: string | null; whatsapp: string | null;
@@ -22,6 +24,8 @@ export interface Profile {
   products: { id: number; name: string; price_toman: number | null }[];
   contacts: ContactRow[]; summary: CustomerSummary | null;
   reps: { id: number; name: string }[]; canWrite: boolean; canManage: boolean;
+  /** F40: the first-order checklist (location, price group, contact, credit). */
+  onboarding: Onboarding | null;
 }
 
 export function profileFor(session: Session, id: number): Profile | null {
@@ -46,6 +50,7 @@ export function profileFor(session: Session, id: number): Profile | null {
     contacts, summary: readCustomerSummary(db, orderFilter(session), id),
     reps: manager ? addLeadContext(session).reps.map(r => ({ id: r.id, name: r.name })) : [],
     canWrite: canWriteBusiness(session, business), canManage: manager,
+    onboarding: onboardingFor(org, id),
   });
 }
 
