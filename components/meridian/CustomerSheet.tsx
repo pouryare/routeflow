@@ -1,11 +1,8 @@
 "use client";
 
-import { useEscapeKey } from "@/lib/useEscapeKey";
 import Link from "next/link";
 import CustomerBento, { useCustomerSummary } from "./CustomerBento";
-import { Icon } from "@/components/meridian/Icon";
-import { createPortal } from "react-dom";
-import { useSheetHost } from "@/components/meridian/useSheetHost";
+import BottomSheet from "@/components/mobile/BottomSheet";
 import { faDigits } from "@/lib/format";
 import { useSession } from "@/lib/useSession";
 import { canSell } from "@/lib/roles";
@@ -35,67 +32,48 @@ export default function CustomerSheet({
   const { role } = useSession();
   const failed = false;
 
-  useEscapeKey(onClose, customerId !== null);
-
   const open = customerId !== null;
 
-  const host = useSheetHost();
-  return host ? createPortal(
-    <>
-      <div className={`meridian-scrim${open ? " on" : ""}`} onClick={onClose} aria-hidden />
-      <div
-        className={`sheet${open ? " on" : ""}`}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="sh-name"
-        aria-hidden={!open}
-        inert={!open}
-      >
-        <div className="grab" />
-        <div className="sheethead">
-          <div>
-            <h2 id="sh-name">{data?.business_name ?? fallbackName ?? "مشتری"}</h2>
-            <div className="s">
-              {data
-                ? [
-                    data.where,
-                    // The district code a rep can read out over the phone, right after the
-                    // place name it belongs to. faDigits because it is stored ASCII.
-                    data.district_code && faDigits(data.district_code),
-                    data.status,
-                    data.salesperson && `فروشنده: ${data.salesperson}`,
-                  ]
-                    .filter(Boolean)
-                    .join(" · ")
-                : failed
-                  ? "اطلاعات این مشتری خوانده نشد"
-                  : "در حال خواندن…"}
-            </div>
-          </div>
-          <button className="x x--labelled" type="button" aria-label="بستن مشخصات مشتری" onClick={onClose}>
-            <Icon name="x" size="sm" />
-            <span>بستن مشخصات</span>
-          </button>
+  return (
+    <BottomSheet
+      open={open}
+      title={data?.business_name ?? fallbackName ?? "مشتری"}
+      subtitle={
+        data
+          ? [
+              data.where,
+              // The district code a rep can read out over the phone, right after the
+              // place name it belongs to. faDigits because it is stored ASCII.
+              data.district_code && faDigits(data.district_code),
+              data.status,
+              data.salesperson && `فروشنده: ${data.salesperson}`,
+            ]
+              .filter(Boolean)
+              .join(" · ")
+          : failed
+            ? "اطلاعات این مشتری خوانده نشد"
+            : "در حال خواندن…"
+      }
+      onClose={onClose}
+      closeLabel="بستن مشخصات"
+      bodyClassName="customer-sheet"
+    >
+      <CustomerBento data={data} />
+      {customerId !== null && <div style={{ padding: "16px 24px", display: "flex", flexWrap: "wrap", gap: 9 }}>
+        <Link className="btn ghost" style={{ minHeight: 44 }} href={`/crm/${customerId}`}>اطلاعات و مخاطبان</Link>
+        {canSell(role) && <Link className="btn solid" style={{ minHeight: 44 }} href={`/sales/orders/new?customer=${customerId}`}>ثبت سفارش تازه</Link>}
+      </div>}
+
+      {data && (
+        <div style={{ padding: "0 24px 26px", display: "flex", gap: 9, justifyContent: "flex-end" }}>
+          <Link className="btn ghost" style={{ minHeight: 44 }} href={`/map?c=${data.customer_id}`}>
+            روی نقشه
+          </Link>
+          <Link className="btn solid" style={{ minHeight: 44 }} href={`/sales/orders?customer=${data.customer_id}`}>
+            همهٔ سفارش‌ها
+          </Link>
         </div>
-
-        <CustomerBento data={data} />
-        {customerId !== null && <div style={{ padding: "16px 24px", display: "flex", flexWrap: "wrap", gap: 9 }}>
-          <Link className="btn ghost" style={{ minHeight: 44 }} href={`/crm/${customerId}`}>اطلاعات و مخاطبان</Link>
-          {canSell(role) && <Link className="btn solid" style={{ minHeight: 44 }} href={`/sales/orders/new?customer=${customerId}`}>ثبت سفارش تازه</Link>}
-        </div>}
-
-        {data && (
-          <div style={{ padding: "0 24px 26px", display: "flex", gap: 9, justifyContent: "flex-end" }}>
-            <Link className="btn ghost" href={`/map?c=${data.customer_id}`}>
-              روی نقشه
-            </Link>
-            <Link className="btn solid" href={`/sales/orders?customer=${data.customer_id}`}>
-              همهٔ سفارش‌ها
-            </Link>
-          </div>
-        )}
-      </div>
-    </>,
-    host,
-  ) : null;
+      )}
+    </BottomSheet>
+  );
 }

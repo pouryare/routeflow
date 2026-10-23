@@ -22,7 +22,7 @@ export default function QuickActions({ actions }: { actions: QuickAction[] }) {
         <Icon name="plus" size="md" />
         <span>ثبت</span>
       </button>
-      <BottomSheet open={sheet} title="چه چیزی ثبت کنیم؟" onClose={() => setSheet(false)}>
+      <BottomSheet open={sheet} title="چه چیزی ثبت کنیم؟" onClose={() => setSheet(false)} closeLabel="بستن ثبت سریع">
         <div className="tf-grid one">
           {actions.map((a) =>
             a.href ? (

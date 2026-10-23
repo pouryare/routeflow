@@ -111,7 +111,7 @@ it("passes the product catalog into the intel flow", async () => {
   try {
     await act(async () => root.render(createElement(BusinessProfile, { canOrder: true, initial: profile, initialTimeline: timeline })));
     const click = async (label: string) => {
-      // The flow's sheet is drawn in the document root (useSheetHost), outside `host`.
+      // The flow's sheet is drawn in the document root (HeroUIProvider's overlay host), outside `host`.
       const button = Array.from(document.querySelectorAll("button")).find(b => b.textContent?.trim() === label);
       expect(button, label).toBeDefined();
       await act(async () => { button!.click(); vi.advanceTimersByTime(200); });

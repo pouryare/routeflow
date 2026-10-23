@@ -2852,24 +2852,7 @@ body {
   font-weight: 700; letter-spacing: -.02em;
 }
 
-/* ---- 5c · processing modal ----------------------------------------------- */
-.meridian .modal {
-  position: fixed; top: 50%; left: 50%;
-  /* physical left + translate: inset-inline-start is the RIGHT edge under rtl,
-     so the -50% shift walks the dialog off toward the left instead of centring it */
-  transform: translate(-50%,-46%) scale(.94);
-  z-index: 75; width: min(520px, calc(100vw - 32px)); max-height: 88vh; overflow-y: auto;
-  background: var(--bg); border-radius: var(--r-2xl); box-shadow: var(--sh-3);
-  opacity: 0; pointer-events: none;
-  transition: opacity 260ms var(--ease), transform 420ms var(--spring);
-}
-.meridian .modal.on { opacity: 1; pointer-events: auto; transform: translate(-50%,-50%) scale(1); }
-.meridian .modal .mhead {
-  display: flex; align-items: flex-start; justify-content: space-between;
-  gap: 14px; padding: 22px 24px 4px;
-}
-.meridian .modal .mhead h2 { margin: 0; font-size: 19px; font-weight: 600; letter-spacing: -.015em; }
-.meridian .modal .mhead .s { font-size: 12.5px; color: var(--muted); margin-top: -3px; }
+/* ---- 5c · processing sheet body (ProcessingModal.tsx, in a BottomSheet) ---- */
 .meridian .mbody { padding: 14px 24px 22px; display: flex; flex-direction: column; gap: 16px; }
 .meridian .field label { display: block; font-size: 12.5px; color: var(--muted); margin-bottom: 7px; }
 .meridian .field .ro {
@@ -3474,38 +3457,6 @@ body {
 }
 .meridian .notice b { font-weight: 700; }
 
-/* ---- 8 · bottom bento sheet (پنجرهٔ مشتری) -------------------------------- */
-.meridian-scrim {
-  position: fixed; inset: 0; background: rgba(35,28,22,.34);
-  backdrop-filter: blur(3px); opacity: 0; pointer-events: none;
-  transition: opacity 300ms var(--ease); z-index: 70;
-}
-.meridian-scrim.on { opacity: 1; pointer-events: auto; }
-.sheet {
-  position: fixed; inset-inline: 0; inset-block-end: 0; z-index: 71;
-  background: var(--bg); border-radius: var(--r-2xl) var(--r-2xl) 0 0;
-  box-shadow: 0 -12px 40px -12px rgba(30,41,59,.35);
-  transform: translateY(102%); transition: transform 480ms var(--spring);
-  max-height: 88vh; overflow-y: auto; direction: rtl;
-}
-.sheet.on { transform: none; }
-.grab { width: 44px; height: 5px; border-radius: 999px; background: var(--line-2); margin: 10px auto 0; }
-.sheethead {
-  display: flex; align-items: flex-start; justify-content: space-between;
-  gap: 14px; padding: 14px 24px 8px;
-}
-.sheethead h2 { margin: 0; font-size: 20px; font-weight: 600; letter-spacing: -.015em; }
-.sheethead .s { font-size: 13px; color: var(--muted); margin-top: -4px; }
-.x {
-  display: grid; place-items: center; padding: 0;
-  width: 38px; height: 38px; border-radius: 999px; border: 1px solid var(--line);
-  background: var(--card); color: var(--ink-2); font-size: 17px; cursor: pointer;
-  flex: none; transition: background 160ms var(--ease);
-}
-.x:hover { background: var(--sunk); }
-/* A close button that says what it closes: «بستن فرم». The bare icon never told a first-time
-   user what it would do. */
-.x.x--labelled { width: auto; padding: 0 14px; gap: 6px; font-size: 13px; white-space: nowrap; grid-auto-flow: column; }
 .meridian .bento { display: grid; grid-template-columns: 1.5fr 1fr 1fr; gap: 12px; padding: 12px 24px 28px; max-width: 1150px; }
 /* The map's customer panel is 320px wide: three tiles across would be 90px each, which
    is narrower than the figures they carry. */
@@ -4754,7 +4705,7 @@ body {
 /* ACCENT-THEMES:END */
 /* ---- 8b · tap flows (docs/tap-flow-principles.md) — lives inside .sheet ---------- */
 .meridian .tapflow { display: grid; gap: 12px; padding: 4px 20px 24px; }
-/* The tap-flow sheet is a HeroUI Drawer now (TapFlow.tsx). HeroUI draws the panel, the
+/* Every bottom sheet is a HeroUI Drawer now (mobile/BottomSheet.tsx). HeroUI draws the panel, the
    backdrop, the handle and the slide; these rules only fit it to a flow: centred and capped
    on a desk, clear of the phone's home indicator, the title on the sheet's centre line with
    the close button at the inline end, and body text at reading colour rather than HeroUI's
@@ -4771,6 +4722,11 @@ body {
 .meridian .flow-drawer__header .drawer__heading { min-height: 44px; display: flex; align-items: center; padding-inline: 116px; font-size: var(--text-lg); font-weight: 600; letter-spacing: -.015em; }
 .meridian .flow-drawer__sub { margin: 0; font-size: var(--text-sm); color: var(--muted); }
 .meridian .flow-drawer__close { position: absolute; inset-block-start: 0; inset-inline-end: 12px; gap: 4px; }
+/* A sheet's body text is at reading colour too, and every body but a tap flow's (which sets its
+   own grid) gets the same side margins and room above the home indicator. */
+.meridian .flow-drawer__dialog--wide { max-width: 880px; }
+.meridian .flow-drawer .drawer__body { color: var(--text); font-size: var(--text-base); line-height: 1.6; }
+.meridian .flow-drawer .drawer__body:not(.tapflow) { padding: 4px 20px 24px; }
 .meridian .flow-drawer .tapflow { color: var(--text); font-size: var(--text-base); line-height: 1.6; padding-inline: 20px; }
 .meridian .tapflow .flow-drawer__back { position: absolute; inset-inline-start: 0; gap: 4px; }
 .meridian .tapflow .flow-drawer__skip { justify-self: center; color: var(--muted); }
@@ -4849,11 +4805,6 @@ body {
    question, the sub-line and the options all sit on it. The close button leaves the flow --
    centred in the space that is left over, the title sits half a button-width off the sheet's
    true centre, which is exactly the kind of thing that reads as "almost centred". */
-.meridian .sheet .sheethead { position: relative; }
-.meridian .sheet .sheethead > div { flex: 1; text-align: center; }
-.meridian .sheet .sheethead > button {
-  position: absolute; inset-block-start: 14px; inset-inline-end: 4px;
-}
 .meridian .tapflow .tf-q,
 .meridian .tapflow .tf-sub,
 .meridian .tapflow .tf-group,
@@ -4977,7 +4928,7 @@ body {
 .meridian .no-pin { flex-wrap: wrap; }
 .meridian .map-caption { margin: 6px 2px 0; font-size: 12px; color: var(--muted); }
 .meridian .no-pin { display: flex; align-items: center; gap: 8px; min-height: 44px; border: 1px dashed var(--line); border-radius: var(--r-md); padding: 8px 12px; color: var(--muted); font-size: 13px; }
-.meridian .map-sheet { max-width: 860px; width: min(880px, calc(100vw - 24px)); inset: 0; margin: auto; height: fit-content; max-height: 88dvh; display: grid; gap: 12px; }
+.meridian .map-sheet { display: grid; gap: 12px; }
 @media (max-width: 700px) { .meridian .details-grid { grid-template-columns: 1fr; } .meridian .map-frame { height: 150px; } }
 
 /* ---- Pool view toggle bar ---- */
@@ -5043,8 +4994,6 @@ body {
   .meridian .gcard,
   .meridian .face,
   .meridian .pocketed__face,
-  .meridian .modal,
-  .meridian .sheet,
   .meridian .island,
   .meridian .mwork,
   .meridian .mapside,
@@ -5397,17 +5346,6 @@ body {
   .acct-cards td { display: flex; justify-content: space-between; gap: 12px; padding: 3px 0; text-align: start; }
   .acct-cards td:first-child { font-weight: 600; padding-bottom: 6px; }
   .acct-cards td[data-label]::before { content: attr(data-label); color: var(--muted); font-weight: 400; }
-}
-
-/* ---- processing modal as a bottom sheet on phones ----------------------------------------------- */
-@media (max-width: 767.98px) {
-  .meridian .modal {
-    top: auto; bottom: 0; left: 0; right: 0; width: 100%; max-height: 90vh;
-    border-radius: var(--r-2xl) var(--r-2xl) 0 0;
-    transform: translateY(100%);
-    padding-bottom: env(safe-area-inset-bottom);
-  }
-  .meridian .modal.on { transform: translateY(0); }
 }
 
 /* ---- order pipeline: swipe through the stages on a phone ------------------------------------------
