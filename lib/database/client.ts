@@ -18,8 +18,6 @@ import type {
   StatementSync,
 } from "node:sqlite";
 
-export type { SQLInputValue, SQLOutputValue, StatementResultingChanges };
-
 export type Row = Record<string, SQLOutputValue>;
 
 export interface Statement {
@@ -65,7 +63,7 @@ async function whenFree<T>(ready: () => Promise<void>, f: () => T): Promise<T> {
 
 /** Runs `fn` in one transaction: every statement inside it, at any depth, commits together or
  *  not at all. A throw rolls back and rethrows. A tx() inside another one joins the outer. */
-export async function tx<T>(
+async function tx<T>(
   raw: () => DatabaseSync,
   ready: () => Promise<void>,
   fn: () => Promise<T>

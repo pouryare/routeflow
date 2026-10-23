@@ -27,10 +27,9 @@ const BANNED: { re: RegExp; use: string }[] = [
   { re: /\bIFNULL\(/i, use: "COALESCE()" },
 ];
 
-/* The connection setup and the one-shot CRM column migration, which is SQLite's own upgrade
-   path and has no PostgreSQL counterpart: the PostgreSQL schema is created whole. */
+/* The one-shot CRM column migration, which is SQLite's own upgrade path and has no PostgreSQL
+   counterpart: the PostgreSQL schema is created whole. */
 const ALLOWED: Record<string, string> = {
-  "lib/db.ts": "opens the SQLite file and sets its pragmas; the PostgreSQL pool replaces it",
   "lib/repo/crm/migrate.ts": "adds missing columns to an old SQLite file; PostgreSQL starts from the full schema",
 };
 

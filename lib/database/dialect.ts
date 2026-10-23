@@ -7,10 +7,10 @@
  *  "Today" is never asked of the database: SQLite's date('now') is the UTC day, which is
  *  yesterday in Tehran until 03:30. Pass tehranTodayIso() as a parameter instead. */
 
-export type Dialect = "sqlite" | "postgres";
+type Dialect = "sqlite" | "postgres";
 
 /** The database the app talks to. SQLite until the cut-over sets DB_DIALECT=postgres. */
-export function dialect(): Dialect {
+function dialect(): Dialect {
   return process.env.DB_DIALECT === "postgres" ? "postgres" : "sqlite";
 }
 
