@@ -3,6 +3,8 @@
  * - activity_log accepts products (F99) and two more event kinds, `created` and `updated`. SQLite
  *   cannot ALTER a CHECK, so the table is rebuilt from its own stored definition with the two
  *   lists widened; copying the stored SQL keeps the columns later eras appended, in order.
+ * - users.must_change_password (F35): set when an owner creates an account or resets its password, so
+ *   the first sign-in with a password someone else chose asks for a new one.
  * login_events (F110) is in the base schema, not here: it is in TENANT_TABLES, and the tenant
  * sweeps of eras 03 and 07 expect every listed table to exist when they run. */
 import type { DatabaseSync } from "node:sqlite";
@@ -33,6 +35,13 @@ function widenActivityLog(db: DatabaseSync): void {
   }
 }
 
+function addMustChangePassword(db: DatabaseSync): void {
+  const cols = db.prepare("PRAGMA table_info(users)").all() as Array<{ name: string }>;
+  if (cols.some((c) => c.name === "must_change_password")) return;
+  db.exec("ALTER TABLE users ADD COLUMN must_change_password INTEGER NOT NULL DEFAULT 0");
+}
+
 export function applyQuickWins(db: DatabaseSync): void {
   widenActivityLog(db);
+  addMustChangePassword(db);
 }

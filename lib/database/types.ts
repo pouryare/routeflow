@@ -188,6 +188,9 @@ export interface UserRow {
   /** The file stem behind that route. Separate from avatar_url so a `?key=` preset can be
    *  shown without losing the upload it is standing in for. */
   avatar_stem: string | null;
+  /** 1 while the password is one an owner chose (a new account or a reset): the next sign-in
+   *  must replace it before anything else (F35). */
+  must_change_password: number;
 }
 
 export type LocationResolution = "direct" | "pluscode" | "browser" | "nominatim" | "manual" | "unresolved";

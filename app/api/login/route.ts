@@ -76,6 +76,7 @@ export async function POST(req: NextRequest) {
       oid: user.organization_id,
       tv: user.token_version,
       name: user.display_name,
+      ...(user.must_change_password ? { pw: 1 as const } : {}),
     }),
     {
       httpOnly: true,

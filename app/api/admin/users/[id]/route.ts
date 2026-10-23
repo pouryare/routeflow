@@ -30,7 +30,7 @@ export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/admin/user
   if (!target) return NextResponse.json({ ok: false, error: "کاربر پیدا نشد" }, { status: 404 });
 
   const body = (await req.json().catch(() => null)) as Record<string, unknown> | null;
-  const plan = planUserPatch(body, target, guard.session.organizationId);
+  const plan = planUserPatch(body, target, guard.session.organizationId, guard.session.user.id);
   if (!plan.ok) return NextResponse.json({ ok: false, error: plan.error }, { status: plan.status });
   const { sets, values } = plan;
 

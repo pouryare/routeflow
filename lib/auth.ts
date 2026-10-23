@@ -52,6 +52,9 @@ export interface SessionClaims {
    *  makes the session behave as that company's owner (lib/session.ts re-validates it on every
    *  request); absent means "all companies", the platform_owner's default. */
   ao?: number;
+  /** Set while the password is one an owner chose (F35). proxy.ts sends every page to /password
+   *  until it is replaced; /api/me/password re-issues the cookie without it. */
+  pw?: 1;
 }
 
 /** Token shape: "<base64url(JSON claims)>.<hmac-sha256 of that same base64url string>".

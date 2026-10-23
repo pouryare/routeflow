@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
   const res = NextResponse.json({ ok: true });
   res.cookies.set(
     COOKIE_NAME,
-    createSessionToken({ uid: user.id, role: user.role, gid: user.group_id, oid: user.organization_id, tv: user.token_version, name: user.display_name }),
+    createSessionToken({ uid: user.id, role: user.role, gid: user.group_id, oid: user.organization_id, tv: user.token_version, name: user.display_name, ...(user.must_change_password ? { pw: 1 as const } : {}) }),
     { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax", maxAge: MAX_AGE_SECONDS, path: "/" }
   );
   return res;
