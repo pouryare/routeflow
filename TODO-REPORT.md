@@ -416,3 +416,16 @@ Full write-up: `docs/architecture-audit-2026-10-22.md`. Steps 1 to 3 are merged 
 ### Next steps
 1. Check the outside services from the Iranian server
 2. Decide the Android distribution route before F6 starts
+
+## Where live updates would be used (2026-10-23, discussion only)
+
+### Done
+- [x] Mapped where Centrifugo or live updates would be used: polling today in `CoverageMap` (45 s), `NotificationBell` (60 s), `LeadImportPanel`; roadmap F6, F125, F4; inferred candidates F38, F68, F7, F55, F16, F102, F143, F107, F13, F105, F30, F94, F61, F121 and job progress
+
+### Not done / gaps
+- [ ] Not recorded in the docs; the inferred candidates are my reading, not stated in the roadmap
+- [ ] Centrifugo's Postgres outbox feature is unverified
+
+### Next steps
+1. Say if a live-updates table should go into `docs/roadmap.md`
+2. Check the outside services from the Iranian server
