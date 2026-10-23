@@ -82,6 +82,11 @@ _Condensed 2026-10-23. Each finished piece of work is one line here; the full ea
   - [x] Login, the password form and the new-user password use HeroUI text fields (`TextInput`, `PasswordInput` with show/hide)
   - [x] The colour and font pickers open HeroUI Popovers; the theme button is 44 px
   - [x] Stale `check:mobile` allowlist entries removed; raw text-field count 97 → 86
+- [x] HeroUI phase 4, navigation and data:
+  - [x] Section tabs (page header card) and view tabs are HeroUI Tabs with a link per tab (`RouteTabs`), 44 px; the lit tab scrolls into view on a phone; the header search button is 44 px
+  - [x] Status pill is a HeroUI Chip, avatars are HeroUI Avatars, skeletons are HeroUI Skeletons, empty states sit in HeroUI's EmptyState; our `.chip` class is now `.choicechip`
+  - [x] Collapsible sections are HeroUI Disclosures (heading + trigger, 44 px; body still mounts only while open)
+  - [x] Accounting tables and the pager wear HeroUI's table and pagination look on their own server markup; pager links are 44 px and clear the phone's «ثبت» button
 - [x] Wave P phase 2 (PostgreSQL next to SQLite):
   - [x] `db/Dockerfile` and `db/compose.yml`: Postgres 18 with PostGIS, `pg_trgm`, `btree_gist`, `pg_stat_statements`, `pg_duckdb`, `wal_level = logical`
   - [x] Baseline migration generated from the SQLite schema (`npm run db:pg:generate`; CI fails if it drifts), applied with node-pg-migrate; Squawk lints later migrations; Kysely types in `lib/database/pg-schema.d.ts`
@@ -91,7 +96,9 @@ _Condensed 2026-10-23. Each finished piece of work is one line here; the full ea
 
 ## Not done / gaps
 - [ ] HeroUI move: answer buttons (`tf-opt`), chips, tabs, tables and the notification feed's rows are not moved yet; 86 raw text fields remain (only login and passwords use `TextInput`); the inline reset-password field in the users table and the location card's checkbox (the card is the tap target) stay native; the search overlay and the map's side panels are still hand-built
-- [ ] The section tabs under the header are 37 px tall and the header search button 34 px (found while checking phase 3; not part of it)
+- [ ] Accounting tables and the pager use HeroUI's classes, not its Table and Pagination components (those are client React Aria grids and buttons; the reports are server pages with phone card rows and real page links)
+- [ ] Small tap targets seen while checking phase 4, outside it: accounting period chips (33 px), account code links in the trial balance (19 px), lead pool toggles and actions (30–41 px), the orders board's «… سفارش دیگر» links (18 px)
+- [ ] HeroUI tab rows point `aria-controls` at a panel that is not there (the page under the row is the panel)
 - [ ] Headless Chromium sometimes leaves parts of a long page's open sheet unpainted until the next repaint; the layout is right (measured) and a repaint draws it, but check on a real phone
 - [ ] HeroUI look is partial: inside `.meridian` HeroUI parts still read Meridian's `--accent`, `--surface`, `--border`, `--muted` and `--radius-*`; the token hand-over (and the dead `.island` / `.toast` CSS) is its own step
 - [ ] The toast no longer shows the draining bar for the undo window; HeroUI's toast has none
@@ -129,8 +136,8 @@ _Condensed 2026-10-23. Each finished piece of work is one line here; the full ea
 - [ ] Left for later: F104 (not reached; nothing blocks it), and, waiting on a missing prerequisite, F74, F77, F85, F86, F91, F114, F69, F31, F42, F34, F95, F140, F2, F5, F117, F38
 
 ## Next steps
-1. Merge the HeroUI phase 3 PR once CI is green (merge commit)
-2. HeroUI phase 4: navigation and data (tabs, disclosure, table and pagination, chips, avatar, skeleton, empty states), and the 44 px section tabs and search button
+1. Merge the HeroUI phase 4 PR once CI is green (merge commit)
+2. HeroUI phase 5: SmartPicker, DayChips, tap-flow steps and DecisionDeck rebuilt on HeroUI parts; keypad, swipe rows, bottom bar, signature cards and charts restyled with HeroUI tokens; the small tap targets listed above
 3. HeroUI token hand-over: HeroUI's palette and radii as the source, Meridian names as aliases, then remove dead CSS
 4. PostgreSQL phase 3: empty `tests/pg-known-failures.txt`, `xid8` sync watermark, row-level security
 5. Decide whether the smoke suite joins CI (needs Chromium on the runner; map tiles stubbed)
