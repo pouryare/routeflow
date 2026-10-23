@@ -27,8 +27,10 @@ _Condensed 2026-10-23. Each finished piece of work is one line here; the full ea
   - [x] Change your own password on `/settings/security`, asking for the current one (rate-limited); `/password` and this share `components/PasswordForm.tsx`
   - [x] «حساب من» (settings, and «ورود به‌عنوان…» for owners) at the end of the phone's «بیشتر» sheet; `/driver` gets a row of links to the academy and settings, which it had no way to reach
   - [x] Holidays screen (`/sales/admin/holidays`) linked as «تعطیلات» under «تنظیمات سازمان» for owners; nothing linked to it before
+  - [x] Names open what they name: customer names on the order page, payments and complaints open the customer (the order page keeps a map pin); supplier names on payables open the supplier; account names on the balance sheet and profit and loss open the ledger
 
 ## Not done / gaps
+- [ ] Cheque cards and the cheque deck still show the customer as plain text: the card itself is the tap target (select / decide), so a link inside it would fight it
 - [ ] Check the server's backup folder: before this batch the backup script never produced a database copy
 - [ ] Off-site backup copy (F138 part 2) waits on a destination and key holder
 - [ ] Nothing writes `deliveries.delay_reason_id`, so the reason report's delay section stays empty
