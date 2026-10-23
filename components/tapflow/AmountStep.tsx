@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Button } from "@heroui/react";
 import { Icon } from "@/components/meridian/Icon";
 import Keypad from "@/components/mobile/Keypad";
 import { faNum } from "@/lib/format";
@@ -47,15 +48,10 @@ export default function AmountStep({ prefill, chips, option, label, unit = "تو
           ))}
         </div>
       ) : null}
-      <button
-        type="button"
-        className="inline-flex items-center justify-center gap-[var(--space-2)] tf-go"
-        disabled={!valid}
-        onClick={() => submit(option.id, String(n))}
-      >
+      <Button variant="primary" size="lg" fullWidth isDisabled={!valid} onPress={() => submit(option.id, String(n))}>
         <Icon name="check" size="md" />
         {option.label}
-      </button>
+      </Button>
     </div>
   );
 }

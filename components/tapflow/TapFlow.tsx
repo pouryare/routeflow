@@ -1,12 +1,9 @@
 "use client";
 
-import { useEscapeKey } from "@/lib/useEscapeKey";
-import { useRef, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
+import { Button, Drawer } from "@heroui/react";
 import { Icon } from "@/components/meridian/Icon";
-import { createPortal } from "react-dom";
-import { useSheetHost } from "@/components/meridian/useSheetHost";
 import JalaliDateInput from "@/components/meridian/JalaliDateInput";
-import { useSwipeDismiss } from "@/components/useSwipeDismiss";
 import { answerStep, backStep, SKIP, viewStep } from "@/lib/crm/flows/machine";
 import type { FlowConfig, FlowContext, FlowState, ResolvedOption, ResolvedStep } from "@/lib/crm/flows/types";
 import { labelDue, resolveDue } from "@/lib/crm/due";
@@ -45,13 +42,14 @@ export interface TapFlowProps {
  *  `driver` / `date` are the lead-run planner's picker steps. */
 const CUSTOM = new Set(["basics", "link", "pin", "hours", "stars", "driver", "date", "photo"]);
 
-/** One question per screen, in the meridian bottom sheet (docs/tap-flow-principles.md).
- *  Controlled: the host owns FlowState, which is what lets undo reopen the last question. */
+/** One question per screen, in a HeroUI bottom Drawer (docs/tap-flow-principles.md).
+ *  Controlled: the host owns FlowState, which is what lets undo reopen the last question.
+ *
+ *  The Drawer brings what the hand-built sheet did by hand: the backdrop, Escape, a drag down
+ *  from the handle or header (never from the scrolling body, rule 9), focus held inside while
+ *  open and returned on close. It draws in `.meridian` through HeroUIProvider's overlay host. */
 export default function TapFlow(p: TapFlowProps) {
-  const sheet = useRef<HTMLDivElement>(null);
   const { open, onClose } = p;
-  useSwipeDismiss(sheet, "down", onClose, open);
-  useEscapeKey(onClose, open);
 
   const view = p.state.saved ? null : viewStep(p.config, p.ctx, p.state);
   // A flow with a mis-set budget should still render one mark rather than none.
@@ -65,61 +63,60 @@ export default function TapFlow(p: TapFlowProps) {
     p.onNavigate?.(url);
   };
 
-  const host = useSheetHost();
-  return host ? createPortal(
-    <>
-      <div className={`meridian-scrim${open ? " on" : ""}`} onClick={onClose} aria-hidden />
-      <div ref={sheet} className={`sheet${open ? " on" : ""}`} role="dialog" aria-modal="true" aria-labelledby="tf-title" aria-hidden={!open} inert={!open}>
-        <div className="grab" />
-        <div className="sheethead">
-          <div>
-            <h2 id="tf-title">{p.title}</h2>
-            {p.subtitle ? <div className="s">{p.subtitle}</div> : null}
-          </div>
-          <button className="inline-flex items-center justify-center gap-[var(--space-2)] x x--labelled" type="button" aria-label="بستن فرم" onClick={onClose}>
-            <Icon name="x" size="sm" />
-            <span>بستن فرم</span>
-          </button>
-        </div>
-        <div className="tapflow" aria-live="polite">
-          {p.state.saved
-            ? p.done
-            : view && (
-                <>
-                  <div className="tf-nav">
-                    {p.state.answers.length > 0 ? (
-                      <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] tf-back" onClick={() => p.onState(backStep(p.config, p.ctx, p.state))}>
-                        <Icon name="chevron-right" size="sm" /> سؤال قبلی
-                      </button>
-                    ) : <span />}
-                    <div className="tf-steps" aria-hidden>
-                      {/* One mark per step this flow can actually reach, not a fixed six.
-                          `budget.longest` is the declared maximum path length, and
-                          crm-flow-configs.test.ts asserts it bounds the real one -- so the
-                          count is honest for every flow instead of only the long ones. */}
-                      {Array.from({ length: totalSteps }, (_, i) => (
-                        <i key={i} className={i < p.state.stack.length ? "on" : ""} />
-                      ))}
-                    </div>
-                  </div>
-                  <p className="tf-q">{view.q}</p>
-                  {view.sub ? <p className="tf-sub">{view.sub}</p> : null}
-                  {CUSTOM.has(view.kind)
-                    ? p.renderCustom?.({ step: view, state: p.state, submit })
-                    : <StepBody key={`${view.id}-${p.state.answers.length}`} view={view} submit={submit} hours={p.hours} onNavigate={navigate} navigateUrl={p.navigateUrl} vars={p.ctx.vars} items={p.ctx.items ?? []} />}
-                  {view && (view.skipable || view.timeStep) ? (
-                      <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] tf-skip" onClick={() => submit(SKIP)}>
-                        <Icon name="arrow-left" size="md" />
-                        {view.id === "navigate" ? "رد کردن" : "بدون کار بعدی…"}
-                      </button>
-                    ) : null}
-                </>
-              )}
-        </div>
-      </div>
-    </>,
-    host,
-  ) : null;
+  return (
+    <Drawer isOpen={open} onOpenChange={(isOpen) => { if (!isOpen) onClose(); }}>
+      <Drawer.Backdrop variant="blur">
+        <Drawer.Content placement="bottom" className="flow-drawer">
+          <Drawer.Dialog className="flow-drawer__dialog">
+            <Drawer.Handle />
+            <Drawer.Header className="flow-drawer__header">
+              <Drawer.Heading>{p.title}</Drawer.Heading>
+              {p.subtitle ? <p className="flow-drawer__sub">{p.subtitle}</p> : null}
+              <Button slot="close" variant="tertiary" size="sm" className="flow-drawer__close" aria-label="بستن فرم">
+                <Icon name="x" size="sm" />
+                <span>بستن فرم</span>
+              </Button>
+            </Drawer.Header>
+            <Drawer.Body className="tapflow" aria-live="polite">
+              {p.state.saved
+                ? p.done
+                : view && (
+                    <>
+                      <div className="tf-nav">
+                        {p.state.answers.length > 0 ? (
+                          <Button variant="tertiary" size="sm" className="flow-drawer__back" onPress={() => p.onState(backStep(p.config, p.ctx, p.state))}>
+                            <Icon name="chevron-right" size="sm" /> سؤال قبلی
+                          </Button>
+                        ) : <span />}
+                        <div className="tf-steps" aria-hidden>
+                          {/* One mark per step this flow can actually reach, not a fixed six.
+                              `budget.longest` is the declared maximum path length, and
+                              crm-flow-configs.test.ts asserts it bounds the real one -- so the
+                              count is honest for every flow instead of only the long ones. */}
+                          {Array.from({ length: totalSteps }, (_, i) => (
+                            <i key={i} className={i < p.state.stack.length ? "on" : ""} />
+                          ))}
+                        </div>
+                      </div>
+                      <p className="tf-q">{view.q}</p>
+                      {view.sub ? <p className="tf-sub">{view.sub}</p> : null}
+                      {CUSTOM.has(view.kind)
+                        ? p.renderCustom?.({ step: view, state: p.state, submit })
+                        : <StepBody key={`${view.id}-${p.state.answers.length}`} view={view} submit={submit} hours={p.hours} onNavigate={navigate} navigateUrl={p.navigateUrl} vars={p.ctx.vars} items={p.ctx.items ?? []} />}
+                      {view && (view.skipable || view.timeStep) ? (
+                          <Button variant="ghost" className="flow-drawer__skip" onPress={() => submit(SKIP)}>
+                            <Icon name="arrow-left" size="md" />
+                            {view.id === "navigate" ? "رد کردن" : "بدون کار بعدی…"}
+                          </Button>
+                        ) : null}
+                    </>
+                  )}
+            </Drawer.Body>
+          </Drawer.Dialog>
+        </Drawer.Content>
+      </Drawer.Backdrop>
+    </Drawer>
+  );
 }
 
 function StepBody({ view, submit, hours, onNavigate, navigateUrl, vars, items }: { view: ResolvedStep; submit: (id: string, value?: string) => void; hours?: WorkingHours; onNavigate?: (url: string) => void; navigateUrl?: string; vars: Record<string, string>; items: FlowItem[] }) {

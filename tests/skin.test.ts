@@ -29,14 +29,14 @@ describe("meridian ground temperature", () => {
  *  writes them together rather than each caller remembering to. */
 describe("theme init script", () => {
   it("sets data-skin for BOTH themes, not only for light", () => {
-    // dark removes data-theme, so data-skin is the only signal .meridian has
     expect(THEME_INIT_SCRIPT).toContain('setAttribute("data-skin"');
     const darkBranch = THEME_INIT_SCRIPT.slice(THEME_INIT_SCRIPT.indexOf("data-skin"));
     expect(darkBranch.length).toBeGreaterThan(0);
   });
 
-  it("still sets data-theme for light so the map is unaffected", () => {
-    expect(THEME_INIT_SCRIPT).toContain('setAttribute("data-theme","light")');
+  it("sets data-theme for BOTH themes: HeroUI reads a missing attribute as light", () => {
+    expect(THEME_INIT_SCRIPT).toContain('setAttribute("data-theme",s)');
+    expect(THEME_INIT_SCRIPT).not.toContain("removeAttribute");
   });
 
   it("runs entirely inside a try/catch — a theme is never worth a blank page", () => {
