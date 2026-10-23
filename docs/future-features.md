@@ -169,6 +169,10 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 **What:** drivers' positions on the map in real time, and an automatic "your delivery arrives in about 15 minutes" message (SMS, Telegram or WhatsApp) to the customer.
 
+**Technology to consider (2026-10-23):** a signed, expiring no-login tracking page with Altcha against abuse; see `docs/roadmap.md`, section 10.
+
+**Technology to consider (2026-10-23):** live updates for the Android shell (Capgo) so fixes reach phones without a store review; see `docs/roadmap.md`, section 10.
+
 **Decision (2026-10-23):** the Android app is the web app wrapped in a Capacitor shell, which lifts the foreground-only limit on location below. Distribution (domestic store or direct file) is still open.
 
 **Why parked:** continuous GPS drains batteries and needs background location, which a PWA gets only while open; message channels need provider accounts and customer consent; sending customer phone numbers to a messaging provider is a privacy decision.
@@ -299,6 +303,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 ## F13. Offline-first everywhere
 
 **What:** extend the driver app's offline sync so sales, warehouse and payment flows also work without signal and reconcile cleanly when it returns.
+
+**Technology to consider (2026-10-23):** live updates for the Android shell (Capgo) so fixes reach phones without a store review; see `docs/roadmap.md`, section 10.
 
 **Technology to consider (2026-10-23):** offline vector maps (PMTiles with MapLibre, stored by the Capacitor shell); see `docs/roadmap.md`, section 10.
 
@@ -1606,6 +1612,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 **What:** when a run is delayed past a threshold, a templated message goes to the affected customers (reviewed by the dispatcher before sending, at least at first), with a new expected time.
 
+**Technology to consider (2026-10-23):** a signed, expiring no-login tracking page with Altcha against abuse; see `docs/roadmap.md`, section 10.
+
 **Provider (2026-10-23):** SMS goes through Farazsms. Consent and opt-out are still needed; see `docs/roadmap.md`, section 10.
 
 **Already in the app:** stops carry a planned arrival and a delay reason code, and staff get push and Telegram notifications (`lib/repo/notifications.ts`). Customers are not notification recipients, and I found no customer-facing messaging channel.
@@ -2450,6 +2458,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 ## F120. Delivery confirmation code
 
 **What:** the customer receives a short code by message when their delivery is on the way and tells it to the driver at the door; entering it confirms delivery without needing a signature or a photo.
+
+**Technology to consider (2026-10-23):** a signed, expiring no-login tracking page with Altcha against abuse; see `docs/roadmap.md`, section 10.
 
 **Already in the app:** a delivery records the receiver's name, GPS position, a photo path and a signature path (see F17), and the driver confirms the stop. Customers have no notification channel in the app and no code is generated or checked.
 
