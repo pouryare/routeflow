@@ -2477,6 +2477,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 **What:** pick a data set (orders, customers, payments, deliveries, stock), choose columns, filters and grouping, save the result as a named report, run it again later and export it. More open than the fixed question menu of natural-language reports (F14).
 
+**Library (2026-10-23):** `react-querybuilder` for the filters, turned into parameterised SQL through the existing scoped reads.
+
 **Already in the app:** reports are fixed pages: the coverage report with print and CSV export (`/report`, `components/CsvExportButton.tsx`, `lib/csv.ts`), the sales dashboard and analysis pages, and the accounting reports (trial balance, income statement, balance sheet, journal, ledger). Customer lists the sidebar keeps are per-browser pinned and recent shortcuts in local storage (`lib/customerLists.ts`), not saved queries. There is no way for a user to define, save or share their own report.
 
 **Why parked:** every data set must keep the same role and group scoping as its page (a report builder is a side door to data otherwise); arbitrary filters and joins can be slow, so each data set needs a fixed, indexed shape; saved definitions must survive schema changes; exports contain personal data and money.
@@ -2623,6 +2625,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 **What:** the owner creates and edits automation rules in a form: pick an event or schedule, add conditions (for example "balance above X", "no order for 30 days"), choose the result (create a task, raise an alert, send a notification), set a cooldown and an escalation, and see recent firings.
 
+**Library (2026-10-23):** `react-querybuilder` for the condition editor, producing a validated structure rather than free text; see `docs/roadmap.md`, section 10.
+
 **Already in the app:** a rule engine runs event rules and daily sweeps: a rule has a trigger, a flat list of conditions, an action (task, alert or notify), a cooldown and an optional escalation after N minutes to a role (`lib/rules/engine.ts`, `lib/repo/rules.ts`, `rules` and `rule_runs` tables). The default rules ship in the database and an organisation can override one: the existing rules API lets an owner turn a rule on or off and change its cooldown, nothing more (`setTenantRuleOverride`), and a button on the day page runs the sweep on demand. Creating a rule, changing its conditions, action or escalation has no screen or API.
 
 **Why parked:** a free rule designer can create rules that spam or loop (a task rule that triggers another rule); the engine intentionally supports only a flat AND list of conditions, so the form must stay inside that; rules reach into other people's task lists and notifications, so who may edit them matters.
@@ -2642,6 +2646,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 ## F131. Keyboard-first desk order entry
 
 **What:** for the person entering phone orders at a desk, order entry works with the keyboard alone: type a product code or the first letters, press Enter, type the quantity, press Enter for the next line, and a single key to save or submit.
+
+**Library (2026-10-23):** AG Grid Community for spreadsheet-style entry; test right-to-left and Persian digits first.
 
 **Already in the app:** a desktop order form exists (`components/sales/OrderForm.tsx`, on `/sales/orders/new`) next to the phone tap flow (`OrderQuickEntry`). The shell has one global shortcut listener with a registry and a rule that it never fires while someone is typing in a field and never takes Enter, Escape or Tab, which belong to whatever has focus (`components/HotkeyProvider.tsx`, `lib/hotkeys.ts`). I found no Enter-to-add-line or code-first entry in the order form, so the keyboard flow depends on the mouse today.
 

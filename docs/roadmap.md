@@ -508,3 +508,14 @@ Versions and dates were read from the npm registry on that day. Nothing was inst
 | `p-queue` | Throttling of outside calls | Replaces the hand-written gate in `lib/resolveMapsLink.ts`; also useful for SMS and OSRM limits |
 
 For building and testing: `@testcontainers/postgresql` (a real Postgres with PostGIS per test run), `fast-check` (property tests for money, ledger and commission), `@faker-js/faker` with the Persian locale (the demo seeding fetches portraits from `randomuser.me` today), `@axe-core/playwright` (accessibility checks in CI). Only if the need appears: `jose` (signed one-time links, wallboard display keys), `ical-generator` (F87). Not needed: client-side search libraries (`pg_trgm` does it), `node-cron` and BullMQ (pg-boss), date libraries (`Intl` and `lib/jalali.ts`).
+
+**Rules, reports and screens (2026-10-23)**
+
+Versions and dates were read from the npm registry on that day. Nothing was installed or tested.
+
+| Library | Serves | Note |
+|---|---|---|
+| `react-querybuilder` (8.25.0) | F130 rule builder, F123 report builder | Builds a validated filter structure that is turned into parameterised SQL, which fits the rule "never raw SQL from the user" |
+| `json-logic-js` (2.0.5, last release July 2024) | F130 stored rule conditions | Option for storing conditions as JSON; check whether the query-builder format is enough before adding it |
+| AG Grid Community (36.2.0) | F131 keyboard-first desk order entry | Spreadsheet-style editing; check right-to-left and Persian digit behaviour first |
+| `web-vitals` (6.2.3), sent to the own server | real-user timings from phones on Iranian networks | Lab tests cannot show these |
