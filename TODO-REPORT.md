@@ -467,3 +467,19 @@ Full write-up: `docs/architecture-audit-2026-10-22.md`. Steps 1 to 3 are merged 
 1. Say which of the latest seven to record
 2. Check the outside services from the Iranian server
 3. Decide the Android distribution route before F6 starts
+
+## Sync same-millisecond tie (2026-10-23)
+
+### Done
+- [x] Sync pull watermark is capped at the millisecond before the pull started, so a delete (or row) stamped in the same millisecond as the last pull is asked for again instead of being hidden by the strict `>` filter
+- [x] The watermark now also counts tombstones, so a delete newer than every row is not re-sent on every pull
+- [x] Tests with a fixed clock: same-ms tombstone arrives, boundary row is re-sent once, watermark catches up once the clock passes, tombstone-only watermark; the new tests fail on the old code
+
+### Not done / gaps
+- [ ] The device ignores `tombstones` in the pull response (`lib/offline/syncEngine.ts` only upserts rows), so deletes still never reach the offline snapshot
+- [ ] A writer in another process with a long transaction could commit an older stamp after a pull read past it; one server process today, so not handled
+- [ ] Rows stamped with a time other than the server clock at commit (for example a device time) can fall behind any watermark; not audited
+
+### Next steps
+1. Merge this PR once CI is green
+2. Apply tombstones on the device (delete snapshot rows by entity type and id)
