@@ -169,6 +169,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 **What:** drivers' positions on the map in real time, and an automatic "your delivery arrives in about 15 minutes" message (SMS, Telegram or WhatsApp) to the customer.
 
+**Technology to consider (2026-10-23):** short links so an SMS stays within one message part; see `docs/roadmap.md`, section 10.
+
 **Technology to consider (2026-10-23):** a signed, expiring no-login tracking page with Altcha against abuse; see `docs/roadmap.md`, section 10.
 
 **Technology to consider (2026-10-23):** live updates for the Android shell (Capgo) so fixes reach phones without a store review; see `docs/roadmap.md`, section 10.
@@ -303,6 +305,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 ## F13. Offline-first everywhere
 
 **What:** extend the driver app's offline sync so sales, warehouse and payment flows also work without signal and reconcile cleanly when it returns.
+
+**Technology to consider (2026-10-23):** bad-network tests (Playwright throttling, Toxiproxy); see `docs/roadmap.md`, section 10.
 
 **Technology to consider (2026-10-23):** live updates for the Android shell (Capgo) so fixes reach phones without a store review; see `docs/roadmap.md`, section 10.
 
@@ -1612,6 +1616,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 **What:** when a run is delayed past a threshold, a templated message goes to the affected customers (reviewed by the dispatcher before sending, at least at first), with a new expected time.
 
+**Technology to consider (2026-10-23):** short links so an SMS stays within one message part; see `docs/roadmap.md`, section 10.
+
 **Technology to consider (2026-10-23):** a signed, expiring no-login tracking page with Altcha against abuse; see `docs/roadmap.md`, section 10.
 
 **Provider (2026-10-23):** SMS goes through Farazsms. Consent and opt-out are still needed; see `docs/roadmap.md`, section 10.
@@ -2147,6 +2153,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 **What:** reps can read their tasks and customer notes, add notes and log call outcomes with no signal, synced when the connection returns.
 
+**Technology to consider (2026-10-23):** bad-network tests (Playwright throttling, Toxiproxy); see `docs/roadmap.md`, section 10.
+
 **Technology to consider (2026-10-23):** local-first sync (Yjs or Automerge; PowerSync or Electric); see `docs/roadmap.md`, section 10.
 
 **Already in the app:** an offline layer exists (`lib/offline`: an IndexedDB store, an outbox, a sync engine, queue-if-offline, clock-skew handling and ids generated on the device). Offline it can queue draft orders (create, edit, submit), delivery start and complete, payment records, cheque records, complaint records and new-customer capture (`lib/repo/syncMutations.ts`). The pull sends the catalogue, and orders and customers for the user's scope. Tasks, notes (activities) and call outcomes are not in the pull or in the queued actions, and approvals (order approve, plan, freeze, credit decision) are explicitly refused offline. Note: this means F13 should record that the layer reaches beyond drivers.
@@ -2168,6 +2176,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 ## F106. Two-step login for owners and managers
 
 **What:** a one-time code (sent by SMS or Telegram, or from an authenticator app) required at sign-in for roles that can approve money and see everything, with trusted-device memory so it is asked rarely.
+
+**Technology to consider (2026-10-23):** short links so an SMS stays within one message part; see `docs/roadmap.md`, section 10.
 
 **Provider (2026-10-23):** SMS goes through Farazsms. Consent and opt-out are still needed; see `docs/roadmap.md`, section 10.
 
@@ -2317,6 +2327,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 **What:** press and hold the «+ ثبت» button (or the app icon on the home screen) and the role's most-used actions fan out as a pie or radial menu within thumb reach: new order, log a payment, new lead or note, complaint, today's run. One quick drag selects and opens the matching tap flow.
 
+**Technology to consider (2026-10-23):** real-phone tests (Maestro with a physical Android phone); see `docs/roadmap.md`, section 10.
+
 **Already in the app:** the phone has a «+ ثبت» button above the bottom bar (`components/mobile/QuickActions.tsx`). A tap opens a bottom sheet titled "what shall we record" listing the role's actions: reminder, note, new order, payment, complaint, filtered per role so nothing leads to a refusal (`quickActionsFor` in `lib/mobileNav.ts`). A reminder or note opens its flow in place; the others go to the page whose own flow opens on arrival (`?new=1` / `?quick=1`). The web app manifest sets the start page and standalone display but declares no shortcuts (`app/manifest.ts`), so long-pressing the installed app icon shows nothing.
 
 **Why parked:** the project's mobile rules say a gesture is never the only way: every gesture needs a visible button, targets are at least 44 px, and motion respects reduced-motion (`docs/mobile-first-principles.md`). So the radial menu must be an addition, with the existing sheet kept as the accessible path and a plain tap still opening it. Layout in a right-to-left screen, the thumb arc on large phones, and accidental activation while scrolling need testing on real devices. Home-screen shortcuts are static and can only open pages, not specific flows chosen per role.
@@ -2458,6 +2470,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 ## F120. Delivery confirmation code
 
 **What:** the customer receives a short code by message when their delivery is on the way and tells it to the driver at the door; entering it confirms delivery without needing a signature or a photo.
+
+**Technology to consider (2026-10-23):** short links so an SMS stays within one message part; see `docs/roadmap.md`, section 10.
 
 **Technology to consider (2026-10-23):** a signed, expiring no-login tracking page with Altcha against abuse; see `docs/roadmap.md`, section 10.
 
@@ -2608,6 +2622,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 ## F127. Tenant usage and plan limits
 
 **What:** for the platform owner, per-organisation counts (users, active customers, orders per month, photo storage, messages) against limits for each plan, with warnings before a limit is reached.
+
+**Technology to consider (2026-10-23):** load testing with k6; see `docs/roadmap.md`, section 10.
 
 **Technology to consider (2026-10-23):** per-company switches and usage numbers (Umami); see `docs/roadmap.md`, section 10.
 
