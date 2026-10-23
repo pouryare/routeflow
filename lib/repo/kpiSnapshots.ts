@@ -88,14 +88,9 @@ export async function upsertSnapshot(organizationId: number, w: SnapshotWrite): 
 /** Write several snapshots in one transaction — the sweep's unit of work. */
 export async function upsertSnapshots(organizationId: number, writes: SnapshotWrite[]): Promise<number> {
   const db = getDb();
-  await db.exec("BEGIN");
-  try {
+  await db.tx(async () => {
     for (const w of writes) await upsertSnapshot(organizationId, w);
-    await db.exec("COMMIT");
-  } catch (e) {
-    await db.exec("ROLLBACK");
-    throw e;
-  }
+  });
   return writes.length;
 }
 

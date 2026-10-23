@@ -263,15 +263,10 @@ export async function advanceOrder(
   };
 
   if (opts.db) return await apply();
-  await conn.exec("BEGIN IMMEDIATE");
-  try {
+  return await conn.tx(async () => {
     const to = await apply();
-    await conn.exec("COMMIT");
     return to;
-  } catch (e) {
-    await conn.exec("ROLLBACK");
-    throw e;
-  }
+  });
 }
 
 /** The order's transition history, oldest first, with the actor's display name. */

@@ -50,8 +50,7 @@ export async function updateDistrict(existing: District, patch: { coverage_statu
   sets.push("updated_at = ?");
   values.push(new Date().toISOString(), existing.id);
 
-  await db.exec("BEGIN");
-  try {
+  await db.tx(async () => {
     await db.prepare(`UPDATE districts SET ${sets.join(", ")} WHERE id = ?`).run(...(values as never[]));
     if (patch.coverage_status !== undefined && patch.coverage_status !== existing.coverage_status) {
       await logActivity(db, {
@@ -67,11 +66,7 @@ export async function updateDistrict(existing: District, patch: { coverage_statu
         changed_by: actor.name, changed_by_user_id: actor.id,
       });
     }
-    await db.exec("COMMIT");
-  } catch (e) {
-    await db.exec("ROLLBACK");
-    throw e;
-  }
+  });
 }
 
 /** Every id the caller cannot reach, checked before anything is written, so a request is whole or refused. */
@@ -98,8 +93,7 @@ export async function bulkUpdateDistricts(
   const db = getDb();
   const now = new Date().toISOString();
   let updated = 0;
-  await db.exec("BEGIN");
-  try {
+  await db.tx(async () => {
     const getStmt = db.prepare("SELECT * FROM districts WHERE id = ?");
     const sets: string[] = [];
     if (change.coverage_status !== undefined) sets.push("coverage_status = ?");
@@ -123,11 +117,7 @@ export async function bulkUpdateDistricts(
         });
       }
     }
-    await db.exec("COMMIT");
-  } catch (e) {
-    await db.exec("ROLLBACK");
-    throw e;
-  }
+  });
   return { updated, regrouped: change.group_id !== undefined ? await recomputeCustomerGroups(db, organizationId) : 0 };
 }
 

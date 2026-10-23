@@ -75,8 +75,7 @@ export async function recordPurchase(db: Db, input: PurchaseInput): Promise<numb
   }
 
   const now = new Date().toISOString();
-  await db.exec("BEGIN IMMEDIATE");
-  try {
+  return await db.tx(async () => {
     const purchaseId = Number(
       (await db
         .prepare(
@@ -186,13 +185,8 @@ export async function recordPurchase(db: Db, input: PurchaseInput): Promise<numb
         purchasedBy: input.created_by,
       });
     }
-
-    await db.exec("COMMIT");
     return purchaseId;
-  } catch (e) {
-    await db.exec("ROLLBACK");
-    throw e;
-  }
+  });
 }
 
 /** Units of one product currently on hand. */

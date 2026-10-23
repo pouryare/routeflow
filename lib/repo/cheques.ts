@@ -110,15 +110,10 @@ export async function recordChequePayment(
   input: RecordChequeInput
 ): Promise<{ cheque_id: number; payment_id: number }> {
   const db = chequesRepo.db();
-  await db.exec("BEGIN IMMEDIATE");
-  try {
+  return await db.tx(async () => {
     const out = await recordChequePaymentTxn(db, organizationId, input);
-    await db.exec("COMMIT");
     return out;
-  } catch (e) {
-    await db.exec("ROLLBACK");
-    throw e;
-  }
+  });
 }
 
 const STAMP: Partial<Record<ChequeStatus, "deposited_at" | "cleared_at" | "bounced_at">> = {
@@ -150,8 +145,7 @@ export async function advanceCheque(
   opts?: { replacement?: ReplacementInput }
 ): Promise<void> {
   const db = chequesRepo.db();
-  await db.exec("BEGIN IMMEDIATE");
-  try {
+  await db.tx(async () => {
     const cheque = await db
       .prepare("SELECT * FROM cheques WHERE id = ? AND organization_id = ?")
       .get(id, organizationId) as ChequeRow | undefined;
@@ -224,12 +218,7 @@ export async function advanceCheque(
         ? [to, now, replacementId, now, id, organizationId]
         : [to, now, replacementId, id, organizationId])
     );
-
-    await db.exec("COMMIT");
-  } catch (e) {
-    await db.exec("ROLLBACK");
-    throw e;
-  }
+  });
 }
 
 export async function listCheques(

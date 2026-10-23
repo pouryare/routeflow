@@ -152,8 +152,7 @@ export function initialFacts(lifecycle: string, deliveredOrders: number, at: str
 export async function backfillCrm(db: Db): Promise<void> {
   if (await db.prepare("SELECT value FROM app_meta WHERE key = 'crm_backfill_v1'").get()) return;
   const now = new Date().toISOString();
-  await db.exec("BEGIN IMMEDIATE");
-  try {
+  await db.tx(async () => {
     await db.exec(`
       UPDATE customers SET owner_user_id = (
         SELECT u.id FROM users u
@@ -191,11 +190,7 @@ export async function backfillCrm(db: Db): Promise<void> {
         s.last_activity_at, s.last_contacted_at, task?.id ?? null, c.id);
     }
     await db.prepare("INSERT OR REPLACE INTO app_meta (key, value) VALUES ('crm_backfill_v1', ?)").run(now);
-    await db.exec("COMMIT");
-  } catch (e) {
-    await db.exec("ROLLBACK");
-    throw e;
-  }
+  });
 }
 
 

@@ -181,8 +181,7 @@ export async function reconcileUnload(input: UnloadInput): Promise<void> {
     }
   }
 
-  await db.exec("BEGIN IMMEDIATE");
-  try {
+  await db.tx(async () => {
     const movements: MovementInput[] = [];
     for (const line of input.lines) {
       movements.push(
@@ -212,11 +211,7 @@ export async function reconcileUnload(input: UnloadInput): Promise<void> {
           SET status = 'done', done_at = ?, done_by = ?, notes = COALESCE(?, notes), updated_at = ?
         WHERE run_id = ? AND role = 'unload'`
     ).run(new Date().toISOString(), input.actorId, input.note ?? null, new Date().toISOString(), input.runId);
-    await db.exec("COMMIT");
-  } catch (e) {
-    await db.exec("ROLLBACK");
-    throw e;
-  }
+  });
 }
 
 /** What is on the van right now, per product -- the sheet's starting point. */

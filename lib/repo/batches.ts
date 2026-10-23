@@ -146,15 +146,10 @@ export async function createBatchTxn(
 
 export async function createBatch(organizationId: number, input: CreateBatchInput): Promise<number> {
   const db = batchesRepo.db();
-  await db.exec("BEGIN IMMEDIATE");
-  try {
+  return await db.tx(async () => {
     const id = await createBatchTxn(db, organizationId, input);
-    await db.exec("COMMIT");
     return id;
-  } catch (e) {
-    await db.exec("ROLLBACK");
-    throw e;
-  }
+  });
 }
 
 /** Move a batch's status, enforcing lib/batchStates. `expired` / `depleted` are computed
@@ -162,8 +157,7 @@ export async function createBatch(organizationId: number, input: CreateBatchInpu
  *  received the lot. One transaction. */
 export async function advanceBatchStatus(organizationId: number, id: number, to: BatchStatus): Promise<void> {
   const db = batchesRepo.db();
-  await db.exec("BEGIN IMMEDIATE");
-  try {
+  await db.tx(async () => {
     const batch = await batchesRepo.get(organizationId, id);
     if (!batch) throw new BatchError("سری ساخت پیدا نشد");
     if (to === "expired" || to === "depleted") {
@@ -201,16 +195,7 @@ export async function advanceBatchStatus(organizationId: number, id: number, to:
       const msg = `سری ساخت ${batch.batch_code} فراخوان شد — پیگیری کنید`;
       for (const c of customers) await ins.run(c.id, now.slice(0, 10), msg, now);
     }
-
-    await db.exec("COMMIT");
-  } catch (e) {
-    try {
-      await db.exec("ROLLBACK");
-    } catch {
-      // already committed / no open transaction
-    }
-    throw e;
-  }
+  });
 }
 
 /** Set `expired` on batches past their date and `depleted` on batches with no stock

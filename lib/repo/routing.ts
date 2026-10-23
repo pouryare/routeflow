@@ -435,8 +435,7 @@ export async function freezeRun(
     .get(runId, organizationId) as { id: number } | undefined;
   if (!run) throw new RoutingError("مسیر پیدا نشد");
 
-  await db.exec("BEGIN IMMEDIATE");
-  try {
+  await db.tx(async () => {
     await db.prepare(
       "UPDATE delivery_runs SET frozen_at = ?, status = 'ready', updated_at = ? WHERE id = ?"
     ).run(new Date().toISOString(), new Date().toISOString(), runId);
@@ -450,9 +449,5 @@ export async function freezeRun(
         /* order already past READY -- leave it */
       }
     }
-    await db.exec("COMMIT");
-  } catch (e) {
-    await db.exec("ROLLBACK");
-    throw e;
-  }
+  });
 }

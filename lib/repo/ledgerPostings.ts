@@ -261,15 +261,10 @@ export async function recordExpense(
   input: Parameters<typeof postExpense>[1]
 ): Promise<number> {
   const db = getDb();
-  await db.exec("BEGIN IMMEDIATE");
-  try {
+  return await db.tx(async () => {
     const id = await postExpense(db, input);
-    await db.exec("COMMIT");
     return id;
-  } catch (e) {
-    await db.exec("ROLLBACK");
-    throw e;
-  }
+  });
 }
 
 export async function receiptJournalIdFor(paymentId: number): Promise<number | undefined> {

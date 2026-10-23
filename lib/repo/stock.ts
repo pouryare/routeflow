@@ -112,15 +112,10 @@ export async function recordMovementsTxn(
 
 export async function recordMovement(organizationId: number, input: MovementInput): Promise<number> {
   const db = stockMovementsRepo.db();
-  await db.exec("BEGIN IMMEDIATE");
-  try {
+  return await db.tx(async () => {
     const [id] = await recordMovementsTxn(db, organizationId, [input]);
-    await db.exec("COMMIT");
     return id;
-  } catch (e) {
-    await db.exec("ROLLBACK");
-    throw e;
-  }
+  });
 }
 
 /** Net units on hand for any combination of product / batch / facility. May be
@@ -324,15 +319,10 @@ export async function reserveForOrder(
   };
 
   if (db) return await run();
-  await conn.exec("BEGIN IMMEDIATE");
-  try {
+  return await conn.tx(async () => {
     const n = await run();
-    await conn.exec("COMMIT");
     return n;
-  } catch (e) {
-    await conn.exec("ROLLBACK");
-    throw e;
-  }
+  });
 }
 
 /** Drop an order's claim on stock (cancel, or a failed delivery going back to PLANNED). */

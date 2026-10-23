@@ -121,15 +121,10 @@ export async function planDelivery(
   };
 
   if (opts.db) return await run();
-  await conn.exec("BEGIN IMMEDIATE");
-  try {
+  return await conn.tx(async () => {
     const id = await run();
-    await conn.exec("COMMIT");
     return id;
-  } catch (e) {
-    await conn.exec("ROLLBACK");
-    throw e;
-  }
+  });
 }
 
 /** The latest delivery row for a route stop, or null. */
@@ -196,15 +191,10 @@ export async function retryDelivery(
     return id;
   };
   if (db) return await run();
-  await conn.exec("BEGIN IMMEDIATE");
-  try {
+  return await conn.tx(async () => {
     const id = await run();
-    await conn.exec("COMMIT");
     return id;
-  } catch (e) {
-    await conn.exec("ROLLBACK");
-    throw e;
-  }
+  });
 }
 
 export interface DeliveryDetail extends DeliveryRow {

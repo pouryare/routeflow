@@ -83,17 +83,12 @@ export async function confirmEnrollment(userId: number, code: string): Promise<s
   const db = getDb();
   const codes = newRecoveryCodes();
   const now = new Date().toISOString();
-  await db.exec("BEGIN");
-  try {
+  await db.tx(async () => {
     await db.prepare("UPDATE users SET totp_enabled_at = ?, totp_last_step = ?, token_version = token_version + 1 WHERE id = ?").run(now, step, userId);
     await db.prepare("DELETE FROM user_recovery_codes WHERE user_id = ?").run(userId);
     const ins = db.prepare("INSERT INTO user_recovery_codes (user_id, code_hash, created_at) VALUES (?, ?, ?)");
     for (const c of codes) await ins.run(userId, recoveryHash(c), now);
-    await db.exec("COMMIT");
-  } catch (e) {
-    await db.exec("ROLLBACK");
-    throw e;
-  }
+  });
   return codes;
 }
 
@@ -121,14 +116,9 @@ export async function checkSecondFactor(userId: number, code: string): Promise<b
 export async function disableSecondFactor(userId: number, code: string): Promise<boolean> {
   if (!await checkSecondFactor(userId, code)) return false;
   const db = getDb();
-  await db.exec("BEGIN");
-  try {
+  await db.tx(async () => {
     await db.prepare("UPDATE users SET totp_secret = NULL, totp_enabled_at = NULL, totp_last_step = NULL, token_version = token_version + 1 WHERE id = ?").run(userId);
     await db.prepare("DELETE FROM user_recovery_codes WHERE user_id = ?").run(userId);
-    await db.exec("COMMIT");
-  } catch (e) {
-    await db.exec("ROLLBACK");
-    throw e;
-  }
+  });
   return true;
 }

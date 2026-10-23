@@ -366,15 +366,10 @@ export async function recordPaymentTxn(
  *  `recordPaymentTxn`. */
 export async function recordPayment(organizationId: number, input: RecordPaymentInput): Promise<number> {
   const db = paymentsRepo.db();
-  await db.exec("BEGIN IMMEDIATE");
-  try {
+  return await db.tx(async () => {
     const id = await recordPaymentTxn(db, organizationId, input);
-    await db.exec("COMMIT");
     return id;
-  } catch (e) {
-    await db.exec("ROLLBACK");
-    throw e;
-  }
+  });
 }
 
 /** Payments a caller may see, narrowed beyond the organisation.
@@ -452,8 +447,7 @@ export async function attachReceiptPhoto(
   const db = paymentsRepo.db();
   if (!await paymentsRepo.get(organizationId, paymentId)) throw new PaymentError("دریافت پیدا نشد");
   const now = new Date().toISOString();
-  await db.exec("BEGIN IMMEDIATE");
-  try {
+  await db.tx(async () => {
     await db.prepare(
       `INSERT INTO photos (entity_type, entity_id, file_stem, caption, taken_at, created_at)
        VALUES ('payment', ?, ?, ?, ?, ?)`
@@ -461,11 +455,7 @@ export async function attachReceiptPhoto(
     await db.prepare(
       "UPDATE payments SET receipt_photo_stem = ? WHERE id = ? AND organization_id = ?"
     ).run(fileStem, paymentId, organizationId);
-    await db.exec("COMMIT");
-  } catch (e) {
-    await db.exec("ROLLBACK");
-    throw e;
-  }
+  });
 }
 
 export async function allocationsOfPayment(
@@ -571,19 +561,14 @@ export async function replaceAllocations(
   }
 
   const now = new Date().toISOString();
-  await db.exec("BEGIN IMMEDIATE");
-  try {
+  await db.tx(async () => {
     await db.prepare("DELETE FROM payment_allocations WHERE payment_id = ?").run(paymentId);
     const ins = db.prepare(
       "INSERT INTO payment_allocations (payment_id, order_id, amount_toman, created_at) VALUES (?, ?, ?, ?)"
     );
     for (const a of kept) await ins.run(paymentId, a.order_id, a.amount_toman, now);
     for (const orderId of touched) await recomputeOrderPaymentTxn(db, organizationId, orderId);
-    await db.exec("COMMIT");
-  } catch (e) {
-    await db.exec("ROLLBACK");
-    throw e;
-  }
+  });
 }
 
 /** Void a payment: mark it, drop its allocations, and reset every order it had
@@ -595,14 +580,9 @@ export async function voidPayment(
   reason: string
 ): Promise<void> {
   const db = paymentsRepo.db();
-  await db.exec("BEGIN IMMEDIATE");
-  try {
+  await db.tx(async () => {
     await voidPaymentTxn(db, organizationId, id, voidedBy, reason);
-    await db.exec("COMMIT");
-  } catch (e) {
-    await db.exec("ROLLBACK");
-    throw e;
-  }
+  });
 }
 
 const ZERO_DEBT = (): CustomerDebt => ({

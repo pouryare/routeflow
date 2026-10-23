@@ -47,17 +47,12 @@ export async function addLocations(pins: NewPin[], groupId: number | null, organ
     ON CONFLICT(organization_id, maps_url) DO NOTHING
   `);
   let added = 0;
-  await db.exec("BEGIN");
-  try {
+  await db.tx(async () => {
     for (const p of pins) {
       const r = await insert.run(p.name, p.mapsUrl, p.address, p.lat, p.lng, p.resolution, groupId, now, now, organizationId);
       if (r.changes > 0) added++;
     }
-    await db.exec("COMMIT");
-  } catch (e) {
-    await db.exec("ROLLBACK");
-    throw e;
-  }
+  });
   return added;
 }
 

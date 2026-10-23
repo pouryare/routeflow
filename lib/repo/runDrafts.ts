@@ -124,8 +124,7 @@ export async function addOrderToDraft(input: {
   const db = getDb();
   await assertOwned(input.draftId, input.organizationId, input.userId);
 
-  await db.exec("BEGIN IMMEDIATE");
-  try {
+  await db.tx(async () => {
     await db.prepare("DELETE FROM run_draft_stops WHERE order_id = ? AND draft_id != ?").run(
       input.orderId,
       input.draftId
@@ -141,11 +140,7 @@ export async function addOrderToDraft(input: {
       `INSERT OR IGNORE INTO run_draft_stops (draft_id, order_id, seq, created_at) VALUES (?, ?, ?, ?)`
     ).run(input.draftId, input.orderId, next, iso());
     await touch(input.draftId);
-    await db.exec("COMMIT");
-  } catch (e) {
-    await db.exec("ROLLBACK");
-    throw e;
-  }
+  });
 }
 
 export async function removeOrderFromDraft(input: {
@@ -245,8 +240,7 @@ export interface CommitInput {
 
 export async function commitDraft(db: Db, input: CommitInput): Promise<number> {
   const now = new Date().toISOString();
-  await db.exec("BEGIN IMMEDIATE");
-  try {
+  return await db.tx(async () => {
     const runId = Number(
       (await db
         .prepare(
@@ -272,11 +266,6 @@ export async function commitDraft(db: Db, input: CommitInput): Promise<number> {
     await db.prepare(
       "DELETE FROM run_drafts WHERE id = ? AND organization_id = ? AND user_id = ?"
     ).run(input.draftId, input.organizationId, input.userId);
-
-    await db.exec("COMMIT");
     return runId;
-  } catch (e) {
-    await db.exec("ROLLBACK");
-    throw e;
-  }
+  });
 }

@@ -55,8 +55,7 @@ export async function refreshOrderFigures(db: Db, orderId: number): Promise<void
 export async function backfillOrderFigures(db: Db): Promise<number> {
   // The write lock is taken BEFORE the read: lines read first and written later could
   // overwrite a figure a concurrent writer refilled in between with a stale one.
-  await db.exec("BEGIN IMMEDIATE");
-  try {
+  return await db.tx(async () => {
     const rows = await db
       .prepare(
         `SELECT ol.order_id AS order_id, ${LINE_COLUMNS.split(", ").map((c) => `ol.${c}`).join(", ")}
@@ -82,10 +81,6 @@ export async function backfillOrderFigures(db: Db): Promise<number> {
     await db.exec(
       "UPDATE orders SET kg_total = COALESCE(kg_total, 0), total_toman = COALESCE(total_toman, 0), cost_toman = COALESCE(cost_toman, 0) WHERE kg_total IS NULL OR total_toman IS NULL OR cost_toman IS NULL"
     );
-    await db.exec("COMMIT");
     return byOrder.size;
-  } catch (e) {
-    await db.exec("ROLLBACK");
-    throw e;
-  }
+  });
 }

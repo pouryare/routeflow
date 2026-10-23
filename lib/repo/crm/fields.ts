@@ -114,8 +114,7 @@ export function parseBusinessFields(raw: unknown): Values {
 export async function updateBusinessFields(session: Session, id: number, raw: unknown): Promise<void> {
   const values = parseBusinessFields(raw);
   const db = getDb();
-  await db.exec("BEGIN IMMEDIATE");
-  try {
+  await db.tx(async () => {
     const b = await writableBusiness(session, id), org = b.organization_id;
     if (values.phone_norm && await db.prepare(`SELECT id FROM customers WHERE organization_id = ? AND id <> ? AND merged_into_id IS NULL
       AND (phone_norm = ? OR id IN (SELECT customer_id FROM contacts WHERE organization_id = ? AND active = 1 AND phone_norm = ?)) LIMIT 1`)
@@ -129,19 +128,16 @@ export async function updateBusinessFields(session: Session, id: number, raw: un
     await db.prepare(`UPDATE customers SET ${Object.keys(values).map(k => `${k} = ?`).join(",")} WHERE id = ? AND organization_id = ?`).run(...Object.values(values), id, org);
     if (claims) await recordOwnerChange(db, { organizationId: org, customerId: id, actorUserId: session.user.id, reason: "pool_claim", what: "owner", fromId: null, toId: session.user.id });
     await correction(session, id, org, "اطلاعات کسب‌وکار اصلاح شد");
-    await db.exec("COMMIT");
-  } catch (e) { await db.exec("ROLLBACK"); throw e; }
+  });
 }
 export async function verifyBusiness(session: Session, id: number): Promise<void> {
   const db = getDb();
-  await db.exec("BEGIN IMMEDIATE");
-  try {
+  await db.tx(async () => {
     const b = await writableBusiness(session, id);
     if (b.closed_at) throw new CrmError(400, "کسب‌وکار بسته شده است");
     if (b.verification !== "verified") {
       await correction(session, id, b.organization_id, "اطلاعات کسب‌وکار تأیید شد", true);
       await recomputeState(db, id);
     }
-    await db.exec("COMMIT");
-  } catch (e) { await db.exec("ROLLBACK"); throw e; }
+  });
 }

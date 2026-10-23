@@ -31,6 +31,9 @@ export interface Statement {
 export interface Db {
   prepare(sql: string): Statement;
   exec(sql: string): Promise<void>;
+  /** Runs `fn` in one transaction on this connection: every statement inside it, at any depth,
+   *  commits together or not at all. A throw rolls back and rethrows. */
+  tx<T>(fn: () => Promise<T>): Promise<T>;
   /** Closes the connection; the next statement opens it again. Tests use it between suites. */
   close(): Promise<void>;
 }
@@ -52,8 +55,12 @@ const txScope = new AsyncLocalStorage<number>();
 let openTx: OpenTx | null = null;
 let txSeq = 0;
 
-async function waitTurn(): Promise<void> {
+/** Runs `f` once boot is done and no other transaction is open. The last check and `f` run in
+ *  the same synchronous step, so nothing can open a transaction in between. */
+async function whenFree<T>(ready: () => Promise<void>, f: () => T): Promise<T> {
+  await ready();
   while (openTx && txScope.getStore() !== openTx.id) await openTx.done;
+  return f();
 }
 
 /** Runs `fn` in one transaction: every statement inside it, at any depth, commits together or
@@ -65,11 +72,11 @@ export async function tx<T>(
 ): Promise<T> {
   const current = txScope.getStore();
   if (current !== undefined && openTx?.id === current) return await fn();
-  await ready();
-  await waitTurn();
   let release!: () => void;
   const me: OpenTx = { id: ++txSeq, done: new Promise<void>((r) => (release = r)) };
-  openTx = me;
+  await whenFree(ready, () => {
+    openTx = me;
+  });
   const db = raw();
   try {
     db.exec("BEGIN IMMEDIATE");
@@ -102,28 +109,13 @@ export function sqliteDb(
       let compiled: StatementSync | null = null;
       const stmt = () => (compiled ??= raw().prepare(sql));
       return {
-        async get(...params) {
-          await ready();
-          await waitTurn();
-          return stmt().get(...params) as Row | undefined;
-        },
-        async all(...params) {
-          await ready();
-          await waitTurn();
-          return stmt().all(...params) as Row[];
-        },
-        async run(...params) {
-          await ready();
-          await waitTurn();
-          return stmt().run(...params);
-        },
+        get: (...params) => whenFree(ready, () => stmt().get(...params) as Row | undefined),
+        all: (...params) => whenFree(ready, () => stmt().all(...params) as Row[]),
+        run: (...params) => whenFree(ready, () => stmt().run(...params)),
       };
     },
-    async exec(sql: string) {
-      await ready();
-      await waitTurn();
-      raw().exec(sql);
-    },
+    exec: (sql: string) => whenFree(ready, () => raw().exec(sql)),
+    tx: (fn) => tx(raw, ready, fn),
     async close() {
       // Opens first if need be, as closing the old synchronous handle did: a caller that
       // closes right after getDb() expects the boot migrations to have run.

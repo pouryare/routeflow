@@ -85,8 +85,7 @@ export async function updateFacility(
   const db = getDb();
   const own = orgClause("organization_id", organizationId);
   const now = new Date().toISOString();
-  await db.exec("BEGIN");
-  try {
+  await db.tx(async () => {
     if (sets.length > 0) {
       await db.prepare(`UPDATE facilities SET ${[...sets, "updated_at = ?"].join(", ")} WHERE id = ?${own.sql}`).run(...values, now, id, ...own.params);
     }
@@ -97,11 +96,7 @@ export async function updateFacility(
       await db.prepare(`UPDATE facilities SET is_default_origin = 0, updated_at = ? WHERE is_default_origin = 1${mine.sql}`).run(now, ...mine.params);
       await db.prepare("UPDATE facilities SET is_default_origin = 1, updated_at = ? WHERE id = ?").run(now, id);
     }
-    await db.exec("COMMIT");
-  } catch (e) {
-    await db.exec("ROLLBACK");
-    throw e;
-  }
+  });
 }
 
 export type DeleteFacilityResult =
@@ -127,8 +122,7 @@ export async function deleteFacility(
 
   const now = new Date().toISOString();
   const mine = orgClause("organization_id", owning.organization_id);
-  await db.exec("BEGIN");
-  try {
+  await db.tx(async () => {
     await db.prepare("DELETE FROM facilities WHERE id = ?").run(id);
     if (owning.organization_id !== null) await tombstone(owning.organization_id, "facilities", id, db);
     if (row.is_default_origin === 1) {
@@ -137,10 +131,6 @@ export async function deleteFacility(
          WHERE id = (SELECT id FROM facilities WHERE 1 = 1${mine.sql} ORDER BY CASE kind WHEN 'home' THEN 0 ELSE 1 END, id LIMIT 1)`
       ).run(now, ...mine.params);
     }
-    await db.exec("COMMIT");
-  } catch (e) {
-    await db.exec("ROLLBACK");
-    throw e;
-  }
+  });
   return { ok: true, deleted: row };
 }

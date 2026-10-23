@@ -140,8 +140,7 @@ export async function recomputeCustomerGroups(db: Db, organizationId: number | n
   const update = db.prepare("UPDATE customers SET group_id = ? WHERE id = ?");
   let changed = 0;
 
-  await db.exec("BEGIN");
-  try {
+  await db.tx(async () => {
     for (const c of customers) {
       let next: number | null = null;
       if (c.lat !== null && c.lng !== null) {
@@ -168,11 +167,7 @@ export async function recomputeCustomerGroups(db: Db, organizationId: number | n
         changed++;
       }
     }
-    await db.exec("COMMIT");
-  } catch (e) {
-    await db.exec("ROLLBACK");
-    throw e;
-  }
+  });
 
   return changed;
 }

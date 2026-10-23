@@ -206,11 +206,10 @@ export async function applyFlowCore(
   if (st.values.new_phone && !newPhone) throw new CrmError(400, "شماره تلفن معتبر نیست");
   const events: EventInput[] = [];
   const base = { entity_type: "customer", entity_id: customerId, actor_user_id: session.user.id };
+  let activityId!: number; // set inside the transaction below
+  let nextTaskId!: number | null; // set inside the transaction below
 
-  await db.exec("BEGIN IMMEDIATE");
-  let activityId: number;
-  let nextTaskId: number | null;
-  try {
+  await db.tx(async () => {
     let owner = core.owner_user_id;
     if (opts.claim && owner === null && session.role === "phone_sales") {
       await db.prepare("UPDATE customers SET owner_user_id = ? WHERE id = ?").run(session.user.id, customerId);
@@ -255,11 +254,7 @@ export async function applyFlowCore(
     }
     if (after.sales_stage !== core.sales_stage) events.push({ ...base, kind: "stage.changed", metadata: { from: core.sales_stage, to: after.sales_stage } });
     if (after.temperature !== core.temperature) events.push({ ...base, kind: "temperature.changed", metadata: { from: core.temperature, to: after.temperature } });
-    await db.exec("COMMIT");
-  } catch (e) {
-    await db.exec("ROLLBACK");
-    throw e;
-  }
+  });
   await emitAll(org, events);
   return { customerId, activityId, nextTaskId, acc };
 }
@@ -322,11 +317,10 @@ export async function applyLeadVisit(
   const stars = acc.stars ?? {};
   const outcome = acc.outcome ?? null;
   const status = outcomeToStatus(outcome);
-
-  await db.exec("BEGIN IMMEDIATE");
-  let activityId: number;
+  let activityId!: number; // set inside the transaction below
   let nextTaskId: number | null = null;
-  try {
+
+  await db.tx(async () => {
     await db.prepare(`UPDATE saved_locations SET status = ?, visit_outcome = ?, rating_potential = ?, rating_volume = ?, rating_ease = ?, updated_at = ?
                  WHERE id = ? AND organization_id = ?`)
       .run(status, outcome, stars.potential ?? null, stars.volume ?? null, stars.ease ?? null, at, input.locationId, org);
@@ -365,12 +359,7 @@ export async function applyLeadVisit(
         created_by: session.user.id,
       });
     }
-
-    await db.exec("COMMIT");
-  } catch (e) {
-    await db.exec("ROLLBACK");
-    throw e;
-  }
+  });
   return { activityId, nextTaskId, acc };
 }
 
@@ -453,11 +442,10 @@ export async function createLead(session: Session, input: { answers: FlowAnswer[
   const businessType = acc.business_type ?? "OTHER";
   const verification: Verification = acc.verification ?? "unverified";
   const events: EventInput[] = [];
+  let id!: number; // set inside the transaction below
+  let nextTaskId!: number | null; // set inside the transaction below
 
-  await db.exec("BEGIN IMMEDIATE");
-  let id: number;
-  let nextTaskId: number | null;
-  try {
+  await db.tx(async () => {
     const code = `CRM-${at.slice(0, 10).replace(/-/g, "")}-${Math.random().toString(36).slice(2, 8)}`;
     id = Number((await db.prepare(`INSERT INTO customers
         (customer_code, business_name, phone, phone_norm, instagram, address, area_label, lat, lng, location_precision, district_id, maps_url,
@@ -477,11 +465,7 @@ export async function createLead(session: Session, input: { answers: FlowAnswer[
     await recomputeState(db, id);
     events.push({ kind: "lead.created", entity_type: "customer", entity_id: id, actor_user_id: session.user.id, metadata: { source: acc.source ?? null } });
     if (verification === "verified") events.push({ kind: "lead.verified", entity_type: "customer", entity_id: id, actor_user_id: session.user.id });
-    await db.exec("COMMIT");
-  } catch (e) {
-    await db.exec("ROLLBACK");
-    throw e;
-  }
+  });
   await emitAll(org, events);
   return { id, nextTaskId, acc };
 }
@@ -492,16 +476,11 @@ export async function claimBusiness(session: Session, id: number): Promise<void>
   if (!core || !canSeeBusiness(session, core)) throw new CrmError(404, "کسب‌وکار پیدا نشد");
   if (session.role !== "phone_sales" || core.owner_user_id !== null) throw new CrmError(409, "این کسب‌وکار صاحب دارد");
   const at = new Date().toISOString();
-  await db.exec("BEGIN IMMEDIATE");
-  try {
+  await db.tx(async () => {
     await db.prepare("UPDATE customers SET owner_user_id = ? WHERE id = ? AND owner_user_id IS NULL").run(session.user.id, id);
     await recordOwnerChange(db, { organizationId: core.organization_id, customerId: id, actorUserId: session.user.id, reason: "pool_claim", what: "owner", fromId: null, toId: session.user.id, at });
     if (core.next_task_id) await db.prepare("UPDATE tasks SET assignee_user_id = ? WHERE id = ? AND status = 'open' AND assignee_user_id IS NULL").run(session.user.id, core.next_task_id);
-    await db.exec("COMMIT");
-  } catch (e) {
-    await db.exec("ROLLBACK");
-    throw e;
-  }
+  });
   await emitEvent(core.organization_id, { kind: "lead.claimed", entity_type: "customer", entity_id: id, actor_user_id: session.user.id });
 }
 

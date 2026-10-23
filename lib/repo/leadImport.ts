@@ -117,16 +117,11 @@ export async function addItems(
     `INSERT INTO lead_import_items (organization_id, job_id, ordinal, name, maps_url)
      VALUES (?, ?, ?, ?, ?)`
   );
-  await conn.exec("BEGIN");
-  try {
+  await conn.tx(async () => {
     for (const [i, it] of items.entries()) {
       await stmt.run(organizationId, jobId, i, it.name ?? "", it.mapsUrl);
     }
-    await conn.exec("COMMIT");
-  } catch (e) {
-    await conn.exec("ROLLBACK");
-    throw e;
-  }
+  });
 }
 
 export async function listItems(organizationId: number, jobId: number): Promise<ImportItemRow[]> {
@@ -370,8 +365,7 @@ export async function undoJob(organizationId: number, jobId: number): Promise<nu
   const unlink = conn.prepare(
     `UPDATE lead_import_items SET saved_location_id = NULL WHERE job_id = ? AND organization_id = ?`
   );
-  await conn.exec("BEGIN");
-  try {
+  await conn.tx(async () => {
     // Unlink before deleting, not after: saved_location_id is a foreign key, so
     // removing the location row first leaves the item pointing at nothing and the
     // delete fails on the constraint.
@@ -379,10 +373,6 @@ export async function undoJob(organizationId: number, jobId: number): Promise<nu
     for (const v of victims) {
       if ((await del.run(v.id, organizationId)).changes > 0) await tombstone(organizationId, "saved_locations", v.id, conn);
     }
-    await conn.exec("COMMIT");
-  } catch (e) {
-    await conn.exec("ROLLBACK");
-    throw e;
-  }
+  });
   return victims.length;
 }

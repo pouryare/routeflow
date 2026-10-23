@@ -298,8 +298,7 @@ export async function commitDaySplit(
 ): Promise<CommitResult> {
   const result: CommitResult = { createdRuns: 0, addedStops: 0, refused: [] };
 
-  await db.exec("BEGIN IMMEDIATE");
-  try {
+  await db.tx(async () => {
     for (const lane of lanes) {
       let runId = lane.runId;
 
@@ -333,11 +332,7 @@ export async function commitDaySplit(
         }
       }
     }
-    await db.exec("COMMIT");
-  } catch (e) {
-    await db.exec("ROLLBACK");
-    throw e;
-  }
+  });
 
   return result;
 }

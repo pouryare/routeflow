@@ -58,18 +58,13 @@ export async function groupMemberCount(id: number): Promise<number> {
 export async function deleteGroup(id: number, organizationId: number | null): Promise<number> {
   const db = getDb();
   const own = orgClause("organization_id", organizationId);
-  await db.exec("BEGIN");
-  try {
+  await db.tx(async () => {
     await db.prepare("UPDATE districts SET group_id = NULL WHERE group_id = ?").run(id);
     await db.prepare("UPDATE saved_locations SET group_id = NULL WHERE group_id = ?").run(id);
     await db.prepare("UPDATE lead_lists SET group_id = NULL WHERE group_id = ?").run(id);
     await db.prepare("UPDATE facilities SET group_id = NULL WHERE group_id = ?").run(id);
     await db.prepare(`DELETE FROM groups WHERE id = ?${own.sql}`).run(id, ...own.params);
-    await db.exec("COMMIT");
-  } catch (e) {
-    await db.exec("ROLLBACK");
-    throw e;
-  }
+  });
   // Its customers are now in nobody's territory; the cache has to say so.
   return await recomputeCustomerGroups(db, organizationId);
 }

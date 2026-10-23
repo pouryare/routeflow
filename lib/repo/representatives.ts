@@ -81,8 +81,7 @@ export async function createRepresentative(
 ): Promise<number> {
   const db = repsRepo.db();
   const now = new Date().toISOString();
-  await db.exec("BEGIN");
-  try {
+  return await db.tx(async () => {
     const repId = Number(
       (await db
         .prepare(
@@ -98,12 +97,8 @@ export async function createRepresentative(
        VALUES (?, ?, ?, ?, ?)`
     );
     for (const s of ONBOARDING_STEPS) await step.run(repId, s.step_code, s.label_fa, s.required ? 1 : 0, s.sort_order);
-    await db.exec("COMMIT");
     return repId;
-  } catch (e) {
-    await db.exec("ROLLBACK");
-    throw e;
-  }
+  });
 }
 
 export async function listOnboarding(organizationId: number, repId: number): Promise<OnboardingStepRow[]> {

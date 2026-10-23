@@ -155,8 +155,7 @@ export async function savePlan(input: {
   if (problem) throw new Error(problem);
   const validFrom = input.valid_from.slice(0, 10);
 
-  await db.exec("BEGIN");
-  try {
+  await db.tx(async () => {
     await db.prepare(
       `DELETE FROM commission_tiers
         WHERE organization_id = ? AND salesperson_user_id IS ? AND valid_from = ?`,
@@ -183,11 +182,7 @@ export async function savePlan(input: {
         new Date().toISOString(),
       );
     }
-    await db.exec("COMMIT");
-  } catch (e) {
-    await db.exec("ROLLBACK");
-    throw e;
-  }
+  });
 }
 
 /** Remove one person's plan from a given start date — an override removal, mirroring

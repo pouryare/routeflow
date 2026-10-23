@@ -30,23 +30,21 @@ export async function applyIntel(session: Session, id: number, raw: unknown): Pr
   const db = getDb(), at = new Date().toISOString();
   return await save();
   async function save() {
-    await db.exec("BEGIN IMMEDIATE");
-    try {
+    return await db.tx(async () => {
       const b = await writableBusiness(session, id);
       if (uuid) {
         const prior = await db.prepare("SELECT id,customer_id,type FROM activities WHERE organization_id=? AND client_uuid=?").get(b.organization_id, uuid as string) as { id: number; customer_id: number; type: string } | undefined;
         if (prior) {
           if (prior.customer_id !== id || prior.type !== "note") throw new CrmError(409, "شناسهٔ درخواست تکراری است");
-          await db.exec("COMMIT"); return { activityId: prior.id };
+          return { activityId: prior.id };
         }
       }
       await db.prepare(`UPDATE customers SET size_band=COALESCE(?,size_band), supply_channel=COALESCE(?,supply_channel), visit_window=COALESCE(?,visit_window), visit_note=COALESCE(?,visit_note), uses_products_json=COALESCE(?,uses_products_json) WHERE id=? AND organization_id=?`)
         .run(known(st.acc.size_band), known(st.acc.supply_channel), known(st.acc.visit_window), note, uses.length ? JSON.stringify(uses) : null, id, b.organization_id);
       const activityId = Number((await db.prepare("INSERT INTO activities (organization_id,customer_id,user_id,type,note,answers_json,client_uuid,occurred_at,created_at) VALUES (?,?,?,'note',?,?,?,?,?)")
         .run(b.organization_id,id,session.user.id,"شناخت پیش از بازدید",JSON.stringify({ answers: input.answers }),uuid as string | null,at,at)).lastInsertRowid);
-      await db.prepare("UPDATE customers SET last_activity_at=? WHERE id=?").run(at,id);
-      await db.exec("COMMIT"); return { activityId };
-    } catch (e) { await db.exec("ROLLBACK"); throw e; }
+      await db.prepare("UPDATE customers SET last_activity_at=? WHERE id=?").run(at,id); return { activityId };
+    });
   }
 }
 
@@ -55,11 +53,9 @@ export async function updateTags(session: Session, id: number, raw: unknown): Pr
   if (!Array.isArray(raw) || raw.length > 20 || raw.some(t => typeof t !== "string" || !t.trim() || t.length > 50)) throw new CrmError(400,"برچسب نامعتبر است");
   const tags = [...new Set((raw as string[]).map(t => normalisePersian(t).trim()))];
   const db = getDb();
-  await db.exec("BEGIN IMMEDIATE");
-  try {
+  await db.tx(async () => {
     await db.prepare("DELETE FROM customer_tags WHERE customer_id=? AND organization_id=?").run(id,b.organization_id);
     const insert = db.prepare("INSERT INTO customer_tags (organization_id,customer_id,tag,created_at) VALUES (?,?,?,?)");
     for (const tag of tags) await insert.run(b.organization_id,id,tag,new Date().toISOString());
-    await db.exec("COMMIT");
-  } catch (e) { await db.exec("ROLLBACK"); throw e; }
+  });
 }

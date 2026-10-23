@@ -261,8 +261,7 @@ export async function createOrder(
   // IMMEDIATE rather than a deferred BEGIN: the transaction reads the highest order
   // number and then writes it back, and a deferred transaction would let two writers
   // both read the same maximum before either takes the lock.
-  await db.exec("BEGIN IMMEDIATE");
-  try {
+  return await db.tx(async () => {
     const orderNo = await nextOrderNo(db, input.order_date, input.organization_id);
     const now = new Date().toISOString();
 
@@ -309,13 +308,8 @@ export async function createOrder(
       action: "create",
       actor_user_id: input.created_by,
     });
-
-    await db.exec("COMMIT");
     return { id: orderId, order_no: orderNo };
-  } catch (e) {
-    await db.exec("ROLLBACK");
-    throw e;
-  }
+  });
 }
 
 async function insertLine(

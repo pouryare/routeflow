@@ -14,15 +14,10 @@ export async function accountIdByCode(code: string): Promise<number | undefined>
  *  recordPayment / recordPaymentTxn convention already in lib/repo/payments.ts. */
 export async function postJournalIn(input: PostInput): Promise<number> {
   const db = getDb();
-  await db.exec("BEGIN IMMEDIATE");
-  try {
+  return await db.tx(async () => {
     const id = await postJournal(db, input);
-    await db.exec("COMMIT");
     return id;
-  } catch (e) {
-    await db.exec("ROLLBACK");
-    throw e;
-  }
+  });
 }
 
 export interface TrialBalanceRow {

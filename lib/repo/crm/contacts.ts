@@ -57,18 +57,6 @@ export async function syncPrimaryMirror(db: Db, customerId: number): Promise<voi
   }
 }
 
-async function inTx<T>(db: Db, fn: () => T): Promise<T> {
-  await db.exec("BEGIN IMMEDIATE");
-  try {
-    const r = fn();
-    await db.exec("COMMIT");
-    return r;
-  } catch (e) {
-    await db.exec("ROLLBACK");
-    throw e;
-  }
-}
-
 export async function addContact(session: Session, customerId: number, input: ContactInput): Promise<{ id: number }> {
   validateInput(input);
   if (input.active === false) throw new CrmError(400, "مخاطب تازه باید فعال باشد");
@@ -79,7 +67,7 @@ export async function addContact(session: Session, customerId: number, input: Co
   if (input.whatsapp && !wa) throw new CrmError(400, "شمارهٔ واتس‌اپ معتبر نیست");
   const db = getDb();
   const now = new Date().toISOString();
-  return await inTx(db, async () => {
+  return await db.tx(async () => {
     const id = Number((await db.prepare(`INSERT INTO contacts (organization_id, customer_id, name, role, phone, phone_norm, whatsapp, is_primary, is_decider,
                                     best_time, note, created_by, created_at, updated_at)
                                   VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?)`)
@@ -119,7 +107,7 @@ export async function updateContact(session: Session, contactId: number, input: 
   if (input.active === true) set("active", 1);
   if (input.is_primary === false) set("is_primary", 0);
   set("updated_at", new Date().toISOString());
-  await inTx(db, async () => {
+  await db.tx(async () => {
     const current = await db.prepare("SELECT active FROM contacts WHERE id = ? AND customer_id = ?").get(contactId, customerId) as { active: number } | undefined;
     if (!current) throw new CrmError(404, "مخاطب پیدا نشد");
     if (input.is_primary && (input.active === false || (!current.active && input.active !== true))) {

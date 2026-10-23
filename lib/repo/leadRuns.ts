@@ -379,23 +379,17 @@ export async function createOrReuseLeadRun(
      * still describe the same driver's day -- while its stops are swapped wholesale and it
      * reopens as planned. setRunStops deletes and re-inserts, which is the same write the
      * fresh-insert path uses, so both routes write identically. */
-    await conn.exec("BEGIN IMMEDIATE");
-    try {
+    await conn.tx(async () => {
       await conn
         .prepare(`UPDATE delivery_runs SET status = 'planned', started_at = NULL, finished_at = NULL,
                                     notes = ?, updated_at = ?, kind = 'mixed' WHERE id = ?`)
         .run(input.notes ?? null, now, existing.id);
       await setRunStops(conn, session.organizationId, existing.id, input.location_ids, now);
-      await conn.exec("COMMIT");
-    } catch (e) {
-      await conn.exec("ROLLBACK");
-      throw e;
-    }
+    });
     return { run: (await readLeadRun(conn, existing.id, session.organizationId))!, reused: true };
   }
 
-  await conn.exec("BEGIN IMMEDIATE");
-  try {
+  return await conn.tx(async () => {
     const runId = Number(
       (await conn
         .prepare(`INSERT INTO delivery_runs (driver_user_id, group_id, run_date, status, notes, created_by, organization_id, created_at, updated_at, kind)
@@ -404,12 +398,8 @@ export async function createOrReuseLeadRun(
              session.organizationId, now, now)).lastInsertRowid
     );
     await setRunStops(conn, session.organizationId, runId, input.location_ids, now);
-    await conn.exec("COMMIT");
     return { run: (await readLeadRun(conn, runId, session.organizationId))!, reused: false };
-  } catch (e) {
-    await conn.exec("ROLLBACK");
-    throw e;
-  }
+  });
 }
 
 /** Reassign a driver or a date, reorder, or move the status along. */
@@ -438,16 +428,11 @@ export async function updateLeadRun(
     .get(driverId, runDate, session.organizationId, id) as { id: number } | undefined;
   if (clash) throw new LeadRunError(409, "برای این راننده در این تاریخ مسیر دیگری وجود دارد");
 
-  await conn.exec("BEGIN IMMEDIATE");
-  try {
+  await conn.tx(async () => {
     await conn
       .prepare("UPDATE delivery_runs SET driver_user_id = ?, group_id = ?, run_date = ?, status = ?, notes = ?, updated_at = ?, kind = 'mixed' WHERE id = ?")
       .run(driverId, driver.group_id, runDate, status, patch.notes === undefined ? current.notes : patch.notes, now, id);
     if (patch.location_ids) await setRunStops(conn, session.organizationId, id, patch.location_ids, now);
-    await conn.exec("COMMIT");
-  } catch (e) {
-    await conn.exec("ROLLBACK");
-    throw e;
-  }
+  });
   return (await readLeadRun(conn, id, session.organizationId))!;
 }

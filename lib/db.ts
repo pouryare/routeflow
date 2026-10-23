@@ -4,7 +4,7 @@ import fs from "node:fs";
 import { instrumentSlowSql, slowSqlThresholdMs } from "./slowSql";
 import { createBaseSchema } from "./database/schema";
 import { runMigrations } from "./database/migrate";
-import { sqliteDb, tx as runTx, type Db } from "./database/client";
+import { sqliteDb, type Db } from "./database/client";
 
 // Re-exported so server modules that already import from db.ts keep one import site. The code
 // itself lives in lib/database/: types, seeds, backfills, rebuilds, the base schema and the
@@ -46,8 +46,8 @@ export function getDb(): Db {
 }
 
 /** Runs `fn` in one transaction; see lib/database/client.ts. */
-export async function tx<T>(fn: () => Promise<T>): Promise<T> {
-  return await runTx(openSqlite, dbReady, fn);
+export function tx<T>(fn: () => Promise<T>): Promise<T> {
+  return getDb().tx(fn);
 }
 
 /** Resolves once the schema and the boot migrations have run. getDb() and tx() wait for it on
@@ -152,19 +152,14 @@ export async function readLeadLists(
  */
 export async function setLeadListItems(db: Db, listId: number, locationIds: number[]): Promise<void> {
   const now = new Date().toISOString();
-  await db.exec("BEGIN");
-  try {
+  await db.tx(async () => {
     await db.prepare("DELETE FROM lead_list_items WHERE list_id = ?").run(listId);
     const insert = db.prepare(
       "INSERT INTO lead_list_items (list_id, location_id, sort_order, created_at) VALUES (?, ?, ?, ?)"
     );
     for (const [i, locationId] of locationIds.entries()) await insert.run(listId, locationId, i, now);
     await db.prepare("UPDATE lead_lists SET updated_at = ? WHERE id = ?").run(now, listId);
-    await db.exec("COMMIT");
-  } catch (e) {
-    await db.exec("ROLLBACK");
-    throw e;
-  }
+  });
 }
 
 export async function logActivity(

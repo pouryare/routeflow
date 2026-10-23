@@ -750,8 +750,7 @@ export async function recordDelivery(db: Db, stopId: number, input: DeliveryInpu
   }
 
   const now = new Date().toISOString();
-  await db.exec("BEGIN IMMEDIATE");
-  try {
+  await db.tx(async () => {
     const setLine = db.prepare("UPDATE order_lines SET packs_delivered = ? WHERE id = ?");
     for (const line of input.lines) await setLine.run(line.packs_delivered, line.line_id);
     await refreshOrderFigures(db, stop.order_id);
@@ -810,12 +809,7 @@ export async function recordDelivery(db: Db, stopId: number, input: DeliveryInpu
     }
 
     await closeRunIfFinished(db, stop.run_id, now);
-
-    await db.exec("COMMIT");
-  } catch (e) {
-    await db.exec("ROLLBACK");
-    throw e;
-  }
+  });
 }
 
 /** The last stop of the day CLOSES the run — and records how long it took.

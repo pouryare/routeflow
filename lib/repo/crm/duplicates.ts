@@ -131,8 +131,7 @@ export async function mergeBusinesses(session: Session, keepId: number, dropId: 
   const drop = await get(dropId);
   if (!keep || !drop || !canSeeBusiness(session, keep) || !canSeeBusiness(session, drop)) throw new DuplicateError("پرونده پیدا نشد");
 
-  await db.exec("BEGIN IMMEDIATE");
-  try {
+  await db.tx(async () => {
     const rep = await db.prepare("SELECT COUNT(*) AS n FROM representative_profiles WHERE customer_id IN (?, ?)").get(keepId, dropId) as { n: number };
     if (rep.n > 1) throw new DuplicateError("هر دو پرونده نماینده هستند و ادغام نمی‌شوند");
     if (await ledgerLines(dropId) > 0) throw new DuplicateError("دفتر حسابداری این پرونده سند دارد؛ پروندهٔ دیگر را نگه دارید");
@@ -175,9 +174,5 @@ export async function mergeBusinesses(session: Session, keepId: number, dropId: 
       changed_by: session.user.display_name,
       changed_by_user_id: session.user.id,
     });
-    await db.exec("COMMIT");
-  } catch (e) {
-    await db.exec("ROLLBACK");
-    throw e;
-  }
+  });
 }
