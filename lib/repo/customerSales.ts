@@ -1,32 +1,26 @@
-/** The legacy `sales` import table: purchase rows keyed by customer name, with no organisation of
- *  their own (they predate multi-tenancy). Two companies can have a customer of the same name, so
- *  a name match alone would hand one company the other's history. The rows are therefore served only
- *  to the company that existed when they were imported: the earliest organisation. */
+/** The legacy `sales` import table: purchase rows keyed by customer name. They now carry the company they
+ *  belong to (organization_id, stamped to the original company when the column was added), so a same-named
+ *  customer in another company no longer shares history. */
 
 import { getDb } from "@/lib/db";
-
-function ownsLegacySales(organizationId: number | null): boolean {
-  if (organizationId === null) return true; // platform owner viewing every company
-  const first = getDb().prepare("SELECT MIN(id) AS id FROM organizations").get() as { id: number | null };
-  return first.id === organizationId;
-}
+import { orgClause } from "@/lib/orgScope";
 
 export function customerPurchaseHistory(customerName: string, organizationId: number | null) {
-  if (!ownsLegacySales(organizationId)) return { orders: [], topProducts: [] };
   const db = getDb();
+  const org = orgClause("organization_id", organizationId);
   const orders = db
     .prepare(
       `SELECT order_no, sale_date, product_name, qty, amount, payment_status, shipping_status
-       FROM sales WHERE customer_name = ? ORDER BY sale_date DESC, id DESC LIMIT 50`
+       FROM sales WHERE customer_name = ?${org.sql} ORDER BY sale_date DESC, id DESC LIMIT 50`
     )
-    .all(customerName);
+    .all(customerName, ...org.params);
   const topProducts = db
     .prepare(
       `SELECT product_name, SUM(amount) as total_amount, COUNT(*) as line_count
-       FROM sales WHERE customer_name = ? AND product_name IS NOT NULL
+       FROM sales WHERE customer_name = ? AND product_name IS NOT NULL${org.sql}
        GROUP BY product_name ORDER BY total_amount DESC LIMIT 5`
     )
-    .all(customerName);
+    .all(customerName, ...org.params);
   return { orders, topProducts };
 }
 

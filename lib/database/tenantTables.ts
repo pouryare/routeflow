@@ -86,5 +86,9 @@ export const TENANT_TABLES = [
   "expense_receipts",
   "crm_not_duplicates",
   "ledger_entries",
+  /* The legacy purchase-history import. It predates tenancy and used to be matched to customers by business
+     name alone, so two companies with a same-named customer saw each other's history. Existing rows are
+     stamped to the original company by the sweep. */
+  "sales",
   "suppliers",
 ] as const satisfies readonly string[];

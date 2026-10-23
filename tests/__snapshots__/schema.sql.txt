@@ -551,7 +551,7 @@ CREATE TABLE run_facility_stops ( id INTEGER PRIMARY KEY AUTOINCREMENT, run_id I
 CREATE TABLE run_unload_lines ( id INTEGER PRIMARY KEY AUTOINCREMENT, run_id INTEGER NOT NULL REFERENCES delivery_runs(id) ON DELETE CASCADE, product_id INTEGER NOT NULL REFERENCES products(id), disposition TEXT NOT NULL CHECK (disposition IN ('returned', 'damaged', 'expired', 'discarded', 'lost', 'sample')), qty_base INTEGER NOT NULL, note TEXT, occurred_at TEXT NOT NULL, created_by INTEGER REFERENCES users(id), created_at TEXT NOT NULL );
 
 -- table sales
-CREATE TABLE sales ( id INTEGER PRIMARY KEY AUTOINCREMENT, order_no TEXT, sale_date TEXT NOT NULL, customer_name TEXT NOT NULL, product_name TEXT, qty REAL, amount REAL NOT NULL DEFAULT 0, payment_status TEXT, shipping_status TEXT, imported_at TEXT NOT NULL );
+CREATE TABLE sales ( id INTEGER PRIMARY KEY AUTOINCREMENT, order_no TEXT, sale_date TEXT NOT NULL, customer_name TEXT NOT NULL, product_name TEXT, qty REAL, amount REAL NOT NULL DEFAULT 0, payment_status TEXT, shipping_status TEXT, imported_at TEXT NOT NULL , organization_id INTEGER REFERENCES organizations(id));
 
 -- table saved_locations
 CREATE TABLE "saved_locations" ( id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, maps_url TEXT NOT NULL, address TEXT, lat REAL, lng REAL, resolution TEXT NOT NULL DEFAULT 'unresolved' CHECK (resolution IN ('direct', 'pluscode', 'browser', 'nominatim', 'manual', 'unresolved')), notes TEXT, created_at TEXT NOT NULL, status TEXT, updated_at TEXT, rating_potential INTEGER, rating_volume INTEGER, rating_ease INTEGER, group_id INTEGER REFERENCES groups(id), organization_id INTEGER REFERENCES organizations(id), visit_outcome TEXT, UNIQUE (organization_id, maps_url) );

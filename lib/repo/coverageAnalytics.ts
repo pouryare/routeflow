@@ -21,7 +21,9 @@ import { getDb, type Customer, type District, type CoverageStatus } from "@/lib/
 import { daysSinceLastPurchase } from "@/lib/types";
 import { readFacilities, pickOrigin } from "@/lib/facilities";
 import { distanceKm } from "@/lib/geo";
-import { groupFilter, groupFilterWithShared, scopeGroupIds, type Session } from "@/lib/session";
+import { groupFilter, groupFilterWithShared, orgScopeId, type Session } from "@/lib/session";
+import { orgClause } from "@/lib/orgScope";
+import { isOwner } from "@/lib/roles";
 import type { CostToServeRow, MatchQuality } from "@/components/CostToServePanel";
 
 export type DayLogRow = {
@@ -105,39 +107,29 @@ export function coverageAnalytics(
   const facilities = readFacilities(db, groupFilterWithShared(session));
   const dispatchSite = pickOrigin(facilities);
 
-  /* `match` exists to count sales rows matching no customer at all — and a join drops
-     the very rows it is there to measure, so counting them needs the UNSCOPED table.
-
-     Only a platform_owner gets that read, and this is narrower than it looks. The comment
-     on the original /analytics page said "an owner reads the unscoped table on purpose",
-     and that was true when written — `scopeGroupIds` returned "all" for an owner. It has
-     not since tenancy landed: an owner now gets their organisation's group ids, so they
-     fall into the joined branch and `unmatchedRows` reads 0 for every real user. The
-     figure has been quietly dead rather than wrong.
-
-     It is left that way deliberately. `sales` predates tenancy and has NO organization_id
-     — the join to `customers` is the only tenancy the table has — so widening this read
-     for an owner would hand them another organisation's sales rows. Fixing it properly
-     means migrating `sales` to carry an org, which is a schema decision, not something to
-     slip into a page merge. What changed is that the panel now SAYS it cannot measure
-     this (`measurable: false`) instead of showing a confident zero. */
-  const canCountUnmatched = scopeGroupIds(session) === "all";
+  /* `match` counts sales rows that match no customer at all: a join drops the very rows it is there to
+     measure, so counting them needs the table itself. `sales` now carries organization_id, so an owner
+     (or the founder, for the company in view) reads their own company's rows; a manager keeps the join,
+     which is scoped to their groups. */
+  const org = orgClause("organization_id", orgScopeId(session));
+  const orgJoin = orgClause("s.organization_id", orgScopeId(session));
+  const canCountUnmatched = isOwner(session.role);
   const salesScope = groupFilter(session, "c.group_id");
   const salesByName = (
     canCountUnmatched
       ? db
           .prepare(
-            "SELECT customer_name, SUM(amount) as total, COUNT(*) as rows FROM sales GROUP BY customer_name",
+            `SELECT customer_name, SUM(amount) as total, COUNT(*) as rows FROM sales WHERE 1 = 1${org.sql} GROUP BY customer_name`,
           )
-          .all()
+          .all(...org.params)
       : db
           .prepare(
             `SELECT s.customer_name, SUM(s.amount) as total, COUNT(*) as rows
              FROM sales s JOIN customers c ON c.business_name = s.customer_name
-             WHERE 1 = 1${salesScope.sql}
+             WHERE 1 = 1${salesScope.sql}${orgJoin.sql}
              GROUP BY s.customer_name`,
           )
-          .all(...salesScope.params)
+          .all(...salesScope.params, ...orgJoin.params)
   ) as { customer_name: string; total: number; rows: number }[];
 
   const knownNames = new Set(customers.map((c) => c.business_name));
