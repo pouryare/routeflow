@@ -21,6 +21,8 @@ _Condensed 2026-10-23. Each finished piece of work is one line here; the full ea
   - [x] F89 prices a customer paid, beside the list price, on the customer page and map panel
   - [x] F35 a password an owner chose must be replaced at first sign-in (`/password`)
   - [x] F116 amount in words (our own function) on the delivery receipt and payment confirmation
+- [ ] UI reachability batch (every page reachable, no dead-end links; plan in the "UI reachability test ideas" doc):
+  - [x] Avatar menu shows only links the role can open (`lib/accountLinks.ts`): «ورود به‌عنوان…» for owners only, no map link for van roles
 
 ## Not done / gaps
 - [ ] Check the server's backup folder: before this batch the backup script never produced a database copy
