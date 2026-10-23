@@ -1,17 +1,24 @@
 "use client";
 
-import { useState } from "react";
-import { parseDate, type CalendarDate, type DateValue } from "@internationalized/date";
+import { useMemo, useState } from "react";
+import { GregorianCalendar, PersianCalendar as ShamsiCalendar, parseDate, toCalendar, type CalendarDate, type DateValue } from "@internationalized/date";
 import { Button, Calendar } from "@heroui/react";
 import { Icon } from "@/components/meridian/Icon";
 import BottomSheet from "@/components/mobile/BottomSheet";
 import { faJalaliDate, todayJalali, jalaliToIsoDate } from "@/lib/jalali";
 
+const SHAMSI = new ShamsiCalendar();
+const GREGORIAN = new GregorianCalendar();
+/** An ISO day as a Shamsi date. React Aria lays the grid out in the calendar of the dates it
+ *  is handed when they disagree with the locale, so a Gregorian bound turned the months back
+ *  into «اکتبر»; every date going in is Shamsi. */
+const shamsi = (iso: string) => toCalendar(parseDate(iso), SHAMSI);
+const isoOf = (d: DateValue) => toCalendar(d, GREGORIAN).toString().slice(0, 10);
+
 /** One month of HeroUI's Calendar, Saturday first, in Shamsi months with Persian digits (the
- *  locale comes from HeroUIProvider). Its values stay Gregorian `CalendarDate`s: React Aria
- *  hands back the calendar it was given, so `toString()` is the ISO day we store, with no
- *  conversion of our own. The month arrows carry our icons, pointing the way the months move
- *  in a right-to-left grid. */
+ *  locale comes from HeroUIProvider). Dates go in as Shamsi and come back out as the ISO
+ *  (Gregorian) day we store. The month arrows carry our icons, pointing the way the months
+ *  move in a right-to-left grid. */
 export function PersianCalendar({ value, onChange, min, isDisabled, ariaLabel, className = "flow-calendar" }: {
   /** ISO `YYYY-MM-DD`, or "" for none. */
   value: string;
@@ -23,15 +30,18 @@ export function PersianCalendar({ value, onChange, min, isDisabled, ariaLabel, c
   ariaLabel: string;
   className?: string;
 }) {
+  // Stable objects: React Aria keys its calendar state on their identity.
+  const shown = useMemo(() => (value ? shamsi(value) : null), [value]);
+  const floor = useMemo(() => (min ? shamsi(min) : undefined), [min]);
   return (
     <Calendar
       className={className}
       aria-label={ariaLabel}
-      value={value ? parseDate(value) : null}
-      minValue={min ? parseDate(min) : undefined}
-      isDateUnavailable={isDisabled ? (d: DateValue) => isDisabled(d.toString().slice(0, 10)) : undefined}
+      value={shown}
+      minValue={floor}
+      isDateUnavailable={isDisabled ? (d: DateValue) => isDisabled(isoOf(d)) : undefined}
       firstDayOfWeek="sat"
-      onChange={(d: DateValue) => onChange(d.toString().slice(0, 10))}
+      onChange={(d: DateValue) => onChange(isoOf(d))}
     >
       <Calendar.Header>
         <Calendar.Heading />
