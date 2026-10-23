@@ -25,6 +25,7 @@ import { allocateFEFO, recordMovementsTxn, defaultFacilityId } from "./repo/stoc
 import { advanceOrder } from "./repo/orders";
 import { tryEmitEvent } from "./repo/events";
 import { planDelivery, deliveryForStop } from "./repo/deliveries";
+import { tombstone } from "./repo/tombstones";
 import type { OrderStatus } from "./orderStateMachine";
 
 export class DeliveryError extends Error {}
@@ -203,8 +204,8 @@ export function addStop(
  *  cascade, so the stops need no statement of their own.
  */
 export function deleteRun(db: DatabaseSync, runId: number): { releasedOrderIds: number[] } {
-  const run = db.prepare("SELECT id, status FROM delivery_runs WHERE id = ?").get(runId) as
-    | { id: number; status: string }
+  const run = db.prepare("SELECT id, status, organization_id FROM delivery_runs WHERE id = ?").get(runId) as
+    | { id: number; status: string; organization_id: number | null }
     | undefined;
   if (!run) throw new DeliveryError("مسیر پیدا نشد");
 
@@ -235,6 +236,12 @@ export function deleteRun(db: DatabaseSync, runId: number): { releasedOrderIds: 
     throw new DeliveryError("این مسیر سابقهٔ تحویل ثبت‌شده دارد و حذف نمی‌شود");
   }
 
+  // Read before the loop below deletes them, for the tombstones after the run goes.
+  const plannedDeliveries = db
+    .prepare(
+      `SELECT d.id FROM deliveries d JOIN delivery_stops ds ON ds.id = d.route_stop_id WHERE ds.run_id = ?`
+    )
+    .all(runId) as { id: number }[];
   const dropDelivery = db.prepare("DELETE FROM deliveries WHERE route_stop_id = ?");
   /* Back to CONFIRMED, and only from the states PLANNING can put an order into. A
      write-through guard rather than an unconditional reset: this loop also runs over stops
@@ -257,7 +264,21 @@ export function deleteRun(db: DatabaseSync, runId: number): { releasedOrderIds: 
     .sort((a, b) => a.id - b.id)
     .map((s) => s.order_id);
 
+  /* Phones that pulled this run keep it in their offline copy until told otherwise. The
+     stops, facility stops and unload lines go by cascade, so their ids are read first. */
+  const gone: [string, number][] = [["delivery_runs", runId]];
+  for (const s of stops) gone.push(["delivery_stops", s.id]);
+  for (const t of ["lead_run_stops", "run_facility_stops", "run_unload_lines"] as const) {
+    for (const r of db.prepare(`SELECT id FROM ${t} WHERE run_id = ?`).all(runId) as { id: number }[]) {
+      gone.push([t, r.id]);
+    }
+  }
+  for (const d of plannedDeliveries) gone.push(["deliveries", d.id]);
+
   db.prepare("DELETE FROM delivery_runs WHERE id = ?").run(runId);
+  if (run.organization_id !== null) {
+    for (const [table, id] of gone) tombstone(run.organization_id, table, id, db);
+  }
 
   /* The released orders, so the caller can put them back on a run of the same shape. A
      delete that returned nothing would offer "برگرداندن" for a route whose stops have

@@ -9,6 +9,7 @@ import { Outbox } from "./outbox";
 import type { MutationResult } from "./outbox";
 import { IdbOutboxStore } from "./idbStore";
 import { noteServerTime } from "./net";
+import { snapshotDeletes } from "./snapshotDeletes";
 import { SYNC_INTERVAL_MS } from "./constants";
 
 interface PushResponse {
@@ -118,6 +119,7 @@ export class SyncEngine extends EventTarget {
       if (pres.ok) {
         const j = (await pres.json()) as PullResponse;
         noteServerTime(j.server_time);
+        await this.store.deleteSnapshot(snapshotDeletes(j.tombstones ?? [], j.rows));
         await this.store.writeSnapshot(
           j.rows.filter((r) => (r.row as { id?: unknown }).id !== undefined) as never
         );

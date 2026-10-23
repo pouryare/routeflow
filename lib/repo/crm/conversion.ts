@@ -3,6 +3,7 @@ import { getDb, type SavedLocationRow } from "@/lib/db";
 import { districtIdForPoint } from "@/lib/groups";
 import { findDuplicates, type DupMatch } from "./dedupe";
 import { recomputeState } from "./state";
+import { tombstone } from "../tombstones";
 
 export class LeadPromotionError extends Error {
   /* An explicit field, not a TypeScript parameter property (`constructor(readonly status:
@@ -166,8 +167,9 @@ export function unpromoteLead(orgId: number, promotion: Promotion): void {
   const orders = db.prepare("SELECT COUNT(*) AS n FROM orders WHERE customer_id = ? AND organization_id = ?")
     .get(promotion.customerId, orgId) as { n: number };
   if (orders.n > 0) return;
-  db.prepare("DELETE FROM customers WHERE id = ? AND organization_id = ? AND lead_location_id IS NOT NULL")
-    .run(promotion.customerId, orgId);
+  const gone = db.prepare("DELETE FROM customers WHERE id = ? AND organization_id = ? AND lead_location_id IS NOT NULL")
+    .run(promotion.customerId, orgId).changes > 0;
+  if (gone) tombstone(orgId, "customers", promotion.customerId, db);
 }
 
 /** A delivered sale converts the same business row, inside the order transaction. */

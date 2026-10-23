@@ -3,6 +3,7 @@ import { isOwner } from "@/lib/roles";
 import { getDb } from "@/lib/db";
 import { canReachGroup, type Session } from "@/lib/session";
 import { nextActionFor, visitOutcomeLabel } from "@/lib/crm/leadDesire";
+import { tombstone } from "./tombstones";
 
 /** A lead run: one driver, one day, an ordered set of pins.
  *
@@ -313,7 +314,10 @@ export function setRunStops(conn: DatabaseSync, orgId: number, runId: number, lo
     throw new LeadRunError(404, `مکان پیدا نشد: ${missing.join("، ")}`);
   }
 
+  // The old stops go and new rows replace them, so phones holding the old ids are told.
+  const oldStops = conn.prepare("SELECT id FROM lead_run_stops WHERE run_id = ?").all(runId) as Array<{ id: number }>;
   conn.prepare("DELETE FROM lead_run_stops WHERE run_id = ?").run(runId);
+  for (const s of oldStops) tombstone(orgId, "lead_run_stops", s.id, conn);
   const insert = conn.prepare(
     "INSERT INTO lead_run_stops (run_id, location_id, sort_order, created_at) VALUES (?, ?, ?, ?)"
   );
