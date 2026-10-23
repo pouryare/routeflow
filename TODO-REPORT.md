@@ -54,8 +54,18 @@ _Condensed 2026-10-23. Each finished piece of work is one line here; the full ea
   - [x] `/today` (briefing and multi-role picker) renamed to `/start`, so it no longer shares a name with `/sales/today`; no redirect
   - [x] Guard test `tests/every-page-reachable.test.ts`: every page is a nav destination for some role, linked from rendering code, or exempt with a written reason (checked: it fails when the holidays tab is removed)
   - [x] `CLAUDE.md` rule "a UI feature is not done until a person can reach it and it looks right" (placement first, every page reachable, no button to a refusal, names open things, shared parts, self-screenshot, batch tour, no redirects while there are no users)
+- [x] HeroUI move, phase 0 and pilot (owner chose the full HeroUI look, 2026-10-23; plan: https://claude.ai/artifact/BzK8CYpZZC5FHpEKw9P36f):
+  - [x] HeroUI 3.2.6 installed; styles imported part by part; HeroUI buttons and calendar cells at 44 px, large buttons 52 px
+  - [x] Persian calendar and digits for every HeroUI part (`components/HeroUIProvider.tsx`); `data-theme` written for dark too
+  - [x] `check:mobile` blocks new imports of HeroUI's centred overlays and dropdowns on phone paths
+  - [x] Tap-flow sheet is a HeroUI Drawer (every flow, payment flow included); due-date step is HeroUI's Persian Calendar; confirm, back, skip and close are HeroUI Buttons; toasts are HeroUI toasts with the same `useToast()`
 
 ## Not done / gaps
+- [ ] HeroUI move: `BottomSheet`, `FilterSheet`, `DrillSheet`, `CustomerSheet` and the other sheets are still hand-built; answer buttons (`tf-opt`), chips, tabs, tables, Jalali pickers outside the date step and menus are not moved yet
+- [ ] HeroUI look is partial: inside `.meridian` HeroUI parts still read Meridian's `--accent`, `--surface`, `--border`, `--muted` and `--radius-*`; the token hand-over (and the dead `.island` / `.toast` / `.sheet` CSS) is its own step
+- [ ] The toast no longer shows the draining bar for the undo window; HeroUI's toast has none
+- [ ] HeroUI's Persian year picker looks off by about 21 years (`getGregorianYearOffset("persian")` is -600); not used yet, test before using it
+- [ ] `npm run seed:demo` fails when run with today as the as-of date («تاریخ سفارش خارج از بازهٔ مجاز است»); an earlier `--as-of` works
 - [ ] Cheque cards and the cheque deck still show the customer as plain text: the card itself is the tap target (select / decide), so a link inside it would fight it
 - [ ] Check the server's backup folder: before this batch the backup script never produced a database copy
 - [ ] Off-site backup copy (F138 part 2) waits on a destination and key holder
@@ -82,9 +92,11 @@ _Condensed 2026-10-23. Each finished piece of work is one line here; the full ea
 - [ ] Left for later: F104 (not reached; nothing blocks it), and, waiting on a missing prerequisite, F74, F77, F85, F86, F91, F114, F69, F31, F42, F34, F95, F140, F2, F5, F117, F38
 
 ## Next steps
-1. Merge the UI reachability PR once CI is green (merge commit)
-2. Owner checks the backup folder and picks an off-site destination (F138 part 2)
-3. Record delay reasons on deliveries so the reason report's delay section fills
-4. Check the outside services from the Iranian server
-5. Decide the Android distribution route before F6 starts
-6. Data-layer decision record, then the PostgreSQL spike
+1. Merge the HeroUI phase 0 and pilot PR once CI is green (merge commit)
+2. HeroUI phase 2: the remaining sheets and the overlays (BottomSheet and its users, CardHelp, profile menu, notifications, banners)
+3. HeroUI token hand-over: HeroUI's palette and radii as the source, Meridian names as aliases, then remove dead CSS
+4. Owner checks the backup folder and picks an off-site destination (F138 part 2)
+5. Record delay reasons on deliveries so the reason report's delay section fills
+6. Check the outside services from the Iranian server
+7. Decide the Android distribution route before F6 starts
+8. Data-layer decision record, then the PostgreSQL spike

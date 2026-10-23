@@ -576,6 +576,12 @@ the reader asked for). One is a motion-sickness trigger; the other is an animati
 
 ## Base components `SHIPPED`
 
+> **Moving to HeroUI (decided 2026-10-23, `docs/roadmap.md` 10.1).** The owner chose the full
+> HeroUI look, so this section and the colour, radius and elevation sections are being retired
+> screen by screen. Already on HeroUI: the tap-flow sheet (Drawer), its date step (Calendar),
+> its confirm/back/skip/close buttons (Button) and every toast. Until a part moves, the rules
+> below still describe it.
+
 - **Button** — `--surface` bg, 1px `--border`, `--radius-md`. Primary: `--accent` fill
   with `#04191C` text (dark) / `#FFFFFF` text (light). Hover: border→accent, text→accent,
   scale 1.03, `--dur-base`. Active: scale 0.98, `--dur-fast`. Focus: 2px `--accent`
