@@ -328,3 +328,19 @@ Full write-up: `docs/architecture-audit-2026-10-22.md`. Steps 1 to 3 are merged 
 **Done**: (1) legacy `sales` rows now carry their company (`organization_id`, stamped to the original company on boot), so a same-named customer in another company sees nothing of theirs; the coverage analytics reads follow suit and owners can now see their own company's unmatched-sales count. (2) With "All companies" selected, the founder can read everything but cannot create or change records: the API answers 409 with "choose a company first" instead of silently filing the record under the home company. Choosing a company, the founder's own sign-in security, device/notification settings and Login-As are exempt.
 **Not done / gaps**: companies are independent by design, so the "two companies claim the same district" case is not a defect to fix (each company's group holds its own territory). Refactor leftovers and ratchet numbers remain hygiene; `playwrightExtract` needs the 1234 Chromium build.
 **Next steps**: none required; lower the ratchet numbers when touching files.
+
+## Sync same-millisecond tie (2026-10-23)
+
+### Done
+- [x] Sync pull watermark is capped at the millisecond before the pull started, so a delete (or row) stamped in the same millisecond as the last pull is asked for again instead of being hidden by the strict `>` filter
+- [x] The watermark now also counts tombstones, so a delete newer than every row is not re-sent on every pull
+- [x] Tests with a fixed clock: same-ms tombstone arrives, boundary row is re-sent once, watermark catches up once the clock passes, tombstone-only watermark; the new tests fail on the old code
+
+### Not done / gaps
+- [ ] The device ignores `tombstones` in the pull response (`lib/offline/syncEngine.ts` only upserts rows), so deletes still never reach the offline snapshot
+- [ ] A writer in another process with a long transaction could commit an older stamp after a pull read past it; one server process today, so not handled
+- [ ] Rows stamped with a time other than the server clock at commit (for example a device time) can fall behind any watermark; not audited
+
+### Next steps
+1. Merge this PR once CI is green
+2. Apply tombstones on the device (delete snapshot rows by entity type and id)
