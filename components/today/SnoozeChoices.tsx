@@ -39,7 +39,7 @@ export default function SnoozeChoices({ taskId, onDone }: { taskId: number; onDo
     return (
       <button type="button" className="inline-flex min-h-[44px] items-center justify-center gap-[var(--space-2)] btn ghost" onClick={() => setOpen(true)}>
         <Icon name="clock" size="sm" />
-        بعداً
+        عقب انداختن این کار
       </button>
     );
   }

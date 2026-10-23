@@ -29,9 +29,9 @@ describe("snooze rules (F142)", () => {
     expect(snoozedDue("hour", now)).toBe("2026-10-23T15:00:00.000Z");
     expect(snoozedDue("tomorrow", now)).toBe("2026-10-24T05:30:00.000Z");
   });
-  it("offers «بعداً» as one 44px button before the choices", () => {
+  it("offers «عقب انداختن این کار» as one 44px button before the choices", () => {
     const html = renderToStaticMarkup(h(SnoozeChoices, { taskId: 1, onDone: () => {} }));
-    expect(html).toContain("بعداً");
+    expect(html).toContain("عقب انداختن این کار");
     expect(html).toContain("min-h-[44px]");
   });
 });

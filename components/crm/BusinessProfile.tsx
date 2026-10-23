@@ -142,7 +142,7 @@ export default function BusinessProfile({ initial, initialTimeline }: { initial:
       <Icon name="plus" size="md" />
       افزودن مخاطب</button>}
     </section><CustomerBento data={profile.summary} />
-    <CustomerOpenItems data={profile.open} />
+    {profile.open && <CustomerOpenItems data={profile.open} />}
     <CustomerPriceHistory customerId={profile.business.id} />
     <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}><Link className="btn ghost" style={TOUCH} href={`/sales/orders?customer=${profile.business.id}`}>همهٔ سفارش‌ها</Link></div>
     <section className="tile"><h2>تاریخچه</h2>{!history.items.length && <p>رویدادی ثبت نشده است.</p>}
