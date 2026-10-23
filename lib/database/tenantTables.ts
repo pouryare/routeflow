@@ -91,4 +91,5 @@ export const TENANT_TABLES = [
      stamped to the original company by the sweep. */
   "sales",
   "suppliers",
+  "login_events",
 ] as const satisfies readonly string[];

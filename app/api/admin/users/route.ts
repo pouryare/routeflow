@@ -5,6 +5,7 @@ import { insertUser, listUsers } from "@/lib/repo/usersAdmin";
 import { hashPassword } from "@/lib/auth";
 import { requireRole } from "@/lib/session";
 import { OWNER_ROLES } from "@/lib/roles";
+import { lastSignInByUser } from "@/lib/repo/loginEvents";
 
 const MIN_PASSWORD = 8;
 
@@ -13,7 +14,8 @@ export async function GET(req: NextRequest) {
   if (!guard.ok) return guard.response;
 
   // Scoped to the caller's own company: the list carries telegram_chat_id, a live delivery address.
-  const users = listUsers(guard.session.organizationId);
+  const lastSignIn = lastSignInByUser(guard.session.organizationId);
+  const users = listUsers(guard.session.organizationId).map((u) => ({ ...u, last_sign_in_at: lastSignIn.get(u.id as number) ?? null }));
 
   return NextResponse.json({ ok: true, users, roles: ROLES });
 }

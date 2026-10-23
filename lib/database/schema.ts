@@ -1401,6 +1401,20 @@ export function createBaseSchema(db: DatabaseSync): void {
     );
     CREATE INDEX IF NOT EXISTS ix_deleted_rows_since ON deleted_rows(organization_id, deleted_at);
 
+    /* F110: the sign-in log, one row per attempt on a real account (lib/repo/loginEvents.ts).
+       An attempt with a username that does not exist is never stored. Kept 90 days. */
+    CREATE TABLE IF NOT EXISTS login_events (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      organization_id INTEGER NOT NULL REFERENCES organizations(id),
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      result TEXT NOT NULL CHECK (result IN ('success', 'bad_password', 'inactive', 'bad_code')),
+      ip TEXT,
+      user_agent TEXT,
+      created_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_login_events_org ON login_events(organization_id, created_at);
+    CREATE INDEX IF NOT EXISTS idx_login_events_user ON login_events(user_id, created_at);
+
     /* Phase 5 (Routing / M7): the fleet. has_refrigeration is a hard skill -- above 30 C
        (Phase 6) an unrefrigerated van has a maximum time before quality is at risk, so
        the router treats a refrigerated vehicle as a required skill on hot days. */

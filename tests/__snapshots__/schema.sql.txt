@@ -52,6 +52,12 @@ CREATE INDEX idx_lead_list_items_list ON lead_list_items(list_id, sort_order);
 -- index idx_lead_run_stops_run on lead_run_stops
 CREATE INDEX idx_lead_run_stops_run ON lead_run_stops(run_id, sort_order);
 
+-- index idx_login_events_org on login_events
+CREATE INDEX idx_login_events_org ON login_events(organization_id, created_at);
+
+-- index idx_login_events_user on login_events
+CREATE INDEX idx_login_events_user ON login_events(user_id, created_at);
+
 -- index idx_manager_commission_payments_person on manager_commission_payments
 CREATE INDEX idx_manager_commission_payments_person ON manager_commission_payments(manager_user_id, paid_on);
 
@@ -441,6 +447,9 @@ CREATE TABLE ledger_entries ( id INTEGER PRIMARY KEY AUTOINCREMENT, organization
 
 -- table lesson_progress
 CREATE TABLE lesson_progress ( id INTEGER PRIMARY KEY AUTOINCREMENT, organization_id INTEGER NOT NULL REFERENCES organizations(id), user_id INTEGER NOT NULL REFERENCES users(id), lesson_slug TEXT NOT NULL, completed_at TEXT NOT NULL, UNIQUE (organization_id, user_id, lesson_slug) );
+
+-- table login_events
+CREATE TABLE login_events ( id INTEGER PRIMARY KEY AUTOINCREMENT, organization_id INTEGER NOT NULL REFERENCES organizations(id), user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, result TEXT NOT NULL CHECK (result IN ('success', 'bad_password', 'inactive', 'bad_code')), ip TEXT, user_agent TEXT, created_at TEXT NOT NULL );
 
 -- table manager_commission_overrides
 CREATE TABLE manager_commission_overrides ( id INTEGER PRIMARY KEY AUTOINCREMENT, manager_user_id INTEGER REFERENCES users(id), override_pct REAL NOT NULL, valid_from TEXT NOT NULL, created_by INTEGER REFERENCES users(id), created_at TEXT NOT NULL , organization_id INTEGER REFERENCES organizations(id));

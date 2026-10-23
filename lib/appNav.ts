@@ -159,6 +159,7 @@ export function appTabs(session: { role: Role }): AppTab[] {
     // تنظیمات سازمان
     { href: "/sales/admin/users", label: "کاربران", group: "org", ready: isOwner(r) },
     { href: "/sales/admin/groups", label: "گروه‌ها", group: "org", ready: isOwner(r) },
+    { href: "/sales/admin/logins", label: "گزارش ورودها", group: "org", ready: isOwner(r) },
     { href: "/facilities", label: "مکان‌های ما", group: "org", ready: isOwner(r) },
   ];
 }

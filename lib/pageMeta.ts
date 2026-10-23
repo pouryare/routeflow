@@ -298,6 +298,12 @@ export const PAGE_META: Record<string, PageMeta> = {
     titleEn: "Representatives",
     overview: "تعریف و راه‌اندازی نمایندگان حالا بخشی از صفحهٔ «نمایندگان فروش» است؛ این نشانی به همان‌جا می‌رود.",
   },
+  "/sales/admin/logins": {
+    title: "گزارش ورودها",
+    titleEn: "Login history",
+    overview:
+      "۱۰۰ تلاش اخیر برای ورود به حساب‌های سازمان: موفق یا ناموفق، از چه دستگاهی و چه نشانی. اگر ورودی عجیب دیدید، از آن کاربر بخواهید رمزش را عوض کند و از همهٔ دستگاه‌ها خارج شود.",
+  },
   "/sales/admin/groups": {
     title: "گروه‌ها",
     titleEn: "Groups",

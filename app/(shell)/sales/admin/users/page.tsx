@@ -29,6 +29,8 @@ interface UserRow {
   created_at: string;
   /** The avatar route to render, or null for the initials fallback. */
   avatar_url: string | null;
+  /** Newest successful sign-in from the login log (F110), or null. */
+  last_sign_in_at: string | null;
 }
 
 interface GroupRow {
@@ -357,6 +359,7 @@ export default function AdminUsersPage() {
                   <th className="p-2 font-normal">شناسه همکار</th>
                   <th className="p-2 font-normal">تلگرام</th>
                   <th className="p-2 font-normal">اجازه موقعیت</th>
+                  <th className="p-2 font-normal">آخرین ورود</th>
                   <th className="p-2 font-normal">وضعیت</th>
                   <th className="p-2 font-normal">کارها</th>
                 </tr>
@@ -444,6 +447,9 @@ export default function AdminUsersPage() {
                         the consent state visible before anything depends on it. */}
                     <td className="p-2 font-mono text-xs text-text-muted">
                       {u.location_consent_at ? faJalaliDate(u.location_consent_at) : "—"}
+                    </td>
+                    <td className="p-2 font-mono text-xs text-text-muted">
+                      {u.last_sign_in_at ? faJalaliDate(u.last_sign_in_at) : "—"}
                     </td>
                     <td className="p-2 text-xs">
                       <span className={u.active ? "text-good" : "text-neutral"}>
