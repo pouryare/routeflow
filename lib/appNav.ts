@@ -117,6 +117,7 @@ export function appTabs(session: { role: Role }): AppTab[] {
     { href: "/leads", label: "پین‌های نقشه", group: "customers", ready: isRepLead(r) },
     { href: "/sales/complaints", label: "شکایات", group: "customers", ready: r !== "rep_manager" },
     { href: "/gallery", label: "گالری تصاویر", group: "customers", ready: true },
+    { href: "/sales/data-quality", label: "کیفیت اطلاعات", group: "customers", ready: isManager(r) },
 
     // فروش و دریافت
     { href: "/sales/orders", label: "سفارش‌ها", group: "sales", ready: true },

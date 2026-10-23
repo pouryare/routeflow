@@ -144,6 +144,11 @@ export function proxy(req: NextRequest) {
   const isGroupWide = pathname.startsWith("/analytics") || pathname.startsWith("/report");
   if (isGroupWide && claims.role === "phone_sales") return deny("/sales");
 
+  // F54: incomplete customer records across a group; a manager/owner view like the reason report.
+  if (pathname.startsWith("/sales/data-quality") && !OWNER_ROLES.includes(claims.role) && claims.role !== "group_manager") {
+    return deny("/sales");
+  }
+
   // The reason report counts a whole group's failures and cancellations; a manager/owner view.
   if (pathname.startsWith("/sales/reasons") && !OWNER_ROLES.includes(claims.role) && claims.role !== "group_manager") {
     return deny("/sales");
