@@ -70,6 +70,12 @@ _Condensed 2026-10-23. Each finished piece of work is one line here; the full ea
   - [x] Persian calendar and digits for every HeroUI part (`components/HeroUIProvider.tsx`); `data-theme` written for dark too
   - [x] `check:mobile` blocks new imports of HeroUI's centred overlays and dropdowns on phone paths
   - [x] Tap-flow sheet is a HeroUI Drawer (every flow, payment flow included); due-date step is HeroUI's Persian Calendar; confirm, back, skip and close are HeroUI Buttons; toasts are HeroUI toasts with the same `useToast()`
+- [x] Wave P phase 2 (PostgreSQL next to SQLite):
+  - [x] `db/Dockerfile` and `db/compose.yml`: Postgres 18 with PostGIS, `pg_trgm`, `btree_gist`, `pg_stat_statements`, `pg_duckdb`, `wal_level = logical`
+  - [x] Baseline migration generated from the SQLite schema (`npm run db:pg:generate`; CI fails if it drifts), applied with node-pg-migrate; Squawk lints later migrations; Kysely types in `lib/database/pg-schema.d.ts`
+  - [x] `lib/database/pg.ts`: the same `Db` interface on `pg` (placeholders, insert ids, camelCase aliases, numbers, one client per transaction, statement-level rollback like SQLite); `DB_DIALECT=postgres` switches to it
+  - [x] Portable fixes found on the way: null-safe `IS ?`, `date(...)` arithmetic, two-argument `MAX`, constraint checks by code (`lib/database/errors.ts`), test fixtures without `INSERT OR IGNORE`
+  - [x] CI job: builds the image, checks the extensions, the baseline and the types, and runs the unit suite on Postgres: 510 of 597 files pass, the rest are on `tests/pg-known-failures.txt`
 
 ## Not done / gaps
 - [ ] HeroUI move: `BottomSheet`, `FilterSheet`, `DrillSheet`, `CustomerSheet` and the other sheets are still hand-built; answer buttons (`tf-opt`), chips, tabs, tables, Jalali pickers outside the date step and menus are not moved yet
@@ -89,8 +95,10 @@ _Condensed 2026-10-23. Each finished piece of work is one line here; the full ea
 - [ ] Founder's second login step off until turned on at `/switch`; confirm the live `SESSION_SECRET` is 32+ characters
 - [ ] Unverified claims in parked features: F51, F56, F57, F67, F69, F71, F73, F75, F97, F102, F113, F147 (`docs/roadmap.md` section 8)
 - [ ] Open decisions: Android distribution route and iPhone support; off-site backup machine (decided: a second owned machine over SSH; which one is open); charts library vs custom
-- [ ] PostgreSQL phases 2–5 not started: baseline schema, `pg` adapter, CI against Postgres, `xid8` sync watermark, row-level security, server and cut-over
-- [ ] Seed scripts in `scripts/` still write SQLite directly (`INSERT OR IGNORE`); they move with the seeds in phase 2
+- [ ] PostgreSQL phase 3: 87 test files still fail on Postgres (strict GROUP BY, `SELECT DISTINCT ... ORDER BY`, SQLite-only test helpers such as `sqlite_master` and `rawSqlite`, a few aliases); `xid8` sync watermark; row-level security. Phases 4–5 (server, backups, cut-over, removing SQLite) not started
+- [ ] The app has not been clicked through on Postgres yet, only tested; the demo seed (`npm run seed:demo`) writes SQLite only
+- [ ] Inside a Postgres transaction each statement runs in a savepoint (SQLite's statement-level rollback); costs three round trips per statement, revisit once the code no longer relies on it
+- [ ] Seed scripts in `scripts/` (demo seed included) still write SQLite directly; they move in phase 3
 - [ ] Client screens (`app/(shell)` pages, `components`) are outside the forgotten-await lint; they start fetches on purpose without waiting
 - [ ] Nothing tested from Iran (weather, Telegram, push, map tiles, OSRM, registries)
 - [ ] The smoke suite is not in CI, which is how four of its tests went stale; in the cloud container it runs once Playwright's expected headless shell is pointed at the installed one, but map tiles (tile.openstreetmap.org) cannot load there, so `/map`, `/leads` and the CRM profile test fail on console errors
@@ -107,10 +115,10 @@ _Condensed 2026-10-23. Each finished piece of work is one line here; the full ea
 - [ ] Left for later: F104 (not reached; nothing blocks it), and, waiting on a missing prerequisite, F74, F77, F85, F86, F91, F114, F69, F31, F42, F34, F95, F140, F2, F5, F117, F38
 
 ## Next steps
-1. Merge PR #63 (PostgreSQL phase 1) once CI is green (merge commit)
+1. Merge the PostgreSQL phase 2 PR once CI is green (merge commit)
 2. HeroUI phase 2: the remaining sheets and the overlays (BottomSheet and its users, CardHelp, profile menu, notifications, banners)
 3. HeroUI token hand-over: HeroUI's palette and radii as the source, Meridian names as aliases, then remove dead CSS
-4. PostgreSQL phase 2: Dockerfile with the extensions, baseline schema, `pg` adapter behind `Db`, CI job against Postgres
+4. PostgreSQL phase 3: empty `tests/pg-known-failures.txt`, `xid8` sync watermark, row-level security
 5. Decide whether the smoke suite joins CI (needs Chromium on the runner; map tiles stubbed)
 6. Owner checks the backup folder and picks an off-site destination (F138 part 2)
 7. Record delay reasons on deliveries so the reason report's delay section fills
