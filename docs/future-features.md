@@ -16,6 +16,8 @@ Origin: the 2026-10-20 mobile-first brainstorm. The pieces that are *not* ambiti
 
 **What:** point the phone at a paper and get a pre-filled confirmation sheet.
 
+**Technology to consider (2026-10-23):** straightening photos before OCR (`jscanify` on OpenCV.js, on the phone); see `docs/roadmap.md`, section 10.
+
 **Library (2026-10-23):** `zxing-wasm` for barcode and QR scanning where `BarcodeDetector` is missing.
 
 | Source | Fills | Used by |
@@ -86,6 +88,8 @@ Origin: the 2026-10-20 mobile-first brainstorm. The pieces that are *not* ambiti
 ## F4. Wazo VoIP inside the CRM/ERP (call from, and log to, the customer record)
 
 **What:** use [Wazo](https://wazo.io) (open-source, API-driven telephony platform) as the phone system behind RouteFlow, so calls are placed, received and recorded inside the app instead of in a separate dialer.
+
+**Technology to consider (2026-10-23):** call detection on the phone (a small Capacitor plugin) for calls made from the rep's own phone; see `docs/roadmap.md`, section 10.
 
 **Library (2026-10-23):** `libphonenumber-js` (min build) for caller matching and E.164 numbers instead of extending `lib/crm/phone.ts`.
 
@@ -248,6 +252,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 ## F10. Bank and payment reconciliation
 
 **What:** import bank statements (or connect a payment gateway), and auto-match deposits to customers, invoices and cheques. Unmatched lines go to a short review list with a proposed match to confirm.
+
+**Technology to consider (2026-10-23):** an import wizard (match columns, preview and fix rows before saving); see `docs/roadmap.md`, section 10.
 
 **Library (2026-10-23):** `@persian-tools/persian-tools` validates Sheba numbers and maps a card number to its bank; `csv-parse` and `iconv-lite` read statement files, including older Windows-1256 ones.
 
@@ -552,6 +558,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 **What:** drivers and reps log expenses (fuel, parking, repairs) in two taps with a receipt photo, and the group manager approves; approved items post to the ledger.
 
+**Technology to consider (2026-10-23):** straightening receipt photos (`jscanify` on OpenCV.js, on the phone); see `docs/roadmap.md`, section 10.
+
 **Why parked:** needs the right expense categories and ledger accounts; approval flow and limits per role; receipts are paper (see F1).
 
 **Open questions**
@@ -705,6 +713,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 **What:** owners download their data (orders, customers, ledger) as files, see when the last backup ran, and restore a point in time without a developer.
 
+**Technology to consider (2026-10-23):** a backup fire drill (a scheduled restore into a scratch database); see `docs/roadmap.md`, section 10.
+
 **Library (2026-10-23):** `archiver` streams a zip of many CSV files without holding them in memory.
 
 **Already in the app:** `scripts/backup.mjs` makes backups from the command line.
@@ -746,6 +756,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 **What:** invoices, delivery notes and statements with the company's logo, wording, numbering and layout, editable by the owner and printable or shareable as PDF.
 
+**Technology to consider (2026-10-23):** a per-company logo and colours on documents; see `docs/roadmap.md`, section 10.
+
 **Why parked:** invoice layout and numbering can be a legal matter (and links to e-invoicing); a template editor is a product of its own; Persian right-to-left printing and Jalali dates need careful PDF handling. Check what print views exist today before designing (the orders, report and planner pages have print-related code; its coverage was not verified).
 
 **Open questions**
@@ -763,6 +775,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 ## F148. Duplicate customer detection upgrade (fuzzy match, preview, undo)
 
 **What:** find customers entered twice even when phone and Instagram differ, show exactly what a merge will move, and allow an undo within a window.
+
+**Technology to consider (2026-10-23):** a contact picker, with the duplicate check run straight after picking; see `docs/roadmap.md`, section 10.
 
 **Already in the app:** `lib/repo/crm/duplicates.ts` already finds duplicate pairs on the `customers` table by identical phone or Instagram, picks a survivor (`chooseSurvivor`: more orders, then more recent, then older id), supports "mark separate" and `mergeBusinesses`, and `lib/duplicates.ts` holds the pure survivor logic. What is missing is matching on name similarity and nearby location, a preview of what moves, and an undo.
 
@@ -827,6 +841,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 ## F40. Customer onboarding checklist
 
 **What:** a new customer's first-order steps tracked until complete: credit limit set, location confirmed, price group chosen, contact person recorded, first delivery slot agreed. Incomplete items show on the owner's task list and the customer page.
+
+**Technology to consider (2026-10-23):** a contact picker (Contact Picker API or `@capacitor-community/contacts`) to fill name and phone; see `docs/roadmap.md`, section 10.
 
 **Technology to consider (2026-10-23):** forms generated from data (JSON Forms or `@rjsf/core`), with the definition stored in the database; see `docs/roadmap.md`, section 10.
 
@@ -2139,6 +2155,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 **What:** a compact card shown when a rep opens a customer from a call list: balance, last order, last note, open tasks, risk flags, and the best time to call, so the rep is ready within two seconds.
 
+**Technology to consider (2026-10-23):** call detection on the phone (a small Capacitor plugin), so the snapshot works without VoIP; see `docs/roadmap.md`, section 10.
+
 **Already in the app:** the briefing's call list shows only each customer's name and last purchase date and links to the customer page (`lib/repo/briefing.ts`); the customer page has the history timeline, purchase history, photos and reminders; the visit "intel" flow collects business facts (size, current supplier channel, products used, best time to visit, a note for the next visitor, `lib/crm/intel.ts`). Debt and risk (churn, credit) are computed elsewhere. They are not combined into one pre-call card.
 
 **Why parked:** a card must be fast, so its pieces need to come from one cheap query; too much on it defeats the purpose; each field needs its own role check (a rep may not see another group's balance).
@@ -2228,6 +2246,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 ## F108. System status page for the owner
 
 **What:** one page showing the app's own health: last sync activity, last backup and how old it is, failed notifications, errors and slow queries from the last day, how fresh the imported data is, and whether outside services (routing, weather, messaging) respond.
+
+**Technology to consider (2026-10-23):** a backup fire drill whose last result the status page shows; see `docs/roadmap.md`, section 10.
 
 **Library (2026-10-23):** OpenTelemetry through `instrumentation.ts`, sent to a self-hosted collector.
 
@@ -2609,6 +2629,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 **What:** for the platform owner (the vendor), a guided setup of a new customer organisation: company details, groups, first users with generated credentials, products, price list and first customers, with optional sample data to try the app.
 
+**Technology to consider (2026-10-23):** an import wizard for the company's existing customers and products, and a per-company subdomain and branding; see `docs/roadmap.md`, section 10.
+
 **Already in the app:** organisations are a table with name, slug, plan, active flag and contact details (`organizations`). New ones are created today by seed and migration scripts (`scripts/seed-demo-org.mjs`, the seed phases); I found no screen or API for creating an organisation. A helper generates readable usernames and passwords when a user is added (`lib/credentials.ts`), and the platform owner can switch between tenants (`/switch`). Every access by the vendor to another tenant's data is recorded (`lib/platformAccess.ts`).
 
 **Why parked:** tenant creation is the most sensitive operation in the system, because it must create every dependent record consistently (groups, roles, default accounts such as the chart of accounts, facilities, holidays) and never touch another tenant; it is rarely done, so the cost of a wizard is justified only when the vendor onboards customers regularly; failure halfway must roll back completely.
@@ -2630,6 +2652,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 ## F127. Tenant usage and plan limits
 
 **What:** for the platform owner, per-organisation counts (users, active customers, orders per month, photo storage, messages) against limits for each plan, with warnings before a limit is reached.
+
+**Technology to consider (2026-10-23):** a per-company subdomain and branding; see `docs/roadmap.md`, section 10.
 
 **Technology to consider (2026-10-23):** load testing with k6; see `docs/roadmap.md`, section 10.
 
@@ -2864,6 +2888,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 ## F138. Off-site backup copy
 
 **What:** copy each nightly backup to storage away from the server, encrypted, check that the copy can be read, and alert the owner if a night's backup or copy fails.
+
+**Technology to consider (2026-10-23):** a backup fire drill (a scheduled restore into a scratch database) to prove the copy restores; see `docs/roadmap.md`, section 10.
 
 **Already in the app:** a nightly backup script takes a consistent snapshot of the database (SQLite's own serialize, safe in WAL mode) and a tarball of the photos directory, into a local folder (`COVERAGE_BACKUP_DIR` or `backups/`), and deletes anything older than 14 days (`scripts/backup.mjs`). Its own header says that real protection against disk failure needs the files copied off the machine and that the script deliberately does not do it. I found no integrity check or test restore, no encryption and no failure alert, and the backup folder sits on the same machine.
 
