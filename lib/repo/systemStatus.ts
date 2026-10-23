@@ -46,6 +46,10 @@ export function statusFacts(organizationId: number, now: Date = new Date()): Sta
       `SELECT MAX(d.flushed_at) AS t FROM notification_deliveries d JOIN users u ON u.id = d.user_id WHERE u.organization_id = ?`,
       organizationId
     ),
+    lastDigestAt: one<string>(
+      "SELECT MAX(created_at) AS t FROM notifications WHERE organization_id = ? AND type_code = 'owner.digest'",
+      organizationId
+    ),
     failedSignIns24h:
       one<number>(
         "SELECT COUNT(*) AS t FROM login_events WHERE organization_id = ? AND result <> 'success' AND created_at >= ?",

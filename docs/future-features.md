@@ -377,7 +377,7 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 **What:** a daily summary and push alerts for exceptions (large unpaid balances, failed deliveries, stock-outs, bounced cheques), tuned for the owner on a phone.
 
-**Built (2026-10-23), first slice:** the rule sweep queues one «خلاصهٔ صبح» notification per owner per day from 07:00 Tehran, built from the owner's briefing panels and this week's order count; the existing flush sends it by push and Telegram under quiet hours, and the new `owner.digest` type can be turned off in notification settings. It depends on the sweep running after 07:00. Instant exception alerts are not built.
+**Built (2026-10-23), first slice:** the rule sweep queues one «خلاصهٔ صبح» notification per owner per day from 07:00 Tehran, built from the owner's briefing panels and this week's order count; the existing flush sends it by push and Telegram under quiet hours, and the new `owner.digest` type can be turned off in notification settings. It depends on the server's rule-sweep timer running after 07:00; the owner's status page has a «خلاصهٔ صبح» line that turns yellow after 26 hours without one, so a missing morning run shows. Instant exception alerts are not built.
 
 **Why parked:** alert fatigue; thresholds differ per business; real push delivery needs real devices and cannot be tested here.
 
@@ -2835,7 +2835,7 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 **What:** managers define which lessons are required for each role, and see per person which required lessons are done, overdue or missing, with a reminder to the person.
 
-**Built (2026-10-23), first slice:** `required_for` roles on academy modules in the manifest and a manager table of who has finished which required lesson. The role lists are a first guess for the owner to confirm.
+**Built (2026-10-23), first slice:** `required_for` roles on academy modules in the manifest and a manager table of who has finished which required lesson. Decided (2026-10-23, delegated by the owner): «مبانی بازار و مشتری» for phone sales, field reps and group managers (who coach them), «فروش تلفنی» for phone sales.
 
 **Already in the app:** the sales academy has a lesson manifest (slug, module, title, order, status; two modules so far: market and customer, and phone sales, under `content/academy`) and records when a user completes a lesson (`lesson_progress`, `markLessonDone` in `lib/repo/academy.ts`). Each person can see their own progress. There is no notion of a required lesson, no role mapping and no manager view.
 
