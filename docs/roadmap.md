@@ -146,7 +146,7 @@ Entries blocked by a choice, not by code. Settle these once and several entries 
 | How commission works across groups | F96, F134 | Open |
 | Real-device testing before any build | F113, F115, F117 | Open (Maestro with one physical phone is suggested in section 10.8) |
 | Android distribution route (a domestic Android store or a direct file) and iPhone support | F6, F38, F103, F1, F30 | Open (the Capacitor shell itself is decided, section 10.1) |
-| When to turn on row-level security | F27, F73, F99, F100, F111, F126, F127 | Open (proposed "with the move" in section 10.2) |
+| When to turn on row-level security | F27, F73, F99, F100, F111, F126, F127 | Decided and built 2026-10-23: on PostgreSQL from the start, before the cut-over (section 10.2, P3) |
 | One chart library or keep the custom charts | F123, F146, F32 | Open (section 10.6: decide before writing more chart types) |
 
 ## 6. Already partly built
@@ -440,7 +440,7 @@ How to read it: **10.1 is fact and decision** (the owner's words). **10.2 to 10.
 
 ### 10.2 Proposed platform choices
 
-The PostgreSQL rows here are now decided (10.1). The plan is phased: P1 an asynchronous `Db` interface and portable SQL while still on SQLite (done 2026-10-23: every call is awaited, transactions go through `db.tx()`, lint catches a forgotten `await`, and `tests/sql-dialect-guard.test.ts` refuses SQLite-only SQL outside `lib/database/`); P2 the Postgres baseline schema, the `pg` adapter and a CI run against Postgres (done 2026-10-23: `db/` has the image and the generated baseline, `DB_DIALECT=postgres` switches the app to `lib/database/pg.ts`, and CI runs the unit suite on Postgres against `tests/pg-known-failures.txt`, 77 files at the start); P3 green on Postgres, the `xid8` sync watermark and row-level security; P4 the server, backups and cut-over by re-seeding; P5 removing the SQLite code.
+The PostgreSQL rows here are now decided (10.1). The plan is phased: P1 an asynchronous `Db` interface and portable SQL while still on SQLite (done 2026-10-23: every call is awaited, transactions go through `db.tx()`, lint catches a forgotten `await`, and `tests/sql-dialect-guard.test.ts` refuses SQLite-only SQL outside `lib/database/`); P2 the Postgres baseline schema, the `pg` adapter and a CI run against Postgres (done 2026-10-23: `db/` has the image and the generated baseline, `DB_DIALECT=postgres` switches the app to `lib/database/pg.ts`, and CI runs the unit suite on Postgres against `tests/pg-known-failures.txt`, 77 files at the start); P3 green on Postgres, the `xid8` sync watermark and row-level security (done 2026-10-23: `tests/pg-known-failures.txt` is empty and files that only make sense on SQLite are listed with a reason in `tests/pg-sqlite-only.txt`; the demo seed builds a separate `routeflow_demo` database; each synced table carries a trigger-set `sync_xid` and the pull watermark is `x:<snapshot xmin>`; the app connects as `routeflow_app`, which is subject to a per-company policy on every table with `organization_id`, keyed on `rf.scope` set before each statement from the signed-in session); P4 the server, backups and cut-over by re-seeding; P5 removing the SQLite code.
 
 | Choice | Serves | When |
 |---|---|---|
