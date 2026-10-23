@@ -16,6 +16,8 @@ Origin: the 2026-10-20 mobile-first brainstorm. The pieces that are *not* ambiti
 
 **What:** point the phone at a paper and get a pre-filled confirmation sheet.
 
+**Library (2026-10-23):** `zxing-wasm` for barcode and QR scanning where `BarcodeDetector` is missing.
+
 | Source | Fills | Used by |
 |---|---|---|
 | Cheque | cheque number, bank, amount, due date (Jalali), payer name | `paymentFlow` cheque branch, `/sales/cheques` |
@@ -237,7 +239,7 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 **What:** import bank statements (or connect a payment gateway), and auto-match deposits to customers, invoices and cheques. Unmatched lines go to a short review list with a proposed match to confirm.
 
-**Library (2026-10-23):** `@persian-tools/persian-tools` validates Sheba numbers and maps a card number to its bank.
+**Library (2026-10-23):** `@persian-tools/persian-tools` validates Sheba numbers and maps a card number to its bank; `csv-parse` and `iconv-lite` read statement files, including older Windows-1256 ones.
 
 **Why parked:** Iranian bank export formats vary and no common open API exists; payer names in statements are inconsistent Persian text (see F5); matching one deposit to several invoices needs a split step.
 
@@ -678,6 +680,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 ## F34. Data export and backup self-service
 
 **What:** owners download their data (orders, customers, ledger) as files, see when the last backup ran, and restore a point in time without a developer.
+
+**Library (2026-10-23):** `archiver` streams a zip of many CSV files without holding them in memory.
 
 **Already in the app:** `scripts/backup.mjs` makes backups from the command line.
 
@@ -2115,6 +2119,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 **What:** a one-time code (sent by SMS or Telegram, or from an authenticator app) required at sign-in for roles that can approve money and see everything, with trusted-device memory so it is asked rarely.
 
+**Library (2026-10-23):** `@simplewebauthn/server` for passkeys as a second step beside the existing TOTP.
+
 **Already in the app:** sign-in produces a signed session cookie that lasts 30 days, carrying the user, role, group, organisation and a token version (`lib/auth.ts`); login is rate-limited per username and per address; Login-As for owners is time-limited and re-validated on every request (`lib/impersonation.ts`). I found no one-time-code or second-factor code anywhere.
 
 **Why parked:** a code channel must exist first (Telegram is linked per user already, SMS needs a provider); a lost phone must not lock the owner out, so recovery codes and an owner reset path are required; asking for a code too often makes people choose weak habits.
@@ -2154,6 +2160,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 ## F108. System status page for the owner
 
 **What:** one page showing the app's own health: last sync activity, last backup and how old it is, failed notifications, errors and slow queries from the last day, how fresh the imported data is, and whether outside services (routing, weather, messaging) respond.
+
+**Library (2026-10-23):** OpenTelemetry through `instrumentation.ts`, sent to a self-hosted collector.
 
 **Already in the app:** pieces exist but are scattered: a data-freshness indicator for the spreadsheet-based imports (fresh, ageing, stale, unknown; `lib/freshness.ts`), a slow-query log written to the server console when a statement exceeds a threshold set by an environment variable (`lib/slowSql.ts`), a nightly backup script with rotation that writes to the local disk only (`scripts/backup.mjs`), notification delivery records (`notification_deliveries`), and a script for the scheduled sweeps (`scripts/run-sweeps.mjs`). There is no health endpoint and no page that brings these together; the slow-query and error output goes to logs that an owner never sees.
 

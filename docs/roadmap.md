@@ -487,3 +487,20 @@ Lower priority: the hand-written service worker (`public/sw.js`, manual cache ve
 | `rate-limiter-flexible` with a Valkey or Postgres store | shared rate limits once there is more than one app instance | `lib/rateLimit.ts` is in-memory and right for one process |
 
 **Keep as is**: `lib/jalali.ts` (tested against Intl over twenty years), TOTP, UUIDv7, the thermal-receipt PDF and ESC/POS code (Chromium print-to-PDF only for A4 documents), the offline outbox, the VROOM fallback.
+
+**More libraries for roadmap features (second pass, 2026-10-23)**
+
+Versions and dates were read from the npm registry on that day. Nothing was installed or tested, including from Iran.
+
+| Library | Serves | Note |
+|---|---|---|
+| `@simplewebauthn/server` | F106 two-step login | Passkeys on top of the existing TOTP; test on the real Android phones |
+| `zxing-wasm` | F1 and F30 barcode scanning | For browsers without `BarcodeDetector`; try the browser API first |
+| `bwip-js` | Batch and bin labels (F30, F93) | QR and Code 128 as image or SVG; also the way to draw a QR code, which the app does not do today |
+| `pmtiles` | Own map backgrounds | A single-file basemap served from the own server and read by MapLibre; removes the dependency on public tile hosts |
+| `csv-parse` and `iconv-lite` | F10 bank statements, lead import | Proper CSV parsing, and conversion of older Windows-1256 files; test with a real bank statement |
+| `archiver` | F34 data export | Streams a zip of many CSV files without holding them in memory |
+| `@opentelemetry/sdk-node` | F108 status page, tracing | Next.js supports it through `instrumentation.ts`; send to a self-hosted collector |
+| `p-queue` | Throttling of outside calls | Replaces the hand-written gate in `lib/resolveMapsLink.ts`; also useful for SMS and OSRM limits |
+
+For building and testing: `@testcontainers/postgresql` (a real Postgres with PostGIS per test run), `fast-check` (property tests for money, ledger and commission), `@faker-js/faker` with the Persian locale (the demo seeding fetches portraits from `randomuser.me` today), `@axe-core/playwright` (accessibility checks in CI). Only if the need appears: `jose` (signed one-time links, wallboard display keys), `ical-generator` (F87). Not needed: client-side search libraries (`pg_trgm` does it), `node-cron` and BullMQ (pg-boss), date libraries (`Intl` and `lib/jalali.ts`).
