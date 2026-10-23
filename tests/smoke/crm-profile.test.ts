@@ -28,7 +28,8 @@ it("edits tags, Instagram and pre-visit intel on a snapshot, persisting across r
   await page.getByRole("button", { name: "افزودن برچسب‌ها" }).or(page.getByRole("button", { name: "ویرایش برچسب‌ها" })).click();
   await page.getByRole("textbox", { name: "برچسب‌ها", exact: true }).fill("ویژه، بازدید");
   await page.getByRole("button", { name: "ذخیرهٔ تغییر", exact: true }).click();
-  await page.locator('[role="dialog"]').waitFor({ state: "detached" });
+  // The phone nav's closed sheets stay in the DOM (inert), so wait on the live one only.
+  await page.locator('[role="dialog"]:not([inert])').waitFor({ state: "hidden" });
   await page.getByRole("button", { name: /اینستاگرام/ }).click();
   await page.getByRole("textbox", { name: "اینستاگرام", exact: true }).fill("@smoke.intel");
   const patched = page.waitForResponse(r => r.url().endsWith(`/businesses/${id}`) && r.request().method() === "PATCH");
@@ -43,7 +44,7 @@ it("edits tags, Instagram and pre-visit intel on a snapshot, persisting across r
   const saved = page.waitForResponse(r => r.url().endsWith(`/businesses/${id}/intel`) && r.request().method() === "POST");
   await page.getByRole("button", { name: "ثبت این شناخت", exact: true }).click();
   expect((await saved).status()).toBe(200);
-  await page.locator('[role="dialog"]').waitFor({ state: "detached" });
+  await page.locator('[role="dialog"]:not([inert])').waitFor({ state: "hidden" });
   await page.reload();
   await page.getByRole("button", { name: "ثبت شناخت", exact: true }).waitFor();
   const text = await page.locator("main").innerText();
