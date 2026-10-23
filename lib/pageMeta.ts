@@ -325,6 +325,12 @@ export const PAGE_META: Record<string, PageMeta> = {
     overview:
       "انتخاب اینکه چه رویدادی، از چه راهی، و در چه ساعت‌هایی به شما خبر بدهد. ساعات سکوت و اتصال تلگرام هم اینجاست.",
   },
+  "/settings/security": {
+    title: "امنیت و ورود",
+    titleEn: "Account security",
+    overview:
+      "ورودهای اخیر حساب شما و خروج از دستگاه‌های دیگر. اگر ورودی را نمی‌شناسید، از همهٔ دستگاه‌ها خارج شوید و رمز را عوض کنید.",
+  },
 };
 
 /** The meta for a path, by longest-prefix match — so /sales/orders/12 shows the orders
