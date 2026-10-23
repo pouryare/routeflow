@@ -31,7 +31,7 @@ describe("trainingStatus (F133)", () => {
   markLessonDone(1, phone, "01-market-and-customer");
 
   it("the manifest names who each lesson is required for", () => {
-    expect(academyManifest().map((m) => m.required_for)).toEqual([["phone_sales", "field_rep"], ["phone_sales"]]);
+    expect(academyManifest().map((m) => m.required_for)).toEqual([["phone_sales", "field_rep", "group_manager"], ["phone_sales"]]);
   });
 
   it("the owner sees everyone with a required lesson: done, still to do, or not required", () => {
