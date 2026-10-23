@@ -16,6 +16,8 @@ import { Icon } from "@/components/meridian/Icon";
 import SectionHead from "@/components/meridian/SectionHead";
 import { isVanRole } from "@/lib/roles";
 import NotAVanNotice from "@/components/meridian/NotAVanNotice";
+import DriverLinks from "@/components/driver/DriverLinks";
+import { driverLinks } from "@/lib/driverLinks";
 
 export const dynamic = "force-dynamic";
 
@@ -103,6 +105,7 @@ export default async function DriverPage() {
           </button>
         </form>
       </header>
+      <DriverLinks links={driverLinks(session)} />
 
       {/* ── Section 1: deliveries ─────────────────────────────────────────── */}
       {sections.includes("deliveries") && (

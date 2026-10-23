@@ -42,11 +42,29 @@ describe("the phone's bottom bar", () => {
     for (const w of ["همهٔ بخش‌ها", "حسابداری", "تراز آزمایشی", "کاربران", "گزارش‌ها", "تحلیل فروش"]) expect(h).toContain(w);
   });
 
-  it("a driver gets two items and no «بیشتر» (they have nothing else to open)", () => {
+  it("a driver gets their two items, and «بیشتر» holds only «حساب من»", () => {
     const h = html("delivery_driver");
     expect(h).toContain("مسیر امروز");
     expect(h).toContain("آموزش");
-    expect(h).not.toContain("بیشتر");
+    expect(h).toContain("بیشتر");
+    expect(h).toContain("تنظیمات اعلان‌ها");
+    expect(h).not.toContain("نقشهٔ پوشش");
+    expect(h).not.toContain("ورود به‌عنوان");
+  });
+
+  it("«حساب من» comes last in the sheet, and repeats no tab", () => {
+    path = "/sales/today";
+    const h = html("owner");
+    expect(h.lastIndexOf("حساب من")).toBeGreaterThan(h.lastIndexOf("تنظیمات سازمان"));
+    for (const w of ["ورود به‌عنوان…", "تنظیمات اعلان‌ها", "امنیت و ورود"]) expect(h).toContain(w);
+    expect(bottomTabs({ role: "owner" }).account.map((l) => l.href)).not.toContain("/map");
+  });
+
+  it("lights «بیشتر» on a settings page", () => {
+    path = "/settings/security";
+    const h = html("phone_sales");
+    expect(h.match(/aria-current="page"/g)).toHaveLength(1);
+    expect(h.slice(h.indexOf('aria-current="page"') - 120, h.indexOf('aria-current="page"') + 120)).toContain("aria-haspopup");
   });
 });
 

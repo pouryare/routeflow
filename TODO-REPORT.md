@@ -25,6 +25,7 @@ _Condensed 2026-10-23. Each finished piece of work is one line here; the full ea
   - [x] Avatar menu shows only links the role can open (`lib/accountLinks.ts`): «ورود به‌عنوان…» for owners only, no map link for van roles
   - [x] Offline page: «تلاش دوباره» retries the page asked for, «صفحهٔ اصلی» goes to the role's home (was a map link drivers cannot open)
   - [x] Change your own password on `/settings/security`, asking for the current one (rate-limited); `/password` and this share `components/PasswordForm.tsx`
+  - [x] «حساب من» (settings, and «ورود به‌عنوان…» for owners) at the end of the phone's «بیشتر» sheet; `/driver` gets a row of links to the academy and settings, which it had no way to reach
 
 ## Not done / gaps
 - [ ] Check the server's backup folder: before this batch the backup script never produced a database copy
