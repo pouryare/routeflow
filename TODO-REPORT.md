@@ -7,7 +7,7 @@ _Condensed 2026-10-23. Each finished piece of work is one line here; the full ea
 - [x] Performance pass (PR #17), mobile-first TapFlow rollout (PRs #26, #27), architecture audit steps 1–7 (PRs #43–#46 and later)
 - [x] Sync pull same-millisecond tie fixed (PR #54); parked features F4–F148 written up; roadmap themes and waves; platform decisions in `docs/roadmap.md` section 10
 - [x] Roadmap small fixes, and six more technologies recorded in roadmap 10.8 (import wizard, per-company subdomain, backup fire drill, call detection, photo straightening before OCR, contact picker)
-- [x] Redundant-files clean-up; rules in `CLAUDE.md` (batch-then-merge, look for existing solutions, this report)
+- [x] Redundant-files clean-up (PR #55) and 39 stale GitHub branches deleted (owner, by hand, 2026-10-23); rules in `CLAUDE.md` (batch-then-merge, look for existing solutions, this report)
 - [x] Quick wins batch (PR #57):
   - [x] Phones apply deletes during sync (tombstones), and the server now writes tombstones for run, stop, facility, location, lead-import and unpromote deletes
   - [x] F144 failure-reason report (`/sales/reasons`)
@@ -65,7 +65,6 @@ _Condensed 2026-10-23. Each finished piece of work is one line here; the full ea
 - [ ] No manager reassignment of customers; owner history covers pool claims and territory moves
 - [ ] The urgent commission rate is stored but never read; marking an order urgent does not change commission
 - [ ] Amount in words not yet on cheque entries or the payments list; no rial wording
-- [ ] 38 stale GitHub branches; owner runs `delete-stale-branches.sh`
 - [ ] Founder's second login step off until turned on at `/switch`; confirm the live `SESSION_SECRET` is 32+ characters
 - [ ] Unverified claims in parked features: F51, F56, F57, F67, F69, F71, F73, F75, F97, F102, F113, F147 (`docs/roadmap.md` section 8)
 - [ ] Open decisions: Android distribution route and iPhone support; off-site backup location; row-level security timing; charts library vs custom
@@ -86,7 +85,6 @@ _Condensed 2026-10-23. Each finished piece of work is one line here; the full ea
 1. Merge the UI reachability PR once CI is green (merge commit)
 2. Owner checks the backup folder and picks an off-site destination (F138 part 2)
 3. Record delay reasons on deliveries so the reason report's delay section fills
-4. Owner runs `delete-stale-branches.sh`
-5. Check the outside services from the Iranian server
-6. Decide the Android distribution route before F6 starts
-7. Data-layer decision record, then the PostgreSQL spike
+4. Check the outside services from the Iranian server
+5. Decide the Android distribution route before F6 starts
+6. Data-layer decision record, then the PostgreSQL spike
