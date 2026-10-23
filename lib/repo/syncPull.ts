@@ -1,8 +1,9 @@
 import { getDb, plain } from "@/lib/db";
 import { orderFilter, groupFilter } from "@/lib/session";
 import type { Session } from "@/lib/session";
-import { tombstonesSince, type Tombstone } from "./tombstones";
+import { tombstonesSince, tombstonesSinceXid, type Tombstone } from "./tombstones";
 import { isVanRole } from "../roles";
+import { dialect } from "@/lib/database/dialect";
 
 export interface PullRow {
   table: string;
@@ -32,6 +33,8 @@ const EPOCH = "1970-01-01T00:00:00.000Z";
  *  This holds because every timestamp here comes from the same server clock and each
  *  write is stamped and committed in one synchronous step; a writer in another process
  *  with a long transaction could still commit an older stamp after a pull read past it.
+ *  PostgreSQL has exactly those concurrent writers, so there the watermark is a transaction
+ *  id instead (`x:` plus pg_snapshot_xmin), which nothing can commit behind.
  *
  *  A driver gets their own runs and everything a stop needs; a salesperson / manager /
  *  owner gets their group's recent orders and customers. The catalogue
@@ -43,10 +46,24 @@ export async function pullSince(
   now: Date = new Date()
 ): Promise<PullResult> {
   const db = getDb();
+  const pgMode = dialect() === "postgres";
   // Taken before any read: everything stamped before this millisecond is already visible.
   const settled = new Date(now.getTime() - 1).toISOString();
+  /* PostgreSQL: the oldest transaction still running, also taken before any read. Every
+     transaction below it has committed or rolled back, so no row can later appear with an
+     older stamp; one at or above it may come again next time, which upserts harmlessly. */
+  const xmin = pgMode
+    ? ((await db.prepare("SELECT CAST(pg_snapshot_xmin(pg_current_snapshot()) AS text) AS x").get()) as { x: string }).x
+    : "";
   const org = session.organizationId;
   const from = since ?? EPOCH;
+  /* The bound for "changed since the watermark", and the filter that reads it: on SQLite the
+     row's change timestamp, on PostgreSQL the transaction that last wrote it (sync_xid, set by
+     trigger; db/migrations/1761400000000_sync-xid.sql). A timestamp watermark from before the
+     switch means nothing there, so it asks for everything again. */
+  const mark = pgMode ? xidOf(since) : from;
+  const changed = (alias: string, stampCol: string) =>
+    pgMode ? `COALESCE(${alias}sync_xid, '0') >= CAST(? AS xid8)` : `${alias}${stampCol} > ?`;
   const rows: PullRow[] = [];
   let maxChange = from;
   const seen = (t: string) => {
@@ -54,6 +71,7 @@ export async function pullSince(
   };
   const add = (table: string, list: Record<string, unknown>[], changeKey: string) => {
     for (const r of list) {
+      delete r.sync_xid; // bookkeeping for the watermark, not part of the row
       rows.push({ table, row: r });
       const v = r[changeKey];
       if (typeof v === "string") seen(v);
@@ -66,9 +84,9 @@ export async function pullSince(
     plain(
       await db
         .prepare(
-          "SELECT * FROM products WHERE (organization_id = ? OR organization_id IS NULL) AND updated_at > ?"
+          `SELECT * FROM products WHERE (organization_id = ? OR organization_id IS NULL) AND ${changed("", "updated_at")}`
         )
-        .all(org, from) as Record<string, unknown>[]
+        .all(org, mark) as Record<string, unknown>[]
     ),
     "updated_at"
   );
@@ -78,9 +96,9 @@ export async function pullSince(
       await db
         .prepare(
           `SELECT pk.* FROM packagings pk JOIN products p ON p.id = pk.product_id
-            WHERE (p.organization_id = ? OR p.organization_id IS NULL) AND pk.created_at > ?`
+            WHERE (p.organization_id = ? OR p.organization_id IS NULL) AND ${changed("pk.", "created_at")}`
         )
-        .all(org, from) as Record<string, unknown>[]
+        .all(org, mark) as Record<string, unknown>[]
     ),
     "created_at"
   );
@@ -90,9 +108,9 @@ export async function pullSince(
       await db
         .prepare(
           `SELECT pp.* FROM product_prices pp JOIN products p ON p.id = pp.product_id
-            WHERE (p.organization_id = ? OR p.organization_id IS NULL) AND pp.created_at > ?`
+            WHERE (p.organization_id = ? OR p.organization_id IS NULL) AND ${changed("pp.", "created_at")}`
         )
-        .all(org, from) as Record<string, unknown>[]
+        .all(org, mark) as Record<string, unknown>[]
     ),
     "created_at"
   );
@@ -111,15 +129,15 @@ export async function pullSince(
       "delivery_runs",
       plain(
         await db
-          .prepare(`SELECT * FROM delivery_runs WHERE id IN (${runList}) AND updated_at > ?`)
-          .all(from) as Record<string, unknown>[]
+          .prepare(`SELECT * FROM delivery_runs WHERE id IN (${runList}) AND ${changed("", "updated_at")}`)
+          .all(mark) as Record<string, unknown>[]
       ),
       "updated_at"
     );
     const stops = plain(
       await db
-        .prepare(`SELECT * FROM delivery_stops WHERE run_id IN (${runList}) AND created_at > ?`)
-        .all(from) as Record<string, unknown>[]
+        .prepare(`SELECT * FROM delivery_stops WHERE run_id IN (${runList}) AND ${changed("", "created_at")}`)
+        .all(mark) as Record<string, unknown>[]
     );
     add("delivery_stops", stops, "created_at");
 
@@ -135,8 +153,8 @@ export async function pullSince(
      *  visit is driven or it is not, tracked by the visit's own outcome. */
     const visitStops = plain(
       await db
-        .prepare(`SELECT * FROM lead_run_stops WHERE run_id IN (${runList}) AND created_at > ?`)
-        .all(from) as Record<string, unknown>[]
+        .prepare(`SELECT * FROM lead_run_stops WHERE run_id IN (${runList}) AND ${changed("", "created_at")}`)
+        .all(mark) as Record<string, unknown>[]
     );
     add("lead_run_stops", visitStops, "created_at");
 
@@ -153,8 +171,8 @@ export async function pullSince(
      * becomes indistinguishable from an invented one. */
     const runFacilityStops = plain(
       await db
-        .prepare(`SELECT * FROM run_facility_stops WHERE run_id IN (${runList}) AND created_at > ?`)
-        .all(from) as Record<string, unknown>[]
+        .prepare(`SELECT * FROM run_facility_stops WHERE run_id IN (${runList}) AND ${changed("", "created_at")}`)
+        .all(mark) as Record<string, unknown>[]
     );
     add("run_facility_stops", runFacilityStops, "created_at");
 
@@ -177,8 +195,8 @@ export async function pullSince(
       // ...and the unload lines, which are how the day is closed.
       const unloadLines = plain(
         await db
-          .prepare(`SELECT * FROM run_unload_lines WHERE run_id IN (${runList}) AND created_at > ?`)
-          .all(from) as Record<string, unknown>[]
+          .prepare(`SELECT * FROM run_unload_lines WHERE run_id IN (${runList}) AND ${changed("", "created_at")}`)
+          .all(mark) as Record<string, unknown>[]
       );
       add("run_unload_lines", unloadLines, "created_at");
     }
@@ -198,8 +216,8 @@ export async function pullSince(
       "saved_locations",
       plain(
         await db
-          .prepare(`SELECT * FROM saved_locations WHERE id IN (${locList}) AND created_at > ?`)
-          .all(from) as Record<string, unknown>[]
+          .prepare(`SELECT * FROM saved_locations WHERE id IN (${locList}) AND ${changed("", "created_at")}`)
+          .all(mark) as Record<string, unknown>[]
       ),
       "created_at"
     );
@@ -215,16 +233,16 @@ export async function pullSince(
 
     const orders = plain(
       await db
-        .prepare(`SELECT * FROM orders WHERE id IN (${orderList}) AND updated_at > ?`)
-        .all(from) as Record<string, unknown>[]
+        .prepare(`SELECT * FROM orders WHERE id IN (${orderList}) AND ${changed("", "updated_at")}`)
+        .all(mark) as Record<string, unknown>[]
     );
     add("orders", orders, "updated_at");
     add(
       "order_lines",
       plain(
         await db
-          .prepare(`SELECT * FROM order_lines WHERE order_id IN (${orderList}) AND created_at > ?`)
-          .all(from) as Record<string, unknown>[]
+          .prepare(`SELECT * FROM order_lines WHERE order_id IN (${orderList}) AND ${changed("", "created_at")}`)
+          .all(mark) as Record<string, unknown>[]
       ),
       "created_at"
     );
@@ -235,9 +253,9 @@ export async function pullSince(
           .prepare(
             `SELECT * FROM customers WHERE id IN (
                SELECT DISTINCT customer_id FROM orders WHERE id IN (${orderList})
-             ) AND synced_at > ?`
+             ) AND ${changed("", "synced_at")}`
           )
-          .all(from) as Record<string, unknown>[]
+          .all(mark) as Record<string, unknown>[]
       ),
       "synced_at"
     );
@@ -245,8 +263,8 @@ export async function pullSince(
       "deliveries",
       plain(
         await db
-          .prepare(`SELECT * FROM deliveries WHERE order_id IN (${orderList}) AND created_at > ?`)
-          .all(from) as Record<string, unknown>[]
+          .prepare(`SELECT * FROM deliveries WHERE order_id IN (${orderList}) AND ${changed("", "created_at")}`)
+          .all(mark) as Record<string, unknown>[]
       ),
       "created_at"
     );
@@ -259,8 +277,8 @@ export async function pullSince(
       "orders",
       plain(
         await db
-          .prepare(`SELECT o.* FROM orders o WHERE o.updated_at > ?${of.sql}`)
-          .all(from, ...of.params) as Record<string, unknown>[]
+          .prepare(`SELECT o.* FROM orders o WHERE ${changed("o.", "updated_at")}${of.sql}`)
+          .all(mark, ...of.params) as Record<string, unknown>[]
       ),
       "updated_at"
     );
@@ -268,19 +286,27 @@ export async function pullSince(
       "customers",
       plain(
         await db
-          .prepare(`SELECT c.* FROM customers c WHERE c.synced_at > ?${gf.sql}`)
-          .all(from, ...gf.params) as Record<string, unknown>[]
+          .prepare(`SELECT c.* FROM customers c WHERE ${changed("c.", "synced_at")}${gf.sql}`)
+          .all(mark, ...gf.params) as Record<string, unknown>[]
       ),
       "synced_at"
     );
   }
 
-  const tombstones = await tombstonesSince(org, since);
+  const tombstones = pgMode ? await tombstonesSinceXid(org, mark) : await tombstonesSince(org, since);
   for (const t of tombstones) seen(t.deleted_at);
 
   return {
-    watermark: maxChange > settled ? settled : maxChange,
+    watermark: pgMode ? `${XID_PREFIX}${xmin}` : maxChange > settled ? settled : maxChange,
     rows,
     tombstones,
   };
 }
+
+/** A PostgreSQL watermark is `x:` and a transaction id; anything else (none yet, or a
+ *  timestamp from SQLite days) starts from the beginning. */
+const XID_PREFIX = "x:";
+function xidOf(since: string | null): string {
+  return since?.startsWith(XID_PREFIX) && /^\d+$/.test(since.slice(XID_PREFIX.length)) ? since.slice(XID_PREFIX.length) : "0";
+}
+
