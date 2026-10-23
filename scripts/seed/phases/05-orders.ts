@@ -112,6 +112,15 @@ export function run(ctx: SeedContext): void {
 
       confirmOrder(db, orderId);
 
+      /* A customer already near their credit limit has the order held for approval, and a held order cannot
+         go on a run. Which orders that is depends on the day's accumulated balances, so it is checked here
+         rather than assumed: the held ones stay on the board as pending approval. */
+      const held = db.prepare("SELECT credit_hold FROM orders WHERE id = ?").get(orderId) as { credit_hold: number } | undefined;
+      if (held?.credit_hold) {
+        stuck++;
+        continue;
+      }
+
       /* The last seven days stay live on the board rather than being delivered, so "today"
          is not an empty screen. */
       if (d <= 6) {

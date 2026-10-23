@@ -386,10 +386,10 @@ export function submitOrder(
   const db = getDb();
   const order = db
     .prepare(
-      "SELECT id, customer_id, order_type, status FROM orders WHERE id = ? AND organization_id = ?"
+      "SELECT id, customer_id, order_type, status, created_by FROM orders WHERE id = ? AND organization_id = ?"
     )
     .get(orderId, organizationId) as
-    | { id: number; customer_id: number; order_type: string; status: OrderStatus }
+    | { id: number; customer_id: number; order_type: string; status: OrderStatus; created_by: number }
     | undefined;
   if (!order) throw new OrderError("سفارش پیدا نشد");
   if (!orderComplete(db, orderId)) throw new OrderError("سفارش بدون قلم یا با جمع صفر ثبت نمی‌شود");
@@ -418,7 +418,9 @@ export function submitOrder(
       );
       requestApproval(organizationId, {
         order_id: orderId,
-        requested_by: actor.id ?? order.customer_id,
+        // A system caller has no user id; the approval is attributed to whoever created the order. It used to fall
+        // back to the CUSTOMER id, which is not a user: it only worked when the two ids happened to coincide.
+        requested_by: actor.id ?? order.created_by,
         customer_id: order.customer_id,
         customer_balance_toman: balance,
         credit_limit_toman: customer.credit_limit_toman,
