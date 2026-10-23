@@ -5,6 +5,7 @@ import { friendlyError } from "@/lib/userMessage";
 import { Icon } from "@/components/meridian/Icon";
 import type { DistrictProperties } from "@/lib/types";
 import { faNum } from "@/lib/format";
+import CheckField from "@/components/CheckField";
 
 export interface TerritoryGroup {
   id: number;
@@ -120,13 +121,7 @@ export default function GroupTerritoryEditor({
               const owner = d.group_id === null ? null : groupById.get(d.group_id);
               return (
                 <li key={d.id} className="border-b border-border last:border-b-0">
-                  <label className="flex cursor-pointer items-center gap-3 px-3 py-2 hover:bg-surface-raised">
-                    <input
-                      type="checkbox"
-                      checked={selected.has(d.id)}
-                      onChange={() => toggle(d.id)}
-                      className="size-4 accent-[var(--accent)]"
-                    />
+                  <CheckField checked={selected.has(d.id)} onChange={() => toggle(d.id)} className="w-full gap-3 px-3 py-2 hover:bg-surface-raised">
                     <span className="flex-1 text-sm text-text">
                       {d.name}
                       {d.parent_name && <span className="text-text-faint"> — {d.parent_name}</span>}
@@ -143,7 +138,7 @@ export default function GroupTerritoryEditor({
                     ) : (
                       <span className="text-xs text-text-faint">بدون گروه</span>
                     )}
-                  </label>
+                  </CheckField>
                 </li>
               );
             })}

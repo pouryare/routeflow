@@ -95,6 +95,7 @@ import { } from "@/components/meridian/icon-map";
 import { readStoredView, linkTargetView, writeStoredView } from "@/components/coverage/mapViewStore";
 import { MAP_INK_FALLBACK, MapInk, readMapInk } from "@/components/coverage/mapInk";
 import { BoundsReporter, DebugMapExpose, ZoomWatcher, ViewWatcher, FitToCustomers, customerIcon, clusterIcon } from "@/components/coverage/mapParts";
+import CheckField from "@/components/CheckField";
 
 const HeatmapLayer = dynamic(() => import("./HeatmapLayer"), { ssr: false });
 /* MapLibre and its Leaflet bridge are ~250KB: loaded only once a vector basemap is
@@ -1171,15 +1172,9 @@ export default function CoverageMap({
             weighted is a property of the layer, and belongs next to the data it weights. */}
         <CollapsibleSection title="نقشه حرارتی" icon="flame" storageKey="heatmap" keywords="تراکم بدهی heatmap لایه">
             {heatmapOn ? (
-              <label className="flex items-center gap-2 text-[length:var(--text-sm)] text-text-muted">
-                <input
-                  type="checkbox"
-                  checked={heatmapByDebt}
-                  onChange={(e) => setHeatmapByDebt(e.target.checked)}
-                  className="accent-[color:var(--accent)]"
-                />
+              <CheckField checked={heatmapByDebt} onChange={setHeatmapByDebt} className="text-[length:var(--text-sm)] text-text-muted">
                 وزن‌دهی بر اساس شدت بدهی
-              </label>
+              </CheckField>
             ) : (
               <LayerHint onOpen={() => setLayersOpen(true)} what="نقشه حرارتی" />
             )}

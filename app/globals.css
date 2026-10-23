@@ -22,6 +22,8 @@
 @import "@heroui/styles/components/calendar.css" layer(components);
 @import "@heroui/styles/components/popover.css" layer(components);
 @import "@heroui/styles/components/alert.css" layer(components);
+@import "@heroui/styles/components/checkbox.css" layer(components);
+@import "@heroui/styles/components/switch.css" layer(components);
 @import "@heroui/styles/utilities";
 @import "@heroui/styles/variants";
 
@@ -3169,6 +3171,10 @@ body {
 .meridian .jdate__field.button { min-width: 10rem; justify-content: flex-start; font-variant-numeric: tabular-nums; }
 .meridian .jdate__placeholder { color: var(--muted); }
 .meridian .calendar__cell[data-unavailable] { text-decoration: line-through; text-decoration-thickness: 1px; }
+/* HeroUI's checkbox and switch (CheckField.tsx, ToggleSwitch.tsx): the row, or the 44 px
+   area around a bare switch, is the tap target; the 20 px box and track stay HeroUI's. */
+.checkfield__hit { display: flex; align-items: center; gap: 8px; min-height: 44px; cursor: pointer; }
+.toggle__hit { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; cursor: pointer; }
 .meridian .jdate__foot { display: flex; justify-content: space-between; gap: 8px; max-width: 360px; width: 100%; margin-inline: auto; }
 
 /* ---- empty states (EmptyState.tsx) ---------------------------------------------------
