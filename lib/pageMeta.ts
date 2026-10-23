@@ -120,6 +120,12 @@ export const PAGE_META: Record<string, PageMeta> = {
     overview:
       "برآورد فروش دوره‌های آینده بر پایهٔ روند گذشته و ظرفیت. برای برنامه‌ریزی خرید و انبار، نه برای تعهد به عدد.",
   },
+  "/sales/reasons": {
+    title: "دلیل‌های ناکامی",
+    titleEn: "Failure reasons",
+    overview:
+      "چرا تحویل‌ها ناموفق شدند، سفارش‌ها لغو شدند، برگشتند یا دیر رسیدند، به تفکیک دلیل. برای پیدا کردن بزرگ‌ترین علت هر ماه، نه برای قضاوت دربارهٔ یک نفر.",
+  },
   "/sales/products": {
     title: "کالاها و قیمت‌ها",
     titleEn: "Products and prices",

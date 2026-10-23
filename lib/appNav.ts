@@ -134,6 +134,7 @@ export function appTabs(session: { role: Role }): AppTab[] {
     { href: "/sales", label: "خلاصهٔ فروش", group: "reports", ready: true },
     { href: "/sales/dashboard", label: "تحلیل فروش", group: "reports", ready: true },
     { href: "/sales/forecast", label: "پیش‌بینی", group: "reports", ready: isManager(r) },
+    { href: "/sales/reasons", label: "دلیل‌های ناکامی", group: "reports", ready: isManager(r) },
     /* Coverage report. `ready` mirrors proxy.ts, which denies a salesperson /report
        because it aggregates a whole group's revenue, debt and coverage. */
     { href: "/report", label: "گزارش پوشش", group: "reports", ready: r !== "phone_sales" },

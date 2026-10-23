@@ -125,6 +125,11 @@ export function proxy(req: NextRequest) {
   const isGroupWide = pathname.startsWith("/analytics") || pathname.startsWith("/report");
   if (isGroupWide && claims.role === "phone_sales") return deny("/sales");
 
+  // The reason report counts a whole group's failures and cancellations; a manager/owner view.
+  if (pathname.startsWith("/sales/reasons") && !OWNER_ROLES.includes(claims.role) && claims.role !== "group_manager") {
+    return deny("/sales");
+  }
+
   // The cheque board and its API are a manager/owner tool -- a salesperson records a
   // cheque as a payment via /sales/payments, but does not run the deposit/bounce
   // lifecycle. The API re-checks; this keeps the bundle and the tab off their screen.
