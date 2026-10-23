@@ -149,7 +149,7 @@ describe("where each destination lives", () => {
   });
 
   it("every read-only overview is a report, the forecast included", () => {
-    expect(hrefsIn("reports")).toEqual(["/report", "/sales", "/sales/dashboard", "/sales/forecast", "/sales/reasons"].sort());
+    expect(hrefsIn("reports")).toEqual(["/report", "/sales", "/sales/dashboard", "/sales/forecast", "/sales/lead-sources", "/sales/reasons"].sort());
   });
 
   it("academy is team material, not administration", () => {
