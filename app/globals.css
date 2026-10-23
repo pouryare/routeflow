@@ -1,5 +1,37 @@
 @import "tailwindcss";
 
+/* ---- HeroUI v3 (docs/roadmap.md §10, "full HeroUI look") ------------------------------
+   Imported part by part, not as one `@import "@heroui/styles"`. The full sheet styles
+   `.card`, `.chip`, `.badge`, `.modal` and `.skeleton` -- class names this file already
+   uses for its own components -- so importing all of it would restyle screens nobody has
+   migrated yet. Add a component's sheet here in the same change that moves a screen to it.
+
+   Layers: HeroUI's own rules sit in `theme` / `base` / `components`, so anything unlayered
+   below (this file's tokens and the tap-size rules at the end of this block) wins without a
+   specificity fight. */
+@import "tw-animate-css";
+@import "@heroui/styles/base" layer(base);
+@import "@heroui/styles/themes/default" layer(theme);
+@import "@heroui/styles/components/close-button.css" layer(components);
+@import "@heroui/styles/components/label.css" layer(components);
+@import "@heroui/styles/components/description.css" layer(components);
+@import "@heroui/styles/components/button.css" layer(components);
+@import "@heroui/styles/components/spinner.css" layer(components);
+@import "@heroui/styles/components/drawer.css" layer(components);
+@import "@heroui/styles/components/toast.css" layer(components);
+@import "@heroui/styles/components/calendar.css" layer(components);
+@import "@heroui/styles/utilities";
+@import "@heroui/styles/variants";
+
+/* 44 px to tap, 52 px to answer (docs/mobile-first-principles.md rule 14). HeroUI's medium
+   button is 40 px on a phone and 36 px from 768 px, its small one 36/32 -- below the floor
+   on every screen. `npm run check:mobile` cannot see a height that lives in a package's
+   stylesheet, so tests/heroui-setup.test.ts holds these lines instead. */
+.button, .button--sm, .button--md { height: 44px; min-width: 44px; }
+.button--lg { height: 52px; font-size: var(--text-md); }
+.button--icon-only, .button--icon-only.button--sm { width: 44px; }
+.button--icon-only.button--lg { width: 52px; }
+
 /* Disable text selection site-wide */
 *, *::before, *::after {
   user-select: none !important;
