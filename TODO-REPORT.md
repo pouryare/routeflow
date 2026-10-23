@@ -404,3 +404,15 @@ Full write-up: `docs/architecture-audit-2026-10-22.md`. Steps 1 to 3 are merged 
 1. Check the outside services from the Iranian server
 2. Decide the Android distribution route (domestic store or direct file) before F6 starts
 3. When the SMS slice starts, decide between the official `farazsms` client and a thin fetch wrapper
+
+## Centrifugo explained (2026-10-23, discussion only)
+
+### Done
+- [x] Explained Centrifugo in plain terms with examples (F6, F125, F4); advice: start with server-sent events, add Centrifugo only with more than one app server
+
+### Not done / gaps
+- [ ] Not recorded in the docs, not installed or tested
+
+### Next steps
+1. Check the outside services from the Iranian server
+2. Decide the Android distribution route before F6 starts
