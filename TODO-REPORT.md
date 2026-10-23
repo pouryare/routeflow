@@ -7,7 +7,7 @@ _Condensed 2026-10-23. Each finished piece of work is one line here; the full ea
 - [x] Performance pass (PR #17), mobile-first TapFlow rollout (PRs #26, #27), architecture audit steps 1–7 (PRs #43–#46 and later)
 - [x] Sync pull same-millisecond tie fixed (PR #54); parked features F4–F148 written up; roadmap themes and waves; platform decisions in `docs/roadmap.md` section 10
 - [x] Roadmap small fixes, and six more technologies recorded in roadmap 10.8 (import wizard, per-company subdomain, backup fire drill, call detection, photo straightening before OCR, contact picker)
-- [x] Redundant-files clean-up; rules in `CLAUDE.md` (batch-then-merge, look for existing solutions, this report)
+- [x] Redundant-files clean-up (PR #55) and 39 stale GitHub branches deleted (owner, by hand, 2026-10-23); rules in `CLAUDE.md` (batch-then-merge, look for existing solutions, this report)
 - [x] Quick wins batch (PR #57):
   - [x] Phones apply deletes during sync (tombstones), and the server now writes tombstones for run, stop, facility, location, lead-import and unpromote deletes
   - [x] F144 failure-reason report (`/sales/reasons`)
@@ -39,6 +39,7 @@ _Condensed 2026-10-23. Each finished piece of work is one line here; the full ea
   - [x] F8 «موعد سفارش امروز» panel for sellers
   - [x] F112 what's-new card shown once, history at `/settings/updates`
   - [x] Built markers in `docs/future-features.md` for these and PR #57's items; roadmap section 1 status and 1a
+- [x] Owner delegated the two open points: required lessons decided (module 1 for phone sales, field reps and group managers; module 2 for phone sales), and a «خلاصهٔ صبح» line on the status page shows whether the morning digest goes out
 
 ## Not done / gaps
 - [ ] Check the server's backup folder: before this batch the backup script never produced a database copy
@@ -49,7 +50,6 @@ _Condensed 2026-10-23. Each finished piece of work is one line here; the full ea
 - [ ] No manager reassignment of customers; owner history covers pool claims and territory moves
 - [ ] The urgent commission rate is stored but never read; marking an order urgent does not change commission
 - [ ] Amount in words not yet on cheque entries or the payments list; no rial wording
-- [ ] 39 stale GitHub branches (the 38 listed in PR #55 plus `claude/project-thread-trrg87`, merged as PR #54): cloud sessions can only push their own branch, so they cannot delete branches or push tags. Codespaces is unreachable from the owner's network, so they are deleted by hand on GitHub's Branches page
 - [ ] Founder's second login step off until turned on at `/switch`; confirm the live `SESSION_SECRET` is 32+ characters
 - [ ] Unverified claims in parked features: F51, F56, F57, F67, F69, F71, F73, F75, F97, F102, F113, F147 (`docs/roadmap.md` section 8)
 - [ ] Open decisions: Android distribution route and iPhone support; off-site backup location; row-level security timing; charts library vs custom
@@ -57,8 +57,7 @@ _Condensed 2026-10-23. Each finished piece of work is one line here; the full ea
 - [ ] `tests/playwrightExtract.test.ts` and the smoke suite need Chromium the cloud container lacks
 - [ ] Ratchets (long functions 74, unused exports 221, raw role checks 57) only fall as files are touched
 - [ ] Offline covers delivery, receipts, cheques, complaints, order drafts and new customers only
-- [ ] F133: the required lessons per role (`content/academy/_manifest.json` `required_for`) are a guess for the owner to confirm
-- [ ] F16 sends only when the rule sweep runs after 07:00 Tehran; check the cron calls `/api/rules/run` in the morning
+- [ ] F16 needs the server's `routeflow-sweep-rules` timer to run after 07:00 (its unit file is on the server, not in the repo); the status page's «خلاصهٔ صبح» line shows if it does not
 - [ ] F23 is one list per company (prices have no per-group series) and has no shared link
 - [ ] F137 has no spend entry, so no return figure; it counts all time
 - [ ] F98 does not search task or complaint text; F72 checks only orders the caller can see
@@ -68,12 +67,10 @@ _Condensed 2026-10-23. Each finished piece of work is one line here; the full ea
 - [ ] Left for later: F104 (not reached; nothing blocks it), and, waiting on a missing prerequisite, F74, F77, F85, F86, F91, F114, F69, F31, F42, F34, F95, F140, F2, F5, F117, F38
 
 ## Next steps
-1. Merge the small-difficulty batch PR once CI is green
-2. Owner confirms the F133 required lessons and that the morning sweep runs after 07:00
-3. Owner checks the backup folder and picks an off-site destination (F138 part 2)
-4. Record delay reasons on deliveries so the reason report's delay section fills
-5. F104 customer snapshot sheet (small, nothing blocks it)
-6. Owner deletes the 39 stale branches on GitHub's Branches page (keep `main` and `claude/project-thread-medfvc`)
-7. Check the outside services from the Iranian server
-8. Decide the Android distribution route before F6 starts
-9. Data-layer decision record, then the PostgreSQL spike
+1. After the first morning on the server, check the status page's «خلاصهٔ صبح» line is green
+2. Owner checks the backup folder and picks an off-site destination (F138 part 2)
+3. Record delay reasons on deliveries so the reason report's delay section fills
+4. F104 customer snapshot sheet (small, nothing blocks it)
+5. Check the outside services from the Iranian server
+6. Decide the Android distribution route before F6 starts
+7. Data-layer decision record, then the PostgreSQL spike
