@@ -117,6 +117,25 @@ describe("POST /api/sales/orders/[id]/transition", () => {
     expect(res.status).toBe(404);
   });
 
+  it("409s a confirm with no warehouse to reserve from, saying where to add one", async () => {
+    const db = getDb();
+    db.exec("PRAGMA foreign_keys=OFF; DELETE FROM facilities; PRAGMA foreign_keys=ON;");
+    const now = new Date().toISOString();
+    const product = Number(
+      db.prepare("INSERT INTO products (name, base_unit, active, created_at, updated_at, organization_id) VALUES ('ک','kg',1,?,?,1)").run(now, now).lastInsertRowid
+    );
+    const pack = Number(
+      db.prepare("INSERT INTO packagings (product_id, name, qty_per_pack, active, created_at) VALUES (?, 'ک', 1, 1, ?)").run(product, now).lastInsertRowid
+    );
+    const id = makeOrder("PENDING_REVIEW");
+    db.prepare(
+      "INSERT INTO order_lines (order_id, product_id, packaging_id, packs_ordered, unit_price_toman, qty_per_pack, kg_per_base_unit, created_at) VALUES (?,?,?,2,1000,1,1,?)"
+    ).run(id, product, pack, now);
+    const res = await TRANSITION(jreq(`/api/sales/orders/${id}/transition`, { action: "passReview" }), ctxFor(id));
+    expect(res.status).toBe(409);
+    expect((await res.json()).error).toContain("مکان‌های ما");
+  });
+
   it("events lists the transition history", async () => {
     const id = makeOrder("DRAFT");
     await TRANSITION(jreq(`/api/sales/orders/${id}/transition`, { action: "submit" }), ctxFor(id));

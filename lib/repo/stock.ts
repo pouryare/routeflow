@@ -364,17 +364,8 @@ export function consumeForOrder(
  *  synthetic warehouse created for it -- stock has to live somewhere, and the source
  *  brief wants the warehouse independent even when there is only one. */
 export function defaultFacilityId(organizationId: number): number {
-  const db = stockMovementsRepo.db();
-  const rows = db
-    .prepare(
-      "SELECT id, kind FROM facilities WHERE organization_id = ? OR organization_id IS NULL ORDER BY id"
-    )
-    .all(organizationId) as unknown as { id: number; kind: string }[];
-  const chosen =
-    rows.find((r) => r.kind === "warehouse")?.id ??
-    rows.find((r) => r.kind === "home")?.id ??
-    rows[0]?.id;
-  if (chosen !== undefined) return chosen;
+  const chosen = findDefaultFacilityId(organizationId);
+  if (chosen !== null) return chosen;
 
   /* GONE: this used to INSERT a warehouse named «انبار» at lat 0, lng 0 and return its id.
    *
@@ -387,7 +378,32 @@ export function defaultFacilityId(organizationId: number): number {
    * Throwing is the honest answer and it is the message the app already produced when no
    * warehouse existed at all: the auto-create was hiding a real requirement, not meeting
    * one. Whoever hits it needs to add their warehouse, which is a thing only they can do. */
-  throw new Error("انبار تعریف نشده است");
+  throw new NoWarehouseError();
+}
+
+/** A company with no facility yet: something needs a warehouse that only the owner can add.
+ *  Typed so a route answers 409 with this message rather than a bare 500. */
+export class NoWarehouseError extends Error {
+  constructor() {
+    super("انبار تعریف نشده است");
+    this.name = "NoWarehouseError";
+  }
+}
+
+/** The same choice as defaultFacilityId, or null while the tenant has no facility yet, for
+ *  a screen that should explain rather than fail. */
+export function findDefaultFacilityId(organizationId: number): number | null {
+  const db = stockMovementsRepo.db();
+  const rows = db
+    .prepare(
+      "SELECT id, kind FROM facilities WHERE organization_id = ? OR organization_id IS NULL ORDER BY id"
+    )
+    .all(organizationId) as unknown as { id: number; kind: string }[];
+  const chosen =
+    rows.find((r) => r.kind === "warehouse")?.id ??
+    rows.find((r) => r.kind === "home")?.id ??
+    rows[0]?.id;
+  return chosen ?? null;
 }
 
 /** The recent ledger, newest first, optionally filtered. */
