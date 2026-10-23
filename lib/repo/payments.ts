@@ -592,21 +592,6 @@ const ZERO_DEBT = (): CustomerDebt => ({
   bucket_30_plus: 0,
 });
 
-/** Asked once per database handle: migrations finish inside getDb(), so the column is either
- *  there for the life of the handle or it is not, and re-reading the schema on every debt
- *  lookup cost a PRAGMA per customer on the dashboard. */
-const openingBalanceColumn = new WeakMap<Db, boolean>();
-async function customersHasOpeningBalance(db: Db): Promise<boolean> {
-  let has = openingBalanceColumn.get(db);
-  if (has === undefined) {
-    has = (await db.prepare("PRAGMA table_info(customers)").all() as unknown as { name: string }[]).some(
-      (c) => c.name === "opening_balance_toman"
-    );
-    openingBalanceColumn.set(db, has);
-  }
-  return has;
-}
-
 function ageDays(nowISO: string, refISO: string): number {
   return Math.floor((Date.parse(nowISO) - Date.parse(refISO)) / 86_400_000);
 }
@@ -632,17 +617,13 @@ export async function customerDebt(
   const db = paymentsRepo.db();
   const now = asOf ?? new Date().toISOString();
 
-  const opening = await customersHasOpeningBalance(db)
-    ? Number(
-        (
-          await db
-            .prepare(
-              "SELECT COALESCE(opening_balance_toman, 0) AS ob FROM customers WHERE id = ? AND organization_id = ?"
-            )
-            .get(customerId, organizationId) as { ob: number } | undefined
-        )?.ob ?? 0
-      )
-    : 0;
+  const opening = Number(
+    (
+      await db
+        .prepare("SELECT COALESCE(opening_balance_toman, 0) AS ob FROM customers WHERE id = ? AND organization_id = ?")
+        .get(customerId, organizationId) as { ob: number } | undefined
+    )?.ob ?? 0
+  );
 
   const allocated = Number(
     (
@@ -679,13 +660,8 @@ export async function customerDebtsForOrg(
   const now = asOf ?? new Date().toISOString();
   const out = new Map<number, CustomerDebt>();
 
-  const hasOpening = await customersHasOpeningBalance(db);
   const customers = await db
-    .prepare(
-      hasOpening
-        ? "SELECT id, COALESCE(opening_balance_toman, 0) AS ob FROM customers WHERE organization_id = ?"
-        : "SELECT id, 0 AS ob FROM customers WHERE organization_id = ?"
-    )
+    .prepare("SELECT id, COALESCE(opening_balance_toman, 0) AS ob FROM customers WHERE organization_id = ?")
     .all(organizationId) as unknown as { id: number; ob: number }[];
   for (const c of customers) {
     const d = ZERO_DEBT();

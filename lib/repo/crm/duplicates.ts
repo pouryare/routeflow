@@ -100,7 +100,7 @@ export async function markSeparate(session: Session, aId: number, bId: number): 
     const r = await db.prepare(`${CARD_SQL} WHERE c.id = ? AND c.organization_id = ?`).get(id, session.organizationId) as unknown as Row | undefined;
     if (!r || !canSeeBusiness(session, r)) throw new DuplicateError("پرونده پیدا نشد");
   }
-  await db.prepare("INSERT OR IGNORE INTO crm_not_duplicates (organization_id, low_id, high_id, decided_by, decided_at) VALUES (?, ?, ?, ?, ?)").run(
+  await db.prepare("INSERT INTO crm_not_duplicates (organization_id, low_id, high_id, decided_by, decided_at) VALUES (?, ?, ?, ?, ?) ON CONFLICT DO NOTHING").run(
     session.organizationId,
     low,
     high,

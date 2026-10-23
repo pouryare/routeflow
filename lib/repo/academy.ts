@@ -4,6 +4,7 @@ import { getDb, plain } from "@/lib/db";
 import type { Session } from "@/lib/session";
 import { MANAGE_ROLES, isOwner } from "@/lib/roles";
 import { makeRepo } from "./base";
+import { stringAgg } from "@/lib/database/dialect";
 
 export class AcademyError extends Error {}
 
@@ -176,7 +177,7 @@ export async function trainingStatus(session: Session): Promise<{ lessons: Acade
   const rows = await db
     .prepare(
       `SELECT u.id, u.display_name AS name, u.role,
-              (SELECT GROUP_CONCAT(ur.role) FROM user_roles ur WHERE ur.user_id = u.id) AS roles
+              (SELECT ${stringAgg("ur.role")} FROM user_roles ur WHERE ur.user_id = u.id) AS roles
          FROM users u
         WHERE u.organization_id = ? AND u.active = 1${inGroup ? " AND u.group_id = ?" : ""}
         ORDER BY u.display_name, u.id`

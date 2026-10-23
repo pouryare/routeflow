@@ -18,9 +18,10 @@ async function ensureType(organizationId: number): Promise<void> {
   const now = new Date().toISOString();
   await getDb()
     .prepare(
-      `INSERT OR IGNORE INTO notification_types
+      `INSERT INTO notification_types
          (organization_id, code, name_fa, category, directedness, priority, group_scope, created_at, updated_at)
-       VALUES (?, ?, 'پردازش لینک‌ها طول کشیده است', 'system', 'ambient', 'LOW', 'type_day', ?, ?)`
+       VALUES (?, ?, 'پردازش لینک‌ها طول کشیده است', 'system', 'ambient', 'LOW', 'type_day', ?, ?)
+       ON CONFLICT DO NOTHING`
     )
     .run(organizationId, TYPE_CODE, now, now);
 }

@@ -13,6 +13,7 @@ import { listRecurrences } from "./taskRecurrences";
 import { createTask } from "./tasks";
 import { fanOutNotifications, flushNotifications } from "./notifications";
 import { emitEvent, tryEmitEvent, type EventRow } from "./events";
+import { daysBetween } from "@/lib/database/dialect";
 
 export interface RuleRow {
   id: number;
@@ -310,7 +311,7 @@ export async function runSweepRules(organizationId: number, asOfIso: string = ne
     .prepare(
       `SELECT b.id FROM batches b
         WHERE b.organization_id = ? AND b.status = 'active' AND b.expiry_date IS NOT NULL
-          AND julianday(b.expiry_date) - julianday(?) BETWEEN 0 AND 14
+          AND ${daysBetween("b.expiry_date", "?")} BETWEEN 0 AND 14
           AND COALESCE((SELECT SUM(m.base_qty) FROM stock_movements m WHERE m.batch_id = b.id), 0) > 0`
     )
     .all(organizationId, asOfIso.slice(0, 10)) as { id: number }[]) {

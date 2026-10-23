@@ -136,7 +136,7 @@ export async function createProduct(
     throw new TypeError("وزن هر واحد باید بین صفر و ۱۰۰۰ کیلوگرم باشد (صفر یعنی وزن هنوز معلوم نیست)");
   }
   const now = new Date().toISOString();
-  await db.prepare(
+  const res = await db.prepare(
     `INSERT INTO products (name, sku, base_unit, kg_per_base_unit, notes, created_at, updated_at, organization_id)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
   ).run(
@@ -149,7 +149,7 @@ export async function createProduct(
     now,
     input.organization_id
   );
-  return (await db.prepare("SELECT last_insert_rowid() AS id").get() as { id: number }).id;
+  return Number(res.lastInsertRowid);
 }
 
 export async function createPackaging(
@@ -160,7 +160,7 @@ export async function createPackaging(
   if (!Number.isInteger(input.qty_per_pack) || input.qty_per_pack < 1 || input.qty_per_pack > 100_000) {
     throw new TypeError("تعداد در هر بسته باید عددی صحیح بین ۱ و ۱۰۰۰۰۰ باشد");
   }
-  await db.prepare(
+  const res = await db.prepare(
     "INSERT INTO packagings (product_id, name, qty_per_pack, barcode, created_at) VALUES (?, ?, ?, ?, ?)"
   ).run(
     input.product_id,
@@ -169,7 +169,7 @@ export async function createPackaging(
     input.barcode?.trim() || null,
     new Date().toISOString()
   );
-  return (await db.prepare("SELECT last_insert_rowid() AS id").get() as { id: number }).id;
+  return Number(res.lastInsertRowid);
 }
 
 /** Records a new price. Always an INSERT -- there is no updatePrice, on purpose.
@@ -191,7 +191,7 @@ export async function setPrice(
   if (!isToman(input.price_toman)) {
     throw new TypeError("قیمت را به تومان و بدون اعشار وارد کنید");
   }
-  await db.prepare(
+  const res = await db.prepare(
     `INSERT INTO product_prices (product_id, packaging_id, price_toman, valid_from, created_by, created_at)
      VALUES (?, ?, ?, ?, ?, ?)`
   ).run(
@@ -202,7 +202,7 @@ export async function setPrice(
     input.created_by ?? null,
     new Date().toISOString()
   );
-  return (await db.prepare("SELECT last_insert_rowid() AS id").get() as { id: number }).id;
+  return Number(res.lastInsertRowid);
 }
 
 /** One effective-dated cost row. */
@@ -243,7 +243,7 @@ export async function setCost(
   if (!isToman(input.cost_toman)) {
     throw new TypeError("بهای تمام‌شده را به تومان و بدون اعشار وارد کنید");
   }
-  await db.prepare(
+  const res = await db.prepare(
     `INSERT INTO product_costs (product_id, packaging_id, method, cost_toman, valid_from, created_by, created_at)
      VALUES (?, ?, ?, ?, ?, ?, ?)`
   ).run(
@@ -255,7 +255,7 @@ export async function setCost(
     input.created_by ?? null,
     new Date().toISOString()
   );
-  return (await db.prepare("SELECT last_insert_rowid() AS id").get() as { id: number }).id;
+  return Number(res.lastInsertRowid);
 }
 
 /** The cost of one unit on a date, or null when nothing is known.

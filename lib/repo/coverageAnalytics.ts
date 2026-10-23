@@ -25,6 +25,7 @@ import { groupFilter, groupFilterWithShared, orgScopeId, type Session } from "@/
 import { orgClause } from "@/lib/orgScope";
 import { isOwner } from "@/lib/roles";
 import type { CostToServeRow, MatchQuality } from "@/components/CostToServePanel";
+import { tehranTodayIso } from "@/lib/jalali";
 
 export type DayLogRow = {
   day: string;
@@ -92,12 +93,12 @@ export async function coverageAnalytics(
   const remindersRow = await db
     .prepare(
       `SELECT
-         SUM(CASE WHEN due_date < date('now') THEN 1 ELSE 0 END) as overdue,
-         SUM(CASE WHEN due_date = date('now') THEN 1 ELSE 0 END) as today,
+         SUM(CASE WHEN due_date < ? THEN 1 ELSE 0 END) as overdue,
+         SUM(CASE WHEN due_date = ? THEN 1 ELSE 0 END) as today,
          COUNT(*) as total
        FROM reminders WHERE resolved = 0`,
     )
-    .get() as { overdue: number | null; today: number | null; total: number };
+    .get(tehranTodayIso(now), tehranTodayIso(now)) as { overdue: number | null; today: number | null; total: number };
 
   /* Revenue per customer against distance from the site we dispatch from.
      The join is by business name as free text -- sales rows carry no customer id -- so

@@ -73,7 +73,7 @@ export async function shouldReturnByProduct(
  *  them, "how many samples did we give away this month?" is one query, and the audit trail
  *  survives.
  *
- *  Idempotent per tenant via `INSERT OR IGNORE` on UNIQUE (organization_id, slug). */
+ *  Idempotent per tenant via `ON CONFLICT DO NOTHING` on UNIQUE (organization_id, slug). */
 export async function samplesFacility(organizationId: number): Promise<number> {
   const db = getDb();
   const existing = await db
@@ -85,8 +85,9 @@ export async function samplesFacility(organizationId: number): Promise<number> {
 
   const now = new Date().toISOString();
   await db.prepare(
-    `INSERT OR IGNORE INTO facilities (slug, kind, name, lat, lng, organization_id, created_at, updated_at)
-     VALUES ('samples-given', 'other', 'نمونه‌های داده‌شده', NULL, NULL, ?, ?, ?)`
+    `INSERT INTO facilities (slug, kind, name, lat, lng, organization_id, created_at, updated_at)
+     VALUES ('samples-given', 'other', 'نمونه‌های داده‌شده', NULL, NULL, ?, ?, ?)
+     ON CONFLICT DO NOTHING`
   ).run(organizationId, now, now);
   const row = await db
     .prepare("SELECT id FROM facilities WHERE organization_id = ? AND slug = 'samples-given'")

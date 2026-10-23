@@ -39,7 +39,7 @@ export async function hasRole(userId: number, role: Role): Promise<boolean> {
 export async function setRoles(userId: number, roles: Role[]): Promise<void> {
   const db = getDb();
   await db.prepare("DELETE FROM user_roles WHERE user_id = ?").run(userId);
-  const ins = db.prepare("INSERT OR IGNORE INTO user_roles (user_id, role) VALUES (?, ?)");
+  const ins = db.prepare("INSERT INTO user_roles (user_id, role) VALUES (?, ?) ON CONFLICT DO NOTHING");
   for (const r of roles) await ins.run(userId, r);
 }
 

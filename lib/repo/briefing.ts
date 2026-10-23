@@ -16,6 +16,7 @@ import { isVanRole } from "../roles";
 import { stopCountsByRun, remainingByRun } from "./runStops";
 import { reorderSignals } from "./suggestions";
 import { dueToday, orderHref } from "@/lib/briefingSuggestions";
+import { daysBetween } from "@/lib/database/dialect";
 
 export interface BriefingItem {
   label: string;
@@ -134,10 +135,10 @@ export async function todayFor(session: Session): Promise<Briefing> {
         `SELECT c.id, c.business_name, MAX(o.order_date) AS last
            FROM customers c JOIN orders o ON o.id IN (SELECT id FROM orders WHERE customer_id = c.id)
           WHERE c.organization_id = ? AND o.salesperson_user_id = ?
-          GROUP BY c.id HAVING julianday('now') - julianday(MAX(o.order_date)) > 14
+          GROUP BY c.id HAVING ${daysBetween("?", "MAX(o.order_date)")} > 14
           ORDER BY last LIMIT 10`
       )
-      .all(org, session.user.id) as { id: number; business_name: string; last: string }[];
+      .all(org, session.user.id, tehranTodayIso()) as { id: number; business_name: string; last: string }[];
     panels.push(
       panel(
         "call_list",

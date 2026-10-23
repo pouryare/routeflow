@@ -1,5 +1,6 @@
 import { getDb } from "@/lib/db";
 import { DUPLICATE_WINDOW_HOURS, type OpenOrderBrief } from "@/lib/duplicateOrder";
+import { stringAgg } from "@/lib/database/dialect";
 
 /** Statuses where the goods have not left yet: a second copy of one of these is still fixable. */
 const OPEN = "'DRAFT', 'PENDING_REVIEW', 'PENDING_CREDIT', 'ON_HOLD', 'CONFIRMED', 'PLANNED', 'READY', 'OUT_FOR_DELIVERY'";
@@ -15,7 +16,7 @@ export async function recentOpenOrders(
   const since = new Date(now.getTime() - DUPLICATE_WINDOW_HOURS * 3600_000).toISOString();
   const rows = await getDb()
     .prepare(
-      `SELECT o.id, o.order_no, o.created_at, GROUP_CONCAT(DISTINCT ol.product_id) AS products
+      `SELECT o.id, o.order_no, o.created_at, ${stringAgg("ol.product_id", { distinct: true })} AS products
          FROM orders o
          JOIN order_lines ol ON ol.order_id = o.id AND ol.is_reversal = 0
         WHERE o.customer_id = ? AND o.status IN (${OPEN}) AND o.created_at >= ?${scope.sql}

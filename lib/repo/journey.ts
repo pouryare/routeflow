@@ -1,6 +1,7 @@
 import type { Db } from "@/lib/database/client";
 import type { OrderEventRow } from "@/lib/orderEvents";
 import type { FunnelRow } from "@/lib/orderFunnel";
+import { stringAgg } from "@/lib/database/dialect";
 
 /** The two reads behind /sales/journey's modes. Raw SQL lives in lib/repo/
  *  (tests/repo-boundary.test.ts); the decisions made from these rows are pure and live
@@ -32,7 +33,7 @@ export async function readFunnelRows(db: Db, scope: { sql: string; params: numbe
   const rows = await db
     .prepare(
       `SELECT o.status AS status,
-              (SELECT group_concat(COALESCE(e.from_status, '') || ',' || e.to_status, ',')
+              (SELECT ${stringAgg("COALESCE(e.from_status, '') || ',' || e.to_status")}
                  FROM order_events e WHERE e.order_id = o.id) AS seen
          FROM orders o
         WHERE 1 = 1${scope.sql}`,

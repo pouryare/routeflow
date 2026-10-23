@@ -137,7 +137,7 @@ export async function addOrderToDraft(input: {
           .get(input.draftId) as { n: number }).n
       );
     await db.prepare(
-      `INSERT OR IGNORE INTO run_draft_stops (draft_id, order_id, seq, created_at) VALUES (?, ?, ?, ?)`
+      `INSERT INTO run_draft_stops (draft_id, order_id, seq, created_at) VALUES (?, ?, ?, ?) ON CONFLICT DO NOTHING`
     ).run(input.draftId, input.orderId, next, iso());
     await touch(input.draftId);
   });

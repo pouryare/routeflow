@@ -22,6 +22,8 @@ import { FULFILLED_ORDER_STATUSES, sqlStatusList } from "./orderStateMachine";
    which lib/money.ts calls out as making a reversal 1 Toman off the sale it reverses. */
 import { roundToman, sumToman } from "./money";
 import { postPurchase } from "./repo/ledgerPostings";
+import { daysBetween } from "@/lib/database/dialect";
+import { tehranTodayIso } from "@/lib/jalali";
 
 export class PurchaseError extends Error {}
 
@@ -336,13 +338,13 @@ export async function advancedStockPosition(db: Db, organizationId: number | nul
     .prepare(
       `SELECT b.product_id,
               MIN(b.expiry_date) AS earliest,
-              SUM(CASE WHEN julianday(b.expiry_date) - julianday('now') <= 30 THEN 1 ELSE 0 END) AS expiring
+              SUM(CASE WHEN ${daysBetween("b.expiry_date", "?")} <= 30 THEN 1 ELSE 0 END) AS expiring
          FROM batches b
         WHERE b.status IN ('active', 'quarantined') AND b.expiry_date IS NOT NULL
           AND COALESCE((SELECT SUM(m.base_qty) FROM stock_movements m WHERE m.batch_id = b.id), 0) > 0
         GROUP BY b.product_id`
     )
-    .all() as unknown as { product_id: number; earliest: string | null; expiring: number }[];
+    .all(tehranTodayIso()) as unknown as { product_id: number; earliest: string | null; expiring: number }[];
   const expiryByProduct = new Map(expiryRows.map((r) => [r.product_id, r]));
 
   // Every day in the window, oldest first, regardless of whether anything moved on it --

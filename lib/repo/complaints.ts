@@ -1,5 +1,8 @@
 import { makeRepo } from "./base";
 import type { BatchRow } from "./batches";
+import { stringAgg } from "@/lib/database/dialect";
+import { addDaysIso } from "@/lib/flows/dates";
+import { tehranTodayIso } from "@/lib/jalali";
 
 export class ComplaintError extends Error {}
 
@@ -141,18 +144,18 @@ export async function complaintClusters(
     .prepare(
       `SELECT qc.batch_id, b.batch_code, b.product_id,
               COUNT(*) AS count,
-              GROUP_CONCAT(DISTINCT qc.severity) AS severities
+              ${stringAgg("qc.severity", { distinct: true })} AS severities
          FROM quality_complaints qc
          JOIN batches b ON b.id = qc.batch_id
         WHERE qc.organization_id = ?
           AND qc.batch_id IS NOT NULL
           AND qc.status IN ('open', 'investigating')
-          AND qc.reported_at >= date('now', ?)
+          AND qc.reported_at >= ?
         GROUP BY qc.batch_id
         HAVING COUNT(*) >= ?
         ORDER BY count DESC`
     )
-    .all(organizationId, `-${sinceDays} days`, minCount))
+    .all(organizationId, addDaysIso(tehranTodayIso(), -sinceDays), minCount))
     .map((r) => {
       const row = r as { batch_id: number; batch_code: string; product_id: number; count: number; severities: string };
       return { ...row, severities: row.severities ? row.severities.split(",") : [] };

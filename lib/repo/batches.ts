@@ -7,6 +7,7 @@ import {
   canTransitionBatch,
   type BatchStatus,
 } from "@/lib/batchStates";
+import { tehranTodayIso } from "@/lib/jalali";
 
 /** A refusal the caller shows the user, not a bug. */
 export class BatchError extends Error {}
@@ -211,9 +212,9 @@ export async function sweepBatchStatuses(organizationId?: number): Promise<{ exp
       .prepare(
         `UPDATE batches SET status = 'expired', updated_at = ?
           WHERE status IN ('active', 'quarantined')
-            AND expiry_date IS NOT NULL AND expiry_date < date('now') ${orgClause}`
+            AND expiry_date IS NOT NULL AND expiry_date < ? ${orgClause}`
       )
-      .run(now, ...(orgArg as never[]))).changes
+      .run(now, tehranTodayIso(), ...(orgArg as never[]))).changes
   );
 
   const depleted = Number(

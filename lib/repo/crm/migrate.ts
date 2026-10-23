@@ -189,7 +189,7 @@ export async function backfillCrm(db: Db): Promise<void> {
       await upd.run(norm, s.contact_status, s.sales_stage, s.verification, s.temperature, s.attempt_count, s.consecutive_misses,
         s.last_activity_at, s.last_contacted_at, task?.id ?? null, c.id);
     }
-    await db.prepare("INSERT OR REPLACE INTO app_meta (key, value) VALUES ('crm_backfill_v1', ?)").run(now);
+    await db.prepare("INSERT INTO app_meta (key, value) VALUES ('crm_backfill_v1', ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value").run(now);
   });
 }
 
