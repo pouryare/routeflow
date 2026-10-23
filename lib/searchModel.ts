@@ -8,7 +8,7 @@ import { normalisePersian } from "@/lib/persian";
  *  same arrangement as HoverPill's pillModel. Safe to import on the server: no DOM. */
 
 /** `user` is Login-As: choosing one acts rather than navigates, and is never a recent. */
-export type SearchKind = "page" | "customer" | "order" | "user" | "district";
+export type SearchKind = "page" | "customer" | "order" | "user" | "district" | "note";
 
 export type SearchHit = {
   kind: SearchKind;
@@ -50,7 +50,7 @@ export function pushRecent(list: SearchHit[], hit: SearchHit): SearchHit[] {
 // "district" must be here, not just in the SearchKind union: isHit validates a stored
 // recent against this list, so omitting it would make a district the user opened vanish
 // from their recents on the next visit, silently.
-const KINDS: readonly string[] = ["page", "customer", "order", "user", "district"];
+const KINDS: readonly string[] = ["page", "customer", "order", "user", "district", "note"];
 
 /** An in-app path, and only that: `/x` yes; `//host` and `https://…` no. localStorage is
  *  writable by anything on this origin, and a stored href is navigated to on Enter. */

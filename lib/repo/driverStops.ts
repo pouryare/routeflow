@@ -3,6 +3,9 @@
 
 import { getDb } from "@/lib/db";
 import { deferStop, readDriverRuns, readRun, recordDelivery } from "@/lib/delivery";
+import { canReachGroup, type Session } from "@/lib/session";
+import { MANAGE_ROLES } from "@/lib/roles";
+import { organizationName } from "@/lib/repo/organizations";
 
 export interface OwnedStop {
   id: number;
@@ -61,4 +64,23 @@ export function driverRunView(driverUserId: number, requestedRun: string | null,
   // The id can be typed into the URL; a run belonging to another driver reads as absent.
   if (!run || run.driver_user_id !== driverUserId) return { run: null, runs };
   return { run, runs };
+}
+
+/** F101: a run for the printed delivery notes, with the company's name and the van, or null when
+ *  it is not this company's, or the caller is neither a manager who can reach its group nor its
+ *  driver. */
+export function runForNotes(session: Session, runId: number) {
+  const db = getDb();
+  const row = db
+    .prepare(
+      `SELECT dr.id, dr.group_id, dr.driver_user_id, v.name AS vehicle
+         FROM delivery_runs dr LEFT JOIN vehicles v ON v.id = dr.vehicle_id
+        WHERE dr.id = ? AND dr.organization_id = ?`
+    )
+    .get(runId, session.organizationId) as { id: number; group_id: number | null; driver_user_id: number; vehicle: string | null } | undefined;
+  if (!row) return null;
+  const allowed = MANAGE_ROLES.includes(session.role) ? canReachGroup(session, row.group_id) : row.driver_user_id === session.user.id;
+  if (!allowed) return null;
+  const run = readRun(db, runId);
+  return run ? { run, vehicle: row.vehicle, businessName: organizationName(session.organizationId) ?? "فروش و پخش" } : null;
 }

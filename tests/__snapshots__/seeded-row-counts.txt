@@ -50,7 +50,7 @@ manager_commission_payments: 0
 notification_channels: 0
 notification_deliveries: 0
 notification_prefs: 0
-notification_types: 13
+notification_types: 14
 notifications: 0
 objection_cards: 8
 order_events: 0

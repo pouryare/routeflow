@@ -1,6 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
 import { getDb, plain } from "@/lib/db";
+import type { Session } from "@/lib/session";
+import { MANAGE_ROLES, isOwner } from "@/lib/roles";
 import { makeRepo } from "./base";
 
 export class AcademyError extends Error {}
@@ -106,6 +108,8 @@ export interface AcademyModule {
   title_fa: string;
   order: number;
   status: string;
+  /** F133: roles that must finish this lesson. Absent or empty: optional for everyone. */
+  required_for?: string[];
 }
 
 export function academyManifest(): AcademyModule[] {
@@ -147,4 +151,57 @@ export function lessonProgress(
       )
       .all(organizationId, userId) as unknown as { lesson_slug: string; completed_at: string }[]
   );
+}
+
+export interface TrainingPerson {
+  id: number;
+  name: string;
+  role: string;
+  /** Per required lesson slug: done, not done, or not required for this person's roles. */
+  lessons: Record<string, "done" | "todo" | "na">;
+}
+
+/** F133: who has finished the lessons their roles require. The owner sees every active person
+ *  in the company, a group manager the people in their group; nobody else gets a table. A
+ *  person counts under every role they hold (users.role and user_roles). Only lessons with a
+ *  `required_for` list appear. */
+export function trainingStatus(session: Session): { lessons: AcademyModule[]; people: TrainingPerson[] } | null {
+  if (!MANAGE_ROLES.includes(session.role)) return null;
+  const lessons = academyManifest().filter((m) => (m.required_for ?? []).length > 0);
+  const roles = [...new Set(lessons.flatMap((m) => m.required_for ?? []))];
+  if (lessons.length === 0 || roles.length === 0) return { lessons, people: [] };
+  const db = getDb();
+  const inGroup = !isOwner(session.role); // a group manager: their own group only
+  if (inGroup && session.groupId === null) return { lessons, people: [] };
+  const rows = db
+    .prepare(
+      `SELECT u.id, u.display_name AS name, u.role,
+              (SELECT GROUP_CONCAT(ur.role) FROM user_roles ur WHERE ur.user_id = u.id) AS roles
+         FROM users u
+        WHERE u.organization_id = ? AND u.active = 1${inGroup ? " AND u.group_id = ?" : ""}
+        ORDER BY u.display_name, u.id`
+    )
+    .all(...(inGroup ? [session.organizationId, session.groupId as number] : [session.organizationId])) as unknown as {
+    id: number; name: string; role: string; roles: string | null;
+  }[];
+  const done = new Set(
+    (db
+      .prepare("SELECT user_id, lesson_slug FROM lesson_progress WHERE organization_id = ?")
+      .all(session.organizationId) as unknown as { user_id: number; lesson_slug: string }[]).map((r) => `${r.user_id}:${r.lesson_slug}`)
+  );
+  const people: TrainingPerson[] = [];
+  for (const r of rows) {
+    const held = new Set([r.role, ...(r.roles ? r.roles.split(",") : [])]);
+    if (!roles.some((x) => held.has(x))) continue;
+    const cells: TrainingPerson["lessons"] = {};
+    for (const m of lessons) {
+      const needed = (m.required_for ?? []).some((x) => held.has(x));
+      cells[m.slug] = !needed ? "na" : done.has(`${r.id}:${m.slug}`) ? "done" : "todo";
+    }
+    people.push({ id: r.id, name: r.name, role: r.role, lessons: cells });
+  }
+  // Most to do first: that is who the manager talks to.
+  const todo = (p: TrainingPerson) => Object.values(p.lessons).filter((v) => v === "todo").length;
+  people.sort((a, b) => todo(b) - todo(a));
+  return { lessons, people };
 }

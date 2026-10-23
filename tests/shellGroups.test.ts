@@ -7,7 +7,7 @@ import { existsSync, readFileSync } from "node:fs";
  *  do not change URLs, so nothing here asserts about paths; the build output does.
  */
 describe("route groups", () => {
-  const bare = ["driver", "login", "offline", "today"];
+  const bare = ["driver", "login", "offline", "today", "print"];
 
   it("every bare route lives under app/(bare)", () => {
     for (const r of bare) {

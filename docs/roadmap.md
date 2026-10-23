@@ -35,6 +35,8 @@ Totals: 46 small, 73 medium, 27 large first slices; 123 entries note existing co
 
 Small first slices that need no new infrastructure and no outside decision, ordered roughly by how much they unblock or save. Each rests on something the entry confirms already exists.
 
+**Status (2026-10-23): every row below is built as a first slice.** F35, F89, F99, F100, F107, F108, F110, F116, F132, F138 (part 1) and F144 came in PR #57; the rest, plus F8, F16, F23, F62, F67, F72 and F112, came in the small-difficulty batch. Each entry in `docs/future-features.md` now has a "Built (2026-10-23)" note saying what the slice covers and what it leaves out. Section 1a lists what that batch left for later.
+
 | Order | Feature | Why it is cheap |
 |---|---|---|
 | 1 | F144 Failure, cancellation, return and delay reason reports | Reasons are captured on every cancel, return and failed delivery but nothing counts them; one owner report of the last 90 days by reason. |
@@ -59,6 +61,10 @@ Small first slices that need no new infrastructure and no outside decision, orde
 | 20 | F58 Order templates and favourites | Show a "usual basket" suggestion next to the existing "same as last time" in the repeat-order flow. |
 | 21 | F19 Salesperson earnings view and commission simulator | A read-only earnings card from the existing commission statements. |
 | 22 | F35 Force a new password on first sign-in | A boolean on the user, a redirect to a new-password screen while it is set, cleared when the user saves one (an earlier parked item). |
+
+### 1a. Small after a prerequisite: left for later
+
+The small-difficulty batch built the easy entries and the two "small after a prerequisite" entries whose prerequisite it built in the same batch (F62 on F58, F112 on F84). These stay parked because their prerequisite is still missing or needs a decision: F104 (customer snapshot sheet; can be built next, it only needs the call list), F74, F77, F85, F86, F91, F114, F69, F31, F42, F34, F95, F140, F2, F5, F117 and F38. Their entries name the prerequisite.
 
 ## 2. Foundations
 
@@ -156,10 +162,10 @@ These entries say, in their own "Already in the app" or "Correction (found later
 - **F51 SLA and escalation rules:** the rule engine already supports escalation windows; which SLAs are configured and a breach report are missing.
 - **F61 Backorders and partial fulfilment:** partial delivery and an automatic backorder draft exist; promised dates, a list and auto-fulfilment are missing.
 - **F130 Rule builder screen:** the rule engine exists; owners can only toggle a rule and change its cooldown.
-- **F132 Order priority flag:** the priority column and planner weights exist; nothing sets the value or shows it to the driver.
-- **F138 Off-site backup copy:** a local nightly backup exists; the off-site copy, integrity check and alert are missing.
+- **F132 Order priority flag:** built in PR #57 (picker and tags).
+- **F138 Off-site backup copy:** the integrity check and status file are built (PR #57); the off-site copy and alert are missing.
 - **F143 Approve from Telegram:** push notifications already carry one-tap actions for cheques and reminders; Telegram messages have no buttons.
-- **F144 Failure, cancellation, return and delay reason reports:** reasons are captured; nothing aggregates them.
+- **F144 Failure, cancellation, return and delay reason reports:** built in PR #57 (/sales/reasons).
 
 ## 7. Looked like features but already exist
 
@@ -526,6 +532,8 @@ Lower priority: the hand-written service worker (`public/sw.js`, manual cache ve
 | `json-logic-js` (2.0.5, last release July 2024) | F130 stored rule conditions | Option for storing conditions as JSON; check whether the query-builder format is enough before adding it |
 | AG Grid Community (36.2.0) | F131 keyboard-first desk order entry | Spreadsheet-style editing; check right-to-left and Persian digit behaviour first |
 | `web-vitals` (6.2.3), sent to the own server | real-user timings from phones on Iranian networks | Lab tests cannot show these |
+
+**Small-difficulty batch (2026-10-23): no new library.** All 18 entries were built on existing code: the browser's print path for the price list and run notes, the commission engine, the briefing panels, the notification flush and `users.prefs_json`. Nothing was added to `package.json`.
 
 **Keep as is**: `lib/jalali.ts` (tested against Intl over twenty years), TOTP, UUIDv7, the thermal-receipt PDF and ESC/POS code (Chromium print-to-PDF only for A4 documents), the offline outbox, the VROOM fallback.
 

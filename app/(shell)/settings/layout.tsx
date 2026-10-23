@@ -16,6 +16,7 @@ import Link from "next/link";
 const NAV = [
   { href: "/settings/notifications", label: "اعلان‌ها" },
   { href: "/settings/security", label: "امنیت و ورود" },
+  { href: "/settings/updates", label: "تازه‌های برنامه" },
 ];
 
 export default function SettingsLayout({ children }: { children: ReactNode }) {

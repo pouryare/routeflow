@@ -1,8 +1,9 @@
 import type { DatabaseSync } from "node:sqlite";
 import { readCustomers } from "@/lib/customers";
-import { orderFilter, scopeGroupIds, type Session } from "@/lib/session";
+import { crmFilter, orderFilter, scopeGroupIds, type Session } from "@/lib/session";
 import { matchesQuery, normalisePersian } from "@/lib/persian";
 import { faDigits } from "@/lib/format";
+import { faJalaliDate } from "@/lib/jalali";
 import { buildMapLink } from "@/lib/deepLink";
 import { ORDER_STATUS_LABEL, type OrderStatus } from "@/lib/orderStateMachine";
 import { MIN_REMOTE_QUERY, type SearchHit } from "@/lib/searchModel";
@@ -71,6 +72,56 @@ export function searchOrders(db: DatabaseSync, session: Session, q: string, limi
       sub: `${r.customer_name} · ${ORDER_STATUS_LABEL[r.status] ?? "نامشخص"}`,
       href: `/sales/orders/${r.id}`,
     }));
+}
+
+/** Notes newest first considered before matching (F98). Matching folds Persian letters in JS, so
+ *  the window keeps a keystroke cheap; the CRM timeline holds the rest. */
+const NOTE_WINDOW = 3000;
+/** A phrase, not a letter pair: two letters match half of every note. */
+const MIN_NOTE_QUERY = 3;
+const SNIPPET = 60;
+
+/** F98: call and visit notes that contain the phrase, one hit per note, for customers the person
+ *  can already open in the CRM (crmFilter: owner over the company, a manager over their group,
+ *  a phone rep over their own and their group's unowned ones). Each hit names the customer, the
+ *  day and a snippet around the match, and opens the customer's page. */
+export function searchNotes(db: DatabaseSync, session: Session, q: string, limit = DEFAULT_LIMIT): SearchHit[] {
+  if (normalisePersian(q.trim()).length < MIN_NOTE_QUERY) return [];
+  const scope = crmFilter(session, "c");
+  const rows = db
+    .prepare(
+      `SELECT a.id, a.customer_id, a.note, a.occurred_at, c.business_name
+         FROM activities a
+         JOIN customers c ON c.id = a.customer_id
+        WHERE a.note IS NOT NULL AND a.note <> '' AND c.merged_into_id IS NULL${scope.sql}
+        ORDER BY a.occurred_at DESC, a.id DESC
+        LIMIT ?`,
+    )
+    .all(...scope.params, NOTE_WINDOW) as unknown as {
+    id: number; customer_id: number; note: string; occurred_at: string; business_name: string;
+  }[];
+  return rows
+    .filter((r) => matchesQuery(r.note, q))
+    .slice(0, limit)
+    .map((r) => ({
+      kind: "note",
+      id: `note:${r.id}`,
+      label: r.business_name,
+      sub: `${faJalaliDate(r.occurred_at.slice(0, 10))} · ${noteSnippet(r.note, q)}`,
+      href: `/crm/${r.customer_id}`,
+    }));
+}
+
+/** About SNIPPET characters of the note around the first match, with … where it was cut. The
+ *  position is found on the folded text, which drops half-spaces, so it can sit a few characters
+ *  early; the window is wide enough that the match stays inside it. */
+function noteSnippet(note: string, q: string, width = SNIPPET): string {
+  const flat = note.replace(/\s+/g, " ").trim();
+  if (flat.length <= width) return flat;
+  const at = Math.max(0, normalisePersian(flat).indexOf(normalisePersian(q.trim())));
+  const start = Math.max(0, Math.min(at - Math.floor(width / 3), flat.length - width));
+  const end = Math.min(flat.length, start + width);
+  return `${start > 0 ? "…" : ""}${flat.slice(start, end)}${end < flat.length ? "…" : ""}`;
 }
 
 /** Login-As candidates for the overlay's «ورود به‌جای کاربر» section: owners only, their

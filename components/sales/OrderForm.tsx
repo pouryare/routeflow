@@ -1,8 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { friendlyError } from "@/lib/userMessage";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import JalaliDatePicker from "@/components/JalaliDatePicker";
 import { faToman, faNum } from "@/lib/format";
 import { roundToman } from "@/lib/money";
@@ -18,6 +19,9 @@ import {
   type RequestedKind,
 } from "@/lib/requestedDay";
 import { tehranTodayIso } from "@/lib/jalali";
+import { customerProductIds } from "@/lib/customerProducts";
+import { duplicateOf, type OpenOrderBrief } from "@/lib/duplicateOrder";
+import { ONBOARDING_LABEL, type Onboarding } from "@/lib/onboarding";
 
 interface Customer {
   id: number;
@@ -104,6 +108,32 @@ export default function OrderForm({
 
   const customer = customers.find((c) => c.id === customerId) ?? null;
 
+  /* F62: this customer's usual products first in the product picker, read from their history
+     (the usual basket, then everything else they have bought). Nothing is hidden. */
+  const [theirs, setTheirs] = useState<{ for: number; ids: string[]; recent: OpenOrderBrief[]; onboarding: Onboarding | null } | null>(null);
+  useEffect(() => {
+    if (customerId === null) return;
+    let alive = true;
+    fetch(`/api/sales/orders?customer=${customerId}&limit=1`)
+      .then((r) => r.json())
+      .then((j: { usual?: { product_id: number }[]; products?: { product_id: number }[]; recent_open?: OpenOrderBrief[]; onboarding?: Onboarding | null }) => {
+        if (alive) {
+          setTheirs({ for: customerId, ids: customerProductIds(j.usual ?? [], j.products ?? []), recent: j.recent_open ?? [], onboarding: j.onboarding ?? null });
+        }
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [customerId]);
+  /* F72: an open order from the last day with the same products is usually a double entry.
+     Asked once per submit; «this is a new order» sends it anyway. */
+  const [dupe, setDupe] = useState<OpenOrderBrief | null>(null);
+  /* F40: a new customer's first order names what is still missing; it never blocks. */
+  const onboarding = theirs && theirs.for === customerId ? theirs.onboarding : null;
+  const onboardingGaps = onboarding?.isNew ? onboarding.missing.map((k) => ONBOARDING_LABEL[k]) : [];
+  const pinnedProducts = theirs && theirs.for === customerId && theirs.ids.length > 0 ? { label: "خریدهای این مشتری", ids: theirs.ids } : undefined;
+
   const product = products.find((p) => String(p.id) === pickProduct) ?? null;
   const packaging = product?.packagings.find((k) => String(k.id) === pickPackaging) ?? null;
 
@@ -169,8 +199,12 @@ export default function OrderForm({
     }
   }, [requestedMode, requestedDate, requestedWeeks]);
 
-  async function submit() {
+  async function submit(allowDuplicate = false) {
     if (!customer || lines.length === 0) return;
+    const recent = theirs && theirs.for === customer.id ? theirs.recent : [];
+    const twin = allowDuplicate ? null : duplicateOf(recent, lines.map((l) => l.product_id));
+    setDupe(twin);
+    if (twin) return;
     setBusy(true);
     setError(null);
     try {
@@ -371,6 +405,7 @@ export default function OrderForm({
             scope="order-products"
             label="کالا"
             items={products.map((p) => ({ id: String(p.id), label: p.name }))}
+            pinned={pinnedProducts}
             value={pickProduct}
             onChange={(id) => {
               setPickProduct(id);
@@ -402,6 +437,31 @@ export default function OrderForm({
         </div>
       </section>
 
+      {onboardingGaps.length > 0 && customer && (
+        <p className="m-0 rounded-[var(--radius-md)] border border-[var(--warn)] p-[var(--space-3)] text-[length:var(--text-sm)] leading-6 text-[var(--warn)]">
+          مشتری تازه: {onboardingGaps.join("، ")} هنوز ثبت نشده. سفارش ثبت می‌شود؛ پیش از نخستین تحویل{" "}
+          <Link href={`/crm/${customer.id}`} className="underline">پروندهٔ مشتری</Link> را کامل کنید.
+        </p>
+      )}
+
+      {dupe && (
+        <div role="alert" className="flex flex-col gap-[var(--space-3)] rounded-[var(--radius-md)] border border-[var(--warn)] p-[var(--space-3)]">
+          <p className="m-0 text-[length:var(--text-sm)] leading-6 text-[var(--warn)]">
+            این مشتری سفارش باز {dupe.order_no} را با همین کالاها در ۲۴ ساعت گذشته دارد. شاید دوباره ثبت شده باشد.
+          </p>
+          <div className="flex flex-wrap gap-[var(--space-2)]">
+            <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn solid" onClick={() => router.push(`/sales/orders/${dupe.id}`)}>
+              <Icon name="receipt" size="sm" />
+              باز کردن همان سفارش
+            </button>
+            <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn ghost" onClick={() => submit(true)}>
+              <Icon name="plus" size="sm" />
+              سفارش تازه است، ثبت شود
+            </button>
+          </div>
+        </div>
+      )}
+
       {overLimit && customer?.credit_limit_toman != null && (
         <p className="m-0 rounded-[var(--radius-md)] border border-[var(--warn)] p-[var(--space-3)] text-[length:var(--text-sm)] leading-6 text-[var(--warn)]">
           با این سفارش، بدهی {customer.business_name} به {faToman(projectedDebt)} می‌رسد و از
@@ -421,7 +481,7 @@ export default function OrderForm({
         </div>
         <button
           type="button"
-          onClick={submit}
+          onClick={() => submit()}
           disabled={busy || !customer || lines.length === 0}
           className="inline-flex items-center justify-center gap-[var(--space-2)] rounded-[var(--radius-md)] border border-[var(--accent)] bg-[var(--accent)] px-[var(--space-5)] py-[var(--space-3)] text-[length:var(--text-base)] font-medium text-accent-ink transition-[filter,transform] duration-[var(--dur-base)] hover:brightness-110 active:scale-[0.98] disabled:opacity-40"
         >
