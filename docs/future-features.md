@@ -1391,6 +1391,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 **What:** where each rep went today and this week, what they visited and how long they stayed, from visit, call and order locations, for managers to coach and to check coverage.
 
+**Technology to consider (2026-10-23):** check Persian labels on any MapLibre basemap (right-to-left text plugin); see `docs/roadmap.md`, section 10.
+
 **Technology to consider (2026-10-23):** deck.gl on MapLibre for many points and areas; see `docs/roadmap.md`, section 10.
 
 **Already in the app:** the map shows customers, leads and districts with coverage status, and the phone tracks its own position live (`MyPositionProvider`) for navigation and arrival prompts (see F38). Delivery stops record the device's GPS at the moment of the action (`gps_lat`, `gps_lng`, `device_time`). I found no stored position history for salespeople, so there is nothing yet to draw as a rep's day.
@@ -1884,6 +1886,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 ## F92. Territory revenue map
 
 **What:** a map of revenue by district compared with the district's potential (customers and prospects), to show where growth is available and which districts are over- or under-served.
+
+**Technology to consider (2026-10-23):** check Persian labels on any MapLibre basemap (right-to-left text plugin); see `docs/roadmap.md`, section 10.
 
 **Technology to consider (2026-10-23):** an H3 hexagon grid for counting per area; see `docs/roadmap.md`, section 10.
 

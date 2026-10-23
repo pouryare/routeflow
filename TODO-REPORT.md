@@ -434,6 +434,8 @@ Full write-up: `docs/architecture-audit-2026-10-22.md`. Steps 1 to 3 are merged 
 ## Interesting technologies recorded (2026-10-23, docs only)
 
 ### Done
+- [x] Persian map labels (right-to-left text plugin) added to the roadmap table with notes on F68 and F92; found no `setRTLTextPlugin` call in the code
+- [x] Suggested seven more (import wizard, forms from data, per-company subdomain and branding, backup fire drill, call detection on the phone, straighten photos before OCR, contact picker)
 - [x] Short links for SMS, bad-network tests, real-phone tests (Maestro) and load testing (k6) added to the roadmap table, with notes on F6, F13, F79, F105, F106, F113, F120, F127
 - [x] Suggested seven more (cold-chain temperature loggers, validated environment settings, daily audit seal, component showroom, pre-commit checks, heartbeat for nightly jobs, Persian map labels)
 - [x] Live updates for the Android shell (Capgo) and a no-login tracking page with Altcha added to the roadmap table, with notes on F6, F13, F79, F120
@@ -444,9 +446,9 @@ Full write-up: `docs/architecture-audit-2026-10-22.md`. Steps 1 to 3 are merged 
 - [x] Suggested seven more technologies (offline maps, H3 hexagons, Valhalla, OpenAPI with fuzz tests, database tests, mutation testing, per-company switches and usage numbers)
 
 ### Not done / gaps
-- [ ] The newest seven are not in the docs yet; nothing installed or tested, including from Iran
+- [ ] The latest seven are not in the docs yet; nothing installed or tested, including from Iran
 
 ### Next steps
-1. Say which of the newest seven to record
+1. Say which of the latest seven to record
 2. Check the outside services from the Iranian server
 3. Decide the Android distribution route before F6 starts
