@@ -75,9 +75,17 @@ _Condensed 2026-10-23. Each finished piece of work is one line here; the full ea
   - [x] Card help (i), the profile menu and the notification bell open HeroUI Popovers; the profile menu opens on tap or click, not hover
   - [x] Login-as, acting-company and role banners, and the map's arrival prompt, are HeroUI Alerts
   - [x] `check:mobile` needs a written reason for each file that imports a HeroUI overlay (card help, profile menu, bell)
+- [x] HeroUI phase 3, forms and choices:
+  - [x] Every Shamsi date field is HeroUI's Persian Calendar in a sheet (`PersianDateField`), with «امروز» and, when optional, «پاک کردن تاریخ»; the calendar stays in Shamsi months when a first day is set
+  - [x] Every on/off choice is a HeroUI Switch (`ToggleSwitch`) or Checkbox (`CheckField`), 44 px to tap
+  - [x] No `<select>` left: customer and product choices open the picker sheet, short lists are chips
+  - [x] Login, the password form and the new-user password use HeroUI text fields (`TextInput`, `PasswordInput` with show/hide)
+  - [x] The colour and font pickers open HeroUI Popovers; the theme button is 44 px
+  - [x] Stale `check:mobile` allowlist entries removed; raw text-field count 97 → 86
 
 ## Not done / gaps
-- [ ] HeroUI move: answer buttons (`tf-opt`), chips, tabs, tables, forms, the notification feed's rows and the Jalali pickers outside the date step are not moved yet; the search overlay and the map's side panels (layers, customer inspector) are still hand-built
+- [ ] HeroUI move: answer buttons (`tf-opt`), chips, tabs, tables and the notification feed's rows are not moved yet; 86 raw text fields remain (only login and passwords use `TextInput`); the inline reset-password field in the users table and the location card's checkbox (the card is the tap target) stay native; the search overlay and the map's side panels are still hand-built
+- [ ] The section tabs under the header are 37 px tall and the header search button 34 px (found while checking phase 3; not part of it)
 - [ ] Headless Chromium sometimes leaves parts of a long page's open sheet unpainted until the next repaint; the layout is right (measured) and a repaint draws it, but check on a real phone
 - [ ] HeroUI look is partial: inside `.meridian` HeroUI parts still read Meridian's `--accent`, `--surface`, `--border`, `--muted` and `--radius-*`; the token hand-over (and the dead `.island` / `.toast` CSS) is its own step
 - [ ] The toast no longer shows the draining bar for the undo window; HeroUI's toast has none
@@ -113,8 +121,8 @@ _Condensed 2026-10-23. Each finished piece of work is one line here; the full ea
 - [ ] Left for later: F104 (not reached; nothing blocks it), and, waiting on a missing prerequisite, F74, F77, F85, F86, F91, F114, F69, F31, F42, F34, F95, F140, F2, F5, F117, F38
 
 ## Next steps
-1. Merge the HeroUI phase 2 PR once CI is green (merge commit)
-2. HeroUI phase 3: forms and choices (switches, checkboxes, text fields, pickers, the Jalali date pickers)
+1. Merge the HeroUI phase 3 PR once CI is green (merge commit)
+2. HeroUI phase 4: navigation and data (tabs, disclosure, table and pagination, chips, avatar, skeleton, empty states), and the 44 px section tabs and search button
 3. HeroUI token hand-over: HeroUI's palette and radii as the source, Meridian names as aliases, then remove dead CSS
 4. PostgreSQL phase 2: Dockerfile with the extensions, baseline schema, `pg` adapter behind `Db`, CI job against Postgres
 5. Decide whether the smoke suite joins CI (needs Chromium on the runner; map tiles stubbed)
