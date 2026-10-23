@@ -91,6 +91,9 @@ export default function LeadPanels() {
 
       <section>
         <h3 className="sechead__title sechead__title--minor mb-[var(--space-2)]">امتیاز میانگین</h3>
+        {stats.scored === 0 ? (
+          <p className="m-0 text-[length:var(--text-sm)] text-[var(--text-muted)]">هنوز به سرنخی امتیاز داده نشده است.</p>
+        ) : (
         <div className="flex h-32 items-end gap-[var(--space-2)]">
           {stats.scores.map((b) => (
             <div key={b.label} className="flex h-full flex-1 flex-col items-center justify-end gap-1">
@@ -100,6 +103,7 @@ export default function LeadPanels() {
             </div>
           ))}
         </div>
+        )}
       </section>
     </div>
   );

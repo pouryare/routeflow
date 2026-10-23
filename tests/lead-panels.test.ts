@@ -49,3 +49,4 @@ describe("where the panels live", () => {
     expect(fs.existsSync("app/(shell)/analytics")).toBe(false);
   });
 });
+
