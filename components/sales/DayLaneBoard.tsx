@@ -23,6 +23,7 @@
 //     scroll away from the lanes to use the map, and the two never inform each other.
 
 import { useState, useCallback, useRef } from "react";
+import Link from "next/link";
 import SectionHead from "@/components/meridian/SectionHead";
 import StopHoverPane, { type HoverOrder } from "@/components/sales/StopHoverPane";
 import { useCardDrag, type CardDrag } from "@/components/board/useCardDrag";
@@ -137,6 +138,13 @@ export default function DayLaneBoard({
                 <span className="font-mono text-[length:var(--text-xs)] text-text-muted">
                   {r.kg.toLocaleString("fa-IR")} ک.م
                 </span>
+                {/* F101: every stop's delivery note in one print, with a cover sheet. */}
+                {r.status !== "done" && (
+                  <Link href={`/print/run/${r.id}`} className="touch mr-auto inline-flex min-h-[44px] items-center gap-1 text-[length:var(--text-xs)] text-accent">
+                    <Icon name="print" size="sm" />
+                    برگه‌های تحویل
+                  </Link>
+                )}
               </div>
             ))}
           </div>
