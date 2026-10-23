@@ -1582,6 +1582,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 **What:** when a run is delayed past a threshold, a templated message goes to the affected customers (reviewed by the dispatcher before sending, at least at first), with a new expected time.
 
+**Provider (2026-10-23):** SMS goes through Farazsms. Consent and opt-out are still needed; see `docs/roadmap.md`, section 10.
+
 **Already in the app:** stops carry a planned arrival and a delay reason code, and staff get push and Telegram notifications (`lib/repo/notifications.ts`). Customers are not notification recipients, and I found no customer-facing messaging channel.
 
 **Why parked:** it needs a way to reach customers (SMS gateway or messaging app accounts, see F6), consent and opt-out, and a trustworthy new ETA (see F6 and F38); a wrong message is worse than none.
@@ -2125,6 +2127,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 **What:** a one-time code (sent by SMS or Telegram, or from an authenticator app) required at sign-in for roles that can approve money and see everything, with trusted-device memory so it is asked rarely.
 
+**Provider (2026-10-23):** SMS goes through Farazsms. Consent and opt-out are still needed; see `docs/roadmap.md`, section 10.
+
 **Library (2026-10-23):** `@simplewebauthn/server` for passkeys as a second step beside the existing TOTP.
 
 **Already in the app:** sign-in produces a signed session cookie that lasts 30 days, carrying the user, role, group, organisation and a token version (`lib/auth.ts`); login is rate-limited per username and per address; Login-As for owners is time-limited and re-validated on every request (`lib/impersonation.ts`). I found no one-time-code or second-factor code anywhere.
@@ -2188,6 +2192,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 ## F109. Self-service password reset
 
 **What:** a user who forgot their password resets it themselves with a code sent to their linked Telegram, instead of asking the owner or a manager.
+
+**Provider (2026-10-23):** SMS goes through Farazsms. Consent and opt-out are still needed; see `docs/roadmap.md`, section 10.
 
 **Already in the app:** passwords are hashed and set by an administrator: the admin user routes accept a new password with a minimum length, store the hash and bump the user's token version so old sessions end (`app/api/admin/users/[id]/route.ts`), and a helper generates a readable username and password when a user is added, leaving out look-alike characters (`lib/credentials.ts`). The notification system already links a user's Telegram account with a one-time nonce (`lib/repo/notifications.ts`, `telegram-link`), which is the channel a reset code could use. There is no way for a user to start a reset on their own.
 

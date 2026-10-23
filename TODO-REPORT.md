@@ -392,6 +392,7 @@ Full write-up: `docs/architecture-audit-2026-10-22.md`. Steps 1 to 3 are merged 
 ## Decisions from the owner and rules/reports/screens libraries (2026-10-23, docs only, no code changed)
 
 ### Done
+- [x] SMS provider Farazsms recorded as decided (roadmap section 10, notes on F79, F106, F109); found the official `farazsms` npm client for the later build-or-use choice
 - [x] Capacitor Android shell recorded as decided (roadmap section 10 and notes on F6, F38, F103)
 
 ### Not done / gaps

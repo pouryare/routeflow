@@ -397,6 +397,7 @@ Not an F-entry. This records what the owner stated on 2026-10-23 and what follow
 | One company uses RouteFlow today; other companies may later. | Keep one database with `organization_id` (`docs/crm-erp-plan.md`, decision 1). F126 and F127 stay parked until a second company is signed. |
 | The number of drivers is unknown and cannot be predicted. | No design may assume a fleet size. Size by formula and watch the thresholds below. |
 | RouteFlow gets an Android app: the web app wrapped in a Capacitor shell. | Decided. Needed because a PWA gets background location only while open (F6, F38, F103); also gives native barcode scanning and Bluetooth printing. Distribution route (domestic Android store or a direct file) is still open. |
+| SMS provider: Farazsms. | Decided. The official npm client `farazsms` (1.1.0, 2026-06-21) exists and has not been inspected; decide between it and a thin wrapper when the SMS slice starts. Consent, opt-out and any other customer channel stay open. |
 
 ### Proposed platform choices
 
@@ -410,7 +411,7 @@ Not an F-entry. This records what the owner stated on 2026-10-23 and what follow
 | Backups with point-in-time restore (pgBackRest or WAL-G) and an encrypted off-site copy; self-hosted error tracking and uptime check | F34, F108, F138 | with the move, early |
 | S3-compatible object storage, self-hosted | F1, F17, F26, F34, F147 | first wave that stores files |
 | Chromium print-to-PDF in the worker (Playwright is already a dependency) | F18, F101, F147 | when F147 starts |
-| A message-channel adapter with a consent table and an outbox | F6, F18, F79, F120, F106, F109 | after the channel decision |
+| A message-channel adapter with a consent table and an outbox; first provider Farazsms | F6, F18, F79, F120, F106, F109 | with the first SMS slice |
 | Valkey and server-sent events | F6, F125, the F4 screen pop; shared rate limits and one-time codes | with the first live feature |
 | Self-hosted OSRM and VROOM and own map tiles | F6, F7, F57, F103 | before live tracking |
 | A Capacitor Android shell with a background-geolocation plugin (`@capacitor-community/background-geolocation`, 1.3.1, updated Oct 2026; untested) | F6, F38, F103, F1, F30 | before F6 starts |
