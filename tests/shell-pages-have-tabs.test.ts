@@ -20,28 +20,11 @@ const IMPORTS_HEADER = /from\s*["']@\/components\/meridian\/PageHeader["']/;
  *  seven missing headers survived in the first place.
  */
 const EXEMPT: Record<string, string> = {
-  "app/(shell)/sales/analysis/page.tsx":
-    "A ten-line redirect to /sales/dashboard. It renders nothing, so there is nothing to head.",
-  /* The three order views, which became ?view= values on /sales/orders (spec
-     2026-09-29-orders-and-ops-consolidation section 3). Each renders nothing -- it
-     redirects -- so there is nothing to head, and the host page carries the header. The
-     EXEMPT list's own test below fails if any of these files is deleted, so a future
-     consolidation cannot leave a stale exemption behind. */
-  "app/(shell)/sales/board/page.tsx":
-    "A redirect to /sales/orders?view=board. The board is a view of the orders page now; it renders nothing.",
-  "app/(shell)/sales/journey/page.tsx":
-    "A redirect to /sales/orders?view=journey. Same reason as the board: a view, not a page.",
-  "app/(shell)/sales/deliveries/page.tsx":
-    "A redirect to /sales/orders. Its content went to the order detail page and the /today retry panel.",
-  "app/(shell)/sales/runs/page.tsx":
-    "A redirect to /sales/schedule?view=runs. The planner became a view of the day host; it renders nothing.",
   "app/(shell)/sales/orders/[id]/page.tsx":
     "A detail view of ONE order. The overview card prints the section's title and blurb, " +
     "which would be the wrong copy over a single record. Giving detail routes a header of " +
     "their own — titled by the record — is a design question, not a correctness fix.",
   "app/(shell)/sales/reps/[id]/page.tsx": "Same as orders/[id]: a record, not a section.",
-  "app/(shell)/sales/admin/representatives/page.tsx":
-    "A redirect to /sales/reps?view=define since item 25 merged the two pages. Renders nothing.",
 };
 
 /** Strips block and line comments.

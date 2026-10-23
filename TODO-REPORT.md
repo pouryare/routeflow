@@ -31,6 +31,7 @@ _Condensed 2026-10-23. Each finished piece of work is one line here; the full ea
   - [x] A ledger page lights «حسابداری» and shows its sibling tabs (`NAV_PARENT` + `currentTab` in `lib/appNav.ts`, one rule for the pill, page header and phone bar)
   - [x] «ثبت سفارش تازه» only for roles that can sell (`SELL_ROLES` / `canSell` in `lib/roles`, shared with the order API): hidden for rep managers on the orders page, customer sheet, profile, purchase history and pocket; the form itself explains instead of failing on save. The pocket offers the planner only to roles that can open it
   - [x] Lead charts moved from the retired `/analytics` to «سرنخ‌ها» on the sales dashboard (status, funnel, average score; `lib/leadStats.ts`); the fake «تبدیل شده» funnel step and the distance-coloured pin map dropped; `/analytics` deleted
+  - [x] Six redirect stub pages deleted with no redirects (the app has no users yet): `/sales/board`, `/sales/journey`, `/sales/deliveries`, `/sales/runs`, `/sales/analysis`, `/sales/admin/representatives`; their meta, the proxy special case and the stale-surface audit entries went with them; the runs view keeps its copy in `VIEW_META`
 
 ## Not done / gaps
 - [ ] Cheque cards and the cheque deck still show the customer as plain text: the card itself is the tap target (select / decide), so a link inside it would fight it

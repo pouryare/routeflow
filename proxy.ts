@@ -91,9 +91,7 @@ export function proxy(req: NextRequest) {
   const isDriver = pathname.startsWith("/driver") || pathname.startsWith("/api/driver");
   // The representatives admin surface is also open to rep_manager -- it is the channel
   // they run. Every other admin path stays owner-only. The routes themselves re-check.
-  const isRepAdmin =
-    pathname.startsWith("/sales/admin/representatives") ||
-    pathname.startsWith("/api/admin/representatives");
+  const isRepAdmin = pathname.startsWith("/api/admin/representatives");
 
   // Phase 8: the /reps surface is a manager + rep_manager tool (the routes re-check).
   const isReps = pathname.startsWith("/sales/reps") || pathname.startsWith("/api/sales/reps");
@@ -164,10 +162,8 @@ export function proxy(req: NextRequest) {
     pathname.startsWith("/sales/batches") ||
     pathname.startsWith("/api/sales/batches") ||
     pathname.startsWith("/api/sales/stock/movements") ||
-    // Phase 3: the deliveries board and its retry/complete routes are a desk job. The
-    // order-transition route is open to salesperson+/driver -- it gates itself by the
-    // transition's own roles.
-    pathname.startsWith("/sales/deliveries") ||
+    // Phase 3: the delivery retry/complete routes are a desk job. The order-transition route
+    // is open to salesperson+/driver -- it gates itself by the transition's own roles.
     pathname.startsWith("/api/sales/deliveries") ||
     // Phase 5: routing is a desk job.
     pathname.startsWith("/sales/routing") ||
@@ -189,22 +185,7 @@ export function proxy(req: NextRequest) {
     pathname.startsWith("/api/predict") ||
     pathname.startsWith("/sales/forecast");
   if (isBatchAdmin && !OWNER_ROLES.includes(claims.role) && claims.role !== "group_manager") {
-    /* Four of these paths are now REDIRECT pages rather than gated ones, and the gate must
-       not pre-empt the redirect. It runs first, so a `platform_owner` asking for
-       /sales/deliveries was answered 307 -> /sales by THIS line, and the page's own
-       `redirect("/sales/orders")` never executed: the reader landed on the sales summary
-       instead of the orders page, with no error anywhere. `/sales/runs` reached its page
-       correctly only because it is not in the list.
-     *
-     * The rule that follows: a gate may DENY, but it may not answer a question the route
-     * has already been rewritten to answer itself. The API paths stay in the list -- they
-     * are still real, still desk-only, and nothing redirects them. */
-    const isRedirectPage =
-      pathname === "/sales/deliveries" ||
-      pathname === "/sales/runs" ||
-      pathname === "/sales/board" ||
-      pathname === "/sales/journey";
-    if (!isRedirectPage) return deny("/sales");
+    return deny("/sales");
   }
 
   // A driver has a short list, not a menu. Sending them anywhere outside it back to their

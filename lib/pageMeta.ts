@@ -74,12 +74,6 @@ export const PAGE_META: Record<string, PageMeta> = {
     overview:
       "تقویم ماه، از بازدیدها و سفرهای تحویل با هم. در نمای «سفرها» سفارش‌های تأییدشده را به راننده‌ها تخصیص دهید و برگهٔ مسیرها را ببینید.",
   },
-  "/sales/journey": {
-    title: "پیگیری سفارش",
-    titleEn: "Order tracking",
-    overview:
-      "این نمای از «سفارش‌ها» است. چرخهٔ عمر سفارش از ثبت تا تسویه، به تفکیک مرحله. برای دیدن اینکه کار کجا گیر کرده و مسئولش کیست.",
-  },
 
   // فروش و سفارش
   "/sales": {
@@ -94,12 +88,6 @@ export const PAGE_META: Record<string, PageMeta> = {
     help: "page.dashboard",
     overview:
       "ارقام فروش در بازهٔ انتخابی، همراه با مقایسهٔ دوره و تفکیک منطقه و نماینده. برای فهمیدن «چرا» پشت عددها، نه فقط خودشان.",
-  },
-  "/sales/analysis": {
-    title: "تحلیل",
-    titleEn: "Analysis",
-    overview:
-      "تحلیل‌های عمیق‌تر فروش و پوشش: شاخص‌ها، دلایل تغییر، و مرکز اقدامی که می‌گوید کدام کار بیشترین اثر را دارد.",
   },
   "/sales/orders": {
     title: "سفارش‌ها",
@@ -140,18 +128,6 @@ export const PAGE_META: Record<string, PageMeta> = {
   },
 
   // تحویل
-  "/sales/runs": {
-    title: "سفرهای تحویل",
-    titleEn: "Delivery runs",
-    overview:
-      "این نمای از «برنامهٔ تحویل» است. سفرهای تحویل روز: هر سفر با راننده و توقف‌هایش.",
-  },
-  "/sales/deliveries": {
-    title: "تحویل‌ها",
-    titleEn: "Deliveries",
-    overview:
-      "تلاش‌های تحویل هر سفارش روی صفحهٔ همان سفارش است؛ فهرست کارهای امروز در «مسیر امروز».",
-  },
   "/sales/batches": {
     title: "سری‌های ساخت",
     titleEn: "Production batches",
@@ -239,12 +215,6 @@ export const PAGE_META: Record<string, PageMeta> = {
   },
 
   // مدیریت
-  "/sales/board": {
-    title: "تابلوی سفارش‌ها",
-    titleEn: "Order board",
-    overview:
-      "این نمای از «سفارش‌ها» است. سفارش‌ها در ستون‌های مرحله، از ثبت تا تحویل. کارت‌ها را بین ستون‌ها بکشید تا مرحله‌شان عوض شود.",
-  },
   "/sales/tasks": {
     title: "کارتابل",
     titleEn: "Work queue",
@@ -286,11 +256,6 @@ export const PAGE_META: Record<string, PageMeta> = {
     titleEn: "Users",
     overview:
       "افزودن و ویرایش کاربران و نقش‌هایشان. تغییر نقش بلافاصله روی دسترسی‌ها اثر می‌گذارد.",
-  },
-  "/sales/admin/representatives": {
-    title: "نمایندگان",
-    titleEn: "Representatives",
-    overview: "تعریف و راه‌اندازی نمایندگان حالا بخشی از صفحهٔ «نمایندگان فروش» است؛ این نشانی به همان‌جا می‌رود.",
   },
   "/sales/admin/logins": {
     title: "گزارش ورودها",
@@ -339,31 +304,32 @@ export const PAGE_META: Record<string, PageMeta> = {
   },
 };
 
+/** Copy for a `?view=` whose screen is not the host page's.
+ *
+ *  /sales/schedule's own title describes the month calendar; its runs view is a different
+ *  screen, «سفرهای تحویل», so reading copy by route alone put «برنامهٔ تحویل» above the runs
+ *  table. A view is not a route, so it lives here rather than in PAGE_META, whose test wants
+ *  one entry per real route and no two routes sharing an English title. */
+export const VIEW_META: Record<string, PageMeta> = {
+  "/sales/schedule?view=runs": {
+    title: "سفرهای تحویل",
+    titleEn: "Delivery runs",
+    overview:
+      "این نمای از «برنامهٔ تحویل» است. سفرهای تحویل روز: هر سفر با راننده و توقف‌هایش.",
+  },
+};
+
 /** The meta for a path, by longest-prefix match — so /sales/orders/12 shows the orders
  *  section's title rather than nothing. Falls back to a neutral pair rather than
  *  throwing: a missing overview should never be what takes a page down, and the test
  *  above is what actually keeps the table complete. */
-/** A `?view=` that used to be a page of its own, and which still owns that page's copy.
- *
- *  `/sales/runs` redirects to `/sales/schedule?view=runs`, so its title and overview describe
- *  THIS view and nothing else — «سفرهای تحویل» over the runs table is exactly right, and
- *  «برنامهٔ تحویل» is exactly wrong, because that is the month calendar.
- *
- *  Reusing the entry is why this needs no second PAGE_META key, which is deliberate:
- *  tests/pageMeta.test.ts requires one entry per REAL route and no two routes sharing an
- *  English title. A view is not a route, and inventing a key for one broke both rules at once.
- *  The copy already existed; it was simply never wired to the view that inherited it. */
-const VIEW_META_ROUTE: Record<string, string> = {
-  "/sales/schedule?view=runs": "/sales/runs",
-};
-
 export function pageMetaFor(pathname: string, view?: string): PageMeta {
   const key = Object.keys(PAGE_META)
     .filter((k) => pathname === k || pathname.startsWith(`${k}/`))
     .sort((a, b) => b.length - a.length)[0];
-  // The inherited entry wins over the host section's, when there is one.
-  const inherited = view ? VIEW_META_ROUTE[`${pathname}?view=${view}`] : undefined;
-  if (inherited && PAGE_META[inherited]) return PAGE_META[inherited];
+  // A view with its own copy wins over the host section's.
+  const forView = view ? VIEW_META[`${pathname}?view=${view}`] : undefined;
+  if (forView) return forView;
   // The fallback names the APP, not the missing page. An unmatched route is usually a stale
   // link, and showing the product name is the honest answer — the alternative is a Persian
   // title that claims to describe a screen nobody built.

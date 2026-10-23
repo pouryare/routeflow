@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { readdirSync, existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { PAGE_META, pageMetaFor } from "@/lib/pageMeta";
+import { PAGE_META, VIEW_META, pageMetaFor } from "@/lib/pageMeta";
 import { HELP } from "@/lib/help";
 
 /** Every shell route opens with a card carrying its title and a short overview. Walking
@@ -133,13 +133,11 @@ describe("pageMeta", () => {
     expect(pageMetaFor("/nowhere/at/all").title.length).toBeGreaterThan(0);
   });
 
-  it("a view that used to be a page inherits that page's copy", () => {
-    /* /sales/runs redirects to /sales/schedule?view=runs, and its entry already describes THIS
-       view: «سفرهای تحویل», with an overview that opens by naming the host it belongs to. The
-       host's own title describes the month calendar, which is the wrong screen — so reading
-       copy by route alone put «برنامهٔ تحویل» above the runs table. The entry existed; it was
-       simply never wired to the view that inherited it. */
-    expect(pageMetaFor("/sales/schedule", "runs").title).toBe(PAGE_META["/sales/runs"].title);
+  it("a view with its own screen gets its own copy", () => {
+    /* /sales/schedule?view=runs is «سفرهای تحویل». The host's own title describes the month
+       calendar, which is the wrong screen — so reading copy by route alone put «برنامهٔ تحویل»
+       above the runs table. */
+    expect(pageMetaFor("/sales/schedule", "runs").title).toBe(VIEW_META["/sales/schedule?view=runs"].title);
     expect(pageMetaFor("/sales/schedule", "runs").title).not.toBe(
       PAGE_META["/sales/schedule"].title,
     );

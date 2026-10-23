@@ -29,8 +29,8 @@ let stop: () => Promise<void>;
 const ROUTES = [
   "/sales/dashboard",
   "/sales/products",
-  // /sales/deliveries and /sales/journey are redirects now (to /sales/orders); a redirect page
-  // has no layout of its own, so the page they land on is the one that is measured.
+  // The old /sales/deliveries and /sales/journey are views of /sales/orders now; a view
+  // has no layout of its own, so the host page is the one that is measured.
   "/sales/orders",
   "/sales/reps",
   "/sales/pocket",
@@ -407,7 +407,7 @@ describe("order pipeline drag", () => {
     const order = reader.prepare("SELECT id, order_no FROM orders ORDER BY id DESC LIMIT 1").get() as { id: number; order_no: string };
     reader.close();
 
-    await page.goto(`${BASE}/sales/board`, { waitUntil: "networkidle" });
+    await page.goto(`${BASE}/sales/orders?view=board`, { waitUntil: "networkidle" });
     await page.locator(".searchslot[data-ready]").waitFor({ timeout: 30_000 });
     const card = page.locator(`[data-stage="draft"] button.task[aria-label*="${order.order_no}"]`);
     await card.waitFor({ timeout: 10_000 });
