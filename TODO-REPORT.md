@@ -353,3 +353,21 @@ Full write-up: `docs/architecture-audit-2026-10-22.md`. Steps 1 to 3 are merged 
 3. Spike: one baseline schema plus the orders vertical, async, with row-level security on
 4. Add the pg-boss worker, then port the repo layer module by module; re-seed from the seed scripts
 5. Add object storage, Valkey and the rest only when the wave that needs them starts
+
+## Libraries to add and hand-rolled code a library does better (2026-10-23, discussion only, no code changed)
+
+### Done
+- [x] Reviewed what the codebase builds by hand (it has almost no third-party libraries beyond Leaflet and its plugins, framer-motion, sharp, exceljs, web-push, Playwright); checked package freshness on the npm registry
+- [x] Findings where a library clearly does better: no schema validation on 161 route files (79 hand-written type checks), CSV export does not neutralise cells starting with `=`, `+`, `-` or `@`, scrypt runs on Node's default cost (N=16384) with a stored format that cannot carry parameters, two map stacks (22 Leaflet files with 8 Leaflet packages, 1 MapLibre file; `leaflet-routing-machine` and `leaflet.heat` last published 2022)
+- [x] Libraries worth adding for roadmap features: `@persian-tools/persian-tools` (F116, F5, F10), `libphonenumber-js` (F4, F79), grammY (F124, F143), pino plus a GlitchTip-compatible SDK, a virtual-list library, React Aria for overlays and the Jalali date picker
+- [x] Hand-rolled code to keep: Jalali conversion (tested against Intl over twenty years), TOTP, UUIDv7, the thermal-receipt PDF and ESC/POS, the offline outbox, the VROOM fallback
+
+### Not done / gaps
+- [ ] Nothing changed or installed; findings are from reading the code, not from running it
+- [ ] Not checked: whether `npm install` of native packages (for example Argon2) works from the Iranian server
+- [ ] Charts: not decided between keeping the 4 custom charts and a library for the report builder (F123, F146)
+
+### Next steps
+1. Decide which findings to fix now: CSV formula guard (small), password hash parameters and format (cheap while the data is dummy), schema validation
+2. Choose the map stack (MapLibre recommended) before building live tracking
+3. Add `@persian-tools/persian-tools` and `libphonenumber-js` when F116 and the first telephony or SMS slice start
