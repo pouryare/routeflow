@@ -7,12 +7,14 @@ import {
   OrderError,
 } from "@/lib/repo/orders";
 import type { OrderAction, OrderRole } from "@/lib/orderStateMachine";
+import { NoWarehouseError } from "@/lib/repo/stock";
 
 const ORDER_ROLES: OrderRole[] = ["phone_sales", "group_manager", "owner", "field_rep", "delivery_driver"];
 
 /** Generic order transition. The transition table is the gate: an illegal (from, action)
  *  edge is 409 with the legal alternatives, a legal edge fired by the wrong role is 403,
- *  and a missing / cross-tenant order is 404. */
+ *  a missing / cross-tenant order is 404, and confirming with no warehouse to reserve from
+ *  is 409 naming where to add one. */
 export async function POST(req: NextRequest, ctx: RouteContext<"/api/sales/orders/[id]/transition">) {
   const guard = await requireRole(req, [
     "owner",
@@ -52,6 +54,9 @@ export async function POST(req: NextRequest, ctx: RouteContext<"/api/sales/order
     );
     return NextResponse.json({ ok: true, status: to });
   } catch (e) {
+    if (e instanceof NoWarehouseError) {
+      return NextResponse.json({ ok: false, error: "انبار تعریف نشده است؛ مالک آن را در «مکان‌های ما» تعریف کند." }, { status: 409 });
+    }
     if (e instanceof OrderTransitionError) {
       return NextResponse.json({ ok: false, error: e.message, legal: e.legal }, { status: 409 });
     }

@@ -54,6 +54,10 @@ _Condensed 2026-10-23. Each finished piece of work is one line here; the full ea
   - [x] `/today` (briefing and multi-role picker) renamed to `/start`, so it no longer shares a name with `/sales/today`; no redirect
   - [x] Guard test `tests/every-page-reachable.test.ts`: every page is a nav destination for some role, linked from rendering code, or exempt with a written reason (checked: it fails when the holidays tab is removed)
   - [x] `CLAUDE.md` rule "a UI feature is not done until a person can reach it and it looks right" (placement first, every page reachable, no button to a refusal, names open things, shared parts, self-screenshot, batch tour, no redirects while there are no users)
+- [x] Browser smoke suite run on main after the UI reachability batch: 158 pass. Fixed four tests that had gone stale and two crashes they found:
+  - [x] `/sales/stock` with no warehouse yet says where to add one (owners get a link to «مکان‌های ما») instead of crashing; count and receive wait for it
+  - [x] Confirming an order with no warehouse answers 409 with that message instead of a bare 500 (`NoWarehouseError`)
+  - [x] Sheet tests measure the sheet that opened (the phone nav's closed sheets are in the DOM); the settings-menu test allows the 3-link menu; the order-drag test brings its own price and warehouse
 
 ## Not done / gaps
 - [ ] Cheque cards and the cheque deck still show the customer as plain text: the card itself is the tap target (select / decide), so a link inside it would fight it
@@ -69,7 +73,8 @@ _Condensed 2026-10-23. Each finished piece of work is one line here; the full ea
 - [ ] Unverified claims in parked features: F51, F56, F57, F67, F69, F71, F73, F75, F97, F102, F113, F147 (`docs/roadmap.md` section 8)
 - [ ] Open decisions: Android distribution route and iPhone support; off-site backup location; row-level security timing; charts library vs custom
 - [ ] Nothing tested from Iran (weather, Telegram, push, map tiles, OSRM, registries)
-- [ ] `tests/playwrightExtract.test.ts` and the smoke suite need Chromium the cloud container lacks
+- [ ] The smoke suite is not in CI, which is how four of its tests went stale; in the cloud container it runs once Playwright's expected headless shell is pointed at the installed one, but map tiles (tile.openstreetmap.org) cannot load there, so `/map`, `/leads` and the CRM profile test fail on console errors
+- [ ] Other actions that need a warehouse (stock movements, purchases, route planning, delivery) still answer 500 when there is none
 - [ ] Ratchets (long functions 74, unused exports 221, raw role checks 57) only fall as files are touched
 - [ ] Offline covers delivery, receipts, cheques, complaints, order drafts and new customers only
 - [ ] F16 needs the server's `routeflow-sweep-rules` timer to run after 07:00 (its unit file is on the server, not in the repo); the status page's «خلاصهٔ صبح» line shows if it does not
@@ -82,9 +87,10 @@ _Condensed 2026-10-23. Each finished piece of work is one line here; the full ea
 - [ ] Left for later: F104 (not reached; nothing blocks it), and, waiting on a missing prerequisite, F74, F77, F85, F86, F91, F114, F69, F31, F42, F34, F95, F140, F2, F5, F117, F38
 
 ## Next steps
-1. Merge the UI reachability PR once CI is green (merge commit)
-2. Owner checks the backup folder and picks an off-site destination (F138 part 2)
-3. Record delay reasons on deliveries so the reason report's delay section fills
-4. Check the outside services from the Iranian server
-5. Decide the Android distribution route before F6 starts
-6. Data-layer decision record, then the PostgreSQL spike
+1. Merge the smoke-test fixes PR once CI is green (merge commit)
+2. Decide whether the smoke suite joins CI (needs Chromium on the runner; map tiles stubbed)
+3. Owner checks the backup folder and picks an off-site destination (F138 part 2)
+4. Record delay reasons on deliveries so the reason report's delay section fills
+5. Check the outside services from the Iranian server
+6. Decide the Android distribution route before F6 starts
+7. Data-layer decision record, then the PostgreSQL spike
