@@ -7,6 +7,8 @@ import Link from "next/link";
 import { faNum, faToman } from "@/lib/format";
 import { faJalaliDate } from "@/lib/jalali";
 import { SkeletonLabel, SkeletonRows } from "./Skeleton";
+import { PriceHistoryList } from "./PriceHistoryList";
+import type { ProductPrices } from "@/lib/repo/customerPrices";
 
 interface OrderSummary {
   id: number;
@@ -51,6 +53,7 @@ export default function PurchaseHistory({
 }) {
   const [orders, setOrders] = useState<OrderSummary[] | null>(null);
   const [products, setProducts] = useState<ProductMix[]>([]);
+  const [prices, setPrices] = useState<ProductPrices[]>([]);
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
@@ -58,11 +61,12 @@ export default function PurchaseHistory({
     // No synchronous reset here: the caller keys this component by customer id, so
     // switching shops remounts it and the loading state starts fresh on its own.
     fetch(`/api/sales/orders?customer=${customerId}&limit=20`)
-      .then((r) => (r.ok ? r.json() : { orders: [], products: [] }))
+      .then((r) => (r.ok ? r.json() : { orders: [], products: [], prices: [] }))
       .then((d) => {
         if (cancelled) return;
         setOrders(d.orders ?? []);
         setProducts(d.products ?? []);
+        setPrices(d.prices ?? []);
       })
       .catch(() => {
         // A driver or a signed-out session gets a 401/403 here. An empty history is a
@@ -144,6 +148,13 @@ export default function PurchaseHistory({
               <p className="mt-2 text-[length:var(--text-xs)] tabular-nums text-text-faint">
                 جمع {faNum(orders.length)} سفارش اخیر: {faToman(total)}
               </p>
+
+              {prices.length > 0 && (
+                <div className="mt-3">
+                  <span className="font-mono text-[length:var(--text-xs)] text-text-muted">قیمت‌های اخیر</span>
+                  <PriceHistoryList prices={prices} />
+                </div>
+              )}
             </>
           )}
 
