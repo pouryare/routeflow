@@ -4,9 +4,9 @@ A prioritised view of every entry in `docs/future-features.md` (F1–F148). Noth
 
 **How it was made.** The title, the "existing code noted" flag and the "needs / relates to" column are taken from each entry in the future-features file (its "Already in the app" note and its Prerequisites line), so they match it. The grouping into themes, the size and the suggested order are my judgement and are meant to be argued with.
 
-**Size** is a rough estimate of the *first slice* described in the entry, not of the whole feature: **S** = a small change on top of code that exists (a field, a list, a button, a report from existing data); **M** = a new table or screen with some design; **L** = cross-cutting, needs infrastructure or an outside service, or changes a core flow. **Existing code noted** = the entry has an "Already in the app" note describing related code (it can equally say that nothing was found, so this does not mean the feature is built); the entries that really are partly built are listed in section 6.
+**Size** is a rough estimate of the *first slice* described in the entry, not of the whole feature: **S** = a small change on top of code that exists (a field, a list, a button, a report from existing data); **M** = a new table or screen with some design; **L** = cross-cutting, needs infrastructure or an outside service, or changes a core flow. **Existing code noted** = the entry has an "Already in the app" note (or, for F13 and F15, a "Correction (found later)" note) describing related code (it can equally say that nothing was found, so this does not mean the feature is built); the entries that really are partly built are listed in section 6.
 
-Totals: 46 small, 73 medium, 27 large first slices; 123 entries carry an "Already in the app" note; 2 entries are records of built work, not features.
+Totals: 46 small, 73 medium, 27 large first slices; 123 entries note existing code (121 in an "Already in the app" note, F13 and F15 in a "Correction (found later)" note); 2 entries are records of built work, not features.
 
 **Ground facts (2026-10-23).** The database is moving to PostgreSQL, the current data is dummy, the server is in Iran, one company uses the app today (others may later), and the number of drivers is unknown. They are recorded in [section 10](#10-platform-facts-and-decisions-not-features) and affect how several entries are built.
 
@@ -62,22 +62,22 @@ Small first slices that need no new infrastructure and no outside decision, orde
 
 ## 2. Foundations
 
-Entries that other entries list as a prerequisite or a close relation. Doing the first slice of one of these early removes a blocker for several others. The count is how many entries name it in their Prerequisites line (taken from the file).
+Entries that other entries list as a prerequisite or a close relation. Doing the first slice of one of these early removes a blocker for several others. The count is how many entries name it in their Prerequisites line (taken from the file); the table is sorted by it.
 
 | Entry | In-degree | What it unlocks |
 |---|---|---|
 | F27 Audit trail and anomaly detection | 10 | a shared "who changed what" record that history, approval and security entries all want |
 | F48 Change approvals (second-person sign-off) | 10 | one approval request shape that order, discount, price and credit approvals can reuse |
+| F1 Camera capture (read a document instead of typing it) | 6 | barcode and label scanning that van loading, returns and bin locations want |
+| F6 Live driver tracking and customer ETA | 6 | the customer message channel and the position-data policy, both needed by many entries |
+| F18 Customer statements and dunning | 6 | dated statements and reminders that payment terms, promises and the cash-flow forecast feed |
+| F46 Credit-risk scoring from payment behaviour | 6 | a risk signal the customer snapshot, 360 page, terms and collections use |
+| F12 Returns and quality management | 5 | reason codes and batch tracing that returns, complaints and scorecards share |
+| F107 Device and session management | 5 | session revocation that two-step login, the auditor role and the Telegram bot rely on |
 | F58 Order templates and favourites | 4 | the "usual basket" that reorder, call-to-order, product visibility and desk entry reuse |
 | F66 Supplier order tracking (purchase orders) | 3 | the incoming-stock record behind appointments, pickup runs, pre-orders and forecasting |
-| F6 Live driver tracking and customer ETA | 6 | the customer message channel and the position-data policy, both needed by many entries |
 | F13 Offline-first everywhere | 2 | the queue for tasks, notes and call outcomes (see also F105) |
-| F107 Device and session management | 5 | session revocation that two-step login, the auditor role and the Telegram bot rely on |
-| F46 Credit-risk scoring from payment behaviour | 6 | a risk signal the customer snapshot, 360 page, terms and collections use |
 | F17 Delivery proof and dispute handling | 2 | the proof model that confirmation codes and carrier shipments extend |
-| F1 Camera capture (read a document instead of typing it) | 6 | barcode and label scanning that van loading, returns and bin locations want |
-| F18 Customer statements and dunning | 6 | dated statements and reminders that payment terms, promises and the cash-flow forecast feed |
-| F12 Returns and quality management | 5 | reason codes and batch tracing that returns, complaints and scorecards share |
 
 Most-referenced entries by the file's own Prerequisites lines: F27 (10), F48 (10), F1 (6), F6 (6), F18 (6), F46 (6), F12 (5), F107 (5), F8 (4), F31 (4), F58 (4), F4 (3), F50 (3), F64 (3).
 
@@ -139,10 +139,13 @@ Entries blocked by a choice, not by code. Settle these once and several entries 
 | Credit policy: auto-pass thresholds, holds, starter limits, approvals | F46, F71, F76, F48, F129 | Open |
 | How commission works across groups | F96, F134 | Open |
 | Real-device testing before any build | F113, F115, F117 | Open (Maestro with one physical phone is suggested in section 10.8) |
+| Android distribution route (a domestic Android store or a direct file) and iPhone support | F6, F38, F103, F1, F30 | Open (the Capacitor shell itself is decided, section 10.1) |
+| When to turn on row-level security | F27, F73, F99, F100, F111, F126, F127 | Open (proposed "with the move" in section 10.2) |
+| One chart library or keep the custom charts | F123, F146, F32 | Open (section 10.6: decide before writing more chart types) |
 
 ## 6. Already partly built
 
-These entries say, in their own "Already in the app" notes, that a meaningful part exists. Their real first slice is smaller than the title suggests.
+These entries say, in their own "Already in the app" or "Correction (found later)" notes, that a meaningful part exists. Their real first slice is smaller than the title suggests.
 
 - **F9 Churn and credit-risk scoring:** churn scoring exists; credit-risk scoring is the missing half (see F46).
 - **F11 Demand forecasting and auto-purchasing:** demand forecast and reorder point exist; supplier lead times and purchase drafts are missing.
@@ -152,11 +155,11 @@ These entries say, in their own "Already in the app" notes, that a meaningful pa
 - **F33 Seasonal and holiday planning:** Jalali seasonal factors exist in the forecast; holiday-period shifting is missing.
 - **F51 SLA and escalation rules:** the rule engine already supports escalation windows; which SLAs are configured and a breach report are missing.
 - **F61 Backorders and partial fulfilment:** partial delivery and an automatic backorder draft exist; promised dates, a list and auto-fulfilment are missing.
-- **F132 Order priority flag:** the priority column and planner weights exist; nothing sets the value or shows it to the driver.
-- **F144 Failure, cancellation, return and delay reason reports:** reasons are captured; nothing aggregates them.
-- **F143 Approve from Telegram:** push notifications already carry one-tap actions for cheques and reminders; Telegram messages have no buttons.
 - **F130 Rule builder screen:** the rule engine exists; owners can only toggle a rule and change its cooldown.
+- **F132 Order priority flag:** the priority column and planner weights exist; nothing sets the value or shows it to the driver.
 - **F138 Off-site backup copy:** a local nightly backup exists; the off-site copy, integrity check and alert are missing.
+- **F143 Approve from Telegram:** push notifications already carry one-tap actions for cheques and reminders; Telegram messages have no buttons.
+- **F144 Failure, cancellation, return and delay reason reports:** reasons are captured; nothing aggregates them.
 
 ## 7. Looked like features but already exist
 
@@ -172,20 +175,20 @@ Ideas that came up during the brainstorm and were checked against the code, then
 
 Statements in the entries that I could not confirm from the code. Check them before relying on the entry:
 
-- F147 (document templates): how far the existing print code goes.
 - F51: which SLAs are configured today.
 - F56: whether the UI can schedule a future price, and whether `price_tier` changes the price an order uses.
 - F57: no code found that passes customer hours to the route solver as a time window.
+- F67: the assumption that "for Friday" means a week-end report on Friday.
 - F69: whether the driver stop card shows customer or order notes.
 - F71: who can set `blocked` and whether it stops order entry.
 - F73: how a confirmed order is edited.
 - F75: whether the sales screens read the catalogue offline.
 - F97: whether run planning fills the vehicle on each run (a code comment says it does not; the column exists).
 - F102: whether orders awaiting review appear in a decision deck.
-- F132: what feeds the urgent driver commission rate, and whether anything sets the priority value.
-- F67: the assumption that "for Friday" means a week-end report on Friday.
-- Whether any screen closes a fiscal period.
 - F113: gestures need testing on real phones; not possible in the build container.
+- F132: what feeds the urgent driver commission rate, and whether anything sets the priority value.
+- F147 (document templates): how far the existing print code goes.
+- Whether any screen closes a fiscal period.
 
 Platform claims in [section 10](#10-platform-facts-and-decisions-not-features), all unverified:
 
@@ -401,7 +404,6 @@ Platform claims in [section 10](#10-platform-facts-and-decisions-not-features), 
 |---|---|---|---|---|
 | F36 | Duplicate customers as a decision deck — built | — |  | — |
 | F37 | Decisions from the mobile-first rollout | — |  | — |
-
 
 ## 10. Platform facts and decisions (not features)
 
