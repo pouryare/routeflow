@@ -14,7 +14,7 @@ const ORDER_ROLES: OrderRole[] = ["phone_sales", "group_manager", "owner", "fiel
  *  edge is 409 with the legal alternatives, a legal edge fired by the wrong role is 403,
  *  and a missing / cross-tenant order is 404. */
 export async function POST(req: NextRequest, ctx: RouteContext<"/api/sales/orders/[id]/transition">) {
-  const guard = requireRole(req, [
+  const guard = await requireRole(req, [
     "owner",
     "group_manager",
     "phone_sales",
@@ -39,7 +39,7 @@ export async function POST(req: NextRequest, ctx: RouteContext<"/api/sales/order
     : ("phone_sales" as OrderRole);
 
   try {
-    const to = advanceOrder(
+    const to = await advanceOrder(
       guard.session.organizationId,
       Number(id),
       body.action as OrderAction,

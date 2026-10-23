@@ -9,18 +9,19 @@
 
 import type { SeedContext } from "./context";
 
+import { mapSeq } from "@/lib/seq";
 interface Check {
   label: string;
   count: number;
   min: number;
 }
 
-export function assertInvariants(ctx: SeedContext): void {
+export async function assertInvariants(ctx: SeedContext): Promise<void> {
   const { db, scale } = ctx;
   const failures: string[] = [];
 
-  const n = (sql: string, ...params: Array<string | number>): number =>
-    (db.prepare(sql).get(...params) as { c: number }).c;
+  const n = async (sql: string, ...params: Array<string | number>): Promise<number> =>
+    (await db.prepare(sql).get(...params) as { c: number }).c;
 
   /* There is NO `leads` TABLE and NO `lead_status` COLUMN — a lead is a `customers` row whose
      `lifecycle` is one of the funnel's early stages (phase 04 writes 'lead'/'qualified'/'sampled'
@@ -52,9 +53,9 @@ export function assertInvariants(ctx: SeedContext): void {
     organizations: { sql: "SELECT COUNT(*) c FROM organizations", min: 2 },
   };
 
-  const checks: Check[] = Object.entries(mins).map(([label, spec]) => ({
+  const checks: Check[] = await mapSeq(Object.entries(mins), async ([label, spec]) => ({
     label,
-    count: n(spec.sql),
+    count: await n(spec.sql),
     min: spec.min,
   }));
 
@@ -65,7 +66,7 @@ export function assertInvariants(ctx: SeedContext): void {
   /* 1. THE SILENCE. The churn label reads "active at asOf-60d, then nothing for 60 days".
      A dormant customer with a recent order makes the label wrong, and the earlier defect lived
      here for exactly that reason — so it is asserted rather than trusted. */
-  const loudDormant = n(
+  const loudDormant = await n(
     `SELECT COUNT(*) c FROM orders o
        JOIN customers cu ON cu.id = o.customer_id
       WHERE cu.lifecycle = 'dormant' AND o.order_date >= ?`,
@@ -80,19 +81,19 @@ export function assertInvariants(ctx: SeedContext): void {
 
   /* 2. The lapsed cohort exists at all, and is marked dormant. Without it, churn trains on
      nothing and silently returns "not trained". */
-  const dormant = n(`SELECT COUNT(*) c FROM customers WHERE lifecycle = 'dormant'`);
+  const dormant = await n(`SELECT COUNT(*) c FROM customers WHERE lifecycle = 'dormant'`);
   if (dormant < scale.lapsedCustomers) {
     failures.push(`dormant customers: ${dormant}, expected >= ${scale.lapsedCustomers}`);
   }
 
   /* 3. NOTHING IN THE FUTURE. Every dated row is relative to asOf, so a row past the anchor
      means a daysAgo calculation went negative somewhere. */
-  const futureOrders = n(`SELECT COUNT(*) c FROM orders WHERE order_date > ?`, ctx.asOf);
+  const futureOrders = await n(`SELECT COUNT(*) c FROM orders WHERE order_date > ?`, ctx.asOf);
   if (futureOrders > 0) failures.push(`${futureOrders} order(s) dated after the anchor ${ctx.asOf}`);
 
   /* 4. THE BOOKS BALANCE. Every journal must net to zero — Dr == Cr. This is the one check
      that catches a writer posting one leg, which no row count would ever notice. */
-  const unbalanced = n(
+  const unbalanced = await n(
     `SELECT COUNT(*) c FROM (
        SELECT j.id
          FROM journals j
@@ -108,7 +109,7 @@ export function assertInvariants(ctx: SeedContext): void {
      up on receivables as a negative age bucket.
      The order total is DERIVED — there is no `orders.total_toman` column — so it is recomputed
      here the way `orderTotalToman` does (lib/orderMath.ts:52), over non-reversal lines only. */
-  const overpaid = n(
+  const overpaid = await n(
     `SELECT COUNT(*) c FROM (
        SELECT pa.order_id
          FROM payment_allocations pa
@@ -124,14 +125,14 @@ export function assertInvariants(ctx: SeedContext): void {
 
   /* 6. No orphaned lines — the FKs are declared, but only for tables that HAVE them.
      delivery_stops/deliveries reference orders without CASCADE, so a bad delete leaves these. */
-  const orphanLines = n(
+  const orphanLines = await n(
     `SELECT COUNT(*) c FROM order_lines l
        WHERE NOT EXISTS (SELECT 1 FROM orders o WHERE o.id = l.order_id)`,
   );
   if (orphanLines > 0) failures.push(`${orphanLines} orphaned order line(s)`);
 
   /* 7. Tenant isolation is real: every customer row belongs to a real organisation. */
-  const orphanCustomers = n(
+  const orphanCustomers = await n(
     `SELECT COUNT(*) c FROM customers cu
       WHERE cu.organization_id IS NOT NULL
         AND NOT EXISTS (SELECT 1 FROM organizations o WHERE o.id = cu.organization_id)`,

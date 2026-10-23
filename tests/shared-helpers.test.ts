@@ -5,6 +5,7 @@ import { clamp, round2 } from "@/lib/math";
 import { jalaliMonthKey, jalaliYmd } from "@/lib/jalali";
 import { withRunningBalance } from "@/lib/runningBalance";
 import { withEntityLabels } from "@/lib/repo/entityLabels";
+import { sqliteDb } from "@/lib/database/client";
 import { compareTaskCards } from "@/lib/repo/taskCard";
 import { routeLength, straightLine } from "@/lib/routing/distance";
 import { reorderGain } from "@/lib/routing/reorderGain";
@@ -75,27 +76,28 @@ describe("withRunningBalance", () => {
 });
 
 describe("withEntityLabels", () => {
-  const db = new DatabaseSync(":memory:");
-  db.exec(`CREATE TABLE customers (id INTEGER PRIMARY KEY, business_name TEXT);
+  const raw = new DatabaseSync(":memory:");
+  const db = sqliteDb(() => raw);
+  raw.exec(`CREATE TABLE customers (id INTEGER PRIMARY KEY, business_name TEXT);
            CREATE TABLE districts (id INTEGER PRIMARY KEY, name TEXT);
            INSERT INTO customers VALUES (5, 'کافه الف'); INSERT INTO districts VALUES (5, 'منطقه ۵');`);
-  it("labels by type, so customer 5 and district 5 do not collide", () => {
-    const out = withEntityLabels(db, [
+  it("labels by type, so customer 5 and district 5 do not collide", async () => {
+    const out = await withEntityLabels(db, [
       { entity_type: "customer", entity_id: 5 },
       { entity_type: "district", entity_id: 5 },
     ]);
     expect(out.map((r) => r.label)).toEqual(["کافه الف", "منطقه ۵"]);
   });
-  it("names a deleted target rather than leaving a blank", () => {
-    const out = withEntityLabels(db, [
+  it("names a deleted target rather than leaving a blank", async () => {
+    const out = await withEntityLabels(db, [
       { entity_type: "customer", entity_id: 99 },
       { entity_type: "district", entity_id: 99 },
     ]);
     expect(out.map((r) => r.label)).toEqual(["مشتری حذف‌شده", "منطقه حذف‌شده"]);
   });
-  it("handles no rows, and keeps the row's own fields", () => {
-    expect(withEntityLabels(db, [])).toEqual([]);
-    expect(withEntityLabels(db, [{ entity_type: "customer", entity_id: 5, extra: 1 }])[0].extra).toBe(1);
+  it("handles no rows, and keeps the row's own fields", async () => {
+    expect(await withEntityLabels(db, [])).toEqual([]);
+    expect((await withEntityLabels(db, [{ entity_type: "customer", entity_id: 5, extra: 1 }]))[0].extra).toBe(1);
   });
 });
 

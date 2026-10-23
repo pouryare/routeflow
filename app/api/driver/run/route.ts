@@ -10,10 +10,10 @@ import { driverRunView } from "@/lib/repo/driverStops";
  *  screen telling them they have no work.
  */
 export async function GET(req: NextRequest) {
-  const guard = requireRole(req, ["field_rep", "delivery_driver"]);
+  const guard = await requireRole(req, ["field_rep", "delivery_driver"]);
   if (!guard.ok) return guard.response;
 
-  const { run, runs } = driverRunView(guard.session.user.id, new URL(req.url).searchParams.get("run"), tehranTodayIso());
+  const { run, runs } = await driverRunView(guard.session.user.id, new URL(req.url).searchParams.get("run"), tehranTodayIso());
   if (runs.length === 0 || !run) return NextResponse.json({ ok: true, run: null });
 
   return NextResponse.json({ ok: true, run, runs });

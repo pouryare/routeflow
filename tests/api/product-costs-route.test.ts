@@ -22,10 +22,10 @@ afterAll(() => {
 
 const ctx = { ownerId: 0, sellerId: 0, product: 0, packaging: 0 };
 
-beforeAll(() => {
+beforeAll(async () => {
   const db = getDb();
   const now = new Date().toISOString();
-  db.prepare("INSERT INTO organizations (name, slug, created_at) VALUES (?, ?, ?)").run(
+  await db.prepare("INSERT INTO organizations (name, slug, created_at) VALUES (?, ?, ?)").run(
     "سازمان دوم",
     "second-org",
     now
@@ -33,14 +33,14 @@ beforeAll(() => {
   const u = db.prepare(
     "INSERT INTO users (username, password_hash, display_name, role, organization_id, created_at) VALUES (?, ?, ?, ?, 1, ?)"
   );
-  ctx.ownerId = Number(u.run("owner", "x:y", "مالک", "owner", now).lastInsertRowid);
-  ctx.sellerId = Number(u.run("nazanin", "x:y", "نازنین", "phone_sales", now).lastInsertRowid);
-  ctx.product = createProduct(db, {
+  ctx.ownerId = Number((await u.run("owner", "x:y", "مالک", "owner", now)).lastInsertRowid);
+  ctx.sellerId = Number((await u.run("nazanin", "x:y", "نازنین", "phone_sales", now)).lastInsertRowid);
+  ctx.product = await createProduct(db, {
     name: "دوغ لیوانی",
     kg_per_base_unit: 0.25,
     organization_id: 1,
   });
-  ctx.packaging = createPackaging(db, {
+  ctx.packaging = await createPackaging(db, {
     product_id: ctx.product,
     name: "جعبه ۲۴ تایی",
     qty_per_pack: 24,
@@ -79,7 +79,7 @@ describe("POST /api/sales/costs", () => {
     expect(res.status).toBe(201);
     const data = await res.json();
     expect(data.ok).toBe(true);
-    const row = getDb()
+    const row = await getDb()
       .prepare("SELECT cost_toman, method FROM product_costs WHERE id = ?")
       .get(data.id) as { cost_toman: number; method: string };
     expect(row.cost_toman).toBe(50_000);
@@ -127,7 +127,7 @@ describe("POST /api/sales/costs — tenancy and shape", () => {
     // product_costs carries no organization_id of its own, so the ONLY thing stopping a
     // cross-tenant write is this join through products. Remove it and this goes green.
     const db = getDb();
-    const theirs = createProduct(db, {
+    const theirs = await createProduct(db, {
       name: "کالای آن‌ها",
       kg_per_base_unit: 1,
       organization_id: 2,
@@ -138,12 +138,12 @@ describe("POST /api/sales/costs — tenancy and shape", () => {
 
   it("refuses a packaging belonging to another product with 404", async () => {
     const db = getDb();
-    const other = createProduct(db, {
+    const other = await createProduct(db, {
       name: "محصول دیگر",
       kg_per_base_unit: 1,
       organization_id: 1,
     });
-    const otherPack = createPackaging(db, {
+    const otherPack = await createPackaging(db, {
       product_id: other,
       name: "کارتن",
       qty_per_pack: 1,
@@ -179,14 +179,14 @@ describe("POST /api/sales/costs — tenancy and shape", () => {
   });
 
   it("stacks rather than replacing, so history survives", async () => {
-    setCost(getDb(), {
+    await setCost(getDb(), {
       product_id: ctx.product,
       packaging_id: null,
       method: "landed",
       cost_toman: 60_000,
       valid_from: "2026-07-01",
     });
-    const rows = getDb()
+    const rows = await getDb()
       .prepare("SELECT COUNT(*) AS n FROM product_costs WHERE product_id = ?")
       .get(ctx.product) as { n: number };
     expect(rows.n).toBeGreaterThan(1);

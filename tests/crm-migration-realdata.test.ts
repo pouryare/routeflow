@@ -36,15 +36,15 @@ const { replayCrmState } = await import("@/lib/crm/replay");
 const { ACTIVITY_FACT_COLUMNS } = await import("@/lib/repo/crm/migrate");
 
 describe.skipIf(!dbPath)("CRM migration on real data", () => {
-  it("is lossless and leaves every business's state equal to its replay", () => {
+  it("is lossless and leaves every business's state equal to its replay", async () => {
     const db = getDb();
-    expect(db.prepare("PRAGMA foreign_key_check").all()).toEqual([]);
-    expect((db.prepare("SELECT COUNT(*) n FROM customers").get() as { n: number }).n).toBe(before!.customers);
-    expect(JSON.stringify(db.prepare("SELECT lifecycle, COUNT(*) n FROM customers GROUP BY 1 ORDER BY 1").all())).toBe(before!.lifecycles);
+    expect(await db.prepare("PRAGMA foreign_key_check").all()).toEqual([]);
+    expect((await db.prepare("SELECT COUNT(*) n FROM customers").get() as { n: number }).n).toBe(before!.customers);
+    expect(JSON.stringify(await db.prepare("SELECT lifecycle, COUNT(*) n FROM customers GROUP BY 1 ORDER BY 1").all())).toBe(before!.lifecycles);
 
-    const rows = db.prepare("SELECT id, contact_status, sales_stage, verification, temperature, attempt_count FROM customers").all() as Record<string, unknown>[];
+    const rows = await db.prepare("SELECT id, contact_status, sales_stage, verification, temperature, attempt_count FROM customers").all() as Record<string, unknown>[];
     for (const r of rows) {
-      const acts = db.prepare(`SELECT ${ACTIVITY_FACT_COLUMNS} FROM activities WHERE customer_id = ? ORDER BY occurred_at, id`).all(r.id as number) as never[];
+      const acts = await db.prepare(`SELECT ${ACTIVITY_FACT_COLUMNS} FROM activities WHERE customer_id = ? ORDER BY occurred_at, id`).all(r.id as number) as never[];
       expect(acts.length, `customer ${r.id}`).toBeGreaterThan(0);
       const s = replayCrmState(acts);
       expect({ contact_status: r.contact_status, sales_stage: r.sales_stage, verification: r.verification, temperature: r.temperature, attempt_count: r.attempt_count })

@@ -40,31 +40,31 @@ export interface RecurrenceInput {
   entity_id?: number | null;
 }
 
-export function listRecurrences(
+export async function listRecurrences(
   organizationId: number,
   opts: { active?: boolean } = {}
-): TaskRecurrenceRow[] {
+): Promise<TaskRecurrenceRow[]> {
   const clauses = ["organization_id = ?"];
   const params: unknown[] = [organizationId];
   if (opts.active !== undefined) {
     clauses.push("active = ?");
     params.push(opts.active ? 1 : 0);
   }
-  return taskRecurrencesRepo
+  return await taskRecurrencesRepo
     .db()
     .prepare(`SELECT * FROM task_recurrences WHERE ${clauses.join(" AND ")} ORDER BY id`)
     .all(...(params as never[])) as unknown as TaskRecurrenceRow[];
 }
 
-export function createRecurrence(
+export async function createRecurrence(
   organizationId: number,
   input: RecurrenceInput,
   actor: number
-): TaskRecurrenceRow {
+): Promise<TaskRecurrenceRow> {
   if (!input.title?.trim()) throw new RecurrenceError("عنوان لازم است");
   if (!VALID_RRULE.test(input.rrule)) throw new RecurrenceError("الگوی تکرار نامعتبر است");
   const now = new Date().toISOString();
-  const id = taskRecurrencesRepo.insert(organizationId, {
+  const id = await taskRecurrencesRepo.insert(organizationId, {
     organization_id: organizationId,
     title: input.title.trim(),
     kind: input.kind,
@@ -81,10 +81,10 @@ export function createRecurrence(
     created_at: now,
     updated_at: now,
   } as Omit<TaskRecurrenceRow, "id">);
-  return taskRecurrencesRepo.get(organizationId, id) as TaskRecurrenceRow;
+  return await taskRecurrencesRepo.get(organizationId, id) as TaskRecurrenceRow;
 }
 
-export function patchRecurrence(
+export async function patchRecurrence(
   organizationId: number,
   id: number,
   patch: Partial<
@@ -103,19 +103,19 @@ export function patchRecurrence(
       | "last_spawned_on"
     >
   >
-): TaskRecurrenceRow | null {
-  const existing = taskRecurrencesRepo.get(organizationId, id);
+): Promise<TaskRecurrenceRow | null> {
+  const existing = await taskRecurrencesRepo.get(organizationId, id);
   if (!existing) return null;
   if (patch.rrule !== undefined && !VALID_RRULE.test(patch.rrule)) {
     throw new RecurrenceError("الگوی تکرار نامعتبر است");
   }
-  taskRecurrencesRepo.patch(organizationId, id, { ...patch, updated_at: new Date().toISOString() });
-  return taskRecurrencesRepo.get(organizationId, id) as TaskRecurrenceRow;
+  await taskRecurrencesRepo.patch(organizationId, id, { ...patch, updated_at: new Date().toISOString() });
+  return await taskRecurrencesRepo.get(organizationId, id) as TaskRecurrenceRow;
 }
 
-export function removeRecurrence(organizationId: number, id: number): boolean {
-  if (!taskRecurrencesRepo.get(organizationId, id)) return false;
-  taskRecurrencesRepo
+export async function removeRecurrence(organizationId: number, id: number): Promise<boolean> {
+  if (!await taskRecurrencesRepo.get(organizationId, id)) return false;
+  await taskRecurrencesRepo
     .db()
     .prepare("DELETE FROM task_recurrences WHERE id = ? AND organization_id = ?")
     .run(id, organizationId);

@@ -25,14 +25,14 @@ let a: Awaited<ReturnType<typeof seedTwoOrgs>>["a"];
 let b: Awaited<ReturnType<typeof seedTwoOrgs>>["b"];
 let secondOwnerB = 0;
 
-beforeAll(() => {
-  ({ a, b } = seedTwoOrgs(getDb()));
+beforeAll(async () => {
+  ({ a, b } = await seedTwoOrgs(getDb()));
   secondOwnerB = Number(
-    getDb()
+    (await getDb()
       .prepare("INSERT INTO users (username, password_hash, display_name, role, group_id, active, created_at, organization_id) VALUES ('owner-b2', 'x:y', 'b2', 'owner', NULL, 1, '2026-01-01', 2)")
-      .run().lastInsertRowid
+      .run()).lastInsertRowid
   );
-  getDb().prepare("INSERT OR IGNORE INTO user_roles (user_id, role) VALUES (?, 'owner')").run(secondOwnerB);
+  await getDb().prepare("INSERT OR IGNORE INTO user_roles (user_id, role) VALUES (?, 'owner')").run(secondOwnerB);
 });
 
 const req = (actor: number, oid: number, target: number, method: "PATCH" | "DELETE", body?: unknown) =>
@@ -51,7 +51,7 @@ describe("the last-owner guard is per organisation", () => {
     // Org A has exactly one owner (a.ownerId); org B has two.
     const res = await PATCH(req(a.ownerId, 1, a.ownerId, "PATCH", { active: false }), ctx(a.ownerId));
     expect(res.status).toBe(409);
-    expect((getDb().prepare("SELECT active FROM users WHERE id = ?").get(a.ownerId) as { active: number }).active).toBe(1);
+    expect((await getDb().prepare("SELECT active FROM users WHERE id = ?").get(a.ownerId) as { active: number }).active).toBe(1);
   });
 
   it("refuses to delete an organisation's only owner too", async () => {

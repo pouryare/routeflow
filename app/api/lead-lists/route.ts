@@ -8,10 +8,10 @@ const MAX_NAME = 60;
 
 // lead_lists is option 1: a list is compiled by one group and belongs to it outright.
 export async function GET(req: NextRequest) {
-  const guard = requireRole(req, PIN_POOL_ROLES);
+  const guard = await requireRole(req, PIN_POOL_ROLES);
   if (!guard.ok) return guard.response;
 
-  return NextResponse.json({ ok: true, lists: leadListsIn(scopeGroupIds(guard.session)) });
+  return NextResponse.json({ ok: true, lists: await leadListsIn(await scopeGroupIds(guard.session)) });
 }
 
 interface NewListInput {
@@ -22,7 +22,7 @@ interface NewListInput {
 }
 
 export async function POST(req: NextRequest) {
-  const guard = requireRole(req, PIN_POOL_ROLES);
+  const guard = await requireRole(req, PIN_POOL_ROLES);
   if (!guard.ok) return guard.response;
 
   const body = (await req.json().catch(() => null)) as NewListInput | null;
@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "فهرست مکان‌ها نامعتبر است" }, { status: 400 });
   }
 
-  const id = createLeadList(name, guard.session.groupId, guard.session.organizationId, ids, groupFilter(guard.session));
+  const id = await createLeadList(name, guard.session.groupId, guard.session.organizationId, ids, await groupFilter(guard.session));
 
   return NextResponse.json({ ok: true, id });
 }

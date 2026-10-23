@@ -11,18 +11,18 @@ import { MANAGE_ROLES, PIN_POOL_ROLES } from "@/lib/roles";
 // A site with no group is company-wide -- the seeded warehouse and home origin -- and stays
 // readable by everyone, because every group plans its routes out of the same depot.
 export async function GET(req: NextRequest) {
-  const guard = requireRole(req, PIN_POOL_ROLES);
+  const guard = await requireRole(req, PIN_POOL_ROLES);
   if (!guard.ok) return guard.response;
-  const scope = groupFilterWithShared(guard.session);
-  const scopeIds = scopeGroupIds(guard.session);
+  const scope = await groupFilterWithShared(guard.session);
+  const scopeIds = await scopeGroupIds(guard.session);
 
   // Signature of this company's sites; a pin move bumps updated_at and so invalidates the tag.
-  const sig = facilitiesSignature(orgScopeId(guard.session));
+  const sig = await facilitiesSignature(orgScopeId(guard.session));
   const tag = etagFor(`facilities:${scopeIds === "all" ? "all" : scopeIds.join(",")}`, sig.c, sig.m);
   const cached = notModified(req, tag);
   if (cached) return cached;
 
-  return etagJson(req, tag, { facilities: facilitiesIn(scope) });
+  return etagJson(req, tag, { facilities: await facilitiesIn(scope) });
 }
 
 interface NewFacilityInput {
@@ -45,7 +45,7 @@ interface NewFacilityInput {
 }
 
 export async function POST(req: NextRequest) {
-  const guard = requireRole(req, MANAGE_ROLES);
+  const guard = await requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
 
   const body = (await req.json().catch(() => null)) as NewFacilityInput | null;
@@ -69,7 +69,7 @@ export async function POST(req: NextRequest) {
   // (Deriving it from the name is also what made Persian names a problem: they slugify badly
   // and nobody should be typing slugs.)
   const fresh = `site-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
-  const restore = resolveRestore(body.restore);
+  const restore = await resolveRestore(body.restore);
   const slug = restore?.slug ?? fresh;
 
   // Validated against the KIND's options rather than accepted as-is: the column names a
@@ -83,7 +83,7 @@ export async function POST(req: NextRequest) {
       : defaultIconFor(kind);
 
   // A site a manager adds is theirs. An owner adds one for the company, with no group.
-  const id = insertFacility({
+  const id = await insertFacility({
     restoreId: restore?.id ?? null, // NULL on an INTEGER PRIMARY KEY still autoincrements
     slug,
     kind,

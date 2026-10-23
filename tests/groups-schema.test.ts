@@ -7,46 +7,45 @@ const testDbPath = path.join(os.tmpdir(), `coverage-test-groups-${Date.now()}-${
 process.env.ROUTEFLOW_DB_PATH = testDbPath;
 process.env.SESSION_SECRET = "test-secret";
 
-const { getDb } = await import("@/lib/db");
+const { getDb, dbReady } = await import("@/lib/db");
 
 afterAll(() => {
   for (const suffix of ["", "-wal", "-shm"]) fs.rmSync(`${testDbPath}${suffix}`, { force: true });
 });
 
-beforeAll(() => {
-  getDb();
+beforeAll(async () => {
+  await dbReady();
 });
 
-function cols(table: string): string[] {
-  return (getDb().prepare(`PRAGMA table_info(${table})`).all() as unknown as { name: string }[]).map((c) => c.name);
+async function cols(table: string): Promise<string[]> {
+  return (await getDb().prepare(`PRAGMA table_info(${table})`).all() as unknown as { name: string }[]).map((c) => c.name);
 }
 
 describe("groups schema", () => {
-  it("creates a groups table with the expected columns", () => {
+  it("creates a groups table with the expected columns", async () => {
     // organization_id joined the list when the app became multi-tenant.
-    expect(cols("groups").sort()).toEqual(
+    expect((await cols("groups")).sort()).toEqual(
       ["active", "color", "created_at", "id", "name", "organization_id", "slug"].sort()
     );
   });
 
-  it("requires group names and slugs to be unique within one organisation", () => {
+  it("requires group names and slugs to be unique within one organisation", async () => {
     const db = getDb();
     const now = new Date().toISOString();
     // organization_id stamped explicitly: the constraint this asserts is now
     // (organization_id, name), and two NULL organisations are not equal to each other
     // under SQLite's own uniqueness rules, so an unstamped insert would never collide.
-    db.prepare("INSERT INTO groups (name, slug, color, active, created_at, organization_id) VALUES (?, ?, ?, 1, ?, 1)")
+    await db.prepare("INSERT INTO groups (name, slug, color, active, created_at, organization_id) VALUES (?, ?, ?, 1, ?, 1)")
       .run("گروه شرق", "east", "#2DE0E6", now);
-    expect(() =>
-      db.prepare("INSERT INTO groups (name, slug, color, active, created_at, organization_id) VALUES (?, ?, ?, 1, ?, 1)")
-        .run("گروه شرق", "east-2", "#fff", now)
-    ).toThrow();
+    await expect((async () =>
+      await db.prepare("INSERT INTO groups (name, slug, color, active, created_at, organization_id) VALUES (?, ?, ?, 1, ?, 1)")
+        .run("گروه شرق", "east-2", "#fff", now))()).rejects.toThrow();
   });
 });
 
 describe("users rebuild", () => {
-  it("carries the new identity columns", () => {
-    expect(cols("users").sort()).toEqual(
+  it("carries the new identity columns", async () => {
+    expect((await cols("users")).sort()).toEqual(
       // organization_id joined the list when the app became multi-tenant: a user belongs
       // to exactly one company, and every scoping decision reads it off this row.
       // telegram_chat_id / telegram_link_nonce joined with the Phase 2 loud channels:
@@ -58,21 +57,20 @@ describe("users rebuild", () => {
     );
   });
 
-  it("rejects a role outside the three known values", () => {
+  it("rejects a role outside the three known values", async () => {
     const db = getDb();
     const now = new Date().toISOString();
-    expect(() =>
-      db.prepare("INSERT INTO users (username, password_hash, display_name, role, created_at) VALUES (?, ?, ?, ?, ?)")
-        .run("bad", "x:y", "Bad", "superuser", now)
-    ).toThrow();
+    await expect((async () =>
+      await db.prepare("INSERT INTO users (username, password_hash, display_name, role, created_at) VALUES (?, ?, ?, ?, ?)")
+        .run("bad", "x:y", "Bad", "superuser", now))()).rejects.toThrow();
   });
 
-  it("defaults active to 1 and token_version to 0", () => {
+  it("defaults active to 1 and token_version to 0", async () => {
     const db = getDb();
     const now = new Date().toISOString();
-    db.prepare("INSERT INTO users (username, password_hash, display_name, role, created_at) VALUES (?, ?, ?, ?, ?)")
+    await db.prepare("INSERT INTO users (username, password_hash, display_name, role, created_at) VALUES (?, ?, ?, ?, ?)")
       .run("driver1", "x:y", "یوسف", "delivery_driver", now);
-    const row = db.prepare("SELECT active, token_version FROM users WHERE username = 'driver1'").get() as {
+    const row = await db.prepare("SELECT active, token_version FROM users WHERE username = 'driver1'").get() as {
       active: number; token_version: number;
     };
     expect(row.active).toBe(1);
@@ -81,8 +79,8 @@ describe("users rebuild", () => {
 });
 
 describe("group_id columns", () => {
-  it("adds group_id to districts and customers", () => {
-    expect(cols("districts")).toContain("group_id");
-    expect(cols("customers")).toContain("group_id");
+  it("adds group_id to districts and customers", async () => {
+    expect(await cols("districts")).toContain("group_id");
+    expect(await cols("customers")).toContain("group_id");
   });
 });

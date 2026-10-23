@@ -23,7 +23,7 @@ const COLS = `c.id, c.business_name, c.area_label, c.owner_user_id, c.group_id, 
 
 /** Searches the whole organisation (so reps cannot duplicate each other) and redacts what
  *  the caller may not see. Phone matches block creation; name matches within 300 m warn. */
-export function findDuplicates(session: Session, q: { phone?: string | null; instagram?: string | null; name?: string | null; lat?: number | null; lng?: number | null }): DupMatch[] {
+export async function findDuplicates(session: Session, q: { phone?: string | null; instagram?: string | null; name?: string | null; lat?: number | null; lng?: number | null }): Promise<DupMatch[]> {
   const db = getDb();
   const out: DupMatch[] = [];
   const seen = new Set<number>();
@@ -36,7 +36,7 @@ export function findDuplicates(session: Session, q: { phone?: string | null; ins
 
   const phone = normPhone(q.phone);
   if (phone) {
-    const rows = db
+    const rows = await db
       .prepare(`SELECT ${COLS} FROM customers c LEFT JOIN users u ON u.id = c.owner_user_id
                  WHERE c.organization_id = ? AND c.merged_into_id IS NULL
                    AND (c.phone_norm = ? OR c.id IN (SELECT customer_id FROM contacts WHERE organization_id = ? AND phone_norm = ?))`)
@@ -46,7 +46,7 @@ export function findDuplicates(session: Session, q: { phone?: string | null; ins
 
   const ig = normInstagram(q.instagram);
   if (ig) {
-    const rows = db
+    const rows = await db
       .prepare(`SELECT ${COLS} FROM customers c LEFT JOIN users u ON u.id = c.owner_user_id
                  WHERE c.organization_id = ? AND c.merged_into_id IS NULL AND c.instagram = ?`)
       .all(session.organizationId, ig) as unknown as Candidate[];
@@ -54,7 +54,7 @@ export function findDuplicates(session: Session, q: { phone?: string | null; ins
   }
 
   if (q.name && typeof q.lat === "number" && typeof q.lng === "number") {
-    const rows = db
+    const rows = await db
       .prepare(`SELECT ${COLS} FROM customers c LEFT JOIN users u ON u.id = c.owner_user_id
                  WHERE c.organization_id = ? AND c.merged_into_id IS NULL
                    AND c.lat BETWEEN ? AND ? AND c.lng BETWEEN ? AND ?`)

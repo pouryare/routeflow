@@ -1,4 +1,4 @@
-import type { DatabaseSync } from "node:sqlite";
+import type { Db } from "@/lib/database/client";
 import { getDb } from "@/lib/db";
 import { type Session } from "@/lib/session";
 import { normPhone } from "@/lib/crm/phone";
@@ -26,12 +26,12 @@ function validateInput(input: ContactInput): void {
 
 
 /** undefined = not being changed; null = cleared; a string = the normalised 10 digits. */
-function phoneFor(session: Session, raw: string | null | undefined, customerId: number): string | null | undefined {
+async function phoneFor(session: Session, raw: string | null | undefined, customerId: number): Promise<string | null | undefined> {
   if (raw === undefined) return undefined;
   if (!raw || !raw.trim()) return null;
   const norm = normPhone(raw);
   if (!norm) throw new CrmError(400, "شماره تلفن معتبر نیست");
-  const others = findDuplicates(session, { phone: norm }).filter((m) => m.kind === "phone" && m.id !== customerId);
+  const others = (await findDuplicates(session, { phone: norm })).filter((m) => m.kind === "phone" && m.id !== customerId);
   if (others.length) throw new CrmError(409, "این شماره مال کسب‌وکار دیگری است", { matches: others });
   return norm;
 }
@@ -44,64 +44,64 @@ function roleFor(raw: string | undefined): ContactRole | undefined {
 
 /** One active primary; the business's contact_person follows it, and its phone fills the
  *  business's phone only when the business has none. */
-export function syncPrimaryMirror(db: DatabaseSync, customerId: number): void {
-  const first = db.prepare("SELECT id, is_primary FROM contacts WHERE customer_id = ? AND active = 1 ORDER BY is_primary DESC, id LIMIT 1")
+export async function syncPrimaryMirror(db: Db, customerId: number): Promise<void> {
+  const first = await db.prepare("SELECT id, is_primary FROM contacts WHERE customer_id = ? AND active = 1 ORDER BY is_primary DESC, id LIMIT 1")
     .get(customerId) as { id: number; is_primary: number } | undefined;
-  if (first && !first.is_primary) db.prepare("UPDATE contacts SET is_primary = 1 WHERE id = ?").run(first.id);
+  if (first && !first.is_primary) await db.prepare("UPDATE contacts SET is_primary = 1 WHERE id = ?").run(first.id);
   const p = first
-    ? (db.prepare("SELECT name, phone_norm FROM contacts WHERE id = ?").get(first.id) as { name: string | null; phone_norm: string | null })
+    ? (await db.prepare("SELECT name, phone_norm FROM contacts WHERE id = ?").get(first.id) as { name: string | null; phone_norm: string | null })
     : null;
-  db.prepare("UPDATE customers SET contact_person = ? WHERE id = ?").run(p?.name ?? null, customerId);
+  await db.prepare("UPDATE customers SET contact_person = ? WHERE id = ?").run(p?.name ?? null, customerId);
   if (p?.phone_norm) {
-    db.prepare("UPDATE customers SET phone = ?, phone_norm = ? WHERE id = ? AND phone_norm IS NULL").run(`0${p.phone_norm}`, p.phone_norm, customerId);
+    await db.prepare("UPDATE customers SET phone = ?, phone_norm = ? WHERE id = ? AND phone_norm IS NULL").run(`0${p.phone_norm}`, p.phone_norm, customerId);
   }
 }
 
-function inTx<T>(db: DatabaseSync, fn: () => T): T {
-  db.exec("BEGIN IMMEDIATE");
+async function inTx<T>(db: Db, fn: () => T): Promise<T> {
+  await db.exec("BEGIN IMMEDIATE");
   try {
     const r = fn();
-    db.exec("COMMIT");
+    await db.exec("COMMIT");
     return r;
   } catch (e) {
-    db.exec("ROLLBACK");
+    await db.exec("ROLLBACK");
     throw e;
   }
 }
 
-export function addContact(session: Session, customerId: number, input: ContactInput): { id: number } {
+export async function addContact(session: Session, customerId: number, input: ContactInput): Promise<{ id: number }> {
   validateInput(input);
   if (input.active === false) throw new CrmError(400, "مخاطب تازه باید فعال باشد");
-  const b = writableBusiness(session, customerId);
+  const b = await writableBusiness(session, customerId);
   const role = roleFor(input.role ?? "OTHER") as ContactRole;
-  const phone = phoneFor(session, input.phone, customerId) ?? null;
+  const phone = await phoneFor(session, input.phone, customerId) ?? null;
   const wa = input.whatsapp ? normPhone(input.whatsapp) : null;
   if (input.whatsapp && !wa) throw new CrmError(400, "شمارهٔ واتس‌اپ معتبر نیست");
   const db = getDb();
   const now = new Date().toISOString();
-  return inTx(db, () => {
-    const id = Number(db.prepare(`INSERT INTO contacts (organization_id, customer_id, name, role, phone, phone_norm, whatsapp, is_primary, is_decider,
+  return await inTx(db, async () => {
+    const id = Number((await db.prepare(`INSERT INTO contacts (organization_id, customer_id, name, role, phone, phone_norm, whatsapp, is_primary, is_decider,
                                     best_time, note, created_by, created_at, updated_at)
                                   VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?)`)
       .run(b.organization_id, customerId, text(input.name, 80), role, phone ? `0${phone}` : null, phone, wa ? `0${wa}` : null,
-        isDecider(role) ? 1 : 0, text(input.best_time, 40), text(input.note, 300), session.user.id, now, now).lastInsertRowid);
+        isDecider(role) ? 1 : 0, text(input.best_time, 40), text(input.note, 300), session.user.id, now, now)).lastInsertRowid);
     if (input.is_primary) {
-      db.prepare("UPDATE contacts SET is_primary = 0 WHERE customer_id = ? AND id <> ?").run(customerId, id);
-      db.prepare("UPDATE contacts SET is_primary = 1 WHERE id = ?").run(id);
+      await db.prepare("UPDATE contacts SET is_primary = 0 WHERE customer_id = ? AND id <> ?").run(customerId, id);
+      await db.prepare("UPDATE contacts SET is_primary = 1 WHERE id = ?").run(id);
     }
-    syncPrimaryMirror(db, customerId);
+    await syncPrimaryMirror(db, customerId);
     return { id };
   });
 }
 
-export function updateContact(session: Session, contactId: number, input: ContactInput, customerId: number): void {
+export async function updateContact(session: Session, contactId: number, input: ContactInput, customerId: number): Promise<void> {
   validateInput(input);
   const db = getDb();
-  const k = db.prepare("SELECT customer_id FROM contacts WHERE id = ?").get(contactId) as { customer_id: number } | undefined;
+  const k = await db.prepare("SELECT customer_id FROM contacts WHERE id = ?").get(contactId) as { customer_id: number } | undefined;
   if (!k || k.customer_id !== customerId) throw new CrmError(404, "مخاطب پیدا نشد");
-  writableBusiness(session, k.customer_id);
+  await writableBusiness(session, k.customer_id);
   const role = roleFor(input.role);
-  const phone = phoneFor(session, input.phone, k.customer_id);
+  const phone = await phoneFor(session, input.phone, k.customer_id);
   const sets: string[] = [];
   const vals: (string | number | null)[] = [];
   const set = (col: string, v: string | number | null) => { sets.push(`${col} = ?`); vals.push(v); };
@@ -119,21 +119,21 @@ export function updateContact(session: Session, contactId: number, input: Contac
   if (input.active === true) set("active", 1);
   if (input.is_primary === false) set("is_primary", 0);
   set("updated_at", new Date().toISOString());
-  inTx(db, () => {
-    const current = db.prepare("SELECT active FROM contacts WHERE id = ? AND customer_id = ?").get(contactId, customerId) as { active: number } | undefined;
+  await inTx(db, async () => {
+    const current = await db.prepare("SELECT active FROM contacts WHERE id = ? AND customer_id = ?").get(contactId, customerId) as { active: number } | undefined;
     if (!current) throw new CrmError(404, "مخاطب پیدا نشد");
     if (input.is_primary && (input.active === false || (!current.active && input.active !== true))) {
       throw new CrmError(400, "مخاطب بایگانی‌شده نمی‌تواند مخاطب اصلی باشد");
     }
-    db.prepare(`UPDATE contacts SET ${sets.join(", ")} WHERE id = ?`).run(...vals, contactId);
+    await db.prepare(`UPDATE contacts SET ${sets.join(", ")} WHERE id = ?`).run(...vals, contactId);
     if (input.is_primary === false) {
-      const next = db.prepare("SELECT id FROM contacts WHERE customer_id = ? AND active = 1 AND id <> ? ORDER BY is_primary DESC, id LIMIT 1").get(k.customer_id, contactId) as { id: number } | undefined;
-      if (next) db.prepare("UPDATE contacts SET is_primary = 1 WHERE id = ?").run(next.id);
+      const next = await db.prepare("SELECT id FROM contacts WHERE customer_id = ? AND active = 1 AND id <> ? ORDER BY is_primary DESC, id LIMIT 1").get(k.customer_id, contactId) as { id: number } | undefined;
+      if (next) await db.prepare("UPDATE contacts SET is_primary = 1 WHERE id = ?").run(next.id);
     }
     if (input.is_primary && input.active !== false) {
-      db.prepare("UPDATE contacts SET is_primary = 0 WHERE customer_id = ? AND id <> ?").run(k.customer_id, contactId);
-      db.prepare("UPDATE contacts SET is_primary = 1 WHERE id = ?").run(contactId);
+      await db.prepare("UPDATE contacts SET is_primary = 0 WHERE customer_id = ? AND id <> ?").run(k.customer_id, contactId);
+      await db.prepare("UPDATE contacts SET is_primary = 1 WHERE id = ?").run(contactId);
     }
-    syncPrimaryMirror(db, k.customer_id);
+    await syncPrimaryMirror(db, k.customer_id);
   });
 }

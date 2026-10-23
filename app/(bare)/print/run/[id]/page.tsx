@@ -13,10 +13,10 @@ export const dynamic = "force-dynamic";
  *  For the manager who loads the van and for the run's driver. Printed from the browser (A4 or a
  *  roll), so the layout is plain HTML with page breaks rather than the thermal canvas. */
 export default async function RunNotesPage({ params }: { params: Promise<{ id: string }> }) {
-  const session = getSessionFromCookies((await cookies()).get(COOKIE_NAME)?.value);
+  const session = await getSessionFromCookies((await cookies()).get(COOKIE_NAME)?.value);
   if (!session) redirect("/login");
   const id = Number((await params).id);
-  const found = Number.isInteger(id) ? runForNotes(session, id) : null;
+  const found = Number.isInteger(id) ? await runForNotes(session, id) : null;
   if (!found) notFound();
   const { cover, notes } = runNotes(found.run, found.businessName, found.vehicle);
 

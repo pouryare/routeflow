@@ -12,7 +12,7 @@ import { deferOwnedStop, findOwnedStop, invoiceTotal, recordStopDelivery, stored
  *  again -- which is what makes the offline queue possible without a dedupe table.
  */
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
-  const guard = requireRole(req, ["field_rep", "delivery_driver"]);
+  const guard = await requireRole(req, ["field_rep", "delivery_driver"]);
   if (!guard.ok) return guard.response;
 
   const stopId = Number((await ctx.params).id);
@@ -20,7 +20,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   // The stop must be on a run belonging to this driver (and company). Checked here rather than
   // trusting the id in the URL, and answered as 404 so another driver's stop is
   // indistinguishable from one that does not exist.
-  const owned = findOwnedStop(stopId, guard.session.user.id, guard.session.organizationId);
+  const owned = await findOwnedStop(stopId, guard.session.user.id, guard.session.organizationId);
   if (!owned) {
     return NextResponse.json({ ok: false, error: "توقف پیدا نشد" }, { status: 404 });
   }
@@ -48,7 +48,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
      DIFFERENT one used to re-debit the van and rewrite the cash collected (and on a closed run it
      reopened settled work), so it is refused. */
   if (owned.status === "delivered" || owned.status === "refused" || owned.run_status === "done") {
-    const stored = storedDeliveries(owned.order_id);
+    const stored = await storedDeliveries(owned.order_id);
     const same =
       (owned.collected_toman ?? 0) === collected &&
       lines.every((l) => stored.some((r) => r.id === l.line_id && r.d === l.packs_delivered));
@@ -63,14 +63,14 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   }
   // Cash taken at the door can be this invoice plus what the shop already owed, and no more.
   // Anything above that is a typo or a lie, and it goes straight into the receipts.
-  const invoice = invoiceTotal(owned.order_id);
-  const owedBefore = customerDebtsForOrg(guard.session.organizationId).get(owned.customer_id)?.total ?? 0;
+  const invoice = await invoiceTotal(owned.order_id);
+  const owedBefore = (await customerDebtsForOrg(guard.session.organizationId)).get(owned.customer_id)?.total ?? 0;
   if (collected > invoice + owedBefore) {
     return NextResponse.json({ ok: false, error: "مبلغ دریافتی از بدهی مشتری و مبلغ این سفارش بیشتر است" }, { status: 400 });
   }
 
   try {
-    recordStopDelivery(stopId, {
+    await recordStopDelivery(stopId, {
       lines,
       collected_toman: collected,
       by: guard.session.user.id,
@@ -88,16 +88,16 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
 
 /** «Later»: send a pending stop to the end of the driver's own run. */
 export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
-  const guard = requireRole(req, ["field_rep", "delivery_driver"]);
+  const guard = await requireRole(req, ["field_rep", "delivery_driver"]);
   if (!guard.ok) return guard.response;
   const stopId = Number((await ctx.params).id);
   // Same ownership rule as recording: another driver's stop answers 404.
-  const owned = findOwnedStop(stopId, guard.session.user.id, guard.session.organizationId);
+  const owned = await findOwnedStop(stopId, guard.session.user.id, guard.session.organizationId);
   if (!owned) return NextResponse.json({ ok: false, error: "توقف پیدا نشد" }, { status: 404 });
   const body = (await req.json().catch(() => null)) as { action?: string } | null;
   if (body?.action !== "defer") return NextResponse.json({ ok: false, error: "درخواست نامعتبر است" }, { status: 400 });
   try {
-    return NextResponse.json({ ok: true, ...deferOwnedStop(stopId) });
+    return NextResponse.json({ ok: true, ...await deferOwnedStop(stopId) });
   } catch (e) {
     if (e instanceof DeliveryError) return NextResponse.json({ ok: false, error: e.message }, { status: 409 });
     throw e;

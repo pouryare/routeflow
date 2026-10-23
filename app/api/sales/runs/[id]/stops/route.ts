@@ -9,17 +9,17 @@ import { MANAGE_ROLES } from "@/lib/roles";
 const notFound = () => NextResponse.json({ ok: false, error: "پیدا نشد" }, { status: 404 });
 
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
-  const guard = requireRole(req, MANAGE_ROLES);
+  const guard = await requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
 
   const runId = Number((await ctx.params).id);
   // The run and the order must both be this company's: one with no group is reachable by group alone.
   const organizationId = orgScopeId(guard.session);
-  const run = runGroup(runId, organizationId);
-  if (!run || !canReachGroup(guard.session, run.group_id)) return notFound();
+  const run = await runGroup(runId, organizationId);
+  if (!run || !await canReachGroup(guard.session, run.group_id)) return notFound();
 
   const body = (await req.json().catch(() => null)) as { order_id?: unknown } | null;
-  const order = orderForRun(Number(body?.order_id), organizationId);
+  const order = await orderForRun(Number(body?.order_id), organizationId);
 
   /* ONE check, and it is the one that means something: can the CALLER reach this order?
    *
@@ -36,10 +36,10 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
    *  never mentions group, so a van carries whatever the manager hands it. The boundary that
    *  genuinely matters is reachability, and the check above is it: a group_manager still
    *  cannot assign another team's orders. */
-  if (!order || !canReachGroup(guard.session, order.group_id)) return notFound();
+  if (!order || !await canReachGroup(guard.session, order.group_id)) return notFound();
 
   try {
-    const id = addOrderToRun(runId, order.id, Number(body && (body as { sort_order?: number }).sort_order) || 0);
+    const id = await addOrderToRun(runId, order.id, Number(body && (body as { sort_order?: number }).sort_order) || 0);
     return NextResponse.json({ ok: true, id }, { status: 201 });
   } catch (e) {
     if (e instanceof DeliveryError) {

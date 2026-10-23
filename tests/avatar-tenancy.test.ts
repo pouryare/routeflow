@@ -18,15 +18,15 @@ afterAll(() => {
 let a: Awaited<ReturnType<typeof seedTwoOrgs>>["a"];
 let b: Awaited<ReturnType<typeof seedTwoOrgs>>["b"];
 
-beforeAll(() => {
-  ({ a, b } = seedTwoOrgs(getDb()));
-  getDb().prepare("UPDATE users SET avatar_stem = 'face-b' WHERE id = ?").run(b.ownerId);
+beforeAll(async () => {
+  ({ a, b } = await seedTwoOrgs(getDb()));
+  await getDb().prepare("UPDATE users SET avatar_stem = 'face-b' WHERE id = ?").run(b.ownerId);
 });
 
 describe("readAvatarStem", () => {
-  it("serves a face to its own company only", () => {
-    expect(readAvatarStem(b.ownerId, b.orgId)).toBe("face-b");
-    expect(readAvatarStem(b.ownerId, a.orgId)).toBeUndefined();
-    expect(readAvatarStem(b.ownerId, null)).toBe("face-b");
+  it("serves a face to its own company only", async () => {
+    expect(await readAvatarStem(b.ownerId, b.orgId)).toBe("face-b");
+    expect(await readAvatarStem(b.ownerId, a.orgId)).toBeUndefined();
+    expect(await readAvatarStem(b.ownerId, null)).toBe("face-b");
   });
 });

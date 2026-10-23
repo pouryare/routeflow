@@ -1,4 +1,4 @@
-import type { DatabaseSync } from "node:sqlite";
+import type { Db } from "@/lib/database/client";
 
 import { effectiveAt } from "@/lib/pricing";
 
@@ -28,12 +28,12 @@ import { effectiveAt } from "@/lib/pricing";
  *  start date the higher id wins, so a rate corrected on the day it was entered replaces
  *  the typo. Reimplementing that is how `pricing.ts` warns two answers drift apart.
  */
-export function companyRatePerKg(
-  db: DatabaseSync,
+export async function companyRatePerKg(
+  db: Db,
   organizationId: number,
   onDate: string
-): number | null {
-  const rows = db
+): Promise<number | null> {
+  const rows = await db
     .prepare(
       `SELECT id, salesperson_user_id, rate_per_kg_toman, valid_from
          FROM commission_rates
@@ -55,13 +55,13 @@ export function companyRatePerKg(
  *  a share of what their whole GROUP accrued, so adding it to one product's unit cost
  *  would double-count it across every product they oversee.
  */
-export function managerOverridePct(
-  db: DatabaseSync,
+export async function managerOverridePct(
+  db: Db,
   organizationId: number,
   managerUserId: number,
   onDate: string
-): number | null {
-  const rows = db
+): Promise<number | null> {
+  const rows = await db
     .prepare(
       `SELECT id, manager_user_id, override_pct, valid_from
          FROM manager_commission_overrides

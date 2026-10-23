@@ -22,21 +22,21 @@ export interface OrdersList {
 }
 
 /** The newest 100 orders the session can see, optionally narrowed to one visible customer. */
-export function ordersListFor(session: Session, opts: { customerId?: number } = {}): OrdersList {
+export async function ordersListFor(session: Session, opts: { customerId?: number } = {}): Promise<OrdersList> {
   const db = getDb();
-  const scope = groupFilter(session);
+  const scope = await groupFilter(session);
   const focused =
     opts.customerId === undefined
       ? null
-      : ((db
+      : ((await db
           .prepare(`SELECT id, business_name FROM customers WHERE id = ?${scope.sql}`)
           .get(opts.customerId, ...scope.params) as { id: number; business_name: string } | undefined) ?? null);
 
-  const orders = readOrders(db, orderFilter(session), { limit: 100, customerId: focused?.id });
+  const orders = await readOrders(db, orderFilter(session), { limit: 100, customerId: focused?.id });
   const onARun = new Set(
     (
       plain(
-        db
+        await db
           .prepare(`SELECT DISTINCT order_id FROM delivery_stops WHERE order_id IN (${orders.map(() => "?").join(",") || "NULL"})`)
           .all(...orders.map((o) => o.id))
       ) as unknown as { order_id: number }[]
@@ -47,10 +47,10 @@ export function ordersListFor(session: Session, opts: { customerId?: number } = 
 
 export type JourneyData = {
   focus: OrderSummary | undefined;
-  journey: ReturnType<typeof readJourney>;
-  nodes: ReturnType<typeof buildJourney>;
-  events: ReturnType<typeof eventsByStep> | null;
-  funnel: ReturnType<typeof buildFunnel> | null;
+  journey: Awaited<ReturnType<typeof readJourney>>;
+  nodes: Awaited<ReturnType<typeof buildJourney>>;
+  events: Awaited<ReturnType<typeof eventsByStep>> | null;
+  funnel: Awaited<ReturnType<typeof buildFunnel>> | null;
 };
 
 /** «پیگیری»: one order's life, or the funnel of every visible order.
@@ -58,40 +58,40 @@ export type JourneyData = {
  *  The order to follow is chosen from `orders`, the list this session can already see, so a
  *  journey cannot be used to probe for an order in another group by its id; the funnel uses the
  *  same scope, so it cannot count an order the list hides. */
-export function journeyFor(
+export async function journeyFor(
   session: Session,
   orders: OrderSummary[],
   mode: "one" | "all",
   askedOrderId: number | undefined
-): JourneyData {
+): Promise<JourneyData> {
   const db = getDb();
   const focus = orders.find((o) => o.id === askedOrderId) ?? orders[0];
-  const journey = mode === "one" && focus ? readJourney(db, focus.id) : null;
+  const journey = mode === "one" && focus ? await readJourney(db, focus.id) : null;
   return {
     focus,
     journey,
     nodes: journey ? buildJourney(journey) : [],
-    events: journey && focus ? eventsByStep(readOrderEvents(db, focus.id)) : null,
-    funnel: mode === "all" ? buildFunnel(readFunnelRows(db, orderFilter(session))) : null,
+    events: journey && focus ? eventsByStep(await readOrderEvents(db, focus.id)) : null,
+    funnel: mode === "all" ? buildFunnel(await readFunnelRows(db, orderFilter(session))) : null,
   };
 }
 
 export interface OrderPage {
   order: OrderDetail;
-  attempts: ReturnType<typeof readOrderDeliveryHistory>;
+  attempts: Awaited<ReturnType<typeof readOrderDeliveryHistory>>;
 }
 
 /** One order and its delivery attempts, or null when it does not exist OR the session may not see
  *  it. The same scope fragment as the list and the API, so an order in another group is a 404 here
  *  too rather than a page that renders with an error (which would leak the row's existence). */
-export function orderPageFor(session: Session, id: number): OrderPage | null {
+export async function orderPageFor(session: Session, id: number): Promise<OrderPage | null> {
   const db = getDb();
   const scope = orderFilter(session);
-  const visible = db.prepare(`SELECT o.id FROM orders o WHERE o.id = ?${scope.sql}`).get(id, ...scope.params);
+  const visible = await db.prepare(`SELECT o.id FROM orders o WHERE o.id = ?${scope.sql}`).get(id, ...scope.params);
   if (!visible) return null;
-  const order = readOrder(db, id);
+  const order = await readOrder(db, id);
   if (!order) return null;
-  return { order, attempts: readOrderDeliveryHistory(db, session.organizationId, order.id) };
+  return { order, attempts: await readOrderDeliveryHistory(db, session.organizationId, order.id) };
 }
 
 export interface OrderEntryData {
@@ -109,13 +109,13 @@ export interface OrderEntryData {
 
 /** The inputs of the order entry forms: the customers the caller may reach (with debt), their
  *  organisation's catalogue, and, for managers and owners, the sellers an order can be credited to. */
-export function orderEntryFor(session: Session): OrderEntryData {
+export async function orderEntryFor(session: Session): Promise<OrderEntryData> {
   const db = getDb();
-  const scope = groupFilter(session);
-  const debtByCustomer = customerDebtsForOrg(session.organizationId);
+  const scope = await groupFilter(session);
+  const debtByCustomer = await customerDebtsForOrg(session.organizationId);
   const customers = (
     plain(
-      db
+      await db
         .prepare(
           `SELECT id, customer_code, business_name, phone, credit_limit_toman
              FROM customers
@@ -126,7 +126,7 @@ export function orderEntryFor(session: Session): OrderEntryData {
     ) as unknown as Omit<OrderEntryData["customers"][number], "debt">[]
   ).map((c) => ({ ...c, debt: debtByCustomer.get(c.id)?.total ?? 0 }));
 
-  const products = catalogueFor(session).map((product) => ({
+  const products = (await catalogueFor(session)).map((product) => ({
     id: product.id,
     name: product.name,
     base_unit: product.base_unit,
@@ -143,7 +143,7 @@ export function orderEntryFor(session: Session): OrderEntryData {
     session.role === "phone_sales"
       ? []
       : (plain(
-          db
+          await db
             .prepare(
               `SELECT id, display_name FROM users
                 WHERE role = 'phone_sales' AND active = 1${scope.sql}

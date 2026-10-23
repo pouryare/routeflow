@@ -15,28 +15,28 @@ afterAll(() => {
   for (const s of ["", "-wal", "-shm"]) fs.rmSync(`${testDbPath}${s}`, { force: true });
 });
 
-beforeAll(() => {
-  getDb().prepare("INSERT INTO organizations (id,name,slug,created_at) VALUES (2,'B','b',?)").run(
+beforeAll(async () => {
+  await getDb().prepare("INSERT INTO organizations (id,name,slug,created_at) VALUES (2,'B','b',?)").run(
     new Date().toISOString()
   );
 });
 
-function cols(t: string): string[] {
-  return (getDb().prepare(`PRAGMA table_info(${t})`).all() as { name: string }[]).map((c) => c.name);
+async function cols(t: string): Promise<string[]> {
+  return (await getDb().prepare(`PRAGMA table_info(${t})`).all() as { name: string }[]).map((c) => c.name);
 }
 
 describe("routing schema", () => {
-  it("creates vehicles, route_templates, route_schedules", () => {
+  it("creates vehicles, route_templates, route_schedules", async () => {
     const db = getDb();
     for (const t of ["vehicles", "route_templates", "route_schedules"]) {
-      expect(db.prepare(`SELECT COUNT(*) n FROM ${t}`).get()).toEqual({ n: 0 });
+      expect(await db.prepare(`SELECT COUNT(*) n FROM ${t}`).get()).toEqual({ n: 0 });
     }
     expect((TENANT_TABLES as readonly string[]).includes("vehicles")).toBe(true);
     expect((TENANT_TABLES as readonly string[]).includes("route_templates")).toBe(true);
   });
 
-  it("adds the planning columns to delivery_runs and keeps every row", () => {
-    const c = cols("delivery_runs");
+  it("adds the planning columns to delivery_runs and keeps every row", async () => {
+    const c = await cols("delivery_runs");
     for (const col of [
       "vehicle_id",
       "route_template_id",
@@ -53,36 +53,34 @@ describe("routing schema", () => {
     }
   });
 
-  it("delivery_runs.status now accepts 'ready'", () => {
+  it("delivery_runs.status now accepts 'ready'", async () => {
     const db = getDb();
     const now = new Date().toISOString();
     const drv = Number(
-      db.prepare("INSERT INTO users (username,password_hash,display_name,role,created_at,organization_id) VALUES ('drv','x','ر','delivery_driver',?,1)").run(now).lastInsertRowid
+      (await db.prepare("INSERT INTO users (username,password_hash,display_name,role,created_at,organization_id) VALUES ('drv','x','ر','delivery_driver',?,1)").run(now)).lastInsertRowid
     );
-    expect(() =>
-      db
+    await (async () =>
+      await db
         .prepare("INSERT INTO delivery_runs (driver_user_id,run_date,status,created_by,created_at,updated_at,organization_id) VALUES (?,?,?,?,?,?,1)")
-        .run(drv, "2026-01-02", "ready", drv, now, now)
-    ).not.toThrow();
-    expect(() =>
-      db
+        .run(drv, "2026-01-02", "ready", drv, now, now))();
+    await expect((async () =>
+      await db
         .prepare("INSERT INTO delivery_runs (driver_user_id,run_date,status,created_by,created_at,updated_at,organization_id) VALUES (?,?,?,?,?,?,1)")
-        .run(drv, "2026-01-03", "foo", drv, now, now)
-    ).toThrow();
+        .run(drv, "2026-01-03", "foo", drv, now, now))()).rejects.toThrow();
   });
 
-  it("vehicles are unique per (organization_id, plate), shareable across orgs", () => {
+  it("vehicles are unique per (organization_id, plate), shareable across orgs", async () => {
     const db = getDb();
     const now = new Date().toISOString();
     const ins = db.prepare(
       "INSERT INTO vehicles (organization_id, name, plate, created_at, updated_at) VALUES (?, 'وانت', 'PL-1', ?, ?)"
     );
-    expect(() => ins.run(1, now, now)).not.toThrow();
-    expect(() => ins.run(2, now, now)).not.toThrow();
-    expect(() => ins.run(1, now, now)).toThrow();
+    await (async () => await ins.run(1, now, now))();
+    await (async () => await ins.run(2, now, now))();
+    await expect((async () => await ins.run(1, now, now))()).rejects.toThrow();
   });
 
-  it("adds products.volume_m3_per_base_unit", () => {
-    expect(cols("products")).toContain("volume_m3_per_base_unit");
+  it("adds products.volume_m3_per_base_unit", async () => {
+    expect(await cols("products")).toContain("volume_m3_per_base_unit");
   });
 });

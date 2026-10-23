@@ -32,7 +32,7 @@ export const dynamic = "force-dynamic";
  */
 export default async function SalesAdminLayout({ children }: { children: ReactNode }) {
   const jar = await cookies();
-  const session = getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
+  const session = await getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
   if (!session) redirect("/login");
   if (!isOwner(session.role)) redirect("/sales");
 

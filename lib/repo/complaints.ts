@@ -47,11 +47,11 @@ export interface FileComplaintInput {
 
 /** Log a complaint. When an order + product are named but no batch, infer the batch
  *  from what that order line actually received. */
-export function fileComplaint(organizationId: number, input: FileComplaintInput): number {
+export async function fileComplaint(organizationId: number, input: FileComplaintInput): Promise<number> {
   const db = complaintsRepo.db();
   let batchId = input.batch_id ?? null;
   if (!batchId && input.order_id && input.product_id) {
-    const row = db
+    const row = await db
       .prepare(
         `SELECT dlb.batch_id
            FROM delivery_line_batches dlb
@@ -64,7 +64,7 @@ export function fileComplaint(organizationId: number, input: FileComplaintInput)
   }
   const now = new Date().toISOString();
   return Number(
-    db
+    (await db
       .prepare(
         `INSERT INTO quality_complaints
            (organization_id, customer_id, order_id, product_id, batch_id, reported_at,
@@ -83,17 +83,17 @@ export function fileComplaint(organizationId: number, input: FileComplaintInput)
         input.severity ?? "medium",
         input.description ?? null,
         now
-      ).lastInsertRowid
+      )).lastInsertRowid
   );
 }
 
-export function updateComplaint(
+export async function updateComplaint(
   organizationId: number,
   id: number,
   patch: { status?: ComplaintStatus; severity?: ComplaintSeverity; resolution?: string | null },
   actor: number
-): void {
-  const row = complaintsRepo.get(organizationId, id);
+): Promise<void> {
+  const row = await complaintsRepo.get(organizationId, id);
   if (!row) throw new ComplaintError("شکایت پیدا نشد");
 
   const fields: Partial<ComplaintRow> = {};
@@ -104,19 +104,19 @@ export function updateComplaint(
     fields.resolved_at = new Date().toISOString();
     fields.resolved_by = actor;
   }
-  complaintsRepo.patch(organizationId, id, fields);
+  await complaintsRepo.patch(organizationId, id, fields);
 }
 
-export function listComplaints(
+export async function listComplaints(
   organizationId: number,
   filter?: { status?: ComplaintStatus; batch_id?: number; customer_id?: number }
-): ComplaintRow[] {
+): Promise<ComplaintRow[]> {
   const where: Partial<ComplaintRow> = {};
   if (filter?.status) where.status = filter.status;
   if (filter?.batch_id) where.batch_id = filter.batch_id;
   if (filter?.customer_id) where.customer_id = filter.customer_id;
-  return complaintsRepo
-    .list(organizationId, where)
+  return (await complaintsRepo
+    .list(organizationId, where))
     .sort((a, b) => (a.reported_at < b.reported_at ? 1 : -1));
 }
 
@@ -130,13 +130,13 @@ export interface ComplaintCluster {
 
 /** Batches with several unresolved complaints in a recent window -- a signal to look,
  *  not a verdict. */
-export function complaintClusters(
+export async function complaintClusters(
   organizationId: number,
   opts?: { sinceDays?: number; minCount?: number }
-): ComplaintCluster[] {
+): Promise<ComplaintCluster[]> {
   const sinceDays = opts?.sinceDays ?? 30;
   const minCount = opts?.minCount ?? 2;
-  return complaintsRepo
+  return (await complaintsRepo
     .db()
     .prepare(
       `SELECT qc.batch_id, b.batch_code, b.product_id,
@@ -152,7 +152,7 @@ export function complaintClusters(
         HAVING COUNT(*) >= ?
         ORDER BY count DESC`
     )
-    .all(organizationId, `-${sinceDays} days`, minCount)
+    .all(organizationId, `-${sinceDays} days`, minCount))
     .map((r) => {
       const row = r as { batch_id: number; batch_code: string; product_id: number; count: number; severities: string };
       return { ...row, severities: row.severities ? row.severities.split(",") : [] };
@@ -168,19 +168,19 @@ export interface BackwardTrace {
 }
 
 /** Complaint → order → batch → purchase line → supplier's own lot reference. */
-export function backwardTrace(organizationId: number, complaintId: number): BackwardTrace | null {
-  const complaint = complaintsRepo.get(organizationId, complaintId);
+export async function backwardTrace(organizationId: number, complaintId: number): Promise<BackwardTrace | null> {
+  const complaint = await complaintsRepo.get(organizationId, complaintId);
   if (!complaint) return null;
   const db = complaintsRepo.db();
 
   const order = complaint.order_id
-    ? ((db.prepare("SELECT id, order_no FROM orders WHERE id = ?").get(complaint.order_id) as
+    ? ((await db.prepare("SELECT id, order_no FROM orders WHERE id = ?").get(complaint.order_id) as
         | { id: number; order_no: string }
         | undefined) ?? null)
     : null;
 
   const batch = complaint.batch_id
-    ? ((db.prepare("SELECT * FROM batches WHERE id = ? AND organization_id = ?").get(
+    ? ((await db.prepare("SELECT * FROM batches WHERE id = ? AND organization_id = ?").get(
         complaint.batch_id,
         organizationId
       ) as BatchRow | undefined) ?? null)
@@ -188,7 +188,7 @@ export function backwardTrace(organizationId: number, complaintId: number): Back
 
   const purchase_line =
     batch?.purchase_line_id != null
-      ? ((db
+      ? ((await db
           .prepare(
             "SELECT id, unit_cost_toman, purchase_id FROM purchase_lines WHERE id = ?"
           )

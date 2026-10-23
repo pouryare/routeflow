@@ -1,7 +1,8 @@
-import type { DatabaseSync } from "node:sqlite";
+import type { Db } from "@/lib/database/client";
 import { createRun, addStop } from "@/lib/delivery";
 import type { SplitOrder, DayLimit } from "@/lib/dayCapacity";
 
+import { mapSeq } from "@/lib/seq";
 /** An order as the board's day-split sees it: where it goes, how heavy it is, and whether the
  *  customer named a day.
  *
@@ -120,16 +121,16 @@ const PLANNABLE_SQL = `
  *  Scoped by the caller, not here: this module reads rows, it decides nothing about who may see
  *  them. `scope` is the fragment `orderFilter` already produced, so scoping stays decided once at
  *  the route rather than per query. */
-export function readPlannableOrders(
-  db: DatabaseSync,
+export async function readPlannableOrders(
+  db: Db,
   scope: { sql: string; params: (number | string)[] },
   limit = 300,
-): PlannableOrder[] {
+): Promise<PlannableOrder[]> {
   // The caller's scope fragment (`AND o.organization_id = ?` ...) is spliced in here. It was
   // bound as parameters but never placed in the statement, so an owner's request threw "column
   // index out of range" and a role whose fragment carries no parameter silently saw every
   // organisation's orders.
-  const rows = db
+  const rows = await db
     .prepare(PLANNABLE_SQL.replace("@@SCOPE@@", scope.sql))
     .all(...scope.params, limit) as unknown as {
     id: number;
@@ -178,13 +179,13 @@ export function readPlannableOrders(
  *  A run with no vehicle attached is limited by stop count alone, so it is still returned —
  *  `max_stops` is what the manager sets per day in the UI, and it applies with or without a van.
  *  Runs in the past are excluded: you cannot add Thursday's work to last Tuesday. */
-export function readPlannedDays(
-  db: DatabaseSync,
+export async function readPlannedDays(
+  db: Db,
   scope: { sql: string; params: (number | string)[] },
   fromDay: string,
   defaultLimit: DayLimit,
-): PlannedDay[] {
-  const rows = db
+): Promise<PlannedDay[]> {
+  const rows = await db
     .prepare(
       `SELECT dr.id AS run_id,
               dr.run_date AS day,
@@ -254,11 +255,11 @@ export interface CommitResult {
  *  Raw SQL lives here, not in the route: the repo-boundary test allows a route to SELECT but
  *  never to INSERT, and a validation SELECT inside the handler is how that boundary erodes one
  *  route at a time. */
-export function laneTargetsAreReachable(
-  db: DatabaseSync,
+export async function laneTargetsAreReachable(
+  db: Db,
   lanes: CommitLane[],
   organizationId: number,
-): CommitLane[] {
+): Promise<CommitLane[]> {
   const runStmt = db.prepare("SELECT id FROM delivery_runs WHERE id = ? AND organization_id = ?");
   const driverStmt = db.prepare(
     `SELECT u.id FROM users u
@@ -267,13 +268,13 @@ export function laneTargetsAreReachable(
         AND ur.role = 'delivery_driver'`,
   );
 
-  return lanes.flatMap((lane) => {
+  return (await mapSeq(lanes, async (lane) => {
     if (lane.runId != null) {
-      return runStmt.get(lane.runId, organizationId) ? [lane] : [];
+      return await runStmt.get(lane.runId, organizationId) ? [lane] : [];
     }
     const driverId = Number(lane.driverUserId);
-    return driverId && (driverStmt.get(driverId, organizationId) as unknown) ? [lane] : [];
-  });
+    return driverId && (await driverStmt.get(driverId, organizationId) as unknown) ? [lane] : [];
+  })).flat();
 }
 
 /** Commits a day-split proposal: creates the runs that do not exist, then loads every lane.
@@ -290,14 +291,14 @@ export function laneTargetsAreReachable(
  *
  *  Raw SQL lives here, not in the route: the repo-boundary test allows `SELECT` in a route but
  *  not `INSERT`. */
-export function commitDaySplit(
-  db: DatabaseSync,
+export async function commitDaySplit(
+  db: Db,
   lanes: CommitLane[],
   actor: { userId: number; organizationId: number },
-): CommitResult {
+): Promise<CommitResult> {
   const result: CommitResult = { createdRuns: 0, addedStops: 0, refused: [] };
 
-  db.exec("BEGIN IMMEDIATE");
+  await db.exec("BEGIN IMMEDIATE");
   try {
     for (const lane of lanes) {
       let runId = lane.runId;
@@ -310,7 +311,7 @@ export function commitDaySplit(
         // Reuses the domain function rather than repeating its checks: createRun is what refuses
         // a manager, and a second INSERT here would happily create the run it exists to prevent.
         try {
-          runId = createRun(db, {
+          runId = await createRun(db, {
             driver_user_id: lane.driverUserId,
             run_date: lane.day,
             created_by: actor.userId,
@@ -323,18 +324,18 @@ export function commitDaySplit(
         }
       }
 
-      lane.orderIds.forEach((orderId, i) => {
+      for (const [i, orderId] of lane.orderIds.entries()) {
         try {
-          addStop(db, runId!, orderId, i);
+          await addStop(db, runId!, orderId, i);
           result.addedStops += 1;
         } catch (e) {
           result.refused.push(e instanceof Error ? e.message : "سفارش قرار نگرفت");
         }
-      });
+      }
     }
-    db.exec("COMMIT");
+    await db.exec("COMMIT");
   } catch (e) {
-    db.exec("ROLLBACK");
+    await db.exec("ROLLBACK");
     throw e;
   }
 

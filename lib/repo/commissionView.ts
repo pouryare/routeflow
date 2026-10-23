@@ -30,20 +30,20 @@ export interface CommissionStatements {
  *  statement and none of the driver or manager ledgers (the reads are skipped, not just hidden);
  *  a group manager gets their group's people plus their own override; an owner gets everyone in
  *  their organisation (a platform_owner, every organisation). */
-export function commissionStatementsFor(session: Session, period: Period): CommissionStatements {
+export async function commissionStatementsFor(session: Session, period: Period): Promise<CommissionStatements> {
   const db = getDb();
   const groupId = isOwner(session.role) ? undefined : session.groupId;
   const organizationId = orgScopeId(session);
   if (session.role === "phone_sales") {
-    return { statements: [statementFor(db, session.user.id, period)], driverStatements: [], managerStatements: [] };
+    return { statements: [await statementFor(db, session.user.id, period)], driverStatements: [], managerStatements: [] };
   }
   return {
-    statements: allStatements(db, period, { groupId, organizationId }),
-    driverStatements: allDriverStatements(db, period, { groupId, organizationId }),
+    statements: await allStatements(db, period, { groupId, organizationId }),
+    driverStatements: await allDriverStatements(db, period, { groupId, organizationId }),
     managerStatements: isOwner(session.role)
-      ? allManagerStatements(db, period, organizationId)
+      ? await allManagerStatements(db, period, organizationId)
       : session.role === "group_manager"
-        ? [managerStatementFor(db, session.user.id, period)]
+        ? [await managerStatementFor(db, session.user.id, period)]
         : [],
   };
 }
@@ -57,39 +57,39 @@ export interface CommissionPeople {
 /** The people an owner can set commission for: active sellers, van-role staff and group managers
  *  of THEIR organisation. Empty for anyone else. These lists used to be unscoped and offered every
  *  company's staff in the pickers. */
-export function commissionPeopleFor(session: Session): CommissionPeople {
+export async function commissionPeopleFor(session: Session): Promise<CommissionPeople> {
   if (!isOwner(session.role)) return { sellers: [], drivers: [], managers: [] };
   const db = getDb();
   const org = orgClause("organization_id", orgScopeId(session));
-  const named = (where: string, params: (string | number)[] = []) =>
-    db
+  const named = async (where: string, params: (string | number)[] = []) =>
+    (await db
       .prepare(`SELECT id, display_name FROM users WHERE ${where} AND active = 1${org.sql} ORDER BY display_name`)
-      .all(...params, ...org.params)
+      .all(...params, ...org.params))
       .map((r) => ({ ...r })) as { id: number; display_name: string }[];
   return {
-    sellers: named("role = 'phone_sales'"),
+    sellers: await named("role = 'phone_sales'"),
     // The van roles, from the one list that defines them (see tests/van-role-dropdown.test.ts).
-    drivers: named(`role IN (${VAN_ROLES.map(() => "?").join(", ")})`, [...VAN_ROLES]),
-    managers: named("role = 'group_manager'"),
+    drivers: await named(`role IN (${VAN_ROLES.map(() => "?").join(", ")})`, [...VAN_ROLES]),
+    managers: await named("role = 'group_manager'"),
   };
 }
 
 export interface CommissionRates {
-  rates: ReturnType<typeof readRates>;
-  driverRates: ReturnType<typeof readDriverRates>;
-  managerOverrides: ReturnType<typeof readManagerOverrides>;
+  rates: Awaited<ReturnType<typeof readRates>>;
+  driverRates: Awaited<ReturnType<typeof readDriverRates>>;
+  managerOverrides: Awaited<ReturnType<typeof readManagerOverrides>>;
 }
 
 /** The payroll policy tables (rates and overrides): owner only, newest first; `limit` keeps only
  *  that many of each (the page shows twelve, the API returns them all). */
-export function commissionRatesFor(session: Session, opts: { limit?: number } = {}): CommissionRates {
+export async function commissionRatesFor(session: Session, opts: { limit?: number } = {}): Promise<CommissionRates> {
   if (!isOwner(session.role)) return { rates: [], driverRates: [], managerOverrides: [] };
   const db = getDb();
   const org = session.organizationId;
   const cut = <T,>(rows: T[]): T[] => (opts.limit === undefined ? rows : rows.slice(0, opts.limit));
   return {
-    rates: cut(readRates(db, org)),
-    driverRates: cut(readDriverRates(db, org)),
-    managerOverrides: cut(readManagerOverrides(db, org)),
+    rates: cut(await readRates(db, org)),
+    driverRates: cut(await readDriverRates(db, org)),
+    managerOverrides: cut(await readManagerOverrides(db, org)),
   };
 }

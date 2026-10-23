@@ -1,5 +1,5 @@
 import { refreshOrderFigures } from "./orderFigures";
-import type { DatabaseSync } from "node:sqlite";
+import type { Db } from "@/lib/database/client";
 import { makeRepo } from "./base";
 import { advanceOrder, registerOrderEffectHandlers } from "./orders";
 import type { OrderRole } from "@/lib/orderStateMachine";
@@ -44,13 +44,13 @@ export interface DeliveryRow {
 
 export const deliveriesRepo = makeRepo<DeliveryRow>("deliveries", { tenant: true });
 
-function connOf(db?: DatabaseSync): DatabaseSync {
+function connOf(db?: Db): Db {
   return db ?? deliveriesRepo.db();
 }
 
 /** Snapshot delivery_lines from the order's lines (qty_planned = ordered base units). */
-function snapshotLines(conn: DatabaseSync, deliveryId: number, orderId: number): void {
-  const lines = conn
+async function snapshotLines(conn: Db, deliveryId: number, orderId: number): Promise<void> {
+  const lines = await conn
     .prepare(
       "SELECT id, (packs_ordered * qty_per_pack) AS base FROM order_lines WHERE order_id = ? AND packs_ordered > 0"
     )
@@ -58,45 +58,45 @@ function snapshotLines(conn: DatabaseSync, deliveryId: number, orderId: number):
   const ins = conn.prepare(
     "INSERT INTO delivery_lines (delivery_id, order_line_id, qty_planned) VALUES (?, ?, ?)"
   );
-  for (const l of lines) ins.run(deliveryId, l.id, l.base);
+  for (const l of lines) await ins.run(deliveryId, l.id, l.base);
 }
 
 /** Give a confirmed order a delivery row and move it to PLANNED. Idempotent per stop: a
  *  second call for the same route_stop_id returns the existing row. */
-export function planDelivery(
+export async function planDelivery(
   organizationId: number,
   orderId: number,
   opts: {
     route_stop_id?: number | null;
     planned_date?: string | null;
     client_uuid?: string | null;
-    db?: DatabaseSync;
+    db?: Db;
   } = {}
-): number {
+): Promise<number> {
   const conn = connOf(opts.db);
-  const run = (): number => {
+  const run = async (): Promise<number> => {
     if (opts.route_stop_id != null) {
-      const existing = conn
+      const existing = await conn
         .prepare(
           "SELECT id FROM deliveries WHERE route_stop_id = ? AND organization_id = ? ORDER BY seq DESC LIMIT 1"
         )
         .get(opts.route_stop_id, organizationId) as { id: number } | undefined;
       if (existing) return existing.id;
     }
-    const order = conn
+    const order = await conn
       .prepare("SELECT status FROM orders WHERE id = ? AND organization_id = ?")
       .get(orderId, organizationId) as { status: string } | undefined;
     if (!order) throw new DeliveryEntityError("سفارش پیدا نشد");
 
     const seq =
       ((
-        conn
+        await conn
           .prepare("SELECT MAX(seq) AS m FROM deliveries WHERE order_id = ?")
           .get(orderId) as { m: number | null }
       ).m ?? 0) + 1;
     const now = new Date().toISOString();
     const id = Number(
-      conn
+      (await conn
         .prepare(
           `INSERT INTO deliveries
              (organization_id, order_id, seq, status, route_stop_id, planned_date, client_uuid, created_at)
@@ -110,35 +110,35 @@ export function planDelivery(
           opts.planned_date ?? null,
           opts.client_uuid ?? null,
           now
-        )
+        ))
         .lastInsertRowid
     );
-    snapshotLines(conn, id, orderId);
+    await snapshotLines(conn, id, orderId);
     if (order.status === "CONFIRMED") {
-      advanceOrder(organizationId, orderId, "plan", { id: null, role: "system" }, { db: conn });
+      await advanceOrder(organizationId, orderId, "plan", { id: null, role: "system" }, { db: conn });
     }
     return id;
   };
 
-  if (opts.db) return run();
-  conn.exec("BEGIN IMMEDIATE");
+  if (opts.db) return await run();
+  await conn.exec("BEGIN IMMEDIATE");
   try {
-    const id = run();
-    conn.exec("COMMIT");
+    const id = await run();
+    await conn.exec("COMMIT");
     return id;
   } catch (e) {
-    conn.exec("ROLLBACK");
+    await conn.exec("ROLLBACK");
     throw e;
   }
 }
 
 /** The latest delivery row for a route stop, or null. */
-export function deliveryForStop(
+export async function deliveryForStop(
   organizationId: number,
   routeStopId: number,
-  db?: DatabaseSync
-): DeliveryRow | undefined {
-  return connOf(db)
+  db?: Db
+): Promise<DeliveryRow | undefined> {
+  return await connOf(db)
     .prepare(
       "SELECT * FROM deliveries WHERE route_stop_id = ? AND organization_id = ? ORDER BY seq DESC LIMIT 1"
     )
@@ -146,14 +146,14 @@ export function deliveryForStop(
 }
 
 /** Freeze an order's plan: PLANNED -> READY. */
-export function markReady(
+export async function markReady(
   organizationId: number,
   orderId: number,
   actor: { id: number | null; role: OrderRole },
-  db?: DatabaseSync
-): void {
-  advanceOrder(organizationId, orderId, "freeze", actor, { db });
-  connOf(db)
+  db?: Db
+): Promise<void> {
+  await advanceOrder(organizationId, orderId, "freeze", actor, { db });
+  await connOf(db)
     .prepare(
       "UPDATE deliveries SET status = 'LOADED' WHERE order_id = ? AND organization_id = ? AND status IN ('PLANNED','ASSIGNED')"
     )
@@ -162,47 +162,47 @@ export function markReady(
 
 /** A failed attempt gets a retry: the order goes back to PLANNED and a fresh delivery row
  *  (seq + 1) is opened. The failed row stays as the record. */
-export function retryDelivery(
+export async function retryDelivery(
   organizationId: number,
   deliveryId: number,
   actor: { id: number | null; role: OrderRole },
-  db?: DatabaseSync
-): number {
+  db?: Db
+): Promise<number> {
   const conn = connOf(db);
-  const run = (): number => {
-    const d = deliveriesRepo.get(organizationId, deliveryId);
+  const run = async (): Promise<number> => {
+    const d = await deliveriesRepo.get(organizationId, deliveryId);
     if (!d) throw new DeliveryEntityError("تحویل پیدا نشد");
     if (d.status !== "FAILED") throw new DeliveryEntityError("فقط تحویل ناموفق دوباره برنامه‌ریزی می‌شود");
-    advanceOrder(organizationId, d.order_id, "retryDelivery", actor, { db: conn });
+    await advanceOrder(organizationId, d.order_id, "retryDelivery", actor, { db: conn });
     // A fresh delivery row for the same stop -- NOT via planDelivery, whose per-stop
     // idempotency would hand back the failed row.
     const seq =
       ((
-        conn
+        await conn
           .prepare("SELECT MAX(seq) AS m FROM deliveries WHERE order_id = ?")
           .get(d.order_id) as { m: number | null }
       ).m ?? 0) + 1;
     const now = new Date().toISOString();
     const id = Number(
-      conn
+      (await conn
         .prepare(
           `INSERT INTO deliveries
              (organization_id, order_id, seq, status, route_stop_id, planned_date, created_at)
            VALUES (?, ?, ?, 'PLANNED', ?, ?, ?)`
         )
-        .run(organizationId, d.order_id, seq, d.route_stop_id, d.planned_date, now).lastInsertRowid
+        .run(organizationId, d.order_id, seq, d.route_stop_id, d.planned_date, now)).lastInsertRowid
     );
-    snapshotLines(conn, id, d.order_id);
+    await snapshotLines(conn, id, d.order_id);
     return id;
   };
-  if (db) return run();
-  conn.exec("BEGIN IMMEDIATE");
+  if (db) return await run();
+  await conn.exec("BEGIN IMMEDIATE");
   try {
-    const id = run();
-    conn.exec("COMMIT");
+    const id = await run();
+    await conn.exec("COMMIT");
     return id;
   } catch (e) {
-    conn.exec("ROLLBACK");
+    await conn.exec("ROLLBACK");
     throw e;
   }
 }
@@ -213,12 +213,12 @@ export interface DeliveryDetail extends DeliveryRow {
   lines: { order_line_id: number; qty_planned: number; qty_delivered: number; qty_returned: number }[];
 }
 
-export function readDelivery(
+export async function readDelivery(
   organizationId: number,
   deliveryId: number
-): DeliveryDetail | undefined {
+): Promise<DeliveryDetail | undefined> {
   const db = deliveriesRepo.db();
-  const row = db
+  const row = await db
     .prepare(
       `SELECT d.*, o.order_no, c.business_name AS customer_name
          FROM deliveries d
@@ -228,7 +228,7 @@ export function readDelivery(
     )
     .get(deliveryId, organizationId) as (DeliveryRow & { order_no: string; customer_name: string }) | undefined;
   if (!row) return undefined;
-  const lines = db
+  const lines = await db
     .prepare(
       "SELECT order_line_id, qty_planned, qty_delivered, qty_returned FROM delivery_lines WHERE delivery_id = ?"
     )
@@ -236,10 +236,10 @@ export function readDelivery(
   return { ...row, lines };
 }
 
-export function listDeliveries(
+export async function listDeliveries(
   organizationId: number,
   filter: { order_id?: number; run_id?: number } = {}
-): (DeliveryRow & { order_no: string })[] {
+): Promise<(DeliveryRow & { order_no: string })[]> {
   const db = deliveriesRepo.db();
   const clauses = ["d.organization_id = ?"];
   const params: unknown[] = [organizationId];
@@ -251,7 +251,7 @@ export function listDeliveries(
     clauses.push("ds.run_id = ?");
     params.push(filter.run_id);
   }
-  return db
+  return await db
     .prepare(
       `SELECT d.*, o.order_no
          FROM deliveries d
@@ -268,8 +268,8 @@ export function listDeliveries(
  *  can be re-ordered. Raw insert -- the price snapshot is carried over verbatim, not
  *  re-resolved, so a backorder invoices at the original agreed price. */
 registerOrderEffectHandlers({
-  spawnBackorder(conn, orgId, orderId) {
-    const short = conn
+  async spawnBackorder(conn, orgId, orderId) {
+    const short = await conn
       .prepare(
         `SELECT ol.id AS order_line_id, ol.product_id, ol.packaging_id, ol.unit_price_toman,
                 ol.unit_cost_toman, ol.qty_per_pack, ol.kg_per_base_unit, ol.price_id,
@@ -292,7 +292,7 @@ registerOrderEffectHandlers({
     const lines = short.filter((l) => l.packs_short > 1e-9);
     if (lines.length === 0) return;
 
-    const parent = conn
+    const parent = await conn
       .prepare("SELECT customer_id, group_id, salesperson_user_id, order_date, created_by FROM orders WHERE id = ?")
       .get(orderId) as {
       customer_id: number;
@@ -303,7 +303,7 @@ registerOrderEffectHandlers({
     };
     const now = new Date().toISOString();
     const jy = (parent.order_date || now).slice(0, 4);
-    const maxNo = conn
+    const maxNo = await conn
       .prepare(
         "SELECT MAX(CAST(substr(order_no, 6) AS INTEGER)) AS m FROM orders WHERE organization_id = ? AND order_no LIKE ?"
       )
@@ -311,7 +311,7 @@ registerOrderEffectHandlers({
     const orderNo = `${jy}-${String((maxNo.m ?? 0) + 1).padStart(5, "0")}`;
 
     const newOrderId = Number(
-      conn
+      (await conn
         .prepare(
           `INSERT INTO orders (order_no, customer_id, group_id, salesperson_user_id, status,
                                order_type, order_date, notes, created_by, created_at, updated_at, organization_id)
@@ -328,7 +328,7 @@ registerOrderEffectHandlers({
           now,
           now,
           orgId
-        ).lastInsertRowid
+        )).lastInsertRowid
     );
     const insLine = conn.prepare(
       `INSERT INTO order_lines (order_id, product_id, packaging_id, packs_ordered, unit_price_toman,
@@ -336,7 +336,7 @@ registerOrderEffectHandlers({
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     );
     for (const l of lines) {
-      insLine.run(
+      await insLine.run(
         newOrderId,
         l.product_id,
         l.packaging_id,
@@ -349,8 +349,8 @@ registerOrderEffectHandlers({
         now
       );
     }
-    refreshOrderFigures(conn, newOrderId);
-    conn
+    await refreshOrderFigures(conn, newOrderId);
+    await conn
       .prepare(
         `INSERT INTO order_events (organization_id, order_id, from_status, to_status, action, actor_user_id, note, created_at)
          VALUES (?, ?, NULL, 'DRAFT', 'create', NULL, ?, ?)`
@@ -369,12 +369,12 @@ registerOrderEffectHandlers({
  *
  *  It is scoped by organization_id as well as by id, so a row from another tenant is simply not
  *  found here rather than being found and rejected later. */
-export function readDeletableRun(
-  db: DatabaseSync,
+export async function readDeletableRun(
+  db: Db,
   organizationId: number,
   runId: number
-): { id: number; group_id: number | null; driver_user_id: number; run_date: string } | undefined {
-  return db
+): Promise<{ id: number; group_id: number | null; driver_user_id: number; run_date: string } | undefined> {
+  return await db
     .prepare(
       `SELECT id, group_id, driver_user_id, run_date
          FROM delivery_runs
@@ -406,16 +406,16 @@ export interface DayLoad {
   visits: number;
 }
 
-export function listDayLoads(
-  db: DatabaseSync,
+export async function listDayLoads(
+  db: Db,
   organizationId: number,
   fromDay: string,
   groupId: number | null = null
-): DayLoad[] {
+): Promise<DayLoad[]> {
   const scope = groupId === null ? "" : " AND dr.group_id = ?";
   const params: (number | string)[] = groupId === null ? [organizationId, fromDay] : [organizationId, fromDay, groupId];
 
-  return db
+  return await db
     .prepare(
       `SELECT dr.run_date AS day,
               dr.driver_user_id,

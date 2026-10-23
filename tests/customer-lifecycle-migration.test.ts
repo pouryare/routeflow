@@ -19,8 +19,8 @@ afterAll(() => {
 });
 
 describe("customers M2 migration", () => {
-  it("adds the lifecycle columns and drops status", () => {
-    const cols = (getDb().prepare("PRAGMA table_info(customers)").all() as { name: string }[]).map(
+  it("adds the lifecycle columns and drops status", async () => {
+    const cols = (await getDb().prepare("PRAGMA table_info(customers)").all() as { name: string }[]).map(
       (c) => c.name
     );
     for (const c of [
@@ -37,39 +37,38 @@ describe("customers M2 migration", () => {
     expect(cols).not.toContain("status");
   });
 
-  it("keeps the business_name index", () => {
-    const idx = getDb()
+  it("keeps the business_name index", async () => {
+    const idx = await getDb()
       .prepare("SELECT name FROM sqlite_master WHERE type='index' AND tbl_name='customers'")
       .all() as { name: string }[];
     expect(idx.map((i) => i.name)).toContain("idx_customers_business_name");
   });
 
-  it.skipIf(realDbPath)("defaults lifecycle to 'lead' and enforces the enum", () => {
+  it.skipIf(realDbPath)("defaults lifecycle to 'lead' and enforces the enum", async () => {
     const db = getDb();
-    db.exec(`INSERT INTO organizations (id,name,slug,created_at) VALUES (5,'F','f','2026-01-01')`);
-    db.exec(
+    await db.exec(`INSERT INTO organizations (id,name,slug,created_at) VALUES (5,'F','f','2026-01-01')`);
+    await db.exec(
       `INSERT INTO customers (customer_code, business_name, synced_at, organization_id) VALUES ('K1','x','2026-01-01',5)`
     );
-    const row = db
+    const row = await db
       .prepare("SELECT lifecycle FROM customers WHERE customer_code='K1'")
       .get() as { lifecycle: string };
     expect(row.lifecycle).toBe("lead");
-    expect(() =>
-      db.exec(
+    await expect((async () =>
+      await db.exec(
         `INSERT INTO customers (customer_code, business_name, lifecycle, synced_at, organization_id) VALUES ('K2','x','bogus','2026-01-01',5)`
-      )
-    ).toThrow();
+      ))()).rejects.toThrow();
   });
 
-  it.runIf(realDbPath)("maps every real status value to a valid lifecycle", () => {
+  it.runIf(realDbPath)("maps every real status value to a valid lifecycle", async () => {
     const db = getDb();
-    const bad = db
+    const bad = await db
       .prepare(
         "SELECT DISTINCT lifecycle FROM customers WHERE lifecycle NOT IN ('lead','qualified','sampled','active','dormant','lost','blocked')"
       )
       .all();
     expect(bad).toEqual([]);
-    const active = db
+    const active = await db
       .prepare("SELECT COUNT(*) n FROM customers WHERE lifecycle='active'")
       .get() as { n: number };
     expect(active.n).toBeGreaterThanOrEqual(89); // فعال + مشتری فعال in the 2026-09-01 backup

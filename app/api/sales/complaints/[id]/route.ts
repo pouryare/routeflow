@@ -14,17 +14,17 @@ const SEVERITIES: ComplaintSeverity[] = ["low", "medium", "high", "critical"];
 const STATUSES: ComplaintStatus[] = ["open", "investigating", "resolved", "dismissed"];
 
 export async function GET(req: NextRequest, ctx: RouteContext<"/api/sales/complaints/[id]">) {
-  const guard = requireRole(req, MANAGE_ROLES);
+  const guard = await requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
 
   const { id } = await ctx.params;
-  const trace = backwardTrace(guard.session.organizationId, Number(id));
+  const trace = await backwardTrace(guard.session.organizationId, Number(id));
   if (!trace) return NextResponse.json({ ok: false, error: "یافت نشد" }, { status: 404 });
   return NextResponse.json({ ok: true, ...trace });
 }
 
 export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/sales/complaints/[id]">) {
-  const guard = requireRole(req, MANAGE_ROLES);
+  const guard = await requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
 
   const { id } = await ctx.params;
@@ -40,12 +40,12 @@ export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/sales/comp
   ) {
     return NextResponse.json({ ok: false, error: "مقدار نامعتبر است" }, { status: 400 });
   }
-  if (!complaintsRepo.get(guard.session.organizationId, Number(id))) {
+  if (!await complaintsRepo.get(guard.session.organizationId, Number(id))) {
     return NextResponse.json({ ok: false, error: "یافت نشد" }, { status: 404 });
   }
 
   try {
-    updateComplaint(
+    await updateComplaint(
       guard.session.organizationId,
       Number(id),
       {

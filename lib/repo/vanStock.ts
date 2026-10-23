@@ -22,10 +22,10 @@ export class VanStockError extends Error {}
  *  Idempotent on the slug, because the natural key here is the plate: reloading the page, or two
  *  people registering the same van, must not produce two stock locations for one vehicle — which
  *  would split its stock in half across two balances and make both wrong. */
-export function createVanFacility(organizationId: number, name: string, plate: string): number {
+export async function createVanFacility(organizationId: number, name: string, plate: string): Promise<number> {
   const db = getDb();
   const slug = `van-${organizationId}-${plate}`.replace(/\s+/g, "-");
-  const existing = db.prepare("SELECT id FROM facilities WHERE slug = ?").get(slug) as
+  const existing = await db.prepare("SELECT id FROM facilities WHERE slug = ?").get(slug) as
     | { id: number }
     | undefined;
   if (existing) return existing.id;
@@ -38,13 +38,13 @@ export function createVanFacility(organizationId: number, name: string, plate: s
    * Gulf of Guinea, and on a map it was a marker in open water. */
   const now = new Date().toISOString();
   return Number(
-    db
+    (await db
       .prepare(
         `INSERT INTO facilities (slug, kind, name, lat, lng, is_default_origin, owner_username,
                                  organization_id, created_at, updated_at)
          VALUES (?, 'van', ?, NULL, NULL, 0, ?, ?, ?, ?)`
       )
-      .run(slug, name, plate, organizationId, now, now).lastInsertRowid
+      .run(slug, name, plate, organizationId, now, now)).lastInsertRowid
   );
 }
 
@@ -56,15 +56,15 @@ export function createVanFacility(organizationId: number, name: string, plate: s
  *
  *  BOTH legs go in one transaction. A transfer whose outbound leg committed and whose inbound
  *  leg did not is stock that simply vanished, with the ledger showing one honest-looking half. */
-export function loadVan(
+export async function loadVan(
   organizationId: number,
   input: { facilityId: number; productId: number; qty: number; actorId: number | null },
-): void {
+): Promise<void> {
   if (input.qty <= 0) throw new VanStockError("مقدار باید بیشتر از صفر باشد");
 
   const db = getDb();
-  const warehouse = warehouseFor(organizationId);
-  const held = onHand(organizationId, { product_id: input.productId, facility_id: warehouse });
+  const warehouse = await warehouseFor(organizationId);
+  const held = await onHand(organizationId, { product_id: input.productId, facility_id: warehouse });
   if (held < input.qty) {
     throw new VanStockError(`موجودی انبار کافی نیست (${held} موجود، ${input.qty} درخواست)`);
   }
@@ -85,7 +85,7 @@ export function loadVan(
     created_by: input.actorId,
   });
 
-  recordMovementsTxn(db, organizationId, [
+  await recordMovementsTxn(db, organizationId, [
     leg(warehouse, -input.qty, "TRANSFER_OUT"),
     leg(input.facilityId, input.qty, "TRANSFER_IN"),
   ]);
@@ -95,19 +95,19 @@ export function loadVan(
  *
  *  This is the double-count. The warehouse was already decremented when the van was loaded, so
  *  touching it again here is exactly what made on-hand drift below reality. */
-export function deliverFromVan(
+export async function deliverFromVan(
   organizationId: number,
   input: { facilityId: number; productId: number; qty: number; actorId: number | null },
-): void {
+): Promise<void> {
   if (input.qty <= 0) throw new VanStockError("مقدار باید بیشتر از صفر باشد");
   const db = getDb();
-  const held = onHand(organizationId, { product_id: input.productId, facility_id: input.facilityId });
+  const held = await onHand(organizationId, { product_id: input.productId, facility_id: input.facilityId });
   if (held < input.qty) {
     throw new VanStockError(`موجودی وانت کافی نیست (${held} موجود، ${input.qty} درخواست)`);
   }
 
   const now = new Date().toISOString();
-  recordMovementsTxn(db, organizationId, [
+  await recordMovementsTxn(db, organizationId, [
     {
       facility_id: input.facilityId,
       product_id: input.productId,
@@ -122,8 +122,8 @@ export function deliverFromVan(
 }
 
 /** How much of a product is on a van right now. */
-export function vanOnHand(organizationId: number, facilityId: number, productId: number): number {
-  return onHand(organizationId, { product_id: productId, facility_id: facilityId });
+export async function vanOnHand(organizationId: number, facilityId: number, productId: number): Promise<number> {
+  return await onHand(organizationId, { product_id: productId, facility_id: facilityId });
 }
 
 /** The facility holding this driver's van, or null when they have no van on file.
@@ -136,9 +136,9 @@ export function vanOnHand(organizationId: number, facilityId: number, productId:
  *  Deliberately null rather than throwing. A driver with no van registered is an ordinary
  *  state, not an error, and callers need to be able to ask "do I know a van for this?" without
  *  wrapping the question in a try/catch. */
-export function vanFacilityFor(organizationId: number, driverUserId: number): number | null {
+export async function vanFacilityFor(organizationId: number, driverUserId: number): Promise<number | null> {
   const db = getDb();
-  const row = db
+  const row = await db
     .prepare(
       `SELECT v.id, v.name, v.plate
          FROM vehicles v
@@ -152,7 +152,7 @@ export function vanFacilityFor(organizationId: number, driverUserId: number): nu
   if (!row) return null;
   // createVanFacility is idempotent on the plate, so this cannot split one van's stock across
   // two facilities however many times it is called.
-  return createVanFacility(
+  return await createVanFacility(
     organizationId,
     row.name,
     row.plate ?? `veh-${row.id}`
@@ -167,6 +167,6 @@ export function vanFacilityFor(organizationId: number, driverUserId: number): nu
  *  came first. pickDepot asks the flag first and falls back to anything placed.
  *
  *  The throw is unchanged and still the right one: loading stock needs a real answer. */
-function warehouseFor(organizationId: number): number {
-  return pickDepot(organizationId).id;
+async function warehouseFor(organizationId: number): Promise<number> {
+  return (await pickDepot(organizationId)).id;
 }

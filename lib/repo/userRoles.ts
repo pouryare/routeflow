@@ -14,21 +14,21 @@ import type { Role } from "../roles";
 /** The full set for one person, ordered. Empty means "no explicit set" — the session
  *  falls back to `users.role` in that case, so an account created by a script that
  *  predates this table keeps working rather than reaching nothing. */
-export function rolesFor(userId: number): Role[] {
+export async function rolesFor(userId: number): Promise<Role[]> {
   // `.all()` hands back { role } objects. The cast in the plan's version silenced that and
   // shipped the objects themselves — callers got `Role[]` in the type and rows at runtime.
   // Plucking the field is the whole fix, and it is why the first two tests failed rather
   // than passing on a lie.
   return (
-    getDb()
+    await getDb()
       .prepare("SELECT role FROM user_roles WHERE user_id = ? ORDER BY role")
       .all(userId) as Array<{ role: string }>
   ).map((r) => r.role as Role);
 }
 
-export function hasRole(userId: number, role: Role): boolean {
+export async function hasRole(userId: number, role: Role): Promise<boolean> {
   return (
-    getDb()
+    await getDb()
       .prepare("SELECT 1 FROM user_roles WHERE user_id = ? AND role = ?")
       .get(userId, role) !== undefined
   );
@@ -36,22 +36,22 @@ export function hasRole(userId: number, role: Role): boolean {
 
 /** Replace a person's set outright. An empty array leaves them with no roles, which
  *  `requireRole` reads as "reaches nothing" -- the same reading as an empty scope. */
-export function setRoles(userId: number, roles: Role[]): void {
+export async function setRoles(userId: number, roles: Role[]): Promise<void> {
   const db = getDb();
-  db.prepare("DELETE FROM user_roles WHERE user_id = ?").run(userId);
+  await db.prepare("DELETE FROM user_roles WHERE user_id = ?").run(userId);
   const ins = db.prepare("INSERT OR IGNORE INTO user_roles (user_id, role) VALUES (?, ?)");
-  for (const r of roles) ins.run(userId, r);
+  for (const r of roles) await ins.run(userId, r);
 }
 
 /** Everyone in the organisation who HOLDS this role, whoever their primary is.
  *
  *  This is what the nineteen §3.3 sites need: a person whose primary is `delivery_driver`
  *  but who also holds `field_rep` must appear in both lists. */
-export function usersWithRole(
+export async function usersWithRole(
   organizationId: number,
   role: Role
-): Array<{ id: number; display_name: string; group_id: number | null }> {
-  return getDb()
+): Promise<Array<{ id: number; display_name: string; group_id: number | null }>> {
+  return await getDb()
     .prepare(
       `SELECT u.id, u.display_name, u.group_id
          FROM users u JOIN user_roles r ON r.user_id = u.id

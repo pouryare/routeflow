@@ -18,43 +18,43 @@ afterAll(() => {
 });
 
 let uid = 0;
-beforeAll(() => {
+beforeAll(async () => {
   const db = getDb();
   uid = Number(
-    db
+    (await db
       .prepare(
         "INSERT INTO users (username,password_hash,display_name,role,created_at,organization_id) VALUES (?,?,?,?,?,1)"
       )
-      .run(`pref${Date.now()}`, "x", "م", "group_manager", new Date().toISOString()).lastInsertRowid
+      .run(`pref${Date.now()}`, "x", "م", "group_manager", new Date().toISOString())).lastInsertRowid
   );
 });
 
 describe("prefs repo", () => {
-  it("defaults to an empty object for an unknown or unset user", () => {
-    expect(getPrefs(-999)).toEqual({});
-    expect(getPrefs(uid)).toEqual({});
+  it("defaults to an empty object for an unknown or unset user", async () => {
+    expect(await getPrefs(-999)).toEqual({});
+    expect(await getPrefs(uid)).toEqual({});
   });
 
-  it("merge-patches and persists across calls", () => {
-    setPrefs(uid, { board_mobile_mode: "stack" });
-    expect(getPrefs(uid).board_mobile_mode).toBe("stack");
-    setPrefs(uid, { board_default_view: "time" });
-    expect(getPrefs(uid)).toEqual({ board_mobile_mode: "stack", board_default_view: "time" });
-    setPrefs(uid, { board_mobile_mode: "pager" });
-    expect(getPrefs(uid)).toEqual({ board_mobile_mode: "pager", board_default_view: "time" });
+  it("merge-patches and persists across calls", async () => {
+    await setPrefs(uid, { board_mobile_mode: "stack" });
+    expect((await getPrefs(uid)).board_mobile_mode).toBe("stack");
+    await setPrefs(uid, { board_default_view: "time" });
+    expect(await getPrefs(uid)).toEqual({ board_mobile_mode: "stack", board_default_view: "time" });
+    await setPrefs(uid, { board_mobile_mode: "pager" });
+    expect(await getPrefs(uid)).toEqual({ board_mobile_mode: "pager", board_default_view: "time" });
   });
 
-  it("rejects an unknown key", () => {
-    expect(() => setPrefs(uid, { hacked: 1 } as never)).toThrow();
+  it("rejects an unknown key", async () => {
+    await expect((async () => await setPrefs(uid, { hacked: 1 } as never))()).rejects.toThrow();
   });
 
-  it("rejects a bad value", () => {
-    expect(() => setPrefs(uid, { board_mobile_mode: "spiral" } as never)).toThrow();
-    expect(() => setPrefs(uid, { board_default_view: "kanban" } as never)).toThrow();
+  it("rejects a bad value", async () => {
+    await expect((async () => await setPrefs(uid, { board_mobile_mode: "spiral" } as never))()).rejects.toThrow();
+    await expect((async () => await setPrefs(uid, { board_default_view: "kanban" } as never))()).rejects.toThrow();
   });
 
-  it("survives a corrupt blob", () => {
-    getDb().prepare("UPDATE users SET prefs_json = 'not json' WHERE id = ?").run(uid);
-    expect(getPrefs(uid)).toEqual({});
+  it("survives a corrupt blob", async () => {
+    await getDb().prepare("UPDATE users SET prefs_json = 'not json' WHERE id = ?").run(uid);
+    expect(await getPrefs(uid)).toEqual({});
   });
 });

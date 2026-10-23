@@ -20,37 +20,37 @@ let mgr = 0,
   g = 0,
   ord = 0;
 
-beforeEach(() => {
+beforeEach(async () => {
   const db = getDb();
-  db.exec(
+  await db.exec(
     "PRAGMA foreign_keys=OFF; DELETE FROM users WHERE id>0; DELETE FROM groups; DELETE FROM customers; DELETE FROM orders; DELETE FROM cheques; DELETE FROM reminders; DELETE FROM credit_approvals; PRAGMA foreign_keys=ON;"
   );
   const now = new Date().toISOString();
   g = Number(
-    db.prepare("INSERT INTO groups (organization_id, name, slug, created_at) VALUES (1,'گ','g',?)").run(now).lastInsertRowid
+    (await db.prepare("INSERT INTO groups (organization_id, name, slug, created_at) VALUES (1,'گ','g',?)").run(now)).lastInsertRowid
   );
   // users has no `name` column; the required NOT NULL cols are username/password_hash/display_name.
   const u = db.prepare(
     "INSERT INTO users (username, password_hash, display_name, group_id, role, active, created_at, organization_id) VALUES (?,?,?,?,?,1,?,1)"
   );
-  mgr = Number(u.run(`m${Date.now()}`, "x:y", "مدیر", g, "group_manager", now).lastInsertRowid);
-  seller = Number(u.run(`s${Date.now()}`, "x:y", "فروشنده", g, "phone_sales", now).lastInsertRowid);
+  mgr = Number((await u.run(`m${Date.now()}`, "x:y", "مدیر", g, "group_manager", now)).lastInsertRowid);
+  seller = Number((await u.run(`s${Date.now()}`, "x:y", "فروشنده", g, "phone_sales", now)).lastInsertRowid);
   // customers has no `created_at`; customer_code + synced_at are NOT NULL with no default.
   custId = Number(
-    db
+    (await db
       .prepare(
         "INSERT INTO customers (customer_code, business_name, lifecycle, synced_at, group_id, organization_id) VALUES ('C1','مشتری','active',?,?,1)"
       )
-      .run(now, g).lastInsertRowid
+      .run(now, g)).lastInsertRowid
   );
   // orders: order_no / created_by / updated_at are NOT NULL with no default; status is an uppercase CHECK.
   ord = Number(
-    db
+    (await db
       .prepare(
         `INSERT INTO orders (order_no, organization_id, group_id, customer_id, salesperson_user_id, status, order_date, created_by, created_at, updated_at)
          VALUES ('9001', 1, ?, ?, ?, 'CONFIRMED', ?, ?, ?, ?)`
       )
-      .run(g, custId, seller, now.slice(0, 10), seller, now, now).lastInsertRowid
+      .run(g, custId, seller, now.slice(0, 10), seller, now, now)).lastInsertRowid
   );
 });
 
@@ -65,56 +65,56 @@ const ctx = (over: Partial<Parameters<typeof recipientsFor>[2]>) =>
   }) as Parameters<typeof recipientsFor>[2];
 
 describe("Phase 2 recipientsFor", () => {
-  it("task.escalated → the new assignee from meta, actor excluded", () => {
-    expect(recipientsFor(1, "task.escalated", ctx({ meta: { assignee_user_id: mgr } }), seller)).toEqual([mgr]);
-    expect(recipientsFor(1, "task.escalated", ctx({ meta: { assignee_user_id: mgr } }), mgr)).toEqual([]);
+  it("task.escalated → the new assignee from meta, actor excluded", async () => {
+    expect(await recipientsFor(1, "task.escalated", ctx({ meta: { assignee_user_id: mgr } }), seller)).toEqual([mgr]);
+    expect(await recipientsFor(1, "task.escalated", ctx({ meta: { assignee_user_id: mgr } }), mgr)).toEqual([]);
   });
 
-  it("customer.overdue → the customer's owning salesperson", () => {
+  it("customer.overdue → the customer's owning salesperson", async () => {
     // sweep passes entity_type 'customer', entity_id = customer id
-    expect(recipientsFor(1, "customer.overdue", ctx({ entity_type: "customer", entity_id: custId }), null)).toEqual([
+    expect(await recipientsFor(1, "customer.overdue", ctx({ entity_type: "customer", entity_id: custId }), null)).toEqual([
       seller,
     ]);
   });
 
-  it("cheque.due_soon → received_by, falling back to the customer's salesperson", () => {
+  it("cheque.due_soon → received_by, falling back to the customer's salesperson", async () => {
     const db = getDb();
     const ch = Number(
-      db
+      (await db
         .prepare(
           "INSERT INTO cheques (organization_id, customer_id, amount_toman, cheque_no, due_date, status, received_at, received_by, created_at, updated_at) VALUES (1,?,1000,'c1',?, 'in_hand', ?, ?, ?, ?)"
         )
-        .run(custId, "2026-09-10", new Date().toISOString(), mgr, new Date().toISOString(), new Date().toISOString())
+        .run(custId, "2026-09-10", new Date().toISOString(), mgr, new Date().toISOString(), new Date().toISOString()))
         .lastInsertRowid
     );
-    expect(recipientsFor(1, "cheque.due_soon", ctx({ entity_type: "cheque", entity_id: ch }), null)).toEqual([mgr]);
+    expect(await recipientsFor(1, "cheque.due_soon", ctx({ entity_type: "cheque", entity_id: ch }), null)).toEqual([mgr]);
   });
 
-  it("credit_approval.waiting → owner/group_manager approvers, not the requester", () => {
+  it("credit_approval.waiting → owner/group_manager approvers, not the requester", async () => {
     const db = getDb();
     // credit_approvals has no `customer_id`; order_id / customer_balance_toman / overage_toman are NOT NULL.
     const ca = Number(
-      db
+      (await db
         .prepare(
           "INSERT INTO credit_approvals (organization_id, order_id, status, requested_at, requested_by, customer_balance_toman, overage_toman) VALUES (1,?,'pending',?,?,0,0)"
         )
-        .run(ord, new Date().toISOString(), seller).lastInsertRowid
+        .run(ord, new Date().toISOString(), seller)).lastInsertRowid
     );
-    const r = recipientsFor(1, "credit_approval.waiting", ctx({ entity_type: "credit_approval", entity_id: ca }), seller);
+    const r = await recipientsFor(1, "credit_approval.waiting", ctx({ entity_type: "credit_approval", entity_id: ca }), seller);
     expect(r).toContain(mgr);
     expect(r).not.toContain(seller);
   });
 
-  it("reminder.due → customer reminder routes to the customer's salesperson", () => {
+  it("reminder.due → customer reminder routes to the customer's salesperson", async () => {
     const db = getDb();
     const rem = Number(
-      db
+      (await db
         .prepare(
           "INSERT INTO reminders (entity_type, entity_id, due_date, message, resolved, created_at) VALUES ('customer', ?, ?, 'یادآوری', 0, ?)"
         )
-        .run(custId, "2026-09-01", new Date().toISOString()).lastInsertRowid
+        .run(custId, "2026-09-01", new Date().toISOString())).lastInsertRowid
     );
-    expect(recipientsFor(1, "reminder.due", ctx({ entity_type: "customer", entity_id: custId }), null)).toEqual([seller]);
+    expect(await recipientsFor(1, "reminder.due", ctx({ entity_type: "customer", entity_id: custId }), null)).toEqual([seller]);
     expect(rem).toBeGreaterThan(0);
   });
 

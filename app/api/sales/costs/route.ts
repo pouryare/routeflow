@@ -20,7 +20,7 @@ import { addCost, costTargetsInOrg } from "@/lib/repo/salesWrites";
  *  clause an owner of tenant 1 could set the cost of tenant 2's product by guessing its
  *  id. That test lives in tests/api/product-costs-route.test.ts. */
 export async function POST(req: NextRequest) {
-  const guard = requireRole(req, OWNER_ROLES);
+  const guard = await requireRole(req, OWNER_ROLES);
   if (!guard.ok) return guard.response;
 
   const body = (await req.json().catch(() => null)) as {
@@ -71,7 +71,7 @@ export async function POST(req: NextRequest) {
     body?.packaging_id === undefined || body?.packaging_id === null
       ? null
       : Number(body.packaging_id);
-  const target = costTargetsInOrg(productId, packagingId, guard.session.organizationId);
+  const target = await costTargetsInOrg(productId, packagingId, guard.session.organizationId);
   if (target === "no-product") {
     return NextResponse.json({ ok: false, error: "کالا پیدا نشد" }, { status: 404 });
   }
@@ -79,7 +79,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "بسته‌بندی پیدا نشد" }, { status: 404 });
   }
 
-  const id = addCost({
+  const id = await addCost({
     product_id: productId,
     packaging_id: packagingId,
     method,

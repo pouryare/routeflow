@@ -57,77 +57,77 @@ if (dbPath) {
 
 process.env.ROUTEFLOW_DB_PATH = dbPath || path.join(os.tmpdir(), `rf-notif-p2-empty-${Date.now()}.db`);
 process.env.SESSION_SECRET = "test-secret";
-const { getDb, seedNotificationTypes, loudByDefault, NOTIFICATION_TYPE_SEED } = await import("@/lib/db");
+const { getDb, seedNotificationTypes, loudByDefault, NOTIFICATION_TYPE_SEED, rawSqlite } = await import("@/lib/db");
 /* No ensureWarehouse here, and deliberately. This file counts rows on a COPY of a real
    database before and after getDb() migrates it; seeding a facility would put a row into
    the very tables it is asserting nothing added to. The warehouse this test needs is the
    one already in the real backup. */
 
-function columns(db: ReturnType<typeof getDb>, table: string): string[] {
-  return (db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[]).map((c) => c.name);
+async function columns(db: ReturnType<typeof getDb>, table: string): Promise<string[]> {
+  return (await db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[]).map((c) => c.name);
 }
 
 describe.skipIf(!dbPath)("Phase 2 loud-channel migration on real data", () => {
-  it("adds the tables, columns, seeds and backfill, touching nothing else", () => {
+  it("adds the tables, columns, seeds and backfill, touching nothing else", async () => {
     const db = getDb(); // runs every migration, Phase 1's included, plus both seeds
 
-    expect(db.prepare("PRAGMA foreign_key_check").all()).toEqual([]);
+    expect(await db.prepare("PRAGMA foreign_key_check").all()).toEqual([]);
 
     // Task 1: the three new tables exist (table_info returns one row per column).
     for (const t of ["notification_prefs", "notification_channels", "notification_deliveries"]) {
-      expect(columns(db, t).length, t).toBeGreaterThan(0);
+      expect((await columns(db, t)).length, t).toBeGreaterThan(0);
     }
 
     // Task 1: the seven guarded ADD COLUMNs landed.
-    expect(columns(db, "notification_types")).toEqual(
+    expect(await columns(db, "notification_types")).toEqual(
       expect.arrayContaining(["default_push", "default_telegram"])
     );
-    expect(columns(db, "push_subscriptions")).toContain("user_id");
-    expect(columns(db, "users")).toEqual(expect.arrayContaining(["telegram_chat_id", "telegram_link_nonce"]));
-    expect(columns(db, "notifications")).toEqual(expect.arrayContaining(["push_flushed_at", "tg_flushed_at"]));
+    expect(await columns(db, "push_subscriptions")).toContain("user_id");
+    expect(await columns(db, "users")).toEqual(expect.arrayContaining(["telegram_chat_id", "telegram_link_nonce"]));
+    expect(await columns(db, "notifications")).toEqual(expect.arrayContaining(["push_flushed_at", "tg_flushed_at"]));
 
     // Phase 1's 7 catalogue rows + Phase 2's 5 + system.test = 13; >= so a later phase
     // adding a row does not retroactively fail this migration test.
-    const cat = db
+    const cat = await db
       .prepare("SELECT COUNT(*) AS c FROM notification_types WHERE organization_id IS NULL")
       .get() as { c: number };
     expect(cat.c).toBeGreaterThanOrEqual(13);
 
     // Phase 1's 8 notify rules + Phase 2's 5 = 13.
-    const rules = db
+    const rules = await db
       .prepare("SELECT COUNT(*) AS c FROM rules WHERE action_kind = 'notify' AND organization_id IS NULL")
       .get() as { c: number };
     expect(rules.c).toBeGreaterThanOrEqual(13);
 
     // Every pre-existing push subscription survives, and none is falsely attributed: the
     // ADD COLUMN gives them NULL, and only a fresh POST /api/push/subscribe stamps an owner.
-    const orphaned = db
+    const orphaned = await db
       .prepare("SELECT COUNT(*) AS c FROM push_subscriptions WHERE user_id IS NOT NULL")
       .get() as { c: number };
     expect(orphaned.c).toBe(0);
 
     // Nothing pre-existing was added, dropped, or rewritten.
     for (const [t, n] of Object.entries(before)) {
-      expect((db.prepare(`SELECT COUNT(*) AS n FROM ${t}`).get() as { n: number }).n, t).toBe(n);
+      expect((await db.prepare(`SELECT COUNT(*) AS n FROM ${t}`).get() as { n: number }).n, t).toBe(n);
     }
   });
 
-  it("backfills a Phase-1 catalogue row that predates the loud-by-default columns", () => {
+  it("backfills a Phase-1 catalogue row that predates the loud-by-default columns", async () => {
     const db = getDb();
 
     // A database migrated by Phase 1 has its 7 catalogue rows already; Phase 2's
     // `ALTER TABLE ... DEFAULT 0` would leave every one of them silently quiet. That is
     // exactly the state reproduced here -- the INSERT ... WHERE NOT EXISTS in
     // seedNotificationTypes cannot fix it, only the backfill UPDATE can.
-    db.prepare(
+    await db.prepare(
       "UPDATE notification_types SET default_push = 0, default_telegram = 0 WHERE organization_id IS NULL"
     ).run();
 
-    seedNotificationTypes(db);
+    seedNotificationTypes(await rawSqlite());
 
     for (const t of NOTIFICATION_TYPE_SEED) {
       const loud = loudByDefault(t.directedness, t.priority);
-      const row = db
+      const row = await db
         .prepare(
           "SELECT default_push, default_telegram FROM notification_types WHERE organization_id IS NULL AND code = ?"
         )
@@ -137,11 +137,11 @@ describe.skipIf(!dbPath)("Phase 2 loud-channel migration on real data", () => {
 
     // The two that matter most: a directed HIGH type must come back loud, and system.test
     // must be loud too or the «ارسال پیام آزمایشی» button can never send (Ruling P2-F).
-    const assigned = db
+    const assigned = await db
       .prepare("SELECT default_push FROM notification_types WHERE organization_id IS NULL AND code = 'task.assigned'")
       .get() as { default_push: number };
     expect(assigned.default_push).toBe(1);
-    const test = db
+    const test = await db
       .prepare(
         "SELECT default_push, default_telegram FROM notification_types WHERE organization_id IS NULL AND code = 'system.test'"
       )
@@ -149,31 +149,31 @@ describe.skipIf(!dbPath)("Phase 2 loud-channel migration on real data", () => {
     expect(test).toEqual({ default_push: 1, default_telegram: 1 });
   });
 
-  it("leaves a tenant's own catalogue override alone", () => {
+  it("leaves a tenant's own catalogue override alone", async () => {
     const db = getDb();
-    const org = db.prepare("SELECT id FROM organizations ORDER BY id LIMIT 1").get() as { id: number } | undefined;
+    const org = await db.prepare("SELECT id FROM organizations ORDER BY id LIMIT 1").get() as { id: number } | undefined;
     if (!org) return; // a backup with no tenants has nothing to protect
 
     const now = new Date().toISOString();
-    db.prepare(
+    await db.prepare(
       `INSERT INTO notification_types
          (organization_id, code, name_fa, category, directedness, priority, group_scope,
           default_push, default_telegram, active, created_at, updated_at)
        VALUES (?, 'task.assigned', 'x', 'task', 'directed', 'HIGH', 'entity', 0, 0, 1, ?, ?)`
     ).run(org.id, now, now);
 
-    seedNotificationTypes(db);
+    seedNotificationTypes(await rawSqlite());
 
     // The backfill is scoped `WHERE organization_id IS NULL`; a tenant that deliberately
     // silenced a type must stay silenced across every reboot.
-    const row = db
+    const row = await db
       .prepare(
         "SELECT default_push, default_telegram FROM notification_types WHERE organization_id = ? AND code = 'task.assigned'"
       )
       .get(org.id) as { default_push: number; default_telegram: number };
     expect(row).toEqual({ default_push: 0, default_telegram: 0 });
 
-    db.prepare("DELETE FROM notification_types WHERE organization_id = ? AND code = 'task.assigned'").run(org.id);
+    await db.prepare("DELETE FROM notification_types WHERE organization_id = ? AND code = 'task.assigned'").run(org.id);
     if (temp) for (const s of ["", "-wal", "-shm"]) fs.rmSync(`${dbPath}${s}`, { force: true });
   });
 });

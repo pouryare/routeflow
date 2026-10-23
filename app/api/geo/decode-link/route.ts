@@ -15,7 +15,7 @@ function extractAnyCoords(url: string) {
 // Guard only, no scope: this resolves a map link the caller already holds and reads
 // nothing out of the database.
 export async function GET(req: NextRequest) {
-  const guard = requireRole(req, MANAGE_ROLES);
+  const guard = await requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
 
   const urlParam = req.nextUrl.searchParams.get("url")?.trim();

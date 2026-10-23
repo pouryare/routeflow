@@ -15,7 +15,7 @@ import { homePathFor } from "@/lib/roles";
  *  passes there. */
 export default async function LoginLayout({ children }: { children: ReactNode }) {
   const jar = await cookies();
-  const session = getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
+  const session = await getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
   if (session) redirect(homePathFor(session.role));
   return <>{children}</>;
 }

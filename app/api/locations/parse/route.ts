@@ -14,7 +14,7 @@ import { PIN_POOL_ROLES } from "@/lib/roles";
  *  inline and hand back one array at the end, which is what timed out on a large paste.
  */
 export async function POST(req: NextRequest) {
-  const guard = requireRole(req, PIN_POOL_ROLES);
+  const guard = await requireRole(req, PIN_POOL_ROLES);
   if (!guard.ok) return guard.response;
 
   const body = await req.json().catch(() => null);
@@ -30,13 +30,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "هیچ لینک نقشه‌ای در متن پیدا نشد" }, { status: 422 });
   }
 
-  const jobId = importRepo.createJob(
+  const jobId = await importRepo.createJob(
     guard.session.organizationId,
     guard.session.groupId,
     items.length,
     guard.session.user.id
   );
-  importRepo.addItems(guard.session.organizationId, jobId, items);
+  await importRepo.addItems(guard.session.organizationId, jobId, items);
 
   // Deliberately not awaited: the response goes out now while the runner fills the
   // rows in behind it. A second paste while one runs is left queued, not dropped.
@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
     // The parsed items travel with the response so the panel can draw its rows as
     // placeholders immediately. Nothing here is decoded yet -- these are the names and
     // links the paste contained, in paste order, which is all the first paint needs.
-    items: importRepo.listItems(guard.session.organizationId, jobId).map((i) => ({
+    items: (await importRepo.listItems(guard.session.organizationId, jobId)).map((i) => ({
       id: i.id,
       ordinal: i.ordinal,
       name: i.name,

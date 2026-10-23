@@ -15,7 +15,7 @@ const MAX_UPLOAD_BYTES = 8 * 1024 * 1024;
  *  moderation queue nobody has staffed. `OWNER_ROLES` is the same gate every other
  *  administrative write in this app uses. */
 export async function POST(req: NextRequest) {
-  const guard = requireRole(req, OWNER_ROLES);
+  const guard = await requireRole(req, OWNER_ROLES);
   if (!guard.ok) return guard.response;
 
   const formData = await req.formData().catch(() => null);
@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
 
   // Tenant-scoped, same rule as the admin PATCH: an owner administers their own
   // organisation's staff and no one else's. A cross-tenant id reads as "not found".
-  if (!avatarUserInOrg(userId, guard.session.organizationId)) {
+  if (!await avatarUserInOrg(userId, guard.session.organizationId)) {
     return NextResponse.json({ ok: false, error: "کاربر پیدا نشد" }, { status: 404 });
   }
 
@@ -70,8 +70,8 @@ export async function POST(req: NextRequest) {
   // Read the PREVIOUS stem first: after setAvatar the old one is unrecoverable from the row,
   // and it is the only record that those two files are now garbage. Doing it in this order
   // also means a failure above leaves the old photograph still serving.
-  const previousStem = readAvatarStem(userId, guard.session.organizationId);
-  setAvatar(userId, guard.session.organizationId, `/api/users/${userId}/avatar`, stem);
+  const previousStem = await readAvatarStem(userId, guard.session.organizationId);
+  await setAvatar(userId, guard.session.organizationId, `/api/users/${userId}/avatar`, stem);
 
   // Only now that the row points at the new files is it safe to drop the old ones. A
   // re-upload used to strand two files per upload, forever. Failures here are swallowed by

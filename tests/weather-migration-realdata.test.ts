@@ -29,19 +29,19 @@ process.env.SESSION_SECRET = "test-secret";
 const { getDb } = await import("@/lib/db");
 
 describe.skipIf(!dbPath)("Phase 6 weather migration on real data", () => {
-  it("adds the two tables + seeds the six defaults, touching nothing else", () => {
+  it("adds the two tables + seeds the six defaults, touching nothing else", async () => {
     const db = getDb();
-    expect(db.prepare("PRAGMA foreign_key_check").all()).toEqual([]);
+    expect(await db.prepare("PRAGMA foreign_key_check").all()).toEqual([]);
 
     for (const t of ["weather_snapshots", "capacity_factors"]) {
-      expect(db.prepare(`SELECT 1 FROM sqlite_master WHERE type='table' AND name = ?`).get(t)).toBeTruthy();
+      expect(await db.prepare(`SELECT 1 FROM sqlite_master WHERE type='table' AND name = ?`).get(t)).toBeTruthy();
     }
-    expect((db.prepare("SELECT COUNT(*) AS n FROM weather_snapshots").get() as { n: number }).n).toBe(0);
+    expect((await db.prepare("SELECT COUNT(*) AS n FROM weather_snapshots").get() as { n: number }).n).toBe(0);
     expect(
-      (db.prepare("SELECT COUNT(*) AS n FROM capacity_factors WHERE organization_id IS NULL").get() as { n: number }).n
+      (await db.prepare("SELECT COUNT(*) AS n FROM capacity_factors WHERE organization_id IS NULL").get() as { n: number }).n
     ).toBe(6);
     expect(
-      (db.prepare("SELECT COUNT(*) AS n FROM capacity_factors WHERE organization_id IS NOT NULL").get() as { n: number }).n
+      (await db.prepare("SELECT COUNT(*) AS n FROM capacity_factors WHERE organization_id IS NOT NULL").get() as { n: number }).n
     ).toBe(0);
 
     if (temp) for (const s of ["", "-wal", "-shm"]) fs.rmSync(`${dbPath}${s}`, { force: true });

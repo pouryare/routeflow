@@ -19,7 +19,7 @@ export const dynamic = "force-dynamic";
  *  resolves its title and overview from pageMeta, and three tests enforce it. */
 export default async function SwitchPage() {
   const jar = await cookies();
-  const session = getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
+  const session = await getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
   if (!session) redirect("/login");
   if (!OWNER_ROLES.includes(session.role)) redirect("/sales");
 

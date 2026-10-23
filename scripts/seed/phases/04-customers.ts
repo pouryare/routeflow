@@ -23,13 +23,13 @@ const SURNAME = ["احمدی", "کریمی", "رضایی", "رستمی", "موس
 /** Iranian mobile prefixes — a 0912… that fails validation looks like a bug. */
 const MOBILES = ["0912", "0913", "0919", "0935", "0936"];
 
-export function run(ctx: SeedContext): void {
+export async function run(ctx: SeedContext): Promise<void> {
   const { db, rng } = ctx;
   const now = ctx.stamp(0);
 
   /* Snap to real محله so every pin has a district and a coordinate. A fresh database has no
      districts at all, which is why phase 02 must run first. */
-  const mahalle = db
+  const mahalle = await db
     .prepare(
       `SELECT id, name, centroid_lat AS lat, centroid_lng AS lng
          FROM districts WHERE level = 'mahalle' AND centroid_lat IS NOT NULL`,
@@ -69,7 +69,7 @@ export function run(ctx: SeedContext): void {
 
     customerIds.push(
       Number(
-        insCustomer.run(
+        (await insCustomer.run(
           `DEMO-C${faDigits(String(i + 1).padStart(4, "0"))}`,
           `${rng.pick(PREFIX)} ${rng.pick(MIDDLE)} ${rng.pick(SUFFIX)}`,
           `${rng.pick(MIDDLE)} ${rng.pick(SURNAME)}`,
@@ -98,7 +98,7 @@ export function run(ctx: SeedContext): void {
           rng.pick(["A", "B", "C"] as const),
           "verified",
           "open",
-        ).lastInsertRowid,
+        )).lastInsertRowid,
       ),
     );
   }
@@ -124,7 +124,7 @@ export function run(ctx: SeedContext): void {
     const point = jitter(d);
     pinIds.push(
       Number(
-        insPin.run(
+        (await insPin.run(
           `${rng.pick(PREFIX)} ${rng.pick(MIDDLE)} ${rng.pick(SUFFIX)}`,
           `https://maps.google.com/maps?cid=demo-lead-${ctx.orgId}-${i + 1}`,
           `تهران، ${d.name}`,
@@ -137,7 +137,7 @@ export function run(ctx: SeedContext): void {
           rng.int(1, 5),
           rng.int(1, 5),
           rng.int(1, 5),
-        ).lastInsertRowid,
+        )).lastInsertRowid,
       ),
     );
   }
@@ -149,7 +149,7 @@ export function run(ctx: SeedContext): void {
   for (let i = 0; i < ctx.scale.leads; i++) {
     const d = rng.pick(mahalle);
     const point = jitter(d);
-    insCustomer.run(
+    await insCustomer.run(
       `DEMO-L${faDigits(String(i + 1).padStart(4, "0"))}`,
       `${PREFIX[i % PREFIX.length]} ${MIDDLE[i % MIDDLE.length]} ${SUFFIX[i % SUFFIX.length]}`,
       null,

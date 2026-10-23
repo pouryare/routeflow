@@ -28,20 +28,20 @@ function cookie(uid: number, role: string) {
   return `${COOKIE_NAME}=${createSessionToken({ uid, role: role as never, gid: null, oid: 1, tv: 0, name: "م" })}`;
 }
 
-beforeEach(() => {
+beforeEach(async () => {
   const db = getDb();
-  db.exec("DELETE FROM weather_snapshots; DELETE FROM capacity_factors WHERE organization_id IS NOT NULL; DELETE FROM users WHERE id>0;");
+  await db.exec("DELETE FROM weather_snapshots; DELETE FROM capacity_factors WHERE organization_id IS NOT NULL; DELETE FROM users WHERE id>0;");
   const now = new Date().toISOString();
   const u = db.prepare(
     "INSERT INTO users (username,password_hash,display_name,role,active,created_at,organization_id) VALUES (?,?,?,?,1,?,1)"
   );
-  owner = Number(u.run(`o${Date.now()}`, "x", "م", "owner", now).lastInsertRowid);
-  seller = Number(u.run(`s${Date.now()}`, "x", "ف", "phone_sales", now).lastInsertRowid);
+  owner = Number((await u.run(`o${Date.now()}`, "x", "م", "owner", now)).lastInsertRowid);
+  seller = Number((await u.run(`s${Date.now()}`, "x", "ف", "phone_sales", now)).lastInsertRowid);
 });
 
 describe("weather routes", () => {
   it("returns a snapshot and its adjustment", async () => {
-    upsertSnapshot({
+    await upsertSnapshot({
       lat_r: 35.7,
       lng_r: 51.42,
       forecast_date: "2026-03-01",

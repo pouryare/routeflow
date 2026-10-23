@@ -36,28 +36,28 @@ interface Row {
   totp_last_step: number | null;
 }
 
-function row(userId: number): Row | undefined {
-  return getDb().prepare("SELECT totp_secret, totp_enabled_at, totp_last_step FROM users WHERE id = ?").get(userId) as Row | undefined;
+async function row(userId: number): Promise<Row | undefined> {
+  return await getDb().prepare("SELECT totp_secret, totp_enabled_at, totp_last_step FROM users WHERE id = ?").get(userId) as Row | undefined;
 }
 
 /** Does signing in as this user need a second step? */
-export function secondFactorRequired(userId: number): boolean {
-  const r = row(userId);
+export async function secondFactorRequired(userId: number): Promise<boolean> {
+  const r = await row(userId);
   return !!r?.totp_secret && !!r.totp_enabled_at;
 }
 
-export function secondFactorStatus(userId: number): { enabled: boolean; pending: boolean; recoveryLeft: number } {
-  const r = row(userId);
-  const left = (getDb().prepare("SELECT COUNT(*) AS n FROM user_recovery_codes WHERE user_id = ? AND used_at IS NULL").get(userId) as { n: number }).n;
+export async function secondFactorStatus(userId: number): Promise<{ enabled: boolean; pending: boolean; recoveryLeft: number }> {
+  const r = await row(userId);
+  const left = (await getDb().prepare("SELECT COUNT(*) AS n FROM user_recovery_codes WHERE user_id = ? AND used_at IS NULL").get(userId) as { n: number }).n;
   return { enabled: !!r?.totp_enabled_at, pending: !!r?.totp_secret && !r.totp_enabled_at, recoveryLeft: left };
 }
 
 /** Starts (or restarts) enrolment: a fresh secret that does nothing until a code from it is confirmed. */
-export function beginEnrollment(userId: number, account: string): { secret: string; uri: string } | null {
-  const r = row(userId);
+export async function beginEnrollment(userId: number, account: string): Promise<{ secret: string; uri: string } | null> {
+  const r = await row(userId);
   if (r?.totp_enabled_at) return null; // already on: turn it off first
   const secret = newTotpSecret();
-  getDb().prepare("UPDATE users SET totp_secret = ?, totp_enabled_at = NULL, totp_last_step = NULL WHERE id = ?").run(seal(secret), userId);
+  await getDb().prepare("UPDATE users SET totp_secret = ?, totp_enabled_at = NULL, totp_last_step = NULL WHERE id = ?").run(seal(secret), userId);
   return { secret, uri: otpauthUri(secret, account) };
 }
 
@@ -73,8 +73,8 @@ function newRecoveryCodes(): string[] {
 }
 
 /** Turns the second step on if `code` matches the pending secret. Returns the recovery codes ONCE. */
-export function confirmEnrollment(userId: number, code: string): string[] | null {
-  const r = row(userId);
+export async function confirmEnrollment(userId: number, code: string): Promise<string[] | null> {
+  const r = await row(userId);
   if (!r?.totp_secret || r.totp_enabled_at) return null;
   const secret = open(r.totp_secret);
   if (!secret) return null;
@@ -83,23 +83,23 @@ export function confirmEnrollment(userId: number, code: string): string[] | null
   const db = getDb();
   const codes = newRecoveryCodes();
   const now = new Date().toISOString();
-  db.exec("BEGIN");
+  await db.exec("BEGIN");
   try {
-    db.prepare("UPDATE users SET totp_enabled_at = ?, totp_last_step = ?, token_version = token_version + 1 WHERE id = ?").run(now, step, userId);
-    db.prepare("DELETE FROM user_recovery_codes WHERE user_id = ?").run(userId);
+    await db.prepare("UPDATE users SET totp_enabled_at = ?, totp_last_step = ?, token_version = token_version + 1 WHERE id = ?").run(now, step, userId);
+    await db.prepare("DELETE FROM user_recovery_codes WHERE user_id = ?").run(userId);
     const ins = db.prepare("INSERT INTO user_recovery_codes (user_id, code_hash, created_at) VALUES (?, ?, ?)");
-    for (const c of codes) ins.run(userId, recoveryHash(c), now);
-    db.exec("COMMIT");
+    for (const c of codes) await ins.run(userId, recoveryHash(c), now);
+    await db.exec("COMMIT");
   } catch (e) {
-    db.exec("ROLLBACK");
+    await db.exec("ROLLBACK");
     throw e;
   }
   return codes;
 }
 
 /** Checks the second step at sign-in: a current code (each time step usable once) or an unused recovery code. */
-export function checkSecondFactor(userId: number, code: string): boolean {
-  const r = row(userId);
+export async function checkSecondFactor(userId: number, code: string): Promise<boolean> {
+  const r = await row(userId);
   if (!r?.totp_secret || !r.totp_enabled_at) return false;
   const db = getDb();
   const secret = open(r.totp_secret);
@@ -107,27 +107,27 @@ export function checkSecondFactor(userId: number, code: string): boolean {
     const step = verifyTotp(secret, code, r.totp_last_step);
     if (step !== null) {
       // Only advance: two simultaneous requests with the same code cannot both pass.
-      const res = db.prepare("UPDATE users SET totp_last_step = ? WHERE id = ? AND (totp_last_step IS NULL OR totp_last_step < ?)").run(step, userId, step);
+      const res = await db.prepare("UPDATE users SET totp_last_step = ? WHERE id = ? AND (totp_last_step IS NULL OR totp_last_step < ?)").run(step, userId, step);
       return res.changes > 0;
     }
   }
-  const used = db
+  const used = await db
     .prepare("UPDATE user_recovery_codes SET used_at = ? WHERE user_id = ? AND code_hash = ? AND used_at IS NULL")
     .run(new Date().toISOString(), userId, recoveryHash(code));
   return used.changes > 0;
 }
 
 /** Turns the second step off. Needs a valid code, so a hijacked session cannot quietly remove it. */
-export function disableSecondFactor(userId: number, code: string): boolean {
-  if (!checkSecondFactor(userId, code)) return false;
+export async function disableSecondFactor(userId: number, code: string): Promise<boolean> {
+  if (!await checkSecondFactor(userId, code)) return false;
   const db = getDb();
-  db.exec("BEGIN");
+  await db.exec("BEGIN");
   try {
-    db.prepare("UPDATE users SET totp_secret = NULL, totp_enabled_at = NULL, totp_last_step = NULL, token_version = token_version + 1 WHERE id = ?").run(userId);
-    db.prepare("DELETE FROM user_recovery_codes WHERE user_id = ?").run(userId);
-    db.exec("COMMIT");
+    await db.prepare("UPDATE users SET totp_secret = NULL, totp_enabled_at = NULL, totp_last_step = NULL, token_version = token_version + 1 WHERE id = ?").run(userId);
+    await db.prepare("DELETE FROM user_recovery_codes WHERE user_id = ?").run(userId);
+    await db.exec("COMMIT");
   } catch (e) {
-    db.exec("ROLLBACK");
+    await db.exec("ROLLBACK");
     throw e;
   }
   return true;

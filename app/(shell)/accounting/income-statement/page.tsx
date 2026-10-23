@@ -23,8 +23,8 @@ export default async function IncomeStatementPage({
 }) {
   const { period } = await searchParams;
   const organizationId = await requireAccounting("/accounting/income-statement");
-  const is = incomeStatement(organizationId, { periodKey: period });
-  const periods = listPeriods(organizationId);
+  const is = await incomeStatement(organizationId, { periodKey: period });
+  const periods = await listPeriods(organizationId);
 
   /* `ledgerOf` makes the label open that account's ledger, so an expense line is one tap
      from the entries behind it. */

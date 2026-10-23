@@ -16,34 +16,34 @@ afterAll(() => {
   for (const s of ["", "-wal", "-shm"]) fs.rmSync(`${testDbPath}${s}`, { force: true });
 });
 
-beforeEach(() => {
+beforeEach(async () => {
   const db = getDb();
-  db.exec("DELETE FROM deleted_rows");
-  db.prepare("INSERT OR IGNORE INTO organizations (id,name,slug,created_at) VALUES (2,'B','b',?)").run(
+  await db.exec("DELETE FROM deleted_rows");
+  await db.prepare("INSERT OR IGNORE INTO organizations (id,name,slug,created_at) VALUES (2,'B','b',?)").run(
     new Date().toISOString()
   );
 });
 
 describe("tombstones", () => {
-  it("records a deletion and reads it back", () => {
-    tombstone(1, "order_line", 55);
-    const rows = tombstonesSince(1, null);
+  it("records a deletion and reads it back", async () => {
+    await tombstone(1, "order_line", 55);
+    const rows = await tombstonesSince(1, null);
     expect(rows).toHaveLength(1);
     expect(rows[0]).toMatchObject({ entity_type: "order_line", entity_id: 55 });
   });
 
   it("excludes tombstones at or before the watermark", async () => {
-    tombstone(1, "order_line", 1);
+    await tombstone(1, "order_line", 1);
     const mid = new Date(Date.now() + 5).toISOString();
     await new Promise((r) => setTimeout(r, 10));
-    tombstone(1, "order_line", 2);
-    const after = tombstonesSince(1, mid);
+    await tombstone(1, "order_line", 2);
+    const after = await tombstonesSince(1, mid);
     expect(after.map((t) => t.entity_id)).toEqual([2]);
   });
 
-  it("does not cross tenants", () => {
-    tombstone(2, "customer", 9);
-    expect(tombstonesSince(1, null)).toEqual([]);
-    expect(tombstonesSince(2, null).map((t) => t.entity_id)).toEqual([9]);
+  it("does not cross tenants", async () => {
+    await tombstone(2, "customer", 9);
+    expect(await tombstonesSince(1, null)).toEqual([]);
+    expect((await tombstonesSince(2, null)).map((t) => t.entity_id)).toEqual([9]);
   });
 });

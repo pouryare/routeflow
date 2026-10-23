@@ -1,4 +1,4 @@
-import type { DatabaseSync } from "node:sqlite";
+import type { Db } from "@/lib/database/client";
 
 /** Telegram account linking, deliberately kept in its own module with a TYPE-ONLY import.
  *
@@ -21,19 +21,19 @@ import type { DatabaseSync } from "node:sqlite";
  *  bytes, so a collision is not a practical concern; if one ever happened, `.get()` would
  *  bind an arbitrary one of the two and the loser would simply re-request a link.
  */
-export function consumeTelegramStart(
-  db: DatabaseSync,
+export async function consumeTelegramStart(
+  db: Db,
   text: string,
   chatId: string
-): { linked: boolean; userId?: number } {
+): Promise<{ linked: boolean; userId?: number }> {
   const m = /^\/start\s+(\S+)/.exec(text.trim());
   if (!m) return { linked: false };
   // `IS NOT NULL` is belt-and-braces: `\S+` cannot capture an empty string, and SQL
   // equality never matches NULL, so a user with no pending link is unreachable either way.
-  const row = db
+  const row = await db
     .prepare("SELECT id FROM users WHERE telegram_link_nonce = ? AND telegram_link_nonce IS NOT NULL")
     .get(m[1]) as { id: number } | undefined;
   if (!row) return { linked: false };
-  db.prepare("UPDATE users SET telegram_chat_id = ?, telegram_link_nonce = NULL WHERE id = ?").run(chatId, row.id);
+  await db.prepare("UPDATE users SET telegram_chat_id = ?, telegram_link_nonce = NULL WHERE id = ?").run(chatId, row.id);
   return { linked: true, userId: row.id };
 }

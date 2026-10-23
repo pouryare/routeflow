@@ -24,9 +24,9 @@ export const PRECISION_TIERS: Record<PrecisionTier, { tolerance: number; decimal
  *  insert or delete but must NOT change on a status edit -- COUNT + MAX(id) + total
  *  byte length covers every write that can touch the column (an insert moves all
  *  three; a delete moves count and length), and skips the ~600KB read entirely. */
-export function geometryVersion(): string {
+export async function geometryVersion(): Promise<string> {
   const db = getDb();
-  const sig = db
+  const sig = await db
     .prepare("SELECT COUNT(*) c, MAX(id) m, SUM(LENGTH(boundary_geojson)) b FROM districts")
     .get() as { c: number; m: number | null; b: number | null };
   return crypto
@@ -68,9 +68,9 @@ const store: GeometryCache = (globalCache.__districtGeometry ??= {
  *  JSON.parse on all 430 stored geometries and let NextResponse.json re-serialize
  *  ~600KB on every single request; here each stored geometry is parsed once per
  *  (version, tier) and every later request is a straight buffer write. */
-function buildPayload(tier: PrecisionTier): CacheEntry {
+async function buildPayload(tier: PrecisionTier): Promise<CacheEntry> {
   const { tolerance, decimals } = PRECISION_TIERS[tier];
-  const rows = getDb()
+  const rows = await getDb()
     .prepare("SELECT id, boundary_geojson FROM districts ORDER BY id")
     .all() as unknown as { id: number; boundary_geojson: string }[];
 
@@ -99,7 +99,7 @@ function buildPayload(tier: PrecisionTier): CacheEntry {
   };
 }
 
-export function getGeometryPayload(version: string, tier: PrecisionTier, acceptEncoding: string): EncodedPayload {
+export async function getGeometryPayload(version: string, tier: PrecisionTier, acceptEncoding: string): Promise<EncodedPayload> {
   if (store.version !== version) {
     store.entries.clear();
     store.version = version;
@@ -108,7 +108,7 @@ export function getGeometryPayload(version: string, tier: PrecisionTier, acceptE
   const key = `${version}:${tier}`;
   let entry = store.entries.get(key);
   if (!entry) {
-    entry = buildPayload(tier);
+    entry = await buildPayload(tier);
     store.entries.set(key, entry);
   }
 

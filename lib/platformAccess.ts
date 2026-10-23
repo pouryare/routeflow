@@ -1,4 +1,4 @@
-import type { DatabaseSync } from "node:sqlite";
+import type { Db } from "@/lib/database/client";
 import type { Session } from "./session";
 
 /** Record that the vendor looked at a tenant's data.
@@ -11,17 +11,17 @@ import type { Session } from "./session";
  *  audit trail, and a missing line is a smaller problem than an outage -- but it is a
  *  real problem, so it is not swallowed silently either.
  */
-export function logPlatformAccess(
-  db: DatabaseSync,
+export async function logPlatformAccess(
+  db: Db,
   session: Session,
   path: string,
   organizationId: number | null
-): void {
+): Promise<void> {
   if (session.role !== "platform_owner") return;
   if (organizationId === null || organizationId === session.organizationId) return;
 
   try {
-    db.prepare(
+    await db.prepare(
       `INSERT INTO platform_access_log (platform_user_id, organization_id, path, occurred_at)
        VALUES (?, ?, ?, ?)`
     ).run(session.user.id, organizationId, path, new Date().toISOString());

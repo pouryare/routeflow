@@ -79,13 +79,13 @@ function Area({ area }: { area: ReasonArea }) {
  *  A manager sees their own group's orders; an owner sees the organisation. */
 export default async function ReasonsPage({ searchParams }: { searchParams: Promise<{ days?: string }> }) {
   const jar = await cookies();
-  const session = getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
+  const session = await getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
   if (!session) redirect("/login");
   if (!MANAGE_ROLES.includes(session.role)) redirect("/sales");
 
   const asked = Number((await searchParams).days);
   const days = (WINDOWS as readonly number[]).includes(asked) ? asked : 90;
-  const areas = reasonReport(session, days);
+  const areas = await reasonReport(session, days);
 
   return (
     <>

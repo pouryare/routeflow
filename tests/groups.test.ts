@@ -27,72 +27,72 @@ let east = 0;
 let west = 0;
 let leftId = 0;
 
-beforeAll(() => {
+beforeAll(async () => {
   const db = getDb();
   const now = new Date().toISOString();
   const g = db.prepare(
     "INSERT INTO groups (name, slug, color, active, created_at, organization_id) VALUES (?, ?, ?, 1, ?, 1)"
   );
-  west = Number(g.run("گروه غرب", "west", "#0ff", now).lastInsertRowid);
-  east = Number(g.run("گروه شرق", "east", "#f0f", now).lastInsertRowid);
+  west = Number((await g.run("گروه غرب", "west", "#0ff", now)).lastInsertRowid);
+  east = Number((await g.run("گروه شرق", "east", "#f0f", now)).lastInsertRowid);
 
   const d = db.prepare(
     "INSERT INTO districts (name, level, boundary_geojson, coverage_status, group_id, updated_at) VALUES (?, ?, ?, 'unknown', ?, ?)"
   );
-  leftId = Number(d.run("محله چپ", "mahalle", LEFT, west, now).lastInsertRowid);
-  d.run("محله راست", "mahalle", RIGHT, east, now);
-  d.run("منطقه بزرگ", "mantaghe", PARENT, null, now);
+  leftId = Number((await d.run("محله چپ", "mahalle", LEFT, west, now)).lastInsertRowid);
+  await d.run("محله راست", "mahalle", RIGHT, east, now);
+  await d.run("منطقه بزرگ", "mantaghe", PARENT, null, now);
 
   const c = db.prepare(
     "INSERT INTO customers (customer_code, business_name, lat, lng, synced_at, organization_id) VALUES (?, ?, ?, ?, ?, 1)"
   );
-  c.run("C1", "در چپ", 0.5, 0.5, now);
-  c.run("C2", "در راست", 0.5, 2.5, now);
-  c.run("C3", "بیرون", 50.0, 50.0, now);
-  c.run("C4", "بدون مختصات", null, null, now);
+  await c.run("C1", "در چپ", 0.5, 0.5, now);
+  await c.run("C2", "در راست", 0.5, 2.5, now);
+  await c.run("C3", "بیرون", 50.0, 50.0, now);
+  await c.run("C4", "بدون مختصات", null, null, now);
 });
 
 describe("readGroups", () => {
-  it("returns the groups in name order", () => {
-    expect(readGroups(getDb(), 1).map((g) => g.slug).sort()).toEqual(["east", "west"]);
+  it("returns the groups in name order", async () => {
+    expect((await readGroups(getDb(), 1)).map((g) => g.slug).sort()).toEqual(["east", "west"]);
   });
 });
 
 describe("districtIdForPoint", () => {
-  it("finds the containing mahalle", () => {
-    expect(districtIdForPoint(getDb(), 0.5, 0.5)).toBe(leftId);
+  it("finds the containing mahalle", async () => {
+    expect(await districtIdForPoint(getDb(), 0.5, 0.5)).toBe(leftId);
   });
-  it("prefers the mahalle over the mantaghe that also contains the point", () => {
-    const id = districtIdForPoint(getDb(), 0.5, 0.5);
-    const row = getDb().prepare("SELECT level FROM districts WHERE id = ?").get(id) as { level: string };
+  it("prefers the mahalle over the mantaghe that also contains the point", async () => {
+    const id = await districtIdForPoint(getDb(), 0.5, 0.5);
+    const row = await getDb().prepare("SELECT level FROM districts WHERE id = ?").get(id) as { level: string };
     expect(row.level).toBe("mahalle");
   });
-  it("handles a MultiPolygon boundary", () => {
-    expect(districtIdForPoint(getDb(), 0.5, 2.5)).not.toBeNull();
+  it("handles a MultiPolygon boundary", async () => {
+    expect(await districtIdForPoint(getDb(), 0.5, 2.5)).not.toBeNull();
   });
-  it("returns null well outside every polygon", () => {
-    expect(districtIdForPoint(getDb(), 50, 50)).toBeNull();
+  it("returns null well outside every polygon", async () => {
+    expect(await districtIdForPoint(getDb(), 50, 50)).toBeNull();
   });
 });
 
 describe("groupForPoint", () => {
-  it("maps a point to the group owning its district", () => {
-    expect(groupForPoint(getDb(), 0.5, 0.5, 1)).toBe(west);
-    expect(groupForPoint(getDb(), 0.5, 2.5, 1)).toBe(east);
+  it("maps a point to the group owning its district", async () => {
+    expect(await groupForPoint(getDb(), 0.5, 0.5, 1)).toBe(west);
+    expect(await groupForPoint(getDb(), 0.5, 2.5, 1)).toBe(east);
   });
-  it("returns null when the containing district belongs to no group", () => {
+  it("returns null when the containing district belongs to no group", async () => {
     // (lat 1.5, lng 3.5) is inside PARENT and inside neither LEFT nor RIGHT. PARENT has
     // group_id NULL, so this exercises "found a district, nobody owns it" -- which is a
     // different path from "no district contains this point" above.
-    expect(groupForPoint(getDb(), 1.5, 3.5, 1)).toBeNull();
+    expect(await groupForPoint(getDb(), 1.5, 3.5, 1)).toBeNull();
   });
 });
 
 describe("recomputeCustomerGroups", () => {
-  it("assigns each located customer to its territory's group", () => {
+  it("assigns each located customer to its territory's group", async () => {
     const db = getDb();
-    recomputeCustomerGroups(db, 1);
-    const rows = db.prepare("SELECT customer_code, group_id FROM customers ORDER BY customer_code").all() as unknown as {
+    await recomputeCustomerGroups(db, 1);
+    const rows = await db.prepare("SELECT customer_code, group_id FROM customers ORDER BY customer_code").all() as unknown as {
       customer_code: string; group_id: number | null;
     }[];
     const byCode = Object.fromEntries(rows.map((r) => [r.customer_code, r.group_id]));
@@ -102,11 +102,11 @@ describe("recomputeCustomerGroups", () => {
     expect(byCode.C4).toBeNull();
   });
 
-  it("follows territory when a district changes hands", () => {
+  it("follows territory when a district changes hands", async () => {
     const db = getDb();
-    db.prepare("UPDATE districts SET group_id = ? WHERE id = ?").run(east, leftId);
-    recomputeCustomerGroups(db, 1);
-    const row = db.prepare("SELECT group_id FROM customers WHERE customer_code = 'C1'").get() as { group_id: number };
+    await db.prepare("UPDATE districts SET group_id = ? WHERE id = ?").run(east, leftId);
+    await recomputeCustomerGroups(db, 1);
+    const row = await db.prepare("SELECT group_id FROM customers WHERE customer_code = 'C1'").get() as { group_id: number };
     expect(row.group_id).toBe(east);
   });
 });

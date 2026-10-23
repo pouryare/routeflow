@@ -9,9 +9,9 @@ import { MANAGE_ROLES } from "@/lib/roles";
 // whichever group owns that row. Joined, not denormalised -- see entityGroupFilter.
 // Reading is scoped by entityGroupFilter below; writes stay with managers.
 export async function GET(req: NextRequest) {
-  const guard = requireRole(req, [...MANAGE_ROLES, "rep_manager", "phone_sales"]);
+  const guard = await requireRole(req, [...MANAGE_ROLES, "rep_manager", "phone_sales"]);
   if (!guard.ok) return guard.response;
-  const f = entityGroupFilter(guard.session, "r");
+  const f = await entityGroupFilter(guard.session, "r");
 
   const { searchParams } = new URL(req.url);
   const due = searchParams.get("due"); // "today" | "week" | "all"
@@ -25,11 +25,11 @@ export async function GET(req: NextRequest) {
     dueBy = `${weekLater.getFullYear()}-${String(weekLater.getMonth() + 1).padStart(2, "0")}-${String(weekLater.getDate()).padStart(2, "0")}`;
   }
 
-  return NextResponse.json({ ok: true, reminders: listReminders(f, dueBy) });
+  return NextResponse.json({ ok: true, reminders: await listReminders(f, dueBy) });
 }
 
 export async function POST(req: NextRequest) {
-  const guard = requireRole(req, MANAGE_ROLES);
+  const guard = await requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
 
   const body = await req.json().catch(() => null);
@@ -55,11 +55,11 @@ export async function POST(req: NextRequest) {
 
   // 404, not 403: a reminder posted against another group's customer must not confirm
   // that the customer exists.
-  if (!canReachEntity(guard.session, entity_type, entity_id)) {
+  if (!await canReachEntity(guard.session, entity_type, entity_id)) {
     return NextResponse.json({ ok: false, error: "یافت نشد" }, { status: 404 });
   }
 
-  const id = addReminder(entity_type, entity_id, due_date, message.trim());
+  const id = await addReminder(entity_type, entity_id, due_date, message.trim());
 
   return NextResponse.json({ ok: true, id });
 }

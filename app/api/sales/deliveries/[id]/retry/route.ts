@@ -5,15 +5,15 @@ import { MANAGE_ROLES, isOwner } from "@/lib/roles";
 
 
 export async function POST(req: NextRequest, ctx: RouteContext<"/api/sales/deliveries/[id]/retry">) {
-  const guard = requireRole(req, MANAGE_ROLES);
+  const guard = await requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
 
   const { id } = await ctx.params;
-  if (!readDelivery(guard.session.organizationId, Number(id))) {
+  if (!await readDelivery(guard.session.organizationId, Number(id))) {
     return NextResponse.json({ ok: false, error: "یافت نشد" }, { status: 404 });
   }
   try {
-    const newId = retryDelivery(guard.session.organizationId, Number(id), {
+    const newId = await retryDelivery(guard.session.organizationId, Number(id), {
       id: guard.session.user.id,
       role: isOwner(guard.session.role) ? "owner" : "group_manager",
     });

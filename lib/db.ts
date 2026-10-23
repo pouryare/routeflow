@@ -4,12 +4,14 @@ import fs from "node:fs";
 import { instrumentSlowSql, slowSqlThresholdMs } from "./slowSql";
 import { createBaseSchema } from "./database/schema";
 import { runMigrations } from "./database/migrate";
+import { sqliteDb, tx as runTx, type Db } from "./database/client";
 
 // Re-exported so server modules that already import from db.ts keep one import site. The code
 // itself lives in lib/database/: types, seeds, backfills, rebuilds, the base schema and the
 // ordered migrations (see ./database/migrate.ts).
 import type { ActivityEntry, LeadListRow, LeadListWithItems } from "./database/types";
 export * from "./database/types";
+export type { Db, Statement, Row } from "./database/client";
 export * from "./database/seeds";
 export * from "./database/backfills";
 export { TENANT_TABLES } from "./database/tenantTables";
@@ -19,6 +21,8 @@ export { FACILITY_KINDS, FACILITY_ICONS, defaultIconFor } from "./facilityTypes"
 export const DB_PATH = process.env.ROUTEFLOW_DB_PATH || path.join(process.cwd(), "data", "routeflow.db");
 
 let _db: DatabaseSync | null = null;
+let _ready: Promise<void> | null = null;
+let _asyncDb: Db | null = null;
 
 /** Rows from node:sqlite, made safe to hand to a client component.
  *
@@ -36,7 +40,39 @@ export function plain<T>(rows: T[]): T[] {
   return rows.map((row) => ({ ...row }));
 }
 
-export function getDb(): DatabaseSync {
+/** The database the app uses. Every call is asynchronous (see lib/database/client.ts). */
+export function getDb(): Db {
+  return (_asyncDb ??= sqliteDb(openSqlite, dbReady, closeSqlite));
+}
+
+/** Runs `fn` in one transaction; see lib/database/client.ts. */
+export async function tx<T>(fn: () => Promise<T>): Promise<T> {
+  return await runTx(openSqlite, dbReady, fn);
+}
+
+/** Resolves once the schema and the boot migrations have run. getDb() and tx() wait for it on
+ *  their own; only code that takes the raw handle needs it. */
+export function dbReady(): Promise<void> {
+  openSqlite();
+  return _ready!;
+}
+
+/** The synchronous node:sqlite handle, after the boot migrations. Only for the SQLite-specific
+ *  boot code in lib/database/ and the tests that check it: everything else goes through
+ *  getDb(), which is what moves to PostgreSQL. */
+export async function rawSqlite(): Promise<DatabaseSync> {
+  await dbReady();
+  return openSqlite();
+}
+
+function closeSqlite(): void {
+  const db = _db;
+  _db = null;
+  _ready = null;
+  db?.close();
+}
+
+function openSqlite(): DatabaseSync {
   if (_db) return _db;
 
   fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
@@ -57,26 +93,35 @@ export function getDb(): DatabaseSync {
   db.exec("PRAGMA busy_timeout = 5000;");
 
   createBaseSchema(db);
-  runMigrations(db);
-
   _db = db;
+  /* A few migrations call app code, which is asynchronous now, so the migrations run as a
+     promise that every statement waits for. If they fail, every waiting statement fails with
+     the same error and the next call opens the file and tries again, as a failed open did. */
+  _ready = runMigrations(db, sqliteDb(() => db)).catch((e) => {
+    if (_db === db) {
+      _db = null;
+      _ready = null;
+      db.close();
+    }
+    throw e;
+  });
   return db;
 }
 
 
-export function readLeadLists(
-  db: DatabaseSync = getDb(),
+export async function readLeadLists(
+  db: Db = getDb(),
   groupIds: number[] | "all" = "all"
-): LeadListWithItems[] {
+): Promise<LeadListWithItems[]> {
   // See readCustomers: an empty scope must read as "nothing", never as "everything".
   if (groupIds !== "all" && groupIds.length === 0) return [];
   const where = groupIds === "all" ? "" : ` WHERE group_id IN (${groupIds.map(() => "?").join(", ")})`;
   const params = groupIds === "all" ? [] : groupIds;
-  const lists = db
+  const lists = await db
     .prepare(`SELECT id, name, created_at, updated_at FROM lead_lists${where} ORDER BY created_at`)
     .all(...params) as unknown as LeadListRow[];
 
-  const items = db
+  const items = await db
     .prepare("SELECT list_id, location_id FROM lead_list_items ORDER BY list_id, sort_order, id")
     .all() as unknown as { list_id: number; location_id: number }[];
 
@@ -105,32 +150,32 @@ export function readLeadLists(
  *  three chances to leave the list inconsistent. One statement, one transaction, one
  *  possible outcome.
  */
-export function setLeadListItems(db: DatabaseSync, listId: number, locationIds: number[]): void {
+export async function setLeadListItems(db: Db, listId: number, locationIds: number[]): Promise<void> {
   const now = new Date().toISOString();
-  db.exec("BEGIN");
+  await db.exec("BEGIN");
   try {
-    db.prepare("DELETE FROM lead_list_items WHERE list_id = ?").run(listId);
+    await db.prepare("DELETE FROM lead_list_items WHERE list_id = ?").run(listId);
     const insert = db.prepare(
       "INSERT INTO lead_list_items (list_id, location_id, sort_order, created_at) VALUES (?, ?, ?, ?)"
     );
-    locationIds.forEach((locationId, i) => insert.run(listId, locationId, i, now));
-    db.prepare("UPDATE lead_lists SET updated_at = ? WHERE id = ?").run(now, listId);
-    db.exec("COMMIT");
+    for (const [i, locationId] of locationIds.entries()) await insert.run(listId, locationId, i, now);
+    await db.prepare("UPDATE lead_lists SET updated_at = ? WHERE id = ?").run(now, listId);
+    await db.exec("COMMIT");
   } catch (e) {
-    db.exec("ROLLBACK");
+    await db.exec("ROLLBACK");
     throw e;
   }
 }
 
-export function logActivity(
-  db: DatabaseSync,
+export async function logActivity(
+  db: Db,
   entry: Omit<ActivityEntry, "id" | "created_at" | "changed_by_user_id"> & {
     changed_by_user_id?: number | null;
     /** Who was really driving, when this happened under Login-As. */
     impersonated_by?: number | null;
   }
-): void {
-  db.prepare(
+): Promise<void> {
+  await db.prepare(
     `INSERT INTO activity_log (entity_type, entity_id, event_type, old_value, new_value, note, changed_by, changed_by_user_id, impersonated_by, created_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   ).run(

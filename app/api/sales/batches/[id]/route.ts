@@ -8,17 +8,17 @@ import { MANAGE_ROLES } from "@/lib/roles";
 const STATUSES = Object.keys(BATCH_TRANSITIONS) as BatchStatus[];
 
 export async function GET(req: NextRequest, ctx: RouteContext<"/api/sales/batches/[id]">) {
-  const guard = requireRole(req, MANAGE_ROLES);
+  const guard = await requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
 
   const { id } = await ctx.params;
-  const batch = batchesRepo.get(guard.session.organizationId, Number(id));
+  const batch = await batchesRepo.get(guard.session.organizationId, Number(id));
   if (!batch) return NextResponse.json({ ok: false, error: "یافت نشد" }, { status: 404 });
   return NextResponse.json({ ok: true, batch });
 }
 
 export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/sales/batches/[id]">) {
-  const guard = requireRole(req, MANAGE_ROLES);
+  const guard = await requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
 
   const { id } = await ctx.params;
@@ -26,12 +26,12 @@ export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/sales/batc
   if (body?.action !== "status" || !body.to || !STATUSES.includes(body.to as BatchStatus)) {
     return NextResponse.json({ ok: false, error: "کنش نامعتبر است" }, { status: 400 });
   }
-  if (!batchesRepo.get(guard.session.organizationId, Number(id))) {
+  if (!await batchesRepo.get(guard.session.organizationId, Number(id))) {
     return NextResponse.json({ ok: false, error: "یافت نشد" }, { status: 404 });
   }
 
   try {
-    advanceBatchStatus(guard.session.organizationId, Number(id), body.to as BatchStatus);
+    await advanceBatchStatus(guard.session.organizationId, Number(id), body.to as BatchStatus);
     return NextResponse.json({ ok: true });
   } catch (e) {
     if (e instanceof BatchError) {

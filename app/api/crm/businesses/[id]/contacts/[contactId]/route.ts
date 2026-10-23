@@ -5,14 +5,14 @@ import { CRM_ROLES, crmErrorResponse, idParam } from "@/lib/repo/crm/http";
 
 type Context = { params: Promise<{ id: string; contactId: string }> };
 async function write(req: NextRequest, ctx: Context, archive: boolean) {
-  const guard = requireRole(req, [...CRM_ROLES]);
+  const guard = await requireRole(req, [...CRM_ROLES]);
   if (!guard.ok) return guard.response;
   const params = await ctx.params;
   const id = idParam(params.id), contactId = idParam(params.contactId);
   if (id === null || contactId === null) return NextResponse.json({ ok: false, error: "مخاطب پیدا نشد" }, { status: 404 });
   try {
     const input = archive ? { active: false } : await req.json().catch(() => null) as ContactInput;
-    updateContact(guard.session, contactId, input, id);
+    await updateContact(guard.session, contactId, input, id);
     return NextResponse.json({ ok: true });
   } catch (e) { return crmErrorResponse(e); }
 }

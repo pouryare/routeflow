@@ -1,10 +1,11 @@
-import type { DatabaseSync } from "node:sqlite";
+import type { Db } from "@/lib/database/client";
 import { isOwner } from "@/lib/roles";
 import { getDb } from "@/lib/db";
 import { canReachGroup, type Session } from "@/lib/session";
 import { nextActionFor, visitOutcomeLabel } from "@/lib/crm/leadDesire";
 import { tombstone } from "./tombstones";
 
+import { mapSeq } from "@/lib/seq";
 /** A lead run: one driver, one day, an ordered set of pins.
  *
  *  Modelled on delivery_runs rather than invented, down to the UNIQUE(driver_user_id,
@@ -73,8 +74,8 @@ const STOPS_SQL = `
    WHERE s.run_id = ? AND l.organization_id = ?
    ORDER BY s.sort_order`;
 
-function stopsFor(conn: DatabaseSync, runId: number, orgId: number): LeadRunStop[] {
-  const rows = conn.prepare(STOPS_SQL).all(runId, orgId) as unknown as Array<{
+async function stopsFor(conn: Db, runId: number, orgId: number): Promise<LeadRunStop[]> {
+  const rows = await conn.prepare(STOPS_SQL).all(runId, orgId) as unknown as Array<{
     location_id: number; sort_order: number; name: string; address: string | null;
     lat: number | null; lng: number | null; status: string | null;
     visit_outcome: string | null; rating_potential: number | null;
@@ -86,48 +87,48 @@ function stopsFor(conn: DatabaseSync, runId: number, orgId: number): LeadRunStop
   }));
 }
 
-function hydrate(conn: DatabaseSync, row: Record<string, unknown>, orgId: number): LeadRun {
-  return { ...(row as unknown as LeadRun), stops: stopsFor(conn, Number(row.id), orgId) };
+async function hydrate(conn: Db, row: Record<string, unknown>, orgId: number): Promise<LeadRun> {
+  return { ...(row as unknown as LeadRun), stops: await stopsFor(conn, Number(row.id), orgId) };
 }
 
 /** One run, or null. 404 rather than 403 elsewhere in this app for the same reason: a 403
  *  would confirm a row exists that the caller may not see. */
-export function readLeadRun(conn: DatabaseSync, id: number, orgId: number): LeadRun | null {
-  const row = conn
+export async function readLeadRun(conn: Db, id: number, orgId: number): Promise<LeadRun | null> {
+  const row = await conn
     .prepare(`SELECT ${RUN_COLS} FROM delivery_runs r LEFT JOIN users u ON u.id = r.driver_user_id
                WHERE r.id = ? AND r.organization_id = ?`)
     .get(id, orgId) as Record<string, unknown> | undefined;
-  return row ? hydrate(conn, row, orgId) : null;
+  return row ? await hydrate(conn, row, orgId) : null;
 }
 
 /** Every run a driver has, newest first. A driver's own list is this and nothing else. */
-export function readDriverLeadRuns(conn: DatabaseSync, driverUserId: number, orgId: number): LeadRun[] {
-  const rows = conn
+export async function readDriverLeadRuns(conn: Db, driverUserId: number, orgId: number): Promise<LeadRun[]> {
+  const rows = await conn
     .prepare(`SELECT ${RUN_COLS} FROM delivery_runs r LEFT JOIN users u ON u.id = r.driver_user_id
                WHERE r.driver_user_id = ? AND r.organization_id = ?
                ORDER BY r.run_date DESC`)
     .all(driverUserId, orgId) as unknown as Record<string, unknown>[];
-  return rows.map((r) => hydrate(conn, r, orgId));
+  return await mapSeq(rows, async (r) => await hydrate(conn, r, orgId));
 }
 
 /** Runs a manager may see: their group's, or the whole organisation for an owner. */
-export function readScopedLeadRuns(conn: DatabaseSync, session: Session): LeadRun[] {
+export async function readScopedLeadRuns(conn: Db, session: Session): Promise<LeadRun[]> {
   const org = session.organizationId;
   const all = isOwner(session.role);
-  const rows = conn
+  const rows = await conn
     .prepare(`SELECT ${RUN_COLS} FROM delivery_runs r LEFT JOIN users u ON u.id = r.driver_user_id
                WHERE r.organization_id = ? ${all ? "" : "AND r.group_id = ?"}
                ORDER BY r.run_date DESC, r.id DESC`)
     .all(...(all ? [org] : [org, session.groupId ?? -1])) as unknown as Record<string, unknown>[];
-  return rows.map((r) => hydrate(conn, r, org));
+  return await mapSeq(rows, async (r) => await hydrate(conn, r, org));
 }
 
 /** The run a driver should be looking at: today's, else the most recent not finished.
  *
  *  The fallback is the same reasoning as /driver: a driver opening this at 00:30 after a
  *  late round is finishing yesterday's work, not starting a day with no stops. */
-export function readTodaysLeadRun(conn: DatabaseSync, driverUserId: number, orgId: number, todayIso: string): LeadRun | null {
-  const runs = readDriverLeadRuns(conn, driverUserId, orgId);
+export async function readTodaysLeadRun(conn: Db, driverUserId: number, orgId: number, todayIso: string): Promise<LeadRun | null> {
+  const runs = await readDriverLeadRuns(conn, driverUserId, orgId);
   return runs.find((r) => r.run_date === todayIso && r.status !== "done")
     ?? runs.find((r) => r.status !== "done")
     ?? runs[0]
@@ -149,9 +150,9 @@ export function readTodaysLeadRun(conn: DatabaseSync, driverUserId: number, orgI
  *  Newest first, so the first row for a location wins if a lead somehow sits on two
  *  unfinished routes. That is a data anomaly rather than a case to model; picking the newest
  *  is at least deterministic, and no extra rule is needed for it. */
-export function readLeadRunAssignments(conn: DatabaseSync, session: Session): LeadRunAssignment[] {
+export async function readLeadRunAssignments(conn: Db, session: Session): Promise<LeadRunAssignment[]> {
   const all = isOwner(session.role);
-  const rows = conn
+  const rows = await conn
     .prepare(`SELECT s.location_id, r.id AS run_id, r.run_date, u.display_name AS driver_name
                 FROM lead_run_stops s
                 JOIN delivery_runs r ON r.id = s.run_id
@@ -172,15 +173,15 @@ export function readLeadRunAssignments(conn: DatabaseSync, session: Session): Le
  *  This is the server half of the arrangement: the browser filter is convenience, and a
  *  filter that one failed request can lose is not a safety mechanism. `createOrReuseLeadRun`
  *  calls this inside its transaction, so a rejection writes nothing. */
-export function assignedToAnotherDriver(
-  conn: DatabaseSync,
+export async function assignedToAnotherDriver(
+  conn: Db,
   orgId: number,
   driverUserId: number,
   locationIds: number[],
-): { location_id: number; driver_name: string | null } | null {
+): Promise<{ location_id: number; driver_name: string | null } | null> {
   if (locationIds.length === 0) return null;
   const placeholders = locationIds.map(() => "?").join(",");
-  const row = conn
+  const row = await conn
     .prepare(`SELECT s.location_id, u.display_name AS driver_name
                 FROM lead_run_stops s
                 JOIN delivery_runs r ON r.id = s.run_id
@@ -236,8 +237,8 @@ function assertIsoDate(value: unknown): string {
  *  Checked rather than assumed, because assigning a route to the wrong person is how a
  *  driver's day silently disappears: a driver in another group, or a deactivated account,
  *  would accept a run and never open it. */
-export function assertAssignableDriver(conn: DatabaseSync, session: Session, driverUserId: number): { id: number; group_id: number | null; display_name: string } {
-  const u = conn
+export async function assertAssignableDriver(conn: Db, session: Session, driverUserId: number): Promise<{ id: number; group_id: number | null; display_name: string }> {
+  const u = await conn
     .prepare("SELECT id, group_id, display_name, role, active FROM users WHERE id = ? AND organization_id = ?")
     .get(driverUserId, session.organizationId) as
     | { id: number; group_id: number | null; display_name: string; role: string; active: number }
@@ -252,12 +253,12 @@ export function assertAssignableDriver(conn: DatabaseSync, session: Session, dri
   // tests/api/lead-runs.test.ts caught it: its drivers are delivery_driver by primary and hold
   // only that, so every route assignment started returning 422. Widening the literal list is
   // not a safe intermediate step either — a dual-hat person still would not appear.
-  const canVisit = conn
+  const canVisit = await conn
     .prepare("SELECT 1 FROM user_roles WHERE user_id = ? AND role IN ('field_rep', 'delivery_driver')")
     .get(u.id);
   if (!canVisit) throw new LeadRunError(422, "این کاربر بازدیدکننده نیست");
   // 404 rather than 403 for another group's driver, as everywhere else here.
-  if (!canReachGroup(session, u.group_id)) throw new LeadRunError(404, "راننده پیدا نشد");
+  if (!await canReachGroup(session, u.group_id)) throw new LeadRunError(404, "راننده پیدا نشد");
   return { id: u.id, group_id: u.group_id, display_name: u.display_name };
 }
 
@@ -269,8 +270,8 @@ export function assertAssignableDriver(conn: DatabaseSync, session: Session, dri
  *
  *  The SQL lives here rather than in the route because that is the house rule: routes decide
  *  who and what, lib/repo/ decides how. */
-export function isOnDriversRun(driverUserId: number, orgId: number, locationId: number): boolean {
-  const row = getDb()
+export async function isOnDriversRun(driverUserId: number, orgId: number, locationId: number): Promise<boolean> {
+  const row = await getDb()
     .prepare(`SELECT 1 FROM lead_run_stops s JOIN delivery_runs r ON r.id = s.run_id
                WHERE s.location_id = ? AND r.driver_user_id = ? AND r.organization_id = ? LIMIT 1`)
     .get(locationId, driverUserId, orgId);
@@ -278,12 +279,12 @@ export function isOnDriversRun(driverUserId: number, orgId: number, locationId: 
 }
 
 /** Drivers this manager may assign a route to. Feeds the dropdown. */
-export function assignableDrivers(conn: DatabaseSync, session: Session): Array<{ id: number; name: string; group_id: number | null; avatar_url: string | null }> {
+export async function assignableDrivers(conn: Db, session: Session): Promise<Array<{ id: number; name: string; group_id: number | null; avatar_url: string | null }>> {
   const all = isOwner(session.role);
   // Everyone HOLDING either van role, whoever their primary. An empty dropdown here is silent:
   // no error, just a route nobody can be handed — and a `role IN (...)` test cannot see a
   // delivery driver who also visits shops, which is the person most likely to.
-  const rows = conn
+  const rows = await conn
     .prepare(`SELECT u.id, u.display_name, u.group_id, u.avatar_url
                 FROM users u
                 JOIN user_roles r ON r.user_id = u.id AND r.role IN ('field_rep', 'delivery_driver')
@@ -297,7 +298,7 @@ export function assignableDrivers(conn: DatabaseSync, session: Session): Array<{
 
 /** Replace a run's stops. Called from the transaction in createOrReuse, and on its own for
  *  a reorder from the driver's phone. */
-export function setRunStops(conn: DatabaseSync, orgId: number, runId: number, locationIds: number[], nowIso?: string): void {
+export async function setRunStops(conn: Db, orgId: number, runId: number, locationIds: number[], nowIso?: string): Promise<void> {
   const now = nowIso ?? new Date().toISOString();
   // Only real, reachable pins. A stop that is not there is worse than a short route: the
   // driver drives to a pin that does not exist.
@@ -305,7 +306,7 @@ export function setRunStops(conn: DatabaseSync, orgId: number, runId: number, lo
   const found = locationIds.length === 0
     ? new Set<number>()
     : new Set(
-        (conn
+        (await conn
           .prepare(`SELECT id FROM saved_locations WHERE organization_id = ? AND id IN (${placeholders})`)
           .all(orgId, ...locationIds) as Array<{ id: number }>).map((r) => r.id)
       );
@@ -315,18 +316,18 @@ export function setRunStops(conn: DatabaseSync, orgId: number, runId: number, lo
   }
 
   // The old stops go and new rows replace them, so phones holding the old ids are told.
-  const oldStops = conn.prepare("SELECT id FROM lead_run_stops WHERE run_id = ?").all(runId) as Array<{ id: number }>;
-  conn.prepare("DELETE FROM lead_run_stops WHERE run_id = ?").run(runId);
-  for (const s of oldStops) tombstone(orgId, "lead_run_stops", s.id, conn);
+  const oldStops = await conn.prepare("SELECT id FROM lead_run_stops WHERE run_id = ?").all(runId) as Array<{ id: number }>;
+  await conn.prepare("DELETE FROM lead_run_stops WHERE run_id = ?").run(runId);
+  for (const s of oldStops) await tombstone(orgId, "lead_run_stops", s.id, conn);
   const insert = conn.prepare(
     "INSERT INTO lead_run_stops (run_id, location_id, sort_order, created_at) VALUES (?, ?, ?, ?)"
   );
   // Walk locationIds, not the rows that came back: an `IN (...)` list yields rows in rowid
   // order, so using it directly would quietly re-sort the route the manager planned into id
   // order. The order of a route is the whole point of it.
-  locationIds.forEach((locationId, i) => {
-    if (found.has(locationId)) insert.run(runId, locationId, i, now);
-  });
+  for (const [i, locationId] of locationIds.entries()) {
+    if (found.has(locationId)) await insert.run(runId, locationId, i, now);
+  }
 }
 
 /** Create the run for a driver and day, or replace the one that already exists.
@@ -340,8 +341,8 @@ export function setRunStops(conn: DatabaseSync, orgId: number, runId: number, lo
  *  or, for a day the driver has already finished and only when the caller has explicitly
  *  overridden, rewrites that run's stops in place. An *active* day is never overwritten:
  *  a driver cannot be in two places at once, and that is not the manager's call to make. */
-export function createOrReuseLeadRun(
-  conn: DatabaseSync,
+export async function createOrReuseLeadRun(
+  conn: Db,
   session: Session,
   input: {
     driver_user_id: number;
@@ -351,18 +352,18 @@ export function createOrReuseLeadRun(
     /** The manager was shown that this day is already finished and chose to replace it. */
     override?: boolean;
   },
-): { run: LeadRun; reused: boolean } {
+): Promise<{ run: LeadRun; reused: boolean }> {
   const runDate = assertIsoDate(input.run_date);
-  const driver = assertAssignableDriver(conn, session, input.driver_user_id);
+  const driver = await assertAssignableDriver(conn, session, input.driver_user_id);
   const now = new Date().toISOString();
 
-  const clash = assignedToAnotherDriver(conn, session.organizationId, driver.id, input.location_ids);
+  const clash = await assignedToAnotherDriver(conn, session.organizationId, driver.id, input.location_ids);
   if (clash) {
     const where = clash.driver_name ? `در مسیر ${clash.driver_name} است` : "در مسیر راننده دیگری است";
     throw new LeadRunError(409, `مکان شماره ${clash.location_id} ${where}`);
   }
 
-  const existing = conn
+  const existing = await conn
     .prepare("SELECT id, status FROM delivery_runs WHERE driver_user_id = ? AND run_date = ? AND organization_id = ?")
     .get(driver.id, runDate, session.organizationId) as
     | { id: number; status: LeadRunStatus }
@@ -378,53 +379,53 @@ export function createOrReuseLeadRun(
      * still describe the same driver's day -- while its stops are swapped wholesale and it
      * reopens as planned. setRunStops deletes and re-inserts, which is the same write the
      * fresh-insert path uses, so both routes write identically. */
-    conn.exec("BEGIN IMMEDIATE");
+    await conn.exec("BEGIN IMMEDIATE");
     try {
-      conn
+      await conn
         .prepare(`UPDATE delivery_runs SET status = 'planned', started_at = NULL, finished_at = NULL,
                                     notes = ?, updated_at = ?, kind = 'mixed' WHERE id = ?`)
         .run(input.notes ?? null, now, existing.id);
-      setRunStops(conn, session.organizationId, existing.id, input.location_ids, now);
-      conn.exec("COMMIT");
+      await setRunStops(conn, session.organizationId, existing.id, input.location_ids, now);
+      await conn.exec("COMMIT");
     } catch (e) {
-      conn.exec("ROLLBACK");
+      await conn.exec("ROLLBACK");
       throw e;
     }
-    return { run: readLeadRun(conn, existing.id, session.organizationId)!, reused: true };
+    return { run: (await readLeadRun(conn, existing.id, session.organizationId))!, reused: true };
   }
 
-  conn.exec("BEGIN IMMEDIATE");
+  await conn.exec("BEGIN IMMEDIATE");
   try {
     const runId = Number(
-      conn
+      (await conn
         .prepare(`INSERT INTO delivery_runs (driver_user_id, group_id, run_date, status, notes, created_by, organization_id, created_at, updated_at, kind)
                   VALUES (?, ?, ?, 'planned', ?, ?, ?, ?, ?, 'mixed')`)
         .run(driver.id, driver.group_id, runDate, input.notes ?? null, session.user.id,
-             session.organizationId, now, now).lastInsertRowid
+             session.organizationId, now, now)).lastInsertRowid
     );
-    setRunStops(conn, session.organizationId, runId, input.location_ids, now);
-    conn.exec("COMMIT");
-    return { run: readLeadRun(conn, runId, session.organizationId)!, reused: false };
+    await setRunStops(conn, session.organizationId, runId, input.location_ids, now);
+    await conn.exec("COMMIT");
+    return { run: (await readLeadRun(conn, runId, session.organizationId))!, reused: false };
   } catch (e) {
-    conn.exec("ROLLBACK");
+    await conn.exec("ROLLBACK");
     throw e;
   }
 }
 
 /** Reassign a driver or a date, reorder, or move the status along. */
-export function updateLeadRun(
-  conn: DatabaseSync,
+export async function updateLeadRun(
+  conn: Db,
   session: Session,
   id: number,
   patch: { driver_user_id?: number; run_date?: unknown; status?: LeadRunStatus; notes?: string | null; location_ids?: number[] },
-): LeadRun {
-  const current = readLeadRun(conn, id, session.organizationId);
-  if (!current || !canReachGroup(session, current.group_id)) {
+): Promise<LeadRun> {
+  const current = await readLeadRun(conn, id, session.organizationId);
+  if (!current || !await canReachGroup(session, current.group_id)) {
     throw new LeadRunError(404, "مسیر پیدا نشد");
   }
   const driverId = patch.driver_user_id ?? current.driver_user_id;
   const driver = patch.driver_user_id !== undefined
-    ? assertAssignableDriver(conn, session, patch.driver_user_id)
+    ? await assertAssignableDriver(conn, session, patch.driver_user_id)
     : { group_id: current.group_id };
   const runDate = patch.run_date === undefined ? current.run_date : assertIsoDate(patch.run_date);
   const status = patch.status ?? current.status;
@@ -432,21 +433,21 @@ export function updateLeadRun(
 
   // The UNIQUE index means a move onto an occupied day has to be reported rather than
   // silently merged with the other run.
-  const clash = conn
+  const clash = await conn
     .prepare("SELECT id FROM delivery_runs WHERE driver_user_id = ? AND run_date = ? AND organization_id = ? AND id != ?")
     .get(driverId, runDate, session.organizationId, id) as { id: number } | undefined;
   if (clash) throw new LeadRunError(409, "برای این راننده در این تاریخ مسیر دیگری وجود دارد");
 
-  conn.exec("BEGIN IMMEDIATE");
+  await conn.exec("BEGIN IMMEDIATE");
   try {
-    conn
+    await conn
       .prepare("UPDATE delivery_runs SET driver_user_id = ?, group_id = ?, run_date = ?, status = ?, notes = ?, updated_at = ?, kind = 'mixed' WHERE id = ?")
       .run(driverId, driver.group_id, runDate, status, patch.notes === undefined ? current.notes : patch.notes, now, id);
-    if (patch.location_ids) setRunStops(conn, session.organizationId, id, patch.location_ids, now);
-    conn.exec("COMMIT");
+    if (patch.location_ids) await setRunStops(conn, session.organizationId, id, patch.location_ids, now);
+    await conn.exec("COMMIT");
   } catch (e) {
-    conn.exec("ROLLBACK");
+    await conn.exec("ROLLBACK");
     throw e;
   }
-  return readLeadRun(conn, id, session.organizationId)!;
+  return (await readLeadRun(conn, id, session.organizationId))!;
 }

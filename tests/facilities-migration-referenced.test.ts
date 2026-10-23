@@ -8,7 +8,7 @@ process.env.ROUTEFLOW_DB_PATH = testDbPath;
 process.env.SESSION_SECRET = "test-secret";
 
 const { DatabaseSync } = await import("node:sqlite");
-const { getDb } = await import("@/lib/db");
+const { dbReady } = await import("@/lib/db");
 
 afterAll(() => {
   for (const suffix of ["", "-wal", "-shm"]) fs.rmSync(`${testDbPath}${suffix}`, { force: true });
@@ -21,13 +21,13 @@ afterAll(() => {
  * exactly this bug, but only when a backup happens to be on disk, and it SKIPS when one is not.
  * So the migration's real-data path is untested on any machine without a backup — which is
  * every CI runner, and therefore every future change to this migration. */
-function seedLegacyDatabase(): void {
+async function seedLegacyDatabase(): Promise<void> {
   /* Open the file DIRECTLY rather than through getDb().
    *
    * getDb() migrates on first call, so seeding through it would migrate the schema BEFORE the
    * old table existed — the test would then pass against a database that never had the bug.
    * The legacy schema has to be in place first, and only the SECOND getDb() can migrate it. */
-  if (!fs.existsSync(testDbPath)) getDb(); // create the file with the real schema in it
+  if (!fs.existsSync(testDbPath)) await dbReady(); // create the file with the real schema in it
   const db = new DatabaseSync(testDbPath);
   db.exec("PRAGMA foreign_keys = OFF");
   const now = "2026-01-01T00:00:00.000Z";
@@ -85,7 +85,7 @@ function seedLegacyDatabase(): void {
 }
 
 describe("widening facilities.kind on a database that references it", () => {
-  beforeEach(() => seedLegacyDatabase());
+  beforeEach(async () => await seedLegacyDatabase());
 
   it("migrates home_base to home without dropping the rows that point at facilities", async () => {
     /* THE REGRESSION.
@@ -103,11 +103,11 @@ describe("widening facilities.kind on a database that references it", () => {
     expect(() => fresh()).not.toThrow();
 
     const db = fresh();
-    const kinds = db.prepare("SELECT kind FROM facilities ORDER BY id").all() as { kind: string }[];
+    const kinds = await db.prepare("SELECT kind FROM facilities ORDER BY id").all() as { kind: string }[];
     expect(kinds.map((k) => k.kind)).toEqual(["home", "warehouse"]);
 
     // And the rows that referenced it survived — a foreign key that still resolves.
-    const still = db
+    const still = await db
       .prepare("SELECT COUNT(*) AS n FROM stock_movements WHERE facility_id IN (SELECT id FROM facilities)")
       .get() as { n: number };
     expect(still.n).toBe(2);
@@ -121,17 +121,17 @@ describe("widening facilities.kind on a database that references it", () => {
     vi.resetModules();
     const first = (await import("@/lib/db")).getDb;
     first();
-    first()
+    await first()
       .prepare("INSERT INTO facilities (slug, kind, name, lat, lng, organization_id, created_at, updated_at) VALUES ('stale','other','نیمه‌کاره',35,51,1,'2026-01-01','2026-01-01')")
       .run();
     // Simulate the leftover: the scratch table the migration creates, abandoned.
-    first().exec("CREATE TABLE facilities_kind_new (id INTEGER PRIMARY KEY)");
+    await first().exec("CREATE TABLE facilities_kind_new (id INTEGER PRIMARY KEY)");
 
     vi.resetModules();
     const second = (await import("@/lib/db")).getDb;
     expect(() => second()).not.toThrow();
     const db = second();
-    expect((db.prepare("SELECT COUNT(*) AS n FROM facilities").get() as { n: number }).n).toBe(3);
+    expect((await db.prepare("SELECT COUNT(*) AS n FROM facilities").get() as { n: number }).n).toBe(3);
   });
 
   it("still widens the CHECK for a database that never had the old one", async () => {
@@ -139,7 +139,7 @@ describe("widening facilities.kind on a database that references it", () => {
      * must not be rebuilt at all, or every boot would rewrite the table for nothing. */
     vi.resetModules();
     const db = (await import("@/lib/db")).getDb();
-    const sql = (db
+    const sql = (await db
       .prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='facilities'")
       .get() as { sql: string }).sql;
     expect(sql).toContain("'home'");

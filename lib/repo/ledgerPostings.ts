@@ -1,4 +1,4 @@
-import type { DatabaseSync } from "node:sqlite";
+import type { Db } from "@/lib/database/client";
 import { getDb } from "@/lib/db";
 import { postJournal, accountIdByCode, LedgerError, type LedgerLeg } from "./ledger";
 
@@ -6,8 +6,8 @@ import { postJournal, accountIdByCode, LedgerError, type LedgerLeg } from "./led
    importing the engine module. postExpense and postSupplierPayment both throw it. */
 export { LedgerError };
 
-function accountOrThrow(code: string): number {
-  const id = accountIdByCode(code);
+async function accountOrThrow(code: string): Promise<number> {
+  const id = await accountIdByCode(code);
   if (!id) throw new LedgerError(`حساب ${code} یافت نشد`);
   return id;
 }
@@ -19,12 +19,12 @@ function accountOrThrow(code: string): number {
  *  is not cash in, and OTHER needs the user to pick an account rather than have the app
  *  guess on their behalf. Guessing is how a receipt lands in the wrong ledger and nobody
  *  notices for a quarter. */
-export function cashAccountFor(method: string): number {
+export async function cashAccountFor(method: string): Promise<number> {
   if (method === "CREDIT_NOTE" || method === "OTHER") {
     throw new LedgerError("برای این روش پرداخت باید حساب را خودتان انتخاب کنید");
   }
   const code = method === "CASH" ? "1101" : method === "CHEQUE" ? "1202" : "1102";
-  return accountOrThrow(code);
+  return await accountOrThrow(code);
 }
 
 /** A customer receipt: Dr cash (or cheques receivable) / Cr accounts receivable.
@@ -32,8 +32,8 @@ export function cashAccountFor(method: string): number {
  *  No revenue leg, ever. Revenue is recognised on delivery (Task 7), because the cash
  *  arriving and the goods moving are two different events, and a design that recognises
  *  revenue on payment is wrong even when the numbers happen to agree. */
-export function postReceipt(
-  db: DatabaseSync,
+export async function postReceipt(
+  db: Db,
   input: {
     organizationId: number;
     paymentId: number;
@@ -44,8 +44,8 @@ export function postReceipt(
     receivedBy: number;
     memo?: string | null;
   }
-): number {
-  return postJournal(db, {
+): Promise<number> {
+  return await postJournal(db, {
     organizationId: input.organizationId,
     postedAt: input.receivedAt,
     sourceType: "PAYMENT",
@@ -53,9 +53,9 @@ export function postReceipt(
     createdBy: input.receivedBy,
     memo: input.memo ?? null,
     legs: [
-      { accountId: cashAccountFor(input.method), side: "D", amountToman: input.amountToman },
+      { accountId: await cashAccountFor(input.method), side: "D", amountToman: input.amountToman },
       {
-        accountId: accountOrThrow("1201"),
+        accountId: await accountOrThrow("1201"),
         side: "C",
         amountToman: input.amountToman,
         customerId: input.customerId,
@@ -68,8 +68,8 @@ export function postReceipt(
  *
  *  Nothing is edited or deleted. The reversal points back at the journal it cancels, so
  *  a reader sees the story of what happened instead of one quietly-corrected number. */
-export function postReceiptReversal(
-  db: DatabaseSync,
+export async function postReceiptReversal(
+  db: Db,
   input: {
     organizationId: number;
     paymentId: number;
@@ -81,8 +81,8 @@ export function postReceiptReversal(
     reversedBy: number;
     reason: string;
   }
-): number {
-  return postJournal(db, {
+): Promise<number> {
+  return await postJournal(db, {
     organizationId: input.organizationId,
     postedAt: input.reversedAt,
     sourceType: "REVERSAL",
@@ -92,9 +92,9 @@ export function postReceiptReversal(
     memo: `ابطال: ${input.reason}`,
     legs: [
       // Sides flipped: the cash comes back out, the receivable goes back up.
-      { accountId: cashAccountFor(input.method), side: "C", amountToman: input.amountToman },
+      { accountId: await cashAccountFor(input.method), side: "C", amountToman: input.amountToman },
       {
-        accountId: accountOrThrow("1201"),
+        accountId: await accountOrThrow("1201"),
         side: "D",
         amountToman: input.amountToman,
         customerId: input.customerId,
@@ -122,8 +122,8 @@ export interface ExpenseCategory {
  *  `is_postable = 1` drops the group headers (5000 هزینه‌ها is a total, not a category you
  *  can spend against), and `active = 1` drops a category an owner has retired -- which is
  *  how an account is withdrawn, since accounts_no_delete forbids removing it. */
-export function expenseCategories(): ExpenseCategory[] {
-  return getDb()
+export async function expenseCategories(): Promise<ExpenseCategory[]> {
+  return await getDb()
     .prepare(
       `SELECT id, code, name_fa AS nameFa, name_en AS nameEn
          FROM accounts
@@ -143,8 +143,8 @@ export function expenseCategories(): ExpenseCategory[] {
  *
  *  `cashAccountFor` refuses CREDIT_NOTE and OTHER, so an expense cannot be "paid" by a
  *  method that is not money. */
-export function postExpense(
-  db: DatabaseSync,
+export async function postExpense(
+  db: Db,
   input: {
     organizationId: number;
     accountId: number;
@@ -154,8 +154,8 @@ export function postExpense(
     incurredBy: number;
     memo?: string | null;
   }
-): number {
-  const acct = db
+): Promise<number> {
+  const acct = await db
     .prepare("SELECT id, type, code, is_postable, active FROM accounts WHERE id = ?")
     .get(input.accountId) as
     | { id: number; type: string; code: string; is_postable: number; active: number }
@@ -168,7 +168,7 @@ export function postExpense(
     throw new LedgerError("بهای تمام‌شده با تحویل کالا ثبت می‌شود و دستی ثبت نمی‌شود");
   }
 
-  return postJournal(db, {
+  return await postJournal(db, {
     organizationId: input.organizationId,
     postedAt: input.incurredAt,
     sourceType: "EXPENSE",
@@ -176,7 +176,7 @@ export function postExpense(
     memo: input.memo ?? null,
     legs: [
       { accountId: input.accountId, side: "D", amountToman: input.amountToman },
-      { accountId: cashAccountFor(input.method), side: "C", amountToman: input.amountToman },
+      { accountId: await cashAccountFor(input.method), side: "C", amountToman: input.amountToman },
     ],
   });
 }
@@ -198,8 +198,8 @@ export function postExpense(
  *  revenue journal. The check is scoped by `organization_id` as well as `source_id`: a
  *  delivery_stops id is unique per row, but an unscoped lookup would let one tenant's stop
  *  suppress another's recognition, which is a silent revenue loss. */
-export function postDeliveryRecognition(
-  db: DatabaseSync,
+export async function postDeliveryRecognition(
+  db: Db,
   input: {
     organizationId: number;
     deliveryStopId: number;
@@ -209,10 +209,10 @@ export function postDeliveryRecognition(
     revenueToman: number;
     costToman: number | null;
   }
-): number | null {
+): Promise<number | null> {
   if (!(input.revenueToman > 0)) return null; // nothing went out
 
-  const already = db
+  const already = await db
     .prepare(
       "SELECT id FROM journals WHERE organization_id = ? AND source_type = 'SALE' AND source_id = ? LIMIT 1"
     )
@@ -221,23 +221,23 @@ export function postDeliveryRecognition(
 
   const legs: LedgerLeg[] = [
     {
-      accountId: accountOrThrow("1201"),
+      accountId: await accountOrThrow("1201"),
       side: "D",
       amountToman: input.revenueToman,
       customerId: input.customerId,
     },
-    { accountId: accountOrThrow("4101"), side: "C", amountToman: input.revenueToman },
+    { accountId: await accountOrThrow("4101"), side: "C", amountToman: input.revenueToman },
   ];
 
   // Only when the cost is actually known AND positive.
   if (input.costToman !== null && input.costToman > 0) {
     legs.push(
-      { accountId: accountOrThrow("5101"), side: "D", amountToman: input.costToman },
-      { accountId: accountOrThrow("1203"), side: "C", amountToman: input.costToman }
+      { accountId: await accountOrThrow("5101"), side: "D", amountToman: input.costToman },
+      { accountId: await accountOrThrow("1203"), side: "C", amountToman: input.costToman }
     );
   }
 
-  return postJournal(db, {
+  return await postJournal(db, {
     organizationId: input.organizationId,
     postedAt: input.deliveredAt,
     sourceType: "SALE",
@@ -257,23 +257,23 @@ export function postDeliveryRecognition(
  *  caller already inside one, which is the crash Task 2 spent a mutation proving.
  *
  *  `postExpense` takes a db and opens nothing, and stays the only writer of a journal. */
-export function recordExpense(
+export async function recordExpense(
   input: Parameters<typeof postExpense>[1]
-): number {
+): Promise<number> {
   const db = getDb();
-  db.exec("BEGIN IMMEDIATE");
+  await db.exec("BEGIN IMMEDIATE");
   try {
-    const id = postExpense(db, input);
-    db.exec("COMMIT");
+    const id = await postExpense(db, input);
+    await db.exec("COMMIT");
     return id;
   } catch (e) {
-    db.exec("ROLLBACK");
+    await db.exec("ROLLBACK");
     throw e;
   }
 }
 
-export function receiptJournalIdFor(paymentId: number): number | undefined {
-  const row = getDb()
+export async function receiptJournalIdFor(paymentId: number): Promise<number | undefined> {
+  const row = await getDb()
     .prepare(
       "SELECT id FROM journals WHERE source_type = 'PAYMENT' AND source_id = ? ORDER BY id LIMIT 1"
     )
@@ -293,8 +293,8 @@ export function receiptJournalIdFor(paymentId: number): number | undefined {
  *  A ZERO-total purchase posts NOTHING. `lib/purchases.ts` validates `unit_cost_toman < 0`,
  *  so a zero-cost purchase is legal today and the stock movement still happens; there is
  *  simply no money side to record, and inventing a 1-Toman leg would be fabrication. */
-export function postPurchase(
-  db: DatabaseSync,
+export async function postPurchase(
+  db: Db,
   input: {
     organizationId: number;
     purchaseId: number;
@@ -303,9 +303,9 @@ export function postPurchase(
     purchasedAt: string;
     purchasedBy: number;
   }
-): number | null {
+): Promise<number | null> {
   if (input.totalToman <= 0) return null; // nothing was paid for; nothing to owe
-  return postJournal(db, {
+  return await postJournal(db, {
     organizationId: input.organizationId,
     postedAt: input.purchasedAt,
     sourceType: "PURCHASE",
@@ -313,9 +313,9 @@ export function postPurchase(
     createdBy: input.purchasedBy,
     memo: "ثبت خرید",
     legs: [
-      { accountId: accountOrThrow("1203"), side: "D", amountToman: input.totalToman },
+      { accountId: await accountOrThrow("1203"), side: "D", amountToman: input.totalToman },
       {
-        accountId: accountOrThrow("2101"),
+        accountId: await accountOrThrow("2101"),
         side: "C",
         amountToman: input.totalToman,
         supplierId: input.supplierId,
@@ -343,8 +343,8 @@ export function postPurchase(
  *  credits 1,800,000. postJournal refused it, which is the engine earning its keep.
  *  Computing the split here instead would mean this function silently reading a balance
  *  the caller may already have decided differently. */
-export function postSupplierPayment(
-  db: DatabaseSync,
+export async function postSupplierPayment(
+  db: Db,
   input: {
     organizationId: number;
     supplierId: number;
@@ -359,14 +359,14 @@ export function postSupplierPayment(
     overpayToPrepayment?: boolean;
     memo?: string | null;
   }
-): number {
+): Promise<number> {
   const payable = input.payableToman ?? input.amountToman;
   if (payable > input.amountToman) {
     throw new LedgerError("مبلغ پرداختی نمی‌تواند از مبلغ پرداختنی بیشتر باشد");
   }
   const excess = input.amountToman - payable;
 
-  return postJournal(db, {
+  return await postJournal(db, {
     organizationId: input.organizationId,
     postedAt: input.paidAt,
     sourceType: "SUPPLIER_PAYMENT",
@@ -374,7 +374,7 @@ export function postSupplierPayment(
     memo: input.memo ?? "پرداخت به تأمین‌کننده",
     legs: [
       {
-        accountId: accountOrThrow("2101"),
+        accountId: await accountOrThrow("2101"),
         side: "D",
         amountToman: payable,
         supplierId: input.supplierId,
@@ -382,14 +382,14 @@ export function postSupplierPayment(
       ...(excess > 0
         ? [
             {
-              accountId: accountOrThrow("1301"),
+              accountId: await accountOrThrow("1301"),
               side: "D" as const,
               amountToman: excess,
               supplierId: input.supplierId,
             },
           ]
         : []),
-      { accountId: cashAccountFor(input.method), side: "C", amountToman: input.amountToman },
+      { accountId: await cashAccountFor(input.method), side: "C", amountToman: input.amountToman },
     ],
   });
 }

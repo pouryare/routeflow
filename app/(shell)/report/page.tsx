@@ -55,17 +55,17 @@ export default async function ReportPage({
   // which also means a sorted report stays sorted when printed or shared as a link.
   const sortByDistance = gaps === "near";
   const jar = await cookies();
-  const session = getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
+  const session = await getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
   if (!session) redirect("/login");
   if (isVanRole(session.role)) redirect("/driver");
-  const { districts, customers } = reportRows(session);
+  const { districts, customers } = await reportRows(session);
 
   // Debt is computed from delivered orders and payment allocations now.
-  const debtByCustomer = customerDebtsForOrg(session.organizationId);
+  const debtByCustomer = await customerDebtsForOrg(session.organizationId);
   const debtOf = (id: number) =>
     debtByCustomer.get(id) ?? { total: 0, bucket_0_7: 0, bucket_8_30: 0, bucket_30_plus: 0 };
 
-  const facilities = reportFacilities(session);
+  const facilities = await reportFacilities(session);
   const origin = pickOrigin(facilities);
 
   const districtCounts = countBy(districts.map((d) => d.coverage_status));

@@ -16,7 +16,7 @@
 //      none: the van's balance would then be quietly wrong forever, and nobody would know.
 //   2. One transaction or none. Every line is validated BEFORE any is written.
 
-import type { DatabaseSync } from "node:sqlite";
+import type { Db } from "@/lib/database/client";
 import { getDb } from "@/lib/db";
 import { recordMovementsTxn, StockError, type MovementInput } from "@/lib/repo/stock";
 import { vanOnHand } from "@/lib/repo/vanStock";
@@ -46,22 +46,22 @@ export interface UnloadInput {
  *
  *  Deliberately has no time argument, which is what makes the same number true at noon and at
  *  six: there is nothing to vary. */
-export function shouldReturn(
+export async function shouldReturn(
   organizationId: number,
   vanFacilityId: number,
   productId: number
-): number {
-  return vanOnHand(organizationId, vanFacilityId, productId);
+): Promise<number> {
+  return await vanOnHand(organizationId, vanFacilityId, productId);
 }
 
 /** What the ledger says should come back, per product, for the sheet to pre-fill. */
-export function shouldReturnByProduct(
+export async function shouldReturnByProduct(
   organizationId: number,
   vanFacilityId: number,
   productIds: readonly number[]
-): Record<number, number> {
+): Promise<Record<number, number>> {
   const out: Record<number, number> = {};
-  for (const id of productIds) out[id] = shouldReturn(organizationId, vanFacilityId, id);
+  for (const id of productIds) out[id] = await shouldReturn(organizationId, vanFacilityId, id);
   return out;
 }
 
@@ -74,9 +74,9 @@ export function shouldReturnByProduct(
  *  survives.
  *
  *  Idempotent per tenant via `INSERT OR IGNORE` on UNIQUE (organization_id, slug). */
-export function samplesFacility(organizationId: number): number {
+export async function samplesFacility(organizationId: number): Promise<number> {
   const db = getDb();
-  const existing = db
+  const existing = await db
     .prepare(
       "SELECT id FROM facilities WHERE organization_id = ? AND slug = 'samples-given'"
     )
@@ -84,11 +84,11 @@ export function samplesFacility(organizationId: number): number {
   if (existing) return existing.id;
 
   const now = new Date().toISOString();
-  db.prepare(
+  await db.prepare(
     `INSERT OR IGNORE INTO facilities (slug, kind, name, lat, lng, organization_id, created_at, updated_at)
      VALUES ('samples-given', 'other', 'نمونه‌های داده‌شده', NULL, NULL, ?, ?, ?)`
   ).run(organizationId, now, now);
-  const row = db
+  const row = await db
     .prepare("SELECT id FROM facilities WHERE organization_id = ? AND slug = 'samples-given'")
     .get(organizationId) as { id: number };
   return row.id;
@@ -145,7 +145,7 @@ function movementsFor(
  *  Refusing the shortfall is the whole design. A partial write would leave the van's balance
  *  wrong with no record that it was ever reconciled, which is the failure `vanStock.ts` exists
  *  to prevent. */
-export function reconcileUnload(input: UnloadInput): void {
+export async function reconcileUnload(input: UnloadInput): Promise<void> {
   if (input.lines.length === 0) {
     throw new StockError("حداقل یک قلم برای تخلیه لازم است");
   }
@@ -166,7 +166,7 @@ export function reconcileUnload(input: UnloadInput): void {
     declared.set(line.productId, (declared.get(line.productId) ?? 0) + line.qty);
   }
   for (const [productId, qty] of declared) {
-    const expected = shouldReturn(input.organizationId, input.vanFacilityId, productId);
+    const expected = await shouldReturn(input.organizationId, input.vanFacilityId, productId);
     if (qty > expected) {
       throw new StockError(
         `بیش از موجودی وانت اعلام شده است (کالای ${productId}: ${expected} موجود، ${qty} اعلام شد)`
@@ -181,7 +181,7 @@ export function reconcileUnload(input: UnloadInput): void {
     }
   }
 
-  db.exec("BEGIN IMMEDIATE");
+  await db.exec("BEGIN IMMEDIATE");
   try {
     const movements: MovementInput[] = [];
     for (const line of input.lines) {
@@ -192,7 +192,7 @@ export function reconcileUnload(input: UnloadInput): void {
           input.facilityId
         )
       );
-      db.prepare(
+      await db.prepare(
         `INSERT INTO run_unload_lines (run_id, product_id, disposition, qty_base, note, occurred_at, created_by, created_at)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
       ).run(
@@ -206,26 +206,26 @@ export function reconcileUnload(input: UnloadInput): void {
         new Date().toISOString()
       );
     }
-    recordMovementsTxn(db, input.organizationId, movements);
-    db.prepare(
+    await recordMovementsTxn(db, input.organizationId, movements);
+    await db.prepare(
       `UPDATE run_facility_stops
           SET status = 'done', done_at = ?, done_by = ?, notes = COALESCE(?, notes), updated_at = ?
         WHERE run_id = ? AND role = 'unload'`
     ).run(new Date().toISOString(), input.actorId, input.note ?? null, new Date().toISOString(), input.runId);
-    db.exec("COMMIT");
+    await db.exec("COMMIT");
   } catch (e) {
-    db.exec("ROLLBACK");
+    await db.exec("ROLLBACK");
     throw e;
   }
 }
 
 /** What is on the van right now, per product -- the sheet's starting point. */
-export function vanBalance(
+export async function vanBalance(
   organizationId: number,
   vanFacilityId: number
-): { productId: number; qty: number }[] {
+): Promise<{ productId: number; qty: number }[]> {
   const db = getDb();
-  const rows = db
+  const rows = await db
     .prepare(
       `SELECT product_id, SUM(base_qty) AS qty
          FROM stock_movements
@@ -248,9 +248,9 @@ export interface UnloadStop {
 }
 
 /** The pending unload on a run, or null. */
-export function pendingUnload(db: DatabaseSync, runId: number): UnloadStop | null {
+export async function pendingUnload(db: Db, runId: number): Promise<UnloadStop | null> {
   return (
-    (db
+    (await db
       .prepare(
         `SELECT facility_id FROM run_facility_stops
           WHERE run_id = ? AND role = 'unload' AND status = 'pending'`
@@ -269,9 +269,9 @@ export interface OwnedRun {
  *
  *  Answered as null rather than forbidden so another driver's run is indistinguishable from
  *  one that does not exist -- a 403 here would confirm the id is real to anyone who guesses it. */
-export function runOwnedBy(db: DatabaseSync, runId: number, userId: number, orgId: number): OwnedRun | null {
+export async function runOwnedBy(db: Db, runId: number, userId: number, orgId: number): Promise<OwnedRun | null> {
   return (
-    (db
+    (await db
       .prepare(
         `SELECT id, driver_user_id, organization_id FROM delivery_runs
           WHERE id = ? AND driver_user_id = ? AND organization_id = ?`

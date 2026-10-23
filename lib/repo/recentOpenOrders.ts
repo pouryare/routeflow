@@ -7,13 +7,13 @@ const OPEN = "'DRAFT', 'PENDING_REVIEW', 'PENDING_CREDIT', 'ON_HOLD', 'CONFIRMED
 /** F72: the customer's open orders created in the last 24 hours, newest first, with the set of
  *  products on each, for the duplicate-order question. `scope` is the caller's orderFilter
  *  fragment on alias `o`: a person is only warned about orders they could open. */
-export function recentOpenOrders(
+export async function recentOpenOrders(
   scope: { sql: string; params: number[] },
   customerId: number,
   now = new Date(),
-): OpenOrderBrief[] {
+): Promise<OpenOrderBrief[]> {
   const since = new Date(now.getTime() - DUPLICATE_WINDOW_HOURS * 3600_000).toISOString();
-  const rows = getDb()
+  const rows = await getDb()
     .prepare(
       `SELECT o.id, o.order_no, o.created_at, GROUP_CONCAT(DISTINCT ol.product_id) AS products
          FROM orders o

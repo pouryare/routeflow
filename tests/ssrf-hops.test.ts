@@ -89,13 +89,13 @@ describe("GET /api/geo/decode-link (single link)", () => {
   const call = (url: string) =>
     GET(new NextRequest(`http://localhost/api/geo/decode-link?url=${encodeURIComponent(url)}`, { headers: { cookie } }));
 
-  beforeEach(() => {
+  beforeEach(async () => {
     if (cookie) return;
     const db = getDb();
     const id = Number(
-      db
+      (await db
         .prepare("INSERT INTO users (username, password_hash, display_name, role, active, created_at, organization_id) VALUES ('dl', 'x:y', 'x', 'owner', 1, '2026-01-01', 1)")
-        .run().lastInsertRowid
+        .run()).lastInsertRowid
     );
     cookie = `${COOKIE_NAME}=${createSessionToken({ uid: id, role: "owner", gid: null, oid: 1, tv: 0, name: "x" })}`;
   });

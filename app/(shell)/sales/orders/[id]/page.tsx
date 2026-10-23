@@ -46,12 +46,12 @@ export default async function OrderDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const jar = await cookies();
-  const session = getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
+  const session = await getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
   if (!session) redirect("/login");
   if (isVanRole(session.role)) redirect("/driver");
 
   const id = Number((await params).id);
-  const page = orderPageFor(session, id);
+  const page = await orderPageFor(session, id);
   if (!page) notFound();
   const { order, attempts } = page;
 

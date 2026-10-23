@@ -12,7 +12,7 @@ process.env.SESSION_SECRET = "test-secret";
 
 const { getDb } = await import("@/lib/db");
 const { ensureWarehouse } = await import("../helpers/ensureWarehouse");
-ensureWarehouse(getDb());
+await ensureWarehouse(getDb());
 const { createProduct, createPackaging, setPrice } = await import("@/lib/catalogue");
 const { createOrder, confirmOrder } = await import("@/lib/orders");
 const { GET, POST } = await import("@/app/api/sales/runs/route");
@@ -38,46 +38,46 @@ const ctx = {
   eastRun: 0,
 };
 
-beforeAll(() => {
+beforeAll(async () => {
   const db = getDb();
   const now = new Date().toISOString();
   const group = db.prepare(
     "INSERT INTO groups (name, slug, color, active, created_at) VALUES (?, ?, ?, 1, ?)"
   );
-  ctx.east = Number(group.run("شرق", "east", "#0ff", now).lastInsertRowid);
-  ctx.west = Number(group.run("غرب", "west", "#f0f", now).lastInsertRowid);
+  ctx.east = Number((await group.run("شرق", "east", "#0ff", now)).lastInsertRowid);
+  ctx.west = Number((await group.run("غرب", "west", "#f0f", now)).lastInsertRowid);
 
   const user = db.prepare(
     "INSERT INTO users (username, password_hash, display_name, role, group_id, active, created_at) VALUES (?, 'x', ?, ?, ?, 1, ?)"
   );
-  ctx.owner = Number(user.run("o", "مالک", "owner", null, now).lastInsertRowid);
-  ctx.eastManager = Number(user.run("em", "مدیر شرق", "group_manager", ctx.east, now).lastInsertRowid);
-  ctx.westManager = Number(user.run("wm", "مدیر غرب", "group_manager", ctx.west, now).lastInsertRowid);
-  ctx.eastDriver = Number(user.run("ed", "راننده شرق", "delivery_driver", ctx.east, now).lastInsertRowid);
-  ctx.westDriver = Number(user.run("wd", "راننده غرب", "delivery_driver", ctx.west, now).lastInsertRowid);
+  ctx.owner = Number((await user.run("o", "مالک", "owner", null, now)).lastInsertRowid);
+  ctx.eastManager = Number((await user.run("em", "مدیر شرق", "group_manager", ctx.east, now)).lastInsertRowid);
+  ctx.westManager = Number((await user.run("wm", "مدیر غرب", "group_manager", ctx.west, now)).lastInsertRowid);
+  ctx.eastDriver = Number((await user.run("ed", "راننده شرق", "delivery_driver", ctx.east, now)).lastInsertRowid);
+  ctx.westDriver = Number((await user.run("wd", "راننده غرب", "delivery_driver", ctx.west, now)).lastInsertRowid);
 
   const customer = db.prepare(
     "INSERT INTO customers (customer_code, business_name, group_id, synced_at) VALUES (?, ?, ?, ?)"
   );
-  const eastCustomer = Number(customer.run("C1", "رستوران شرق", ctx.east, now).lastInsertRowid);
-  const westCustomer = Number(customer.run("C2", "رستوران غرب", ctx.west, now).lastInsertRowid);
+  const eastCustomer = Number((await customer.run("C1", "رستوران شرق", ctx.east, now)).lastInsertRowid);
+  const westCustomer = Number((await customer.run("C2", "رستوران غرب", ctx.west, now)).lastInsertRowid);
 
-  const product = createProduct(db, { name: "کره", kg_per_base_unit: 0.25, organization_id: 1 });
-  const packaging = createPackaging(db, { product_id: product, name: "جعبه", qty_per_pack: 100 });
-  setPrice(db, { product_id: product, price_toman: 440000, valid_from: "2026-01-01" });
+  const product = await createProduct(db, { name: "کره", kg_per_base_unit: 0.25, organization_id: 1 });
+  const packaging = await createPackaging(db, { product_id: product, name: "جعبه", qty_per_pack: 100 });
+  await setPrice(db, { product_id: product, price_toman: 440000, valid_from: "2026-01-01" });
 
   for (const [customerId, key] of [
     [eastCustomer, "eastOrder"],
     [westCustomer, "westOrder"],
   ] as const) {
-    const order = createOrder(db, {
+    const order = await createOrder(db, {
       customer_id: customerId,
       order_date: "2026-08-26",
       created_by: ctx.owner,
       organization_id: 1,
       lines: [{ product_id: product, packaging_id: packaging, packs: 1 }],
     });
-    confirmOrder(db, order.id);
+    await confirmOrder(db, order.id);
     ctx[key] = order.id;
   }
 });

@@ -22,7 +22,7 @@ const SEVERITIES: ComplaintSeverity[] = ["low", "medium", "high", "critical"];
 const STATUSES: ComplaintStatus[] = ["open", "investigating", "resolved", "dismissed"];
 
 export async function GET(req: NextRequest) {
-  const guard = requireRole(req, [...MANAGE_ROLES, "phone_sales"]);
+  const guard = await requireRole(req, [...MANAGE_ROLES, "phone_sales"]);
   if (!guard.ok) return guard.response;
 
   const sp = req.nextUrl.searchParams;
@@ -30,16 +30,16 @@ export async function GET(req: NextRequest) {
   const batchId = sp.get("batch_id");
   return NextResponse.json({
     ok: true,
-    complaints: listComplaints(guard.session.organizationId, {
+    complaints: await listComplaints(guard.session.organizationId, {
       status: STATUSES.includes(status as ComplaintStatus) ? (status as ComplaintStatus) : undefined,
       batch_id: batchId ? Number(batchId) : undefined,
     }),
-    clusters: complaintClusters(guard.session.organizationId),
+    clusters: await complaintClusters(guard.session.organizationId),
   });
 }
 
 export async function POST(req: NextRequest) {
-  const guard = requireRole(req, [...MANAGE_ROLES, "phone_sales"]);
+  const guard = await requireRole(req, [...MANAGE_ROLES, "phone_sales"]);
   if (!guard.ok) return guard.response;
 
   const body = (await req.json().catch(() => null)) as {
@@ -61,7 +61,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "شرح شکایت حداکثر ۲۰۰۰ نویسه است" }, { status: 400 });
   }
 
-  const id = fileComplaint(guard.session.organizationId, {
+  const id = await fileComplaint(guard.session.organizationId, {
     customer_id: body.customer_id ?? null,
     order_id: body.order_id ?? null,
     product_id: body.product_id ?? null,

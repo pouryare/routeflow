@@ -63,7 +63,7 @@ async function open(
   waitUntil: "networkidle" | "load" = "networkidle",
 ) {
   const context = await browser.newContext({ locale: "fa-IR", viewport });
-  await context.addCookies([{ ...sessionCookie(), url: BASE }]);
+  await context.addCookies([{ ...await sessionCookie(), url: BASE }]);
   const page = await context.newPage();
   /* 60s, not the 30s default: a dev server compiling a page on first visit while the
      machine is busy can miss 30s without anything being wrong with the page, and a layout

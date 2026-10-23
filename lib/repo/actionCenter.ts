@@ -51,9 +51,9 @@ const STALLED_DAYS = 2;
 
 const norm = (toman: number): number => Math.max(0, Math.min(1, toman / IMPACT_REF_TOMAN));
 
-function alertCandidates(session: Session): Candidate[] {
+async function alertCandidates(session: Session): Promise<Candidate[]> {
   const db = getDb();
-  const rows = db
+  const rows = await db
     .prepare(
       `SELECT id, severity, category, title, group_id, created_at
          FROM alerts WHERE organization_id = ? AND resolved_at IS NULL`
@@ -98,11 +98,11 @@ interface StalledRow {
   value: number;
 }
 
-function stalledOrderCandidates(session: Session): Candidate[] {
+async function stalledOrderCandidates(session: Session): Promise<Candidate[]> {
   const db = getDb();
   const scope = orderFilter(session, "o");
   const cutoff = new Date(Date.now() - STALLED_DAYS * DAY_MS).toISOString();
-  const rows = db
+  const rows = await db
     .prepare(
       `SELECT o.id, o.status,
               (SELECT MAX(e.created_at) FROM order_events e WHERE e.order_id = o.id) AS last_event,
@@ -133,18 +133,18 @@ function stalledOrderCandidates(session: Session): Candidate[] {
   });
 }
 
-function overdueCandidates(session: Session): Candidate[] {
+async function overdueCandidates(session: Session): Promise<Candidate[]> {
   const db = getDb();
-  const f = groupFilter(session);
+  const f = await groupFilter(session);
   const inScope = new Map(
     (
-      db.prepare(`SELECT id, business_name FROM customers WHERE 1 = 1${f.sql}`).all(...f.params) as {
+      await db.prepare(`SELECT id, business_name FROM customers WHERE 1 = 1${f.sql}`).all(...f.params) as {
         id: number;
         business_name: string;
       }[]
     ).map((c) => [c.id, c.business_name])
   );
-  const debts = customerDebtsForOrgOnce(session.organizationId);
+  const debts = await customerDebtsForOrgOnce(session.organizationId);
   const out: Candidate[] = [];
   for (const [id, name] of inScope) {
     const over = debts.get(id)?.bucket_30_plus ?? 0;
@@ -164,12 +164,12 @@ function overdueCandidates(session: Session): Candidate[] {
   return out;
 }
 
-function atRiskCandidates(session: Session): Candidate[] {
+async function atRiskCandidates(session: Session): Promise<Candidate[]> {
   const db = getDb();
-  const f = groupFilter(session);
+  const f = await groupFilter(session);
   const inScope = new Map(
     (
-      db.prepare(`SELECT id, business_name FROM customers WHERE 1 = 1${f.sql}`).all(...f.params) as {
+      await db.prepare(`SELECT id, business_name FROM customers WHERE 1 = 1${f.sql}`).all(...f.params) as {
         id: number;
         business_name: string;
       }[]
@@ -177,7 +177,7 @@ function atRiskCandidates(session: Session): Candidate[] {
   );
 
   // Prefer the snapshot the sweep wrote; fall back to a bounded live compute.
-  const snaps = snapshotRows(session.organizationId, { metric: "health_score", scope_type: "customer" });
+  const snaps = await snapshotRows(session.organizationId, { metric: "health_score", scope_type: "customer" });
   let scored: { id: number; score: number }[];
   if (snaps.length > 0) {
     const latest = snaps.reduce((m, r) => (r.period > m ? r.period : m), snaps[0].period);
@@ -185,7 +185,7 @@ function atRiskCandidates(session: Session): Candidate[] {
       .filter((r) => r.period === latest && inScope.has(r.scope_id))
       .map((r) => ({ id: r.scope_id, score: r.value }));
   } else {
-    const recent = db
+    const recent = await db
       .prepare(
         `SELECT DISTINCT o.customer_id AS id FROM orders o
           WHERE o.organization_id = ? AND o.status IN (${sqlStatusList(FULFILLED_ORDER_STATUSES)})
@@ -193,7 +193,7 @@ function atRiskCandidates(session: Session): Candidate[] {
       )
       .all(session.organizationId, new Date(Date.now() - 180 * DAY_MS).toISOString()) as { id: number }[];
     const ids = recent.filter((r) => inScope.has(r.id)).map((r) => r.id);
-    const health = customerHealthMany(session.organizationId, ids);
+    const health = await customerHealthMany(session.organizationId, ids);
     scored = ids.map((id) => ({ id, score: health.get(id)!.score }));
   }
 
@@ -212,14 +212,14 @@ function atRiskCandidates(session: Session): Candidate[] {
     }));
 }
 
-function stockoutCandidates(session: Session): Candidate[] {
+async function stockoutCandidates(session: Session): Promise<Candidate[]> {
   // Stock is org-wide (no group column), so this source only shows for owner / manager.
   if (session.role === "phone_sales" || isVanRole(session.role)) return [];
   const db = getDb();
   const since = new Date(Date.now() - 14 * DAY_MS).toISOString();
   const runRate = new Map(
     (
-      db
+      await db
         .prepare(
           `SELECT ol.product_id AS pid,
                   SUM(COALESCE(ol.packs_delivered, 0) * ol.qty_per_pack) AS base_qty,
@@ -233,14 +233,14 @@ function stockoutCandidates(session: Session): Candidate[] {
     ).map((r) => [r.pid, { perDay: r.base_qty / 14, price: r.price }])
   );
   const names = new Map(
-    (db.prepare("SELECT id, name FROM products WHERE organization_id = ?").all(session.organizationId) as {
+    (await db.prepare("SELECT id, name FROM products WHERE organization_id = ?").all(session.organizationId) as {
       id: number;
       name: string;
     }[]).map((p) => [p.id, p.name])
   );
 
   const out: Candidate[] = [];
-  for (const lvl of stockLevels(session.organizationId)) {
+  for (const lvl of await stockLevels(session.organizationId)) {
     const rr = runRate.get(lvl.product_id);
     if (!rr || rr.perDay <= 0) continue;
     const coverDays = lvl.available / rr.perDay;
@@ -263,14 +263,14 @@ function stockoutCandidates(session: Session): Candidate[] {
   return out;
 }
 
-function crossSellCandidates(session: Session): Candidate[] {
+async function crossSellCandidates(session: Session): Promise<Candidate[]> {
   if (isVanRole(session.role)) return [];
   const db = getDb();
   const active = new Date(Date.now() - 60 * DAY_MS).toISOString();
   const oScope = orderFilter(session, "o");
 
   // the org's most-penetrated product
-  const top = db
+  const top = await db
     .prepare(
       `SELECT ol.product_id AS pid, p.name AS name,
               COUNT(DISTINCT o.customer_id) AS buyers,
@@ -288,7 +288,7 @@ function crossSellCandidates(session: Session): Candidate[] {
     | undefined;
   if (!top || top.buyers < 3) return [];
 
-  const activeCustomers = db
+  const activeCustomers = await db
     .prepare(
       `SELECT DISTINCT o.customer_id AS id, c.business_name AS name
          FROM orders o JOIN customers c ON c.id = o.customer_id
@@ -300,7 +300,7 @@ function crossSellCandidates(session: Session): Candidate[] {
 
   const buyersOfTop = new Set(
     (
-      db
+      await db
         .prepare(
           `SELECT DISTINCT o.customer_id AS id FROM orders o JOIN order_lines ol ON ol.order_id = o.id
             WHERE o.organization_id = ? AND ol.product_id = ?`
@@ -327,15 +327,15 @@ function crossSellCandidates(session: Session): Candidate[] {
 
 /** Phase 10: customers the churn model flags `high`. A no-op until the prediction
  *  sweep has written `churn_scores`. */
-function churnCandidates(session: Session): Candidate[] {
+async function churnCandidates(session: Session): Promise<Candidate[]> {
   const db = getDb();
-  const f = groupFilter(session);
+  const f = await groupFilter(session);
   const inScope = new Set(
     (
-      db.prepare(`SELECT id FROM customers WHERE 1 = 1${f.sql}`).all(...f.params) as { id: number }[]
+      await db.prepare(`SELECT id FROM customers WHERE 1 = 1${f.sql}`).all(...f.params) as { id: number }[]
     ).map((c) => c.id)
   );
-  const rows = db
+  const rows = await db
     .prepare(
       `SELECT cs.customer_id, cs.probability, cs.reason_fa, c.business_name
          FROM churn_scores cs JOIN customers c ON c.id = cs.customer_id
@@ -363,18 +363,18 @@ function churnCandidates(session: Session): Candidate[] {
     }));
 }
 
-export function actionCenterFor(session: Session): Record<Bucket, RankedItem[]> {
+export async function actionCenterFor(session: Session): Promise<Record<Bucket, RankedItem[]>> {
   if (isVanRole(session.role)) {
     return { critical: [], warning: [], opportunity: [] };
   }
   const cands: Candidate[] = [
-    ...alertCandidates(session),
-    ...stalledOrderCandidates(session),
-    ...overdueCandidates(session),
-    ...atRiskCandidates(session),
-    ...churnCandidates(session),
-    ...stockoutCandidates(session),
-    ...crossSellCandidates(session),
+    ...await alertCandidates(session),
+    ...await stalledOrderCandidates(session),
+    ...await overdueCandidates(session),
+    ...await atRiskCandidates(session),
+    ...await churnCandidates(session),
+    ...await stockoutCandidates(session),
+    ...await crossSellCandidates(session),
   ];
   return rankActionCenter(cands);
 }

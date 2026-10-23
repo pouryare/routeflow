@@ -12,8 +12,8 @@ const { statusFacts, readBackupStatus } = await import("@/lib/repo/systemStatus"
 afterAll(() => fs.rmSync(dir, { recursive: true, force: true }));
 
 describe("statusFacts", () => {
-  it("reads every fact without error on an empty database", () => {
-    const f = statusFacts(1);
+  it("reads every fact without error on an empty database", async () => {
+    const f = await statusFacts(1);
     expect(f.backup).toBeNull();
     expect(f.failedSignIns24h).toBe(0);
     expect(f.dbBytes).toBeGreaterThan(0);

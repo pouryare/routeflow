@@ -29,7 +29,7 @@ export interface Board {
  *  rep_manager:   their own + tasks on customers they manage as reps.
  *  owner:         the whole org, optionally one group.
  *  Always tenant-bounded by organization_id. */
-function boardScope(session: Session, groupId?: number): { sql: string; params: unknown[] } {
+async function boardScope(session: Session, groupId?: number): Promise<{ sql: string; params: unknown[] }> {
   const org = session.organizationId;
 
   if (session.role === "rep_manager") {
@@ -49,7 +49,7 @@ function boardScope(session: Session, groupId?: number): { sql: string; params: 
   }
 
   // group_manager
-  const scope = scopeGroupIds(session);
+  const scope = await scopeGroupIds(session);
   const ids = scope === "all" ? [] : scope;
   if (ids.length === 0) return { sql: `t.organization_id = ? AND t.assignee_user_id = ?`, params: [org, session.user.id] };
   const inList = ids.map(() => "?").join(", ");
@@ -63,15 +63,15 @@ function boardScope(session: Session, groupId?: number): { sql: string; params: 
   };
 }
 
-export function boardFor(
+export async function boardFor(
   session: Session,
   opts: { view: BoardView; kind?: string; groupId?: number; nowIso?: string }
-): Board {
+): Promise<Board> {
   const db = getDb();
   const now = opts.nowIso ?? new Date().toISOString();
-  const { sql, params } = boardScope(session, opts.groupId);
+  const { sql, params } = await boardScope(session, opts.groupId);
 
-  const rows = db
+  const rows = await db
     .prepare(
       `SELECT ${TASK_CARD_SELECT}
          FROM tasks t ${TASK_CARD_JOINS}

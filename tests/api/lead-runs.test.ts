@@ -33,27 +33,27 @@ let pinA = 0;
 let pinB = 0;
 let pinC = 0;
 
-beforeAll(() => {
+beforeAll(async () => {
   const db = getDb();
   const now = new Date().toISOString();
   groupId = Number(
-    db.prepare("INSERT INTO groups (name, slug, created_at, organization_id) VALUES ('گروه', 'lead-runs', ?, 1)")
-      .run(now).lastInsertRowid
+    (await db.prepare("INSERT INTO groups (name, slug, created_at, organization_id) VALUES ('گروه', 'lead-runs', ?, 1)")
+      .run(now)).lastInsertRowid
   );
   const user = db.prepare(
     "INSERT INTO users (username, password_hash, display_name, role, group_id, active, created_at, organization_id) VALUES (?, 'x:y', ?, ?, ?, ?, ?, 1)"
   );
-  ownerId = Number(user.run("run-owner", "مالک", "owner", null, 1, now).lastInsertRowid);
-  managerId = Number(user.run("run-manager", "مدیر", "group_manager", groupId, 1, now).lastInsertRowid);
-  driverId = Number(user.run("run-driver", "راننده یک", "delivery_driver", groupId, 1, now).lastInsertRowid);
-  otherDriverId = Number(user.run("run-driver-2", "راننده دو", "delivery_driver", groupId, 1, now).lastInsertRowid);
-  inactiveDriverId = Number(user.run("run-driver-off", "راننده خاموش", "delivery_driver", groupId, 0, now).lastInsertRowid);
+  ownerId = Number((await user.run("run-owner", "مالک", "owner", null, 1, now)).lastInsertRowid);
+  managerId = Number((await user.run("run-manager", "مدیر", "group_manager", groupId, 1, now)).lastInsertRowid);
+  driverId = Number((await user.run("run-driver", "راننده یک", "delivery_driver", groupId, 1, now)).lastInsertRowid);
+  otherDriverId = Number((await user.run("run-driver-2", "راننده دو", "delivery_driver", groupId, 1, now)).lastInsertRowid);
+  inactiveDriverId = Number((await user.run("run-driver-off", "راننده خاموش", "delivery_driver", groupId, 0, now)).lastInsertRowid);
   const loc = db.prepare(
     "INSERT INTO saved_locations (name, maps_url, lat, lng, resolution, group_id, created_at, organization_id) VALUES (?, ?, ?, 51.4, 'manual', ?, ?, 1)"
   );
-  pinA = Number(loc.run("الف", "u/a", 35.70, groupId, now).lastInsertRowid);
-  pinB = Number(loc.run("ب", "u/b", 35.71, groupId, now).lastInsertRowid);
-  pinC = Number(loc.run("پ", "u/c", 35.72, groupId, now).lastInsertRowid);
+  pinA = Number((await loc.run("الف", "u/a", 35.70, groupId, now)).lastInsertRowid);
+  pinB = Number((await loc.run("ب", "u/b", 35.71, groupId, now)).lastInsertRowid);
+  pinC = Number((await loc.run("پ", "u/c", 35.72, groupId, now)).lastInsertRowid);
 });
 
 const as = (uid: number, role: string, gid: number | null) =>
@@ -109,14 +109,14 @@ describe("a manager plans a route", () => {
        actually happened. */
     const res = await createRun(...MANAGER(), { driver_user_id: driverId, run_date: TOMORROW, location_ids: [pinC] });
     expect(res.status).toBe(409);
-    const rows = getDb()
+    const rows = await getDb()
       .prepare("SELECT COUNT(*) AS n FROM delivery_runs WHERE driver_user_id = ? AND run_date = ?")
       .get(driverId, TOMORROW) as { n: number };
     expect(rows.n).toBe(1);
   });
 
   it("leaves a planned day's stops untouched after a refused re-plan", async () => {
-    const stops = getDb()
+    const stops = await getDb()
       .prepare("SELECT location_id FROM lead_run_stops s JOIN delivery_runs r ON r.id = s.run_id WHERE r.driver_user_id = ? ORDER BY s.sort_order")
       .all(driverId) as Array<{ location_id: number }>;
     expect(stops.map((s) => s.location_id)).toEqual([pinB, pinA]);
@@ -157,7 +157,7 @@ describe("a manager plans a route", () => {
     // Remove it for the tests that follow. Two of them count every run in the fixture, and
     // a third resolves the driver's "current" run by recency, so a leftover here would
     // silently become their answer. Stops go with it (ON DELETE CASCADE).
-    getDb().prepare("DELETE FROM delivery_runs WHERE driver_user_id = ? AND run_date = ?").run(driverId, LATER);
+    await getDb().prepare("DELETE FROM delivery_runs WHERE driver_user_id = ? AND run_date = ?").run(driverId, LATER);
   });
 
   it("refuses a driver who is not a driver, or is deactivated", async () => {
@@ -200,19 +200,19 @@ describe("a driver sees their own day", () => {
     const theirs = (await (await listRuns(otherDriverId, "delivery_driver", groupId)).json()) as { run: { driver_user_id: number } | null };
     expect(theirs.run?.driver_user_id).toBe(otherDriverId);
     // Two runs now exist for tomorrow; each driver still resolves to exactly one.
-    const all = getDb().prepare("SELECT COUNT(*) AS n FROM delivery_runs").get() as { n: number };
+    const all = await getDb().prepare("SELECT COUNT(*) AS n FROM delivery_runs").get() as { n: number };
     expect(all.n).toBe(2);
   });
 
   it("derives the words and the follow-up on each stop, from the pin itself", async () => {
-    getDb().prepare("UPDATE saved_locations SET visit_outcome = 'READY_TO_BUY' WHERE id = ?").run(pinA);
+    await getDb().prepare("UPDATE saved_locations SET visit_outcome = 'READY_TO_BUY' WHERE id = ?").run(pinA);
     const body = (await (await listRuns(...DRIVER())).json()) as {
       run: { stops: Array<{ location_id: number; outcome_label: string; next_action: string | null }> };
     };
     const a = body.run.stops.find((s) => s.location_id === pinA)!;
     expect(a.outcome_label).toBe("آماده خرید");
     expect(a.next_action).toBe("order");
-    getDb().prepare("UPDATE saved_locations SET visit_outcome = NULL WHERE id = ?").run(pinA);
+    await getDb().prepare("UPDATE saved_locations SET visit_outcome = NULL WHERE id = ?").run(pinA);
   });
 
   it("and can reorder it, which is the one thing a driver may change", async () => {
@@ -279,18 +279,18 @@ describe("the manager's roster", () => {
 describe("assignment awareness", () => {
   let taken = 0;
   let free = 0;
-  const loc = (name: string, url: string) => {
+  const loc = async (name: string, url: string) => {
     const stmt = getDb().prepare(
       "INSERT INTO saved_locations (name, maps_url, lat, lng, resolution, group_id, created_at, organization_id) VALUES (?, ?, 35.80, 51.4, 'manual', ?, ?, 1)"
     );
-    return Number(stmt.run(name, url, groupId, new Date().toISOString()).lastInsertRowid);
+    return Number((await stmt.run(name, url, groupId, new Date().toISOString())).lastInsertRowid);
   };
 
   // Awaited: the hand-over is what every assertion below is measured against, and an
   // un-awaited create leaves `taken` unassigned when the first test reads the phone book.
   beforeAll(async () => {
-    taken = loc("سپرده‌شده", "u/taken");
-    free = loc("آزاد", "u/free");
+    taken = await loc("سپرده‌شده", "u/taken");
+    free = await loc("آزاد", "u/free");
     const res = await createRun(ownerId, "owner", null, {
       driver_user_id: driverId,
       run_date: "2026-07-01",

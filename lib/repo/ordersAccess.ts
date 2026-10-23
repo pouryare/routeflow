@@ -5,10 +5,10 @@ import { getDb } from "@/lib/db";
 
 type Scope = { sql: string; params: (string | number)[] };
 
-export function orderVisible(scope: Scope, orderId: number): boolean {
-  return !!getDb().prepare(`SELECT o.id FROM orders o WHERE o.id = ?${scope.sql}`).get(orderId, ...scope.params);
+export async function orderVisible(scope: Scope, orderId: number): Promise<boolean> {
+  return !!await getDb().prepare(`SELECT o.id FROM orders o WHERE o.id = ?${scope.sql}`).get(orderId, ...scope.params);
 }
 
-export function customerVisible(scope: Scope, customerId: number): boolean {
-  return !!getDb().prepare(`SELECT id FROM customers WHERE id = ?${scope.sql}`).get(customerId, ...scope.params);
+export async function customerVisible(scope: Scope, customerId: number): Promise<boolean> {
+  return !!await getDb().prepare(`SELECT id FROM customers WHERE id = ?${scope.sql}`).get(customerId, ...scope.params);
 }

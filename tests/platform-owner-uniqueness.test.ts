@@ -16,30 +16,30 @@ process.env.SESSION_SECRET = "test-secret";
 const { getDb } = await import("@/lib/db");
 
 describe("exactly one platform_owner", () => {
-  it("a fresh database starts with none, and can be given exactly one", () => {
+  it("a fresh database starts with none, and can be given exactly one", async () => {
     // The schema cannot enforce "at most one" for a role stored in a join table, so this
     // asserts the count is observable and the CREATE path works. The API-level refusal below
     // is what actually prevents a second.
-    const rows = getDb()
+    const rows = await getDb()
       .prepare("SELECT u.display_name FROM users u JOIN user_roles r ON r.user_id = u.id WHERE r.role = 'platform_owner'")
       .all();
     expect(Array.isArray(rows)).toBe(true);
     expect(rows.length).toBeLessThanOrEqual(1);
   });
 
-  it("a role assignment cannot create a SECOND platform_owner", () => {
+  it("a role assignment cannot create a SECOND platform_owner", async () => {
     const db = getDb();
-    db.exec(
+    await db.exec(
       `INSERT OR IGNORE INTO organizations (id,name,slug,created_at) VALUES (77,'O77','o77','2026-01-01')`
     );
     const ins = db.prepare(
       "INSERT INTO users (username,password_hash,display_name,role,organization_id,active,created_at) VALUES (?, 'x', ?, ?, 77, 1, '2026-01-01')"
     );
-    const a = Number(ins.run("p1", "p1", "platform_owner").lastInsertRowid);
-    const b = Number(ins.run("p2", "p2", "owner").lastInsertRowid);
+    const a = Number((await ins.run("p1", "p1", "platform_owner")).lastInsertRowid);
+    const b = Number((await ins.run("p2", "p2", "owner")).lastInsertRowid);
 
     // users.role accepts it — the CHECK names every role, so the column cannot count.
-    const count = db
+    const count = await db
       .prepare("SELECT COUNT(*) n FROM users u JOIN user_roles r ON r.user_id = u.id WHERE r.role = 'platform_owner'")
       .get() as { n: number };
     // Documenting today's reach: the COLUMN and the TABLE both permit a second, and only

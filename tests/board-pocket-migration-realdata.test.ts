@@ -26,59 +26,59 @@ if (!provided) {
 
 process.env.ROUTEFLOW_DB_PATH = dbPath || path.join(os.tmpdir(), `rf-bp-empty-${Date.now()}.db`);
 process.env.SESSION_SECRET = "test-secret";
-const { getDb, backfillReminderTasks } = await import("@/lib/db");
+const { getDb, backfillReminderTasks, rawSqlite } = await import("@/lib/db");
 
 describe.skipIf(!dbPath)("Board & Pocket migration on real data", () => {
-  it("adds columns + table, folds customer reminders losslessly, touches nothing else", () => {
+  it("adds columns + table, folds customer reminders losslessly, touches nothing else", async () => {
     const db = getDb();
-    expect(db.prepare("PRAGMA foreign_key_check").all()).toEqual([]);
+    expect(await db.prepare("PRAGMA foreign_key_check").all()).toEqual([]);
 
     // schema delta present
-    expect(db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='task_recurrences'").get()).toBeTruthy();
+    expect(await db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='task_recurrences'").get()).toBeTruthy();
     expect(
-      (db.prepare("PRAGMA table_info(tasks)").all() as { name: string }[]).some((c) => c.name === "stage")
+      (await db.prepare("PRAGMA table_info(tasks)").all() as { name: string }[]).some((c) => c.name === "stage")
     ).toBe(true);
     expect(
-      (db.prepare("PRAGMA table_info(users)").all() as { name: string }[]).some((c) => c.name === "prefs_json")
+      (await db.prepare("PRAGMA table_info(users)").all() as { name: string }[]).some((c) => c.name === "prefs_json")
     ).toBe(true);
-    expect((db.prepare("SELECT COUNT(*) n FROM task_recurrences").get() as { n: number }).n).toBe(0);
+    expect((await db.prepare("SELECT COUNT(*) n FROM task_recurrences").get() as { n: number }).n).toBe(0);
 
     // no pre-existing row got a stage, a started marker, or a pref
     expect(
-      (db.prepare("SELECT COUNT(*) n FROM tasks WHERE stage IS NOT NULL").get() as { n: number }).n
+      (await db.prepare("SELECT COUNT(*) n FROM tasks WHERE stage IS NOT NULL").get() as { n: number }).n
     ).toBe(0);
     expect(
-      (db.prepare("SELECT COUNT(*) n FROM tasks WHERE started_at IS NOT NULL").get() as { n: number }).n
+      (await db.prepare("SELECT COUNT(*) n FROM tasks WHERE started_at IS NOT NULL").get() as { n: number }).n
     ).toBe(0);
     expect(
-      (db.prepare("SELECT COUNT(*) n FROM users WHERE prefs_json IS NOT NULL").get() as { n: number }).n
+      (await db.prepare("SELECT COUNT(*) n FROM users WHERE prefs_json IS NOT NULL").get() as { n: number }).n
     ).toBe(0);
 
     // backfill: every customer reminder is now exactly one task; district reminders untouched
     const remCust = (
-      db.prepare("SELECT COUNT(*) n FROM reminders WHERE entity_type='customer'").get() as { n: number }
+      await db.prepare("SELECT COUNT(*) n FROM reminders WHERE entity_type='customer'").get() as { n: number }
     ).n;
     const folded = (
-      db.prepare("SELECT COUNT(*) n FROM tasks WHERE kind='reminder' AND entity_type='customer'").get() as { n: number }
+      await db.prepare("SELECT COUNT(*) n FROM tasks WHERE kind='reminder' AND entity_type='customer'").get() as { n: number }
     ).n;
     expect(folded).toBe(remCust);
     expect(
-      (db.prepare("SELECT value FROM app_meta WHERE key='board_pocket_reminders_folded'").get() as { value: string }).value
+      (await db.prepare("SELECT value FROM app_meta WHERE key='board_pocket_reminders_folded'").get() as { value: string }).value
     ).toBe("1");
 
     // a resolved reminder maps to a done task, an open one to an open task
     const openRem = (
-      db.prepare("SELECT COUNT(*) n FROM reminders WHERE entity_type='customer' AND resolved=0").get() as { n: number }
+      await db.prepare("SELECT COUNT(*) n FROM reminders WHERE entity_type='customer' AND resolved=0").get() as { n: number }
     ).n;
     const openTask = (
-      db.prepare("SELECT COUNT(*) n FROM tasks WHERE kind='reminder' AND entity_type='customer' AND status='open'").get() as { n: number }
+      await db.prepare("SELECT COUNT(*) n FROM tasks WHERE kind='reminder' AND entity_type='customer' AND status='open'").get() as { n: number }
     ).n;
     expect(openTask).toBe(openRem);
 
     // re-running the fold is a no-op
-    backfillReminderTasks(db);
+    backfillReminderTasks(await rawSqlite());
     expect(
-      (db.prepare("SELECT COUNT(*) n FROM tasks WHERE kind='reminder' AND entity_type='customer'").get() as { n: number }).n
+      (await db.prepare("SELECT COUNT(*) n FROM tasks WHERE kind='reminder' AND entity_type='customer'").get() as { n: number }).n
     ).toBe(folded);
 
     if (temp) for (const s of ["", "-wal", "-shm"]) fs.rmSync(`${dbPath}${s}`, { force: true });

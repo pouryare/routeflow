@@ -48,40 +48,40 @@ function ctxFor(id: number) {
   return { params: Promise.resolve({ id: String(id) }) } as never;
 }
 
-beforeEach(() => {
+beforeEach(async () => {
   const db = getDb();
-  db.exec(
+  await db.exec(
     "PRAGMA foreign_keys=OFF; DELETE FROM order_events; DELETE FROM stock_reservations; DELETE FROM deliveries; DELETE FROM delivery_stops; DELETE FROM delivery_runs; DELETE FROM order_lines; DELETE FROM orders; DELETE FROM route_schedules; DELETE FROM route_templates; DELETE FROM vehicles; DELETE FROM packagings; DELETE FROM products; DELETE FROM customers; DELETE FROM facilities; DELETE FROM users WHERE id>0; PRAGMA foreign_keys=ON;"
   );
   const now = new Date().toISOString();
   const u = db.prepare(
     "INSERT INTO users (username,password_hash,display_name,role,active,created_at,organization_id) VALUES (?,?,?,?,1,?,1)"
   );
-  owner = Number(u.run(`o${Date.now()}`, "x:y", "م", "owner", now).lastInsertRowid);
-  driver = Number(u.run(`d${Date.now()}`, "x:y", "ر", "delivery_driver", now).lastInsertRowid);
-  seller = Number(u.run(`s${Date.now()}`, "x:y", "ف", "phone_sales", now).lastInsertRowid);
-  db.prepare(
+  owner = Number((await u.run(`o${Date.now()}`, "x:y", "م", "owner", now)).lastInsertRowid);
+  driver = Number((await u.run(`d${Date.now()}`, "x:y", "ر", "delivery_driver", now)).lastInsertRowid);
+  seller = Number((await u.run(`s${Date.now()}`, "x:y", "ف", "phone_sales", now)).lastInsertRowid);
+  await db.prepare(
     "INSERT INTO facilities (slug,kind,name,lat,lng,updated_at,organization_id,created_at) VALUES ('wh','warehouse','ا',35.7,51.4,?,1,?)"
   ).run(now, now);
-  product = createProduct(db, { name: "کره", kg_per_base_unit: 0.25, organization_id: 1 });
-  packaging = createPackaging(db, { product_id: product, name: "جعبه", qty_per_pack: 10 });
-  setPrice(db, { product_id: product, price_toman: 1000, valid_from: "2026-01-01" });
+  product = await createProduct(db, { name: "کره", kg_per_base_unit: 0.25, organization_id: 1 });
+  packaging = await createPackaging(db, { product_id: product, name: "جعبه", qty_per_pack: 10 });
+  await setPrice(db, { product_id: product, price_toman: 1000, valid_from: "2026-01-01" });
 });
 
-function seedOrder(lat: number, lng: number) {
+async function seedOrder(lat: number, lng: number) {
   const db = getDb();
   const cust = Number(
-    db.prepare("INSERT INTO customers (customer_code,business_name,lifecycle,synced_at,lat,lng,organization_id) VALUES ('c'||abs(random()),'x','active',?,?,?,1)").run(new Date().toISOString(), lat, lng).lastInsertRowid
+    (await db.prepare("INSERT INTO customers (customer_code,business_name,lifecycle,synced_at,lat,lng,organization_id) VALUES ('c'||abs(random()),'x','active',?,?,?,1)").run(new Date().toISOString(), lat, lng)).lastInsertRowid
   );
-  const o = createOrder(db, {
+  const o = await createOrder(db, {
     customer_id: cust,
     order_date: TODAY,
     created_by: owner,
     organization_id: 1,
     lines: [{ product_id: product, packaging_id: packaging, packs: 1 }],
   });
-  confirmOrder(db, o.id);
-  planDelivery(1, o.id, {});
+  await confirmOrder(db, o.id);
+  await planDelivery(1, o.id, {});
 }
 
 describe("routing routes", () => {
@@ -98,8 +98,8 @@ describe("routing routes", () => {
   });
 
   it("plans, commits and freezes", async () => {
-    seedOrder(35.705, 51.405);
-    seedOrder(35.73, 51.43);
+    await seedOrder(35.705, 51.405);
+    await seedOrder(35.73, 51.43);
     await V_POST(jreq("/api/sales/vehicles", { name: "وانت", driver_default_id: driver }));
 
     const planRes = await PLAN(jreq("/api/sales/routing/plan", { date: TODAY }));
@@ -120,7 +120,7 @@ describe("routing routes", () => {
     );
     expect(freezeRes.status).toBe(200);
     expect(
-      (getDb().prepare("SELECT frozen_at FROM delivery_runs WHERE id = ?").get(run_ids[0]) as { frozen_at: string | null }).frozen_at
+      (await getDb().prepare("SELECT frozen_at FROM delivery_runs WHERE id = ?").get(run_ids[0]) as { frozen_at: string | null }).frozen_at
     ).not.toBeNull();
   });
 });

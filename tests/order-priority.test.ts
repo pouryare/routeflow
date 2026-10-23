@@ -40,23 +40,23 @@ describe("setOrderPriority", async () => {
 
   afterAll(() => fs.rmSync(path.dirname(dbPath), { recursive: true, force: true }));
 
-  it("sets an open order urgent, and not another company's order", () => {
+  it("sets an open order urgent, and not another company's order", async () => {
     const db = getDb();
-    ensureWarehouse(db);
+    await ensureWarehouse(db);
     const now = new Date().toISOString();
     const owner = Number(
-      db
+      (await db
         .prepare("INSERT INTO users (username,password_hash,display_name,role,active,created_at,organization_id) VALUES ('p1','x','م','owner',1,?,1)")
-        .run(now).lastInsertRowid
+        .run(now)).lastInsertRowid
     );
     const cust = Number(
-      db.prepare("INSERT INTO customers (customer_code,business_name,lifecycle,synced_at,organization_id) VALUES ('P1','x','active',?,1)").run(now)
+      (await db.prepare("INSERT INTO customers (customer_code,business_name,lifecycle,synced_at,organization_id) VALUES ('P1','x','active',?,1)").run(now))
         .lastInsertRowid
     );
-    const product = createProduct(db, { name: "کره", kg_per_base_unit: 0.25, organization_id: 1 });
-    const packaging = createPackaging(db, { product_id: product, name: "جعبه", qty_per_pack: 10 });
-    setPrice(db, { product_id: product, price_toman: 1000, valid_from: "2026-01-01" });
-    const o = createOrder(db, {
+    const product = await createProduct(db, { name: "کره", kg_per_base_unit: 0.25, organization_id: 1 });
+    const packaging = await createPackaging(db, { product_id: product, name: "جعبه", qty_per_pack: 10 });
+    await setPrice(db, { product_id: product, price_toman: 1000, valid_from: "2026-01-01" });
+    const o = await createOrder(db, {
       customer_id: cust,
       order_date: "2026-01-01",
       created_by: owner,
@@ -65,8 +65,8 @@ describe("setOrderPriority", async () => {
       lines: [{ product_id: product, packaging_id: packaging, packs: 1 }],
     });
 
-    expect(setOrderPriority(2, o.id, "URGENT")).toBe(false);
-    expect(setOrderPriority(1, o.id, "URGENT")).toBe(true);
-    expect(readOrder(db, o.id)?.priority).toBe("URGENT");
+    expect(await setOrderPriority(2, o.id, "URGENT")).toBe(false);
+    expect(await setOrderPriority(1, o.id, "URGENT")).toBe(true);
+    expect((await readOrder(db, o.id))?.priority).toBe("URGENT");
   });
 });

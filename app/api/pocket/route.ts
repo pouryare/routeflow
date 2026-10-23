@@ -5,7 +5,7 @@ import { pocketFor } from "@/lib/repo/pocket";
 /** The member's personal task view. Any authenticated non-platform role reads their own;
  *  a manager may pass ?user_id= to see a report's (enforced in pocketFor via canReachUser). */
 export async function GET(req: NextRequest) {
-  const guard = requireRole(req, [
+  const guard = await requireRole(req, [
     "owner",
     "group_manager",
     "rep_manager",
@@ -19,6 +19,6 @@ export async function GET(req: NextRequest) {
   const scopeUserId = raw ? Number(raw) : undefined;
   return NextResponse.json({
     ok: true,
-    pocket: pocketFor(guard.session, { scopeUserId: Number.isFinite(scopeUserId) ? scopeUserId : undefined }),
+    pocket: await pocketFor(guard.session, { scopeUserId: Number.isFinite(scopeUserId) ? scopeUserId : undefined }),
   });
 }

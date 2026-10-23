@@ -6,8 +6,8 @@ const TEHRAN = "Asia/Tehran";
 
 /** The catalogue row for `system.test`, tenant override winning over the NULL-org seed --
  *  the same resolution `catalogueRow` does in lib/repo/notifications.ts (private there). */
-function testTypePriority(organizationId: number): string {
-  const row = getDb()
+async function testTypePriority(organizationId: number): Promise<string> {
+  const row = await getDb()
     .prepare(
       `SELECT priority FROM notification_types
         WHERE code = 'system.test' AND (organization_id = ? OR organization_id IS NULL)
@@ -30,7 +30,7 @@ function testTypePriority(organizationId: number): string {
  *  Priority is read from the catalogue rather than written as a literal, so a re-seed or a
  *  tenant override moves it in one place. At the seeded NORMAL a test message does not
  *  break through the caller's own quiet hours, so a quiet-hours hold is a correct outcome. */
-export function insertTestNotification(organizationId: number, userId: number): number {
+export async function insertTestNotification(organizationId: number, userId: number): Promise<number> {
   const now = new Date().toISOString();
   const groupKey = groupKeyFor(
     "entity",
@@ -38,7 +38,7 @@ export function insertTestNotification(organizationId: number, userId: number): 
     "system.test"
   );
   return Number(
-    getDb()
+    (await getDb()
       .prepare(
         `INSERT INTO notifications
            (organization_id, user_id, type_code, title_fa, body_fa, group_key, priority, created_at)
@@ -50,9 +50,9 @@ export function insertTestNotification(organizationId: number, userId: number): 
         "پیام آزمایشی",
         "اگر این را دریافت کردید، این کانال درست کار می‌کند.",
         groupKey,
-        testTypePriority(organizationId),
+        await testTypePriority(organizationId),
         now
-      ).lastInsertRowid
+      )).lastInsertRowid
   );
 }
 
@@ -68,18 +68,18 @@ export type TestOutcome = {
  *  the same pass happened to flush. The per-channel stamp is the authority: `flushChannel`
  *  writes it only after a successful send or edit. The held/failed split uses the flush's
  *  own exported `inQuietWindow`, so the two can never disagree about a quiet window. */
-export function testNotificationOutcome(
+export async function testNotificationOutcome(
   notificationId: number,
   channel: "push" | "telegram",
   asOfIso: string
-): TestOutcome {
+): Promise<TestOutcome> {
   const col = channel === "push" ? "push_flushed_at" : "tg_flushed_at";
-  const row = getDb()
+  const row = await getDb()
     .prepare(`SELECT user_id, ${col} AS flushed_at FROM notifications WHERE id = ?`)
     .get(notificationId) as { user_id: number; flushed_at: string | null } | undefined;
   if (row?.flushed_at) return { channel, status: "sent" };
 
-  const state = getChannelState(row?.user_id ?? 0, channel);
+  const state = await getChannelState(row?.user_id ?? 0, channel);
   // Must match flushNotifications' own derivation exactly, Tehran included, or this
   // helper and the flush can disagree about whether a row was held.
   const nowHHMM = new Date(asOfIso).toLocaleTimeString("en-GB", { hour12: false, timeZone: TEHRAN }).slice(0, 5);

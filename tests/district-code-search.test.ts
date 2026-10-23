@@ -23,9 +23,9 @@ const ins = db.prepare(
   `INSERT INTO districts (name, level, parent_name, boundary_geojson, code, coverage_status, is_custom, updated_at)
    VALUES (?, ?, '', ?, ?, 'unknown', 0, ?)`
 );
-ins.run("منطقه 14", "mantaghe", geo, "14", NOW);
-ins.run("منطقه 1", "mantaghe", geo, "1", NOW);
-for (let i = 1; i <= 26; i++) ins.run(`محله ${i}`, "mahalle", geo, `14${String(i).padStart(2, "0")}`, NOW);
+await ins.run("منطقه 14", "mantaghe", geo, "14", NOW);
+await ins.run("منطقه 1", "mantaghe", geo, "1", NOW);
+for (let i = 1; i <= 26; i++) await ins.run(`محله ${i}`, "mahalle", geo, `14${String(i).padStart(2, "0")}`, NOW);
 
 const session = { role: "owner", organizationId: 1, user: { id: 1 } } as never;
 
@@ -35,45 +35,45 @@ const session = { role: "owner", organizationId: 1, user: { id: 1 } } as never;
  *  one keystroke useless: "1" would return منطقه 1 plus all 26 of 1401-1426 -- 27 rows for a
  *  single character. */
 describe("district search by code", () => {
-  it("finds a mantaghe by its own code", () => {
-    expect(searchDistricts(db, session, "14", 5)[0]?.label).toBe("منطقه 14");
+  it("finds a mantaghe by its own code", async () => {
+    expect((await searchDistricts(db, session, "14", 5))[0]?.label).toBe("منطقه 14");
   });
 
-  it("does not flood the results with every 14xx", () => {
-    expect(searchDistricts(db, session, "14", 5).length).toBeLessThanOrEqual(5);
+  it("does not flood the results with every 14xx", async () => {
+    expect((await searchDistricts(db, session, "14", 5)).length).toBeLessThanOrEqual(5);
   });
 
-  it("does not let '1' return every 14xx", () => {
-    expect(searchDistricts(db, session, "1", 5).some((h) => h.id === "district:3")).toBe(false);
+  it("does not let '1' return every 14xx", async () => {
+    expect((await searchDistricts(db, session, "1", 5)).some((h) => h.id === "district:3")).toBe(false);
   });
 
-  it("finds a mahalle by its code", () => {
-    expect(searchDistricts(db, session, "1405", 5)[0]?.id).toBe("district:7");
+  it("finds a mahalle by its code", async () => {
+    expect((await searchDistricts(db, session, "1405", 5))[0]?.id).toBe("district:7");
   });
 
   // matchesQuery folds digit sets, and the existing family depends on it; a code search that
   // skipped it would find "14" but miss "۱۴", which is what a phone keyboard types.
-  it("treats Persian and ASCII digits as one query", () => {
+  it("treats Persian and ASCII digits as one query", async () => {
     expect(normalisePersian("۱۴")).toBe(normalisePersian("14"));
-    expect(searchDistricts(db, session, "۱۴", 5)[0]?.label).toBe("منطقه 14");
+    expect((await searchDistricts(db, session, "۱۴", 5))[0]?.label).toBe("منطقه 14");
   });
 
-  it("respects the same two-character floor as every other kind", () => {
-    expect(searchDistricts(db, session, "1", 5)).toEqual([]);
+  it("respects the same two-character floor as every other kind", async () => {
+    expect(await searchDistricts(db, session, "1", 5)).toEqual([]);
     expect(MIN_REMOTE_QUERY).toBe(2);
   });
 
   // Unlike customers, which are owner + group_manager only. A driver sent to ۱۴۰۵ has to be
   // able to look it up, and districts is shared reference data with no tenant row to leak.
-  it("is visible to every role", () => {
+  it("is visible to every role", async () => {
     const driver = { role: "driver", organizationId: 1, user: { id: 1 } } as never;
-    expect(searchDistricts(db, driver, "14", 5).length).toBeGreaterThan(0);
+    expect((await searchDistricts(db, driver, "14", 5)).length).toBeGreaterThan(0);
   });
 
-  it("escapes LIKE wildcards so a query cannot match everything", () => {
+  it("escapes LIKE wildcards so a query cannot match everything", async () => {
     // Unescaped, "5%" matches every code ending in 5 -- a search box returning nonsense
     // rather than an error.
-    expect(searchDistricts(db, session, "%", 5)).toEqual([]);
+    expect(await searchDistricts(db, session, "%", 5)).toEqual([]);
   });
 
   it("a district recent survives a reload", () => {

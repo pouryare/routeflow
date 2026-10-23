@@ -33,27 +33,27 @@ const GOOD = {
   ],
 };
 
-beforeAll(() => {
+beforeAll(async () => {
   const db = getDb();
   const now = new Date().toISOString();
-  const mkOrg = (name: string, slug: string) =>
+  const mkOrg = async (name: string, slug: string) =>
     Number(
-      db.prepare("INSERT INTO organizations (name, slug, created_at) VALUES (?, ?, ?)")
-        .run(name, slug, now).lastInsertRowid,
+      (await db.prepare("INSERT INTO organizations (name, slug, created_at) VALUES (?, ?, ?)")
+        .run(name, slug, now)).lastInsertRowid,
     );
-  org = mkOrg("Co", `c-${Date.now()}`);
-  otherOrg = mkOrg("Other", `x-${Date.now()}`);
+  org = await mkOrg("Co", `c-${Date.now()}`);
+  otherOrg = await mkOrg("Other", `x-${Date.now()}`);
   const group = Number(
-    db.prepare("INSERT INTO groups (name, slug, color, active, created_at) VALUES (?, ?, ?, 1, ?)")
-      .run("شرق", "east", "#0ff", now).lastInsertRowid,
+    (await db.prepare("INSERT INTO groups (name, slug, color, active, created_at) VALUES (?, ?, ?, 1, ?)")
+      .run("شرق", "east", "#0ff", now)).lastInsertRowid,
   );
   const u = db.prepare(
     "INSERT INTO users (username,password_hash,display_name,role,group_id,organization_id,created_at) VALUES (?,?,?,?,?,?,?)",
   );
-  owner = Number(u.run(`o${Date.now()}`, "x", "مالک", "owner", null, org, now).lastInsertRowid);
-  manager = Number(u.run(`m${Date.now()}`, "x", "مدیر", "group_manager", group, org, now).lastInsertRowid);
-  seller = Number(u.run(`s${Date.now()}`, "x", "فروشنده", "phone_sales", group, org, now).lastInsertRowid);
-  stranger = Number(u.run(`x${Date.now()}`, "x", "بیگانه", "phone_sales", group, otherOrg, now).lastInsertRowid);
+  owner = Number((await u.run(`o${Date.now()}`, "x", "مالک", "owner", null, org, now)).lastInsertRowid);
+  manager = Number((await u.run(`m${Date.now()}`, "x", "مدیر", "group_manager", group, org, now)).lastInsertRowid);
+  seller = Number((await u.run(`s${Date.now()}`, "x", "فروشنده", "phone_sales", group, org, now)).lastInsertRowid);
+  stranger = Number((await u.run(`x${Date.now()}`, "x", "بیگانه", "phone_sales", group, otherOrg, now)).lastInsertRowid);
 });
 
 afterAll(() => {
@@ -131,7 +131,7 @@ describe("the tiered plan admin API", () => {
     expect(json.ok).toBe(false);
     expect(json.error.length).toBeGreaterThan(0);
     expect(/[\u0600-\u06FF]/u.test(json.error)).toBe(true);
-    const n = getDb()
+    const n = await getDb()
       .prepare("SELECT COUNT(*) AS n FROM commission_tiers WHERE valid_from = ?")
       .get("2030-01-01") as { n: number };
     expect(n.n).toBe(0);

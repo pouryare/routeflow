@@ -19,18 +19,18 @@ export const dynamic = "force-dynamic";
 
 export default async function ForecastPage() {
   const jar = await cookies();
-  const session = getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
+  const session = await getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
   if (!session) redirect("/login");
   if (!MANAGE_ROLES.includes(session.role)) redirect("/sales");
 
   const org = session.organizationId;
 
-  const entries = demandBoard(org);
-  const churn = churnBoard(org);
-  const factors = resolvedCapacityFactorsFor(org);
-  const learnedN = learnedCapacityCounts(org);
+  const entries = await demandBoard(org);
+  const churn = await churnBoard(org);
+  const factors = await resolvedCapacityFactorsFor(org);
+  const learnedN = await learnedCapacityCounts(org);
   const capacityRows = factors.map((f) => ({ ...f, learned_n: learnedN.get(f.condition_code) ?? 0 }));
-  const computedAt = newestForecastAt(org);
+  const computedAt = await newestForecastAt(org);
 
   return (
     <>

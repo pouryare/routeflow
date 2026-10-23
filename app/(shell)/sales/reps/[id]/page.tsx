@@ -14,15 +14,15 @@ export const dynamic = "force-dynamic";
 
 export default async function RepDetail({ params }: { params: Promise<{ id: string }> }) {
   const jar = await cookies();
-  const session = getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
+  const session = await getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
   if (!session) redirect("/login");
   if (!(MANAGE_ROLES.includes(session.role) || session.role === "rep_manager")) redirect("/sales");
 
   const id = Number((await params).id);
-  const rep = repsRepo.get(session.organizationId, id);
+  const rep = await repsRepo.get(session.organizationId, id);
   if (!rep) notFound();
-  const health = repHealth(session.organizationId, id);
-  const steps = listOnboarding(session.organizationId, id);
+  const health = await repHealth(session.organizationId, id);
+  const steps = await listOnboarding(session.organizationId, id);
 
   return (
     <div className="kblock flex flex-col gap-[var(--space-4)] p-[var(--space-4)]" dir="rtl">

@@ -41,44 +41,44 @@ function ctxFor(id: number) {
   return { params: Promise.resolve({ id: String(id) }) } as never;
 }
 
-beforeEach(() => {
+beforeEach(async () => {
   const db = getDb();
-  db.exec(
+  await db.exec(
     "PRAGMA foreign_keys=OFF; DELETE FROM order_events; DELETE FROM stock_reservations; DELETE FROM stock_movements; DELETE FROM batches; DELETE FROM delivery_lines; DELETE FROM deliveries; DELETE FROM payment_allocations; DELETE FROM payments; DELETE FROM delivery_stops; DELETE FROM delivery_runs; DELETE FROM order_lines; DELETE FROM orders; DELETE FROM packagings; DELETE FROM products; DELETE FROM customers; DELETE FROM facilities; DELETE FROM users WHERE id>0; PRAGMA foreign_keys=ON;"
   );
   const now = new Date().toISOString();
   const u = db.prepare(
     "INSERT INTO users (username,password_hash,display_name,role,active,created_at,organization_id) VALUES (?,?,?,?,1,?,1)"
   );
-  owner = Number(u.run(`o${Date.now()}`, "x:y", "م", "owner", now).lastInsertRowid);
-  driver = Number(u.run(`d${Date.now()}`, "x:y", "ر", "delivery_driver", now).lastInsertRowid);
+  owner = Number((await u.run(`o${Date.now()}`, "x:y", "م", "owner", now)).lastInsertRowid);
+  driver = Number((await u.run(`d${Date.now()}`, "x:y", "ر", "delivery_driver", now)).lastInsertRowid);
   custId = Number(
-    db
+    (await db
       .prepare("INSERT INTO customers (customer_code,business_name,lifecycle,synced_at,organization_id) VALUES (?,?,'active','2026-01-01',1)")
-      .run(`C${Date.now()}`, "x").lastInsertRowid
+      .run(`C${Date.now()}`, "x")).lastInsertRowid
   );
-ensureWarehouse(getDb());
-  product = createProduct(db, { name: "کره", kg_per_base_unit: 0.25, organization_id: 1 });
-  packaging = createPackaging(db, { product_id: product, name: "جعبه", qty_per_pack: 10 });
-  setPrice(db, { product_id: product, price_toman: 1_000, valid_from: "2026-01-01" });
+await ensureWarehouse(getDb());
+  product = await createProduct(db, { name: "کره", kg_per_base_unit: 0.25, organization_id: 1 });
+  packaging = await createPackaging(db, { product_id: product, name: "جعبه", qty_per_pack: 10 });
+  await setPrice(db, { product_id: product, price_toman: 1_000, valid_from: "2026-01-01" });
   reason = (
-    db.prepare("SELECT id FROM reason_codes WHERE domain='delivery_fail' AND code='CUSTOMER_ABSENT'").get() as { id: number }
+    await db.prepare("SELECT id FROM reason_codes WHERE domain='delivery_fail' AND code='CUSTOMER_ABSENT'").get() as { id: number }
   ).id;
 });
 
-function stopWithDelivery(): number {
+async function stopWithDelivery(): Promise<number> {
   const db = getDb();
-  const o = createOrder(db, {
+  const o = await createOrder(db, {
     customer_id: custId,
     order_date: "2026-01-01",
     created_by: owner,
     organization_id: 1,
     lines: [{ product_id: product, packaging_id: packaging, packs: 2 }],
   });
-  confirmOrder(db, o.id);
-  const run = createRun(db, { driver_user_id: driver, run_date: "2026-01-02", created_by: owner, organization_id: 1 });
-  const stopId = addStop(db, run, o.id);
-  return deliveryForStop(1, stopId)!.id;
+  await confirmOrder(db, o.id);
+  const run = await createRun(db, { driver_user_id: driver, run_date: "2026-01-02", created_by: owner, organization_id: 1 });
+  const stopId = await addStop(db, run, o.id);
+  return (await deliveryForStop(1, stopId))!.id;
 }
 
 describe("deliveries + reason-codes routes", () => {
@@ -94,7 +94,7 @@ describe("deliveries + reason-codes routes", () => {
   });
 
   it("completes a delivery, ignoring any body timestamp", async () => {
-    const dId = stopWithDelivery();
+    const dId = await stopWithDelivery();
     const res = await COMPLETE(
       new NextRequest(`http://localhost/api/sales/deliveries/${dId}/complete`, {
         method: "POST",
@@ -116,7 +116,7 @@ describe("deliveries + reason-codes routes", () => {
   });
 
   it("409s a failed completion with no reason", async () => {
-    const dId = stopWithDelivery();
+    const dId = await stopWithDelivery();
     const res = await COMPLETE(
       new NextRequest(`http://localhost/api/sales/deliveries/${dId}/complete`, {
         method: "POST",
@@ -129,7 +129,7 @@ describe("deliveries + reason-codes routes", () => {
   });
 
   it("retries a failed delivery", async () => {
-    const dId = stopWithDelivery();
+    const dId = await stopWithDelivery();
     await COMPLETE(
       new NextRequest(`http://localhost/api/sales/deliveries/${dId}/complete`, {
         method: "POST",

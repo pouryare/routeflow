@@ -9,14 +9,14 @@ import { scopeGroupIds, type Session } from "@/lib/session";
 
 /** The customers the session can see (an owner: their whole organisation; anyone else: their
  *  group). `withDebt` attaches each customer's computed balance. */
-export function customersFor(session: Session, opts: { withDebt?: boolean } = {}): Customer[] {
-  return readCustomers(getDb(), scopeGroupIds(session), opts.withDebt ? { organizationId: session.organizationId } : undefined);
+export async function customersFor(session: Session, opts: { withDebt?: boolean } = {}): Promise<Customer[]> {
+  return await readCustomers(getDb(), await scopeGroupIds(session), opts.withDebt ? { organizationId: session.organizationId } : undefined);
 }
 
 /** The product catalogue of the session's organisation. */
-export function catalogueFor(
+export async function catalogueFor(
   session: Session,
   opts: { includeInactive?: boolean; onDate?: string } = {}
-): CatalogueProduct[] {
-  return readCatalogue(getDb(), session.organizationId, opts);
+): Promise<CatalogueProduct[]> {
+  return await readCatalogue(getDb(), session.organizationId, opts);
 }

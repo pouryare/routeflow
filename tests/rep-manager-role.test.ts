@@ -22,18 +22,17 @@ describe("rep_manager role", () => {
     expect(ROLE_DESCRIPTION.rep_manager).toBeTruthy();
   });
 
-  it("is admitted by the users.role CHECK", () => {
+  it("is admitted by the users.role CHECK", async () => {
     const db = getDb();
-    db.exec(`INSERT INTO organizations (id,name,slug,created_at) VALUES (8,'R','r','2026-01-01')`);
-    expect(() =>
-      db.exec(
+    await db.exec(`INSERT INTO organizations (id,name,slug,created_at) VALUES (8,'R','r','2026-01-01')`);
+    await (async () =>
+      await db.exec(
         `INSERT INTO users (username, password_hash, display_name, role, organization_id, active, created_at)
          VALUES ('rm1','x','مدیر','rep_manager',8,1,'2026-01-01')`
-      )
-    ).not.toThrow();
+      ))();
   });
 
-  it("sees no group territory by default", () => {
+  it("sees no group territory by default", async () => {
     const s = {
       user: { id: 1 } as never,
       role: "rep_manager" as never,
@@ -42,6 +41,6 @@ describe("rep_manager role", () => {
       roles: ["rep_manager"] as import("@/lib/session").Session["roles"],
       hasRole: (x: string) => x === "rep_manager",
     };
-    expect(scopeGroupIds(s)).toEqual([]); // not "all", not a crash
+    expect(await scopeGroupIds(s)).toEqual([]); // not "all", not a crash
   });
 });

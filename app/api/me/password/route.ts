@@ -22,7 +22,7 @@ const CURRENT_WINDOW_MS = 15 * 60 * 1000;
  *  and the person is standing at a form nothing else can be reached past. Guessing the
  *  current one is rate-limited per account, like the login it stands in for. */
 export async function POST(req: NextRequest) {
-  const session = getSession(req);
+  const session = await getSession(req);
   if (!session) return NextResponse.json({ ok: false, error: "احراز هویت نشده" }, { status: 401 });
   if (session.actorId !== undefined) {
     return NextResponse.json({ ok: false, error: "در حالت ورود به‌جای دیگری نمی‌شود رمز را عوض کرد" }, { status: 403 });
@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
       );
     }
     const current = typeof body?.current === "string" ? body.current : "";
-    const stored = findUserById(session.user.id)?.password_hash ?? "";
+    const stored = (await findUserById(session.user.id))?.password_hash ?? "";
     if (!current || !verifyPassword(current, stored)) {
       return NextResponse.json({ ok: false, error: "رمز فعلی درست نیست" }, { status: 400 });
     }
@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
     rateLimitReset(key);
   }
 
-  const tv = setOwnPassword(session.user.id, hashPassword(password));
+  const tv = await setOwnPassword(session.user.id, hashPassword(password));
   const res = NextResponse.json({ ok: true });
   if (claims) {
     const { exp: _exp, pw: _pw, ...rest } = claims;

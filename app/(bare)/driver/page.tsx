@@ -56,7 +56,7 @@ function weatherLine(run: { weather_json?: string | null }): string | null {
  *  It is money, not work, and it belongs to the delivery job only. */
 export default async function DriverPage() {
   const jar = await cookies();
-  const session = getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
+  const session = await getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
   if (!session) redirect("/login");
   if (!isVanRole(session.role)) {
     /* A platform_owner is offered the way forward; everyone else is still bounced. The
@@ -77,7 +77,7 @@ export default async function DriverPage() {
   // and payments stay owner-only policy, the same as the فروشنده and مدیر گروه ledgers.
   const j = toJalali(new Date().toISOString())!;
   const period = { from: jalaliToIsoDate(j.jy, j.jm, 1), to: jalaliToIsoDate(j.jy, j.jm, j.jd) };
-  const { run, leadRun, commission } = driverHomeData(session, today, period);
+  const { run, leadRun, commission } = await driverHomeData(session, today, period);
 
   return (
     <main className="mx-auto min-h-screen w-full max-w-2xl px-[var(--space-4)] py-[var(--space-5)]">

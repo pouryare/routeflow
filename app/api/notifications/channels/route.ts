@@ -17,7 +17,7 @@ type ChannelPatchBody = {
  *  actually present in the body are patched -- `putChannelState` fills the rest with the
  *  spec defaults on a first write and leaves them alone afterwards. */
 export async function PUT(req: NextRequest) {
-  const guard = requireRole(req, [...ROLES]);
+  const guard = await requireRole(req, [...ROLES]);
   if (!guard.ok) return guard.response;
   const { user } = guard.session;
 
@@ -51,7 +51,7 @@ export async function PUT(req: NextRequest) {
   }
 
   try {
-    putChannelState(user.id, channel, patch);
+    await putChannelState(user.id, channel, patch);
   } catch (e) {
     if (e instanceof NotifInputError) {
       return NextResponse.json({ ok: false, error: e.message }, { status: 400 });

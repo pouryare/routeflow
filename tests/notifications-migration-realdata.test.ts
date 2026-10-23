@@ -59,33 +59,33 @@ process.env.SESSION_SECRET = "test-secret";
 const { getDb } = await import("@/lib/db");
 
 describe.skipIf(!dbPath)("Phase 1 notification-system migration on real data", () => {
-  it("adds the two tables + seeds the catalogue and notify rules, touching nothing else", () => {
+  it("adds the two tables + seeds the catalogue and notify rules, touching nothing else", async () => {
     const db = getDb(); // runs every migration incl. the rules CHECK rebuild + both seeds
 
     // The migration must not corrupt referential integrity.
-    expect(db.prepare("PRAGMA foreign_key_check").all()).toEqual([]);
+    expect(await db.prepare("PRAGMA foreign_key_check").all()).toEqual([]);
 
     // Task 1: both new tables exist (PRAGMA table_info returns one row per column).
-    expect((db.prepare("PRAGMA table_info(notification_types)").all() as unknown[]).length).toBeGreaterThan(0);
-    expect((db.prepare("PRAGMA table_info(notifications)").all() as unknown[]).length).toBeGreaterThan(0);
+    expect((await db.prepare("PRAGMA table_info(notification_types)").all() as unknown[]).length).toBeGreaterThan(0);
+    expect((await db.prepare("PRAGMA table_info(notifications)").all() as unknown[]).length).toBeGreaterThan(0);
 
     // Task 1 seed: the NULL-org catalogue (7 rows today; >= so a Phase 2 addition
     // does not retroactively fail this migration test).
-    const cat = db
+    const cat = await db
       .prepare("SELECT COUNT(*) AS c FROM notification_types WHERE organization_id IS NULL")
       .get() as { c: number };
     expect(cat.c).toBeGreaterThanOrEqual(7);
 
     // Task 5 + 6: `notify` is a valid action_kind and the 8 NULL-org notify rules seeded.
-    const rules = db
+    const rules = await db
       .prepare("SELECT COUNT(*) AS c FROM rules WHERE action_kind = 'notify' AND organization_id IS NULL")
       .get() as { c: number };
     expect(rules.c).toBeGreaterThanOrEqual(8);
 
     // A pre-existing table is populated and completely untouched by the migration.
-    expect((db.prepare("SELECT COUNT(*) AS c FROM customers").get() as { c: number }).c).toBeGreaterThan(0);
+    expect((await db.prepare("SELECT COUNT(*) AS c FROM customers").get() as { c: number }).c).toBeGreaterThan(0);
     for (const [t, n] of Object.entries(before)) {
-      expect((db.prepare(`SELECT COUNT(*) AS n FROM ${t}`).get() as { n: number }).n, t).toBe(n);
+      expect((await db.prepare(`SELECT COUNT(*) AS n FROM ${t}`).get() as { n: number }).n, t).toBe(n);
     }
 
     if (temp) for (const s of ["", "-wal", "-shm"]) fs.rmSync(`${dbPath}${s}`, { force: true });

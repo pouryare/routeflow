@@ -12,7 +12,7 @@ process.env.SESSION_SECRET = "test-secret";
 
 const { getDb } = await import("@/lib/db");
 const { ensureWarehouse } = await import("../helpers/ensureWarehouse");
-ensureWarehouse(getDb());
+await ensureWarehouse(getDb());
 const { createProduct } = await import("@/lib/catalogue");
 const { GET } = await import("@/app/api/sales/stock/route");
 const { POST } = await import("@/app/api/sales/purchases/route");
@@ -26,22 +26,22 @@ afterAll(() => {
 
 const ctx = { group: 0, owner: 0, manager: 0, seller: 0, driver: 0, product: 0 };
 
-beforeAll(() => {
+beforeAll(async () => {
   const db = getDb();
   const now = new Date().toISOString();
   ctx.group = Number(
-    db
+    (await db
       .prepare("INSERT INTO groups (name, slug, color, active, created_at) VALUES (?, ?, ?, 1, ?)")
-      .run("شرق", "east", "#0ff", now).lastInsertRowid
+      .run("شرق", "east", "#0ff", now)).lastInsertRowid
   );
   const user = db.prepare(
     "INSERT INTO users (username, password_hash, display_name, role, group_id, active, created_at) VALUES (?, 'x', ?, ?, ?, 1, ?)"
   );
-  ctx.owner = Number(user.run("o", "مالک", "owner", null, now).lastInsertRowid);
-  ctx.manager = Number(user.run("m", "مدیر", "group_manager", ctx.group, now).lastInsertRowid);
-  ctx.seller = Number(user.run("s", "نازنین", "phone_sales", ctx.group, now).lastInsertRowid);
-  ctx.driver = Number(user.run("d", "راننده", "delivery_driver", ctx.group, now).lastInsertRowid);
-  ctx.product = createProduct(db, { name: "کره گیاهی", kg_per_base_unit: 0.25, organization_id: 1 });
+  ctx.owner = Number((await user.run("o", "مالک", "owner", null, now)).lastInsertRowid);
+  ctx.manager = Number((await user.run("m", "مدیر", "group_manager", ctx.group, now)).lastInsertRowid);
+  ctx.seller = Number((await user.run("s", "نازنین", "phone_sales", ctx.group, now)).lastInsertRowid);
+  ctx.driver = Number((await user.run("d", "راننده", "delivery_driver", ctx.group, now)).lastInsertRowid);
+  ctx.product = await createProduct(db, { name: "کره گیاهی", kg_per_base_unit: 0.25, organization_id: 1 });
 });
 
 const cookieFor = (uid: number, role: Role, gid: number | null) =>
@@ -108,7 +108,7 @@ describe("POST /api/sales/purchases", () => {
   });
 
   it("rolls the average cost", async () => {
-    const row = getDb()
+    const row = await getDb()
       .prepare("SELECT avg_cost_toman FROM products WHERE id = ?")
       .get(ctx.product) as { avg_cost_toman: number };
     expect(row.avg_cost_toman).toBe(3000);

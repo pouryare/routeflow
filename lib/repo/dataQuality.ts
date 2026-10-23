@@ -34,9 +34,9 @@ const MISSING = {
   district: "(c.district_id IS NULL)",
 } as const;
 
-export function dataQuality(session: Session, limit = 200): { groups: GroupQuality[]; rows: GapRow[]; total: number } {
+export async function dataQuality(session: Session, limit = 200): Promise<{ groups: GroupQuality[]; rows: GapRow[]; total: number }> {
   const f = crmFilter(session, "c");
-  const raw = getDb()
+  const raw = await getDb()
     .prepare(
       `SELECT c.id, c.business_name, c.customer_code, g.name AS group_name,
               ${MISSING.location} AS no_location, ${MISSING.phone} AS no_phone, ${MISSING.district} AS no_district

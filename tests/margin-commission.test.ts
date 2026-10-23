@@ -21,37 +21,37 @@ afterAll(() => {
 
 const ctx = { owner: 0, seller: 0, manager: 0 };
 
-beforeAll(() => {
+beforeAll(async () => {
   const db = getDb();
   const now = new Date().toISOString();
   // A second organisation so the cross-tenant read below is real. commission_rates
   // carries organization_id as a foreign key, so the parent row has to exist first --
   // the database refusing to let this test fake a tenant that isn't there.
-  db.prepare("INSERT INTO organizations (name, slug, created_at) VALUES (?, ?, ?)").run(
+  await db.prepare("INSERT INTO organizations (name, slug, created_at) VALUES (?, ?, ?)").run(
     "سازمان دوم",
     "second-org",
     now
   );
   ctx.owner = Number(
-    db
+    (await db
       .prepare(
         "INSERT INTO users (username, password_hash, display_name, role, created_at) VALUES (?, 'x', ?, 'owner', ?)"
       )
-      .run("owner", "مالک", now).lastInsertRowid
+      .run("owner", "مالک", now)).lastInsertRowid
   );
   ctx.seller = Number(
-    db
+    (await db
       .prepare(
         "INSERT INTO users (username, password_hash, display_name, role, organization_id, created_at) VALUES (?, 'x', ?, 'phone_sales', 1, ?)"
       )
-      .run("nazanin", "نازنین", now).lastInsertRowid
+      .run("nazanin", "نازنین", now)).lastInsertRowid
   );
   ctx.manager = Number(
-    db
+    (await db
       .prepare(
         "INSERT INTO users (username, password_hash, display_name, role, organization_id, created_at) VALUES (?, 'x', ?, 'group_manager', 1, ?)"
       )
-      .run("mahnaz", "مهناز", now).lastInsertRowid
+      .run("mahnaz", "مهناز", now)).lastInsertRowid
   );
 });
 
@@ -87,41 +87,41 @@ describe("commissionForUnit", () => {
 });
 
 describe("readCompanyRatePerKg", () => {
-  it("reads the company default when nobody has a personal rate", () => {
+  it("reads the company default when nobody has a personal rate", async () => {
     const db = getDb();
-    db.prepare(
+    await db.prepare(
       `INSERT INTO commission_rates (salesperson_user_id, rate_per_kg_toman, valid_from, organization_id, created_at)
        VALUES (NULL, 180000, '2026-01-01', 1, ?)`
     ).run(new Date().toISOString());
-    expect(readCompanyRatePerKg(db, 1, "2026-06-01")).toBe(180_000);
+    expect(await readCompanyRatePerKg(db, 1, "2026-06-01")).toBe(180_000);
   });
 
-  it("is null before the first rate started", () => {
-    expect(readCompanyRatePerKg(getDb(), 1, "2025-01-01")).toBeNull();
+  it("is null before the first rate started", async () => {
+    expect(await readCompanyRatePerKg(getDb(), 1, "2025-01-01")).toBeNull();
   });
 
-  it("reads nothing for another organisation", () => {
+  it("reads nothing for another organisation", async () => {
     const db = getDb();
-    db.prepare(
+    await db.prepare(
       `INSERT INTO commission_rates (salesperson_user_id, rate_per_kg_toman, valid_from, organization_id, created_at)
        VALUES (NULL, 999000, '2026-01-01', 2, ?)`
     ).run(new Date().toISOString());
     // Organisation 1 must keep seeing 180000, never the tenant-2 figure.
-    expect(readCompanyRatePerKg(db, 1, "2026-06-01")).toBe(180_000);
+    expect(await readCompanyRatePerKg(db, 1, "2026-06-01")).toBe(180_000);
   });
 });
 
 describe("readManagerOverridePct", () => {
-  it("reads the override in force for a manager", () => {
+  it("reads the override in force for a manager", async () => {
     const db = getDb();
-    db.prepare(
+    await db.prepare(
       `INSERT INTO manager_commission_overrides (manager_user_id, override_pct, valid_from, organization_id, created_at)
        VALUES (?, 5, '2026-01-01', 1, ?)`
     ).run(ctx.manager, new Date().toISOString());
-    expect(readManagerOverridePct(db, 1, ctx.manager, "2026-06-01")).toBe(5);
+    expect(await readManagerOverridePct(db, 1, ctx.manager, "2026-06-01")).toBe(5);
   });
 
-  it("is null when the manager has no override", () => {
-    expect(readManagerOverridePct(getDb(), 1, ctx.owner, "2026-06-01")).toBeNull();
+  it("is null when the manager has no override", async () => {
+    expect(await readManagerOverridePct(getDb(), 1, ctx.owner, "2026-06-01")).toBeNull();
   });
 });

@@ -10,7 +10,7 @@
  *    anything is corrected, and the whole point of this table is to be checkable.
  */
 
-import type { DatabaseSync } from "node:sqlite";
+import type { Db } from "@/lib/database/client";
 import { movingAverageCost, stockAfter } from "./stockMath";
 import { isToman } from "./money";
 import { orgClause } from "./orgScope";
@@ -62,7 +62,7 @@ export interface PurchaseInput {
  *  roll did not would leave every later sale priced against a stale average, and
  *  nothing on screen would look wrong.
  */
-export function recordPurchase(db: DatabaseSync, input: PurchaseInput): number {
+export async function recordPurchase(db: Db, input: PurchaseInput): Promise<number> {
   if (input.lines.length === 0) throw new PurchaseError("خرید بدون قلم ثبت نمی‌شود");
 
   for (const line of input.lines) {
@@ -75,10 +75,10 @@ export function recordPurchase(db: DatabaseSync, input: PurchaseInput): number {
   }
 
   const now = new Date().toISOString();
-  db.exec("BEGIN IMMEDIATE");
+  await db.exec("BEGIN IMMEDIATE");
   try {
     const purchaseId = Number(
-      db
+      (await db
         .prepare(
           `INSERT INTO purchases (supplier, supplier_id, purchase_date, invoice_no, notes, created_by, created_at, organization_id)
            VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
@@ -92,7 +92,7 @@ export function recordPurchase(db: DatabaseSync, input: PurchaseInput): number {
           input.created_by,
           now,
           input.organization_id
-        ).lastInsertRowid
+        )).lastInsertRowid
     );
 
     const insertLine = db.prepare(
@@ -108,20 +108,20 @@ export function recordPurchase(db: DatabaseSync, input: PurchaseInput): number {
     // A NULL organisation is only ever a hand-seeded test row (the boot backfill sets it
     // in production); the batch/movement tables are NOT NULL on it, so default to 1.
     const orgId = input.organization_id || 1;
-    const facilityId = defaultFacilityId(orgId);
+    const facilityId = await defaultFacilityId(orgId);
 
     for (const line of input.lines) {
-      const product = db
+      const product = await db
         .prepare("SELECT id, avg_cost_toman FROM products WHERE id = ?")
         .get(line.product_id) as { avg_cost_toman: number } | undefined;
       if (!product) throw new PurchaseError("کالا پیدا نشد");
 
       const purchaseLineId = Number(
-        insertLine.run(purchaseId, line.product_id, line.base_qty, line.unit_cost_toman, now)
+        (await insertLine.run(purchaseId, line.product_id, line.base_qty, line.unit_cost_toman, now))
           .lastInsertRowid
       );
 
-      const batchId = createBatchTxn(db, orgId, {
+      const batchId = await createBatchTxn(db, orgId, {
         product_id: line.product_id,
         batch_code: line.batch_code,
         supplier_batch_ref: line.supplier_batch_ref,
@@ -132,7 +132,7 @@ export function recordPurchase(db: DatabaseSync, input: PurchaseInput): number {
         unit_cost_toman: line.unit_cost_toman,
       });
 
-      recordMovementsTxn(db, orgId, [
+      await recordMovementsTxn(db, orgId, [
         {
           facility_id: facilityId,
           product_id: line.product_id,
@@ -148,8 +148,8 @@ export function recordPurchase(db: DatabaseSync, input: PurchaseInput): number {
 
       // Read the position *before* this line as the weight for the blend. Reading it
       // afterwards would count the arriving units twice.
-      const onHand = onHandFor(db, line.product_id) - line.base_qty;
-      setCost.run(
+      const onHand = await onHandFor(db, line.product_id) - line.base_qty;
+      await setCost.run(
         movingAverageCost({
           onHand,
           avgCost: product.avg_cost_toman,
@@ -177,7 +177,7 @@ export function recordPurchase(db: DatabaseSync, input: PurchaseInput): number {
       const total = sumToman(
         input.lines.map((l) => roundToman(l.base_qty * l.unit_cost_toman))
       );
-      postPurchase(db, {
+      await postPurchase(db, {
         organizationId: orgId,
         purchaseId,
         supplierId: input.supplier_id,
@@ -187,23 +187,23 @@ export function recordPurchase(db: DatabaseSync, input: PurchaseInput): number {
       });
     }
 
-    db.exec("COMMIT");
+    await db.exec("COMMIT");
     return purchaseId;
   } catch (e) {
-    db.exec("ROLLBACK");
+    await db.exec("ROLLBACK");
     throw e;
   }
 }
 
 /** Units of one product currently on hand. */
-function onHandFor(db: DatabaseSync, productId: number): number {
-  const bought = db
+async function onHandFor(db: Db, productId: number): Promise<number> {
+  const bought = await db
     .prepare("SELECT COALESCE(SUM(base_qty), 0) AS n FROM purchase_lines WHERE product_id = ?")
     .get(productId) as { n: number };
 
   // COALESCE(packs_delivered, 0) rather than falling back to packs_ordered: goods only
   // leave the warehouse when a driver says they did.
-  const gone = db
+  const gone = await db
     .prepare(
       `SELECT COALESCE(SUM(COALESCE(ol.packs_delivered, 0) * ol.qty_per_pack), 0) AS n
          FROM order_lines ol
@@ -228,12 +228,12 @@ export interface StockRow {
   negative: boolean;
 }
 
-export function stockPosition(db: DatabaseSync, organizationId: number | null): StockRow[] {
+export async function stockPosition(db: Db, organizationId: number | null): Promise<StockRow[]> {
   const org = orgClause("p.organization_id", organizationId);
   // Phase 2: on-hand is the sum of the signed movement ledger. purchased_qty /
   // delivered_qty stay in the shape callers expect, split by sign. stockAfter still
   // holds: purchased - delivered = SUM(base_qty).
-  const rows = db
+  const rows = await db
     .prepare(
       `SELECT p.id AS product_id, p.name, p.base_unit, p.avg_cost_toman,
               COALESCE((SELECT SUM(m.base_qty) FROM stock_movements m
@@ -298,18 +298,18 @@ export interface AdvancedStockRow extends StockRow {
  *  the dashboard's plain stock bar chart has no use for a driver's worth of extra
  *  columns and three more queries it would otherwise pay for on every render.
  */
-export function advancedStockPosition(db: DatabaseSync, organizationId: number | null): AdvancedStockRow[] {
+export async function advancedStockPosition(db: Db, organizationId: number | null): Promise<AdvancedStockRow[]> {
   /* Only `base` needs the scope: every map below is keyed by product id and read back only for
      a product `base` returned, so another tenant's rows are never looked up. */
-  const base = stockPosition(db, organizationId);
+  const base = await stockPosition(db, organizationId);
 
-  const thresholds = db
+  const thresholds = await db
     .prepare("SELECT id, reorder_point, target_stock FROM products WHERE active = 1")
     .all() as unknown as { id: number; reorder_point: number | null; target_stock: number | null }[];
   const thresholdById = new Map(thresholds.map((t) => [t.id, t]));
 
   const windowStart = new Date(Date.now() - VELOCITY_WINDOW_DAYS * 86_400_000).toISOString().slice(0, 10);
-  const dailyRows = db
+  const dailyRows = await db
     .prepare(
       `SELECT ol.product_id, substr(o.delivered_at, 1, 10) AS day,
               SUM(COALESCE(ol.packs_delivered, 0) * ol.qty_per_pack) AS qty
@@ -325,7 +325,7 @@ export function advancedStockPosition(db: DatabaseSync, organizationId: number |
     dailyByProduct.get(row.product_id)!.set(row.day, row.qty);
   }
 
-  const lastPurchaseRows = db
+  const lastPurchaseRows = await db
     .prepare(
       `SELECT pl.product_id, MAX(pu.purchase_date) AS last_date
          FROM purchase_lines pl JOIN purchases pu ON pu.id = pl.purchase_id
@@ -338,7 +338,7 @@ export function advancedStockPosition(db: DatabaseSync, organizationId: number |
   // of those within 30 days (or already past). The precise, shelf-life-scaled window
   // lives in lib/repo/batches.expiringBatches and the /stock/expiry endpoint; this chip
   // just flags "something here is ageing".
-  const expiryRows = db
+  const expiryRows = await db
     .prepare(
       `SELECT b.product_id,
               MIN(b.expiry_date) AS earliest,
@@ -383,9 +383,9 @@ export function advancedStockPosition(db: DatabaseSync, organizationId: number |
 }
 
 /** This month's purchase count and value for one organisation (the انبار page header). */
-export function monthPurchaseTotals(db: DatabaseSync, organizationId: number | null, monthFrom: string): { n: number; total: number } {
+export async function monthPurchaseTotals(db: Db, organizationId: number | null, monthFrom: string): Promise<{ n: number; total: number }> {
   const org = orgClause("pu.organization_id", organizationId);
-  return db
+  return await db
     .prepare(
       `SELECT COUNT(DISTINCT pu.id) AS n, COALESCE(SUM(pl.base_qty * pl.unit_cost_toman), 0) AS total
          FROM purchases pu LEFT JOIN purchase_lines pl ON pl.purchase_id = pu.id
@@ -404,8 +404,8 @@ export interface PurchaseSummary {
   entered_by: string | null;
 }
 
-export function readPurchases(db: DatabaseSync, organizationId: number, limit = 100): PurchaseSummary[] {
-  return db
+export async function readPurchases(db: Db, organizationId: number, limit = 100): Promise<PurchaseSummary[]> {
+  return await db
     .prepare(
       `SELECT pu.id, pu.supplier, pu.purchase_date, pu.invoice_no,
               COUNT(pl.id) AS line_count,

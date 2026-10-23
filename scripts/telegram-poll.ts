@@ -34,6 +34,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { consumeTelegramStart } from "../lib/repo/telegramLink.ts";
+import { sqliteDb } from "../lib/database/client.ts";
 
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 
@@ -104,7 +105,8 @@ interface Update {
   message?: { text?: string; chat?: { id?: number } };
 }
 
-const db = new DatabaseSync(DB_PATH);
+const db = sqliteDb(() => raw);
+const raw = new DatabaseSync(DB_PATH);
 let offset = readOffset();
 console.log(`[telegram] worker up, db=${DB_PATH}, offset=${offset}`);
 
@@ -120,7 +122,7 @@ while (true) {
       const text = u.message?.text;
       const chatId = u.message?.chat?.id;
       if (!text || chatId == null) continue;
-      const r = consumeTelegramStart(db, text, String(chatId));
+      const r = await consumeTelegramStart(db, text, String(chatId));
       if (r.linked) {
         console.log(`[telegram] linked chat ${chatId} to user ${r.userId}`);
         reply(chatId, LINKED_REPLY);

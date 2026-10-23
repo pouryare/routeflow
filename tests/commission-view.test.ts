@@ -32,79 +32,79 @@ function session(role: "owner" | "group_manager" | "phone_sales", uid: number, g
   } as unknown as Session;
 }
 
-beforeAll(() => {
-  ({ a, b } = seedTwoOrgs(getDb()));
-  const mk = (tag: string, role: string, org: number, gid: number) => {
+beforeAll(async () => {
+  ({ a, b } = await seedTwoOrgs(getDb()));
+  const mk = async (tag: string, role: string, org: number, gid: number) => {
     const id = Number(
-      getDb()
+      (await getDb()
         .prepare("INSERT INTO users (username, password_hash, display_name, role, group_id, active, created_at, organization_id) VALUES (?, 'x:y', ?, ?, ?, 1, '2026-01-01', ?)")
-        .run(`cv-${role}-${tag}`, `${role} ${tag}`, role, gid, org).lastInsertRowid
+        .run(`cv-${role}-${tag}`, `${role} ${tag}`, role, gid, org)).lastInsertRowid
     );
-    getDb().prepare("INSERT OR IGNORE INTO user_roles (user_id, role) VALUES (?, ?)").run(id, role);
+    await getDb().prepare("INSERT OR IGNORE INTO user_roles (user_id, role) VALUES (?, ?)").run(id, role);
     return id;
   };
-  ids.sellerA = mk("a", "phone_sales", 1, a.groupId);
-  ids.sellerB = mk("b", "phone_sales", 2, b.groupId);
-  ids.driverA = mk("a", "delivery_driver", 1, a.groupId);
-  ids.driverB = mk("b", "delivery_driver", 2, b.groupId);
-  ids.fieldRepB = mk("b", "field_rep", 2, b.groupId);
+  ids.sellerA = await mk("a", "phone_sales", 1, a.groupId);
+  ids.sellerB = await mk("b", "phone_sales", 2, b.groupId);
+  ids.driverA = await mk("a", "delivery_driver", 1, a.groupId);
+  ids.driverB = await mk("b", "delivery_driver", 2, b.groupId);
+  ids.fieldRepB = await mk("b", "field_rep", 2, b.groupId);
   const rate = getDb().prepare("INSERT INTO commission_rates (organization_id, salesperson_user_id, rate_per_kg_toman, valid_from, created_at) VALUES (?, NULL, ?, ?, '2026-01-01')");
-  for (let i = 0; i < 15; i++) rate.run(1, 100 + i, `2025-${String((i % 12) + 1).padStart(2, "0")}-01`);
-  rate.run(2, 999, "2026-01-01");
+  for (let i = 0; i < 15; i++) await rate.run(1, 100 + i, `2025-${String((i % 12) + 1).padStart(2, "0")}-01`);
+  await rate.run(2, 999, "2026-01-01");
 });
 
 describe("commissionPeopleFor", () => {
-  it("lists an owner only their own organisation's sellers, van staff and group managers", () => {
-    const p = commissionPeopleFor(session("owner", a.ownerId, null, 1));
+  it("lists an owner only their own organisation's sellers, van staff and group managers", async () => {
+    const p = await commissionPeopleFor(session("owner", a.ownerId, null, 1));
     expect(p.sellers.map((x) => x.id)).toEqual([ids.sellerA]);
     expect(p.drivers.map((x) => x.id)).toEqual([ids.driverA]);
     expect(p.managers.map((x) => x.id)).toEqual([a.managerId]);
-    const q = commissionPeopleFor(session("owner", b.ownerId, null, 2));
+    const q = await commissionPeopleFor(session("owner", b.ownerId, null, 2));
     expect(q.sellers.map((x) => x.id)).toEqual([ids.sellerB]);
     expect(q.drivers.map((x) => x.id).sort()).toEqual([ids.driverB, ids.fieldRepB].sort()); // both van roles
     expect(q.managers.map((x) => x.id)).toEqual([b.managerId]);
   });
 
-  it("offers nothing to anyone but an owner", () => {
+  it("offers nothing to anyone but an owner", async () => {
     for (const s of [session("group_manager", a.managerId, a.groupId, 1), session("phone_sales", ids.sellerA, a.groupId, 1)]) {
-      expect(commissionPeopleFor(s)).toEqual({ sellers: [], drivers: [], managers: [] });
+      expect(await commissionPeopleFor(s)).toEqual({ sellers: [], drivers: [], managers: [] });
     }
   });
 
-  it("returns plain objects (they cross into a client component)", () => {
-    const row = commissionPeopleFor(session("owner", a.ownerId, null, 1)).sellers[0];
+  it("returns plain objects (they cross into a client component)", async () => {
+    const row = (await commissionPeopleFor(session("owner", a.ownerId, null, 1))).sellers[0];
     expect(Object.getPrototypeOf(row)).toBe(Object.prototype);
   });
 });
 
 describe("commissionStatementsFor", () => {
-  it("gives an owner their whole organisation's ledgers and nothing of another", () => {
-    const s = commissionStatementsFor(session("owner", a.ownerId, null, 1), PERIOD);
+  it("gives an owner their whole organisation's ledgers and nothing of another", async () => {
+    const s = await commissionStatementsFor(session("owner", a.ownerId, null, 1), PERIOD);
     expect(s.statements.map((x) => x.salesperson_user_id)).toEqual([ids.sellerA]);
     expect(s.driverStatements.map((x) => x.driver_user_id)).toEqual([ids.driverA]);
     expect(s.managerStatements.map((x) => x.manager_user_id)).toEqual([a.managerId]);
   });
 
-  it("gives a seller only their own statement", () => {
-    const s = commissionStatementsFor(session("phone_sales", ids.sellerA, a.groupId, 1), PERIOD);
+  it("gives a seller only their own statement", async () => {
+    const s = await commissionStatementsFor(session("phone_sales", ids.sellerA, a.groupId, 1), PERIOD);
     expect(s.statements.map((x) => x.salesperson_user_id)).toEqual([ids.sellerA]);
     expect(s.driverStatements).toEqual([]);
     expect(s.managerStatements).toEqual([]);
   });
 
-  it("gives a group manager their group's people and only their own override", () => {
-    const s = commissionStatementsFor(session("group_manager", a.managerId, a.groupId, 1), PERIOD);
+  it("gives a group manager their group's people and only their own override", async () => {
+    const s = await commissionStatementsFor(session("group_manager", a.managerId, a.groupId, 1), PERIOD);
     expect(s.statements.map((x) => x.salesperson_user_id)).toEqual([ids.sellerA]);
     expect(s.managerStatements.map((x) => x.manager_user_id)).toEqual([a.managerId]);
   });
 });
 
 describe("commissionRatesFor", () => {
-  it("is owner only, scoped to the organisation, and optionally limited", () => {
+  it("is owner only, scoped to the organisation, and optionally limited", async () => {
     const owner = session("owner", a.ownerId, null, 1);
-    expect(commissionRatesFor(owner).rates).toHaveLength(15);
-    expect(commissionRatesFor(owner, { limit: 12 }).rates).toHaveLength(12);
-    expect(commissionRatesFor(owner).rates.every((r) => r.rate_per_kg_toman < 200)).toBe(true); // org B's 999 is absent
-    expect(commissionRatesFor(session("group_manager", a.managerId, a.groupId, 1))).toEqual({ rates: [], driverRates: [], managerOverrides: [] });
+    expect((await commissionRatesFor(owner)).rates).toHaveLength(15);
+    expect((await commissionRatesFor(owner, { limit: 12 })).rates).toHaveLength(12);
+    expect((await commissionRatesFor(owner)).rates.every((r) => r.rate_per_kg_toman < 200)).toBe(true); // org B's 999 is absent
+    expect(await commissionRatesFor(session("group_manager", a.managerId, a.groupId, 1))).toEqual({ rates: [], driverRates: [], managerOverrides: [] });
   });
 });

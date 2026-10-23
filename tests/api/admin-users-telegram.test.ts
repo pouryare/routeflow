@@ -38,28 +38,28 @@ function ctx(id: number) {
   return { params: Promise.resolve({ id: String(id) }) };
 }
 
-function row(id: number) {
-  return getDb()
+async function row(id: number) {
+  return await getDb()
     .prepare("SELECT telegram_chat_id, telegram_link_nonce FROM users WHERE id = ?")
     .get(id) as { telegram_chat_id: string | null; telegram_link_nonce: string | null };
 }
 
-beforeEach(() => {
+beforeEach(async () => {
   const db = getDb();
-  db.exec("PRAGMA foreign_keys=OFF; DELETE FROM users WHERE id>0; PRAGMA foreign_keys=ON;");
+  await db.exec("PRAGMA foreign_keys=OFF; DELETE FROM users WHERE id>0; PRAGMA foreign_keys=ON;");
   const now = new Date().toISOString();
-  db.exec("PRAGMA foreign_keys=OFF; DELETE FROM groups; PRAGMA foreign_keys=ON;");
+  await db.exec("PRAGMA foreign_keys=OFF; DELETE FROM groups; PRAGMA foreign_keys=ON;");
   const gid = Number(
-    db.prepare("INSERT INTO groups (name, slug, created_at, organization_id) VALUES ('گ','g',?,1)").run(now)
+    (await db.prepare("INSERT INTO groups (name, slug, created_at, organization_id) VALUES ('گ','g',?,1)").run(now))
       .lastInsertRowid
   );
   const u = db.prepare(
     "INSERT INTO users (username,password_hash,display_name,role,active,created_at,organization_id,group_id) VALUES (?,?,?,?,1,?,1,?)"
   );
-  owner = Number(u.run(`o${Date.now()}`, "x:y", "مالک", "owner", now, null).lastInsertRowid);
+  owner = Number((await u.run(`o${Date.now()}`, "x:y", "مالک", "owner", now, null)).lastInsertRowid);
   // A salesperson must belong to a group — PATCH rejects the whole request otherwise, so
   // an ungrouped target would make every assertion below fail for the wrong reason.
-  target = Number(u.run(`t${Date.now()}`, "x:y", "هدف", "phone_sales", now, gid).lastInsertRowid);
+  target = Number((await u.run(`t${Date.now()}`, "x:y", "هدف", "phone_sales", now, gid)).lastInsertRowid);
   ownerToken = createSessionToken({ uid: owner, role: "owner", gid: null, oid: 1, tv: 0, name: "مالک" });
   sellerToken = createSessionToken({ uid: target, role: "phone_sales", gid: null, oid: 1, tv: 0, name: "هدف" });
 });
@@ -68,33 +68,33 @@ describe("admin-set telegram_chat_id", () => {
   it("refuses a non-owner", async () => {
     const res = await PATCH(req("PATCH", sellerToken, { telegram_chat_id: "55384695" }), ctx(target));
     expect(res.status).toBe(403);
-    expect(row(target).telegram_chat_id).toBeNull();
+    expect((await row(target)).telegram_chat_id).toBeNull();
   });
 
   it("sets a numeric chat id", async () => {
     const res = await PATCH(req("PATCH", ownerToken, { telegram_chat_id: "55384695" }), ctx(target));
     expect(res.status).toBe(200);
-    expect(row(target).telegram_chat_id).toBe("55384695");
+    expect((await row(target)).telegram_chat_id).toBe("55384695");
   });
 
   it("burns any pending self-link nonce, so it cannot later rebind the account", async () => {
-    getDb().prepare("UPDATE users SET telegram_link_nonce = 'pending' WHERE id = ?").run(target);
+    await getDb().prepare("UPDATE users SET telegram_link_nonce = 'pending' WHERE id = ?").run(target);
     const res = await PATCH(req("PATCH", ownerToken, { telegram_chat_id: "55384695" }), ctx(target));
     expect(res.status).toBe(200);
-    expect(row(target)).toEqual({ telegram_chat_id: "55384695", telegram_link_nonce: null });
+    expect(await row(target)).toEqual({ telegram_chat_id: "55384695", telegram_link_nonce: null });
   });
 
   it("clears the column on an empty string", async () => {
     await PATCH(req("PATCH", ownerToken, { telegram_chat_id: "55384695" }), ctx(target));
     const res = await PATCH(req("PATCH", ownerToken, { telegram_chat_id: "" }), ctx(target));
     expect(res.status).toBe(200);
-    expect(row(target).telegram_chat_id).toBeNull();
+    expect((await row(target)).telegram_chat_id).toBeNull();
   });
 
   it("accepts a negative id — telegram groups and channels have them", async () => {
     const res = await PATCH(req("PATCH", ownerToken, { telegram_chat_id: "-1001234567890" }), ctx(target));
     expect(res.status).toBe(200);
-    expect(row(target).telegram_chat_id).toBe("-1001234567890");
+    expect((await row(target)).telegram_chat_id).toBe("-1001234567890");
   });
 
   it("rejects a non-numeric id and leaves the row untouched", async () => {
@@ -104,7 +104,7 @@ describe("admin-set telegram_chat_id", () => {
       expect(res.status, bad).toBe(400);
       expect((await res.json()).error, bad).toBe("شناسه تلگرام باید عددی باشد");
     }
-    expect(row(target).telegram_chat_id).toBe("55384695");
+    expect((await row(target)).telegram_chat_id).toBe("55384695");
   });
 
   it("exposes the column on the admin list", async () => {

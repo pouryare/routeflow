@@ -16,7 +16,7 @@ import { commitPlan } from "@/lib/repo/salesWrites";
  *  validation SELECT is how that boundary erodes one route at a time; reachability is a
  *  question about rows, so it lives in the repo with the rest of them. */
 export async function POST(req: NextRequest) {
-  const guard = requireRole(req, MANAGE_ROLES);
+  const guard = await requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
 
   const body = (await req.json().catch(() => null)) as { lanes?: unknown } | null;
@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  const result = commitPlan(wanted, guard.session.user.id, guard.session.organizationId);
+  const result = await commitPlan(wanted, guard.session.user.id, guard.session.organizationId);
   if (!result) {
     return NextResponse.json({ ok: false, error: "چیزی برای ثبت نبود" }, { status: 400 });
   }

@@ -2,6 +2,7 @@
  * Moved out of lib/db.ts's getDb() unchanged; the eras run in numeric order from ../migrate.ts and
  * each statement is idempotent (it inspects the live schema first). */
 import type { DatabaseSync } from "node:sqlite";
+import type { Db } from "../client";
 import { backfillOrderFigures } from "../../repo/orderFigures";
 import { migrateCrm } from "../../repo/crm/migrate";
 import { TENANT_TABLES } from "../tenantTables";
@@ -15,7 +16,7 @@ import {
 } from "../backfills";
 import { rebuildDeliveryRunsStatus } from "../rebuilds";
 
-export function applyLedgersAndLateColumns(db: DatabaseSync): void {
+export async function applyLedgersAndLateColumns(db: DatabaseSync, adb: Db): Promise<void> {
   // A second sweep, run last and every boot. The first one above (right after the
   // ALTER) exists so seedFacilities sees already-backfilled rows and can correctly
   // recognise them as already seeded; this one is the safety net for whatever runs
@@ -54,7 +55,7 @@ export function applyLedgersAndLateColumns(db: DatabaseSync): void {
   // Turn existing payments into ledger postings. After seedAccounts (it needs account
   // ids) and BEFORE any live payment path can write, so the cutover in Task 4 never races
   // the history it is supposed to sit on top of.
-  backfillLedger(db);
+  await backfillLedger(db, adb);
 
   // Phase 2: convert legacy purchases + deliveries into the stock-movement ledger, once.
   backfillStockLedger(db);
@@ -188,7 +189,7 @@ export function applyLedgersAndLateColumns(db: DatabaseSync): void {
   }
   // Fold existing customer reminders into the tasks spine (once, guarded).
   backfillReminderTasks(db);
-  migrateCrm(db);
+  await migrateCrm(adb);
 
   /* Per-order figures (weight, total, cost), stored so the commission ledgers, the debt pass and
      the dashboard do not have to re-add every line of every order on each request (see
@@ -227,5 +228,5 @@ export function applyLedgersAndLateColumns(db: DatabaseSync): void {
   db.exec(
     "CREATE INDEX IF NOT EXISTS ix_orders_org_customer_date ON orders(organization_id, customer_id, order_date, status)"
   );
-  backfillOrderFigures(db);
+  await backfillOrderFigures(adb);
 }

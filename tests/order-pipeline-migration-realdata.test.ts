@@ -45,22 +45,22 @@ const { getDb } = await import("@/lib/db");
 const { ORDER_STATUSES } = await import("@/lib/orderStateMachine");
 
 describe.skipIf(!dbPath)("Phase 3 order pipeline migration on real data", () => {
-  it("is lossless: no FK breakage, every status valid, every order keeps a create event", () => {
+  it("is lossless: no FK breakage, every status valid, every order keeps a create event", async () => {
     const db = getDb(); // runs every migration incl. rebuildOrdersStatusMachine + backfillOrderEvents
 
-    expect(db.prepare("PRAGMA foreign_key_check").all()).toEqual([]);
+    expect(await db.prepare("PRAGMA foreign_key_check").all()).toEqual([]);
 
     const valid = new Set(ORDER_STATUSES);
     const bad = (
-      db.prepare("SELECT DISTINCT status FROM orders").all() as { status: string }[]
+      await db.prepare("SELECT DISTINCT status FROM orders").all() as { status: string }[]
     ).filter((r) => !valid.has(r.status as never));
     expect(bad, `unknown statuses: ${bad.map((b) => b.status).join(", ")}`).toEqual([]);
 
-    const after = (db.prepare("SELECT COUNT(*) AS n FROM orders").get() as { n: number }).n;
+    const after = (await db.prepare("SELECT COUNT(*) AS n FROM orders").get() as { n: number }).n;
     expect(after).toBe(ordersBefore);
 
     const orphan = (
-      db
+      await db
         .prepare(
           "SELECT COUNT(*) AS n FROM orders o WHERE NOT EXISTS (SELECT 1 FROM order_events e WHERE e.order_id = o.id)"
         )
@@ -69,13 +69,13 @@ describe.skipIf(!dbPath)("Phase 3 order pipeline migration on real data", () => 
     expect(orphan).toBe(0);
 
     expect(
-      (db.prepare("SELECT value FROM app_meta WHERE key='order_events_backfill_done'").get() as
+      (await db.prepare("SELECT value FROM app_meta WHERE key='order_events_backfill_done'").get() as
         | { value: string }
         | undefined) ?? null
     ).not.toBeNull();
 
     // Reservation is forward-only; the migration confirms nothing.
-    expect((db.prepare("SELECT COUNT(*) AS n FROM stock_reservations").get() as { n: number }).n).toBe(0);
+    expect((await db.prepare("SELECT COUNT(*) AS n FROM stock_reservations").get() as { n: number }).n).toBe(0);
 
     if (temp) for (const s of ["", "-wal", "-shm"]) fs.rmSync(`${dbPath}${s}`, { force: true });
   });

@@ -9,42 +9,42 @@ const testDbPath = path.join(
 );
 process.env.ROUTEFLOW_DB_PATH = testDbPath;
 process.env.SESSION_SECRET = "test-secret";
-const { getDb, TENANT_TABLES } = await import("@/lib/db");
+const { getDb, TENANT_TABLES, dbReady } = await import("@/lib/db");
 
 afterAll(() => {
   for (const s of ["", "-wal", "-shm"]) fs.rmSync(`${testDbPath}${s}`, { force: true });
 });
 
 describe("academy schema", () => {
-  it("creates objection_cards and lesson_progress, tenant-scoped", () => {
+  it("creates objection_cards and lesson_progress, tenant-scoped", async () => {
     const db = getDb();
     for (const t of ["objection_cards", "lesson_progress"]) {
-      expect(db.prepare(`SELECT COUNT(*) n FROM ${t}`).get(), t).toBeTruthy();
+      expect(await db.prepare(`SELECT COUNT(*) n FROM ${t}`).get(), t).toBeTruthy();
       expect((TENANT_TABLES as readonly string[]).includes(t), t).toBe(true);
     }
   });
 
-  it("seeds eight NULL-org starter cards, once", () => {
-    const n = () =>
-      (getDb().prepare("SELECT COUNT(*) n FROM objection_cards WHERE organization_id IS NULL").get() as { n: number }).n;
-    expect(n()).toBe(8);
-    getDb();
-    getDb();
-    expect(n()).toBe(8);
+  it("seeds eight NULL-org starter cards, once", async () => {
+    const n = async () =>
+      (await getDb().prepare("SELECT COUNT(*) n FROM objection_cards WHERE organization_id IS NULL").get() as { n: number }).n;
+    expect(await n()).toBe(8);
+    await dbReady();
+    await dbReady();
+    expect(await n()).toBe(8);
     expect(
-      (getDb().prepare("SELECT outcome_code FROM objection_cards WHERE organization_id IS NULL AND outcome_code='PRICE_OBJECTION'").get() as { outcome_code: string }).outcome_code
+      (await getDb().prepare("SELECT outcome_code FROM objection_cards WHERE organization_id IS NULL AND outcome_code='PRICE_OBJECTION'").get() as { outcome_code: string }).outcome_code
     ).toBe("PRICE_OBJECTION");
   });
 
-  it("lesson_progress is unique per (org, user, lesson)", () => {
+  it("lesson_progress is unique per (org, user, lesson)", async () => {
     const db = getDb();
     const now = new Date().toISOString();
     const uid = Number(
-      db.prepare("INSERT INTO users (username,password_hash,display_name,role,created_at,organization_id) VALUES ('lp','x','م','phone_sales',?,1)").run(now).lastInsertRowid
+      (await db.prepare("INSERT INTO users (username,password_hash,display_name,role,created_at,organization_id) VALUES ('lp','x','م','phone_sales',?,1)").run(now)).lastInsertRowid
     );
     const ins = db.prepare("INSERT INTO lesson_progress (organization_id,user_id,lesson_slug,completed_at) VALUES (1,?,'01-market-and-customer',?)");
-    expect(() => ins.run(uid, now)).not.toThrow();
-    expect(() => ins.run(uid, now)).toThrow();
+    await (async () => await ins.run(uid, now))();
+    await expect((async () => await ins.run(uid, now))()).rejects.toThrow();
   });
 
   it("has the MDX skeleton + manifest on disk", () => {

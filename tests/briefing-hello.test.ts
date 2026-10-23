@@ -175,22 +175,22 @@ let org = 0;
 let manager = 0;
 let driver = 0;
 
-beforeAll(() => {
+beforeAll(async () => {
   const db = getDb();
   const now = new Date().toISOString();
   org = Number(
-    db.prepare("INSERT INTO organizations (name, slug, created_at) VALUES (?, ?, ?)")
-      .run("B", `b-${Date.now()}`, now).lastInsertRowid,
+    (await db.prepare("INSERT INTO organizations (name, slug, created_at) VALUES (?, ?, ?)")
+      .run("B", `b-${Date.now()}`, now)).lastInsertRowid,
   );
   const group = Number(
-    db.prepare("INSERT INTO groups (name, slug, color, active, created_at) VALUES (?, ?, ?, 1, ?)")
-      .run("شرق", "east", "#0ff", now).lastInsertRowid,
+    (await db.prepare("INSERT INTO groups (name, slug, color, active, created_at) VALUES (?, ?, ?, 1, ?)")
+      .run("شرق", "east", "#0ff", now)).lastInsertRowid,
   );
   const u = db.prepare(
     "INSERT INTO users (username,password_hash,display_name,role,group_id,organization_id,created_at) VALUES (?,?,?,?,?,?,?)",
   );
-  manager = Number(u.run(`m${Date.now()}`, "x", "مدیر", "group_manager", group, org, now).lastInsertRowid);
-  driver = Number(u.run(`d${Date.now()}`, "x", "راننده", "delivery_driver", group, org, now).lastInsertRowid);
+  manager = Number((await u.run(`m${Date.now()}`, "x", "مدیر", "group_manager", group, org, now)).lastInsertRowid);
+  driver = Number((await u.run(`d${Date.now()}`, "x", "راننده", "delivery_driver", group, org, now)).lastInsertRowid);
 });
 
 afterAll(() => {
@@ -212,60 +212,60 @@ const thisPeriod = () => {
 };
 
 describe("the briefing hero", () => {
-  it("carries the person's id, so the avatar stays the same person in any role", () => {
-    expect(todayFor(sessionFor(manager, "group_manager")).hero).toMatchObject({
+  it("carries the person's id, so the avatar stays the same person in any role", async () => {
+    expect((await todayFor(sessionFor(manager, "group_manager"))).hero).toMatchObject({
       userId: manager,
     });
   });
 
-  it("gives a MANAGER the monthly target, not just phone_sales", () => {
-    setTarget(org, {
+  it("gives a MANAGER the monthly target, not just phone_sales", async () => {
+    await setTarget(org, {
       user_id: manager,
       period: thisPeriod(),
       metric: "revenue_toman",
       target_value: 5_000_000,
     });
-    const b = todayFor(sessionFor(manager, "group_manager"));
+    const b = await todayFor(sessionFor(manager, "group_manager"));
     expect(b.panels.some((p) => p.key === "target")).toBe(true);
   });
 
-  it("a DRIVER with no run still gets a briefing, never a blank screen", () => {
-    expect(todayFor(sessionFor(driver, "delivery_driver")).panels.length).toBeGreaterThan(0);
+  it("a DRIVER with no run still gets a briefing, never a blank screen", async () => {
+    expect((await todayFor(sessionFor(driver, "delivery_driver"))).panels.length).toBeGreaterThan(0);
   });
 
-  it("the hero is present on the EMPTY-day path too, not only when panels exist", () => {
+  it("the hero is present on the EMPTY-day path too, not only when panels exist", async () => {
     // The early return is the easiest path to forget when a payload grows, and a hero that
     // vanishes on a quiet day is worse than one that is never there: the layout shifts under
     // the reader exactly when they expect nothing to happen.
-    const fresh = todayFor(sessionFor(driver, "delivery_driver"));
+    const fresh = await todayFor(sessionFor(driver, "delivery_driver"));
     expect(fresh.hero).toBeTruthy();
     expect(fresh.hero.userId).toBe(driver);
     expect(fresh.hero.displayName).toBeTruthy();
   });
 
-  it("the hero carries the name and role, so the page does not re-derive identity", () => {
-    const h = todayFor(sessionFor(manager, "group_manager")).hero;
+  it("the hero carries the name and role, so the page does not re-derive identity", async () => {
+    const h = (await todayFor(sessionFor(manager, "group_manager"))).hero;
     expect(h.role).toBe("group_manager");
     expect(typeof h.displayName).toBe("string");
   });
 
-  it("avatarUrl is null rather than undefined when nobody set a photo", () => {
+  it("avatarUrl is null rather than undefined when nobody set a photo", async () => {
     // Both read as "no photo" to `Avatar`, but `undefined` is what a missing key produces
     // and it means the field is absent rather than answered. `JSON.stringify` drops it.
-    const h = todayFor(sessionFor(manager, "group_manager")).hero;
+    const h = (await todayFor(sessionFor(manager, "group_manager"))).hero;
     expect(h.avatarUrl).toBeNull();
     expect(JSON.parse(JSON.stringify(h))).toHaveProperty("avatarUrl", null);
   });
 
-  it("a target with no value adds NO panel, rather than a 0% one", () => {
+  it("a target with no value adds NO panel, rather than a 0% one", async () => {
     // Nobody has set a target for the driver. A "۰٪ از ۰" card is noise that reads as a
     // failing goal, and the hero's number is already saying nothing needs attention.
-    const b = todayFor(sessionFor(driver, "delivery_driver"));
+    const b = await todayFor(sessionFor(driver, "delivery_driver"));
     expect(b.panels.some((p) => p.key === "target")).toBe(false);
   });
 
-  it("the target panel's tone is good only when the goal is actually met", () => {
-    const b = todayFor(sessionFor(manager, "group_manager"));
+  it("the target panel's tone is good only when the goal is actually met", async () => {
+    const b = await todayFor(sessionFor(manager, "group_manager"));
     const t = b.panels.find((p) => p.key === "target");
     expect(t).toBeDefined();
     // No orders have been sold in this fixture, so the fraction is 0 and the tone must not

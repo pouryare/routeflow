@@ -28,40 +28,40 @@ let userId = 0;
 let custId = 0;
 
 /** A delivered order worth `total` Toman: one line, price = total, one pack. */
-function deliveredOrder(total: number, dateISO = "2026-01-01"): number {
+async function deliveredOrder(total: number, dateISO = "2026-01-01"): Promise<number> {
   const db = getDb();
   const now = new Date().toISOString();
   const tag = Math.random().toString(36).slice(2);
   const orderId = Number(
-    db
+    (await db
       .prepare(
         `INSERT INTO orders (order_no,customer_id,order_date,status,delivered_at,created_by,created_at,updated_at,organization_id)
          VALUES (?,?,?,'DELIVERED',?,?,?,?,1)`
       )
-      .run(`o-${tag}`, custId, dateISO, dateISO, userId, now, now).lastInsertRowid
+      .run(`o-${tag}`, custId, dateISO, dateISO, userId, now, now)).lastInsertRowid
   );
   const productId = Number(
-    db
+    (await db
       .prepare(
         "INSERT INTO products (name,sku,created_at,updated_at,organization_id) VALUES (?,?,?,?,1)"
       )
-      .run(`p${tag}`, `s${tag}`, now, now).lastInsertRowid
+      .run(`p${tag}`, `s${tag}`, now, now)).lastInsertRowid
   );
   const packId = Number(
-    db
+    (await db
       .prepare(
         "INSERT INTO packagings (product_id,name,qty_per_pack,created_at) VALUES (?,?,1,?)"
       )
-      .run(productId, "box", now).lastInsertRowid
+      .run(productId, "box", now)).lastInsertRowid
   );
-  db.prepare(
+  await db.prepare(
     `INSERT INTO order_lines (order_id,product_id,packaging_id,packs_ordered,packs_delivered,unit_price_toman,unit_cost_toman,qty_per_pack,kg_per_base_unit,is_reversal,created_at)
      VALUES (?,?,?,1,1,?,0,1,1,0,?)`
   ).run(orderId, productId, packId, total, now);
   return orderId;
 }
 
-beforeEach(() => {
+beforeEach(async () => {
   const db = getDb();
 
   /* FIRST, because everything below depends on it. The ledger is append-only by trigger,
@@ -71,59 +71,59 @@ beforeEach(() => {
 
      A fixture may reset state the application never can; what would not be acceptable is
      dropping the FK or the triggers to make a fixture convenient. */
-  clearLedger(db);
+  await clearLedger(db);
 
-  db.exec(
+  await db.exec(
     "DELETE FROM payment_allocations; DELETE FROM payments; DELETE FROM order_lines; DELETE FROM orders; DELETE FROM packagings; DELETE FROM products; DELETE FROM customers; DELETE FROM users WHERE id > 0;"
   );
 
   const now = new Date().toISOString();
   userId = Number(
-    db
+    (await db
       .prepare(
         "INSERT INTO users (username,password_hash,display_name,role,group_id,active,created_at,organization_id) VALUES (?,?,?,'group_manager',NULL,1,?,1)"
       )
-      .run(`u${Date.now()}`, "x:y", "م", now).lastInsertRowid
+      .run(`u${Date.now()}`, "x:y", "م", now)).lastInsertRowid
   );
   custId = Number(
-    db
+    (await db
       .prepare(
         "INSERT INTO customers (customer_code,business_name,customer_type,lifecycle,synced_at,organization_id) VALUES (?,?,'RESTAURANT','active','2026-01-01',1)"
       )
-      .run(`C${Date.now()}`, "x").lastInsertRowid
+      .run(`C${Date.now()}`, "x")).lastInsertRowid
   );
 });
 
 describe("recordPayment", () => {
-  it("auto-allocates FIFO across delivered orders, remainder on account", () => {
-    const o1 = deliveredOrder(30_000, "2026-01-01");
-    const o2 = deliveredOrder(50_000, "2026-01-05");
-    const pid = recordPayment(1, {
+  it("auto-allocates FIFO across delivered orders, remainder on account", async () => {
+    const o1 = await deliveredOrder(30_000, "2026-01-01");
+    const o2 = await deliveredOrder(50_000, "2026-01-05");
+    const pid = await recordPayment(1, {
       customer_id: custId,
       amount_toman: 100_000,
       method: "CASH",
       received_at: "2026-02-01",
       received_by: userId,
     });
-    expect(allocationsOfPayment(1, pid)).toEqual([
+    expect(await allocationsOfPayment(1, pid)).toEqual([
       { order_id: o1, amount_toman: 30_000 },
       { order_id: o2, amount_toman: 50_000 },
       { order_id: null, amount_toman: 20_000 },
     ]);
     const db = getDb();
     expect(
-      (db.prepare("SELECT payment_status FROM orders WHERE id=?").get(o1) as { payment_status: string })
+      (await db.prepare("SELECT payment_status FROM orders WHERE id=?").get(o1) as { payment_status: string })
         .payment_status
     ).toBe("paid");
     expect(
-      (db.prepare("SELECT payment_status FROM orders WHERE id=?").get(o2) as { payment_status: string })
+      (await db.prepare("SELECT payment_status FROM orders WHERE id=?").get(o2) as { payment_status: string })
         .payment_status
     ).toBe("paid");
   });
 
-  it("honours an explicit split and rejects one that overshoots the order", () => {
-    const o1 = deliveredOrder(30_000);
-    recordPayment(1, {
+  it("honours an explicit split and rejects one that overshoots the order", async () => {
+    const o1 = await deliveredOrder(30_000);
+    await recordPayment(1, {
       customer_id: custId,
       amount_toman: 20_000,
       method: "POS",
@@ -132,115 +132,111 @@ describe("recordPayment", () => {
       allocations: [{ order_id: o1, amount_toman: 20_000 }],
     });
     expect(
-      (getDb().prepare("SELECT payment_status FROM orders WHERE id=?").get(o1) as {
+      (await getDb().prepare("SELECT payment_status FROM orders WHERE id=?").get(o1) as {
         payment_status: string;
       }).payment_status
     ).toBe("partial");
-    expect(() =>
-      recordPayment(1, {
+    await expect((async () =>
+      await recordPayment(1, {
         customer_id: custId,
         amount_toman: 25_000,
         method: "POS",
         received_at: "2026-02-01",
         received_by: userId,
         allocations: [{ order_id: o1, amount_toman: 25_000 }],
-      })
-    ).toThrow(PaymentError);
+      }))()).rejects.toThrow(PaymentError);
   });
 
-  it("rejects a split whose sum is not the payment amount", () => {
-    const o1 = deliveredOrder(30_000);
-    expect(() =>
-      recordPayment(1, {
+  it("rejects a split whose sum is not the payment amount", async () => {
+    const o1 = await deliveredOrder(30_000);
+    await expect((async () =>
+      await recordPayment(1, {
         customer_id: custId,
         amount_toman: 20_000,
         method: "CASH",
         received_at: "x",
         received_by: userId,
         allocations: [{ order_id: o1, amount_toman: 15_000 }],
-      })
-    ).toThrow(PaymentError);
+      }))()).rejects.toThrow(PaymentError);
   });
 
-  it("rejects a non-integer amount", () => {
-    deliveredOrder(30_000);
-    expect(() =>
-      recordPayment(1, {
+  it("rejects a non-integer amount", async () => {
+    await deliveredOrder(30_000);
+    await expect((async () =>
+      await recordPayment(1, {
         customer_id: custId,
         amount_toman: 10.5,
         method: "CASH",
         received_at: "x",
         received_by: userId,
-      })
-    ).toThrow(PaymentError);
+      }))()).rejects.toThrow(PaymentError);
   });
 
-  it("404s an allocation to another org's order", () => {
+  it("404s an allocation to another org's order", async () => {
     const db = getDb();
-    db.prepare(
+    await db.prepare(
       "INSERT INTO organizations (id,name,slug,created_at) VALUES (2,'Two','two','2026-01-01')"
     ).run();
     const otherCust = Number(
-      db
+      (await db
         .prepare(
           "INSERT INTO customers (customer_code,business_name,lifecycle,synced_at,organization_id) VALUES ('X','x','active','2026-01-01',2)"
         )
-        .run().lastInsertRowid
+        .run()).lastInsertRowid
     );
     const otherOrder = Number(
-      db
+      (await db
         .prepare(
           "INSERT INTO orders (order_no,customer_id,order_date,status,created_by,created_at,updated_at,organization_id) VALUES ('x1',?,?,'DELIVERED',?,?,?,2)"
         )
-        .run(otherCust, "2026-01-01", userId, "x", "x").lastInsertRowid
+        .run(otherCust, "2026-01-01", userId, "x", "x")).lastInsertRowid
     );
-    expect(() =>
-      recordPayment(1, {
+    await expect((async () =>
+      await recordPayment(1, {
         customer_id: custId,
         amount_toman: 1000,
         method: "CASH",
         received_at: "x",
         received_by: userId,
         allocations: [{ order_id: otherOrder, amount_toman: 1000 }],
-      })
-    ).toThrow(PaymentError);
+      }))()).rejects.toThrow(PaymentError);
   });
 });
 
 describe("autoAllocateFIFO", () => {
-  it("skips already-paid orders", () => {
-    const o1 = deliveredOrder(30_000, "2026-01-01");
-    const o2 = deliveredOrder(40_000, "2026-01-02");
-    recordPayment(1, {
+  it("skips already-paid orders", async () => {
+    const o1 = await deliveredOrder(30_000, "2026-01-01");
+    const o2 = await deliveredOrder(40_000, "2026-01-02");
+    await recordPayment(1, {
       customer_id: custId,
       amount_toman: 30_000,
       method: "CASH",
       received_at: "2026-01-03",
       received_by: userId,
     });
-    expect(autoAllocateFIFO(1, custId, 40_000)).toEqual([{ order_id: o2, amount_toman: 40_000 }]);
+    expect(await autoAllocateFIFO(1, custId, 40_000)).toEqual([{ order_id: o2, amount_toman: 40_000 }]);
     expect(o1).toBeGreaterThan(0);
   });
 });
 
 describe("voidPayment", () => {
-  it("removes allocations and reverts the order caches", () => {
-    const o1 = deliveredOrder(30_000);
-    const pid = recordPayment(1, {
+  it("removes allocations and reverts the order caches", async () => {
+    const o1 = await deliveredOrder(30_000);
+    const pid = await recordPayment(1, {
       customer_id: custId,
       amount_toman: 30_000,
       method: "CASH",
       received_at: "2026-02-01",
       received_by: userId,
     });
-    voidPayment(1, pid, userId, "خطای ثبت");
+    await voidPayment(1, pid, userId, "خطای ثبت");
     const db = getDb();
-    expect(db.prepare("SELECT COUNT(*) n FROM payment_allocations WHERE payment_id=?").get(pid)).toEqual(
+    expect(await db.prepare("SELECT COUNT(*) n FROM payment_allocations WHERE payment_id=?").get(pid)).toEqual(
       { n: 0 }
     );
     expect(
-      db.prepare("SELECT paid_toman,payment_status FROM orders WHERE id=?").get(o1)
+      await db.prepare("SELECT paid_toman,payment_status FROM orders WHERE id=?").get(o1)
     ).toMatchObject({ paid_toman: 0, payment_status: "unpaid" });
-    expect(() => voidPayment(1, pid, userId, "دوباره")).toThrow(PaymentError);
+    await expect((async () => await voidPayment(1, pid, userId, "دوباره"))()).rejects.toThrow(PaymentError);
   });
 });

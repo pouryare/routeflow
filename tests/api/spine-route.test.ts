@@ -35,16 +35,16 @@ function ctxFor(id: number) {
   return { params: Promise.resolve({ id: String(id) }) } as never;
 }
 
-beforeEach(() => {
+beforeEach(async () => {
   const db = getDb();
-  db.exec("PRAGMA foreign_keys=OFF; DELETE FROM tasks; DELETE FROM alerts; DELETE FROM targets; DELETE FROM rule_runs; DELETE FROM customers; DELETE FROM users WHERE id>0; PRAGMA foreign_keys=ON;");
+  await db.exec("PRAGMA foreign_keys=OFF; DELETE FROM tasks; DELETE FROM alerts; DELETE FROM targets; DELETE FROM rule_runs; DELETE FROM customers; DELETE FROM users WHERE id>0; PRAGMA foreign_keys=ON;");
   const now = new Date().toISOString();
   const u = db.prepare(
     "INSERT INTO users (username,password_hash,display_name,role,created_at,organization_id) VALUES (?,?,?,?,?,1)"
   );
-  owner = Number(u.run(`o${Date.now()}`, "x", "م", "owner", now).lastInsertRowid);
-  seller = Number(u.run(`s${Date.now()}`, "x", "ف", "phone_sales", now).lastInsertRowid);
-  driver = Number(u.run(`d${Date.now()}`, "x", "ر", "delivery_driver", now).lastInsertRowid);
+  owner = Number((await u.run(`o${Date.now()}`, "x", "م", "owner", now)).lastInsertRowid);
+  seller = Number((await u.run(`s${Date.now()}`, "x", "ف", "phone_sales", now)).lastInsertRowid);
+  driver = Number((await u.run(`d${Date.now()}`, "x", "ر", "delivery_driver", now)).lastInsertRowid);
 });
 
 describe("spine routes", () => {
@@ -82,14 +82,14 @@ describe("spine routes", () => {
     );
     expect(patch.status).toBe(200);
     expect(
-      (getDb().prepare("SELECT status FROM tasks WHERE id = ?").get(id) as { status: string }).status
+      (await getDb().prepare("SELECT status FROM tasks WHERE id = ?").get(id) as { status: string }).status
     ).toBe("done");
   });
 
   it("PATCH with an outcome_code returns the matching objection card", async () => {
     const db = getDb();
     const cust = Number(
-      db.prepare("INSERT INTO customers (customer_code,business_name,customer_type,lifecycle,synced_at,organization_id) VALUES ('C1','x','RESTAURANT','active',?,1)").run(new Date().toISOString()).lastInsertRowid
+      (await db.prepare("INSERT INTO customers (customer_code,business_name,customer_type,lifecycle,synced_at,organization_id) VALUES ('C1','x','RESTAURANT','active',?,1)").run(new Date().toISOString())).lastInsertRowid
     );
     const post = await TASKS_POST(
       new NextRequest("http://localhost/api/tasks", {
@@ -113,7 +113,7 @@ describe("spine routes", () => {
   });
 
   it("alerts GET works and rules/run returns a count", async () => {
-    getDb().prepare("INSERT INTO alerts (organization_id,severity,category,title,created_at) VALUES (1,'critical','x','!',?)").run(new Date().toISOString());
+    await getDb().prepare("INSERT INTO alerts (organization_id,severity,category,title,created_at) VALUES (1,'critical','x','!',?)").run(new Date().toISOString());
     const a = await (await ALERTS_GET(new NextRequest("http://localhost/api/alerts?open=1", { headers: { cookie: cookie(owner, "owner") } }))).json();
     expect(a.alerts).toHaveLength(1);
 

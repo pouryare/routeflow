@@ -15,15 +15,15 @@ export const dynamic = "force-dynamic";
  *  refused a salesperson/driver; the redirect is the belt to its braces. */
 export default async function TasksBoardPage() {
   const jar = await cookies();
-  const session = getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
+  const session = await getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
   if (!session) redirect("/login");
   if (!["owner", "group_manager", "rep_manager", "platform_owner"].includes(session.role)) {
     redirect("/sales");
   }
 
-  const prefs = getPrefs(session.user.id);
+  const prefs = await getPrefs(session.user.id);
   const view: BoardView = prefs.board_default_view ?? "status";
-  const board = boardFor(session, { view });
+  const board = await boardFor(session, { view });
 
   // boardFor returns fresh object literals (rowToCard rebuilds each row), so it already
   // crosses the server→client boundary cleanly — no plain() needed.

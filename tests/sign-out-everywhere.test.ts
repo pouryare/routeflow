@@ -17,14 +17,14 @@ afterAll(() => {
   for (const s of ["", "-wal", "-shm"]) fs.rmSync(`${testDbPath}${s}`, { force: true });
 });
 
-function mkUser(username: string): number {
+async function mkUser(username: string): Promise<number> {
   return Number(
-    getDb()
+    (await getDb()
       .prepare(
         `INSERT INTO users (username, password_hash, display_name, role, organization_id, active, token_version, created_at)
          VALUES (?, 'x', ?, 'owner', 1, 1, 0, '2026-01-01')`
       )
-      .run(username, username).lastInsertRowid
+      .run(username, username)).lastInsertRowid
   );
 }
 
@@ -47,31 +47,31 @@ const cookieOf = (res: Response) => {
 
 describe("sign out everywhere", () => {
   it("ends every other session and keeps this device signed in", async () => {
-    const id = mkUser("s1");
+    const id = await mkUser("s1");
     const other = token(id);
     const res = await POST(req(token(id), "others"));
     expect(res.status).toBe(303);
     expect(res.headers.get("location")).toContain("/settings/security?done=others");
-    expect(getSessionFromCookies(other)).toBeNull();
+    expect(await getSessionFromCookies(other)).toBeNull();
     const fresh = cookieOf(res);
     expect(parseSessionToken(fresh)?.tv).toBe(1);
-    expect(getSessionFromCookies(fresh)?.user.id).toBe(id);
+    expect((await getSessionFromCookies(fresh))?.user.id).toBe(id);
   });
 
   it("with scope=all, ends this device too", async () => {
-    const id = mkUser("s2");
+    const id = await mkUser("s2");
     const res = await POST(req(token(id), "all"));
     expect(res.headers.get("location")).toContain("/login");
     expect(cookieOf(res)).toBe("");
-    expect(getSessionFromCookies(token(id))).toBeNull();
+    expect(await getSessionFromCookies(token(id))).toBeNull();
   });
 
   it("refuses under Login-As and changes nothing", async () => {
-    const target = mkUser("s3");
-    const actor = mkUser("s4");
+    const target = await mkUser("s3");
+    const actor = await mkUser("s4");
     const res = await POST(req(token(target, { act: actor }), "others"));
     expect(res.headers.get("location")).toContain("error=impersonating");
-    const { token_version } = getDb().prepare("SELECT token_version FROM users WHERE id = ?").get(target) as { token_version: number };
+    const { token_version } = await getDb().prepare("SELECT token_version FROM users WHERE id = ?").get(target) as { token_version: number };
     expect(token_version).toBe(0);
   });
 });

@@ -12,7 +12,7 @@ process.env.SESSION_SECRET = "test-secret";
 
 const { getDb } = await import("@/lib/db");
 const { ensureWarehouse } = await import("./helpers/ensureWarehouse");
-ensureWarehouse(getDb());
+await ensureWarehouse(getDb());
 const { createProduct, createPackaging, setPrice } = await import("@/lib/catalogue");
 const { createOrder, confirmOrder } = await import("@/lib/orders");
 const { createRun, addStop, readRun, recordDelivery } = await import("@/lib/delivery");
@@ -48,10 +48,10 @@ function session(role: Role, uid: number, gid: number | null): Session {
 }
 
 const runs = new Map<string, number>();
-function runFor(date: string): number {
+async function runFor(date: string): Promise<number> {
   const existing = runs.get(date);
   if (existing !== undefined) return existing;
-  const id = createRun(getDb(), {
+  const id = await createRun(getDb(), {
     driver_user_id: ctx.driver,
     run_date: date,
     created_by: ctx.owner,
@@ -62,7 +62,7 @@ function runFor(date: string): number {
 }
 
 /** Confirms an order and delivers `deliveredPacks` of `orderedPacks`. */
-function sell(opts: {
+async function sell(opts: {
   customer: number;
   ordered: number;
   delivered: number;
@@ -70,7 +70,7 @@ function sell(opts: {
   seller?: number | null;
 }) {
   const db = getDb();
-  const order = createOrder(db, {
+  const order = await createOrder(db, {
     customer_id: opts.customer,
     order_date: opts.date,
     created_by: ctx.owner,
@@ -78,14 +78,14 @@ function sell(opts: {
     salesperson_user_id: opts.seller ?? null,
     lines: [{ product_id: ctx.product, packaging_id: ctx.packaging, packs: opts.ordered }],
   });
-  confirmOrder(db, order.id);
+  await confirmOrder(db, order.id);
 
   // One run per driver per day -- the schema enforces it, so two orders on the same
   // date share a run rather than each making one.
-  const run = runFor(opts.date);
-  const stopId = addStop(db, run, order.id);
-  const stop = readRun(db, run)!.stops.find((s) => s.id === stopId)!;
-  recordDelivery(db, stopId, {
+  const run = await runFor(opts.date);
+  const stopId = await addStop(db, run, order.id);
+  const stop = (await readRun(db, run))!.stops.find((s) => s.id === stopId)!;
+  await recordDelivery(db, stopId, {
     lines: [{ line_id: stop.lines[0].id, packs_delivered: opts.delivered }],
     collected_toman: 0,
     by: ctx.driver,
@@ -93,22 +93,22 @@ function sell(opts: {
   return order.id;
 }
 
-beforeAll(() => {
+beforeAll(async () => {
   const db = getDb();
   const now = new Date().toISOString();
   const group = db.prepare(
     "INSERT INTO groups (name, slug, color, active, created_at) VALUES (?, ?, ?, 1, ?)"
   );
-  ctx.east = Number(group.run("شرق", "east", "#0ff", now).lastInsertRowid);
-  ctx.west = Number(group.run("غرب", "west", "#f0f", now).lastInsertRowid);
+  ctx.east = Number((await group.run("شرق", "east", "#0ff", now)).lastInsertRowid);
+  ctx.west = Number((await group.run("غرب", "west", "#f0f", now)).lastInsertRowid);
 
   const user = db.prepare(
     "INSERT INTO users (username, password_hash, display_name, role, group_id, active, created_at) VALUES (?, 'x', ?, ?, ?, 1, ?)"
   );
-  ctx.owner = Number(user.run("o", "مالک", "owner", null, now).lastInsertRowid);
-  ctx.eastManager = Number(user.run("em", "مدیر شرق", "group_manager", ctx.east, now).lastInsertRowid);
-  ctx.nazanin = Number(user.run("nz", "نازنین", "phone_sales", ctx.east, now).lastInsertRowid);
-  ctx.driver = Number(user.run("dr", "راننده", "delivery_driver", ctx.east, now).lastInsertRowid);
+  ctx.owner = Number((await user.run("o", "مالک", "owner", null, now)).lastInsertRowid);
+  ctx.eastManager = Number((await user.run("em", "مدیر شرق", "group_manager", ctx.east, now)).lastInsertRowid);
+  ctx.nazanin = Number((await user.run("nz", "نازنین", "phone_sales", ctx.east, now)).lastInsertRowid);
+  ctx.driver = Number((await user.run("dr", "راننده", "delivery_driver", ctx.east, now)).lastInsertRowid);
 
   const customer = db.prepare(
     "INSERT INTO customers (customer_code, business_name, group_id, lifecycle, opening_balance_toman, synced_at, organization_id) VALUES (?, ?, ?, 'active', ?, ?, 1)"
@@ -118,22 +118,22 @@ beforeAll(() => {
   // payment in beforeAll then settles so the total stays a round, date-independent
   // 175000 for the assertion.
   ctx.eastCustomer = Number(
-    customer.run("C1", "رستوران شرق", ctx.east, 175000, now).lastInsertRowid
+    (await customer.run("C1", "رستوران شرق", ctx.east, 175000, now)).lastInsertRowid
   );
-  ctx.westCustomer = Number(customer.run("C2", "رستوران غرب", ctx.west, 0, now).lastInsertRowid);
+  ctx.westCustomer = Number((await customer.run("C2", "رستوران غرب", ctx.west, 0, now)).lastInsertRowid);
 
-  ctx.product = createProduct(db, { name: "کره گیاهی", kg_per_base_unit: 0.25, organization_id: 1 });
-  ctx.packaging = createPackaging(db, { product_id: ctx.product, name: "جعبه", qty_per_pack: 100 });
-  setPrice(db, { product_id: ctx.product, price_toman: 1000, valid_from: "2026-01-01" });
+  ctx.product = await createProduct(db, { name: "کره گیاهی", kg_per_base_unit: 0.25, organization_id: 1 });
+  ctx.packaging = await createPackaging(db, { product_id: ctx.product, name: "جعبه", qty_per_pack: 100 });
+  await setPrice(db, { product_id: ctx.product, price_toman: 1000, valid_from: "2026-01-01" });
 
   // Mordad 1405 (2026-08-20) and Shahrivar 1405 (2026-08-25).
-  sell({ customer: ctx.eastCustomer, ordered: 10, delivered: 8, date: "2026-08-20", seller: ctx.nazanin });
-  sell({ customer: ctx.eastCustomer, ordered: 5, delivered: 5, date: "2026-08-25", seller: ctx.nazanin });
-  sell({ customer: ctx.westCustomer, ordered: 20, delivered: 20, date: "2026-08-25" });
+  await sell({ customer: ctx.eastCustomer, ordered: 10, delivered: 8, date: "2026-08-20", seller: ctx.nazanin });
+  await sell({ customer: ctx.eastCustomer, ordered: 5, delivered: 5, date: "2026-08-25", seller: ctx.nazanin });
+  await sell({ customer: ctx.westCustomer, ordered: 20, delivered: 20, date: "2026-08-25" });
 
   // Settle the east customer's 13000 of delivered orders so only the 175000 opening
   // balance remains -- a figure that does not drift with the calendar.
-  recordPayment(1, {
+  await recordPayment(1, {
     customer_id: ctx.eastCustomer,
     amount_toman: 13_000,
     method: "CASH",
@@ -156,28 +156,28 @@ describe("jalaliMonthKey", () => {
 });
 
 describe("salesDashboard", () => {
-  it("counts revenue on what was delivered, not ordered", () => {
+  it("counts revenue on what was delivered, not ordered", async () => {
     // Price is per pack, not per عدد. East: (8 + 5) packs x 1000 = 13,000.
     // Ordered would have been 15,000.
-    const d = salesDashboard(getDb(), session("group_manager", ctx.eastManager, ctx.east));
+    const d = await salesDashboard(getDb(), session("group_manager", ctx.eastManager, ctx.east));
     expect(d.revenue_toman).toBe(13000);
   });
 
-  it("scopes a manager to their own group", () => {
-    const east = salesDashboard(getDb(), session("group_manager", ctx.eastManager, ctx.east));
-    const owner = salesDashboard(getDb(), session("owner", ctx.owner, null));
+  it("scopes a manager to their own group", async () => {
+    const east = await salesDashboard(getDb(), session("group_manager", ctx.eastManager, ctx.east));
+    const owner = await salesDashboard(getDb(), session("owner", ctx.owner, null));
     // Owner also sees the west order of 20 packs x 1000 = 20,000.
     expect(owner.revenue_toman).toBe(east.revenue_toman + 20000);
   });
 
-  it("reports fill rate as delivered over ordered", () => {
+  it("reports fill rate as delivered over ordered", async () => {
     // East ordered 15 packs, delivered 13.
-    const d = salesDashboard(getDb(), session("group_manager", ctx.eastManager, ctx.east));
+    const d = await salesDashboard(getDb(), session("group_manager", ctx.eastManager, ctx.east));
     expect(d.fill_rate).toBeCloseTo(13 / 15, 5);
   });
 
-  it("buckets revenue into Persian months", () => {
-    const d = salesDashboard(getDb(), session("group_manager", ctx.eastManager, ctx.east));
+  it("buckets revenue into Persian months", async () => {
+    const d = await salesDashboard(getDb(), session("group_manager", ctx.eastManager, ctx.east));
     const keys = d.revenue_by_month.map((p) => p.key);
     expect(keys).toContain("1405-05");
     expect(keys).toContain("1405-06");
@@ -185,14 +185,14 @@ describe("salesDashboard", () => {
     expect(mordad.value).toBe(8000); // 8 packs only
   });
 
-  it("attributes revenue to the salesperson credited", () => {
-    const d = salesDashboard(getDb(), session("owner", ctx.owner, null));
+  it("attributes revenue to the salesperson credited", async () => {
+    const d = await salesDashboard(getDb(), session("owner", ctx.owner, null));
     const row = d.revenue_by_salesperson.find((r) => r.label === "نازنین")!;
     expect(row.value).toBe(13000);
   });
 
-  it("sums computed debt, scoped to the manager's group", () => {
-    const east = salesDashboard(getDb(), session("group_manager", ctx.eastManager, ctx.east));
+  it("sums computed debt, scoped to the manager's group", async () => {
+    const east = await salesDashboard(getDb(), session("group_manager", ctx.eastManager, ctx.east));
     // 175000 opening balance; the 13000 of delivered orders was paid in beforeAll.
     expect(east.debt.total).toBe(175000);
     // An opening balance is old by definition -- it ages straight into the 30-plus bucket.
@@ -200,27 +200,27 @@ describe("salesDashboard", () => {
 
     // The west group sees only its own customer's unpaid delivered order (20 x 1000),
     // never the east customer's 175000 -- proof the scope holds.
-    const west = salesDashboard(getDb(), session("group_manager", ctx.eastManager, ctx.west));
+    const west = await salesDashboard(getDb(), session("group_manager", ctx.eastManager, ctx.west));
     expect(west.debt.total).toBe(20000);
   });
 
-  it("gives a salesperson only their own figures", () => {
-    const d = salesDashboard(getDb(), session("phone_sales", ctx.nazanin, ctx.east));
+  it("gives a salesperson only their own figures", async () => {
+    const d = await salesDashboard(getDb(), session("phone_sales", ctx.nazanin, ctx.east));
     expect(d.revenue_toman).toBe(13000);
     // The west order is not hers, and neither is the group total.
     expect(d.revenue_by_salesperson.every((r) => r.label === "نازنین")).toBe(true);
   });
 
-  it("counts orders and averages them", () => {
-    const d = salesDashboard(getDb(), session("group_manager", ctx.eastManager, ctx.east));
+  it("counts orders and averages them", async () => {
+    const d = await salesDashboard(getDb(), session("group_manager", ctx.eastManager, ctx.east));
     expect(d.order_count).toBe(2);
     expect(d.average_order_toman).toBe(6500);
   });
 
-  it("returns zeroes rather than NaN when there is nothing", () => {
+  it("returns zeroes rather than NaN when there is nothing", async () => {
     // A manager with no group reaches nothing. Every figure must still be a number --
     // a NaN in a chart path makes the whole SVG vanish with no error.
-    const d = salesDashboard(getDb(), session("group_manager", 999, null));
+    const d = await salesDashboard(getDb(), session("group_manager", 999, null));
     expect(d.revenue_toman).toBe(0);
     expect(d.order_count).toBe(0);
     expect(d.average_order_toman).toBe(0);
@@ -229,15 +229,15 @@ describe("salesDashboard", () => {
     expect(d.revenue_by_month).toEqual([]);
   });
 
-  it("lists top customers by revenue", () => {
-    const d = salesDashboard(getDb(), session("owner", ctx.owner, null));
+  it("lists top customers by revenue", async () => {
+    const d = await salesDashboard(getDb(), session("owner", ctx.owner, null));
     expect(d.top_customers[0].label).toBe("رستوران غرب"); // 20 packs x 1000
     expect(d.top_customers[0].value).toBe(20000);
   });
 
-  it("buckets revenue by Persian weekday, Saturday first", () => {
+  it("buckets revenue by Persian weekday, Saturday first", async () => {
     // 2026-08-20 is پنجشنبه (index 5); 2026-08-25 is سه‌شنبه (index 3).
-    const d = salesDashboard(getDb(), session("group_manager", ctx.eastManager, ctx.east));
+    const d = await salesDashboard(getDb(), session("group_manager", ctx.eastManager, ctx.east));
     expect(d.revenue_by_weekday).toHaveLength(7);
     expect(d.revenue_by_weekday[5].value).toBe(8000);
     expect(d.revenue_by_weekday[3].value).toBe(5000);
@@ -245,34 +245,34 @@ describe("salesDashboard", () => {
     expect(d.revenue_by_weekday[0].value).toBe(0);
   });
 
-  it("includes the west order's weekday for the owner but not the east manager", () => {
-    const owner = salesDashboard(getDb(), session("owner", ctx.owner, null));
-    const east = salesDashboard(getDb(), session("group_manager", ctx.eastManager, ctx.east));
+  it("includes the west order's weekday for the owner but not the east manager", async () => {
+    const owner = await salesDashboard(getDb(), session("owner", ctx.owner, null));
+    const east = await salesDashboard(getDb(), session("group_manager", ctx.eastManager, ctx.east));
     expect(owner.revenue_by_weekday[3].value).toBe(east.revenue_by_weekday[3].value + 20000);
   });
 
-  it("ranks products by kilogram, not by toman", () => {
+  it("ranks products by kilogram, not by toman", async () => {
     // 13 packs x 100 x 0.25kg = 325kg for the east manager's scope.
-    const d = salesDashboard(getDb(), session("group_manager", ctx.eastManager, ctx.east));
+    const d = await salesDashboard(getDb(), session("group_manager", ctx.eastManager, ctx.east));
     expect(d.top_products_by_kg[0]).toEqual({ key: "کره گیاهی", label: "کره گیاهی", value: 325 });
   });
 
-  it("counts a customer as new in the month of their FIRST order, not every month they bought in", () => {
-    const d = salesDashboard(getDb(), session("owner", ctx.owner, null));
+  it("counts a customer as new in the month of their FIRST order, not every month they bought in", async () => {
+    const d = await salesDashboard(getDb(), session("owner", ctx.owner, null));
     const mordad = d.new_customers_by_month.find((p) => p.key === "1405-05");
     const shahrivar = d.new_customers_by_month.find((p) => p.key === "1405-06");
     expect(mordad?.value).toBe(1); // رستوران شرق's first order
     expect(shahrivar?.value).toBe(1); // رستوران غرب's first (and only) order
   });
 
-  it("scopes new-customer counting to the caller, same as everything else", () => {
-    const east = salesDashboard(getDb(), session("group_manager", ctx.eastManager, ctx.east));
+  it("scopes new-customer counting to the caller, same as everything else", async () => {
+    const east = await salesDashboard(getDb(), session("group_manager", ctx.eastManager, ctx.east));
     // رستوران غرب never enters east's scope, so Shahrivar has no new customer there --
     // رستوران شرق's SECOND order that month is not a new customer either.
     expect(east.new_customers_by_month.find((p) => p.key === "1405-06")).toBeUndefined();
   });
 
-  it("averages lead time in whole days from order_date to delivered_at", () => {
+  it("averages lead time in whole days from order_date to delivered_at", async () => {
     // A dedicated group and customer, isolated from every other order in this file --
     // recordDelivery stamps delivered_at with the real current instant (not the fixed
     // order_date the rest of this file uses), so mixing this into the shared east/west
@@ -282,26 +282,26 @@ describe("salesDashboard", () => {
     const db = getDb();
     const now = new Date().toISOString();
     const leadGroup = Number(
-      db
+      (await db
         .prepare("INSERT INTO groups (name, slug, color, active, created_at) VALUES (?, ?, ?, 1, ?)")
-        .run("سرعت", "lead-test", "#0f0", now).lastInsertRowid
+        .run("سرعت", "lead-test", "#0f0", now)).lastInsertRowid
     );
     const leadManager = Number(
-      db
+      (await db
         .prepare(
           "INSERT INTO users (username, password_hash, display_name, role, group_id, active, created_at) VALUES (?, 'x', ?, 'group_manager', ?, 1, ?)"
         )
-        .run("leadmgr", "مدیر سرعت", leadGroup, now).lastInsertRowid
+        .run("leadmgr", "مدیر سرعت", leadGroup, now)).lastInsertRowid
     );
     const leadCustomer = Number(
-      db
+      (await db
         .prepare(
           "INSERT INTO customers (customer_code, business_name, group_id, synced_at) VALUES (?, ?, ?, ?)"
         )
-        .run("LEAD1", "مشتری سرعت", leadGroup, now).lastInsertRowid
+        .run("LEAD1", "مشتری سرعت", leadGroup, now)).lastInsertRowid
     );
 
-    const order = createOrder(db, {
+    const order = await createOrder(db, {
       customer_id: leadCustomer,
       order_date: "2026-08-01",
       created_by: ctx.owner,
@@ -309,25 +309,25 @@ describe("salesDashboard", () => {
       salesperson_user_id: null,
       lines: [{ product_id: ctx.product, packaging_id: ctx.packaging, packs: 1 }],
     });
-    confirmOrder(db, order.id);
-    const run = runFor("2026-08-01");
-    const stopId = addStop(db, run, order.id);
-    const stop = readRun(db, run)!.stops.find((s) => s.id === stopId)!;
-    recordDelivery(db, stopId, {
+    await confirmOrder(db, order.id);
+    const run = await runFor("2026-08-01");
+    const stopId = await addStop(db, run, order.id);
+    const stop = (await readRun(db, run))!.stops.find((s) => s.id === stopId)!;
+    await recordDelivery(db, stopId, {
       lines: [{ line_id: stop.lines[0].id, packs_delivered: 1 }],
       collected_toman: 0,
       by: ctx.driver,
     });
     // Overwritten with a controlled value so the assertion is an exact number of days
     // rather than however long this test suite happened to take to reach this line.
-    db.prepare("UPDATE orders SET delivered_at = ? WHERE id = ?").run("2026-08-04T00:00:00.000Z", order.id);
+    await db.prepare("UPDATE orders SET delivered_at = ? WHERE id = ?").run("2026-08-04T00:00:00.000Z", order.id);
 
-    const d = salesDashboard(getDb(), session("group_manager", leadManager, leadGroup));
+    const d = await salesDashboard(getDb(), session("group_manager", leadManager, leadGroup));
     expect(d.avg_lead_days).toBe(3);
   });
 
-  it("is null, not zero, when nothing has a lead time yet", () => {
-    const d = salesDashboard(getDb(), session("group_manager", 999, null));
+  it("is null, not zero, when nothing has a lead time yet", async () => {
+    const d = await salesDashboard(getDb(), session("group_manager", 999, null));
     expect(d.avg_lead_days).toBeNull();
   });
 });

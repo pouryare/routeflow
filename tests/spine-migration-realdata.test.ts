@@ -47,21 +47,21 @@ process.env.SESSION_SECRET = "test-secret";
 const { getDb } = await import("@/lib/db");
 
 describe.skipIf(!dbPath)("Phase 7 spine migration on real data", () => {
-  it("adds the six tables + seeds the default rules, touching nothing else", () => {
+  it("adds the six tables + seeds the default rules, touching nothing else", async () => {
     const db = getDb();
-    expect(db.prepare("PRAGMA foreign_key_check").all()).toEqual([]);
+    expect(await db.prepare("PRAGMA foreign_key_check").all()).toEqual([]);
 
     for (const t of ["events", "tasks", "alerts", "rules", "rule_runs", "targets"]) {
-      expect(db.prepare(`SELECT 1 FROM sqlite_master WHERE type='table' AND name = ?`).get(t), t).toBeTruthy();
+      expect(await db.prepare(`SELECT 1 FROM sqlite_master WHERE type='table' AND name = ?`).get(t), t).toBeTruthy();
     }
     for (const t of SPINE_TABLES) {
-      expect((db.prepare(`SELECT COUNT(*) AS n FROM ${t}`).get() as { n: number }).n, t).toBe(before[t]);
+      expect((await db.prepare(`SELECT COUNT(*) AS n FROM ${t}`).get() as { n: number }).n, t).toBe(before[t]);
     }
     expect(
-      (db.prepare("SELECT COUNT(*) AS n FROM rules WHERE organization_id IS NULL").get() as { n: number }).n
+      (await db.prepare("SELECT COUNT(*) AS n FROM rules WHERE organization_id IS NULL").get() as { n: number }).n
     ).toBe(18); // 5 original spine rules + 8 Phase 1 + 5 Phase 2 `notify` rules (RULE_SEED)
     expect(
-      (db.prepare("SELECT COUNT(*) AS n FROM rules WHERE organization_id IS NOT NULL").get() as { n: number }).n
+      (await db.prepare("SELECT COUNT(*) AS n FROM rules WHERE organization_id IS NOT NULL").get() as { n: number }).n
     ).toBe(0);
 
     if (temp) for (const s of ["", "-wal", "-shm"]) fs.rmSync(`${dbPath}${s}`, { force: true });

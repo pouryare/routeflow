@@ -23,10 +23,10 @@ export const objectionCardsRepo = makeRepo<ObjectionCardRow>("objection_cards", 
 
 /** Cards visible to a tenant: its own ∪ the NULL-org starters, tenant winning per
  *  (outcome_code, customer_type). */
-export function listObjectionCards(
+export async function listObjectionCards(
   organizationId: number,
   filter: { outcome_code?: string; customer_type?: string } = {}
-): ObjectionCardRow[] {
+): Promise<ObjectionCardRow[]> {
   const params: unknown[] = [organizationId];
   let sql =
     "SELECT *, (organization_id IS NOT NULL) AS is_tenant FROM objection_cards WHERE active = 1 AND (organization_id = ? OR organization_id IS NULL)";
@@ -34,7 +34,7 @@ export function listObjectionCards(
     sql += " AND outcome_code = ?";
     params.push(filter.outcome_code);
   }
-  const rows = objectionCardsRepo
+  const rows = await objectionCardsRepo
     .db()
     .prepare(sql)
     .all(...(params as never[])) as unknown as (ObjectionCardRow & { is_tenant: number })[];
@@ -57,12 +57,12 @@ export function listObjectionCards(
 
 /** The single best card for an outcome: a customer_type-specific match beats a generic
  *  one; a tenant card beats a default. */
-export function objectionCardFor(
+export async function objectionCardFor(
   organizationId: number,
   outcomeCode: string,
   customerType?: string | null
-): ObjectionCardRow | undefined {
-  const cards = listObjectionCards(organizationId, { outcome_code: outcomeCode });
+): Promise<ObjectionCardRow | undefined> {
+  const cards = await listObjectionCards(organizationId, { outcome_code: outcomeCode });
   if (customerType) {
     const specific = cards.find((c) => c.customer_type === customerType);
     if (specific) return specific;
@@ -70,7 +70,7 @@ export function objectionCardFor(
   return cards.find((c) => c.customer_type === null) ?? cards[0];
 }
 
-export function upsertObjectionCard(
+export async function upsertObjectionCard(
   organizationId: number,
   input: {
     outcome_code: string;
@@ -80,8 +80,8 @@ export function upsertObjectionCard(
     module_slug?: string | null;
     active?: boolean;
   }
-): void {
-  getDb()
+): Promise<void> {
+  await getDb()
     .prepare(
       `INSERT INTO objection_cards
          (organization_id, outcome_code, customer_type, title_fa, script_fa, module_slug, active, updated_at)
@@ -130,8 +130,8 @@ export function lessonBody(slug: string): string | null {
   }
 }
 
-export function markLessonDone(organizationId: number, userId: number, lessonSlug: string): void {
-  getDb()
+export async function markLessonDone(organizationId: number, userId: number, lessonSlug: string): Promise<void> {
+  await getDb()
     .prepare(
       `INSERT INTO lesson_progress (organization_id, user_id, lesson_slug, completed_at)
        VALUES (?, ?, ?, ?)
@@ -140,12 +140,12 @@ export function markLessonDone(organizationId: number, userId: number, lessonSlu
     .run(organizationId, userId, lessonSlug, new Date().toISOString());
 }
 
-export function lessonProgress(
+export async function lessonProgress(
   organizationId: number,
   userId: number
-): { lesson_slug: string; completed_at: string }[] {
+): Promise<{ lesson_slug: string; completed_at: string }[]> {
   return plain(
-    getDb()
+    await getDb()
       .prepare(
         "SELECT lesson_slug, completed_at FROM lesson_progress WHERE organization_id = ? AND user_id = ?"
       )
@@ -165,7 +165,7 @@ export interface TrainingPerson {
  *  in the company, a group manager the people in their group; nobody else gets a table. A
  *  person counts under every role they hold (users.role and user_roles). Only lessons with a
  *  `required_for` list appear. */
-export function trainingStatus(session: Session): { lessons: AcademyModule[]; people: TrainingPerson[] } | null {
+export async function trainingStatus(session: Session): Promise<{ lessons: AcademyModule[]; people: TrainingPerson[] } | null> {
   if (!MANAGE_ROLES.includes(session.role)) return null;
   const lessons = academyManifest().filter((m) => (m.required_for ?? []).length > 0);
   const roles = [...new Set(lessons.flatMap((m) => m.required_for ?? []))];
@@ -173,7 +173,7 @@ export function trainingStatus(session: Session): { lessons: AcademyModule[]; pe
   const db = getDb();
   const inGroup = !isOwner(session.role); // a group manager: their own group only
   if (inGroup && session.groupId === null) return { lessons, people: [] };
-  const rows = db
+  const rows = await db
     .prepare(
       `SELECT u.id, u.display_name AS name, u.role,
               (SELECT GROUP_CONCAT(ur.role) FROM user_roles ur WHERE ur.user_id = u.id) AS roles
@@ -185,7 +185,7 @@ export function trainingStatus(session: Session): { lessons: AcademyModule[]; pe
     id: number; name: string; role: string; roles: string | null;
   }[];
   const done = new Set(
-    (db
+    (await db
       .prepare("SELECT user_id, lesson_slug FROM lesson_progress WHERE organization_id = ?")
       .all(session.organizationId) as unknown as { user_id: number; lesson_slug: string }[]).map((r) => `${r.user_id}:${r.lesson_slug}`)
   );

@@ -12,12 +12,12 @@ import { MANAGE_ROLES } from "@/lib/roles";
 // that row's group rather than carrying one of its own.
 // Reading is scoped by entityGroupFilter below; uploading stays with managers.
 export async function GET(req: NextRequest) {
-  const guard = requireRole(req, [...MANAGE_ROLES, "rep_manager", "phone_sales"]);
+  const guard = await requireRole(req, [...MANAGE_ROLES, "rep_manager", "phone_sales"]);
   if (!guard.ok) return guard.response;
-  const f = entityGroupFilter(guard.session, "p");
+  const f = await entityGroupFilter(guard.session, "p");
 
   const { searchParams } = new URL(req.url);
-  const photos = listPhotos(f, searchParams.get("entity_type"), searchParams.get("entity_id"));
+  const photos = await listPhotos(f, searchParams.get("entity_type"), searchParams.get("entity_id"));
 
   return NextResponse.json({ ok: true, photos });
 }
@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
 const MAX_UPLOAD_BYTES = 20 * 1024 * 1024; // 20MB -- generous for a phone camera photo
 
 export async function POST(req: NextRequest) {
-  const guard = requireRole(req, MANAGE_ROLES);
+  const guard = await requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
 
   const formData = await req.formData().catch(() => null);
@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
   }
 
   // Checked before anything is encoded or written: a refused upload must not leave files behind.
-  if (!canReachEntity(guard.session, entityType, entityId)) {
+  if (!await canReachEntity(guard.session, entityType, entityId)) {
     return NextResponse.json({ ok: false, error: "یافت نشد" }, { status: 404 });
   }
 
@@ -72,7 +72,7 @@ export async function POST(req: NextRequest) {
   await fs.writeFile(photoFilePath(stem, "avif"), avifBuffer);
   await fs.writeFile(photoFilePath(stem, "webp"), webpBuffer);
 
-  const id = addPhoto(entityType, entityId, stem, caption, { name: guard.session.user.display_name, id: guard.session.user.id });
+  const id = await addPhoto(entityType, entityId, stem, caption, { name: guard.session.user.display_name, id: guard.session.user.id });
 
   return NextResponse.json({ ok: true, id, file_stem: stem });
 }

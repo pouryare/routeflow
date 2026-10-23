@@ -15,14 +15,14 @@ const ROLES = ["platform_owner", "owner", "group_manager", "rep_manager", "phone
 
 export default async function NotificationSettingsPage() {
   const jar = await cookies();
-  const session = getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
+  const session = await getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
   if (!session) redirect("/login");
   if (!ROLES.includes(session.role)) redirect("/");
 
   // Rendered server-side so the switches arrive already in their real positions — no
   // flash of every row reading "off" while a client fetch lands. The org id comes from
   // the signed session, never the request.
-  const initial = getPrefsMatrix(session.user.id, session.organizationId);
+  const initial = await getPrefsMatrix(session.user.id, session.organizationId);
 
   return (
     <>

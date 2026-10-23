@@ -9,6 +9,7 @@
 
 import { postPurchase } from "@/lib/repo/ledgerPostings";
 import type { SeedContext } from "../context";
+import { mapSeq } from "@/lib/seq";
 
 const SUPPLIERS = [
   { name: "شرکت پخش لبنیات پارس", phone: "02188776655" },
@@ -17,7 +18,7 @@ const SUPPLIERS = [
   { name: "صنایع غذایی کویر", phone: "02177889900" },
 ];
 
-export function run(ctx: SeedContext): void {
+export async function run(ctx: SeedContext): Promise<void> {
   const { db, rng, scale } = ctx;
   const owner = ctx.staff.owner;
   const facilityId = ctx.ids.facility!;
@@ -30,9 +31,7 @@ export function run(ctx: SeedContext): void {
     `INSERT INTO suppliers (name, phone, organization_id, created_by, created_at, active)
      VALUES (?, ?, ?, ?, ?, 1)`,
   );
-  const supplierIds = SUPPLIERS.map(
-    (s) => Number(insSupplier.run(s.name, s.phone, ctx.orgId, owner, now).lastInsertRowid),
-  );
+  const supplierIds = await mapSeq(SUPPLIERS, async (s) => Number((await insSupplier.run(s.name, s.phone, ctx.orgId, owner, now)).lastInsertRowid));
 
   const insPurchase = db.prepare(
     `INSERT INTO purchases (supplier_id, purchase_date, invoice_no, created_by, created_at,
@@ -62,18 +61,18 @@ export function run(ctx: SeedContext): void {
   for (let p = 0; p < purchases; p++) {
     const daysAgo = Math.round((p / purchases) * (scale.months * 30));
     const when = ctx.stamp(daysAgo);
-    const supplierId = rng.pick(supplierIds);
+    const supplierId = await rng.pick(supplierIds);
     const purchaseId = Number(
-      insPurchase.run(
+      (await insPurchase.run(
         supplierId, ctx.iso(daysAgo), `DEMO-INV-${String(p + 1).padStart(4, "0")}`,
         owner, now, ctx.orgId,
-      ).lastInsertRowid,
+      )).lastInsertRowid,
     );
 
     let totalToman = 0;
     for (const productId of products) {
       if (rng.chance(0.35)) continue;
-      const product = db
+      const product = await db
         .prepare(`SELECT avg_cost_toman FROM products WHERE id = ?`)
         .get(productId) as { avg_cost_toman: number };
       const qty = rng.int(60, 400);
@@ -83,16 +82,16 @@ export function run(ctx: SeedContext): void {
       totalToman += qty * unitCost;
 
       const lineId = Number(
-        insLine.run(purchaseId, productId, qty, unitCost, when).lastInsertRowid,
+        (await insLine.run(purchaseId, productId, qty, unitCost, when)).lastInsertRowid,
       );
       batchSeq++;
       const batchId = Number(
-        insBatch.run(
+        (await insBatch.run(
           ctx.orgId, productId, `DEMO-B${String(batchSeq).padStart(5, "0")}`, lineId,
           when, ctx.iso(daysAgo - 21), qty, unitCost, when, when,
-        ).lastInsertRowid,
+        )).lastInsertRowid,
       );
-      insMove.run(
+      await insMove.run(
         ctx.orgId, facilityId, productId, batchId, qty, purchaseId, when, owner, when,
       );
       moved++;
@@ -101,7 +100,7 @@ export function run(ctx: SeedContext): void {
     /* The REAL purchase posting, so the supplier payable ledger exists before phase 07 pays
        any of it. Dr 1203 / Cr 2101. */
     if (totalToman > 0) {
-      postPurchase(db, {
+      await postPurchase(db, {
         organizationId: ctx.orgId,
         purchaseId,
         supplierId,

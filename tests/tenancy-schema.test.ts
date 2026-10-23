@@ -20,7 +20,7 @@ const testDbPath =
 process.env.ROUTEFLOW_DB_PATH = testDbPath;
 process.env.SESSION_SECRET = "test-secret";
 
-const { getDb, TENANT_TABLES } = await import("@/lib/db");
+const { getDb, TENANT_TABLES, dbReady } = await import("@/lib/db");
 
 afterAll(() => {
   // Only the fixture this file created. A caller-supplied copy of production is theirs
@@ -29,25 +29,25 @@ afterAll(() => {
   for (const suffix of ["", "-wal", "-shm"]) fs.rmSync(`${testDbPath}${suffix}`, { force: true });
 });
 
-beforeAll(() => {
-  getDb();
+beforeAll(async () => {
+  await dbReady();
 });
 
-function cols(table: string): string[] {
-  return (getDb().prepare(`PRAGMA table_info(${table})`).all() as unknown as { name: string }[]).map(
+async function cols(table: string): Promise<string[]> {
+  return (await getDb().prepare(`PRAGMA table_info(${table})`).all() as unknown as { name: string }[]).map(
     (c) => c.name
   );
 }
 
 describe("organizations table", () => {
-  it("exists with the expected columns", () => {
+  it("exists with the expected columns", async () => {
     for (const c of ["id", "name", "slug", "plan", "active", "created_at"]) {
-      expect(cols("organizations"), `organizations is missing ${c}`).toContain(c);
+      expect(await cols("organizations"), `organizations is missing ${c}`).toContain(c);
     }
   });
 
-  it("seeds exactly one organisation for the existing company", () => {
-    const rows = getDb().prepare("SELECT id, slug FROM organizations").all() as unknown as {
+  it("seeds exactly one organisation for the existing company", async () => {
+    const rows = await getDb().prepare("SELECT id, slug FROM organizations").all() as unknown as {
       id: number;
       slug: string;
     }[];
@@ -57,13 +57,13 @@ describe("organizations table", () => {
 });
 
 describe("users carry a tenant", () => {
-  it("has an organization_id column", () => {
-    expect(cols("users")).toContain("organization_id");
+  it("has an organization_id column", async () => {
+    expect(await cols("users")).toContain("organization_id");
   });
 
-  it("leaves no user without an organisation, even one inserted without naming it", () => {
+  it("leaves no user without an organisation, even one inserted without naming it", async () => {
     const db = getDb();
-    db.prepare(
+    await db.prepare(
       `INSERT INTO users (username, password_hash, display_name, role, created_at)
        VALUES ('t-orphan', 'x:y', 'T Orphan', 'owner', '2026-01-01')`
     ).run();
@@ -71,8 +71,8 @@ describe("users carry a tenant", () => {
     // The migration backfills on every boot, not only on the ALTER -- so this row is
     // null until the next getDb(). What must never happen is a row that stays null
     // after one, which is what the second half asserts.
-    db.exec("UPDATE users SET organization_id = 1 WHERE organization_id IS NULL");
-    const orphan = db
+    await db.exec("UPDATE users SET organization_id = 1 WHERE organization_id IS NULL");
+    const orphan = await db
       .prepare("SELECT COUNT(*) AS n FROM users WHERE organization_id IS NULL")
       .get() as unknown as { n: number };
     expect(orphan.n).toBe(0);
@@ -80,43 +80,41 @@ describe("users carry a tenant", () => {
 });
 
 describe("platform_owner", () => {
-  it("is accepted by the users.role constraint", () => {
+  it("is accepted by the users.role constraint", async () => {
     const db = getDb();
-    expect(() =>
-      db
+    await (async () =>
+      await db
         .prepare(
           `INSERT INTO users (username, password_hash, display_name, role, organization_id, created_at)
            VALUES ('t-platform', 'x:y', 'T Platform', 'platform_owner', 1, '2026-01-01')`
         )
-        .run()
-    ).not.toThrow();
+        .run())();
   });
 
-  it("still rejects a role that is not in the union", () => {
+  it("still rejects a role that is not in the union", async () => {
     const db = getDb();
-    expect(() =>
-      db
+    await expect((async () =>
+      await db
         .prepare(
           `INSERT INTO users (username, password_hash, display_name, role, organization_id, created_at)
            VALUES ('t-bogus', 'x:y', 'T Bogus', 'accountant', 1, '2026-01-01')`
         )
-        .run()
-    ).toThrow();
+        .run())()).rejects.toThrow();
   });
 });
 
 describe("organization_id backfill", () => {
-  it("covers every business table", () => {
+  it("covers every business table", async () => {
     const db = getDb();
     for (const table of TENANT_TABLES) {
-      const tableCols = (db.prepare(`PRAGMA table_info(${table})`).all() as unknown as {
+      const tableCols = (await db.prepare(`PRAGMA table_info(${table})`).all() as unknown as {
         name: string;
       }[]).map((c) => c.name);
       expect(tableCols, `${table} is missing organization_id`).toContain("organization_id");
     }
   });
 
-  it("leaves no row without an organisation", () => {
+  it("leaves no row without an organisation", async () => {
     const db = getDb();
     for (const table of TENANT_TABLES) {
       // reason_codes, capacity_factors, rules, notification_types, objection_cards and
@@ -133,20 +131,20 @@ describe("organization_id backfill", () => {
         table === "churn_models"
       )
         continue;
-      const row = db
+      const row = await db
         .prepare(`SELECT COUNT(*) AS n FROM ${table} WHERE organization_id IS NULL`)
         .get() as unknown as { n: number };
       expect(row.n, `${table} has ${row.n} rows with no organization_id`).toBe(0);
     }
   });
 
-  it("names every table that actually holds business rows", () => {
+  it("names every table that actually holds business rows", async () => {
     // A table added later without a tenant column is the exact failure this catches: it
     // would be readable by every organisation, and would look like nothing at all until
     // a second tenant is on the system.
     const db = getDb();
     const all = (
-      db
+      await db
         .prepare(`SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'`)
         .all() as unknown as { name: string }[]
     ).map((r) => r.name);

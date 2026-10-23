@@ -46,7 +46,7 @@ async function bootAt(p: string) {
 async function foldedDb(tag: string): Promise<string> {
   const p = tmpPath(tag);
   const mod = await bootAt(p);
-  mod.getDb().close();
+  await mod.getDb().close();
   return p;
 }
 
@@ -113,9 +113,12 @@ describe("foldLeadRuns — a leftover lead_runs must not brick every boot", () =
 
     const mod = await bootAt(p);
     let handle: DatabaseSync | undefined;
-    expect(() => {
-      handle = mod.getDb();
-    }, "getDb() must not throw on an empty leftover — it runs on every request").not.toThrow();
+    await expect(
+      (async () => {
+        handle = await mod.rawSqlite();
+      })(),
+      "opening the database must not fail on an empty leftover — it runs on every request"
+    ).resolves.toBeUndefined();
     handle?.close();
   });
 
@@ -124,7 +127,7 @@ describe("foldLeadRuns — a leftover lead_runs must not brick every boot", () =
     addLeftover(p);
 
     const db = (await bootAt(p)).getDb();
-    db.close();
+    await db.close();
     expect(
       tableNames(p),
       "the empty leftover must be gone, or every future boot re-enters the fold",
@@ -156,10 +159,12 @@ describe("foldLeadRuns — a leftover lead_runs must not brick every boot", () =
     d.exec("ALTER TABLE lead_run_stops_tmp RENAME TO lead_run_stops");
     d.close();
 
-    const db = (await bootAt(p)).getDb();
+    const mod = await bootAt(p);
+    await mod.dbReady();
+    const db = mod.getDb();
 
     expect(tableNames(p), "the folded table must be gone").not.toContain("lead_runs");
-    const run = db
+    const run = await db
       .prepare("SELECT id, kind FROM delivery_runs WHERE run_date = '2026-10-06'")
       .get() as { id: number; kind: string } | undefined;
     expect(run, "the stranded run must be carried across, not dropped").toBeDefined();
@@ -168,7 +173,7 @@ describe("foldLeadRuns — a leftover lead_runs must not brick every boot", () =
     /* Both stops survive and BOTH now name the run that exists. This is the assertion the whole
      * file is for: a stop that kept its old id would point at an unrelated delivery run, which
      * reads as a driver arriving at the wrong shop. */
-    const stops = db.prepare("SELECT run_id FROM lead_run_stops ORDER BY sort_order").all() as {
+    const stops = await db.prepare("SELECT run_id FROM lead_run_stops ORDER BY sort_order").all() as {
       run_id: number;
     }[];
     expect(stops.map((s) => s.run_id)).toEqual([run!.id, run!.id]);
@@ -176,14 +181,14 @@ describe("foldLeadRuns — a leftover lead_runs must not brick every boot", () =
      * location_ids that do not exist (see above), so a whole-table check would report the
      * fixture's own doing. The guarantee under test is the one the fold makes — every stop
      * names a run that exists — which is exactly what an orphaned stop would violate. */
-    const dangling = db
+    const dangling = await db
       .prepare(
         `SELECT COUNT(*) AS n FROM lead_run_stops s
           WHERE NOT EXISTS (SELECT 1 FROM delivery_runs r WHERE r.id = s.run_id)`
       )
       .get() as { n: number };
     expect(dangling.n).toBe(0);
-    db.close();
+    await db.close();
   });
 
   it("STILL refuses when run_id points at lead_runs and the rebuild cannot re-point it", async () => {
@@ -208,7 +213,7 @@ describe("foldLeadRuns — a leftover lead_runs must not brick every boot", () =
     d.close();
 
     const mod = await bootAt(p);
-    expect(() => mod.getDb()).toThrow(/lead_runs/);
+    await expect(mod.dbReady()).rejects.toThrow(/lead_runs/);
     expect(tableNames(p), "a failed fold must leave lead_runs standing").toContain("lead_runs");
   });
 });

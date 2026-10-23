@@ -6,32 +6,32 @@ import { withEntityLabels } from "@/lib/repo/entityLabels";
 
 type Filter = { joins: string; sql: string; params: number[] };
 
-export function listPhotos(filter: Filter, entityType: string | null, entityId: string | null) {
+export async function listPhotos(filter: Filter, entityType: string | null, entityId: string | null) {
   const db = getDb();
   const rows = (
     entityType && entityId
-      ? db
+      ? await db
           .prepare(`SELECT p.* FROM photos p${filter.joins} WHERE p.entity_type = ? AND p.entity_id = ?${filter.sql} ORDER BY p.taken_at DESC`)
           .all(entityType, Number(entityId), ...filter.params)
-      : db
+      : await db
           .prepare(`SELECT p.* FROM photos p${filter.joins} WHERE 1 = 1${filter.sql} ORDER BY p.taken_at DESC LIMIT 500`)
           .all(...filter.params)
   ) as unknown as Photo[];
   // A display label for the standalone gallery view.
-  return withEntityLabels(db, rows);
+  return await withEntityLabels(db, rows);
 }
 
-export function findPhoto(id: number): Photo | undefined {
-  return getDb().prepare("SELECT * FROM photos WHERE id = ?").get(id) as Photo | undefined;
+export async function findPhoto(id: number): Promise<Photo | undefined> {
+  return await getDb().prepare("SELECT * FROM photos WHERE id = ?").get(id) as Photo | undefined;
 }
 
-export function addPhoto(entityType: string, entityId: number, stem: string, caption: string | null, actor: { name: string; id: number }): number {
+export async function addPhoto(entityType: string, entityId: number, stem: string, caption: string | null, actor: { name: string; id: number }): Promise<number> {
   const db = getDb();
   const now = new Date().toISOString();
-  const result = db
+  const result = await db
     .prepare(`INSERT INTO photos (entity_type, entity_id, file_stem, caption, taken_at, created_at) VALUES (?, ?, ?, ?, ?, ?)`)
     .run(entityType, entityId, stem, caption, now, now);
-  logActivity(db, {
+  await logActivity(db, {
     entity_type: entityType as never,
     entity_id: entityId,
     event_type: "note",
@@ -44,6 +44,6 @@ export function addPhoto(entityType: string, entityId: number, stem: string, cap
   return Number(result.lastInsertRowid);
 }
 
-export function deletePhoto(id: number): void {
-  getDb().prepare("DELETE FROM photos WHERE id = ?").run(id);
+export async function deletePhoto(id: number): Promise<void> {
+  await getDb().prepare("DELETE FROM photos WHERE id = ?").run(id);
 }

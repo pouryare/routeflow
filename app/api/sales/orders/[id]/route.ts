@@ -20,8 +20,8 @@ const CAN_SELL = ["platform_owner", "owner", "group_manager", "phone_sales", "fi
  *  the list and the detail both go through means the two cannot drift -- the classic
  *  version of this bug is a list that hides a row and a detail page that shows it.
  */
-function visible(session: Parameters<typeof orderFilter>[0], orderId: number): boolean {
-  return orderVisible(orderFilter(session), orderId);
+async function visible(session: Parameters<typeof orderFilter>[0], orderId: number): Promise<boolean> {
+  return await orderVisible(orderFilter(session), orderId);
 }
 
 /* A function, not a module-level response: a Response body can be read once, so the second request
@@ -29,26 +29,26 @@ function visible(session: Parameters<typeof orderFilter>[0], orderId: number): b
 const notFound = () => NextResponse.json({ ok: false, error: "سفارش پیدا نشد" }, { status: 404 });
 
 export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
-  const guard = requireRole(req, [...CAN_SELL]);
+  const guard = await requireRole(req, [...CAN_SELL]);
   if (!guard.ok) return guard.response;
 
   const id = Number((await ctx.params).id);
-  if (!visible(guard.session, id)) return notFound();
+  if (!await visible(guard.session, id)) return notFound();
 
-  const order = orderById(id);
+  const order = await orderById(id);
   if (!order) return notFound();
   return NextResponse.json({ ok: true, order });
 }
 
 export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
-  const guard = requireRole(req, [...CAN_SELL]);
+  const guard = await requireRole(req, [...CAN_SELL]);
   if (!guard.ok) return guard.response;
 
   const id = Number((await ctx.params).id);
   // Checked before anything is read or written, so an order in another group is
   // indistinguishable from one that does not exist -- including on a failed confirm,
   // where a 400 would otherwise confirm it is real.
-  if (!visible(guard.session, id)) return notFound();
+  if (!await visible(guard.session, id)) return notFound();
 
   const body = (await req.json().catch(() => null)) as {
     status?: unknown;
@@ -65,23 +65,23 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
       if (!isSettablePriority(body.priority)) {
         return NextResponse.json({ ok: false, error: "اولویت نامعتبر است" }, { status: 400 });
       }
-      const set = setOrderPriority(guard.session.organizationId, id, body.priority);
+      const set = await setOrderPriority(guard.session.organizationId, id, body.priority);
       if (!set) return NextResponse.json({ ok: false, error: "اولویت سفارشِ بسته‌شده تغییر نمی‌کند" }, { status: 409 });
       return NextResponse.json({ ok: true });
     }
 
     if (body?.status === "confirmed") {
-      confirmOrderById(id);
+      await confirmOrderById(id);
       return NextResponse.json({ ok: true });
     }
 
     if (body?.line && typeof body.line === "object") {
       const line = body.line as { product_id: number; packaging_id: number; packs: number };
       // The product (and its packaging) must be this company's: an id alone reaches every tenant's catalogue.
-      if (!productInOrg(Number(line.product_id), orgScopeId(guard.session)) || !packagingOfProduct(Number(line.packaging_id), Number(line.product_id))) {
+      if (!await productInOrg(Number(line.product_id), orgScopeId(guard.session)) || !await packagingOfProduct(Number(line.packaging_id), Number(line.product_id))) {
         return NextResponse.json({ ok: false, error: "کالا یا بسته‌بندی پیدا نشد" }, { status: 400 });
       }
-      addLineTo(id, {
+      await addLineTo(id, {
         product_id: Number(line.product_id),
         packaging_id: Number(line.packaging_id),
         packs: Number(line.packs),

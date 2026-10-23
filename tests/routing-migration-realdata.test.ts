@@ -38,20 +38,20 @@ process.env.SESSION_SECRET = "test-secret";
 const { getDb } = await import("@/lib/db");
 
 describe.skipIf(!dbPath)("Phase 5 routing migration on real data", () => {
-  it("adds the planning columns + 'ready' status without losing a delivery_runs row", () => {
+  it("adds the planning columns + 'ready' status without losing a delivery_runs row", async () => {
     const db = getDb();
-    expect(db.prepare("PRAGMA foreign_key_check").all()).toEqual([]);
+    expect(await db.prepare("PRAGMA foreign_key_check").all()).toEqual([]);
 
-    const cols = (db.prepare("PRAGMA table_info(delivery_runs)").all() as { name: string }[]).map((c) => c.name);
+    const cols = (await db.prepare("PRAGMA table_info(delivery_runs)").all() as { name: string }[]).map((c) => c.name);
     for (const c of ["vehicle_id", "route_template_id", "optimisation_json", "frozen_at", "capacity_stops"]) {
       expect(cols, c).toContain(c);
     }
-    const dr = db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='delivery_runs'").get() as { sql: string };
+    const dr = await db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='delivery_runs'").get() as { sql: string };
     expect(dr.sql).toContain("'ready'");
 
-    expect((db.prepare("SELECT COUNT(*) AS n FROM delivery_runs").get() as { n: number }).n).toBe(runsBefore);
+    expect((await db.prepare("SELECT COUNT(*) AS n FROM delivery_runs").get() as { n: number }).n).toBe(runsBefore);
     for (const t of ["vehicles", "route_templates", "route_schedules"]) {
-      expect(db.prepare(`SELECT COUNT(*) AS n FROM ${t}`).get()).toEqual({ n: 0 });
+      expect(await db.prepare(`SELECT COUNT(*) AS n FROM ${t}`).get()).toEqual({ n: 0 });
     }
 
     if (temp) for (const s of ["", "-wal", "-shm"]) fs.rmSync(`${dbPath}${s}`, { force: true });

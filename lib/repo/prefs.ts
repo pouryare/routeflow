@@ -17,8 +17,8 @@ const ALLOWED: Record<keyof BoardPrefs, readonly string[]> = {
   whats_new_seen: WHATS_NEW_VERSIONS,
 };
 
-export function getPrefs(userId: number): BoardPrefs {
-  const row = getDb()
+export async function getPrefs(userId: number): Promise<BoardPrefs> {
+  const row = await getDb()
     .prepare("SELECT prefs_json FROM users WHERE id = ?")
     .get(userId) as { prefs_json: string | null } | undefined;
   if (!row?.prefs_json) return {};
@@ -31,13 +31,13 @@ export function getPrefs(userId: number): BoardPrefs {
   }
 }
 
-export function setPrefs(userId: number, partial: BoardPrefs): BoardPrefs {
+export async function setPrefs(userId: number, partial: BoardPrefs): Promise<BoardPrefs> {
   for (const [k, v] of Object.entries(partial)) {
     const allowed = (ALLOWED as Record<string, readonly string[] | undefined>)[k];
     if (!allowed) throw new Error(`prefs: unknown key ${k}`);
     if (!allowed.includes(String(v))) throw new Error(`prefs: bad value for ${k}: ${String(v)}`);
   }
-  const merged = { ...getPrefs(userId), ...partial };
-  getDb().prepare("UPDATE users SET prefs_json = ? WHERE id = ?").run(JSON.stringify(merged), userId);
+  const merged = { ...await getPrefs(userId), ...partial };
+  await getDb().prepare("UPDATE users SET prefs_json = ? WHERE id = ?").run(JSON.stringify(merged), userId);
   return merged;
 }

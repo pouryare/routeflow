@@ -30,7 +30,7 @@ export const dynamic = "force-dynamic";
  */
 export default async function CommissionPage() {
   const jar = await cookies();
-  const session = getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
+  const session = await getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
   if (!session) redirect("/login");
   if (isVanRole(session.role)) redirect("/driver");
 
@@ -40,9 +40,9 @@ export default async function CommissionPage() {
     to: jalaliToIsoDate(today.jy, today.jm, today.jd),
   };
 
-  const { statements, driverStatements, managerStatements } = commissionStatementsFor(session, period);
-  const { sellers, drivers, managers } = commissionPeopleFor(session);
-  const { rates, driverRates, managerOverrides } = commissionRatesFor(session, { limit: 12 });
+  const { statements, driverStatements, managerStatements } = await commissionStatementsFor(session, period);
+  const { sellers, drivers, managers } = await commissionPeopleFor(session);
+  const { rates, driverRates, managerOverrides } = await commissionRatesFor(session, { limit: 12 });
 
   return (
     <>
@@ -146,7 +146,7 @@ export default async function CommissionPage() {
       )}
 
       {isOwner(session.role) && (
-        <CommissionEditor sellers={sellers} drivers={drivers} managers={managers} plans={latestPlans(listPlans(session.organizationId), new Map(sellers.map((x) => [x.id, x.display_name])))} />
+        <CommissionEditor sellers={sellers} drivers={drivers} managers={managers} plans={latestPlans(await listPlans(session.organizationId), new Map(sellers.map((x) => [x.id, x.display_name])))} />
       )}
 
       {(rates.length > 0 || driverRates.length > 0 || managerOverrides.length > 0) && (

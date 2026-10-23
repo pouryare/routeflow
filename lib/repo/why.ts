@@ -35,11 +35,11 @@ interface ScopeRow extends LineSnapshot {
   salesperson_label: string | null;
 }
 
-function scopeRows(
+async function scopeRows(
   session: Session,
   period: string,
   extra: { group_id?: number; salesperson_id?: number }
-): ScopeRow[] {
+): Promise<ScopeRow[]> {
   const { from, toExcl } = periodRange(period);
   const f = orderFilter(session, "o");
   const where = [
@@ -57,7 +57,7 @@ function scopeRows(
     where.push("o.salesperson_user_id = ?");
     params.push(extra.salesperson_id);
   }
-  return getDb()
+  return await getDb()
     .prepare(
       `SELECT ol.packs_ordered, ol.packs_delivered, ol.unit_price_toman, ol.unit_cost_toman,
               ol.qty_per_pack, ol.kg_per_base_unit,
@@ -114,11 +114,11 @@ const STAGE_LABEL: Record<string, string> = {
 };
 
 /** Funnel counts for the orders whose order_date falls in the period + scope. */
-function funnelCounts(
+async function funnelCounts(
   session: Session,
   period: string,
   extra: { group_id?: number; salesperson_id?: number }
-): Record<string, number> {
+): Promise<Record<string, number>> {
   const { from, toExcl } = periodRange(period);
   const f = orderFilter(session, "o");
   const where = [
@@ -136,7 +136,7 @@ function funnelCounts(
     where.push("o.salesperson_user_id = ?");
     params.push(extra.salesperson_id);
   }
-  const row = getDb()
+  const row = await getDb()
     .prepare(
       `SELECT
          COUNT(*) AS entered,
@@ -153,12 +153,12 @@ function funnelCounts(
   return { entered: row.entered, confirmed: row.confirmed ?? 0, delivered: row.delivered ?? 0 };
 }
 
-export function whyChain(
+export async function whyChain(
   session: Session,
   metric: WhyMetric,
   periodA: string,
   periodB: string
-): WhyRung[] {
+): Promise<WhyRung[]> {
   if (session.role === "phone_sales") {
     throw new WhyError("این تحلیل برای نقش فروشنده در دسترس نیست");
   }
@@ -166,8 +166,8 @@ export function whyChain(
   const rungs: WhyRung[] = [];
 
   // rung 1 — by territory
-  const gA = bucketise(scopeRows(session, periodA, {}), metric, "group");
-  const gB = bucketise(scopeRows(session, periodB, {}), metric, "group");
+  const gA = bucketise(await scopeRows(session, periodA, {}), metric, "group");
+  const gB = bucketise(await scopeRows(session, periodB, {}), metric, "group");
   const r1 = explainDelta(gA.values, gB.values, { ...gA.labels, ...gB.labels });
   rungs.push({ ...r1, dimension_fa: "منطقه", scope_fa: null });
 
@@ -176,8 +176,8 @@ export function whyChain(
   const groupId = Number(g.key);
 
   // rung 2 — by salesperson within that territory
-  const sA = bucketise(scopeRows(session, periodA, { group_id: groupId }), metric, "phone_sales");
-  const sB = bucketise(scopeRows(session, periodB, { group_id: groupId }), metric, "phone_sales");
+  const sA = bucketise(await scopeRows(session, periodA, { group_id: groupId }), metric, "phone_sales");
+  const sB = bucketise(await scopeRows(session, periodB, { group_id: groupId }), metric, "phone_sales");
   const r2 = explainDelta(sA.values, sB.values, { ...sA.labels, ...sB.labels });
   rungs.push({ ...r2, dimension_fa: "فروشنده", scope_fa: g.label });
 
@@ -187,8 +187,8 @@ export function whyChain(
 
   // rung 3 — by funnel stage for that salesperson
   const extra = { group_id: groupId, salesperson_id: salespersonId };
-  const fA = funnelCounts(session, periodA, extra);
-  const fB = funnelCounts(session, periodB, extra);
+  const fA = await funnelCounts(session, periodA, extra);
+  const fB = await funnelCounts(session, periodB, extra);
   const r3 = explainDelta(fA, fB, STAGE_LABEL);
   rungs.push({ ...r3, dimension_fa: "مرحلهٔ قیف", scope_fa: s.label });
 

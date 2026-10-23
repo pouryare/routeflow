@@ -1,10 +1,10 @@
-import type { DatabaseSync } from "node:sqlite";
+import type { Db } from "@/lib/database/client";
 import { pointInRing } from "./trafficZones";
 import type { GroupRow } from "./db";
 import { recordOwnerChange } from "./repo/crm/ownerChange";
 
-export function readGroups(db: DatabaseSync, organizationId: number): GroupRow[] {
-  return db
+export async function readGroups(db: Db, organizationId: number): Promise<GroupRow[]> {
+  return await db
     .prepare("SELECT * FROM groups WHERE organization_id = ? ORDER BY name")
     .all(organizationId) as unknown as GroupRow[];
 }
@@ -67,8 +67,8 @@ function outerRings(geojson: string): [number, number][][] {
  *  running app can never disagree about which district a point is in. */
 const DISTRICT_PRECEDENCE_SQL = "d.is_custom DESC, CASE d.level WHEN 'mahalle' THEN 0 ELSE 1 END, d.id";
 
-export function districtIdForPoint(db: DatabaseSync, lat: number, lng: number): number | null {
-  const rows = db
+export async function districtIdForPoint(db: Db, lat: number, lng: number): Promise<number | null> {
+  const rows = await db
     .prepare(
       `SELECT d.id, d.level, d.group_id, d.boundary_geojson FROM districts d
        ORDER BY ${DISTRICT_PRECEDENCE_SQL}`
@@ -92,8 +92,8 @@ export function districtIdForPoint(db: DatabaseSync, lat: number, lng: number): 
  *  left out here. Unclaimed districts stay in, because a customer in an unclaimed polygon
  *  correctly ends up in no group. Without this filter, a customer of company B standing in
  *  a district company A claimed was handed A's group, and A's manager then saw B's customer. */
-function districtsFor(db: DatabaseSync, organizationId: number): DistrictShape[] {
-  return db
+async function districtsFor(db: Db, organizationId: number): Promise<DistrictShape[]> {
+  return await db
     .prepare(
       `SELECT d.id, d.level, d.group_id, d.boundary_geojson
          FROM districts d LEFT JOIN groups g ON g.id = d.group_id
@@ -103,8 +103,8 @@ function districtsFor(db: DatabaseSync, organizationId: number): DistrictShape[]
     .all(organizationId) as unknown as DistrictShape[];
 }
 
-export function groupForPoint(db: DatabaseSync, lat: number, lng: number, organizationId: number): number | null {
-  for (const row of districtsFor(db, organizationId)) {
+export async function groupForPoint(db: Db, lat: number, lng: number, organizationId: number): Promise<number | null> {
+  for (const row of await districtsFor(db, organizationId)) {
     for (const ring of outerRings(row.boundary_geojson)) {
       if (pointInRing(lng, lat, ring)) return row.group_id;
     }
@@ -119,26 +119,28 @@ export function groupForPoint(db: DatabaseSync, lat: number, lng: number, organi
  *  groupForPoint per customer: that would re-read ~600KB of boundary_geojson 300 times.
  *  Returns the number of rows whose group actually changed.
  */
-export function recomputeCustomerGroups(db: DatabaseSync, organizationId: number | null): number {
+export async function recomputeCustomerGroups(db: Db, organizationId: number | null): Promise<number> {
   /* null is the platform_owner's "every tenant": each organisation is recomputed against its
      OWN territory, never against the pooled set, so one company's edit cannot regroup
      another's customers. */
   if (organizationId === null) {
-    const orgs = db.prepare("SELECT id FROM organizations").all() as unknown as { id: number }[];
-    return orgs.reduce((total, o) => total + recomputeCustomerGroups(db, o.id), 0);
+    const orgs = await db.prepare("SELECT id FROM organizations").all() as unknown as { id: number }[];
+    let total = 0;
+    for (const o of orgs) total += await recomputeCustomerGroups(db, o.id);
+    return total;
   }
-  const districts = districtsFor(db, organizationId);
+  const districts = await districtsFor(db, organizationId);
 
   const prepared = districts.map((d) => ({ group_id: d.group_id, rings: outerRings(d.boundary_geojson) }));
 
-  const customers = db
+  const customers = await db
     .prepare("SELECT id, lat, lng, group_id FROM customers WHERE organization_id = ?")
     .all(organizationId) as unknown as { id: number; lat: number | null; lng: number | null; group_id: number | null }[];
 
   const update = db.prepare("UPDATE customers SET group_id = ? WHERE id = ?");
   let changed = 0;
 
-  db.exec("BEGIN");
+  await db.exec("BEGIN");
   try {
     for (const c of customers) {
       let next: number | null = null;
@@ -153,8 +155,8 @@ export function recomputeCustomerGroups(db: DatabaseSync, organizationId: number
         }
       }
       if (next !== c.group_id) {
-        update.run(next, c.id);
-        recordOwnerChange(db, {
+        await update.run(next, c.id);
+        await recordOwnerChange(db, {
           organizationId,
           customerId: c.id,
           actorUserId: null,
@@ -166,9 +168,9 @@ export function recomputeCustomerGroups(db: DatabaseSync, organizationId: number
         changed++;
       }
     }
-    db.exec("COMMIT");
+    await db.exec("COMMIT");
   } catch (e) {
-    db.exec("ROLLBACK");
+    await db.exec("ROLLBACK");
     throw e;
   }
 

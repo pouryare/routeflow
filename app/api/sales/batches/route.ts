@@ -8,18 +8,18 @@ import { MANAGE_ROLES } from "@/lib/roles";
 const STATUSES = Object.keys(BATCH_TRANSITIONS) as BatchStatus[];
 
 export async function GET(req: NextRequest) {
-  const guard = requireRole(req, MANAGE_ROLES);
+  const guard = await requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
 
   const sp = req.nextUrl.searchParams;
   if (sp.get("expiring") === "1") {
-    return NextResponse.json({ ok: true, batches: expiringBatches(guard.session.organizationId) });
+    return NextResponse.json({ ok: true, batches: await expiringBatches(guard.session.organizationId) });
   }
   const productId = sp.get("product_id");
   const status = sp.get("status");
   return NextResponse.json({
     ok: true,
-    batches: listBatches(guard.session.organizationId, {
+    batches: await listBatches(guard.session.organizationId, {
       product_id: productId ? Number(productId) : undefined,
       status: STATUSES.includes(status as BatchStatus) ? (status as BatchStatus) : undefined,
     }),
@@ -27,7 +27,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const guard = requireRole(req, MANAGE_ROLES);
+  const guard = await requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
 
   const body = (await req.json().catch(() => null)) as {
@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const id = createBatch(guard.session.organizationId, {
+    const id = await createBatch(guard.session.organizationId, {
       product_id: Number(body.product_id),
       batch_code: body.batch_code ?? null,
       supplier_batch_ref: body.supplier_batch_ref ?? null,

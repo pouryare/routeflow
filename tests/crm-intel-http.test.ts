@@ -15,16 +15,16 @@ const { GET: bizGET } = await import("@/app/api/crm/businesses/[id]/route");
 
 const db = getDb();
 const now = new Date().toISOString();
-afterAll(() => { db.close(); for (const s of ["", "-wal", "-shm"]) fs.rmSync(process.env.ROUTEFLOW_DB_PATH! + s, { force: true }); });
+afterAll(async () => { await db.close(); for (const s of ["", "-wal", "-shm"]) fs.rmSync(process.env.ROUTEFLOW_DB_PATH! + s, { force: true }); });
 
-const g = Number(db.prepare("INSERT INTO groups (name,slug,created_at,organization_id) VALUES ('ig','ig',?,1)").run(now).lastInsertRowid);
-const uid = Number(db.prepare("INSERT INTO users (username,password_hash,display_name,role,group_id,created_at,organization_id) VALUES ('igowner','x','igowner','owner',?,?,1)").run(g, now).lastInsertRowid);
-const rep = Number(db.prepare("INSERT INTO users (username,password_hash,display_name,role,group_id,created_at,organization_id) VALUES ('igrep','x','igrep','phone_sales',?,?,1)").run(g, now).lastInsertRowid);
+const g = Number((await db.prepare("INSERT INTO groups (name,slug,created_at,organization_id) VALUES ('ig','ig',?,1)").run(now)).lastInsertRowid);
+const uid = Number((await db.prepare("INSERT INTO users (username,password_hash,display_name,role,group_id,created_at,organization_id) VALUES ('igowner','x','igowner','owner',?,?,1)").run(g, now)).lastInsertRowid);
+const rep = Number((await db.prepare("INSERT INTO users (username,password_hash,display_name,role,group_id,created_at,organization_id) VALUES ('igrep','x','igrep','phone_sales',?,?,1)").run(g, now)).lastInsertRowid);
 const token = (role: string, id_: number) => createSessionToken({ uid: id_, role: role as "owner", gid: g, oid: 1, tv: 0, name: role });
 const req = (p: string, method: string, body: unknown, actor: string) =>
   new NextRequest(`http://test.local${p}`, { method, body: body === undefined ? undefined : JSON.stringify(body), headers: { cookie: `${COOKIE_NAME}=${actor}` } });
 const ctx = (id_: number) => ({ params: Promise.resolve({ id: String(id_) }) }) as never;
-const id = Number(db.prepare("INSERT INTO customers (customer_code,business_name,owner_user_id,group_id,synced_at,organization_id) VALUES ('ig-1','کافه دود',?,?,?,1)").run(uid, g, now).lastInsertRowid);
+const id = Number((await db.prepare("INSERT INTO customers (customer_code,business_name,owner_user_id,group_id,synced_at,organization_id) VALUES ('ig-1','کافه دود',?,?,?,1)").run(uid, g, now)).lastInsertRowid);
 const answers = () => [
   { step: "size", option: "medium" }, { step: "supply", option: "distributor" }, { step: "uses", option: "ok" },
   { step: "when", option: "afternoon" }, { step: "note", option: "ok", value: "سراغ مدیر" },
@@ -35,7 +35,7 @@ describe("intel + tags HTTP surface (handlers, temp DB)", () => {
     expect((await intelPOST(req("/x", "POST", { answers: answers() }, "bad-token"), ctx(id))).status).toBe(401);
     expect((await intelPOST(req("/x", "POST", { answers: answers() }, token("phone_sales", rep)), ctx(id))).status).toBe(404);
     expect((await tagsPUT(req("/x", "PUT", { tags: [] }, "bad-token"), ctx(id))).status).toBe(401);
-    expect(db.prepare("SELECT count(*) n FROM activities WHERE customer_id = ?").get(id)).toEqual({ n: 0 });
+    expect(await db.prepare("SELECT count(*) n FROM activities WHERE customer_id = ?").get(id)).toEqual({ n: 0 });
   });
 
   it("saves intel, replays the same client_uuid once, and rejects malformed answers", async () => {

@@ -11,7 +11,7 @@ const DIMENSIONS: MarginDimension[] = ["customer", "product", "salesperson", "gr
 /** Contribution margin for one dimension over one Jalali month. Manager+ only —
  *  margin exposes product cost, which a فروشنده never sees. */
 export async function GET(req: NextRequest) {
-  const guard = requireRole(req, MANAGE_ROLES);
+  const guard = await requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
 
   const sp = req.nextUrl.searchParams;
@@ -29,7 +29,7 @@ export async function GET(req: NextRequest) {
       ok: true,
       dimension,
       period,
-      rows: marginBy(guard.session.organizationId, dimension, period, guard.session),
+      rows: await marginBy(guard.session.organizationId, dimension, period, guard.session),
     });
   } catch (e) {
     if (e instanceof MarginError) return NextResponse.json({ ok: false, error: e.message }, { status: 403 });

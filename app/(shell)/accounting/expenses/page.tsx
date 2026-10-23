@@ -21,12 +21,12 @@ export const dynamic = "force-dynamic";
  *  accountability, not a second set of books — the amounts are the same sums. */
 export default async function ExpensesPage() {
   const organizationId = await requireAccounting("/accounting/expenses");
-  const byCategory = expensesByCategory(organizationId) as {
+  const byCategory = await expensesByCategory(organizationId) as {
     code: string;
     nameFa: string;
     amountToman: number;
   }[];
-  const byEnterer = expensesByEnterer(organizationId) as {
+  const byEnterer = await expensesByEnterer(organizationId) as {
     displayName: string | null;
     entries: number;
     amountToman: number;
@@ -34,8 +34,8 @@ export default async function ExpensesPage() {
 
   /* Plain objects: rows straight from the database have a null prototype, which React refuses to
      pass from a server component to a client one. */
-  const categories = expenseCategories().map((c) => ({ id: c.id, nameFa: c.nameFa }));
-  const suppliers = listSuppliers(organizationId).map((x) => x.name);
+  const categories = (await expenseCategories()).map((c) => ({ id: c.id, nameFa: c.nameFa }));
+  const suppliers = (await listSuppliers(organizationId)).map((x) => x.name);
 
   const total = byCategory.reduce((s, r) => s + r.amountToman, 0);
 

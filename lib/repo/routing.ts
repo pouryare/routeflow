@@ -1,4 +1,4 @@
-import type { DatabaseSync } from "node:sqlite";
+import type { Db } from "@/lib/database/client";
 import { getDb } from "@/lib/db";
 import { makeRepo } from "./base";
 import { defaultFacilityId } from "./stock";
@@ -57,8 +57,8 @@ export interface RouteTemplateRow {
 export const vehiclesRepo = makeRepo<VehicleRow>("vehicles", { tenant: true });
 export const routeTemplatesRepo = makeRepo<RouteTemplateRow>("route_templates", { tenant: true });
 
-export function listVehicles(organizationId: number, activeOnly = true): VehicleRow[] {
-  return vehiclesRepo
+export async function listVehicles(organizationId: number, activeOnly = true): Promise<VehicleRow[]> {
+  return await vehiclesRepo
     .db()
     .prepare(
       `SELECT * FROM vehicles WHERE organization_id = ?${activeOnly ? " AND active = 1" : ""} ORDER BY name`
@@ -66,7 +66,7 @@ export function listVehicles(organizationId: number, activeOnly = true): Vehicle
     .all(organizationId) as unknown as VehicleRow[];
 }
 
-export function createVehicle(
+export async function createVehicle(
   organizationId: number,
   input: {
     name: string;
@@ -78,11 +78,11 @@ export function createVehicle(
     has_refrigeration?: boolean;
     cost_per_km_toman?: number;
   }
-): number {
+): Promise<number> {
   if (!input.name?.trim()) throw new RoutingError("نام خودرو لازم است");
   const now = new Date().toISOString();
   try {
-    return vehiclesRepo.insert(organizationId, {
+    return await vehiclesRepo.insert(organizationId, {
       organization_id: organizationId,
       plate: input.plate ?? null,
       name: input.name.trim(),
@@ -102,14 +102,14 @@ export function createVehicle(
   }
 }
 
-export function listRouteTemplates(organizationId: number): RouteTemplateRow[] {
-  return routeTemplatesRepo
+export async function listRouteTemplates(organizationId: number): Promise<RouteTemplateRow[]> {
+  return await routeTemplatesRepo
     .db()
     .prepare("SELECT * FROM route_templates WHERE organization_id = ? ORDER BY code")
     .all(organizationId) as unknown as RouteTemplateRow[];
 }
 
-export function createRouteTemplate(
+export async function createRouteTemplate(
   organizationId: number,
   input: {
     code: string;
@@ -123,11 +123,11 @@ export function createRouteTemplate(
     max_duration_min?: number | null;
     service_time_min?: number;
   }
-): number {
+): Promise<number> {
   if (!input.code?.trim() || !input.name?.trim()) throw new RoutingError("کد و نام لازم است");
   const now = new Date().toISOString();
   try {
-    return routeTemplatesRepo.insert(organizationId, {
+    return await routeTemplatesRepo.insert(organizationId, {
       organization_id: organizationId,
       code: input.code.trim(),
       name: input.name.trim(),
@@ -149,12 +149,12 @@ export function createRouteTemplate(
   }
 }
 
-export function templateScheduleFor(
+export async function templateScheduleFor(
   organizationId: number,
   templateId: number,
   dayOfWeek: number
-): { start_time: string | null; end_time: string | null; cutoff_time: string | null } | undefined {
-  return getDb()
+): Promise<{ start_time: string | null; end_time: string | null; cutoff_time: string | null } | undefined> {
+  return await getDb()
     .prepare(
       `SELECT start_time, end_time, cutoff_time FROM route_schedules
         WHERE organization_id = ? AND route_template_id = ? AND day_of_week = ? AND active = 1`
@@ -166,17 +166,17 @@ export function templateScheduleFor(
 
 /** Every PLANNED delivery whose order is on `date` and confirmed-or-planned, with the
  *  customer's location and the order's kg / m³ load. */
-export function routableDeliveriesFor(
+export async function routableDeliveriesFor(
   organizationId: number,
   opts: { date: string; group_id?: number | null; service_min?: number }
-): RoutableDelivery[] {
+): Promise<RoutableDelivery[]> {
   const params: unknown[] = [organizationId, opts.date];
   let groupClause = "";
   if (opts.group_id != null) {
     groupClause = " AND o.group_id = ?";
     params.push(opts.group_id);
   }
-  const rows = getDb()
+  const rows = await getDb()
     .prepare(
       `SELECT d.id AS delivery_id, c.lat, c.lng, o.priority,
               COALESCE(SUM(ol.packs_ordered * ol.qty_per_pack * ol.kg_per_base_unit), 0) AS kg,
@@ -227,9 +227,9 @@ export async function buildPlan(
 ): Promise<RoutingPlan> {
   const template =
     opts.template_id != null
-      ? routeTemplatesRepo.get(organizationId, opts.template_id)
+      ? await routeTemplatesRepo.get(organizationId, opts.template_id)
       : undefined;
-  const deliveries = routableDeliveriesFor(organizationId, {
+  const deliveries = await routableDeliveriesFor(organizationId, {
     date: opts.date,
     group_id: opts.group_id,
     service_min: template?.service_time_min,
@@ -238,15 +238,15 @@ export async function buildPlan(
     return { assignments: [], unassigned: [], source: "greedy", date: opts.date };
   }
 
-  const facilityId = defaultFacilityId(organizationId);
-  const facility = getDb()
+  const facilityId = await defaultFacilityId(organizationId);
+  const facility = await getDb()
     .prepare("SELECT lat, lng FROM facilities WHERE id = ?")
     .get(facilityId) as { lat: number; lng: number };
   const depot: LatLng = { lat: facility.lat, lng: facility.lng };
 
   const allVehicles = template?.default_vehicle_id
-    ? [vehiclesRepo.get(organizationId, template.default_vehicle_id)].filter(Boolean)
-    : listVehicles(organizationId);
+    ? [await vehiclesRepo.get(organizationId, template.default_vehicle_id)].filter(Boolean)
+    : await listVehicles(organizationId);
   const vehicleRows: VehicleRow[] =
     allVehicles.length > 0
       ? (allVehicles as VehicleRow[])
@@ -265,7 +265,7 @@ export async function buildPlan(
   const cx = deliveries.reduce((s, d) => s + d.lat, 0) / deliveries.length;
   const cy = deliveries.reduce((s, d) => s + d.lng, 0) / deliveries.length;
   const anyRefrigerated = vehicleRows.some((v) => v.has_refrigeration === 1);
-  const adj = runWeatherAdjustment(organizationId, {
+  const adj = await runWeatherAdjustment(organizationId, {
     lat: cx,
     lng: cy,
     date: opts.date,
@@ -309,36 +309,36 @@ export async function buildPlan(
 
 /** Write a proposal: one delivery_runs row per assigned vehicle+driver, its stops in
  *  order. Idempotent -- a re-commit adds no duplicate stops. */
-export function commitPlan(
+export async function commitPlan(
   organizationId: number,
   plan: RoutingPlan,
   opts: { planned_by: number }
-): { run_ids: number[] } {
+): Promise<{ run_ids: number[] }> {
   const db = getDb();
   const runIds: number[] = [];
   const now = new Date().toISOString();
 
   for (const a of plan.assignments) {
-    const vehicle = a.vehicle_key > 0 ? vehiclesRepo.get(organizationId, a.vehicle_key) : undefined;
+    const vehicle = a.vehicle_key > 0 ? await vehiclesRepo.get(organizationId, a.vehicle_key) : undefined;
     const driverId = vehicle?.driver_default_id ?? opts.planned_by;
 
-    let run = db
+    let run = await db
       .prepare(
         "SELECT id FROM delivery_runs WHERE driver_user_id = ? AND run_date = ? AND organization_id = ?"
       )
       .get(driverId, plan.date, organizationId) as { id: number } | undefined;
     if (!run) {
       const id = Number(
-        db
+        (await db
           .prepare(
             `INSERT INTO delivery_runs (driver_user_id, run_date, status, created_by, created_at, updated_at, organization_id)
              VALUES (?, ?, 'planned', ?, ?, ?, ?)`
           )
-          .run(driverId, plan.date, opts.planned_by, now, now, organizationId).lastInsertRowid
+          .run(driverId, plan.date, opts.planned_by, now, now, organizationId)).lastInsertRowid
       );
       run = { id };
     }
-    db.prepare(
+    await db.prepare(
       `UPDATE delivery_runs
           SET vehicle_id = ?, planned_distance_km = ?, planned_duration_min = ?,
               capacity_stops = ?, optimisation_json = ?, weather_json = ?, updated_at = ?
@@ -357,12 +357,12 @@ export function commitPlan(
     );
 
     for (const s of a.stops) {
-      const orderId = db
+      const orderId = await db
         .prepare("SELECT order_id FROM deliveries WHERE id = ? AND organization_id = ?")
         .get(s.delivery_id, organizationId) as { order_id: number } | undefined;
       if (!orderId) continue;
       try {
-        addStop(db, run.id, orderId.order_id, s.sort_order);
+        await addStop(db, run.id, orderId.order_id, s.sort_order);
       } catch (e) {
         // a stop already on this run (idempotent re-commit) or a credit hold -- skip it.
         if (!(e instanceof Error && /UNIQUE|قطعی|اعتبار/.test(e.message))) throw e;
@@ -390,14 +390,14 @@ export const DEFAULT_CUTOFF_TIME = "17:00";
  *
  *  A run WITH a template still freezes at that template's own cutoff, which is the original
  *  behaviour and must survive. A run WITHOUT one falls back to the organisation default above. */
-export function runsNeedingFreeze(
+export async function runsNeedingFreeze(
   organizationId: number,
   asOfIso: string
-): { id: number; run_date: string; cutoff_time: string }[] {
+): Promise<{ id: number; run_date: string; cutoff_time: string }[]> {
   const asOf = new Date(asOfIso);
   const dow = (asOf.getDay() + 1) % 7; // JS Sunday=0 -> our شنبه=0 scheme
   const hhmm = asOf.toISOString().slice(11, 16);
-  return getDb()
+  return await getDb()
     .prepare(
       `SELECT dr.id, dr.run_date,
               COALESCE(rs.cutoff_time, ?) AS cutoff_time
@@ -424,35 +424,35 @@ export function runsNeedingFreeze(
 
 /** Freeze a run: no more stops without an explicit decision, and every order on it moves
  *  to READY. */
-export function freezeRun(
+export async function freezeRun(
   organizationId: number,
   runId: number,
   actor: { id: number | null; role: "group_manager" | "owner" }
-): void {
+): Promise<void> {
   const db = getDb();
-  const run = db
+  const run = await db
     .prepare("SELECT id FROM delivery_runs WHERE id = ? AND organization_id = ?")
     .get(runId, organizationId) as { id: number } | undefined;
   if (!run) throw new RoutingError("مسیر پیدا نشد");
 
-  db.exec("BEGIN IMMEDIATE");
+  await db.exec("BEGIN IMMEDIATE");
   try {
-    db.prepare(
+    await db.prepare(
       "UPDATE delivery_runs SET frozen_at = ?, status = 'ready', updated_at = ? WHERE id = ?"
     ).run(new Date().toISOString(), new Date().toISOString(), runId);
-    const orders = db
+    const orders = await db
       .prepare("SELECT order_id FROM delivery_stops WHERE run_id = ?")
       .all(runId) as { order_id: number }[];
     for (const o of orders) {
       try {
-        markReady(organizationId, o.order_id, actor, db as DatabaseSync);
+        await markReady(organizationId, o.order_id, actor, db as Db);
       } catch {
         /* order already past READY -- leave it */
       }
     }
-    db.exec("COMMIT");
+    await db.exec("COMMIT");
   } catch (e) {
-    db.exec("ROLLBACK");
+    await db.exec("ROLLBACK");
     throw e;
   }
 }

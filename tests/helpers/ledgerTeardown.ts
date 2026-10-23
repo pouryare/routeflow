@@ -1,5 +1,6 @@
-import type { DatabaseSync } from "node:sqlite";
+import type { Db } from "@/lib/database/client";
 
+import { mapSeq } from "@/lib/seq";
 /** Clear the ledger so a test fixture can reset the tables it owns.
  *
  *  `journals` and `ledger_entries` are APPEND-ONLY by trigger -- that is the feature, and
@@ -27,24 +28,24 @@ import type { DatabaseSync } from "node:sqlite";
  *  real `data/routeflow.db`. A global `setupFiles` hook calling this would therefore drop
  *  and recreate the ledger tables in production on every test run. That was tried and
  *  reverted; see `.cline/journal.md`. Keep this an explicit, per-suite call. */
-export function clearLedger(db: DatabaseSync): void {
-  const ddl = (name: string) =>
-    db
+export async function clearLedger(db: Db): Promise<void> {
+  const ddl = async (name: string) =>
+    await db
       .prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?")
       .get(name) as { sql: string } | undefined;
 
   const tables = ["ledger_entries", "journals", "fiscal_periods"] as const;
-  const saved = tables.map((t) => [t, ddl(t)] as const);
+  const saved = await mapSeq(tables, async (t) => [t, await ddl(t)] as const);
 
-  db.exec("PRAGMA foreign_keys = OFF");
+  await db.exec("PRAGMA foreign_keys = OFF");
   try {
-    for (const [t] of saved) db.exec(`DROP TABLE IF EXISTS ${t}`);
-    for (const [, row] of saved) if (row?.sql) db.exec(row.sql);
+    for (const [t] of saved) await db.exec(`DROP TABLE IF EXISTS ${t}`);
+    for (const [, row] of saved) if (row?.sql) await db.exec(row.sql);
   } finally {
-    db.exec("PRAGMA foreign_keys = ON");
+    await db.exec("PRAGMA foreign_keys = ON");
   }
 
   // The sequences restart too, so a fixture that asserts on a literal journal id is not
   // coupled to how many rows a previous test happened to leave behind.
-  db.exec("DELETE FROM sqlite_sequence WHERE name IN ('journals','ledger_entries','fiscal_periods')");
+  await db.exec("DELETE FROM sqlite_sequence WHERE name IN ('journals','ledger_entries','fiscal_periods')");
 }

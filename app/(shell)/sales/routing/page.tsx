@@ -12,11 +12,11 @@ export const dynamic = "force-dynamic";
 
 export default async function RoutingPage() {
   const jar = await cookies();
-  const session = getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
+  const session = await getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
   if (!session) redirect("/login");
   if (!MANAGE_ROLES.includes(session.role)) redirect("/sales");
 
-  const vehicles = listVehicles(session.organizationId, false);
+  const vehicles = await listVehicles(session.organizationId, false);
   const names: Record<number, string> = {};
   for (const v of vehicles) names[v.id] = v.plate ? `${v.name} (${v.plate})` : v.name;
 

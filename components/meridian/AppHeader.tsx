@@ -37,7 +37,7 @@ import RecentsUser from "@/components/mobile/RecentsUser";
  */
 export default async function AppHeader() {
   const jar = await cookies();
-  const session = getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
+  const session = await getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
 
   /* Unreachable in practice — proxy.ts has already sent a session-less request to
      /login. Render the skeleton rather than throwing inside a Suspense boundary: the
@@ -62,7 +62,7 @@ export default async function AppHeader() {
       {/* The founder acting in ONE company: reads and writes are that company's, so say so on every
           page, loudly, with the way back. Never shown for anyone else (actingOrg is only ever set
           for a platform_owner). */}
-      {session.actingOrg ? <ActingCompanyBanner name={organizationName(session.actingOrg) ?? String(session.actingOrg)} /> : null}
+      {session.actingOrg ? <ActingCompanyBanner name={await organizationName(session.actingOrg) ?? String(session.actingOrg)} /> : null}
       {/* Which world they are in. Both can be true at once — a driver impersonated by the
           founder is in a state neither banner alone describes — so they stack rather than
           replace one another. Each renders nothing for a single-role person. */}

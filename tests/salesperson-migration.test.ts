@@ -87,24 +87,23 @@ afterAll(() => {
 
 describe("upgrading a production-shaped database", () => {
   it("rebuilds users despite the foreign key pointing at it", async () => {
-    const { getDb } = await import("@/lib/db");
-    expect(() => getDb()).not.toThrow();
+    const { dbReady } = await import("@/lib/db");
+    await expect(dbReady()).resolves.toBeUndefined();
   });
 
   it("accepts a salesperson afterwards", async () => {
     const { getDb } = await import("@/lib/db");
-    expect(() =>
-      getDb()
+    await (async () =>
+      await getDb()
         .prepare(
           "INSERT INTO users (username, password_hash, display_name, role, created_at) VALUES (?, ?, ?, ?, ?)"
         )
-        .run("nazanin", "x", "نازنین", "phone_sales", new Date().toISOString())
-    ).not.toThrow();
+        .run("nazanin", "x", "نازنین", "phone_sales", new Date().toISOString()))();
   });
 
   it("keeps every column of the existing account, not just its id", async () => {
     const { getDb } = await import("@/lib/db");
-    const row = getDb().prepare("SELECT * FROM users WHERE id = 7").get() as Record<string, unknown>;
+    const row = await getDb().prepare("SELECT * FROM users WHERE id = 7").get() as Record<string, unknown>;
     expect(row.username).toBe("pourya");
     expect(row.password_hash).toBe("hash-that-must-survive");
     expect(row.display_name).toBe("پوریا");
@@ -112,7 +111,7 @@ describe("upgrading a production-shaped database", () => {
        `username = 'pourya'` — which is this very account. The set keeps `owner`, so he is
        still the owner of طعمینو; the column is only which hat he lands in by default. */
     expect(row.role).toBe("platform_owner");
-    const held = getDb()
+    const held = await getDb()
       .prepare("SELECT role FROM user_roles WHERE user_id = 7 ORDER BY role")
       .all() as Array<{ role: string }>;
     expect(held.map((r) => r.role)).toEqual(["owner", "platform_owner"]);
@@ -123,7 +122,7 @@ describe("upgrading a production-shaped database", () => {
 
   it("keeps the activity_log row that referenced the user", async () => {
     const { getDb } = await import("@/lib/db");
-    const row = getDb()
+    const row = await getDb()
       .prepare("SELECT changed_by_user_id FROM activity_log WHERE entity_type = 'customer'")
       .get() as { changed_by_user_id: number };
     expect(row.changed_by_user_id).toBe(7);
@@ -133,7 +132,7 @@ describe("upgrading a production-shaped database", () => {
     // The rebuild has to turn them off. If it forgets to turn them back on, every
     // later write in the process silently loses its referential integrity.
     const { getDb } = await import("@/lib/db");
-    const row = getDb().prepare("PRAGMA foreign_keys").get() as { foreign_keys: number };
+    const row = await getDb().prepare("PRAGMA foreign_keys").get() as { foreign_keys: number };
     expect(row.foreign_keys).toBe(1);
   });
 });

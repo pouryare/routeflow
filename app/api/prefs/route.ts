@@ -7,20 +7,20 @@ import { getPrefs, setPrefs, type BoardPrefs } from "@/lib/repo/prefs";
 const SELF_ROLES = ["platform_owner", "owner", "group_manager", "rep_manager", "phone_sales", "field_rep", "delivery_driver"] as const;
 
 export async function GET(req: NextRequest) {
-  const guard = requireRole(req, [...SELF_ROLES]);
+  const guard = await requireRole(req, [...SELF_ROLES]);
   if (!guard.ok) return guard.response;
-  return NextResponse.json({ ok: true, prefs: getPrefs(guard.session.user.id) });
+  return NextResponse.json({ ok: true, prefs: await getPrefs(guard.session.user.id) });
 }
 
 export async function PATCH(req: NextRequest) {
-  const guard = requireRole(req, [...SELF_ROLES]);
+  const guard = await requireRole(req, [...SELF_ROLES]);
   if (!guard.ok) return guard.response;
   const body = (await req.json().catch(() => null)) as BoardPrefs | null;
   if (!body || typeof body !== "object") {
     return NextResponse.json({ ok: false, error: "تنظیمات نامعتبر است" }, { status: 400 });
   }
   try {
-    return NextResponse.json({ ok: true, prefs: setPrefs(guard.session.user.id, body) });
+    return NextResponse.json({ ok: true, prefs: await setPrefs(guard.session.user.id, body) });
   } catch {
     return NextResponse.json({ ok: false, error: "تنظیمات نامعتبر است" }, { status: 400 });
   }

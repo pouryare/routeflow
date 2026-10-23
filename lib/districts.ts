@@ -1,19 +1,19 @@
-import type { DatabaseSync } from "node:sqlite";
+import type { Db } from "@/lib/database/client";
 import { District, getDb } from "./db";
 import { DistrictProperties } from "./types";
 
 /** Shared by GET /api/districts and the server-rendered map page, so both produce a
  *  byte-identical property list -- the page's initial data and the client's first
  *  refetch must agree or the map would flicker through a spurious re-render on load. */
-export function readDistrictProperties(
-  db: DatabaseSync = getDb(),
+export async function readDistrictProperties(
+  db: Db = getDb(),
   groupIds: number[] | "all" = "all"
-): DistrictProperties[] {
+): Promise<DistrictProperties[]> {
   // See readCustomers: an empty scope must read as "nothing", never as "everything".
   if (groupIds !== "all" && groupIds.length === 0) return [];
   const where = groupIds === "all" ? "" : ` WHERE group_id IN (${groupIds.map(() => "?").join(", ")})`;
   const params = groupIds === "all" ? [] : groupIds;
-  const rows = db
+  const rows = await db
     .prepare(
       `SELECT id, name, level, parent_name, coverage_status, notes, is_custom, updated_at,
               group_id, centroid_lat, centroid_lng

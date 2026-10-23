@@ -11,9 +11,9 @@ export const dynamic = "force-dynamic";
 /** F110: the organisation's last 100 sign-in attempts, for the owner (the admin layout gates it). */
 export default async function LoginLogPage() {
   const jar = await cookies();
-  const session = getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
+  const session = await getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
   if (!session) redirect("/login");
-  const rows = recentLogins(session.organizationId, 100);
+  const rows = await recentLogins(session.organizationId, 100);
 
   return (
     <>

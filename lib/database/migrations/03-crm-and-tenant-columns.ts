@@ -2,13 +2,14 @@
  * Moved out of lib/db.ts's getDb() unchanged; the eras run in numeric order from ../migrate.ts and
  * each statement is idempotent (it inspects the live schema first). */
 import type { DatabaseSync } from "node:sqlite";
+import type { Db } from "../client";
 import { createCrmTables } from "../../repo/crm/migrate";
 import { TENANT_TABLES } from "../tenantTables";
 
-export function applyCrmAndTenantColumns(db: DatabaseSync): void {
+export async function applyCrmAndTenantColumns(db: DatabaseSync, adb: Db): Promise<void> {
   // CRM (docs/superpowers/specs/2026-09-11-crm-leads-customers-design.md): created before the
   // TENANT_TABLES loop below, which ALTERs every table it lists.
-  createCrmTables(db);
+  await createCrmTables(adb);
 
   /* facilities: icon_key added, and 'home_base' renamed to 'home'.
    *

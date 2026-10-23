@@ -6,7 +6,7 @@
 // they can add a third site, rename one, reposition a pin, or delete one, and every
 // distance the app computes follows. The seed that put the original two in the table
 // lives in lib/db.ts alongside the schema.
-import type { DatabaseSync } from "node:sqlite";
+import type { Db } from "@/lib/database/client";
 import { getDb } from "./db";
 import type { FacilityKind, FacilityRow } from "./facilityTypes";
 
@@ -36,14 +36,14 @@ const KIND_ORDER: Record<FacilityKind, number> = {
  *  Component. Rebuilding each row as an object literal is also the explicit column
  *  list, so the page and the API can't drift apart in what they send. Same reasoning as
  *  readCustomers in lib/customers.ts. */
-export function readFacilities(
-  db: DatabaseSync = getDb(),
+export async function readFacilities(
+  db: Db = getDb(),
   /** SQL fragment + params from groupFilterWithShared(). Facilities with no group are
    *  company-wide (the seeded warehouse and home origin), so they stay visible to every
    *  group rather than being scoped away. */
   scope: { sql: string; params: number[] } = { sql: "", params: [] }
-): FacilityRow[] {
-  const rows = db
+): Promise<FacilityRow[]> {
+  const rows = await db
     .prepare(`SELECT * FROM facilities WHERE 1 = 1${scope.sql}`)
     .all(...scope.params) as unknown as FacilityRow[];
   return rows
@@ -69,8 +69,8 @@ export function readFacilities(
 /** One site by id, rebuilt as a plain object for the same null-prototype reason as
  *  readFacilities. Used where a caller needs the whole row rather than a single column
  *  -- notably DELETE, which hands the deleted row back so the action can be undone. */
-export function readFacility(db: DatabaseSync, id: number): FacilityRow | null {
-  return readFacilities(db).find((f) => f.id === id) ?? null;
+export async function readFacility(db: Db, id: number): Promise<FacilityRow | null> {
+  return (await readFacilities(db)).find((f) => f.id === id) ?? null;
 }
 
 /** Defined in facilityTypes.ts, not here: CoverageMap is a Client Component and cannot
@@ -78,8 +78,8 @@ export function readFacility(db: DatabaseSync, id: number): FacilityRow | null {
 export { isPlaced, pickOrigin } from "./facilityTypes";
 import { pickOrigin } from "./facilityTypes";
 
-export function homeBase(db: DatabaseSync = getDb()): FacilityRow | null {
-  return readFacilities(db).find((f) => f.kind === "home") ?? null;
+export async function homeBase(db: Db = getDb()): Promise<FacilityRow | null> {
+  return (await readFacilities(db)).find((f) => f.kind === "home") ?? null;
 }
 
 /** One person's own home, if they have set one up.
@@ -92,9 +92,9 @@ export function homeBase(db: DatabaseSync = getDb()): FacilityRow | null {
  *  Null is the normal answer and not an error: most tenants never enter a house, because
  *  their drivers all start at the depot. A business where the founder works from home is
  *  the exception that needs it, not the rule. */
-export function homeOf(organizationId: number, username: string, db: DatabaseSync = getDb()): FacilityRow | null {
+export async function homeOf(organizationId: number, username: string, db: Db = getDb()): Promise<FacilityRow | null> {
   return (
-    (db
+    (await db
       .prepare(
         `SELECT * FROM facilities
           WHERE organization_id = ? AND owner_username = ? AND kind = 'home'`
@@ -103,8 +103,8 @@ export function homeOf(organizationId: number, username: string, db: DatabaseSyn
   );
 }
 
-export function mainWarehouse(db: DatabaseSync = getDb()): FacilityRow | null {
-  return readFacilities(db).find((f) => f.kind === "warehouse") ?? null;
+export async function mainWarehouse(db: Db = getDb()): Promise<FacilityRow | null> {
+  return (await readFacilities(db)).find((f) => f.kind === "warehouse") ?? null;
 }
 
 /** The point every distance in the app is measured from unless something more specific
@@ -114,8 +114,8 @@ export function mainWarehouse(db: DatabaseSync = getDb()): FacilityRow | null {
  *  when no row carries the flag: a database in that state -- a bad restore, a future bug --
  *  should still render distances from a sensible point instead of stranding every reading
  *  in the app. A site with no location is not a sensible point, so it is not a candidate. */
-export function defaultOrigin(db: DatabaseSync = getDb()): FacilityRow | null {
-  return pickOrigin(readFacilities(db));
+export async function defaultOrigin(db: Db = getDb()): Promise<FacilityRow | null> {
+  return pickOrigin(await readFacilities(db));
 }
 
 /* --- the query `lib/routing/depot.ts` needs ------------------------------------------
@@ -134,10 +134,10 @@ export function defaultOrigin(db: DatabaseSync = getDb()): FacilityRow | null {
  *  Behaviour, not a setting: it cannot be forgotten to maintain, and it follows the business
  *  when a second depot opens. Per-driver rather than per-company on purpose — Reza who always
  *  works بکه should not be handed انبار غرب as "default" because somebody changed the org. */
-export function readOrgFacilities(
-  db: DatabaseSync,
+export async function readOrgFacilities(
+  db: Db,
   organizationId: number
-): FacilityRow[] {
+): Promise<FacilityRow[]> {
   /* Deliberately UNSORTED.
    *
    * Ranking these rows by the default-origin flag here would make this the second place that
@@ -147,17 +147,17 @@ export function readOrgFacilities(
    *
    * The organization_id filter, by contrast, is tenancy and belongs here: without it this
    * returns every tenant's facilities and a caller picks another company's depot. */
-  return db
+  return await db
     .prepare("SELECT * FROM facilities WHERE organization_id = ?")
     .all(organizationId) as unknown as FacilityRow[];
 }
 
-export function readLastLoadFacility(
-  db: DatabaseSync,
+export async function readLastLoadFacility(
+  db: Db,
   organizationId: number,
   driverUserId: number
-): number | null {
-  const row = db
+): Promise<number | null> {
+  const row = await db
     .prepare(
       `SELECT rfs.facility_id FROM run_facility_stops rfs
          JOIN delivery_runs dr ON dr.id = rfs.run_id

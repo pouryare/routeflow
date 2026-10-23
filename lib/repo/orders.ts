@@ -1,4 +1,4 @@
-import type { DatabaseSync } from "node:sqlite";
+import type { Db } from "@/lib/database/client";
 import { makeRepo } from "./base";
 import {
   orderTransition,
@@ -71,12 +71,12 @@ export interface AdvanceOpts {
   note?: string | null;
   device_time?: string | null;
   /** Join the caller's open transaction instead of opening one. */
-  db?: DatabaseSync;
+  db?: Db;
 }
 
 /** Write one order_events row. Caller supplies an open connection. */
-export function appendOrderEvent(
-  conn: DatabaseSync,
+export async function appendOrderEvent(
+  conn: Db,
   row: {
     organization_id: number;
     order_id: number;
@@ -91,8 +91,8 @@ export function appendOrderEvent(
     note?: string | null;
     device_time?: string | null;
   }
-): void {
-  conn
+): Promise<void> {
+  await conn
     .prepare(
       `INSERT INTO order_events
          (organization_id, order_id, from_status, to_status, action, actor_user_id,
@@ -117,38 +117,38 @@ export function appendOrderEvent(
 /** Hook points that Tasks 8 and 9 fill. Kept here so advanceOrder's effect switch has a
  *  single dispatch table and no forward import cycle. */
 export interface EffectHandlers {
-  createCreditApprovalTask?: (conn: DatabaseSync, orgId: number, orderId: number, actorId: number | null) => void;
-  spawnBackorder?: (conn: DatabaseSync, orgId: number, orderId: number, actorId: number | null) => void;
+  createCreditApprovalTask?: (conn: Db, orgId: number, orderId: number, actorId: number | null) => void;
+  spawnBackorder?: (conn: Db, orgId: number, orderId: number, actorId: number | null) => void;
 }
 const effectHandlers: EffectHandlers = {};
 export function registerOrderEffectHandlers(h: EffectHandlers): void {
   Object.assign(effectHandlers, h);
 }
 
-function runEffect(
+async function runEffect(
   effect: OrderEffect,
-  conn: DatabaseSync,
+  conn: Db,
   orgId: number,
   orderId: number,
   actorId: number | null
-): void {
+): Promise<void> {
   switch (effect) {
     case "reserveStock":
-      reserveForOrder(orgId, orderId, conn);
+      await reserveForOrder(orgId, orderId, conn);
       return;
     case "releaseReservations":
-      releaseForOrder(orgId, orderId, conn);
+      await releaseForOrder(orgId, orderId, conn);
       return;
     case "consumeReservations":
-      consumeForOrder(orgId, orderId, conn);
+      await consumeForOrder(orgId, orderId, conn);
       return;
     case "clearCreditHold":
-      conn
+      await conn
         .prepare("UPDATE orders SET credit_hold = 0 WHERE id = ? AND organization_id = ?")
         .run(orderId, orgId);
       return;
     case "stampDelivered":
-      conn
+      await conn
         .prepare(
           "UPDATE orders SET delivered_at = COALESCE(delivered_at, ?) WHERE id = ? AND organization_id = ?"
         )
@@ -161,7 +161,7 @@ function runEffect(
      * customer keeps whatever balance they had before this order; this order stops adding to
      * it. */
     case "stampReturned":
-      conn
+      await conn
         .prepare(
           "UPDATE orders SET total_toman = 0, paid_toman = 0, payment_status = 'unpaid' WHERE id = ? AND organization_id = ?"
         )
@@ -181,17 +181,17 @@ function runEffect(
  *  409) and that the actor's role may fire it (-> OrderRoleError / 403), runs the
  *  transition's effects in order, updates orders.status and writes one order_events row.
  *  Returns the new status. Joins `opts.db` if given, else opens BEGIN IMMEDIATE. */
-export function advanceOrder(
+export async function advanceOrder(
   organizationId: number,
   orderId: number,
   action: OrderAction,
   actor: { id: number | null; role: OrderRole; roles?: readonly OrderRole[]; actorId?: number },
   opts: AdvanceOpts = {}
-): OrderStatus {
+): Promise<OrderStatus> {
   const conn = opts.db ?? ordersRepo.db();
 
-  const apply = (): OrderStatus => {
-    const order = conn
+  const apply = async (): Promise<OrderStatus> => {
+    const order = await conn
       .prepare("SELECT id, status FROM orders WHERE id = ? AND organization_id = ?")
       .get(orderId, organizationId) as { id: number; status: OrderStatus } | undefined;
     if (!order) throw new OrderError("سفارش پیدا نشد");
@@ -220,18 +220,18 @@ export function advanceOrder(
     }
 
     for (const effect of t.effects ?? []) {
-      runEffect(effect, conn, organizationId, orderId, actor.id);
+      await runEffect(effect, conn, organizationId, orderId, actor.id);
     }
 
-    conn
+    await conn
       .prepare("UPDATE orders SET status = ?, updated_at = ? WHERE id = ? AND organization_id = ?")
       .run(t.to, new Date().toISOString(), orderId, organizationId);
 
     if (t.to === "DELIVERED" || t.to === "PARTIALLY_DELIVERED") {
-      convertOnDelivery(conn, organizationId, orderId, actor.id);
+      await convertOnDelivery(conn, organizationId, orderId, actor.id);
     }
 
-    appendOrderEvent(conn, {
+    await appendOrderEvent(conn, {
       organization_id: organizationId,
       order_id: orderId,
       from_status: from,
@@ -247,7 +247,7 @@ export function advanceOrder(
     });
 
     // Phase 7: mirror the transition onto the generic event bus so rules can listen.
-    tryEmitEvent(
+    await tryEmitEvent(
       organizationId,
       {
         kind: `order.${action}`,
@@ -262,24 +262,24 @@ export function advanceOrder(
     return t.to;
   };
 
-  if (opts.db) return apply();
-  conn.exec("BEGIN IMMEDIATE");
+  if (opts.db) return await apply();
+  await conn.exec("BEGIN IMMEDIATE");
   try {
-    const to = apply();
-    conn.exec("COMMIT");
+    const to = await apply();
+    await conn.exec("COMMIT");
     return to;
   } catch (e) {
-    conn.exec("ROLLBACK");
+    await conn.exec("ROLLBACK");
     throw e;
   }
 }
 
 /** The order's transition history, oldest first, with the actor's display name. */
-export function orderEvents(
+export async function orderEvents(
   organizationId: number,
   orderId: number
-): (OrderEventRow & { actor_name: string | null; reason_label: string | null })[] {
-  return ordersRepo
+): Promise<(OrderEventRow & { actor_name: string | null; reason_label: string | null })[]> {
+  return await ordersRepo
     .db()
     .prepare(
       `SELECT e.*, u.display_name AS actor_name, rc.label_fa AS reason_label
@@ -301,12 +301,12 @@ export function orderEvents(
  *  Accepts a set for the same reason the guard does, and for a sharper reason: a button the
  *  guard would refuse is worse than a missing one, because it is a lie the driver taps in a
  *  van. Whatever renders buttons and whatever enforces must read the same set. */
-export function legalActionsForOrder(
+export async function legalActionsForOrder(
   organizationId: number,
   orderId: number,
   role: OrderRole | readonly OrderRole[]
-): OrderAction[] {
-  const order = ordersRepo.get(organizationId, orderId);
+): Promise<OrderAction[]> {
+  const order = await ordersRepo.get(organizationId, orderId);
   if (!order) return [];
   return legalOrderActions(order.status, role);
 }

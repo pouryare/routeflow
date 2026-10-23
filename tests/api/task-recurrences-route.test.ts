@@ -41,15 +41,15 @@ function req(
   });
 }
 
-beforeEach(() => {
+beforeEach(async () => {
   const db = getDb();
-  db.exec("DELETE FROM task_recurrences; DELETE FROM users WHERE id > 0;");
+  await db.exec("DELETE FROM task_recurrences; DELETE FROM users WHERE id > 0;");
   const now = new Date().toISOString();
   const u = db.prepare(
     "INSERT INTO users (username,password_hash,display_name,role,created_at,organization_id) VALUES (?,?,?,?,?,1)"
   );
-  gm = Number(u.run(`gm${Date.now()}`, "x", "م", "group_manager", now).lastInsertRowid);
-  seller = Number(u.run(`s${Date.now()}`, "x", "ف", "phone_sales", now).lastInsertRowid);
+  gm = Number((await u.run(`gm${Date.now()}`, "x", "م", "group_manager", now)).lastInsertRowid);
+  seller = Number((await u.run(`s${Date.now()}`, "x", "ف", "phone_sales", now)).lastInsertRowid);
 });
 
 describe("/api/task-recurrences", () => {

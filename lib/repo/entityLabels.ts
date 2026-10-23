@@ -1,4 +1,4 @@
-import type { DatabaseSync } from "node:sqlite";
+import type { Db } from "@/lib/database/client";
 
 /** Rows that point at a customer or a district: reminders, photos. */
 export interface EntityRef {
@@ -11,11 +11,11 @@ const GONE: Record<"customer" | "district", string> = {
   district: "منطقه حذف‌شده",
 };
 
-function namesById(db: DatabaseSync, table: "customers" | "districts", column: string, ids: number[]) {
+async function namesById(db: Db, table: "customers" | "districts", column: string, ids: number[]) {
   const names = new Map<number, string>();
   if (ids.length === 0) return names;
   const placeholders = ids.map(() => "?").join(",");
-  const found = db
+  const found = await db
     .prepare(`SELECT id, ${column} AS name FROM ${table} WHERE id IN (${placeholders})`)
     .all(...ids) as unknown as { id: number; name: string }[];
   for (const r of found) names.set(r.id, r.name);
@@ -25,10 +25,10 @@ function namesById(db: DatabaseSync, table: "customers" | "districts", column: s
 /** Each row with a display `label`: the customer's business name or the district's name, or
  *  a "deleted" placeholder when the row it points at is gone. Two queries however many rows
  *  there are, rather than one per row. */
-export function withEntityLabels<R extends EntityRef>(db: DatabaseSync, rows: R[]): (R & { label: string })[] {
+export async function withEntityLabels<R extends EntityRef>(db: Db, rows: R[]): Promise<(R & { label: string })[]> {
   const idsOf = (type: string) => [...new Set(rows.filter((r) => r.entity_type === type).map((r) => r.entity_id))];
-  const customers = namesById(db, "customers", "business_name", idsOf("customer"));
-  const districts = namesById(db, "districts", "name", idsOf("district"));
+  const customers = await namesById(db, "customers", "business_name", idsOf("customer"));
+  const districts = await namesById(db, "districts", "name", idsOf("district"));
   return rows.map((r) => ({
     ...r,
     label:

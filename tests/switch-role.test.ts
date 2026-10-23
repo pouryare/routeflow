@@ -19,18 +19,18 @@ afterAll(() => {
 
 /* Fixtures learned in A-Task 3: organizations.slug is UNIQUE so it must vary per org, and
  * `groups` has no organization_id column. */
-function mkUser(username: string, primary: string, roles: string[], org = 8): number {
+async function mkUser(username: string, primary: string, roles: string[], org = 8): Promise<number> {
   const db = getDb();
-  db.exec(`INSERT OR IGNORE INTO organizations (id,name,slug,created_at) VALUES (${org},'O-${org}','o-${org}','2026-01-01')`);
-  db.exec(
+  await db.exec(`INSERT OR IGNORE INTO organizations (id,name,slug,created_at) VALUES (${org},'O-${org}','o-${org}','2026-01-01')`);
+  await db.exec(
     `INSERT OR IGNORE INTO groups (id,name,slug,color,active,created_at) VALUES (${100 + org},'G','g${org}','#000000',1,'2026-01-01')`
   );
-  db.prepare(
+  await db.prepare(
     `INSERT INTO users (username, password_hash, display_name, role, group_id, organization_id, active, token_version, created_at)
      VALUES (?, 'x', ?, ?, ?, ?, 1, 0, '2026-01-01')`
   ).run(username, username, primary, 100 + org, org);
-  const id = (db.prepare("SELECT id FROM users WHERE username = ?").get(username) as { id: number }).id;
-  setRoles(id, roles as never);
+  const id = (await db.prepare("SELECT id FROM users WHERE username = ?").get(username) as { id: number }).id;
+  await setRoles(id, roles as never);
   return id;
 }
 
@@ -43,13 +43,13 @@ const req = (uid: number, active: string, body: unknown, org = 8) =>
 
 describe("switching role", () => {
   it("refuses a role the person does not hold", async () => {
-    const id = mkUser("r1", "phone_sales", ["phone_sales"]);
+    const id = await mkUser("r1", "phone_sales", ["phone_sales"]);
     const res = await POST(req(id, "phone_sales", { role: "field_rep" }) as never);
     expect(res.status).toBe(403);
   });
 
   it("accepts a role they do hold, and re-issues the cookie", async () => {
-    const id = mkUser("r2", "delivery_driver", ["field_rep", "delivery_driver"]);
+    const id = await mkUser("r2", "delivery_driver", ["field_rep", "delivery_driver"]);
     const res = await POST(req(id, "field_rep", { role: "delivery_driver" }) as never);
     expect(res.status).toBe(200);
     expect(res.headers.get("set-cookie")).toContain(COOKIE_NAME);
@@ -58,7 +58,7 @@ describe("switching role", () => {
   it("the re-issued cookie really carries the new role as its claim", async () => {
     // The status code alone proves nothing — the whole point is that proxy.ts, which cannot
     // reach the database, reads the CLAIM. Assert the claim itself.
-    const id = mkUser("r2b", "delivery_driver", ["field_rep", "delivery_driver"]);
+    const id = await mkUser("r2b", "delivery_driver", ["field_rep", "delivery_driver"]);
     const res = await POST(req(id, "field_rep", { role: "delivery_driver" }) as never);
     const cookie = res.headers.get("set-cookie")!;
     const token = decodeURIComponent(cookie.split(";")[0].split("=").slice(1).join("="));
@@ -66,17 +66,17 @@ describe("switching role", () => {
   });
 
   it("does not log the person out — token_version is untouched", async () => {
-    const id = mkUser("r3", "delivery_driver", ["field_rep", "delivery_driver"]);
-    const before = (getDb().prepare("SELECT token_version FROM users WHERE id = ?").get(id) as { token_version: number }).token_version;
+    const id = await mkUser("r3", "delivery_driver", ["field_rep", "delivery_driver"]);
+    const before = (await getDb().prepare("SELECT token_version FROM users WHERE id = ?").get(id) as { token_version: number }).token_version;
     await POST(req(id, "field_rep", { role: "delivery_driver" }) as never);
-    const after = (getDb().prepare("SELECT token_version FROM users WHERE id = ?").get(id) as { token_version: number }).token_version;
+    const after = (await getDb().prepare("SELECT token_version FROM users WHERE id = ?").get(id) as { token_version: number }).token_version;
     expect(after).toBe(before);
   });
 
   it("rejects a name that is not a role at all", async () => {
     // The set is checked, so this would 403 anyway — but an unknown string should be a 400,
     // because "you may not have that" and "that is not a thing" are different answers.
-    const id = mkUser("r4", "phone_sales", ["phone_sales"]);
+    const id = await mkUser("r4", "phone_sales", ["phone_sales"]);
     const res = await POST(req(id, "phone_sales", { role: "superuser" }) as never);
     expect(res.status).toBe(400);
   });
@@ -86,8 +86,8 @@ describe("switching role", () => {
     // target. Dropping `act` would silently end the impersonation mid-session and hand the
     // impersonated user's browser the owner's own permissions on the next refresh.
     const db = getDb();
-    const owner = mkUser("impowner", "owner", ["owner"], 12);
-    const target = mkUser("imptarget", "delivery_driver", ["field_rep", "delivery_driver"], 12);
+    const owner = await mkUser("impowner", "owner", ["owner"], 12);
+    const target = await mkUser("imptarget", "delivery_driver", ["field_rep", "delivery_driver"], 12);
     const withAct = createSessionToken({
       uid: target, role: "field_rep", gid: 112, oid: 12, tv: 0, name: "t", act: owner,
     });

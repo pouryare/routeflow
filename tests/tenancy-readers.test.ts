@@ -16,26 +16,26 @@ afterAll(() => {
 });
 
 describe("readers are scoped to one organisation", () => {
-  beforeAll(() => {
+  beforeAll(async () => {
     const db = getDb();
-    db.exec(`INSERT INTO organizations (id, name, slug, created_at) VALUES (2, 'Two', 'two', '2026-01-01')`);
-    db.exec(`INSERT INTO groups (name, slug, created_at, organization_id) VALUES ('G1', 'g1', '2026-01-01', 1)`);
-    db.exec(`INSERT INTO groups (name, slug, created_at, organization_id) VALUES ('G2', 'g2', '2026-01-01', 2)`);
-    db.exec(`INSERT INTO products (name, sku, created_at, updated_at, organization_id)
+    await db.exec(`INSERT INTO organizations (id, name, slug, created_at) VALUES (2, 'Two', 'two', '2026-01-01')`);
+    await db.exec(`INSERT INTO groups (name, slug, created_at, organization_id) VALUES ('G1', 'g1', '2026-01-01', 1)`);
+    await db.exec(`INSERT INTO groups (name, slug, created_at, organization_id) VALUES ('G2', 'g2', '2026-01-01', 2)`);
+    await db.exec(`INSERT INTO products (name, sku, created_at, updated_at, organization_id)
              VALUES ('کره یک', 'A1', '2026-01-01', '2026-01-01', 1)`);
-    db.exec(`INSERT INTO products (name, sku, created_at, updated_at, organization_id)
+    await db.exec(`INSERT INTO products (name, sku, created_at, updated_at, organization_id)
              VALUES ('کره دو', 'B1', '2026-01-01', '2026-01-01', 2)`);
   });
 
-  it("shows an organisation only its own products", () => {
+  it("shows an organisation only its own products", async () => {
     const db = getDb();
-    expect(readCatalogue(db, 1).map((p) => p.sku)).toEqual(["A1"]);
-    expect(readCatalogue(db, 2).map((p) => p.sku)).toEqual(["B1"]);
+    expect((await readCatalogue(db, 1)).map((p) => p.sku)).toEqual(["A1"]);
+    expect((await readCatalogue(db, 2)).map((p) => p.sku)).toEqual(["B1"]);
   });
 
-  it("shows an organisation only its own groups", () => {
+  it("shows an organisation only its own groups", async () => {
     const db = getDb();
-    expect(readGroups(db, 1).map((g) => g.slug)).toEqual(["g1"]);
-    expect(readGroups(db, 2).map((g) => g.slug)).toEqual(["g2"]);
+    expect((await readGroups(db, 1)).map((g) => g.slug)).toEqual(["g1"]);
+    expect((await readGroups(db, 2)).map((g) => g.slug)).toEqual(["g2"]);
   });
 });

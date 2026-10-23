@@ -31,30 +31,30 @@ export interface Profile {
   open: Customer360;
 }
 
-export function profileFor(session: Session, id: number): Profile | null {
-  const business = getBusiness(session, id);
+export async function profileFor(session: Session, id: number): Promise<Profile | null> {
+  const business = await getBusiness(session, id);
   if (!business) return null;
   const db = getDb();
   const org = business.organization_id;
-  const extra = db.prepare(`SELECT secondary_phone, whatsapp, website, instagram, size_band, supply_channel, visit_window, visit_note, uses_products_json, COALESCE(temperature_manual, 0) AS temperature_manual
+  const extra = await db.prepare(`SELECT secondary_phone, whatsapp, website, instagram, size_band, supply_channel, visit_window, visit_note, uses_products_json, COALESCE(temperature_manual, 0) AS temperature_manual
     FROM customers WHERE id = ? AND organization_id = ?`).get(id, org) as {
       secondary_phone: string | null; whatsapp: string | null; website: string | null; instagram: string | null;
       size_band: string | null; supply_channel: string | null; visit_window: string | null; visit_note: string | null;
       uses_products_json: string | null; temperature_manual: number;
     };
-  const tags = (plain(db.prepare("SELECT tag FROM customer_tags WHERE customer_id = ? AND organization_id = ? ORDER BY tag").all(id, org)) as { tag: string }[]).map(t => t.tag);
-  const contacts = plain(db.prepare(`SELECT id, name, role, phone_norm, whatsapp, is_primary, is_decider, best_time, note
+  const tags = (plain(await db.prepare("SELECT tag FROM customer_tags WHERE customer_id = ? AND organization_id = ? ORDER BY tag").all(id, org)) as { tag: string }[]).map(t => t.tag);
+  const contacts = plain(await db.prepare(`SELECT id, name, role, phone_norm, whatsapp, is_primary, is_decider, best_time, note
     FROM contacts WHERE customer_id = ? AND organization_id = ? AND active = 1 ORDER BY is_primary DESC, id`).all(id, org)) as unknown as ContactRow[];
   const manager = isCrmManager(session.role);
   return structuredClone({
     business: { ...business, ...extra },
     tags,
-    products: productsWithPrice(business.organization_id),
-    contacts, summary: readCustomerSummary(db, orderFilter(session), id),
-    reps: manager ? addLeadContext(session).reps.map(r => ({ id: r.id, name: r.name })) : [],
+    products: await productsWithPrice(business.organization_id),
+    contacts, summary: await readCustomerSummary(db, orderFilter(session), id),
+    reps: manager ? (await addLeadContext(session)).reps.map(r => ({ id: r.id, name: r.name })) : [],
     canWrite: canWriteBusiness(session, business), canManage: manager,
-    onboarding: onboardingFor(org, id),
-    open: customer360(session, org, id),
+    onboarding: await onboardingFor(org, id),
+    open: await customer360(session, org, id),
   });
 }
 
@@ -64,10 +64,10 @@ interface OrderRow { id: number; order_no: string; status: string; order_type: s
 interface PayRow { id: number; amount_toman: number; at: string; voided_at: string | null; who: string | null }
 
 /** Each source seeks using the same total order; equal timestamps never lose rows. */
-export function timelineFor(session: Session, id: number,
+export async function timelineFor(session: Session, id: number,
   opts: { before?: string | null; kind?: TimelineKind | null; limit?: number } = {},
-): { items: TimelineItem[]; nextBefore: string | null } | null {
-  const business = getBusiness(session, id);
+): Promise<{ items: TimelineItem[]; nextBefore: string | null } | null> {
+  const business = await getBusiness(session, id);
   if (!business) return null;
   if (opts.limit !== undefined && !Number.isSafeInteger(opts.limit)) throw new Error("اندازهٔ صفحه نامعتبر است");
   const limit = Math.min(Math.max(opts.limit ?? 30, 1), 100);
@@ -81,7 +81,7 @@ export function timelineFor(session: Session, id: number,
   } : { sql: "", params: [] };
   if (want("activity")) {
     const s = seek("a.occurred_at", "a.id", "activity");
-    const rows = db.prepare(`SELECT a.id, a.type, a.outcome_code, a.note, a.verification_to, a.stage_to,
+    const rows = await db.prepare(`SELECT a.id, a.type, a.outcome_code, a.note, a.verification_to, a.stage_to,
       a.occurred_at AS at, u.display_name AS who FROM activities a LEFT JOIN users u ON u.id = a.user_id
       WHERE a.customer_id = ? AND a.organization_id = ?${s.sql}
       ORDER BY a.occurred_at DESC, a.id DESC LIMIT ?`).all(id, org, ...s.params, limit + 1) as unknown as ActRow[];
@@ -89,7 +89,7 @@ export function timelineFor(session: Session, id: number,
   }
   if (want("task")) {
     const s = seek("COALESCE(t.done_at, t.created_at)", "t.id", "task");
-    const rows = db.prepare(`SELECT t.id, t.kind, t.title, t.outcome_code, COALESCE(t.done_at, t.created_at) AS at,
+    const rows = await db.prepare(`SELECT t.id, t.kind, t.title, t.outcome_code, COALESCE(t.done_at, t.created_at) AS at,
       u.display_name AS who FROM tasks t LEFT JOIN users u ON u.id = t.assignee_user_id
       WHERE t.organization_id = ? AND t.entity_type = 'customer' AND t.entity_id = ? AND t.status = 'done'
       AND NOT EXISTS (SELECT 1 FROM activities a WHERE a.customer_id = ? AND a.organization_id = ? AND a.completed_task_id = t.id)
@@ -100,7 +100,7 @@ export function timelineFor(session: Session, id: number,
   if (want("order")) {
     const s = seek("o.order_date", "o.id", "order");
     const scope = orderFilter(session);
-    const rows = db.prepare(`SELECT o.id, o.order_no, o.status, COALESCE(o.order_type, 'SALE') AS order_type, o.order_date AS at,
+    const rows = await db.prepare(`SELECT o.id, o.order_no, o.status, COALESCE(o.order_type, 'SALE') AS order_type, o.order_date AS at,
       (SELECT COALESCE(SUM(l.packs_ordered * l.unit_price_toman), 0) FROM order_lines l
         WHERE l.order_id = o.id AND COALESCE(l.is_reversal, 0) = 0) AS total
       FROM orders o WHERE o.customer_id = ? AND o.organization_id = ?${scope.sql}${s.sql}
@@ -112,7 +112,7 @@ export function timelineFor(session: Session, id: number,
   }
   if (want("payment")) {
     const s = seek("p.received_at", "p.id", "payment");
-    const rows = db.prepare(`SELECT p.id, p.amount_toman, p.received_at AS at, p.voided_at, u.display_name AS who
+    const rows = await db.prepare(`SELECT p.id, p.amount_toman, p.received_at AS at, p.voided_at, u.display_name AS who
       FROM payments p LEFT JOIN users u ON u.id = p.received_by WHERE p.customer_id = ? AND p.organization_id = ?${s.sql}
       ORDER BY p.received_at DESC, p.id DESC LIMIT ?`).all(id, org, ...s.params, limit + 1) as unknown as PayRow[];
     for (const p of rows) items.push({ kind: "payment", id: p.id, at: p.at, who: p.who, href: null, title: "دریافت وجه",

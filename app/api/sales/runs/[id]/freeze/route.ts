@@ -5,11 +5,11 @@ import { MANAGE_ROLES, isOwner } from "@/lib/roles";
 
 
 export async function POST(req: NextRequest, ctx: RouteContext<"/api/sales/runs/[id]/freeze">) {
-  const guard = requireRole(req, MANAGE_ROLES);
+  const guard = await requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
   const { id } = await ctx.params;
   try {
-    freezeRun(guard.session.organizationId, Number(id), {
+    await freezeRun(guard.session.organizationId, Number(id), {
       id: guard.session.user.id,
       role: isOwner(guard.session.role) ? "owner" : "group_manager",
     });

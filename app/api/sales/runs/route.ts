@@ -6,15 +6,15 @@ import { findDriverInOrg, listRuns, newRun } from "@/lib/repo/deliveryRunsAdmin"
 const PLANNERS = ["platform_owner", "owner", "group_manager"] as const;
 
 export async function GET(req: NextRequest) {
-  const guard = requireRole(req, [...PLANNERS]);
+  const guard = await requireRole(req, [...PLANNERS]);
   if (!guard.ok) return guard.response;
 
-  const scope = groupFilter(guard.session, "dr.group_id");
-  return NextResponse.json({ ok: true, runs: listRuns(scope, orgScopeId(guard.session)) });
+  const scope = await groupFilter(guard.session, "dr.group_id");
+  return NextResponse.json({ ok: true, runs: await listRuns(scope, orgScopeId(guard.session)) });
 }
 
 export async function POST(req: NextRequest) {
-  const guard = requireRole(req, [...PLANNERS]);
+  const guard = await requireRole(req, [...PLANNERS]);
   if (!guard.ok) return guard.response;
 
   const body = (await req.json().catch(() => null)) as {
@@ -30,13 +30,13 @@ export async function POST(req: NextRequest) {
   // A driver outside the caller's company or group answers 404, like every other row they cannot
   // reach -- a 403 would confirm the account exists. The role test reads the SET, so a driver whose
   // primary is something else is still a driver.
-  const driver = findDriverInOrg(Number(body?.driver_user_id), orgScopeId(guard.session));
-  if (!driver || !canReachGroup(guard.session, driver.group_id)) {
+  const driver = await findDriverInOrg(Number(body?.driver_user_id), orgScopeId(guard.session));
+  if (!driver || !await canReachGroup(guard.session, driver.group_id)) {
     return NextResponse.json({ ok: false, error: "راننده پیدا نشد" }, { status: 404 });
   }
 
   try {
-    const id = newRun({
+    const id = await newRun({
       driver_user_id: driver.id,
       run_date: runDate,
       created_by: guard.session.user.id,

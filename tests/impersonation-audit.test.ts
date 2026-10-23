@@ -36,19 +36,19 @@ describe("impersonated_by", () => {
   /* impersonated_by REFERENCES users(id), and the platform_owner bootstrap UPDATEs the
      founder rather than inserting — so a fresh fixture has nobody. Two accounts, the
      founder and a driver, so the two ids below are real rows. */
-  beforeAll(() => {
+  beforeAll(async () => {
     const d = getDb();
-    d.exec(`INSERT OR IGNORE INTO organizations (id,name,slug,created_at) VALUES (1,'O','o','2026-01-01')`);
-    d.prepare(
+    await d.exec(`INSERT OR IGNORE INTO organizations (id,name,slug,created_at) VALUES (1,'O','o','2026-01-01')`);
+    await d.prepare(
       "INSERT OR IGNORE INTO users (id,username,password_hash,display_name,role,organization_id,active,created_at) VALUES (?,?,?,?,?,1,1,?)"
     ).run(1, "founder", "x", "founder", "platform_owner", "2026-01-01");
-    d.prepare(
+    await d.prepare(
       "INSERT OR IGNORE INTO users (id,username,password_hash,display_name,role,organization_id,active,created_at) VALUES (?,?,?,?,?,1,1,?)"
     ).run(5, "driver", "x", "driver", "delivery_driver", "2026-01-01");
 
     /* order_events and activity_log both FK to a real row, so the fixture needs one
        customer and one order rather than a hand-written order_id. */
-    d.exec(
+    await d.exec(
       "INSERT OR IGNORE INTO customers (id,customer_code,business_name,lifecycle,synced_at,organization_id) VALUES (1,'C1','x','active','2026-01-01',1)"
     );
     /* `orders` has FIVE NOT NULL columns and a CHECK over the 12-state machine, and
@@ -56,10 +56,10 @@ describe("impersonated_by", () => {
      * is simply absent. The symptom is always "row missing", never a message, so this cost
      * three probes (PLANNED -> DRAFT -> created_by -> updated_at) before the cause was
      * obvious. createOrder() is the sanctioned way in and names every column itself. */
-    const product = createProduct(d, { name: "کره", kg_per_base_unit: 0.25, organization_id: 1 });
-    const packaging = createPackaging(d, { product_id: product, name: "جعبه", qty_per_pack: 10 });
-    setPrice(d, { product_id: product, price_toman: 1_000, valid_from: "2026-01-01" });
-    createOrder(d, {
+    const product = await createProduct(d, { name: "کره", kg_per_base_unit: 0.25, organization_id: 1 });
+    const packaging = await createPackaging(d, { product_id: product, name: "جعبه", qty_per_pack: 10 });
+    await setPrice(d, { product_id: product, price_toman: 1_000, valid_from: "2026-01-01" });
+    await createOrder(d, {
       customer_id: 1,
       order_date: "2026-01-01",
       created_by: 1,
@@ -67,81 +67,81 @@ describe("impersonated_by", () => {
       lines: [{ product_id: product, packaging_id: packaging, packs: 1 }],
     });
     orderId = Number(
-      (d.prepare("SELECT id FROM orders ORDER BY id DESC LIMIT 1").get() as { id: number }).id
+      (await d.prepare("SELECT id FROM orders ORDER BY id DESC LIMIT 1").get() as { id: number }).id
     );
   });
 
-  it("the three audit tables all have the column", () => {
+  it("the three audit tables all have the column", async () => {
     for (const t of ["activity_log", "order_events", "events"]) {
-      const cols = (db().prepare("SELECT name FROM pragma_table_info(?)").all(t) as Array<{ name: string }>)
+      const cols = (await db().prepare("SELECT name FROM pragma_table_info(?)").all(t) as Array<{ name: string }>)
         .map((c) => c.name);
       expect(cols, t).toContain("impersonated_by");
     }
   });
 
-  it("order_events records the target AND who was really driving", () => {
-    appendOrderEvent(db(), {
+  it("order_events records the target AND who was really driving", async () => {
+    await appendOrderEvent(db(), {
       organization_id: 1, order_id: orderId, from_status: "READY", to_status: "OUT_FOR_DELIVERY",
       action: "startRoute", actor_user_id: 5, impersonated_by: 1, created_at: now(),
     } as never);
-    const row = db()
+    const row = await db()
       .prepare("SELECT actor_user_id, impersonated_by FROM order_events ORDER BY id DESC LIMIT 1")
       .get();
     expect(row).toEqual({ actor_user_id: 5, impersonated_by: 1 });
   });
 
-  it("is NULL for an ordinary write, so 'not an impersonation' is the default", () => {
-    appendOrderEvent(db(), {
+  it("is NULL for an ordinary write, so 'not an impersonation' is the default", async () => {
+    await appendOrderEvent(db(), {
       organization_id: 1, order_id: orderId, from_status: "PLANNED", to_status: "CONFIRMED",
       action: "passReview", actor_user_id: 5, impersonated_by: null, created_at: now(),
     } as never);
-    const row = db()
+    const row = await db()
       .prepare("SELECT impersonated_by FROM order_events ORDER BY id DESC LIMIT 1")
       .get() as { impersonated_by: number | null };
     expect(row.impersonated_by).toBeNull();
   });
 
-  it("the column is omitted safely, not merely set to null", () => {
+  it("the column is omitted safely, not merely set to null", async () => {
     // A caller that does not know about the field must not have to pass it.
-    appendOrderEvent(db(), {
+    await appendOrderEvent(db(), {
       organization_id: 1, order_id: orderId, from_status: "PLANNED", to_status: "CONFIRMED",
       action: "passReview", actor_user_id: 5, created_at: now(),
     } as never);
-    const row = db()
+    const row = await db()
       .prepare("SELECT impersonated_by FROM order_events ORDER BY id DESC LIMIT 1")
       .get() as { impersonated_by: number | null };
     expect(row.impersonated_by).toBeNull();
   });
 
-  it("events carries it too", () => {
-    emitEvent(1, {
+  it("events carries it too", async () => {
+    await emitEvent(1, {
       kind: "x", entity_type: "user", entity_id: 5,
       actor_user_id: 5, impersonated_by: 1, occurred_at: now(),
     } as never);
-    const row = db()
+    const row = await db()
       .prepare("SELECT impersonated_by FROM events ORDER BY id DESC LIMIT 1")
       .get() as { impersonated_by: number | null };
     expect(row.impersonated_by).toBe(1);
   });
 
-  it("activity_log carries it", () => {
-    logActivity(db(), {
+  it("activity_log carries it", async () => {
+    await logActivity(db(), {
       entity_type: "customer", entity_id: 1, event_type: "note",
       old_value: null, new_value: null, note: "x",
       changed_by: "t", changed_by_user_id: 5, impersonated_by: 1,
     } as never);
-    const row = db()
+    const row = await db()
       .prepare("SELECT impersonated_by FROM activity_log ORDER BY id DESC LIMIT 1")
       .get() as { impersonated_by: number | null };
     expect(row.impersonated_by).toBe(1);
   });
 
-  it("an OFFLINE write keeps both names, because the driver app is a queue", () => {
+  it("an OFFLINE write keeps both names, because the driver app is a queue", async () => {
     /* The case the spec calls the sharpest: the founder acts as a driver, the driver app
      * queues the write in a van with no network, and it lands minutes later. If the
      * impersonator does not cross that queue, the row says the driver did it — and nothing
      * can reconstruct who was actually holding the phone. */
-    applyMutations(1, 5, [
+    await applyMutations(1, 5, [
       {
         client_uuid: "au1", op: "order.submit", payload: { order_id: orderId },
         occurred_at: new Date().toISOString(), clock_skew_ms: 0, depends_on: [],
@@ -151,7 +151,7 @@ describe("impersonated_by", () => {
     // The startRoute row specifically, not "the last row": the fixture's own create row
     // is also in this table, and ordering by id descending would make the assertion about
     // the wrong event whenever another one is appended after it.
-    const row = db()
+    const row = await db()
       .prepare("SELECT actor_user_id, impersonated_by FROM order_events WHERE action = 'startRoute' ORDER BY id DESC LIMIT 1")
       .get() as { actor_user_id: number | null; impersonated_by: number | null };
     expect(row, "no startRoute event was written").toBeTruthy();

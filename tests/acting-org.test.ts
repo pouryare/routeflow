@@ -27,12 +27,12 @@ let a: Awaited<ReturnType<typeof seedTwoOrgs>>["a"];
 let b: Awaited<ReturnType<typeof seedTwoOrgs>>["b"];
 let founderId = 0;
 
-beforeAll(() => {
-  ({ a, b } = seedTwoOrgs(getDb()));
+beforeAll(async () => {
+  ({ a, b } = await seedTwoOrgs(getDb()));
   founderId = Number(
-    getDb()
+    (await getDb()
       .prepare("INSERT INTO users (username, password_hash, display_name, role, group_id, active, created_at, organization_id) VALUES ('founder', 'x:y', 'founder', 'platform_owner', NULL, 1, '2026-01-01', 1)")
-      .run().lastInsertRowid
+      .run()).lastInsertRowid
   );
 });
 
@@ -47,20 +47,20 @@ const req = (tok: string, method: "GET" | "POST", body?: unknown) =>
 const cookieOf = (res: Response) => /coverage_session_v2=([^;]+)/.exec(res.headers.get("set-cookie") ?? "")?.[1] ?? "";
 
 describe("the session of a platform_owner", () => {
-  it("sees every company by default, and writes land in the home company", () => {
-    const s = getSessionFromCookies(token())!;
+  it("sees every company by default, and writes land in the home company", async () => {
+    const s = (await getSessionFromCookies(token()))!;
     expect(s.role).toBe("platform_owner");
     expect(s.actingOrg ?? null).toBeNull();
     expect(s.organizationId).toBe(1);
     expect(orgScopeId(s)).toBeNull();
-    expect(scopeGroupIds(s)).toBe("all");
+    expect(await scopeGroupIds(s)).toBe("all");
     expect(canReachOrg(s, 2)).toBe(true);
-    const orders = ordersListFor(s).orders.map((o) => o.id);
+    const orders = (await ordersListFor(s)).orders.map((o) => o.id);
     expect(orders).toEqual(expect.arrayContaining([a.orderId, b.orderId]));
   });
 
-  it("acting in a company, reads and writes are that company's: the founder is its owner", () => {
-    const s = getSessionFromCookies(token({ ao: 2 }))!;
+  it("acting in a company, reads and writes are that company's: the founder is its owner", async () => {
+    const s = (await getSessionFromCookies(token({ ao: 2 })))!;
     expect(s.role).toBe("platform_owner"); // role gates (OWNER_ROLES, MANAGE_ROLES) still pass
     expect(s.actingOrg).toBe(2);
     expect(s.organizationId).toBe(2);
@@ -68,34 +68,34 @@ describe("the session of a platform_owner", () => {
     expect(orgFilter(s, "x.organization_id")).toEqual({ sql: " AND x.organization_id = ?", params: [2] });
     expect(canReachOrg(s, 2)).toBe(true);
     expect(canReachOrg(s, 1)).toBe(false);
-    expect(canReachGroup(s, b.groupId)).toBe(true);
-    expect(canReachGroup(s, a.groupId)).toBe(false);
-    expect(scopeGroupIds(s)).toEqual([b.groupId]);
-    expect(groupFilter(s).params).toEqual([2]);
+    expect(await canReachGroup(s, b.groupId)).toBe(true);
+    expect(await canReachGroup(s, a.groupId)).toBe(false);
+    expect(await scopeGroupIds(s)).toEqual([b.groupId]);
+    expect((await groupFilter(s)).params).toEqual([2]);
     expect(orderFilter(s).sql).toContain("organization_id");
     // The pages' reads follow: org B's orders and catalogue, nothing of org A's.
-    expect(ordersListFor(s).orders.map((o) => o.id)).toEqual([b.orderId]);
-    expect(catalogueFor(s).map((p) => p.id)).toEqual([b.productId]);
+    expect((await ordersListFor(s)).orders.map((o) => o.id)).toEqual([b.orderId]);
+    expect((await catalogueFor(s)).map((p) => p.id)).toEqual([b.productId]);
   });
 
-  it("ignores an acting company that does not exist or is inactive, falling back to all companies", () => {
-    expect(getSessionFromCookies(token({ ao: 999 }))!.actingOrg ?? null).toBeNull();
-    getDb().prepare("UPDATE organizations SET active = 0 WHERE id = 2").run();
-    expect(getSessionFromCookies(token({ ao: 2 }))!.actingOrg ?? null).toBeNull();
-    getDb().prepare("UPDATE organizations SET active = 1 WHERE id = 2").run();
+  it("ignores an acting company that does not exist or is inactive, falling back to all companies", async () => {
+    expect((await getSessionFromCookies(token({ ao: 999 })))!.actingOrg ?? null).toBeNull();
+    await getDb().prepare("UPDATE organizations SET active = 0 WHERE id = 2").run();
+    expect((await getSessionFromCookies(token({ ao: 2 })))!.actingOrg ?? null).toBeNull();
+    await getDb().prepare("UPDATE organizations SET active = 1 WHERE id = 2").run();
   });
 
-  it("grants nothing to anyone else who carries the claim", () => {
-    const owner = getSessionFromCookies(token({ uid: a.ownerId, role: "owner", ao: 2 }))!;
+  it("grants nothing to anyone else who carries the claim", async () => {
+    const owner = (await getSessionFromCookies(token({ uid: a.ownerId, role: "owner", ao: 2 })))!;
     expect(owner.actingOrg ?? null).toBeNull();
     expect(owner.organizationId).toBe(1);
     expect(orgScopeId(owner)).toBe(1);
     expect(canReachOrg(owner, 2)).toBe(false);
   });
 
-  it("ignores the claim during Login-As: an impersonated session is exactly the target's", () => {
+  it("ignores the claim during Login-As: an impersonated session is exactly the target's", async () => {
     const targetId = a.managerId;
-    const s = getSessionFromCookies(token({ uid: targetId, role: "group_manager", ao: 2, act: founderId }));
+    const s = await getSessionFromCookies(token({ uid: targetId, role: "group_manager", ao: 2, act: founderId }));
     expect(s?.actingOrg ?? null).toBeNull();
     expect(s?.organizationId).toBe(1);
   });
@@ -118,23 +118,23 @@ describe("/api/admin/acting-org", () => {
   });
 
   it("switches into a company, signs a new token carrying it, and records the switch", async () => {
-    const before = (getDb().prepare("SELECT COUNT(*) AS n FROM platform_access_log WHERE organization_id = 2").get() as { n: number }).n;
+    const before = (await getDb().prepare("SELECT COUNT(*) AS n FROM platform_access_log WHERE organization_id = 2").get() as { n: number }).n;
     const res = await POST(req(token(), "POST", { organization_id: 2 }));
     expect(res.status).toBe(200);
     const claims = parseSessionToken(cookieOf(res))!;
     expect(claims.ao).toBe(2);
     expect(claims.uid).toBe(founderId);
     expect(claims.act).toBeUndefined();
-    const s = getSessionFromCookies(cookieOf(res))!;
+    const s = (await getSessionFromCookies(cookieOf(res)))!;
     expect(s.actingOrg).toBe(2);
-    expect((getDb().prepare("SELECT COUNT(*) AS n FROM platform_access_log WHERE organization_id = 2").get() as { n: number }).n).toBe(before + 1);
+    expect((await getDb().prepare("SELECT COUNT(*) AS n FROM platform_access_log WHERE organization_id = 2").get() as { n: number }).n).toBe(before + 1);
   });
 
   it("goes back to all companies, dropping the claim", async () => {
     const res = await POST(req(token({ ao: 2 }), "POST", { organization_id: null }));
     expect(res.status).toBe(200);
     expect(parseSessionToken(cookieOf(res))!.ao).toBeUndefined();
-    expect(getSessionFromCookies(cookieOf(res))!.actingOrg ?? null).toBeNull();
+    expect((await getSessionFromCookies(cookieOf(res)))!.actingOrg ?? null).toBeNull();
   });
 
   it("refuses an unknown or inactive company, and a malformed id", async () => {

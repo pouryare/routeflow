@@ -15,7 +15,7 @@ const VALID: CustomerLifecycle[] = [
 ];
 
 export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/customers/[id]/lifecycle">) {
-  const guard = requireRole(req, [...MANAGE_ROLES, "phone_sales"]);
+  const guard = await requireRole(req, [...MANAGE_ROLES, "phone_sales"]);
   if (!guard.ok) return guard.response;
 
   const { id } = await ctx.params;
@@ -25,7 +25,7 @@ export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/customers/
   }
 
   try {
-    setLifecycle(guard.session.organizationId, Number(id), body.lifecycle as CustomerLifecycle);
+    await setLifecycle(guard.session.organizationId, Number(id), body.lifecycle as CustomerLifecycle);
     return NextResponse.json({ ok: true });
   } catch (e) {
     if (e instanceof LifecycleError) {

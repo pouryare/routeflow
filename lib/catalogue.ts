@@ -11,11 +11,12 @@
  */
 
 import { tehranTodayIso } from "@/lib/jalali";
-import type { DatabaseSync } from "node:sqlite";
+import type { Db } from "@/lib/database/client";
 import { priceAt, type PriceRow } from "./pricing";
 import { avgCostFor, costRowsFor, effectiveCost } from "./repo/productCosts";
 import { isToman } from "./money";
 
+import { mapSeq } from "@/lib/seq";
 export interface ProductRow {
   id: number;
   name: string;
@@ -55,8 +56,8 @@ export interface CatalogueProduct extends ProductRow {
 }
 
 /** Every price row for a product, both product-wide and packaging-specific. */
-function pricesFor(db: DatabaseSync, productId: number) {
-  return db
+async function pricesFor(db: Db, productId: number) {
+  return await db
     .prepare(
       "SELECT id, packaging_id, price_toman, valid_from FROM product_prices WHERE product_id = ?"
     )
@@ -70,25 +71,25 @@ function pricesFor(db: DatabaseSync, productId: number) {
  *  still applies to a carton whose own price does not start until May, rather than the
  *  carton having no price for four months.
  */
-export function resolvePrice(
-  db: DatabaseSync,
+export async function resolvePrice(
+  db: Db,
   productId: number,
   packagingId: number | null,
   onDate: string
-): PriceRow | null {
-  const rows = pricesFor(db, productId);
+): Promise<PriceRow | null> {
+  const rows = await pricesFor(db, productId);
   const specific = packagingId === null ? [] : rows.filter((r) => r.packaging_id === packagingId);
   return priceAt(specific, onDate) ?? priceAt(rows.filter((r) => r.packaging_id === null), onDate);
 }
 
-export function readCatalogue(
-  db: DatabaseSync,
+export async function readCatalogue(
+  db: Db,
   organizationId: number,
   opts: { includeInactive?: boolean; onDate?: string } = {}
-): CatalogueProduct[] {
+): Promise<CatalogueProduct[]> {
   const onDate = opts.onDate ?? tehranTodayIso();
 
-  const products = db
+  const products = await db
     .prepare(
       `SELECT * FROM products WHERE organization_id = ? ${
         opts.includeInactive ? "" : "AND active = 1"
@@ -96,8 +97,8 @@ export function readCatalogue(
     )
     .all(organizationId) as unknown as ProductRow[];
 
-  return products.map((product) => {
-    const packagings = db
+  return await mapSeq(products, async (product) => {
+    const packagings = await db
       .prepare(
         `SELECT * FROM packagings WHERE product_id = ? ${
           opts.includeInactive ? "" : "AND active = 1"
@@ -107,16 +108,16 @@ export function readCatalogue(
 
     return {
       ...product,
-      packagings: packagings.map((packaging) => {
-        const hit = resolvePrice(db, product.id, packaging.id, onDate);
+      packagings: await mapSeq(packagings, async (packaging) => {
+        const hit = await resolvePrice(db, product.id, packaging.id, onDate);
         return { ...packaging, price_toman: hit?.price_toman ?? null, price_id: hit?.id ?? null };
       }),
     };
   });
 }
 
-export function createProduct(
-  db: DatabaseSync,
+export async function createProduct(
+  db: Db,
   input: {
     name: string;
     kg_per_base_unit: number;
@@ -128,14 +129,14 @@ export function createProduct(
     sku?: string | null;
     notes?: string | null;
   }
-): number {
+): Promise<number> {
   const name = input.name.trim();
   if (!name || name.length > 120) throw new TypeError("نام کالا باید بین ۱ و ۱۲۰ نویسه باشد");
   if (!Number.isFinite(input.kg_per_base_unit) || input.kg_per_base_unit < 0 || input.kg_per_base_unit > 1000) {
     throw new TypeError("وزن هر واحد باید بین صفر و ۱۰۰۰ کیلوگرم باشد (صفر یعنی وزن هنوز معلوم نیست)");
   }
   const now = new Date().toISOString();
-  db.prepare(
+  await db.prepare(
     `INSERT INTO products (name, sku, base_unit, kg_per_base_unit, notes, created_at, updated_at, organization_id)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
   ).run(
@@ -148,18 +149,18 @@ export function createProduct(
     now,
     input.organization_id
   );
-  return (db.prepare("SELECT last_insert_rowid() AS id").get() as { id: number }).id;
+  return (await db.prepare("SELECT last_insert_rowid() AS id").get() as { id: number }).id;
 }
 
-export function createPackaging(
-  db: DatabaseSync,
+export async function createPackaging(
+  db: Db,
   input: { product_id: number; name: string; qty_per_pack: number; barcode?: string | null }
-): number {
+): Promise<number> {
   if (!input.name.trim() || input.name.length > 120) throw new TypeError("نام بسته‌بندی باید بین ۱ و ۱۲۰ نویسه باشد");
   if (!Number.isInteger(input.qty_per_pack) || input.qty_per_pack < 1 || input.qty_per_pack > 100_000) {
     throw new TypeError("تعداد در هر بسته باید عددی صحیح بین ۱ و ۱۰۰۰۰۰ باشد");
   }
-  db.prepare(
+  await db.prepare(
     "INSERT INTO packagings (product_id, name, qty_per_pack, barcode, created_at) VALUES (?, ?, ?, ?, ?)"
   ).run(
     input.product_id,
@@ -168,7 +169,7 @@ export function createPackaging(
     input.barcode?.trim() || null,
     new Date().toISOString()
   );
-  return (db.prepare("SELECT last_insert_rowid() AS id").get() as { id: number }).id;
+  return (await db.prepare("SELECT last_insert_rowid() AS id").get() as { id: number }).id;
 }
 
 /** Records a new price. Always an INSERT -- there is no updatePrice, on purpose.
@@ -177,8 +178,8 @@ export function createPackaging(
  *  float got into a money path upstream, and rounding it away hides the bug at the one
  *  moment it is cheap to find.
  */
-export function setPrice(
-  db: DatabaseSync,
+export async function setPrice(
+  db: Db,
   input: {
     product_id: number;
     packaging_id?: number | null;
@@ -186,11 +187,11 @@ export function setPrice(
     valid_from: string;
     created_by?: number | null;
   }
-): number {
+): Promise<number> {
   if (!isToman(input.price_toman)) {
     throw new TypeError("قیمت را به تومان و بدون اعشار وارد کنید");
   }
-  db.prepare(
+  await db.prepare(
     `INSERT INTO product_prices (product_id, packaging_id, price_toman, valid_from, created_by, created_at)
      VALUES (?, ?, ?, ?, ?, ?)`
   ).run(
@@ -201,7 +202,7 @@ export function setPrice(
     input.created_by ?? null,
     new Date().toISOString()
   );
-  return (db.prepare("SELECT last_insert_rowid() AS id").get() as { id: number }).id;
+  return (await db.prepare("SELECT last_insert_rowid() AS id").get() as { id: number }).id;
 }
 
 /** One effective-dated cost row. */
@@ -228,8 +229,8 @@ export interface CostBasis {
  *  a fraction arriving here means a float got into a money path upstream, and rounding
  *  it away hides the bug at the moment it is cheapest to find.
  */
-export function setCost(
-  db: DatabaseSync,
+export async function setCost(
+  db: Db,
   input: {
     product_id: number;
     packaging_id?: number | null;
@@ -238,11 +239,11 @@ export function setCost(
     valid_from: string;
     created_by?: number | null;
   }
-): number {
+): Promise<number> {
   if (!isToman(input.cost_toman)) {
     throw new TypeError("بهای تمام‌شده را به تومان و بدون اعشار وارد کنید");
   }
-  db.prepare(
+  await db.prepare(
     `INSERT INTO product_costs (product_id, packaging_id, method, cost_toman, valid_from, created_by, created_at)
      VALUES (?, ?, ?, ?, ?, ?, ?)`
   ).run(
@@ -254,7 +255,7 @@ export function setCost(
     input.created_by ?? null,
     new Date().toISOString()
   );
-  return (db.prepare("SELECT last_insert_rowid() AS id").get() as { id: number }).id;
+  return (await db.prepare("SELECT last_insert_rowid() AS id").get() as { id: number }).id;
 }
 
 /** The cost of one unit on a date, or null when nothing is known.
@@ -281,18 +282,18 @@ export function setCost(
  *  is grandfathered, but the reads are new code and the rule is a ratchet, not a
  *  grandfathering of everything anyone adds to an old file.
  */
-export function costBasisFor(
-  db: DatabaseSync,
+export async function costBasisFor(
+  db: Db,
   productId: number,
   packagingId: number | null,
   onDate: string
-): CostBasis | null {
-  const hit = effectiveCost(costRowsFor(db, productId), packagingId, onDate);
+): Promise<CostBasis | null> {
+  const hit = effectiveCost(await costRowsFor(db, productId), packagingId, onDate);
   if (hit) {
     return { cost_toman: hit.cost_toman, method: hit.method, cost_id: hit.id };
   }
 
-  const avg = avgCostFor(db, productId);
+  const avg = await avgCostFor(db, productId);
   if (avg === null || avg <= 0) return null;
   return { cost_toman: avg, method: "weighted_average", cost_id: null };
 }
@@ -303,18 +304,18 @@ export function costBasisFor(
  *  forget it. The join through products is what makes scoping possible at all --
  *  product_costs carries no tenant column of its own.
  */
-export function readCostBasis(
-  db: DatabaseSync,
+export async function readCostBasis(
+  db: Db,
   organizationId: number,
   productId: number,
   packagingId: number | null,
   onDate: string
-): CostBasis | null {
-  const owned = db
+): Promise<CostBasis | null> {
+  const owned = await db
     .prepare("SELECT id FROM products WHERE id = ? AND organization_id = ?")
     .get(productId, organizationId);
   if (!owned) return null;
-  return costBasisFor(db, productId, packagingId, onDate);
+  return await costBasisFor(db, productId, packagingId, onDate);
 }
 
 /** Sets a product's reorder policy. A plain UPDATE, unlike setPrice and setRate --
@@ -326,11 +327,11 @@ export function readCostBasis(
  *  is what lets an owner clear a threshold without the API forcing a bogus value into
  *  the other one just to keep the call shaped the same.
  */
-export function setStockThresholds(
-  db: DatabaseSync,
+export async function setStockThresholds(
+  db: Db,
   productId: number,
   input: { reorder_point?: number | null; target_stock?: number | null }
-): void {
+): Promise<void> {
   for (const [key, value] of Object.entries(input)) {
     if (value !== null && value !== undefined && (!Number.isFinite(value) || value < 0)) {
       throw new TypeError(`${key} باید عددی نامنفی یا خالی باشد: ${value}`);
@@ -347,7 +348,7 @@ export function setStockThresholds(
     params.push(input.target_stock ?? null);
   }
   if (sets.length === 0) return;
-  db.prepare(`UPDATE products SET ${sets.join(", ")}, updated_at = ? WHERE id = ?`).run(
+  await db.prepare(`UPDATE products SET ${sets.join(", ")}, updated_at = ? WHERE id = ?`).run(
     ...params,
     new Date().toISOString(),
     productId

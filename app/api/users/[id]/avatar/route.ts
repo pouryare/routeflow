@@ -15,7 +15,7 @@ import { AVATAR_PRESETS, readAvatarBytes, safePresetKey } from "@/lib/avatarStor
  *  `avatar_stem` is used. `?format=avif` returns AVIF and anything else WebP, which is what
  *  a `<picture>` fallback chain expects. */
 export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
-  const session = getSession(req);
+  const session = await getSession(req);
   if (!session) {
     return NextResponse.json({ ok: false, error: "احراز هویت نشده" }, { status: 401 });
   }
@@ -31,7 +31,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
 
   // `undefined` is "no such user" and `null` is "a real user with no photo". Both are a 404
   // to a caller, but they are not the same fact, so the repo keeps them apart.
-  const ownStem = readAvatarStem(userId, orgScopeId(session));
+  const ownStem = await readAvatarStem(userId, orgScopeId(session));
   if (ownStem === undefined) {
     return NextResponse.json({ ok: false, error: "عکس پیدا نشد" }, { status: 404 });
   }

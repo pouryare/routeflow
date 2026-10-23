@@ -17,7 +17,7 @@ beforeAll(async () => {
 afterAll(async () => { await browser?.close(); await stop?.(); db.close(); });
 it("edits tags, Instagram and pre-visit intel on a snapshot, persisting across reload", async () => {
   const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
-  await context.addCookies([{ ...sessionCookie(), url: BASE }]);
+  await context.addCookies([{ ...await sessionCookie(), url: BASE }]);
   const user = db.prepare("SELECT organization_id FROM users WHERE active=1 ORDER BY CASE role WHEN 'platform_owner' THEN 0 WHEN 'owner' THEN 1 ELSE 2 END,id LIMIT 1").get() as { organization_id: number };
   const id = Number(db.prepare("INSERT INTO customers (organization_id,customer_code,business_name,synced_at,lat,lng) VALUES (?,?,'آزمایش شناخت',?,35.7,51.4)").run(user.organization_id, `smoke-intel-${Date.now()}`, new Date().toISOString()).lastInsertRowid);
   const page = await context.newPage();

@@ -9,18 +9,18 @@ import {
 const ROLES = ["platform_owner", "owner", "group_manager", "rep_manager", "phone_sales", "field_rep", "delivery_driver"] as const;
 
 export async function GET(req: NextRequest) {
-  const guard = requireRole(req, [...ROLES]);
+  const guard = await requireRole(req, [...ROLES]);
   if (!guard.ok) return guard.response;
   const { organizationId, user } = guard.session;
   return NextResponse.json({
     ok: true,
-    unread: unreadGroupCount(organizationId, user.id),
-    groups: listNotificationGroups(organizationId, user.id, { limit: 50 }),
+    unread: await unreadGroupCount(organizationId, user.id),
+    groups: await listNotificationGroups(organizationId, user.id, { limit: 50 }),
   });
 }
 
 export async function PATCH(req: NextRequest) {
-  const guard = requireRole(req, [...ROLES]);
+  const guard = await requireRole(req, [...ROLES]);
   if (!guard.ok) return guard.response;
   const { organizationId, user } = guard.session;
   const body = (await req.json().catch(() => null)) as { read?: unknown } | null;
@@ -30,6 +30,6 @@ export async function PATCH(req: NextRequest) {
   // Cap the array so a pathological payload can't blow SQLite's bound-variable limit
   // inside the `group_key IN (...)` clause.
   const keys = read === "all" ? "all" : (read as string[]).slice(0, 200);
-  markGroupsRead(organizationId, user.id, keys);
-  return NextResponse.json({ ok: true, unread: unreadGroupCount(organizationId, user.id) });
+  await markGroupsRead(organizationId, user.id, keys);
+  return NextResponse.json({ ok: true, unread: await unreadGroupCount(organizationId, user.id) });
 }

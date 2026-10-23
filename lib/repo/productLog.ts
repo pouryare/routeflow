@@ -1,4 +1,4 @@
-import type { DatabaseSync } from "node:sqlite";
+import type { Db } from "@/lib/database/client";
 import { getDb, logActivity } from "@/lib/db";
 import type { Session } from "@/lib/session";
 
@@ -16,14 +16,14 @@ const NOTE: Record<ProductChange, string> = {
   thresholds: "آستانه‌های انبار تغییر کرد",
 };
 
-export function logProductChange(
+export async function logProductChange(
   productId: number,
   change: ProductChange,
   values: { old?: string | null; new?: string | null },
   actor: { id: number; name: string; impersonatedBy?: number | null },
-  db: DatabaseSync = getDb()
-): void {
-  logActivity(db, {
+  db: Db = getDb()
+): Promise<void> {
+  await logActivity(db, {
     entity_type: "product",
     entity_id: productId,
     event_type: change === "created" ? "created" : "updated",
@@ -50,8 +50,8 @@ export interface ProductChangeRow {
 
 /** The newest catalogue changes for this session's organisation. Shared (organisation-less)
  *  products are the platform's, not this company's, so their entries are left out. */
-export function recentProductChanges(session: Session, limit = 30): ProductChangeRow[] {
-  return getDb()
+export async function recentProductChanges(session: Session, limit = 30): Promise<ProductChangeRow[]> {
+  return await getDb()
     .prepare(
       `SELECT a.id, a.entity_id AS product_id, p.name AS product_name, a.event_type, a.old_value,
               a.new_value, a.note, COALESCE(u.display_name, a.changed_by) AS changed_by, a.created_at
@@ -71,8 +71,8 @@ export function thresholdText(t: { reorder_point: number | null; target_stock: n
   return `نقطهٔ سفارش ${n(t.reorder_point)} · موجودی هدف ${n(t.target_stock)}`;
 }
 
-export function productThresholds(productId: number): { reorder_point: number | null; target_stock: number | null } {
-  return (getDb()
+export async function productThresholds(productId: number): Promise<{ reorder_point: number | null; target_stock: number | null }> {
+  return (await getDb()
     .prepare("SELECT reorder_point, target_stock FROM products WHERE id = ?")
     .get(productId) as { reorder_point: number | null; target_stock: number | null } | undefined) ?? {
     reorder_point: null,

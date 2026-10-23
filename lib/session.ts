@@ -43,8 +43,8 @@ export type Guard = { ok: true; session: Session } | { ok: false; response: Next
  *  SQLite is local and this is a primary-key lookup, so the cost is microseconds. That is
  *  also why this cannot live in proxy.ts: middleware has no safe route to the database.
  */
-export function getSession(req: NextRequest): Session | null {
-  return getSessionFromCookies(req.cookies.get(COOKIE_NAME)?.value);
+export async function getSession(req: NextRequest): Promise<Session | null> {
+  return await getSessionFromCookies(req.cookies.get(COOKIE_NAME)?.value);
 }
 
 /** The same resolution, entered from a raw cookie value rather than a NextRequest.
@@ -52,11 +52,11 @@ export function getSession(req: NextRequest): Session | null {
  *  Server components have no NextRequest -- they reach the cookie through next/headers --
  *  so both entry points delegate here. One implementation means a page and its API route
  *  can never disagree about who the caller is. */
-export function getSessionFromCookies(token: string | undefined | null): Session | null {
+export async function getSessionFromCookies(token: string | undefined | null): Promise<Session | null> {
   const claims = parseSessionToken(token);
   if (!claims) return null;
 
-  const user = getDb().prepare("SELECT * FROM users WHERE id = ?").get(claims.uid) as UserRow | undefined;
+  const user = await getDb().prepare("SELECT * FROM users WHERE id = ?").get(claims.uid) as UserRow | undefined;
   if (!user) return null;
   if (!user.active) return null;
   if (user.token_version !== claims.tv) return null;
@@ -68,7 +68,7 @@ export function getSessionFromCookies(token: string | undefined | null): Session
      kill every cross-tenant switch on the request after it started, with no error. */
   let actorId: number | undefined;
   if (claims.act !== undefined) {
-    const actor = getDb()
+    const actor = await getDb()
       .prepare("SELECT id, role, organization_id, active FROM users WHERE id = ?")
       .get(claims.act) as { id: number; role: string; organization_id: number; active: number } | undefined;
     if (!actor || !actor.active) return null;
@@ -80,7 +80,7 @@ export function getSessionFromCookies(token: string | undefined | null): Session
   /* TIER 2 first, because TIER 1 is decided by it. The set is read from the database on
      every request for the same reason the user row is: a role removed by an admin must take
      effect now, not when a 30-day cookie expires. */
-  const held = rolesFor(user.id);
+  const held = await rolesFor(user.id);
 
   /* An account with NO set rows answers from its primary, and the set is REPLACED rather
      than merely consulted. Returning `[]` alongside a populated `.role` would be a person
@@ -98,7 +98,7 @@ export function getSessionFromCookies(token: string | undefined | null): Session
      company exists and is active. Anything else falls back to "all companies". */
   let actingOrg: number | null = null;
   if (role === "platform_owner" && actorId === undefined && Number.isInteger(claims.ao) && (claims.ao as number) > 0) {
-    const org = getDb().prepare("SELECT id FROM organizations WHERE id = ? AND active = 1").get(claims.ao as number) as { id: number } | undefined;
+    const org = await getDb().prepare("SELECT id FROM organizations WHERE id = ? AND active = 1").get(claims.ao as number) as { id: number } | undefined;
     if (org) actingOrg = org.id;
   }
 
@@ -114,8 +114,8 @@ export function getSessionFromCookies(token: string | undefined | null): Session
   };
 }
 
-export function requireRole(req: NextRequest, roles: Role[]): Guard {
-  const session = getSession(req);
+export async function requireRole(req: NextRequest, roles: Role[]): Promise<Guard> {
+  const session = await getSession(req);
   if (!session) {
     return {
       ok: false,
@@ -182,12 +182,12 @@ export function scopeView(session: Session): Session {
  *  yet, or a non-owner with none assigned. That is a real state, and it must read as
  *  "nothing", never as "everything".
  */
-export function scopeGroupIds(session: Session): number[] | "all" {
+export async function scopeGroupIds(session: Session): Promise<number[] | "all"> {
   session = scopeView(session);
   if (session.role === "platform_owner") return "all";
 
   if (session.role === "owner") {
-    const rows = getDb()
+    const rows = await getDb()
       .prepare("SELECT id FROM groups WHERE organization_id = ?")
       .all(session.organizationId) as { id: number }[];
     return rows.map((r) => r.id);
@@ -223,13 +223,13 @@ export function scopeGroupIds(session: Session): number[] | "all" {
  *  merely over-scoping. A caller that forgets gets a loud failure, which is right for a
  *  scoping helper; the alternative -- guessing the table from a column name -- cannot work,
  *  because `groupFilter(session)` carries no table at all. */
-export function groupFilter(
+export async function groupFilter(
   session: Session,
   column = "group_id",
   opts: { shared?: boolean } = {},
-): { sql: string; params: number[] } {
+): Promise<{ sql: string; params: number[] }> {
   session = scopeView(session);
-  const scope = scopeGroupIds(session);
+  const scope = await scopeGroupIds(session);
   if (scope === "all") return { sql: "", params: [] };
   // Shared reference data has no tenant boundary, so the caller sees the whole set. Only the
   // organisation guard is dropped; a group filter is still applied below, because which group
@@ -263,7 +263,7 @@ export function groupFilter(
  *
  *  Read-only. Writes still go through canReachGroup, so a manager can see the shared
  *  warehouse but cannot rename or delete it. */
-export function groupFilterWithShared(session: Session, column = "group_id"): { sql: string; params: number[] } {
+export async function groupFilterWithShared(session: Session, column = "group_id"): Promise<{ sql: string; params: number[] }> {
   session = scopeView(session);
   if (session.role === "platform_owner") return { sql: "", params: [] };
 
@@ -272,7 +272,7 @@ export function groupFilterWithShared(session: Session, column = "group_id"): { 
   const prefix = column.includes(".") ? column.slice(0, column.indexOf(".") + 1) : "";
   const orgColumn = `${prefix}organization_id`;
 
-  const scope = scopeGroupIds(session) as number[]; // platform_owner already returned above
+  const scope = await scopeGroupIds(session) as number[]; // platform_owner already returned above
   if (scope.length === 0) {
     return { sql: ` AND ${orgColumn} = ? AND ${column} IS NULL`, params: [session.organizationId] };
   }
@@ -305,10 +305,10 @@ export function groupFilterWithShared(session: Session, column = "group_id"): { 
  *  facilities each carry their own organization_id now, and a row belonging to another
  *  organisation is never "shared" with this one no matter what its group_id says.
  */
-export function entityGroupFilter(
+export async function entityGroupFilter(
   session: Session,
   alias: string
-): { joins: string; sql: string; params: number[] } {
+): Promise<{ joins: string; sql: string; params: number[] }> {
   session = scopeView(session);
   const joins = `
      LEFT JOIN customers _ec ON ${alias}.entity_type = 'customer' AND _ec.id = ${alias}.entity_id
@@ -333,7 +333,7 @@ export function entityGroupFilter(
   }
 
   const shared = `(${alias}.entity_type = 'facility' AND _ef.group_id IS NULL) OR (${alias}.entity_type = 'lead_location' AND _el.group_id IS NULL)`;
-  const scope = scopeGroupIds(session) as number[]; // platform_owner and owner both returned above
+  const scope = await scopeGroupIds(session) as number[]; // platform_owner and owner both returned above
   if (scope.length === 0) {
     return { joins, sql: ` AND ${orgGuard} AND ${shared}`, params: [session.organizationId] };
   }
@@ -499,11 +499,11 @@ export function orderFilter(session: Session, alias = "o"): { sql: string; param
 /** Whether this session may write a row hanging off the given entity. Same rule as the
  *  filter above: the parent's organisation and group decide, and an ungrouped facility
  *  is shared -- but only within that same organisation. */
-export function canReachEntity(
+export async function canReachEntity(
   session: Session,
   entityType: string,
   entityId: number
-): boolean {
+): Promise<boolean> {
   session = scopeView(session);
   if (session.role === "platform_owner") return true;
   const db = getDb();
@@ -511,13 +511,13 @@ export function canReachEntity(
   const table = entityType === "customer" ? "customers" : entityType === "district" ? "districts" : entityType === "facility" ? "facilities" : entityType === "lead" || entityType === "lead_location" ? "saved_locations" : null;
   if (!table) return false;
 
-  const row = db.prepare(`SELECT group_id, organization_id FROM ${table} WHERE id = ?`).get(entityId) as
+  const row = await db.prepare(`SELECT group_id, organization_id FROM ${table} WHERE id = ?`).get(entityId) as
     | { group_id: number | null; organization_id: number }
     | undefined;
   if (!row) return false;
   if (row.organization_id !== session.organizationId) return false;
   if (entityType === "facility" && row.group_id === null) return true;
-  return canReachGroup(session, row.group_id);
+  return await canReachGroup(session, row.group_id);
 }
 
 /** Whether this session may touch a row belonging to the given group. Use before any
@@ -534,9 +534,9 @@ export function canReachEntity(
  *  still be able to manage its shared resources, while a group_manager explicitly
  *  should not -- see the comment on the facilities write routes, which can show a
  *  manager the shared depot but must not let them rename or move it. */
-export function canReachGroup(session: Session, groupId: number | null): boolean {
+export async function canReachGroup(session: Session, groupId: number | null): Promise<boolean> {
   session = scopeView(session);
-  const scope = scopeGroupIds(session);
+  const scope = await scopeGroupIds(session);
   if (scope === "all") return true;
   if (groupId === null) return session.role === "owner";
   return scope.includes(groupId);
@@ -546,17 +546,17 @@ export function canReachGroup(session: Session, groupId: number | null): boolean
  *  manager does over a report). Yourself always; otherwise only a management role —
  *  owner / platform_owner over anyone in their org, a group / rep manager over a user
  *  whose group is in their scope. A salesperson or driver reaches only themselves. */
-export function canReachUser(session: Session, userId: number): boolean {
+export async function canReachUser(session: Session, userId: number): Promise<boolean> {
   session = scopeView(session);
   if (userId === session.user.id) return true;
   if (session.role === "phone_sales" || isVanRole(session.role)) return false;
-  const u = getDb()
+  const u = await getDb()
     .prepare("SELECT group_id, organization_id FROM users WHERE id = ?")
     .get(userId) as { group_id: number | null; organization_id: number } | undefined;
   if (!u) return false;
   if (!canReachOrg(session, u.organization_id)) return false;
   if (session.role === "owner" || session.role === "platform_owner") return true;
-  return canReachGroup(session, u.group_id);
+  return await canReachGroup(session, u.group_id);
 }
 
 /** A SQL fragment narrowing a table that carries its own organization_id but no group of

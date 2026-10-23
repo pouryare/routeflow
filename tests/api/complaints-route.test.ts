@@ -25,21 +25,21 @@ let sellerId = 0;
 let custId = 0;
 let otherOrgComplaint = 0;
 
-beforeAll(() => {
+beforeAll(async () => {
   const db = getDb();
-  db.exec("INSERT INTO organizations (id,name,slug,created_at) VALUES (2,'Two','two','2026-01-01')");
+  await db.exec("INSERT INTO organizations (id,name,slug,created_at) VALUES (2,'Two','two','2026-01-01')");
   const now = new Date().toISOString();
   mgrId = Number(
-    db.prepare("INSERT INTO users (username,password_hash,display_name,role,group_id,active,created_at,organization_id) VALUES (?,?,?,'group_manager',NULL,1,?,1)").run("q-mgr", "x:y", "م", now).lastInsertRowid
+    (await db.prepare("INSERT INTO users (username,password_hash,display_name,role,group_id,active,created_at,organization_id) VALUES (?,?,?,'group_manager',NULL,1,?,1)").run("q-mgr", "x:y", "م", now)).lastInsertRowid
   );
   sellerId = Number(
-    db.prepare("INSERT INTO users (username,password_hash,display_name,role,group_id,active,created_at,organization_id) VALUES (?,?,?,'phone_sales',NULL,1,?,1)").run("q-seller", "x:y", "ف", now).lastInsertRowid
+    (await db.prepare("INSERT INTO users (username,password_hash,display_name,role,group_id,active,created_at,organization_id) VALUES (?,?,?,'phone_sales',NULL,1,?,1)").run("q-seller", "x:y", "ف", now)).lastInsertRowid
   );
   custId = Number(
-    db.prepare("INSERT INTO customers (customer_code,business_name,lifecycle,synced_at,organization_id) VALUES ('C1','x','active','2026-01-01',1)").run().lastInsertRowid
+    (await db.prepare("INSERT INTO customers (customer_code,business_name,lifecycle,synced_at,organization_id) VALUES ('C1','x','active','2026-01-01',1)").run()).lastInsertRowid
   );
   otherOrgComplaint = Number(
-    db.prepare("INSERT INTO quality_complaints (organization_id,reported_at,reported_by,category,severity,status,created_at) VALUES (2,?,?,'other','low','open',?)").run(now, mgrId, now).lastInsertRowid
+    (await db.prepare("INSERT INTO quality_complaints (organization_id,reported_at,reported_by,category,severity,status,created_at) VALUES (2,?,?,'other','low','open',?)").run(now, mgrId, now)).lastInsertRowid
   );
 });
 
@@ -115,8 +115,8 @@ describe("/api/sales/complaints", () => {
   it("lists with a cluster once two open complaints hit the same batch", async () => {
     const db = getDb();
     const now = new Date().toISOString();
-    const prod = Number(db.prepare("INSERT INTO products (name,sku,created_at,updated_at,organization_id) VALUES ('p',?,?,?,1)").run(`sp${Date.now()}`, now, now).lastInsertRowid);
-    const batch = Number(db.prepare("INSERT INTO batches (organization_id,product_id,batch_code,qty_received_base,unit_cost_toman,status,created_at,updated_at) VALUES (1,?,?,10,0,'active',?,?)").run(prod, "CL-1", now, now).lastInsertRowid);
+    const prod = Number((await db.prepare("INSERT INTO products (name,sku,created_at,updated_at,organization_id) VALUES ('p',?,?,?,1)").run(`sp${Date.now()}`, now, now)).lastInsertRowid);
+    const batch = Number((await db.prepare("INSERT INTO batches (organization_id,product_id,batch_code,qty_received_base,unit_cost_toman,status,created_at,updated_at) VALUES (1,?,?,10,0,'active',?,?)").run(prod, "CL-1", now, now)).lastInsertRowid);
     for (let i = 0; i < 2; i++) {
       await POST(
         jreq("/api/sales/complaints", {

@@ -8,7 +8,7 @@ import { MANAGE_ROLES } from "@/lib/roles";
 // The image bytes themselves, so this needs the same check as the metadata route --
 // otherwise another group's photo is one guessed id away.
 export async function GET(req: NextRequest, ctx: RouteContext<"/api/photos/[id]/file">) {
-  const guard = requireRole(req, [...MANAGE_ROLES, "rep_manager", "phone_sales"]);
+  const guard = await requireRole(req, [...MANAGE_ROLES, "rep_manager", "phone_sales"]);
   if (!guard.ok) return guard.response;
 
   const { id } = await ctx.params;
@@ -18,8 +18,8 @@ export async function GET(req: NextRequest, ctx: RouteContext<"/api/photos/[id]/
   }
   const format = new URL(req.url).searchParams.get("format") === "avif" ? "avif" : "webp";
 
-  const row = findPhoto(photoId);
-  if (row && !canReachEntity(guard.session, row.entity_type, row.entity_id)) {
+  const row = await findPhoto(photoId);
+  if (row && !await canReachEntity(guard.session, row.entity_type, row.entity_id)) {
     return NextResponse.json({ ok: false, error: "عکس پیدا نشد" }, { status: 404 });
   }
   if (!row) {

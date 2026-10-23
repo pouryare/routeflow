@@ -1,4 +1,4 @@
-import type { DatabaseSync } from "node:sqlite";
+import type { Db } from "@/lib/database/client";
 import { getDb, type SavedLocationRow } from "@/lib/db";
 import { orgClause } from "@/lib/orgScope";
 
@@ -12,14 +12,14 @@ import { orgClause } from "@/lib/orgScope";
 /** The pin a visit is being recorded against, or null. */
 /** One pin of this company (`organizationId` null = every company, platform owner only). A pin with no
  *  group is reachable by any owner through the group rule alone, so the company is part of the lookup. */
-export function readLeadLocation(locationId: number, organizationId: number | null): SavedLocationRow | null {
+export async function readLeadLocation(locationId: number, organizationId: number | null): Promise<SavedLocationRow | null> {
   const org = orgClause("organization_id", organizationId);
-  return (getDb().prepare(`SELECT * FROM saved_locations WHERE id = ?${org.sql}`).get(locationId, ...org.params) as SavedLocationRow | undefined) ?? null;
+  return (await getDb().prepare(`SELECT * FROM saved_locations WHERE id = ?${org.sql}`).get(locationId, ...org.params) as SavedLocationRow | undefined) ?? null;
 }
 
 /** Which group owns a pin, for the reachability check that happens before the row is read. */
-export function readLeadLocationGroup(conn: DatabaseSync, locationId: number): { group_id: number | null } | null {
-  return (conn.prepare("SELECT group_id FROM saved_locations WHERE id = ?").get(locationId) as { group_id: number | null }) ?? null;
+export async function readLeadLocationGroup(conn: Db, locationId: number): Promise<{ group_id: number | null } | null> {
+  return (await conn.prepare("SELECT group_id FROM saved_locations WHERE id = ?").get(locationId) as { group_id: number | null }) ?? null;
 }
 
 export interface LeadPin {
@@ -42,10 +42,10 @@ export interface LeadPin {
  *  page hands this array to a client component, so the raw rows threw on every load — a
  *  total outage of /map that no unit test could see, because the rows are perfectly valid
  *  TypeScript. Caught only by tests/smoke/console.test.ts, which is exactly what it is for. */
-export function readLeadPins(conn: DatabaseSync, organizationId: number | null): LeadPin[] {
+export async function readLeadPins(conn: Db, organizationId: number | null): Promise<LeadPin[]> {
   const org = orgClause("organization_id", organizationId);
   return (
-    conn
+    await conn
       .prepare(`SELECT id, name, lat, lng FROM saved_locations WHERE lat IS NOT NULL AND lng IS NOT NULL${org.sql} ORDER BY created_at DESC`)
       .all(...org.params) as unknown as Array<LeadPin>
   ).map((r) => ({ id: r.id, name: r.name, lat: r.lat, lng: r.lng }));

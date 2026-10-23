@@ -19,13 +19,13 @@ import type { SeedContext } from "../context";
    expense or receipt "paid" by one would be a journal with no cash leg. */
 const METHODS = ["CASH", "POS", "CARD_TO_CARD", "CHEQUE"] as const;
 
-export function run(ctx: SeedContext): void {
+export async function run(ctx: SeedContext): Promise<void> {
   const { db, rng } = ctx;
   const owner = ctx.staff.rep ?? ctx.staff.owner;
   const now = ctx.stamp(0);
 
   const accounts = new Map(
-    (db.prepare(`SELECT code, id FROM accounts WHERE is_system = 1`).all() as Array<{
+    (await db.prepare(`SELECT code, id FROM accounts WHERE is_system = 1`).all() as Array<{
       code: string;
       id: number;
     }>).map((a) => [a.code, a.id]),
@@ -44,7 +44,7 @@ export function run(ctx: SeedContext): void {
        wrote `status = 'closed'` here, which matches NOTHING and produced a demo with zero
        payments while the build still reported success. A silent miss is worse than a crash,
        and the invariants table is what caught it. */
-  const owing = db
+  const owing = await db
     .prepare(
       `SELECT o.id AS order_id,
               o.customer_id AS id,
@@ -74,7 +74,7 @@ export function run(ctx: SeedContext): void {
     }
     const method = rng.pick(METHODS);
     try {
-      recordPaymentTxn(db, ctx.orgId, {
+      await recordPaymentTxn(db, ctx.orgId, {
         customer_id: row.id,
         amount_toman: row.total_toman,
         method,
@@ -107,7 +107,7 @@ export function run(ctx: SeedContext): void {
       if (rng.chance(0.2)) continue;
       const amount = Math.round((rng.int(4, 90) * 1_000_000) / 100) * 100;
       try {
-        postExpense(db, {
+        await postExpense(db, {
           organizationId: ctx.orgId,
           accountId: accounts.get(code)!,
           amountToman: amount,

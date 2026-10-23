@@ -25,24 +25,24 @@ export const dynamic = "force-dynamic";
  *  more of it now would cost. */
 export default async function StockPage() {
   const jar = await cookies();
-  const session = getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
+  const session = await getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
   if (!session) redirect("/login");
   if (isVanRole(session.role)) redirect("/driver");
 
-  const stock = stockPositionIn(orgScopeId(session));
-  const purchases = isOwner(session.role) ? purchasesIn(session.organizationId, 15) : [];
-  const products = isOwner(session.role) ? activeProducts(session.organizationId) : [];
+  const stock = await stockPositionIn(orgScopeId(session));
+  const purchases = isOwner(session.role) ? await purchasesIn(session.organizationId, 15) : [];
+  const products = isOwner(session.role) ? await activeProducts(session.organizationId) : [];
 
   const totalValue = stock.reduce((sum, row) => sum + row.value_toman, 0);
   const critCount = stock.filter((r) => r.status === "crit").length;
   const lowCount = stock.filter((r) => r.status === "low").length;
   const negatives = stock.filter((row) => row.negative);
   const stockName = new Map(stock.map((r) => [r.product_id, r.name]));
-  const expiring = expiringBatches(session.organizationId);
+  const expiring = await expiringBatches(session.organizationId);
   /* Item 18: the batch list lives with the stock it makes up. The quarantine, release and
      recall actions stay on /sales/batches, for the roles that tab is open to. */
   const canManageBatches = MANAGE_ROLES.includes(session.role);
-  const batches = listBatchesWithProduct(session.organizationId).map((b) => ({
+  const batches = (await listBatchesWithProduct(session.organizationId)).map((b) => ({
     id: b.id,
     batch_code: b.batch_code,
     product: b.product_name,
@@ -54,15 +54,15 @@ export default async function StockPage() {
 
   const today = toJalali(new Date().toISOString())!;
   const monthFrom = jalaliToIsoDate(today.jy, today.jm, 1);
-  const monthPurchases = monthPurchasesIn(orgScopeId(session), monthFrom);
+  const monthPurchases = await monthPurchasesIn(orgScopeId(session), monthFrom);
 
   /* A shelf count compares with that shelf's own balance, not the company-wide figure (which
      also holds what is in the vans). The default facility is the warehouse. */
   const canCount = MANAGE_ROLES.includes(session.role) && stock.length > 0;
-  const warehouseId = canCount ? defaultFacilityId(session.organizationId) : 0;
-  const warehouseOnHand = canCount ? onHandByProduct(session.organizationId, warehouseId) : new Map<number, number>();
+  const warehouseId = canCount ? await defaultFacilityId(session.organizationId) : 0;
+  const warehouseOnHand = canCount ? await onHandByProduct(session.organizationId, warehouseId) : new Map<number, number>();
   const warehouseName = canCount
-    ? (facilityName(warehouseId, orgScopeId(session)) ?? "انبار")
+    ? (await facilityName(warehouseId, orgScopeId(session)) ?? "انبار")
     : "";
   const countRows = stock.map((r) => ({
     product_id: r.product_id,

@@ -10,26 +10,26 @@ import {
 const MANAGER = ["owner", "group_manager", "rep_manager", "platform_owner"] as const;
 
 export async function GET(req: NextRequest) {
-  const guard = requireRole(req, [...MANAGER]);
+  const guard = await requireRole(req, [...MANAGER]);
   if (!guard.ok) return guard.response;
   const activeParam = req.nextUrl.searchParams.get("active");
   return NextResponse.json({
     ok: true,
-    recurrences: listRecurrences(guard.session.organizationId, {
+    recurrences: await listRecurrences(guard.session.organizationId, {
       active: activeParam === null ? undefined : activeParam === "1",
     }),
   });
 }
 
 export async function POST(req: NextRequest) {
-  const guard = requireRole(req, [...MANAGER]);
+  const guard = await requireRole(req, [...MANAGER]);
   if (!guard.ok) return guard.response;
   const b = (await req.json().catch(() => null)) as Partial<RecurrenceInput> | null;
   if (!b?.title || !b?.kind || !b?.rrule) {
     return NextResponse.json({ ok: false, error: "عنوان، نوع و الگوی تکرار لازم است" }, { status: 400 });
   }
   try {
-    const row = createRecurrence(
+    const row = await createRecurrence(
       guard.session.organizationId,
       {
         title: String(b.title),

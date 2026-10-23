@@ -6,7 +6,7 @@ import { MANAGE_ROLES } from "@/lib/roles";
 const VALID_STATUSES = ["visited", "needs_coverage", "not_allowed", "unknown"];
 
 export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/districts/[id]">) {
-  const guard = requireRole(req, MANAGE_ROLES);
+  const guard = await requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
 
   const { id } = await ctx.params;
@@ -21,14 +21,14 @@ export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/districts/
     return NextResponse.json({ ok: false, error: "وضعیت نامعتبر است" }, { status: 400 });
   }
 
-  const existing = findDistrict(districtId);
+  const existing = await findDistrict(districtId);
   // 404 rather than 403 for a district in another group. A 403 would confirm the row
   // exists, which itself tells a manager how the province is carved up and who holds what.
-  if (!existing || !canReachGroup(guard.session, existing.group_id)) {
+  if (!existing || !await canReachGroup(guard.session, existing.group_id)) {
     return NextResponse.json({ ok: false, error: "منطقه پیدا نشد" }, { status: 404 });
   }
 
-  updateDistrict(existing, { coverage_status, notes }, { name: guard.session.user.display_name, id: guard.session.user.id });
+  await updateDistrict(existing, { coverage_status, notes }, { name: guard.session.user.display_name, id: guard.session.user.id });
 
   return NextResponse.json({ ok: true });
 }
@@ -36,7 +36,7 @@ export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/districts/
 export async function DELETE(req: NextRequest, ctx: RouteContext<"/api/districts/[id]">) {
   // This route had no role check and no reach check: any signed-in caller could delete any
   // company's custom district. It now follows the PATCH rules.
-  const guard = requireRole(req, MANAGE_ROLES);
+  const guard = await requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
 
   const { id } = await ctx.params;
@@ -44,8 +44,8 @@ export async function DELETE(req: NextRequest, ctx: RouteContext<"/api/districts
   if (!Number.isInteger(districtId)) {
     return NextResponse.json({ ok: false, error: "شناسه نامعتبر" }, { status: 400 });
   }
-  const row = findDistrict(districtId);
-  if (!row || !canReachGroup(guard.session, row.group_id)) {
+  const row = await findDistrict(districtId);
+  if (!row || !await canReachGroup(guard.session, row.group_id)) {
     return NextResponse.json({ ok: false, error: "منطقه پیدا نشد" }, { status: 404 });
   }
   if (!row.is_custom) {
@@ -54,6 +54,6 @@ export async function DELETE(req: NextRequest, ctx: RouteContext<"/api/districts
       { status: 403 }
     );
   }
-  deleteDistrict(districtId);
+  await deleteDistrict(districtId);
   return NextResponse.json({ ok: true });
 }

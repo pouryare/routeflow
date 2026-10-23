@@ -8,7 +8,7 @@ import { logProductChange, productThresholds, thresholdText } from "@/lib/repo/p
 /** Owner only, same split as every other write in the catalogue: everyone who sells
  *  reads a reorder gauge, only the owner decides where its lines sit. */
 export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
-  const guard = requireRole(req, OWNER_ROLES);
+  const guard = await requireRole(req, OWNER_ROLES);
   if (!guard.ok) return guard.response;
 
   const { id } = await ctx.params;
@@ -17,7 +17,7 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
     return NextResponse.json({ ok: false, error: "شناسهٔ کالا معتبر نیست" }, { status: 400 });
   }
 
-  if (!productInOrg(productId, orgScopeId(guard.session))) {
+  if (!await productInOrg(productId, orgScopeId(guard.session))) {
     return NextResponse.json({ ok: false, error: "کالا پیدا نشد" }, { status: 404 });
   }
 
@@ -35,11 +35,11 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
   }
 
   try {
-    const before = productThresholds(productId);
-    setThresholds(productId, input);
-    const after = productThresholds(productId);
+    const before = await productThresholds(productId);
+    await setThresholds(productId, input);
+    const after = await productThresholds(productId);
     if (before.reorder_point !== after.reorder_point || before.target_stock !== after.target_stock) {
-      logProductChange(productId, "thresholds", { old: thresholdText(before), new: thresholdText(after) }, { id: guard.session.user.id, name: guard.session.user.display_name, impersonatedBy: guard.session.actorId ?? null });
+      await logProductChange(productId, "thresholds", { old: thresholdText(before), new: thresholdText(after) }, { id: guard.session.user.id, name: guard.session.user.display_name, impersonatedBy: guard.session.actorId ?? null });
     }
     return NextResponse.json({ ok: true });
   } catch (e) {

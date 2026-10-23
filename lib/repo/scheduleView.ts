@@ -18,14 +18,14 @@ export interface ScheduleRun {
   collected_toman: number;
 }
 
-export function runsViewData(session: Session) {
+export async function runsViewData(session: Session) {
   const db = getDb();
-  const userScope = groupFilter(session);
+  const userScope = await groupFilter(session);
 
   // The van-role SET, not the legacy `role = 'driver'` that matched nobody after the rename.
   const vanRoleList = VAN_ROLES.map((r) => `'${r}'`).join(", ");
   const drivers = plain(
-    db
+    await db
       .prepare(
         `SELECT id, display_name FROM users
           WHERE role IN (${vanRoleList}) AND active = 1${userScope.sql}
@@ -35,9 +35,9 @@ export function runsViewData(session: Session) {
   ) as unknown as { id: number; display_name: string }[];
 
   // stop_count comes from runStops on the client side so the load and the unload are counted.
-  const runScope = groupFilter(session, "dr.group_id");
+  const runScope = await groupFilter(session, "dr.group_id");
   const runs = plain(
-    db
+    await db
       .prepare(
         `SELECT dr.id, dr.run_date, dr.status, dr.driver_user_id, dr.group_id,
                 u.display_name AS driver_name,
@@ -55,7 +55,7 @@ export function runsViewData(session: Session) {
 
   // Kilograms per run, from the frozen order_lines: a van fills by weight, not by money.
   const kgRows = plain(
-    db
+    await db
       .prepare(
         `SELECT ds.run_id,
                 COALESCE(SUM(ol.packs_ordered * (p.kg_per_base_unit * ol.qty_per_pack)), 0) AS kg
@@ -75,19 +75,19 @@ export function runsViewData(session: Session) {
     runs,
     kgByRun: new Map(kgRows.map((r) => [r.run_id, Number(r.kg)])),
     // Confirmed orders on no run: read once so the map's pins and the lanes' cards are the same array.
-    plannable: readPlannableOrders(db, orderFilter(session)),
+    plannable: await readPlannableOrders(db, orderFilter(session)),
     // A draft is private to one user: a server-side fact, never something the client filters.
-    drafts: readRunDrafts(db, session.organizationId, session.user.id),
+    drafts: await readRunDrafts(db, session.organizationId, session.user.id),
   };
 }
 
-export function planViewData(session: Session, from: string, to: string) {
+export async function planViewData(session: Session, from: string, to: string) {
   const db = getDb();
   // Qualified: the runs query joins delivery_runs to users, and for an owner this fragment filters on
   // organization_id, a column both tables carry.
-  const scope = groupFilter(session, "r.group_id");
+  const scope = await groupFilter(session, "r.group_id");
   const runs = plain(
-    db
+    await db
       .prepare(
         `SELECT r.id, r.run_date, r.status,
                 COALESCE(u.display_name, 'بدون راننده') AS driver,
@@ -103,9 +103,9 @@ export function planViewData(session: Session, from: string, to: string) {
   /* Planned visits, with what each is FOR, named by the shop rather than an id. Scoped through the
      entity each visit is about: this read had no scope at all, so one company's calendar listed
      every other company's visits and customer names. */
-  const entity = entityGroupFilter(session, "v");
+  const entity = await entityGroupFilter(session, "v");
   const visits = plain(
-    db
+    await db
       .prepare(
         `SELECT v.id, v.planned_date, v.status, v.purpose, v.entity_type, v.entity_id,
                 COALESCE(c.business_name, d.name, 'بدون نام') AS who,

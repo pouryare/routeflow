@@ -12,16 +12,16 @@ export const dynamic = "force-dynamic";
 
 export default async function AcademyPage() {
   const jar = await cookies();
-  const session = getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
+  const session = await getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
   if (!session) redirect("/login");
 
-  const cards = listObjectionCards(session.organizationId).sort((a, b) =>
+  const cards = (await listObjectionCards(session.organizationId)).sort((a, b) =>
     a.outcome_code.localeCompare(b.outcome_code)
   );
   const modules = academyManifest();
-  const done = lessonProgress(session.organizationId, session.user.id).map((p) => p.lesson_slug);
+  const done = (await lessonProgress(session.organizationId, session.user.id)).map((p) => p.lesson_slug);
   // F133: managers and the owner also see who has finished the lessons their roles require.
-  const training = trainingStatus(session);
+  const training = await trainingStatus(session);
 
   return (
     <>

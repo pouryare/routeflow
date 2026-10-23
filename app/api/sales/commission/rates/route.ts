@@ -18,7 +18,7 @@ import { OWNER_ROLES } from "@/lib/roles";
  *  kind here rather than a third branch that would always 400.
  */
 export async function POST(req: NextRequest) {
-  const guard = requireRole(req, OWNER_ROLES);
+  const guard = await requireRole(req, OWNER_ROLES);
   if (!guard.ok) return guard.response;
 
   const body = (await req.json().catch(() => null)) as {
@@ -56,11 +56,11 @@ export async function POST(req: NextRequest) {
       // anyone whose role driverStatementFor never queries would sit in the table
       // unread forever. The test reads the SET -- a seller who also drives is a driver,
       // and refusing their rate would make the refusal arbitrary.
-      if (!userWithRoleInOrg(driverId, ["delivery_driver", "field_rep"], organizationId)) {
+      if (!await userWithRoleInOrg(driverId, ["delivery_driver", "field_rep"], organizationId)) {
         return NextResponse.json({ ok: false, error: "این حساب راننده نیست" }, { status: 400 });
       }
     }
-    const id = addDriverRate({
+    const id = await addDriverRate({
       driver_user_id: driverId,
       rate_per_kg_toman: rate,
       valid_from: validFrom,
@@ -87,12 +87,12 @@ export async function POST(req: NextRequest) {
     // A rate attached to anyone statementFor never queries would sit in the table
     // unread forever -- refused at the door rather than silently ignored. SET, not
     // the primary column: a driver who also sells still earns a sales rate.
-    if (!userWithRoleInOrg(personId, ["phone_sales"], organizationId)) {
+    if (!await userWithRoleInOrg(personId, ["phone_sales"], organizationId)) {
       return NextResponse.json({ ok: false, error: "این حساب فروشنده نیست" }, { status: 400 });
     }
   }
 
-  const id = addSalesRate({
+  const id = await addSalesRate({
     salesperson_user_id: personId,
     rate_per_kg_toman: rate,
     urgent_rate_per_kg_toman: urgent,

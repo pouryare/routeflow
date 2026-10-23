@@ -21,12 +21,12 @@ export const metadata: Metadata = {
  *  leads" when there are none, so the first screen is never empty for a rep with work. */
 export default async function CrmPage() {
   const jar = await cookies();
-  const session = getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
+  const session = await getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
   if (!session) redirect("/login");
   if (isVanRole(session.role)) redirect("/driver");
-  const counts = viewCounts(session);
+  const counts = await viewCounts(session);
   const view = counts.today > 0 ? "today" : session.role === "phone_sales" ? "my_leads" : "all";
-  const { rows } = listBusinesses(session, { view });
+  const { rows } = await listBusinesses(session, { view });
   return (
     <>
       <PageHeader route="/crm" />

@@ -28,12 +28,12 @@ interface RunRow {
 /** Fold every `done` run with weather + planned/actual timing into the tenant's
  *  `capacity_factors.learned_*` columns. Returns how many (run, condition) observations
  *  were applied. */
-export function learnCapacityFromRuns(
+export async function learnCapacityFromRuns(
   organizationId: number,
   asOfIso: string = new Date().toISOString()
-): number {
+): Promise<number> {
   const db = getDb();
-  const runs = db
+  const runs = await db
     .prepare(
       `SELECT id, weather_json, planned_duration_min, actual_duration_min, capacity_stops
          FROM delivery_runs
@@ -67,12 +67,12 @@ export function learnCapacityFromRuns(
      *
      * `done` is the right filter to carry over from 'delivered': a load and an unload are
      * finished when the driver says they are. */
-    const actualStops = stopsForRuns(db, [run.id]).filter((s) => s.status === "done").length;
+    const actualStops = (await stopsForRuns(db, [run.id])).filter((s) => s.status === "done").length;
     const stopObs = run.capacity_stops ? observedFactor(run.capacity_stops, actualStops) : null;
 
     for (const code of conditions) {
       // Make sure a tenant row exists for this condition (seeded from the NULL-org default).
-      let row = db
+      let row = await db
         .prepare(
           `SELECT id, learned_speed_factor, learned_stop_factor, learned_n
              FROM capacity_factors WHERE organization_id = ? AND condition_code = ?`
@@ -82,14 +82,14 @@ export function learnCapacityFromRuns(
         | undefined;
 
       if (!row) {
-        const def = db
+        const def = await db
           .prepare(
             `SELECT stop_factor, service_time_factor, speed_factor, max_duration_factor, note_fa
                FROM capacity_factors WHERE organization_id IS NULL AND condition_code = ?`
           )
           .get(code) as FactorRow | undefined;
         const id = Number(
-          db
+          (await db
             .prepare(
               `INSERT INTO capacity_factors
                  (organization_id, condition_code, stop_factor, service_time_factor, speed_factor,
@@ -105,7 +105,7 @@ export function learnCapacityFromRuns(
               def?.max_duration_factor ?? 1,
               def?.note_fa ?? "خودآموز از مسیرهای واقعی",
               new Date().toISOString()
-            ).lastInsertRowid
+            )).lastInsertRowid
         );
         row = { id, learned_speed_factor: null, learned_stop_factor: null, learned_n: 0 };
       }
@@ -115,7 +115,7 @@ export function learnCapacityFromRuns(
       const nextStop =
         stopObs != null ? clampFactor(ewmaUpdate(row.learned_stop_factor, stopObs)) : row.learned_stop_factor;
 
-      db.prepare(
+      await db.prepare(
         `UPDATE capacity_factors
             SET learned_speed_factor = ?, learned_stop_factor = ?, learned_n = learned_n + 1, updated_at = ?
           WHERE id = ?`
@@ -128,8 +128,8 @@ export function learnCapacityFromRuns(
 }
 
 /** How many of the tenant's own routes each condition's learned value rests on. */
-export function learnedCapacityCounts(organizationId: number): Map<string, number> {
-  const rows = getDb()
+export async function learnedCapacityCounts(organizationId: number): Promise<Map<string, number>> {
+  const rows = await getDb()
     .prepare(
       `SELECT condition_code, MAX(learned_n) AS n FROM capacity_factors
         WHERE (organization_id = ? OR organization_id IS NULL) AND active = 1
@@ -141,8 +141,8 @@ export function learnedCapacityCounts(organizationId: number): Map<string, numbe
 
 /** Phase 6's `capacityFactorsFor` union, but each factor is the learned value once
  *  `learned_n >= MIN_LEARN_N`, else the configured one. */
-export function resolvedCapacityFactorsFor(organizationId: number): FactorRow[] {
-  const rows = getDb()
+export async function resolvedCapacityFactorsFor(organizationId: number): Promise<FactorRow[]> {
+  const rows = await getDb()
     .prepare(
       `SELECT condition_code, stop_factor, service_time_factor, speed_factor, max_duration_factor, note_fa,
               learned_stop_factor, learned_speed_factor, learned_service_time_factor, learned_max_duration_factor,

@@ -15,7 +15,7 @@ export const dynamic = "force-dynamic";
  *  Everyone but a driver (who has their own screen); a manager also gets a team strip. */
 export default async function PocketPage() {
   const jar = await cookies();
-  const session = getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
+  const session = await getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
   if (!session) redirect("/login");
   if (isVanRole(session.role)) redirect("/driver");
 
@@ -24,8 +24,8 @@ export default async function PocketPage() {
     <>
     <PageHeader route="/sales/pocket" />
     <Pocket
-      initial={pocketFor(session, {})}
-      team={pocketTeam(session)}
+      initial={await pocketFor(session, {})}
+      team={await pocketTeam(session)}
       viewerName={session.user.display_name}
       canOrder={canSell(session.role)}
       canPlan={appTabs(session).some((t) => t.ready && t.href === "/planner")}

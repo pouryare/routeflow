@@ -7,9 +7,9 @@ import { MANAGE_ROLES } from "@/lib/roles";
 // Products are logged by the catalogue routes only (lib/repo/productLog.ts), so this API keeps to the plan types.
 // activity_log is option 2 as well: an entry belongs to whatever it is an entry about.
 export async function GET(req: NextRequest) {
-  const guard = requireRole(req, MANAGE_ROLES);
+  const guard = await requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
-  const f = entityGroupFilter(guard.session, "a");
+  const f = await entityGroupFilter(guard.session, "a");
 
   const { searchParams } = new URL(req.url);
   const entityType = searchParams.get("entity_type") as PlanEntityType | null;
@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
       return NextResponse.json({ ok: false, error: "تاریخ نامعتبر است" }, { status: 400 });
     }
-    const rows = activityOnDate(f, entityType, date);
+    const rows = await activityOnDate(f, entityType, date);
     return NextResponse.json({ ok: true, activity: rows });
   }
 
@@ -35,7 +35,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "پارامترها نامعتبر است" }, { status: 400 });
   }
 
-  const rows = activityForEntity(f, entityType, entityId);
+  const rows = await activityForEntity(f, entityType, entityId);
 
   return NextResponse.json({ ok: true, activity: rows });
 }
@@ -54,7 +54,7 @@ interface NewActivityInput {
  *  "status_change" could write a history entry claiming a status change that never
  *  happened. */
 export async function POST(req: NextRequest) {
-  const guard = requireRole(req, MANAGE_ROLES);
+  const guard = await requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
 
   const body = (await req.json().catch(() => null)) as NewActivityInput | null;
@@ -72,11 +72,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "متن رویداد الزامی است" }, { status: 400 });
   }
 
-  if (!canReachEntity(guard.session, body.entity_type, body.entity_id)) {
+  if (!await canReachEntity(guard.session, body.entity_type, body.entity_id)) {
     return NextResponse.json({ ok: false, error: "یافت نشد" }, { status: 404 });
   }
 
-  addActivityNote(body.entity_type, body.entity_id, note, { name: guard.session.user.display_name, id: guard.session.user.id });
+  await addActivityNote(body.entity_type, body.entity_id, note, { name: guard.session.user.display_name, id: guard.session.user.id });
 
   return NextResponse.json({ ok: true });
 }

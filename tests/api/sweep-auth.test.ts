@@ -26,9 +26,9 @@ const withToken = (url: string, token: string) =>
   new NextRequest(`http://localhost${url}`, { method: "POST", headers: { "x-sweep-token": token } });
 const bare = (url: string) => new NextRequest(`http://localhost${url}`, { method: "POST" });
 
-beforeEach(() => {
+beforeEach(async () => {
   const db = getDb();
-  db.exec(
+  await db.exec(
     "PRAGMA foreign_keys=OFF; DELETE FROM organizations WHERE id > 1; DELETE FROM users WHERE id>0; PRAGMA foreign_keys=ON;"
   );
 });
@@ -36,7 +36,7 @@ beforeEach(() => {
 describe("sweep auth (x-sweep-token)", () => {
   it("a valid token runs every org, no cookie needed", async () => {
     const db = getDb();
-    db.prepare("INSERT INTO organizations (id, name, slug, created_at) VALUES (2, 'Org Two', 'org-two', ?)").run(
+    await db.prepare("INSERT INTO organizations (id, name, slug, created_at) VALUES (2, 'Org Two', 'org-two', ?)").run(
       new Date().toISOString()
     );
 

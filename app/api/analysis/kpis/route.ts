@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 /** The KPI strip. Reads `kpi_snapshots` + `targets` + `kpi_definitions` only — never
  *  scans `orders`. Scoped inside `kpiBoard` by the session's role. */
 export async function GET(req: NextRequest) {
-  const guard = requireRole(req, [...MANAGE_ROLES, "rep_manager", "phone_sales"]);
+  const guard = await requireRole(req, [...MANAGE_ROLES, "rep_manager", "phone_sales"]);
   if (!guard.ok) return guard.response;
 
   const period = req.nextUrl.searchParams.get("period") ?? currentPeriod();
@@ -19,6 +19,6 @@ export async function GET(req: NextRequest) {
     ok: true,
     period,
     prev_period: prev,
-    cards: kpiBoard(guard.session.organizationId, period, prev, guard.session),
+    cards: await kpiBoard(guard.session.organizationId, period, prev, guard.session),
   });
 }

@@ -5,6 +5,7 @@ import os from "node:os";
 import { createHash } from "node:crypto";
 import { pathToFileURL } from "node:url";
 
+import { filterSeq, mapSeq } from "@/lib/seq";
 /* Cross-tenant guardrail over EVERY api route (architecture audit, step 1).
  *
  * The data layer enforces tenancy by convention: each query has to remember its own
@@ -100,35 +101,34 @@ let candidateIds: string[] = [];
 let aOwnerCookie = "";
 
 /** Every table that carries organization_id, fingerprinted for org 2 only. */
-function fingerprintOrgB(): string {
+async function fingerprintOrgB(): Promise<string> {
   const db = getDb();
-  const tables = (db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name").all() as { name: string }[])
-    .map((t) => t.name)
-    .filter((name) => (db.prepare(`PRAGMA table_info("${name}")`).all() as { name: string }[]).some((c) => c.name === "organization_id"));
+  const tables = await filterSeq((await db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name").all() as { name: string }[])
+    .map((t) => t.name), async (name) => (await db.prepare(`PRAGMA table_info("${name}")`).all() as { name: string }[]).some((c) => c.name === "organization_id"));
   const h = createHash("sha256");
   for (const t of tables) {
-    const rows = db.prepare(`SELECT * FROM "${t}" WHERE organization_id = 2 ORDER BY rowid`).all();
+    const rows = await db.prepare(`SELECT * FROM "${t}" WHERE organization_id = 2 ORDER BY rowid`).all();
     h.update(t).update(JSON.stringify(rows));
   }
   /* Child tables (product_prices, packagings, order_lines, ...) carry no organization_id of their
      own: they belong to a company through a parent row. Fingerprint the rows hanging off company B's. */
   const orgTableSet = new Set(tables);
-  const children = (db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name").all() as { name: string }[])
+  const children = (await db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name").all() as { name: string }[])
     .map((t) => t.name)
     .filter((name) => !orgTableSet.has(name));
   for (const t of children) {
-    const fks = (db.prepare(`PRAGMA foreign_key_list("${t}")`).all() as { from: string; table: string; to: string | null }[]).filter(
+    const fks = (await db.prepare(`PRAGMA foreign_key_list("${t}")`).all() as { from: string; table: string; to: string | null }[]).filter(
       (fk) => orgTableSet.has(fk.table) && (fk.to === "id" || fk.to === null)
     );
     for (const fk of fks) {
-      const rows = db.prepare(`SELECT * FROM "${t}" WHERE "${fk.from}" IN (SELECT id FROM "${fk.table}" WHERE organization_id = 2) ORDER BY rowid`).all();
+      const rows = await db.prepare(`SELECT * FROM "${t}" WHERE "${fk.from}" IN (SELECT id FROM "${fk.table}" WHERE organization_id = 2) ORDER BY rowid`).all();
       h.update(`${t}.${fk.from}`).update(JSON.stringify(rows));
     }
   }
   return h.digest("hex");
 }
 
-function markB(db: ReturnType<typeof getDb>) {
+async function markB(db: ReturnType<typeof getDb>) {
   /* Text columns the fixture fills for org 2. Appending (not replacing) keeps every UNIQUE and
      CHECK intact. A statement that no longer matches a column fails loudly, which is the point. */
   const targets: [string, string][] = [
@@ -150,7 +150,7 @@ function markB(db: ReturnType<typeof getDb>) {
     ["churn_scores", "reason_fa"],
   ];
   for (const [table, col] of targets) {
-    const n = db.prepare(`UPDATE "${table}" SET "${col}" = "${col}" || ' ${MARK}' WHERE organization_id = 2`).run().changes;
+    const n = (await db.prepare(`UPDATE "${table}" SET "${col}" = "${col}" || ' ${MARK}' WHERE organization_id = 2`).run()).changes;
     if (!n) throw new Error(`fixture has no org-2 row in ${table}.${col} to mark`);
   }
 }
@@ -244,42 +244,41 @@ beforeAll(async () => {
   vi.stubGlobal("fetch", () => Promise.reject(new Error("network disabled in tenancy-routes test")));
 
   const db = getDb();
-  ({ a, b } = seedTwoOrgs(db));
+  ({ a, b } = await seedTwoOrgs(db));
   /* The fixture ships owners and managers only. The commission and stock readers also walk
      sellers, drivers and field reps, so org B gets one of each (and A none: if A's owner sees
      them, they came from B). */
   for (const role of ["phone_sales", "delivery_driver", "field_rep"] as const) {
     const id = Number(
-      db
+      (await db
         .prepare(
           `INSERT INTO users (username, password_hash, display_name, role, group_id, active, created_at, organization_id)
            VALUES (?, 'x:y', ?, ?, ?, 1, '2026-01-01T00:00:00.000Z', 2)`
         )
-        .run(`b-${role}`, `${role} b`, role, b.groupId).lastInsertRowid
+        .run(`b-${role}`, `${role} b`, role, b.groupId)).lastInsertRowid
     );
-    db.prepare("INSERT OR IGNORE INTO user_roles (user_id, role) VALUES (?, ?)").run(id, role);
+    await db.prepare("INSERT OR IGNORE INTO user_roles (user_id, role) VALUES (?, ?)").run(id, role);
   }
   /* Rows that can actually be changed or deleted: a group with no users (a group with members
      refuses deletion for a different reason) and a second facility (the last one is protected). */
-  db.prepare("INSERT INTO groups (name, slug, color, active, created_at, organization_id) VALUES ('empty b', 'empty-b', '#2DE0E6', 1, '2026-01-01', 2)").run();
-  db.prepare("INSERT INTO facilities (slug, kind, name, lat, lng, updated_at, organization_id, created_at) VALUES ('wh-b2', 'warehouse', 'second b', 35, 51, '2026-01-01', 2, '2026-01-01')").run();
+  await db.prepare("INSERT INTO groups (name, slug, color, active, created_at, organization_id) VALUES ('empty b', 'empty-b', '#2DE0E6', 1, '2026-01-01', 2)").run();
+  await db.prepare("INSERT INTO facilities (slug, kind, name, lat, lng, updated_at, organization_id, created_at) VALUES ('wh-b2', 'warehouse', 'second b', 35, 51, '2026-01-01', 2, '2026-01-01')").run();
   /* An ungrouped list: an owner reaches ungrouped rows by group alone, so only the company check keeps it out. */
-  db.prepare("INSERT INTO lead_lists (name, group_id, created_at, updated_at, organization_id) VALUES ('b list', NULL, '2026-01-01', '2026-01-01', 2)").run();
-  db.prepare("INSERT INTO saved_locations (name, maps_url, resolution, created_at, group_id, organization_id) VALUES ('b pin', 'https://maps.example/b-ungrouped', 'manual', '2026-01-01', NULL, 2)").run();
-  markB(db);
+  await db.prepare("INSERT INTO lead_lists (name, group_id, created_at, updated_at, organization_id) VALUES ('b list', NULL, '2026-01-01', '2026-01-01', 2)").run();
+  await db.prepare("INSERT INTO saved_locations (name, maps_url, resolution, created_at, group_id, organization_id) VALUES ('b pin', 'https://maps.example/b-ungrouped', 'manual', '2026-01-01', NULL, 2)").run();
+  await markB(db);
   aOwnerCookie = `${COOKIE_NAME}=${createSessionToken({ uid: a.ownerId, role: "owner", gid: null, oid: 1, tv: 0, name: "A" })}`;
 
   const bIds = Object.entries(b)
     .filter(([k, v]) => k !== "orgId" && typeof v === "number" && v > 0)
     .map(([, v]) => String(v));
   /* Plus the id of every company-B row in every tenant table, so a handler keyed on any of them is tried. */
-  const orgTables = (db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'").all() as { name: string }[])
-    .map((t) => t.name)
-    .filter((name) => {
-      const cols = (db.prepare(`PRAGMA table_info("${name}")`).all() as { name: string }[]).map((c) => c.name);
+  const orgTables = await filterSeq((await db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'").all() as { name: string }[])
+    .map((t) => t.name), async (name) => {
+      const cols = (await db.prepare(`PRAGMA table_info("${name}")`).all() as { name: string }[]).map((c) => c.name);
       return cols.includes("organization_id") && cols.includes("id");
     });
-  const rowIds = orgTables.flatMap((t) => (db.prepare(`SELECT id FROM "${t}" WHERE organization_id = 2 LIMIT 20`).all() as { id: number }[]).map((r) => String(r.id)));
+  const rowIds = (await mapSeq(orgTables, async (t) => (await db.prepare(`SELECT id FROM "${t}" WHERE organization_id = 2 LIMIT 20`).all() as { id: number }[]).map((r) => String(r.id)))).flat();
   candidateIds = [...new Set([...bIds, ...rowIds, "999999"])];
 
   for (const r of routes) {
@@ -327,7 +326,7 @@ describe("tenancy net over every api route", () => {
   }, 300_000);
 
   it("an owner of org A writing with org B's ids changes nothing of B's, and gets nothing of B's back", async () => {
-    let before = fingerprintOrgB();
+    let before = await fingerprintOrgB();
     const leaks: string[] = [];
     const touched: string[] = [];
     for (const r of routes) {
@@ -342,7 +341,7 @@ describe("tenancy net over every api route", () => {
             if (!out) continue;
             const at = `${m} ${r.template.replace(/\{\w+\}/g, v)} (${out.status})`;
             if (out.text.includes(MARK)) leaks.push(`${at} …${around(out.text)}`);
-            const after = fingerprintOrgB();
+            const after = await fingerprintOrgB();
             if (after !== before) {
               touched.push(`${at} with ${Object.keys(body).length ? "a full body" : "an empty body"}`);
               before = after; // keep going: report every route that writes, not only the first
@@ -373,11 +372,11 @@ describe("tenancy net over every api route", () => {
     }
   });
 
-  it("the fingerprint notices a change to org B (positive control for the write test)", () => {
-    const before = fingerprintOrgB();
-    getDb().prepare("UPDATE groups SET name = name || '!' WHERE organization_id = 2").run();
-    expect(fingerprintOrgB()).not.toBe(before);
-    getDb().prepare("UPDATE groups SET name = substr(name, 1, length(name) - 1) WHERE organization_id = 2").run();
-    expect(fingerprintOrgB()).toBe(before);
+  it("the fingerprint notices a change to org B (positive control for the write test)", async () => {
+    const before = await fingerprintOrgB();
+    await getDb().prepare("UPDATE groups SET name = name || '!' WHERE organization_id = 2").run();
+    expect(await fingerprintOrgB()).not.toBe(before);
+    await getDb().prepare("UPDATE groups SET name = substr(name, 1, length(name) - 1) WHERE organization_id = 2").run();
+    expect(await fingerprintOrgB()).toBe(before);
   });
 });

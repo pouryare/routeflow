@@ -5,13 +5,13 @@ import { patchRecurrence, removeRecurrence, RecurrenceError } from "@/lib/repo/t
 const MANAGER = ["owner", "group_manager", "rep_manager", "platform_owner"] as const;
 
 export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
-  const guard = requireRole(req, [...MANAGER]);
+  const guard = await requireRole(req, [...MANAGER]);
   if (!guard.ok) return guard.response;
   const { id } = await ctx.params;
   const b = (await req.json().catch(() => null)) as Record<string, unknown> | null;
   if (!b) return NextResponse.json({ ok: false, error: "بدنه نامعتبر است" }, { status: 400 });
   try {
-    const row = patchRecurrence(guard.session.organizationId, Number(id), b);
+    const row = await patchRecurrence(guard.session.organizationId, Number(id), b);
     if (!row) return NextResponse.json({ ok: false, error: "الگو پیدا نشد" }, { status: 404 });
     return NextResponse.json({ ok: true, recurrence: row });
   } catch (e) {
@@ -23,10 +23,10 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
 }
 
 export async function DELETE(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
-  const guard = requireRole(req, [...MANAGER]);
+  const guard = await requireRole(req, [...MANAGER]);
   if (!guard.ok) return guard.response;
   const { id } = await ctx.params;
-  if (!removeRecurrence(guard.session.organizationId, Number(id))) {
+  if (!await removeRecurrence(guard.session.organizationId, Number(id))) {
     return NextResponse.json({ ok: false, error: "الگو پیدا نشد" }, { status: 404 });
   }
   return NextResponse.json({ ok: true });

@@ -34,15 +34,15 @@ export const dynamic = "force-dynamic";
  *  never enters the sales shell); everyone else is redirected here. */
 export default async function SalesTodayPage() {
   const jar = await cookies();
-  const session = getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
+  const session = await getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
   if (!session) redirect("/login");
   if (isVanRole(session.role)) redirect("/driver");
 
-  const data = todayFor(session);
-  const earnings = earningsSoFar(session);
-  const week = weekVsLast(session, tehranTodayIso());
+  const data = await todayFor(session);
+  const earnings = await earningsSoFar(session);
+  const week = await weekVsLast(session, tehranTodayIso());
   // Not while acting as someone else: dismissing it would mark THEIR notes as read.
-  const whatsNew = session.actorId === undefined ? unseenFor(session.role, getPrefs(session.user.id).whats_new_seen) : null;
+  const whatsNew = session.actorId === undefined ? unseenFor(session.role, (await getPrefs(session.user.id)).whats_new_seen) : null;
 
   return (
     <>
@@ -82,14 +82,14 @@ export default async function SalesTodayPage() {
 
       {MANAGE_ROLES.includes(session.role) && (
         <div className="mb-3 flex flex-wrap gap-2">
-          <CreditDeckEntry approvals={pendingForDeck(session.organizationId)} />
-          <DuplicatesDeckEntry pairs={duplicatePairs(session).map((p) => ({ ...p, keep: { ...p.keep }, drop: { ...p.drop } }))} />
+          <CreditDeckEntry approvals={await pendingForDeck(session.organizationId)} />
+          <DuplicatesDeckEntry pairs={(await duplicatePairs(session)).map((p) => ({ ...p, keep: { ...p.keep }, drop: { ...p.drop } }))} />
         </div>
       )}
 
       {whatsNew && <WhatsNewCard entry={whatsNew} />}
 
-      <ActionCards cards={suggestionsFor(session)} />
+      <ActionCards cards={await suggestionsFor(session)} />
 
       {earnings && <EarningsCard e={earnings} />}
       {week && <WeekCompareCard {...week} />}

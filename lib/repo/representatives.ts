@@ -39,10 +39,10 @@ export interface RepWithCustomer extends RepRow {
 
 /** Organisation-scoped WHOLESALE customers not already linked to a representative --
  *  the pick list for the "add representative" form. */
-export function listWholesaleCandidates(
+export async function listWholesaleCandidates(
   organizationId: number
-): { id: number; business_name: string; customer_code: string }[] {
-  return repsRepo
+): Promise<{ id: number; business_name: string; customer_code: string }[]> {
+  return await repsRepo
     .db()
     .prepare(
       `SELECT c.id, c.business_name, c.customer_code
@@ -61,8 +61,8 @@ export function listWholesaleCandidates(
 
 /** Every representative in the organisation, newest first, with the linked customer's
  *  name and code joined in for the admin list. */
-export function listWithCustomer(organizationId: number): RepWithCustomer[] {
-  return repsRepo
+export async function listWithCustomer(organizationId: number): Promise<RepWithCustomer[]> {
+  return await repsRepo
     .db()
     .prepare(
       `SELECT r.*, c.business_name, c.customer_code
@@ -75,40 +75,40 @@ export function listWithCustomer(organizationId: number): RepWithCustomer[] {
 }
 
 /** Creates the profile and seeds the standard onboarding checklist in one transaction. */
-export function createRepresentative(
+export async function createRepresentative(
   organizationId: number,
   input: { customer_id: number; rep_code: string; manager_user_id: number | null }
-): number {
+): Promise<number> {
   const db = repsRepo.db();
   const now = new Date().toISOString();
-  db.exec("BEGIN");
+  await db.exec("BEGIN");
   try {
     const repId = Number(
-      db
+      (await db
         .prepare(
           `INSERT INTO representative_profiles
              (organization_id, customer_id, rep_code, manager_user_id, stage, credit_terms_days, created_at, updated_at)
            VALUES (?, ?, ?, ?, 'prospect', 0, ?, ?)`
         )
-        .run(organizationId, input.customer_id, input.rep_code, input.manager_user_id, now, now)
+        .run(organizationId, input.customer_id, input.rep_code, input.manager_user_id, now, now))
         .lastInsertRowid
     );
     const step = db.prepare(
       `INSERT INTO representative_onboarding_steps (representative_id, step_code, label_fa, required, sort_order)
        VALUES (?, ?, ?, ?, ?)`
     );
-    for (const s of ONBOARDING_STEPS) step.run(repId, s.step_code, s.label_fa, s.required ? 1 : 0, s.sort_order);
-    db.exec("COMMIT");
+    for (const s of ONBOARDING_STEPS) await step.run(repId, s.step_code, s.label_fa, s.required ? 1 : 0, s.sort_order);
+    await db.exec("COMMIT");
     return repId;
   } catch (e) {
-    db.exec("ROLLBACK");
+    await db.exec("ROLLBACK");
     throw e;
   }
 }
 
-export function listOnboarding(organizationId: number, repId: number): OnboardingStepRow[] {
-  if (!repsRepo.get(organizationId, repId)) throw new RepStageError("نماینده پیدا نشد");
-  return repsRepo
+export async function listOnboarding(organizationId: number, repId: number): Promise<OnboardingStepRow[]> {
+  if (!await repsRepo.get(organizationId, repId)) throw new RepStageError("نماینده پیدا نشد");
+  return await repsRepo
     .db()
     .prepare(
       "SELECT * FROM representative_onboarding_steps WHERE representative_id = ? ORDER BY sort_order"
@@ -116,14 +116,14 @@ export function listOnboarding(organizationId: number, repId: number): Onboardin
     .all(repId) as unknown as OnboardingStepRow[];
 }
 
-export function completeStep(
+export async function completeStep(
   organizationId: number,
   repId: number,
   stepCode: string,
   userId: number
-): void {
-  if (!repsRepo.get(organizationId, repId)) throw new RepStageError("نماینده پیدا نشد");
-  repsRepo
+): Promise<void> {
+  if (!await repsRepo.get(organizationId, repId)) throw new RepStageError("نماینده پیدا نشد");
+  await repsRepo
     .db()
     .prepare(
       "UPDATE representative_onboarding_steps SET completed_at = ?, completed_by = ? WHERE representative_id = ? AND step_code = ?"
@@ -131,14 +131,14 @@ export function completeStep(
     .run(new Date().toISOString(), userId, repId, stepCode);
 }
 
-export function advanceStage(organizationId: number, repId: number, to: RepStage): void {
-  const rep = repsRepo.get(organizationId, repId);
+export async function advanceStage(organizationId: number, repId: number, to: RepStage): Promise<void> {
+  const rep = await repsRepo.get(organizationId, repId);
   if (!rep) throw new RepStageError("نماینده پیدا نشد");
   if (!canAdvance(rep.stage, to)) {
     throw new RepStageError(`گذار از «${rep.stage}» به «${to}» مجاز نیست`);
   }
   if (to === "active") {
-    const pending = repsRepo
+    const pending = await repsRepo
       .db()
       .prepare(
         "SELECT COUNT(*) n FROM representative_onboarding_steps WHERE representative_id = ? AND required = 1 AND completed_at IS NULL"
@@ -148,5 +148,5 @@ export function advanceStage(organizationId: number, repId: number, to: RepStage
   }
   const patch: Partial<RepRow> = { stage: to, updated_at: new Date().toISOString() };
   if (to === "active" && !rep.activated_at) patch.activated_at = new Date().toISOString();
-  repsRepo.patch(organizationId, repId, patch);
+  await repsRepo.patch(organizationId, repId, patch);
 }

@@ -38,24 +38,24 @@ let owner = 0;
 let seller = 0;
 let grp = 0;
 
-beforeEach(() => {
+beforeEach(async () => {
   const db = getDb();
-  db.exec(
+  await db.exec(
     "PRAGMA foreign_keys=OFF; DELETE FROM kpi_snapshots; DELETE FROM order_lines; DELETE FROM orders; DELETE FROM packagings; DELETE FROM products; DELETE FROM customers; DELETE FROM users WHERE id>0; DELETE FROM groups; PRAGMA foreign_keys=ON;"
   );
   const now = new Date().toISOString();
-  grp = Number(db.prepare("INSERT INTO groups (name,slug,created_at,organization_id) VALUES ('گ','g',?,1)").run(now).lastInsertRowid);
-  owner = Number(db.prepare("INSERT INTO users (username,password_hash,display_name,role,created_at,organization_id) VALUES ('o'||abs(random()),'x','م','owner',?,1)").run(now).lastInsertRowid);
-  seller = Number(db.prepare("INSERT INTO users (username,password_hash,display_name,role,group_id,created_at,organization_id) VALUES ('s'||abs(random()),'x','ف','phone_sales',?,?,1)").run(grp, now).lastInsertRowid);
-  const cust = Number(db.prepare("INSERT INTO customers (customer_code,business_name,lifecycle,synced_at,group_id,organization_id) VALUES ('C','م','active',?,?,1)").run(now, grp).lastInsertRowid);
-  const product = Number(db.prepare("INSERT INTO products (name,sku,kg_per_base_unit,created_at,updated_at,organization_id) VALUES ('کره','K',0.25,?,?,1)").run(now, now).lastInsertRowid);
-  const pkg = Number(db.prepare("INSERT INTO packagings (product_id,name,qty_per_pack,created_at) VALUES (?,'ج',1,?)").run(product, now).lastInsertRowid);
+  grp = Number((await db.prepare("INSERT INTO groups (name,slug,created_at,organization_id) VALUES ('گ','g',?,1)").run(now)).lastInsertRowid);
+  owner = Number((await db.prepare("INSERT INTO users (username,password_hash,display_name,role,created_at,organization_id) VALUES ('o'||abs(random()),'x','م','owner',?,1)").run(now)).lastInsertRowid);
+  seller = Number((await db.prepare("INSERT INTO users (username,password_hash,display_name,role,group_id,created_at,organization_id) VALUES ('s'||abs(random()),'x','ف','phone_sales',?,?,1)").run(grp, now)).lastInsertRowid);
+  const cust = Number((await db.prepare("INSERT INTO customers (customer_code,business_name,lifecycle,synced_at,group_id,organization_id) VALUES ('C','م','active',?,?,1)").run(now, grp)).lastInsertRowid);
+  const product = Number((await db.prepare("INSERT INTO products (name,sku,kg_per_base_unit,created_at,updated_at,organization_id) VALUES ('کره','K',0.25,?,?,1)").run(now, now)).lastInsertRowid);
+  const pkg = Number((await db.prepare("INSERT INTO packagings (product_id,name,qty_per_pack,created_at) VALUES (?,'ج',1,?)").run(product, now)).lastInsertRowid);
   const oid = Number(
-    db.prepare(
+    (await db.prepare(
       "INSERT INTO orders (order_no,customer_id,group_id,salesperson_user_id,status,order_date,created_by,created_at,updated_at,organization_id) VALUES ('o1',?,?,?,'DELIVERED',?,?,?,?,1)"
-    ).run(cust, grp, seller, IN_MONTH, owner, now, now).lastInsertRowid
+    ).run(cust, grp, seller, IN_MONTH, owner, now, now)).lastInsertRowid
   );
-  db.prepare(
+  await db.prepare(
     "INSERT INTO order_lines (order_id,product_id,packaging_id,packs_ordered,packs_delivered,unit_price_toman,unit_cost_toman,qty_per_pack,kg_per_base_unit,created_at) VALUES (?,?,?,10,10,1000,700,1,0.25,?)"
   ).run(oid, product, pkg, now);
 });
@@ -70,7 +70,7 @@ describe("analysis routes", () => {
   });
 
   it("kpis returns a 14-card board reading the snapshot for the period", async () => {
-    refreshSnapshots(1, PERIOD);
+    await refreshSnapshots(1, PERIOD);
     const res = await KPIS(req(`/api/analysis/kpis?period=${PERIOD}`, cookie(owner, "owner")));
     expect(res.status).toBe(200);
     const j = await res.json();

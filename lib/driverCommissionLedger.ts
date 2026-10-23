@@ -9,7 +9,7 @@
 
 import { linesByOrder } from "./repo/orderLines";
 import { orderKgOf } from "./repo/orderFigures";
-import type { DatabaseSync } from "node:sqlite";
+import type { Db } from "@/lib/database/client";
 import { driverRateFor, type DriverRateRow } from "./driverCommission";
 import { accrualToman } from "./commission";
 import { isToman } from "./money";
@@ -17,6 +17,7 @@ import { insertCommissionPayment, insertDatedRate } from "./repo/commissionPayme
 import type { Period } from "./commissionLedger";
 import { orgClause } from "./orgScope";
 
+import { mapSeq } from "@/lib/seq";
 export interface DriverStop {
   order_id: number;
   order_no: string;
@@ -37,23 +38,23 @@ export interface DriverStatement {
   stops: DriverStop[];
 }
 
-export function setDriverRate(
-  db: DatabaseSync,
+export async function setDriverRate(
+  db: Db,
   input: {
     driver_user_id?: number | null;
     rate_per_kg_toman: number;
     valid_from: string;
     created_by?: number | null;
   }
-): number {
+): Promise<number> {
   if (!isToman(input.rate_per_kg_toman)) {
     throw new TypeError("نرخ پورسانت راننده را به تومان و بدون اعشار وارد کنید");
   }
-  return insertDatedRate(db, "driver", input.driver_user_id, input.rate_per_kg_toman, input);
+  return await insertDatedRate(db, "driver", input.driver_user_id, input.rate_per_kg_toman, input);
 }
 
-export function recordDriverPayment(
-  db: DatabaseSync,
+export async function recordDriverPayment(
+  db: Db,
   input: {
     driver_user_id: number;
     amount_toman: number;
@@ -63,15 +64,15 @@ export function recordDriverPayment(
     notes?: string | null;
     created_by?: number | null;
   }
-): number {
-  return insertCommissionPayment(db, "driver", input.driver_user_id, input, true);
+): Promise<number> {
+  return await insertCommissionPayment(db, "driver", input.driver_user_id, input, true);
 }
 
-export function readDriverRates(
-  db: DatabaseSync,
+export async function readDriverRates(
+  db: Db,
   organizationId: number
-): (DriverRateRow & { display_name: string | null })[] {
-  return db
+): Promise<(DriverRateRow & { display_name: string | null })[]> {
+  return await db
     .prepare(
       `SELECT dcr.*, u.display_name
          FROM driver_commission_rates dcr
@@ -88,13 +89,13 @@ export function readDriverRates(
  *  is the assignment a manager made and the unit this business already schedules and
  *  pays around; a helper marking a stop delivered on someone else's run does not move
  *  whose round it was. */
-function stopsFor(
-  db: DatabaseSync,
+async function stopsFor(
+  db: Db,
   driverId: number,
   period: Period,
   rates: DriverRateRow[]
-): DriverStop[] {
-  const stops = db
+): Promise<DriverStop[]> {
+  const stops = await db
     .prepare(
       `SELECT ds.order_id, o.order_no, ds.delivered_at, c.business_name AS customer_name,
               dr.run_date, o.kg_total
@@ -118,7 +119,7 @@ function stopsFor(
 
   // The order's stored weight when there is one (lib/repo/orderKg.ts); the lines are loaded only
   // for orders where it is empty. Same value either way, to the bit.
-  const lineMap = linesByOrder(db, stops.filter((s) => s.kg_total === null).map((s) => s.order_id));
+  const lineMap = await linesByOrder(db, stops.filter((s) => s.kg_total === null).map((s) => s.order_id));
 
   return stops.map((stop) => {
     const kg = stop.kg_total ?? orderKgOf(lineMap.get(stop.order_id) ?? []);
@@ -139,20 +140,20 @@ function stopsFor(
   });
 }
 
-export function driverStatementFor(
-  db: DatabaseSync,
+export async function driverStatementFor(
+  db: Db,
   driverId: number,
   period: Period
-): DriverStatement {
-  const person = db
+): Promise<DriverStatement> {
+  const person = await db
     .prepare("SELECT id, display_name FROM users WHERE id = ?")
     .get(driverId) as { id: number; display_name: string } | undefined;
 
-  const rates = db.prepare("SELECT * FROM driver_commission_rates").all() as unknown as DriverRateRow[];
-  const stops = stopsFor(db, driverId, period, rates);
+  const rates = await db.prepare("SELECT * FROM driver_commission_rates").all() as unknown as DriverRateRow[];
+  const stops = await stopsFor(db, driverId, period, rates);
   const accrued = stops.reduce((total, s) => total + s.accrual_toman, 0);
 
-  const paidInPeriod = db
+  const paidInPeriod = await db
     .prepare(
       "SELECT COALESCE(SUM(amount_toman), 0) AS total FROM driver_commission_payments WHERE driver_user_id = ? AND paid_on BETWEEN ? AND ?"
     )
@@ -160,13 +161,13 @@ export function driverStatementFor(
 
   // Owed is lifetime, same reasoning as the فروشنده ledger: what is still due does not
   // reset because a report window moved.
-  const lifetimeAccrued = stopsFor(
+  const lifetimeAccrued = (await stopsFor(
     db,
     driverId,
     { from: "0000-01-01", to: "9999-12-31" },
     rates
-  ).reduce((total, s) => total + s.accrual_toman, 0);
-  const lifetimePaid = db
+  )).reduce((total, s) => total + s.accrual_toman, 0);
+  const lifetimePaid = await db
     .prepare("SELECT COALESCE(SUM(amount_toman), 0) AS total FROM driver_commission_payments WHERE driver_user_id = ?")
     .get(driverId) as { total: number };
 
@@ -183,11 +184,11 @@ export function driverStatementFor(
 
 /** One line per راننده. Same empty-means-nothing rule as allStatements: a manager with
  *  no group reaches nobody, never everybody. */
-export function allDriverStatements(
-  db: DatabaseSync,
+export async function allDriverStatements(
+  db: Db,
   period: Period,
   opts: { groupId?: number | null; organizationId: number | null }
-): DriverStatement[] {
+): Promise<DriverStatement[]> {
   const groupId = opts.groupId;
   const org = orgClause("u.organization_id", opts.organizationId);
   if (groupId === null) return [];
@@ -201,14 +202,14 @@ export function allDriverStatements(
      done. That is the point of the split, not a duplicate to be deduplicated. */
   const people = (
     groupId === undefined
-      ? db
+      ? await db
           .prepare(
             `SELECT DISTINCT u.id FROM users u
                JOIN user_roles r ON r.user_id = u.id AND r.role IN ('delivery_driver', 'field_rep')
               WHERE u.active = 1${org.sql} ORDER BY u.display_name`
           )
           .all(...org.params)
-      : db
+      : await db
           .prepare(
             `SELECT DISTINCT u.id FROM users u
                JOIN user_roles r ON r.user_id = u.id AND r.role IN ('delivery_driver', 'field_rep')
@@ -217,5 +218,5 @@ export function allDriverStatements(
           .all(groupId, ...org.params)
   ) as unknown as { id: number }[];
 
-  return people.map((person) => driverStatementFor(db, person.id, period));
+  return await mapSeq(people, async (person) => await driverStatementFor(db, person.id, period));
 }

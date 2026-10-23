@@ -46,7 +46,7 @@ afterAll(async () => {
 /** A page for a SPECIFIC role, so the gate can be exercised per role. */
 async function asRole(role: string): Promise<Page | null> {
   const db = getDb();
-  const user = db
+  const user = await db
     .prepare(
       `SELECT id, group_id, organization_id, token_version, display_name AS name
          FROM users WHERE active = 1 AND role = ? ORDER BY id LIMIT 1`,
@@ -74,7 +74,7 @@ async function asRole(role: string): Promise<Page | null> {
 describe("spec 3 — the page that could not open at all", () => {
   it("/leads renders for a manager, with no server error", async () => {
     const context = await browser.newContext({ locale: "fa-IR" });
-    await context.addCookies([{ ...sessionCookie(), url: BASE }]);
+    await context.addCookies([{ ...await sessionCookie(), url: BASE }]);
     const page = await context.newPage();
     const errors: string[] = [];
     page.on("pageerror", (e) => errors.push(e.message));
@@ -91,7 +91,7 @@ describe("spec 3 — the page that could not open at all", () => {
 
   it("/leads renders the pin pool's own copy, so the page really painted", async () => {
     const context = await browser.newContext({ locale: "fa-IR" });
-    await context.addCookies([{ ...sessionCookie(), url: BASE }]);
+    await context.addCookies([{ ...await sessionCookie(), url: BASE }]);
     const page = await context.newPage();
     await page.goto(`${BASE}/leads`, { waitUntil: "load", timeout: 120_000 });
     /* The heading is the cheapest proof the page rendered rather than returning a shell.

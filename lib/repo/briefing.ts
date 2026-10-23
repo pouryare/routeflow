@@ -78,7 +78,7 @@ function currentPeriod(): string {
   return jalaliMonthKey(new Date().toISOString());
 }
 
-export function todayFor(session: Session): Briefing {
+export async function todayFor(session: Session): Promise<Briefing> {
   const db = getDb();
   const org = session.organizationId;
   /* Tehran, not UTC. `toISOString().slice(0,10)` is yesterday for the last 3.5 hours of
@@ -88,8 +88,8 @@ export function todayFor(session: Session): Briefing {
   const panels: (BriefingPanel | null)[] = [];
 
   if (session.role === "phone_sales") {
-    const tasks = listTasks(org, { assignee: session.user.id }).concat(
-      listTasks(org, { role: "phone_sales" }).filter((t) => t.assignee_user_id === null)
+    const tasks = (await listTasks(org, { assignee: session.user.id })).concat(
+      (await listTasks(org, { role: "phone_sales" })).filter((t) => t.assignee_user_id === null)
     );
     panels.push(
       panel(
@@ -110,7 +110,7 @@ export function todayFor(session: Session): Briefing {
     /* F8: who is due to order today by their own rhythm, each opening the quick order flow on
        that customer. A customer with an order already open is left out. */
     const open = new Set(
-      (db
+      (await db
         .prepare(
           `SELECT DISTINCT customer_id FROM orders WHERE organization_id = ? AND salesperson_user_id = ?
               AND status IN ('DRAFT', 'PENDING_REVIEW', 'PENDING_CREDIT', 'ON_HOLD', 'CONFIRMED', 'PLANNED', 'READY', 'OUT_FOR_DELIVERY')`
@@ -121,7 +121,7 @@ export function todayFor(session: Session): Briefing {
       panel(
         "due_today",
         "موعد سفارش امروز",
-        dueToday(reorderSignals(org, session.user.id, today), open).map((r) => ({
+        dueToday(await reorderSignals(org, session.user.id, today), open).map((r) => ({
           label: r.name,
           sub: `معمولاً هر ${faNum(r.typicalGapDays)} روز · ${faNum(r.daysSinceLast)} روز از آخرین خرید`,
           href: orderHref(r.customerId),
@@ -129,7 +129,7 @@ export function todayFor(session: Session): Briefing {
       )
     );
 
-    const overdue = db
+    const overdue = await db
       .prepare(
         `SELECT c.id, c.business_name, MAX(o.order_date) AS last
            FROM customers c JOIN orders o ON o.id IN (SELECT id FROM orders WHERE customer_id = c.id)
@@ -153,7 +153,7 @@ export function todayFor(session: Session): Briefing {
   }
 
   if (isVanRole(session.role)) {
-    const run = db
+    const run = await db
       .prepare(
         "SELECT id, weather_json FROM delivery_runs WHERE driver_user_id = ? AND run_date = ? AND organization_id = ?"
       )
@@ -162,8 +162,8 @@ export function todayFor(session: Session): Briefing {
       // Via runStops, so the load and the unload are counted. They are stops: unloading a
       // van is not a doorstep, and a driver told "3 stops" who then loads and unloads has
       // been told a lie by arithmetic rather than by anybody.
-      const stops = stopCountsByRun(db, [run.id]).get(run.id) ?? 0;
-      const remaining = remainingByRun(db, [run.id]).get(run.id) ?? 0;
+      const stops = (await stopCountsByRun(db, [run.id])).get(run.id) ?? 0;
+      const remaining = (await remainingByRun(db, [run.id])).get(run.id) ?? 0;
       panels.push({
         key: "today_run",
         title: "مسیر امروز",
@@ -191,7 +191,7 @@ export function todayFor(session: Session): Briefing {
       }
     }
     const yesterday = tehranTodayIso(new Date(Date.now() - 86_400_000));
-    const failed = db
+    const failed = await db
       .prepare(
         `SELECT o.id, o.order_no FROM orders o
            JOIN delivery_stops ds ON ds.order_id = o.id
@@ -217,7 +217,7 @@ export function todayFor(session: Session): Briefing {
     session.role === "owner" ||
     session.role === "platform_owner"
   ) {
-    const gids = scopeGroupIds(session);
+    const gids = await scopeGroupIds(session);
     const inClause = gids === "all" || gids.length === 0 ? null : gids.join(",");
 
     /* One row per ORDER, not one row per status.
@@ -231,7 +231,7 @@ export function todayFor(session: Session): Briefing {
      * The factors are the line's own FROZEN columns (qty_per_pack / kg_per_base_unit live on
      * order_lines, lib/db.ts:1742), which is why this needs no join to products/packagings —
      * the same reasoning readOrders uses at lib/orders.ts:519. */
-    const todays = db
+    const todays = await db
       .prepare(
         `SELECT o.id, o.order_no, o.status, c.business_name AS customer_name,
                 COALESCE(SUM(ROUND(COALESCE(ol.packs_delivered, ol.packs_ordered)
@@ -283,7 +283,7 @@ export function todayFor(session: Session): Briefing {
     /* One item per parked order, linking to that order: the decision is the
        «تأیید اعتبار» action on the order's own page. This used to be a bare count linking
        to /sales/admin/credit-approvals, a page that was never built. */
-    const waiting = db
+    const waiting = await db
       .prepare(
         `SELECT ca.order_id, o.order_no, ca.overage_toman
            FROM credit_approvals ca JOIN orders o ON o.id = ca.order_id
@@ -304,7 +304,7 @@ export function todayFor(session: Session): Briefing {
       )
     );
 
-    const unplanned = db
+    const unplanned = await db
       .prepare(
         `SELECT o.id, o.order_no FROM orders o
           WHERE o.organization_id = ? AND o.status = 'CONFIRMED'
@@ -324,7 +324,7 @@ export function todayFor(session: Session): Briefing {
       panel(
         "exceptions",
         "هشدارها",
-        listAlerts(org, { open: true }).map((a) => ({
+        (await listAlerts(org, { open: true })).map((a) => ({
           label: a.title,
           /* SEVERITY_FA, not the raw column. `severity` is an English enum
              («critical»/«warning»/«opportunity») and this panel put it straight on screen
@@ -339,7 +339,7 @@ export function todayFor(session: Session): Briefing {
   }
 
   if (session.role === "rep_manager") {
-    const byStage = db
+    const byStage = await db
       .prepare(
         `SELECT stage, COUNT(*) AS n FROM representative_profiles WHERE organization_id = ? GROUP BY stage`
       )
@@ -370,7 +370,7 @@ export function todayFor(session: Session): Briefing {
    *  A manager with no personal target falls back to the GROUP target, which is the number
    *  they are actually accountable for. Placed here rather than in a branch so it applies to
    *  every role, including a driver. */
-  const personal = targetProgress(org, {
+  const personal = await targetProgress(org, {
     user_id: session.user.id,
     period: currentPeriod(),
     metric: "revenue_toman",
@@ -378,7 +378,7 @@ export function todayFor(session: Session): Briefing {
   const groupProgress =
     session.groupId === null
       ? null
-      : targetProgress(org, {
+      : await targetProgress(org, {
           group_id: session.groupId,
           period: currentPeriod(),
           metric: "revenue_toman",

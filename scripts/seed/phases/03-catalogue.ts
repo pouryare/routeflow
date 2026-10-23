@@ -50,7 +50,7 @@ const CATALOGUE: Product[] = [
   { name: "کشک پرچرب ۴۰۰ گرمی", sku: "DEMO-KSH400", kg: 0.4, cost: 98_000, pack: "کارتن ۱۲ عددی", per: 12, price: 132_000 },
 ];
 
-export function run(ctx: SeedContext): void {
+export async function run(ctx: SeedContext): Promise<void> {
   const { db } = ctx;
   const now = ctx.stamp(0);
   const owner = ctx.staff.owner;
@@ -74,7 +74,7 @@ export function run(ctx: SeedContext): void {
 
   for (const p of CATALOGUE) {
     const productId = Number(
-      insProduct.run(
+      (await insProduct.run(
         p.name,
         p.sku,
         p.kg,
@@ -88,9 +88,9 @@ export function run(ctx: SeedContext): void {
         /* Fresh dairy, in days — this is what the batch-expiry alert reads. */
         ctx.rng.int(20, 60),
         ctx.orgId,
-      ).lastInsertRowid,
+      )).lastInsertRowid,
     );
-    const packId = Number(insPack.run(productId, p.pack, p.per, now).lastInsertRowid);
+    const packId = Number((await insPack.run(productId, p.pack, p.per, now)).lastInsertRowid);
 
     /* TWO price points spanning the whole order window. Phase 05 walks back
        `scale.months * 30` days, so an older price dated a fixed 420 days would leave every
@@ -99,11 +99,11 @@ export function run(ctx: SeedContext): void {
        The first is dated one day before the window opens; the second halfway through it.
        Rounded to the nearest 1000 Toman because that is how prices are actually quoted. */
     const window = ctx.scale.months * 30;
-    insPrice.run(
+    await insPrice.run(
       productId, packId, Math.round((p.price * 0.88) / 1000) * 1000,
       ctx.iso(window + 1), owner, now,
     );
-    insPrice.run(productId, packId, p.price, ctx.iso(Math.round(window / 2)), owner, now);
+    await insPrice.run(productId, packId, p.price, ctx.iso(Math.round(window / 2)), owner, now);
 
     productIds.push(productId);
   }

@@ -1,4 +1,4 @@
-import type { DatabaseSync } from "node:sqlite";
+import type { Db } from "@/lib/database/client";
 import type { LineSnapshot } from "@/lib/orderMath";
 
 /** The money-and-weight columns of every line of the given orders, grouped by order.
@@ -8,12 +8,12 @@ import type { LineSnapshot } from "@/lib/orderMath";
  *  order the lines come back in id order, the same order `WHERE order_id = ?` gave, so
  *  floating-point sums over them (kilograms) are unchanged to the last digit. An order with
  *  no lines is absent from the map. */
-export function linesByOrder(db: DatabaseSync, orderIds: number[]): Map<number, LineSnapshot[]> {
+export async function linesByOrder(db: Db, orderIds: number[]): Promise<Map<number, LineSnapshot[]>> {
   const out = new Map<number, LineSnapshot[]>();
   const unique = [...new Set(orderIds)];
   for (let i = 0; i < unique.length; i += 500) {
     const chunk = unique.slice(i, i + 500);
-    const rows = db
+    const rows = await db
       .prepare(
         `SELECT order_id, packs_ordered, packs_delivered, unit_price_toman, unit_cost_toman,
                 qty_per_pack, kg_per_base_unit

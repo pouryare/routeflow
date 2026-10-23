@@ -3,7 +3,7 @@
  *  is written once here and the three ledgers call it with their own table. The table and column names
  *  come from the fixed KINDS map below, never from a caller. */
 
-import type { DatabaseSync } from "node:sqlite";
+import type { Db } from "@/lib/database/client";
 import { isToman } from "@/lib/money";
 import { orgOfUser } from "@/lib/repo/userOrg";
 
@@ -26,19 +26,19 @@ export interface CommissionPaymentInput {
 
 /** `wholeToman` makes a fractional amount a TypeError (the seller and driver ledgers did; the manager
  *  ledger never checked, and keeps not checking). */
-export function insertCommissionPayment(
-  db: DatabaseSync,
+export async function insertCommissionPayment(
+  db: Db,
   kind: CommissionPaymentKind,
   personId: number,
   input: CommissionPaymentInput,
   wholeToman: boolean
-): number {
+): Promise<number> {
   if (wholeToman && !isToman(input.amount_toman)) {
     throw new TypeError("مبلغ پرداخت را به تومان و بدون اعشار وارد کنید");
   }
   const { table, person } = KINDS[kind];
   return Number(
-    db
+    (await db
       .prepare(
         `INSERT INTO ${table} (${person}, amount_toman, paid_on, period_from, period_to, notes, created_by, created_at, organization_id)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
@@ -52,8 +52,8 @@ export function insertCommissionPayment(
         input.notes ?? null,
         input.created_by ?? null,
         new Date().toISOString(),
-        orgOfUser(db, personId, input.created_by)
-      ).lastInsertRowid
+        await orgOfUser(db, personId, input.created_by)
+      )).lastInsertRowid
   );
 }
 
@@ -65,16 +65,16 @@ const RATE_KINDS = {
 /** A dated rate row (insert-only: changing a rate is a new row, so last month's statement cannot be restated
  *  by editing a cell). `personId` null is the company-wide default. The table and columns come from the
  *  fixed RATE_KINDS map; the validation of the value stays with each ledger, which knows its unit. */
-export function insertDatedRate(
-  db: DatabaseSync,
+export async function insertDatedRate(
+  db: Db,
   kind: keyof typeof RATE_KINDS,
   personId: number | null | undefined,
   value: number,
   input: { valid_from: string; created_by?: number | null }
-): number {
+): Promise<number> {
   const { table, person, value: valueColumn } = RATE_KINDS[kind];
   return Number(
-    db
+    (await db
       .prepare(
         `INSERT INTO ${table} (${person}, ${valueColumn}, valid_from, created_by, created_at, organization_id)
          VALUES (?, ?, ?, ?, ?, ?)`
@@ -85,7 +85,7 @@ export function insertDatedRate(
         input.valid_from.slice(0, 10),
         input.created_by ?? null,
         new Date().toISOString(),
-        orgOfUser(db, personId, input.created_by)
-      ).lastInsertRowid
+        await orgOfUser(db, personId, input.created_by)
+      )).lastInsertRowid
   );
 }

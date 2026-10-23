@@ -10,11 +10,11 @@ import { MANAGE_ROLES } from "@/lib/roles";
 const MAX_UPLOAD_BYTES = 20 * 1024 * 1024;
 
 export async function GET(req: NextRequest, ctx: RouteContext<"/api/payments/[id]/receipt">) {
-  const guard = requireRole(req, [...MANAGE_ROLES, "phone_sales"]);
+  const guard = await requireRole(req, [...MANAGE_ROLES, "phone_sales"]);
   if (!guard.ok) return guard.response;
 
   const { id } = await ctx.params;
-  const payment = getPayment(guard.session.organizationId, Number(id));
+  const payment = await getPayment(guard.session.organizationId, Number(id));
   if (!payment || !payment.receipt_photo_stem) {
     return NextResponse.json({ ok: false, error: "رسیدی ثبت نشده است" }, { status: 404 });
   }
@@ -29,11 +29,11 @@ export async function GET(req: NextRequest, ctx: RouteContext<"/api/payments/[id
 }
 
 export async function POST(req: NextRequest, ctx: RouteContext<"/api/payments/[id]/receipt">) {
-  const guard = requireRole(req, [...MANAGE_ROLES, "phone_sales"]);
+  const guard = await requireRole(req, [...MANAGE_ROLES, "phone_sales"]);
   if (!guard.ok) return guard.response;
 
   const { id } = await ctx.params;
-  if (!getPayment(guard.session.organizationId, Number(id))) {
+  if (!await getPayment(guard.session.organizationId, Number(id))) {
     return NextResponse.json({ ok: false, error: "یافت نشد" }, { status: 404 });
   }
 
@@ -66,7 +66,7 @@ export async function POST(req: NextRequest, ctx: RouteContext<"/api/payments/[i
   await fs.writeFile(photoFilePath(stem, "webp"), webpBuffer);
 
   try {
-    attachReceiptPhoto(guard.session.organizationId, Number(id), stem, caption);
+    await attachReceiptPhoto(guard.session.organizationId, Number(id), stem, caption);
   } catch (e) {
     if (e instanceof PaymentError) {
       return NextResponse.json({ ok: false, error: e.message }, { status: 409 });

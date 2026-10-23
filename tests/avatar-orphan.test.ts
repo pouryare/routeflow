@@ -85,16 +85,16 @@ describe("the upload route, end to end", () => {
     const db = getDb();
     const now = new Date().toISOString();
     const org = Number(
-      db
+      (await db
         .prepare("INSERT INTO organizations (name, slug, created_at) VALUES (?, ?, ?)")
-        .run("Orphans Inc", `orph-${Date.now()}`, now).lastInsertRowid,
+        .run("Orphans Inc", `orph-${Date.now()}`, now)).lastInsertRowid,
     );
     const uid = Number(
-      db
+      (await db
         .prepare(
           "INSERT INTO users (username,password_hash,display_name,role,organization_id,created_at) VALUES (?,?,?,?,?,?)",
         )
-        .run(`u${Date.now()}`, "x", "راننده", "owner", org, now).lastInsertRowid,
+        .run(`u${Date.now()}`, "x", "راننده", "owner", org, now)).lastInsertRowid,
     );
 
     // A real 1x1 PNG, so encodeImage succeeds and the route reaches the write.
@@ -119,7 +119,7 @@ describe("the upload route, end to end", () => {
 
     expect((await POST(upload() as never)).status).toBe(200);
     const first = (
-      db.prepare("SELECT avatar_stem FROM users WHERE id = ?").get(uid) as { avatar_stem: string }
+      await db.prepare("SELECT avatar_stem FROM users WHERE id = ?").get(uid) as { avatar_stem: string }
     ).avatar_stem;
     expect(first).toBeTruthy();
     expect(fs.existsSync(avatarPaths(first, "webp"))).toBe(true);
@@ -127,7 +127,7 @@ describe("the upload route, end to end", () => {
     // Replace it. The first stem's files must be gone, not merely unreferenced.
     expect((await POST(upload() as never)).status).toBe(200);
     const second = (
-      db.prepare("SELECT avatar_stem FROM users WHERE id = ?").get(uid) as { avatar_stem: string }
+      await db.prepare("SELECT avatar_stem FROM users WHERE id = ?").get(uid) as { avatar_stem: string }
     ).avatar_stem;
     expect(second).not.toBe(first);
     expect(fs.existsSync(avatarPaths(second, "webp"))).toBe(true);

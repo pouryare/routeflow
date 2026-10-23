@@ -15,7 +15,7 @@ export const dynamic = "force-dynamic";
  *  ask "are the books even sound?" before reading anything else on them. */
 export default async function TrialBalancePage() {
   const organizationId = await requireAccounting("/accounting/trial-balance");
-  const tb = trialBalance(organizationId);
+  const tb = await trialBalance(organizationId);
   const balanced = tb.totalDebit === tb.totalCredit;
 
   return (

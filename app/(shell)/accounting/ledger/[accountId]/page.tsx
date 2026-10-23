@@ -37,13 +37,13 @@ export default async function AccountLedgerPage({
   // NaN and 0 must 404, not render an empty ledger for account 0 -- the trial balance
   // links here, so a hand-edited URL must not produce a plausible-looking blank statement.
   if (!Number.isInteger(id) || id <= 0) notFound();
-  const account = accountById(id);
+  const account = await accountById(id);
   if (!account) notFound();
 
   // The statement is walked in full for its running balance; only the page is rendered.
-  const probe = accountLedger(organizationId, id, { periodKey: period, limit: 0 });
+  const probe = await accountLedger(organizationId, id, { periodKey: period, limit: 0 });
   const paging = pagingFor(pageParam, probe.totalLines, PAGE_SIZE);
-  const stmt = accountLedger(organizationId, id, { periodKey: period, limit: PAGE_SIZE, offset: paging.offset });
+  const stmt = await accountLedger(organizationId, id, { periodKey: period, limit: PAGE_SIZE, offset: paging.offset });
   // Past the first page the table opens with what the previous page closed on, not the
   // period's opening: the first line's balance less its own movement.
   const first = stmt.lines[0];

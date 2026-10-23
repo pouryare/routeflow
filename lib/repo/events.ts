@@ -1,4 +1,4 @@
-import type { DatabaseSync } from "node:sqlite";
+import type { Db } from "@/lib/database/client";
 import { getDb } from "@/lib/db";
 import { runEventRules } from "./rules";
 
@@ -29,10 +29,10 @@ export interface EventRow {
 /** Append one fact to the bus, then drive the rule engine against it best-effort.
  *  Returns the event id. A rule-engine failure is logged and swallowed -- the fact is
  *  already recorded -- so the id is always a real, inserted row. */
-export function emitEvent(organizationId: number, input: EventInput, db?: DatabaseSync): number {
+export async function emitEvent(organizationId: number, input: EventInput, db?: Db): Promise<number> {
   const now = new Date().toISOString();
   const id = Number(
-    (db ?? getDb())
+    (await (db ?? getDb())
       .prepare(
         `INSERT INTO events
            (organization_id, kind, entity_type, entity_id, actor_user_id, impersonated_by,
@@ -50,13 +50,13 @@ export function emitEvent(organizationId: number, input: EventInput, db?: Databa
         input.metadata ? JSON.stringify(input.metadata) : null,
         input.occurred_at ?? now,
         now
-      ).lastInsertRowid
+      )).lastInsertRowid
   );
   try {
-    const row = (db ?? getDb())
+    const row = await (db ?? getDb())
       .prepare("SELECT * FROM events WHERE id = ?")
       .get(id) as unknown as EventRow;
-    runEventRules(organizationId, row, db);
+    await runEventRules(organizationId, row, db);
   } catch (e) {
     /* generation is best-effort; the fact is already recorded */
     console.warn("[rules] event rule run failed", e);
@@ -65,18 +65,18 @@ export function emitEvent(organizationId: number, input: EventInput, db?: Databa
 }
 
 /** Same, but never throws -- for emitters wired into a host flow that must not break. */
-export function tryEmitEvent(organizationId: number, input: EventInput, db?: DatabaseSync): void {
+export async function tryEmitEvent(organizationId: number, input: EventInput, db?: Db): Promise<void> {
   try {
-    emitEvent(organizationId, input, db);
+    await emitEvent(organizationId, input, db);
   } catch {
     /* the bus is best-effort; the host flow already committed its real work */
   }
 }
 
-export function recentEvents(
+export async function recentEvents(
   organizationId: number,
   filter: { kind?: string; since?: string; limit?: number } = {}
-): EventRow[] {
+): Promise<EventRow[]> {
   const clauses = ["organization_id = ?"];
   const params: unknown[] = [organizationId];
   if (filter.kind) {
@@ -88,7 +88,7 @@ export function recentEvents(
     params.push(filter.since);
   }
   params.push(filter.limit ?? 100);
-  return getDb()
+  return await getDb()
     .prepare(
       `SELECT * FROM events WHERE ${clauses.join(" AND ")} ORDER BY occurred_at DESC, id DESC LIMIT ?`
     )

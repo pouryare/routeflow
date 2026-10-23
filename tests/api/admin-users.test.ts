@@ -22,15 +22,15 @@ type ReqInit = NonNullable<ConstructorParameters<typeof NextRequest>[1]>;
 // `west` exists so the fixture has more than one group, but no assertion names it.
 let east = 0, ownerId = 0, eastMgrId = 0, foreignGroup = 0;
 
-beforeAll(() => {
+beforeAll(async () => {
   const db = getDb();
   const now = new Date().toISOString();
-  db.prepare("INSERT OR IGNORE INTO organizations (id, name, slug, active, created_at) VALUES (2, 'other', 'other', 1, ?)").run(now);
+  await db.prepare("INSERT OR IGNORE INTO organizations (id, name, slug, active, created_at) VALUES (2, 'other', 'other', 1, ?)").run(now);
   // Stamped with their company: group lookups are tenant-scoped, so an unstamped row would be unreachable.
   const g = db.prepare("INSERT INTO groups (name, slug, active, created_at, organization_id) VALUES (?, ?, 1, ?, ?)");
-  east = Number(g.run("شرق", "east", now, 1).lastInsertRowid);
-  g.run("غرب", "west", now, 1);
-  foreignGroup = Number(g.run("بیگانه", "foreign", now, 2).lastInsertRowid);
+  east = Number((await g.run("شرق", "east", now, 1)).lastInsertRowid);
+  await g.run("غرب", "west", now, 1);
+  foreignGroup = Number((await g.run("بیگانه", "foreign", now, 2)).lastInsertRowid);
 
   // organization_id matters: the admin routes are tenant-scoped, and the session `as()`
   // mints carries oid 1. Production rows always have it (getDb backfills any NULL to 1 on
@@ -38,8 +38,8 @@ beforeAll(() => {
   const u = db.prepare(
     "INSERT INTO users (username, password_hash, display_name, role, group_id, active, created_at, organization_id) VALUES (?, ?, ?, ?, ?, 1, ?, 1)"
   );
-  ownerId = Number(u.run("owner", "x:y", "مالک", "owner", null, now).lastInsertRowid);
-  eastMgrId = Number(u.run("east-mgr", "x:y", "شرقی", "group_manager", east, now).lastInsertRowid);
+  ownerId = Number((await u.run("owner", "x:y", "مالک", "owner", null, now)).lastInsertRowid);
+  eastMgrId = Number((await u.run("east-mgr", "x:y", "شرقی", "group_manager", east, now)).lastInsertRowid);
 });
 
 function as(userId: number, role: "owner" | "group_manager" | "delivery_driver", gid: number | null, url: string, init: ReqInit = {}) {
@@ -59,14 +59,14 @@ describe("POST /api/admin/users", () => {
     const res = await createUser(as(ownerId, "owner", null, URL_NEW,
       json("POST", { username: "stray", password: "pw-123456", display_name: "x", role: "delivery_driver", group_id: foreignGroup })));
     expect(res.status).toBe(400);
-    expect(getDb().prepare("SELECT 1 FROM users WHERE username = 'stray'").get()).toBeUndefined();
+    expect(await getDb().prepare("SELECT 1 FROM users WHERE username = 'stray'").get()).toBeUndefined();
   });
 
   it("creates an account with a role and a group", async () => {
     const res = await createUser(as(ownerId, "owner", null, URL_NEW,
       json("POST", { username: "newdrv", password: "pw-123456", display_name: "راننده نو", role: "delivery_driver", group_id: east, staff_code: "DRV2" })));
     expect(res.status).toBe(200);
-    const row = getDb().prepare("SELECT role, group_id, staff_code FROM users WHERE username = 'newdrv'")
+    const row = await getDb().prepare("SELECT role, group_id, staff_code FROM users WHERE username = 'newdrv'")
       .get() as { role: string; group_id: number; staff_code: string };
     expect(row).toEqual({ role: "delivery_driver", group_id: east, staff_code: "DRV2" });
   });
@@ -74,7 +74,7 @@ describe("POST /api/admin/users", () => {
   it("stores a scrypt hash, never the password itself", async () => {
     await createUser(as(ownerId, "owner", null, URL_NEW,
       json("POST", { username: "hashme", password: "pw-abcdef", display_name: "هش", role: "delivery_driver", group_id: east })));
-    const row = getDb().prepare("SELECT password_hash FROM users WHERE username = 'hashme'").get() as { password_hash: string };
+    const row = await getDb().prepare("SELECT password_hash FROM users WHERE username = 'hashme'").get() as { password_hash: string };
     expect(row.password_hash).not.toContain("pw-abcdef");
     expect(row.password_hash).toMatch(/^[0-9a-f]{32}:[0-9a-f]+$/);
   });
@@ -112,13 +112,13 @@ describe("POST /api/admin/users", () => {
 });
 
 describe("PATCH /api/admin/users/[id]", () => {
-  function versionOf(username: string): number {
-    return (getDb().prepare("SELECT token_version FROM users WHERE username = ?").get(username) as { token_version: number }).token_version;
+  async function versionOf(username: string): Promise<number> {
+    return (await getDb().prepare("SELECT token_version FROM users WHERE username = ?").get(username) as { token_version: number }).token_version;
   }
 
   it("resets a password and bumps token_version", async () => {
-    const id = (getDb().prepare("SELECT id FROM users WHERE username = 'newdrv'").get() as { id: number }).id;
-    const before = versionOf("newdrv");
+    const id = (await getDb().prepare("SELECT id FROM users WHERE username = 'newdrv'").get() as { id: number }).id;
+    const before = await versionOf("newdrv");
     const res = await patchUser(
       as(ownerId, "owner", null, `${URL_NEW}/${id}`, json("PATCH", { password: "pw-fresh-1" })),
       { params: Promise.resolve({ id: String(id) }) } as never
@@ -126,23 +126,23 @@ describe("PATCH /api/admin/users/[id]", () => {
     expect(res.status).toBe(200);
     // The bump is the point: without it, a session issued before the reset stays valid
     // for up to 30 days, so resetting a password would not actually lock anyone out.
-    expect(versionOf("newdrv")).toBe(before + 1);
+    expect(await versionOf("newdrv")).toBe(before + 1);
   });
 
   it("bumps token_version when deactivating", async () => {
-    const id = (getDb().prepare("SELECT id FROM users WHERE username = 'hashme'").get() as { id: number }).id;
-    const before = versionOf("hashme");
+    const id = (await getDb().prepare("SELECT id FROM users WHERE username = 'hashme'").get() as { id: number }).id;
+    const before = await versionOf("hashme");
     await patchUser(
       as(ownerId, "owner", null, `${URL_NEW}/${id}`, json("PATCH", { active: false })),
       { params: Promise.resolve({ id: String(id) }) } as never
     );
-    expect(versionOf("hashme")).toBe(before + 1);
+    expect(await versionOf("hashme")).toBe(before + 1);
   });
 
   it("refuses to demote the last remaining owner", async () => {
     const db = getDb();
-    db.prepare("UPDATE users SET role = 'delivery_driver', group_id = ? WHERE username = 'second-owner'").run(east);
-    const owners = db.prepare("SELECT id FROM users WHERE role = 'owner' AND active = 1").all() as unknown as { id: number }[];
+    await db.prepare("UPDATE users SET role = 'delivery_driver', group_id = ? WHERE username = 'second-owner'").run(east);
+    const owners = await db.prepare("SELECT id FROM users WHERE role = 'owner' AND active = 1").all() as unknown as { id: number }[];
     expect(owners).toHaveLength(1);
     const res = await patchUser(
       as(ownerId, "owner", null, `${URL_NEW}/${owners[0].id}`, json("PATCH", { role: "group_manager", group_id: east })),

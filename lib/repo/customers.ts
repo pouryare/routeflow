@@ -20,39 +20,39 @@ interface CustomerRow {
 
 /** Fetch a customer scoped to the tenant (cross-tenant reads return undefined, which
  *  the caller turns into a 404). */
-export function getScopedCustomer(organizationId: number, id: number): CustomerRow | undefined {
-  return customersRepo.get(organizationId, id);
+export async function getScopedCustomer(organizationId: number, id: number): Promise<CustomerRow | undefined> {
+  return await customersRepo.get(organizationId, id);
 }
 
 export const customersRepo = makeRepo<CustomerRow>("customers", { tenant: true });
 
 /** Move a customer to a new lifecycle stage, or throw if the move is not on the
  *  transition table. Stamps `qualified_at` the first time it reaches `qualified`. */
-export function setLifecycle(organizationId: number, id: number, to: CustomerLifecycle): void {
-  const row = customersRepo.get(organizationId, id);
+export async function setLifecycle(organizationId: number, id: number, to: CustomerLifecycle): Promise<void> {
+  const row = await customersRepo.get(organizationId, id);
   if (!row) throw new LifecycleError("مشتری پیدا نشد");
   if (!canTransition(row.lifecycle, to)) {
     throw new LifecycleError(`گذار از «${row.lifecycle}» به «${to}» مجاز نیست`);
   }
   const patch: Partial<CustomerRow> = { lifecycle: to };
   if (to === "qualified" && !row.qualified_at) patch.qualified_at = new Date().toISOString();
-  customersRepo.patch(organizationId, id, patch);
+  await customersRepo.patch(organizationId, id, patch);
 }
 
-export function setCustomerType(organizationId: number, id: number, type: CustomerType): void {
-  if (!customersRepo.get(organizationId, id)) throw new LifecycleError("مشتری پیدا نشد");
-  customersRepo.patch(organizationId, id, { customer_type: type });
+export async function setCustomerType(organizationId: number, id: number, type: CustomerType): Promise<void> {
+  if (!await customersRepo.get(organizationId, id)) throw new LifecycleError("مشتری پیدا نشد");
+  await customersRepo.patch(organizationId, id, { customer_type: type });
 }
 
-export function setCreditTerms(
+export async function setCreditTerms(
   organizationId: number,
   id: number,
   terms: { payment_terms_days?: number; credit_limit_toman?: number | null; hard_credit_block?: boolean }
-): void {
-  if (!customersRepo.get(organizationId, id)) throw new LifecycleError("مشتری پیدا نشد");
+): Promise<void> {
+  if (!await customersRepo.get(organizationId, id)) throw new LifecycleError("مشتری پیدا نشد");
   const patch: Partial<CustomerRow> = {};
   if (terms.payment_terms_days !== undefined) patch.payment_terms_days = terms.payment_terms_days;
   if (terms.credit_limit_toman !== undefined) patch.credit_limit_toman = terms.credit_limit_toman;
   if (terms.hard_credit_block !== undefined) patch.hard_credit_block = terms.hard_credit_block ? 1 : 0;
-  customersRepo.patch(organizationId, id, patch);
+  await customersRepo.patch(organizationId, id, patch);
 }

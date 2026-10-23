@@ -18,13 +18,13 @@ import { MANAGE_ROLES } from "@/lib/roles";
 const READERS = [...MANAGE_ROLES, "rep_manager", "phone_sales"] as const;
 
 export async function GET(req: NextRequest) {
-  const guard = requireRole(req, [...READERS]);
+  const guard = await requireRole(req, [...READERS]);
   if (!guard.ok) return guard.response;
 
   const requested = req.nextUrl.searchParams.get("v");
   const tierParam = req.nextUrl.searchParams.get("p");
   const tier = isPrecisionTier(tierParam) ? tierParam : "low";
-  const version = geometryVersion();
+  const version = await geometryVersion();
 
   if (requested !== version) {
     const url = req.nextUrl.clone();
@@ -33,7 +33,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.redirect(url, 307);
   }
 
-  const { body, encoding } = getGeometryPayload(version, tier, req.headers.get("accept-encoding") ?? "");
+  const { body, encoding } = await getGeometryPayload(version, tier, req.headers.get("accept-encoding") ?? "");
 
   const headers = new Headers({
     "Content-Type": "application/json; charset=utf-8",

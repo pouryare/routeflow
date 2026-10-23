@@ -3,8 +3,8 @@
 
 import { getDb } from "@/lib/db";
 
-export function saveSubscription(endpoint: string, p256dh: string, auth: string, userId: number): void {
-  getDb()
+export async function saveSubscription(endpoint: string, p256dh: string, auth: string, userId: number): Promise<void> {
+  await getDb()
     .prepare(
       `INSERT INTO push_subscriptions (endpoint, p256dh, auth, created_at, user_id) VALUES (?, ?, ?, ?, ?)
        ON CONFLICT(endpoint) DO UPDATE SET p256dh = excluded.p256dh, auth = excluded.auth, user_id = excluded.user_id`
@@ -14,6 +14,6 @@ export function saveSubscription(endpoint: string, p256dh: string, auth: string,
 
 /** Scoped to the caller so a guessed endpoint cannot unsubscribe someone else's device. `user_id IS NULL`
  *  keeps rows registered before the column existed deletable by whoever holds that endpoint. */
-export function removeSubscription(endpoint: string, userId: number): void {
-  getDb().prepare("DELETE FROM push_subscriptions WHERE endpoint = ? AND (user_id IS NULL OR user_id = ?)").run(endpoint, userId);
+export async function removeSubscription(endpoint: string, userId: number): Promise<void> {
+  await getDb().prepare("DELETE FROM push_subscriptions WHERE endpoint = ? AND (user_id IS NULL OR user_id = ?)").run(endpoint, userId);
 }

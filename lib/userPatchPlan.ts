@@ -18,17 +18,17 @@ const fail = (error: string, status: number): UserPatchPlan => ({ ok: false, err
 
 /** Would this change leave this organisation with no active owner? (Another company's owners do not count.)
  *  The only way back from that is scripts/create-user.mjs over SSH. */
-function wouldStrandTheApp(target: UserRow, becomingNonOwner: boolean): boolean {
+async function wouldStrandTheApp(target: UserRow, becomingNonOwner: boolean): Promise<boolean> {
   if (target.role !== "owner" || !target.active || !becomingNonOwner) return false;
-  return otherActiveOwners(target.id, target.organization_id) === 0;
+  return await otherActiveOwners(target.id, target.organization_id) === 0;
 }
 
-export function planUserPatch(
+export async function planUserPatch(
   body: Record<string, unknown> | null,
   target: UserRow,
   organizationId: number,
   actorId?: number
-): UserPatchPlan {
+): Promise<UserPatchPlan> {
   const sets: string[] = [];
   const values: (string | number | null)[] = [];
 
@@ -62,7 +62,7 @@ export function planUserPatch(
     const username = typeof body.username === "string" ? body.username.trim() : "";
     if (!username) return fail("نام کاربری الزامی است", 400);
     // Check for duplicate username within the same organization
-    const existing = usernameTakenInOrg(username, organizationId, target.id);
+    const existing = await usernameTakenInOrg(username, organizationId, target.id);
     if (existing) return fail("نام کاربری تکراری است", 409);
     sets.push("username = ?");
     values.push(username);
@@ -79,7 +79,7 @@ export function planUserPatch(
     if (nextRole === "platform_owner") {
       return fail("این نقش فقط برای بنیان‌گذار سامانه است", 400);
     }
-    if (wouldStrandTheApp(target, nextRole !== "owner")) {
+    if (await wouldStrandTheApp(target, nextRole !== "owner")) {
       return fail("این تنها مالک فعال است. اول یک مالک دیگر بسازید.", 409);
     }
     sets.push("role = ?");
@@ -89,7 +89,7 @@ export function planUserPatch(
 
   if (body?.group_id !== undefined) {
     const groupId = Number.isInteger(body.group_id) ? (body.group_id as number) : null;
-    if (groupId !== null && !groupExists(groupId, organizationId)) {
+    if (groupId !== null && !await groupExists(groupId, organizationId)) {
       return fail("گروه پیدا نشد", 400);
     }
     sets.push("group_id = ?");
@@ -159,7 +159,7 @@ export function planUserPatch(
 
   if (body?.active !== undefined) {
     const active = body.active ? 1 : 0;
-    if (!active && wouldStrandTheApp(target, true)) {
+    if (!active && await wouldStrandTheApp(target, true)) {
       return fail("این تنها مالک فعال است. اول یک مالک دیگر بسازید.", 409);
     }
     sets.push("active = ?");

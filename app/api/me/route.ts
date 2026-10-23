@@ -4,7 +4,7 @@ import { getSessionFromCookies } from "@/lib/session";
 import { isVanRole } from "@/lib/roles";
 
 export async function GET(req: NextRequest) {
-  const session = getSessionFromCookies(req.cookies.get(COOKIE_NAME)?.value);
+  const session = await getSessionFromCookies(req.cookies.get(COOKIE_NAME)?.value);
   if (!session) {
     return NextResponse.json({ ok: false }, { status: 401 });
   }

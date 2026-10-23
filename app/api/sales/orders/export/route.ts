@@ -26,10 +26,10 @@ const PAYMENT_LABEL = PAYMENT_STATUS_LABEL as Record<string, string>;
  *  contradict every screen it was exported from.
  */
 export async function GET(req: NextRequest) {
-  const guard = requireRole(req, [...MANAGE_ROLES, "phone_sales"]);
+  const guard = await requireRole(req, [...MANAGE_ROLES, "phone_sales"]);
   if (!guard.ok) return guard.response;
 
-  const orders = ordersForExport(orderFilter(guard.session));
+  const orders = await ordersForExport(orderFilter(guard.session));
 
   const book = new ExcelJS.Workbook();
   book.creator = "routeflow";

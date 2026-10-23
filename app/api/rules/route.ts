@@ -4,13 +4,13 @@ import { rulesFor, setTenantRuleOverride, RuleError } from "@/lib/repo/rules";
 import { MANAGE_ROLES } from "@/lib/roles";
 
 export async function GET(req: NextRequest) {
-  const guard = requireRole(req, MANAGE_ROLES);
+  const guard = await requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
-  return NextResponse.json({ ok: true, rules: rulesFor(guard.session.organizationId) });
+  return NextResponse.json({ ok: true, rules: await rulesFor(guard.session.organizationId) });
 }
 
 export async function PATCH(req: NextRequest) {
-  const guard = requireRole(req, MANAGE_ROLES);
+  const guard = await requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
   const b = (await req.json().catch(() => null)) as {
     code?: string;
@@ -19,7 +19,7 @@ export async function PATCH(req: NextRequest) {
   } | null;
   if (!b?.code) return NextResponse.json({ ok: false, error: "قانون مشخص نشده است" }, { status: 400 });
   try {
-    setTenantRuleOverride(guard.session.organizationId, {
+    await setTenantRuleOverride(guard.session.organizationId, {
       code: b.code,
       active: b.active,
       cooldown_min: b.cooldown_min,

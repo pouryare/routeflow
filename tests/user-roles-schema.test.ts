@@ -14,73 +14,73 @@ afterAll(() => {
   for (const s of ["", "-wal", "-shm"]) fs.rmSync(`${testDbPath}${s}`, { force: true });
 });
 
-function mkUser(username: string, role: string, org = 8): number {
+async function mkUser(username: string, role: string, org = 8): Promise<number> {
   const db = getDb();
-  db.exec(`INSERT OR IGNORE INTO organizations (id,name,slug,created_at) VALUES (${org},'O','o','2026-01-01')`);
-  db.prepare(
+  await db.exec(`INSERT OR IGNORE INTO organizations (id,name,slug,created_at) VALUES (${org},'O','o','2026-01-01')`);
+  await db.prepare(
     `INSERT INTO users (username, password_hash, display_name, role, organization_id, active, created_at)
      VALUES (?, 'x', ?, ?, ?, 1, '2026-01-01')`
   ).run(username, username, role, org);
-  return (db.prepare("SELECT id FROM users WHERE username = ?").get(username) as { id: number }).id;
+  return (await db.prepare("SELECT id FROM users WHERE username = ?").get(username) as { id: number }).id;
 }
 
 describe("the user_roles table", () => {
-  it("exists", () => {
-    const row = getDb()
+  it("exists", async () => {
+    const row = await getDb()
       .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='user_roles'")
       .get();
     expect(row).toBeTruthy();
   });
 
-  it("gives a fresh account its own primary role in the set", () => {
-    const id = mkUser("sara", "phone_sales");
-    expect(rolesFor(id)).toEqual(["phone_sales"]);
+  it("gives a fresh account its own primary role in the set", async () => {
+    const id = await mkUser("sara", "phone_sales");
+    expect(await rolesFor(id)).toEqual(["phone_sales"]);
   });
 
-  it("keeps no 'driver' or 'salesperson' row behind, because both names are retired", () => {
-    const stale = getDb()
+  it("keeps no 'driver' or 'salesperson' row behind, because both names are retired", async () => {
+    const stale = await getDb()
       .prepare("SELECT COUNT(*) n FROM user_roles WHERE role IN ('driver','salesperson')")
       .get() as { n: number };
     expect(stale.n).toBe(0);
   });
 
-  it("finds people by a role they hold NON-primarily", () => {
+  it("finds people by a role they hold NON-primarily", async () => {
     // The whole reason the table exists: a person whose primary is delivery_driver but who
     // also holds field_rep must appear in BOTH enumerations.
-    const id = mkUser("mina", "delivery_driver");
-    setRoles(id, ["field_rep", "delivery_driver"]);
-    expect(usersWithRole(8, "field_rep").map((u) => u.id)).toContain(id);
-    expect(usersWithRole(8, "delivery_driver").map((u) => u.id)).toContain(id);
+    const id = await mkUser("mina", "delivery_driver");
+    await setRoles(id, ["field_rep", "delivery_driver"]);
+    expect((await usersWithRole(8, "field_rep")).map((u) => u.id)).toContain(id);
+    expect((await usersWithRole(8, "delivery_driver")).map((u) => u.id)).toContain(id);
   });
 
-  it("ignores a deactivated person in an enumeration", () => {
-    const id = mkUser("off", "phone_sales");
-    getDb().prepare("UPDATE users SET active = 0 WHERE id = ?").run(id);
-    expect(usersWithRole(8, "phone_sales").map((u) => u.id)).not.toContain(id);
+  it("ignores a deactivated person in an enumeration", async () => {
+    const id = await mkUser("off", "phone_sales");
+    await getDb().prepare("UPDATE users SET active = 0 WHERE id = ?").run(id);
+    expect((await usersWithRole(8, "phone_sales")).map((u) => u.id)).not.toContain(id);
   });
 
-  it("replaces a set wholesale rather than accumulating it", () => {
-    const id = mkUser("nora", "phone_sales");
-    setRoles(id, ["phone_sales", "field_rep"]);
-    setRoles(id, ["phone_sales"]);
-    expect(rolesFor(id)).toEqual(["phone_sales"]);
+  it("replaces a set wholesale rather than accumulating it", async () => {
+    const id = await mkUser("nora", "phone_sales");
+    await setRoles(id, ["phone_sales", "field_rep"]);
+    await setRoles(id, ["phone_sales"]);
+    expect(await rolesFor(id)).toEqual(["phone_sales"]);
   });
 
-  it("hasRole answers from the set, not from users.role", () => {
+  it("hasRole answers from the set, not from users.role", async () => {
     // The load-bearing distinction. This person does NOT hold owner as their primary,
     // and must still be able to hold it.
-    const id = mkUser("dana", "phone_sales");
-    setRoles(id, ["phone_sales", "owner"]);
-    expect(hasRole(id, "owner")).toBe(true);
-    expect(hasRole(id, "delivery_driver")).toBe(false);
+    const id = await mkUser("dana", "phone_sales");
+    await setRoles(id, ["phone_sales", "owner"]);
+    expect(await hasRole(id, "owner")).toBe(true);
+    expect(await hasRole(id, "delivery_driver")).toBe(false);
     // ...while users.role — the PRIMARY — is unchanged by setRoles.
-    const row = getDb().prepare("SELECT role FROM users WHERE id = ?").get(id) as { role: string };
+    const row = await getDb().prepare("SELECT role FROM users WHERE id = ?").get(id) as { role: string };
     expect(row.role).toBe("phone_sales");
   });
 
-  it("deletes a person's roles when the person is deleted", () => {
-    const id = mkUser("gone", "phone_sales");
-    getDb().prepare("DELETE FROM users WHERE id = ?").run(id);
-    expect(rolesFor(id)).toEqual([]);
+  it("deletes a person's roles when the person is deleted", async () => {
+    const id = await mkUser("gone", "phone_sales");
+    await getDb().prepare("DELETE FROM users WHERE id = ?").run(id);
+    expect(await rolesFor(id)).toEqual([]);
   });
 });

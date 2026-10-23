@@ -24,10 +24,10 @@ export interface SourceRow {
   revenue90: number;
 }
 
-export function leadSourceReport(session: Session): SourceRow[] {
+export async function leadSourceReport(session: Session): Promise<SourceRow[]> {
   const f = crmFilter(session, "c");
   const fulfilled = sqlStatusList(FULFILLED_ORDER_STATUSES);
-  const rows = getDb()
+  const rows = await getDb()
     .prepare(
       `WITH firsts AS (
          SELECT o.customer_id, MIN(o.order_date) AS first_day

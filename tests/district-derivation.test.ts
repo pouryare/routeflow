@@ -36,55 +36,55 @@ const square = (lng: number, lat: number, s: number) =>
     coordinates: [[[lng - s, lat - s], [lng + s, lat - s], [lng + s, lat + s], [lng - s, lat + s], [lng - s, lat - s]]],
   });
 
-const west = Number(db.prepare(
+const west = Number((await db.prepare(
   `INSERT INTO districts (name, level, parent_name, boundary_geojson, code, coverage_status, is_custom, updated_at)
    VALUES ('محله غربی','mahalle','منطقه 1',?,'101','unknown',0,?)`
-).run(square(51.5, 35.75, 0.2), NOW).lastInsertRowid);
+).run(square(51.5, 35.75, 0.2), NOW)).lastInsertRowid);
 
-const east = Number(db.prepare(
+const east = Number((await db.prepare(
   `INSERT INTO districts (name, level, parent_name, boundary_geojson, code, coverage_status, is_custom, updated_at)
    VALUES ('محله شرقی','mahalle','منطقه 1',?,'102','unknown',0,?)`
-).run(square(51.9, 35.75, 0.2), NOW).lastInsertRowid);
+).run(square(51.9, 35.75, 0.2), NOW)).lastInsertRowid);
 
 describe("district is derived from coordinates", () => {
-  it("picks the polygon that contains the point", () => {
-    expect(districtIdForPoint(db, 35.75, 51.5)).toBe(west);
-    expect(districtIdForPoint(db, 35.75, 51.9)).toBe(east);
+  it("picks the polygon that contains the point", async () => {
+    expect(await districtIdForPoint(db, 35.75, 51.5)).toBe(west);
+    expect(await districtIdForPoint(db, 35.75, 51.9)).toBe(east);
   });
 
-  it("returns null for a point outside every polygon, rather than the nearest", () => {
+  it("returns null for a point outside every polygon, rather than the nearest", async () => {
     // The honest answer. Picking the nearest district would file a customer 40km away with
     // no signal that it happened.
-    expect(districtIdForPoint(db, 34.5, 50.5)).toBeNull();
+    expect(await districtIdForPoint(db, 34.5, 50.5)).toBeNull();
   });
 
-  it("moves with the customer when the location is re-derived", () => {
+  it("moves with the customer when the location is re-derived", async () => {
     // A customer does not keep a district; the district follows the coordinates. This is why
     // the code can never disagree with the location.
-    const cid = Number(db.prepare(
+    const cid = Number((await db.prepare(
       `INSERT INTO customers (customer_code, business_name, lat, lng, district_id, synced_at, organization_id)
        VALUES ('DV-1','جابه‌جا',35.75,51.5,?,?,1)`
-    ).run(west, NOW).lastInsertRowid);
-    expect(db.prepare("SELECT district_id FROM customers WHERE id = ?").get(cid)).toEqual({ district_id: west });
+    ).run(west, NOW)).lastInsertRowid);
+    expect(await db.prepare("SELECT district_id FROM customers WHERE id = ?").get(cid)).toEqual({ district_id: west });
     // Move east; the district must follow, exactly as setLocation does on a real write.
-    db.prepare("UPDATE customers SET lat = ?, lng = ?, district_id = ? WHERE id = ?").run(35.75, 51.9, districtIdForPoint(db, 35.75, 51.9), cid);
-    expect(db.prepare("SELECT district_id FROM customers WHERE id = ?").get(cid)).toEqual({ district_id: east });
+    await db.prepare("UPDATE customers SET lat = ?, lng = ?, district_id = ? WHERE id = ?").run(35.75, 51.9, await districtIdForPoint(db, 35.75, 51.9), cid);
+    expect(await db.prepare("SELECT district_id FROM customers WHERE id = ?").get(cid)).toEqual({ district_id: east });
   });
 
-  it("recomputeCustomerGroups reaches the same answer as the per-row derivation", () => {
+  it("recomputeCustomerGroups reaches the same answer as the per-row derivation", async () => {
     // One rule, two implementations. If they drift, a territory rebuild silently disagrees
     // with what an individual save would have written.
-    const cid = Number(db.prepare(
+    const cid = Number((await db.prepare(
       `INSERT INTO customers (customer_code, business_name, lat, lng, lifecycle, synced_at, organization_id)
        VALUES ('DV-2','همگامی',35.75,51.9,'lead',?,1)`
-    ).run(NOW).lastInsertRowid);
+    ).run(NOW)).lastInsertRowid);
     // A real group row: districts.group_id is a foreign key, so a bare 1 would fail rather
     // than exercise the rule this test is about.
-    db.prepare("INSERT INTO groups (name, slug, created_at, organization_id) VALUES ('ناحیه','nahiye',?,1)").run(NOW);
-    const gid = Number((db.prepare("SELECT id FROM groups WHERE slug = 'nahiye'").get() as { id: number }).id);
-    db.prepare("UPDATE districts SET group_id = ? WHERE id = ?").run(gid, east);
-    recomputeCustomerGroups(db, 1);
-    const row = db.prepare("SELECT group_id FROM customers WHERE id = ?").get(cid) as { group_id: number | null };
+    await db.prepare("INSERT INTO groups (name, slug, created_at, organization_id) VALUES ('ناحیه','nahiye',?,1)").run(NOW);
+    const gid = Number((await db.prepare("SELECT id FROM groups WHERE slug = 'nahiye'").get() as { id: number }).id);
+    await db.prepare("UPDATE districts SET group_id = ? WHERE id = ?").run(gid, east);
+    await recomputeCustomerGroups(db, 1);
+    const row = await db.prepare("SELECT group_id FROM customers WHERE id = ?").get(cid) as { group_id: number | null };
     expect(row.group_id).toBe(gid);
   });
 });

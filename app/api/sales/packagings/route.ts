@@ -5,7 +5,7 @@ import { OWNER_ROLES } from "@/lib/roles";
 import { logProductChange } from "@/lib/repo/productLog";
 
 export async function POST(req: NextRequest) {
-  const guard = requireRole(req, OWNER_ROLES);
+  const guard = await requireRole(req, OWNER_ROLES);
   if (!guard.ok) return guard.response;
 
   const body = (await req.json().catch(() => null)) as {
@@ -32,18 +32,18 @@ export async function POST(req: NextRequest) {
   }
 
   // The product must be this company's: an id alone reaches every tenant's catalogue.
-  if (!productInOrg(productId, orgScopeId(guard.session))) {
+  if (!await productInOrg(productId, orgScopeId(guard.session))) {
     return NextResponse.json({ ok: false, error: "کالا پیدا نشد" }, { status: 404 });
   }
 
   try {
-    const id = addPackaging({
+    const id = await addPackaging({
       product_id: productId,
       name,
       qty_per_pack: qty,
       barcode: typeof body?.barcode === "string" ? body.barcode : null,
     });
-    logProductChange(productId, "packaging", { new: `${name} (${qty})` }, { id: guard.session.user.id, name: guard.session.user.display_name, impersonatedBy: guard.session.actorId ?? null });
+    await logProductChange(productId, "packaging", { new: `${name} (${qty})` }, { id: guard.session.user.id, name: guard.session.user.display_name, impersonatedBy: guard.session.actorId ?? null });
     return NextResponse.json({ ok: true, id }, { status: 201 });
   } catch (e) {
     const message =

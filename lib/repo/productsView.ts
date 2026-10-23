@@ -4,6 +4,7 @@ import { orgClause } from "@/lib/orgScope";
 import { costBasisFor, type CatalogueProduct, type CostBasis } from "@/lib/catalogue";
 import { companyRatePerKg } from "@/lib/repo/commissionRates";
 
+import { mapSeq } from "@/lib/seq";
 /* What /sales/products reads beyond the catalogue, as functions of the SESSION. */
 
 export interface PriceHistoryRow {
@@ -23,9 +24,9 @@ export interface PriceHistoryRow {
  *  product_prices carries no organization_id of its own (it reaches a tenant through products), so
  *  the scope is on the joined product. Before this was a function of the session the query had no
  *  organisation filter and listed every company's price changes, product names and who set them. */
-export function priceHistoryFor(session: Session): PriceHistoryRow[] {
+export async function priceHistoryFor(session: Session): Promise<PriceHistoryRow[]> {
   const org = orgClause("p.organization_id", orgScopeId(session));
-  return getDb()
+  return await getDb()
     .prepare(
       `SELECT pp.id, pp.product_id, pp.packaging_id, pp.price_toman, pp.valid_from,
               p.name AS product_name, pk.name AS packaging_name, u.display_name AS by_name
@@ -49,10 +50,10 @@ export interface OwnerCosting {
 /** The owner's costing drawer inputs, all resolved against ONE date through the same
  *  `costBasisFor` the order line snapshots, so there is one answer per product. A null basis is
  *  passed through as unknown rather than as a cost of zero. */
-export function ownerCostingFor(session: Session, products: CatalogueProduct[], today: string): OwnerCosting {
+export async function ownerCostingFor(session: Session, products: CatalogueProduct[], today: string): Promise<OwnerCosting> {
   const db = getDb();
   return {
-    companyRatePerKg: companyRatePerKg(db, session.organizationId, today),
-    basisByProduct: new Map(products.map((p) => [p.id, costBasisFor(db, p.id, p.packagings[0]?.id ?? null, today)])),
+    companyRatePerKg: await companyRatePerKg(db, session.organizationId, today),
+    basisByProduct: new Map(await mapSeq(products, async (p) => [p.id, await costBasisFor(db, p.id, p.packagings[0]?.id ?? null, today)])),
   };
 }

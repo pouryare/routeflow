@@ -20,7 +20,7 @@ interface PatchInput {
 // company warehouse (group_id NULL) but must not be able to rename, move or delete it.
 // Only an owner reaches an ungrouped row.
 export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/facilities/[id]">) {
-  const guard = requireRole(req, MANAGE_ROLES);
+  const guard = await requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
 
   const { id } = await ctx.params;
@@ -38,12 +38,12 @@ export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/facilities
   // validated against the kind the row will have AFTER this request. The company is part of
   // the lookup: an id alone reaches every tenant's sites.
   const organizationId = orgScopeId(guard.session);
-  const exists = findOwnFacility(idNum, organizationId) as
+  const exists = await findOwnFacility(idNum, organizationId) as
     | { id: number; group_id: number | null; kind: FacilityKind }
     | undefined;
   // 404 rather than 403 for another group's site, for the same reason as districts:
   // a 403 confirms it exists.
-  if (!exists || !canReachGroup(guard.session, exists.group_id)) {
+  if (!exists || !await canReachGroup(guard.session, exists.group_id)) {
     return NextResponse.json({ ok: false, error: "مکان پیدا نشد" }, { status: 404 });
   }
 
@@ -121,7 +121,7 @@ export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/facilities
 
   // Column changes and the origin move run in one transaction (spec §1.1).
   try {
-    updateFacility(idNum, organizationId, sets, values, body.is_default_origin === true);
+    await updateFacility(idNum, organizationId, sets, values, body.is_default_origin === true);
   } catch (e) {
     const msg = e instanceof Error ? e.message : "خطا در به‌روزرسانی مکان";
     return NextResponse.json({ ok: false, error: msg }, { status: 500 });
@@ -131,7 +131,7 @@ export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/facilities
 }
 
 export async function DELETE(req: NextRequest, ctx: RouteContext<"/api/facilities/[id]">) {
-  const guard = requireRole(req, MANAGE_ROLES);
+  const guard = await requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
 
   const { id } = await ctx.params;
@@ -144,7 +144,7 @@ export async function DELETE(req: NextRequest, ctx: RouteContext<"/api/facilitie
   // comes back so the delete can be undone from the toast.
   let result;
   try {
-    result = deleteFacility(idNum, orgScopeId(guard.session), (g) => canReachGroup(guard.session, g));
+    result = await deleteFacility(idNum, orgScopeId(guard.session), async (g) => await canReachGroup(guard.session, g));
   } catch (e) {
     const msg = e instanceof Error ? e.message : "خطا در حذف مکان";
     return NextResponse.json({ ok: false, error: msg }, { status: 500 });

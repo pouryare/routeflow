@@ -65,7 +65,7 @@ export async function runSeed(opts: {
   /* The target is a disposable demo file (seed-demo refuses the real one): if the machine dies
      mid-build the answer is to build again, so there is nothing for an fsync per commit to
      protect. Thousands of order/delivery/payment transactions make that the main cost. */
-  db.exec("PRAGMA synchronous = OFF;");
+  await db.exec("PRAGMA synchronous = OFF;");
   const ctx: SeedContext = {
     db,
     rng: makeRng(seedFromDate(`${asOf}:${scale.name}`)),
@@ -102,7 +102,7 @@ export async function runSeed(opts: {
     for (const [label, load] of PHASES) {
       const began = Date.now();
       const mod = await load();
-      mod.run(ctx);
+      await mod.run(ctx);
       /* Only worth printing when slow — ten "0ms" lines bury the useful ones. */
       const took = Date.now() - began;
       if (took > 500) console.log(`  (${label} took ${(took / 1000).toFixed(1)}s)`);
@@ -110,18 +110,18 @@ export async function runSeed(opts: {
     /* Assertions run last, against committed state. A failure deletes the file, so a demo
        that is full of rows and wrong is never left behind. */
     const { assertInvariants } = await import("./invariants");
-    assertInvariants(ctx);
+    await assertInvariants(ctx);
   } catch (err) {
     for (const suffix of ["", "-wal", "-shm"]) fs.rmSync(`${opts.target}${suffix}`, { force: true });
     console.error(`\nseed FAILED and the database was deleted — nothing was left behind.\n${String(err)}`);
     throw err;
   }
 
-  printSummary(ctx, Date.now() - started);
+  await printSummary(ctx, Date.now() - started);
 }
 
-function printSummary(ctx: SeedContext, ms: number): void {
-  const n = (sql: string): number => (ctx.db.prepare(sql).get() as { c: number }).c;
+async function printSummary(ctx: SeedContext, ms: number): Promise<void> {
+  const n = async (sql: string): Promise<number> => (await ctx.db.prepare(sql).get() as { c: number }).c;
   console.log(`\ndemo seeded in ${(ms / 1000).toFixed(1)}s:`);
   for (const [label, sql] of [
     ["districts", "SELECT COUNT(*) c FROM districts"],
@@ -134,7 +134,7 @@ function printSummary(ctx: SeedContext, ms: number): void {
     ["ledger entries", "SELECT COUNT(*) c FROM ledger_entries"],
     ["forecast models", "SELECT COUNT(*) c FROM forecast_models"],
   ] as const) {
-    console.log(`  ${label.padEnd(16)} ${n(sql)}`);
+    console.log(`  ${label.padEnd(16)} ${await n(sql)}`);
   }
 
   console.log("\nlog in with any of these (same password):");

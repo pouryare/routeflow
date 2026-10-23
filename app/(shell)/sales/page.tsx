@@ -25,11 +25,11 @@ const fa1 = (n: number) => faNum(Math.round(n * 10) / 10).replace(".", "٫");
  */
 export default async function SalesHomePage() {
   const jar = await cookies();
-  const session = getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
+  const session = await getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
   if (!session) redirect("/login");
   if (isVanRole(session.role)) redirect("/driver");
 
-  const d = dashboardFor(session);
+  const d = await dashboardFor(session);
 
   /* Both dates from ONE clock read. Two separate reads can straddle midnight and make
      "yesterday" the same day as "today". */
@@ -64,7 +64,7 @@ export default async function SalesHomePage() {
   /* Who took today's orders, and how many each -- plus what those orders actually add up
      to. The cradle used to show only a count; a count says three people were busy, not
      which one is carrying the day. */
-  const { team, orderCount: todayOrders, peopleCount } = teamTodayFor(session, todayIso);
+  const { team, orderCount: todayOrders, peopleCount } = await teamTodayFor(session, todayIso);
 
 
   return (

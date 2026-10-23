@@ -1,4 +1,4 @@
-import type { DatabaseSync } from "node:sqlite";
+import type { Db } from "@/lib/database/client";
 
 /** Wording the app has retired, as it may still sit in stored rows.
  *
@@ -54,13 +54,13 @@ export const REWORDED: Rewording[] = [
   },
 ];
 
-export function refreshRetiredWording(db: DatabaseSync): void {
+export async function refreshRetiredWording(db: Db): Promise<void> {
   for (const r of REWORDED) {
-    db.prepare(`UPDATE ${r.table} SET ${r.column} = ? WHERE ${r.column} = ?`).run(r.to, r.from);
+    await db.prepare(`UPDATE ${r.table} SET ${r.column} = ? WHERE ${r.column} = ?`).run(r.to, r.from);
   }
   /* A recall reminder carries the batch code in the middle («بچ B-7 فراخوان شد — …»), so
      it matches on shape rather than verbatim. substr is 1-based: character 4 is the code. */
-  db.prepare(
+  await db.prepare(
     `UPDATE reminders SET message = ? || substr(message, 4)
       WHERE message LIKE ? || ' % فراخوان شد — پیگیری کنید'`
   ).run(`${NEW_BATCH} `, OLD_BATCH);

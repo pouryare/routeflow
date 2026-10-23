@@ -23,22 +23,22 @@ let b = 0; // the duplicate (no orders)
 let other = 0; // a different business, same phone in ANOTHER organisation
 const now = new Date().toISOString();
 
-beforeEach(() => {
+beforeEach(async () => {
   const db = getDb();
-  db.exec("PRAGMA foreign_keys=OFF; DELETE FROM crm_not_duplicates; DELETE FROM customer_tags; DELETE FROM payments; DELETE FROM orders; DELETE FROM activity_log; DELETE FROM customers; DELETE FROM users; PRAGMA foreign_keys=ON;");
-  db.exec("INSERT OR IGNORE INTO organizations (id,name,slug,created_at) VALUES (2,'Two','two','2026-01-01')");
+  await db.exec("PRAGMA foreign_keys=OFF; DELETE FROM crm_not_duplicates; DELETE FROM customer_tags; DELETE FROM payments; DELETE FROM orders; DELETE FROM activity_log; DELETE FROM customers; DELETE FROM users; PRAGMA foreign_keys=ON;");
+  await db.exec("INSERT OR IGNORE INTO organizations (id,name,slug,created_at) VALUES (2,'Two','two','2026-01-01')");
   const u = db.prepare("INSERT INTO users (username,password_hash,display_name,role,group_id,active,created_at,organization_id) VALUES (?,?,?,?,NULL,1,?,1)");
-  owner = Number(u.run("d-owner", "x:y", "م", "owner", now).lastInsertRowid);
-  seller = Number(u.run("d-seller", "x:y", "ف", "phone_sales", now).lastInsertRowid);
+  owner = Number((await u.run("d-owner", "x:y", "م", "owner", now)).lastInsertRowid);
+  seller = Number((await u.run("d-seller", "x:y", "ف", "phone_sales", now)).lastInsertRowid);
   const c = db.prepare("INSERT INTO customers (customer_code,business_name,phone,phone_norm,lifecycle,synced_at,organization_id) VALUES (?,?,?,?,'active','2026-01-01',?)");
-  a = Number(c.run("A1", "نانوایی رضا", "09121112233", "09121112233", 1).lastInsertRowid);
-  b = Number(c.run("A2", "رضا نانوایی", null, null, 1).lastInsertRowid);
-  db.prepare("UPDATE customers SET phone = '09121112233', phone_norm = '09121112233' WHERE id = ?").run(b);
-  other = Number(c.run("O1", "دیگری", "09121112233", "09121112233", 2).lastInsertRowid);
+  a = Number((await c.run("A1", "نانوایی رضا", "09121112233", "09121112233", 1)).lastInsertRowid);
+  b = Number((await c.run("A2", "رضا نانوایی", null, null, 1)).lastInsertRowid);
+  await db.prepare("UPDATE customers SET phone = '09121112233', phone_norm = '09121112233' WHERE id = ?").run(b);
+  other = Number((await c.run("O1", "دیگری", "09121112233", "09121112233", 2)).lastInsertRowid);
   const o = db.prepare("INSERT INTO orders (order_no,customer_id,status,order_date,created_by,created_at,updated_at,organization_id) VALUES (?,?,?,?,?,?,?,1)");
-  for (const n of ["1", "2", "3"]) o.run(`9${n}`, a, "CONFIRMED", "2026-06-01", owner, now, now);
-  db.prepare("INSERT INTO customer_tags (customer_id, tag, organization_id, created_at) VALUES (?, 'vip', 1, '2026-01-01')").run(b);
-  db.prepare("INSERT INTO customer_tags (customer_id, tag, organization_id, created_at) VALUES (?, 'vip', 1, '2026-01-01')").run(a);
+  for (const n of ["1", "2", "3"]) await o.run(`9${n}`, a, "CONFIRMED", "2026-06-01", owner, now, now);
+  await db.prepare("INSERT INTO customer_tags (customer_id, tag, organization_id, created_at) VALUES (?, 'vip', 1, '2026-01-01')").run(b);
+  await db.prepare("INSERT INTO customer_tags (customer_id, tag, organization_id, created_at) VALUES (?, 'vip', 1, '2026-01-01')").run(a);
 });
 
 const cookie = (uid: number, role: string) => `${COOKIE_NAME}=${createSessionToken({ uid, role: role as never, gid: null, oid: 1, tv: 0, name: "م" })}`;
@@ -55,13 +55,13 @@ describe("duplicate customers", () => {
   });
   it("merging moves orders, folds tags, hides the folded record, and is recorded", async () => {
     const db = getDb();
-    db.prepare("INSERT INTO orders (order_no,customer_id,status,order_date,created_by,created_at,updated_at,organization_id) VALUES ('98',?, 'CONFIRMED','2026-06-02',?,?,?,1)").run(b, owner, now, now);
+    await db.prepare("INSERT INTO orders (order_no,customer_id,status,order_date,created_by,created_at,updated_at,organization_id) VALUES ('98',?, 'CONFIRMED','2026-06-02',?,?,?,1)").run(b, owner, now, now);
     expect((await post({ action: "merge", keep_id: a, drop_id: b })).status).toBe(200);
-    expect((db.prepare("SELECT COUNT(*) AS n FROM orders WHERE customer_id = ?").get(a) as { n: number }).n).toBe(4);
-    expect((db.prepare("SELECT COUNT(*) AS n FROM orders WHERE customer_id = ?").get(b) as { n: number }).n).toBe(0);
-    expect((db.prepare("SELECT COUNT(*) AS n FROM customer_tags WHERE customer_id = ?").get(a) as { n: number }).n).toBe(1);
-    expect((db.prepare("SELECT merged_into_id FROM customers WHERE id = ?").get(b) as { merged_into_id: number }).merged_into_id).toBe(a);
-    expect((db.prepare("SELECT COUNT(*) AS n FROM activity_log WHERE entity_type='customer' AND entity_id = ? AND note LIKE 'ادغام%'").get(a) as { n: number }).n).toBe(1);
+    expect((await db.prepare("SELECT COUNT(*) AS n FROM orders WHERE customer_id = ?").get(a) as { n: number }).n).toBe(4);
+    expect((await db.prepare("SELECT COUNT(*) AS n FROM orders WHERE customer_id = ?").get(b) as { n: number }).n).toBe(0);
+    expect((await db.prepare("SELECT COUNT(*) AS n FROM customer_tags WHERE customer_id = ?").get(a) as { n: number }).n).toBe(1);
+    expect((await db.prepare("SELECT merged_into_id FROM customers WHERE id = ?").get(b) as { merged_into_id: number }).merged_into_id).toBe(a);
+    expect((await db.prepare("SELECT COUNT(*) AS n FROM activity_log WHERE entity_type='customer' AND entity_id = ? AND note LIKE 'ادغام%'").get(a) as { n: number }).n).toBe(1);
     // and the pair is gone from the list
     expect(((await (await get()).json()) as { pairs: unknown[] }).pairs).toHaveLength(0);
   });

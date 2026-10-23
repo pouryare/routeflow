@@ -1,4 +1,4 @@
-import type { DatabaseSync } from "node:sqlite";
+import type { Db } from "@/lib/database/client";
 import { plain } from "./db";
 import { readOrder } from "./orders";
 import {
@@ -152,12 +152,12 @@ export function buildJourney(o: JourneyInput): JourneyNode[] {
  *  shown -- the same arrangement readOrders has, so there is one definition of
  *  who-sees-what and a detail view cannot show a row its own list hides.
  */
-export function readJourney(db: DatabaseSync, orderId: number): JourneyInput | null {
-  const order = readOrder(db, orderId);
+export async function readJourney(db: Db, orderId: number): Promise<JourneyInput | null> {
+  const order = await readOrder(db, orderId);
   if (!order) return null;
 
   const extra = plain(
-    db
+    await db
       .prepare(
         `SELECT cb.display_name AS created_by_name,
                 r.run_date      AS run_date,

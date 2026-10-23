@@ -12,7 +12,7 @@ const ROLES: Role[] = [...OWNER_ROLES, "group_manager"];
 const MAX_UPLOAD_BYTES = 20 * 1024 * 1024;
 
 export async function POST(req: NextRequest, ctx: RouteContext<"/api/accounting/expenses/[id]/receipt">) {
-  const guard = requireRole(req, ROLES);
+  const guard = await requireRole(req, ROLES);
   if (!guard.ok) return guard.response;
   const journalId = Number((await ctx.params).id);
   if (!Number.isInteger(journalId)) return NextResponse.json({ ok: false, error: "شناسه نامعتبر است" }, { status: 400 });
@@ -23,7 +23,7 @@ export async function POST(req: NextRequest, ctx: RouteContext<"/api/accounting/
   if (!file.type.startsWith("image/")) return NextResponse.json({ ok: false, error: "فقط فایل تصویر پذیرفته می‌شود" }, { status: 400 });
   if (file.size > MAX_UPLOAD_BYTES) return NextResponse.json({ ok: false, error: "حجم فایل نباید بیش از ۲۰ مگابایت باشد" }, { status: 413 });
   // Own expense or 404, before any file is written.
-  if (!isOwnExpense(guard.session.organizationId, journalId)) {
+  if (!await isOwnExpense(guard.session.organizationId, journalId)) {
     return NextResponse.json({ ok: false, error: "هزینه پیدا نشد" }, { status: 404 });
   }
 
@@ -38,7 +38,7 @@ export async function POST(req: NextRequest, ctx: RouteContext<"/api/accounting/
   await fs.writeFile(photoFilePath(stem, "avif"), encoded.avif);
   await fs.writeFile(photoFilePath(stem, "webp"), encoded.webp);
   try {
-    const { replaced } = saveReceipt(guard.session.organizationId, journalId, guard.session.user.id, stem);
+    const { replaced } = await saveReceipt(guard.session.organizationId, journalId, guard.session.user.id, stem);
     if (replaced) {
       await fs.rm(photoFilePath(replaced, "avif"), { force: true });
       await fs.rm(photoFilePath(replaced, "webp"), { force: true });
@@ -52,10 +52,10 @@ export async function POST(req: NextRequest, ctx: RouteContext<"/api/accounting/
 }
 
 export async function GET(req: NextRequest, ctx: RouteContext<"/api/accounting/expenses/[id]/receipt">) {
-  const guard = requireRole(req, ROLES);
+  const guard = await requireRole(req, ROLES);
   if (!guard.ok) return guard.response;
   const journalId = Number((await ctx.params).id);
-  const r = Number.isInteger(journalId) ? receiptFor(guard.session.organizationId, journalId) : null;
+  const r = Number.isInteger(journalId) ? await receiptFor(guard.session.organizationId, journalId) : null;
   if (!r) return NextResponse.json({ ok: false, error: "رسیدی ثبت نشده است" }, { status: 404 });
   const format = req.nextUrl.searchParams.get("format") === "avif" ? "avif" : "webp";
   const bytes = await fs.readFile(photoFilePath(r.file_stem, format)).catch(() => null);

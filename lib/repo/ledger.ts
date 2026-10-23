@@ -3,8 +3,8 @@ import { postJournal, type PostInput } from "./ledgerCore";
 export * from "./ledgerCore";
 
 /** The chart is global, so this lookup is deliberately NOT tenant-scoped. */
-export function accountIdByCode(code: string): number | undefined {
-  const row = getDb().prepare("SELECT id FROM accounts WHERE code = ?").get(code) as
+export async function accountIdByCode(code: string): Promise<number | undefined> {
+  const row = await getDb().prepare("SELECT id FROM accounts WHERE code = ?").get(code) as
     | { id: number }
     | undefined;
   return row?.id;
@@ -12,15 +12,15 @@ export function accountIdByCode(code: string): number | undefined {
 
 /** The wrapper for callers that are NOT already inside a transaction. Mirrors the
  *  recordPayment / recordPaymentTxn convention already in lib/repo/payments.ts. */
-export function postJournalIn(input: PostInput): number {
+export async function postJournalIn(input: PostInput): Promise<number> {
   const db = getDb();
-  db.exec("BEGIN IMMEDIATE");
+  await db.exec("BEGIN IMMEDIATE");
   try {
-    const id = postJournal(db, input);
-    db.exec("COMMIT");
+    const id = await postJournal(db, input);
+    await db.exec("COMMIT");
     return id;
   } catch (e) {
-    db.exec("ROLLBACK");
+    await db.exec("ROLLBACK");
     throw e;
   }
 }
@@ -36,15 +36,15 @@ export interface TrialBalanceRow {
   balance: number;
 }
 
-export function trialBalance(orgId: number): {
+export async function trialBalance(orgId: number): Promise<{
   rows: TrialBalanceRow[];
   totalDebit: number;
   totalCredit: number;
-} {
+}> {
   // Grouped by account through the legs, so an account with no movement produces no row
   // at all. The reports want that: a trial balance padded with 27 empty accounts buries
   // the three that moved.
-  const raw = getDb()
+  const raw = await getDb()
     .prepare(
       `SELECT a.id AS accountId, a.code, a.name_fa AS nameFa, a.type,
               a.normal_balance AS normalBalance, t.debit, t.credit

@@ -28,16 +28,16 @@ describe("onboardingChecklist (F40)", () => {
 });
 
 describe("onboardingFor", () => {
-  it("reads the customer's fields and contacts inside its organisation only", () => {
+  it("reads the customer's fields and contacts inside its organisation only", async () => {
     const db = getDb();
     const now = new Date().toISOString();
     const id = Number(
-      db.prepare("INSERT INTO customers (customer_code,business_name,lifecycle,synced_at,lat,lng,organization_id) VALUES ('OB','x','active',?,35.7,51.4,1)").run(now).lastInsertRowid
+      (await db.prepare("INSERT INTO customers (customer_code,business_name,lifecycle,synced_at,lat,lng,organization_id) VALUES ('OB','x','active',?,35.7,51.4,1)").run(now)).lastInsertRowid
     );
-    db.prepare("INSERT INTO contacts (organization_id,customer_id,name,role,active,is_primary,created_at,updated_at) VALUES (1,?,'م','OWNER',1,1,?,?)").run(id, now, now);
-    const c = onboardingFor(1, id)!;
+    await db.prepare("INSERT INTO contacts (organization_id,customer_id,name,role,active,is_primary,created_at,updated_at) VALUES (1,?,'م','OWNER',1,1,?,?)").run(id, now, now);
+    const c = (await onboardingFor(1, id))!;
     expect(c.missing).toEqual(["price", "credit"]);
     expect(c.isNew).toBe(true);
-    expect(onboardingFor(2, id)).toBeNull();
+    expect(await onboardingFor(2, id)).toBeNull();
   });
 });

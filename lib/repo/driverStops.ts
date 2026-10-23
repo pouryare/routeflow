@@ -16,8 +16,8 @@ export interface OwnedStop {
   customer_id: number;
 }
 
-export function findOwnedStop(stopId: number, driverUserId: number, organizationId: number): OwnedStop | undefined {
-  return getDb()
+export async function findOwnedStop(stopId: number, driverUserId: number, organizationId: number): Promise<OwnedStop | undefined> {
+  return await getDb()
     .prepare(
       `SELECT ds.id, ds.status, ds.collected_toman, ds.order_id, dr.status AS run_status, o.customer_id
          FROM delivery_stops ds
@@ -29,38 +29,38 @@ export function findOwnedStop(stopId: number, driverUserId: number, organization
 }
 
 /** Packs already recorded as delivered per line, to recognise an identical resubmission. */
-export function storedDeliveries(orderId: number): { id: number; d: number }[] {
-  return getDb()
+export async function storedDeliveries(orderId: number): Promise<{ id: number; d: number }[]> {
+  return await getDb()
     .prepare("SELECT id, COALESCE(packs_delivered, -1) AS d FROM order_lines WHERE order_id = ?")
     .all(orderId) as { id: number; d: number }[];
 }
 
-export function invoiceTotal(orderId: number): number {
+export async function invoiceTotal(orderId: number): Promise<number> {
   return (
-    getDb()
+    await getDb()
       .prepare("SELECT COALESCE(SUM(packs_ordered * unit_price_toman), 0) AS t FROM order_lines WHERE order_id = ?")
       .get(orderId) as { t: number }
   ).t;
 }
 
-export function recordStopDelivery(
+export async function recordStopDelivery(
   stopId: number,
   input: { lines: { line_id: number; packs_delivered: number }[]; collected_toman: number; by: number; notes: string | null }
-): void {
-  recordDelivery(getDb(), stopId, input);
+): Promise<void> {
+  await recordDelivery(getDb(), stopId, input);
 }
 
-export function deferOwnedStop(stopId: number) {
-  return deferStop(getDb(), stopId);
+export async function deferOwnedStop(stopId: number) {
+  return await deferStop(getDb(), stopId);
 }
 
 /** The driver's runs and the one wanted (today's, else the latest, else the one named); null when absent or not theirs. */
-export function driverRunView(driverUserId: number, requestedRun: string | null, today: string) {
+export async function driverRunView(driverUserId: number, requestedRun: string | null, today: string) {
   const db = getDb();
-  const runs = readDriverRuns(db, driverUserId);
+  const runs = await readDriverRuns(db, driverUserId);
   if (runs.length === 0) return { run: null, runs };
   const wanted = requestedRun ?? String(runs.find((r) => r.run_date === today)?.id ?? runs[0].id);
-  const run = readRun(db, Number(wanted));
+  const run = await readRun(db, Number(wanted));
   // The id can be typed into the URL; a run belonging to another driver reads as absent.
   if (!run || run.driver_user_id !== driverUserId) return { run: null, runs };
   return { run, runs };
@@ -69,9 +69,9 @@ export function driverRunView(driverUserId: number, requestedRun: string | null,
 /** F101: a run for the printed delivery notes, with the company's name and the van, or null when
  *  it is not this company's, or the caller is neither a manager who can reach its group nor its
  *  driver. */
-export function runForNotes(session: Session, runId: number) {
+export async function runForNotes(session: Session, runId: number) {
   const db = getDb();
-  const row = db
+  const row = await db
     .prepare(
       `SELECT dr.id, dr.group_id, dr.driver_user_id, v.name AS vehicle
          FROM delivery_runs dr LEFT JOIN vehicles v ON v.id = dr.vehicle_id
@@ -79,8 +79,8 @@ export function runForNotes(session: Session, runId: number) {
     )
     .get(runId, session.organizationId) as { id: number; group_id: number | null; driver_user_id: number; vehicle: string | null } | undefined;
   if (!row) return null;
-  const allowed = MANAGE_ROLES.includes(session.role) ? canReachGroup(session, row.group_id) : row.driver_user_id === session.user.id;
+  const allowed = MANAGE_ROLES.includes(session.role) ? await canReachGroup(session, row.group_id) : row.driver_user_id === session.user.id;
   if (!allowed) return null;
-  const run = readRun(db, runId);
-  return run ? { run, vehicle: row.vehicle, businessName: organizationName(session.organizationId) ?? "فروش و پخش" } : null;
+  const run = await readRun(db, runId);
+  return run ? { run, vehicle: row.vehicle, businessName: await organizationName(session.organizationId) ?? "فروش و پخش" } : null;
 }

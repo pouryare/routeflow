@@ -6,7 +6,7 @@ import { MANAGE_ROLES } from "@/lib/roles";
 const VALID_STATUSES = ["planned", "done", "skipped"];
 
 export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/visit-plans/[id]">) {
-  const guard = requireRole(req, MANAGE_ROLES);
+  const guard = await requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
 
   const { id } = await ctx.params;
@@ -25,8 +25,8 @@ export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/visit-plan
     return NextResponse.json({ ok: false, error: "وضعیت نامعتبر است" }, { status: 400 });
   }
 
-  const owning = planEntity(planId);
-  if (!owning || !canReachEntity(guard.session, owning.entity_type, owning.entity_id)) {
+  const owning = await planEntity(planId);
+  if (!owning || !await canReachEntity(guard.session, owning.entity_type, owning.entity_id)) {
     return NextResponse.json({ ok: false, error: "برنامه پیدا نشد" }, { status: 404 });
   }
 
@@ -38,13 +38,13 @@ export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/visit-plan
   if (sets.length === 0) {
     return NextResponse.json({ ok: false, error: "چیزی برای ذخیره نیست" }, { status: 400 });
   }
-  updatePlan(planId, sets, values);
+  await updatePlan(planId, sets, values);
 
   return NextResponse.json({ ok: true });
 }
 
 export async function DELETE(req: NextRequest, ctx: RouteContext<"/api/visit-plans/[id]">) {
-  const guard = requireRole(req, MANAGE_ROLES);
+  const guard = await requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
 
   const { id } = await ctx.params;
@@ -52,10 +52,10 @@ export async function DELETE(req: NextRequest, ctx: RouteContext<"/api/visit-pla
   if (!Number.isInteger(planId)) {
     return NextResponse.json({ ok: false, error: "شناسه نامعتبر" }, { status: 400 });
   }
-  const owning = planEntity(planId);
-  if (!owning || !canReachEntity(guard.session, owning.entity_type, owning.entity_id)) {
+  const owning = await planEntity(planId);
+  if (!owning || !await canReachEntity(guard.session, owning.entity_type, owning.entity_id)) {
     return NextResponse.json({ ok: false, error: "برنامه پیدا نشد" }, { status: 404 });
   }
-  deletePlan(planId);
+  await deletePlan(planId);
   return NextResponse.json({ ok: true });
 }

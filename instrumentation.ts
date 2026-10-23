@@ -20,9 +20,9 @@ export async function register() {
 
   try {
     const { geometryVersion, getGeometryPayload } = await import("./lib/districtGeometry");
-    const version = geometryVersion();
+    const version = await geometryVersion();
     for (const tier of ["low", "high"] as const) {
-      getGeometryPayload(version, tier, "br");
+      await getGeometryPayload(version, tier, "br");
     }
   } catch (err) {
     // A cold cache is a slow first request, not a broken server -- never let this stop
@@ -36,7 +36,7 @@ export async function register() {
   // stranding the job or redoing work the user already waited for.
   try {
     const { resumeOrphanedJobs } = await import("./lib/leadImport/runner");
-    resumeOrphanedJobs();
+    await resumeOrphanedJobs();
   } catch (err) {
     console.warn("[instrumentation] lead import recovery skipped:", err);
   }

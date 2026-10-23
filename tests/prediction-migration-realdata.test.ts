@@ -48,32 +48,32 @@ const { getDb } = await import("@/lib/db");
 const { refreshPredictions } = await import("@/lib/repo/predictionRefresh");
 
 describe.skipIf(!dbPath)("Phase 10 prediction migration on real data", () => {
-  it("adds the five tables + the learned_* columns + seeds, then a sweep runs clean", () => {
+  it("adds the five tables + the learned_* columns + seeds, then a sweep runs clean", async () => {
     const db = getDb();
-    expect(db.prepare("PRAGMA foreign_key_check").all()).toEqual([]);
+    expect(await db.prepare("PRAGMA foreign_key_check").all()).toEqual([]);
 
     for (const t of ["seasonal_factors", "forecast_models", "forecasts", "churn_models", "churn_scores"]) {
-      expect(db.prepare(`SELECT 1 FROM sqlite_master WHERE type='table' AND name = ?`).get(t), t).toBeTruthy();
+      expect(await db.prepare(`SELECT 1 FROM sqlite_master WHERE type='table' AND name = ?`).get(t), t).toBeTruthy();
     }
-    const cfCols = (db.prepare("PRAGMA table_info(capacity_factors)").all() as { name: string }[]).map((c) => c.name);
+    const cfCols = (await db.prepare("PRAGMA table_info(capacity_factors)").all() as { name: string }[]).map((c) => c.name);
     for (const c of ["learned_stop_factor", "learned_speed_factor", "learned_n"]) expect(cfCols, c).toContain(c);
 
     for (const t of OUT_TABLES) {
-      expect((db.prepare(`SELECT COUNT(*) AS n FROM ${t}`).get() as { n: number }).n, t).toBe(before[t]);
+      expect((await db.prepare(`SELECT COUNT(*) AS n FROM ${t}`).get() as { n: number }).n, t).toBe(before[t]);
     }
     expect(
-      (db.prepare("SELECT COUNT(*) AS n FROM seasonal_factors WHERE organization_id IS NULL").get() as { n: number }).n
+      (await db.prepare("SELECT COUNT(*) AS n FROM seasonal_factors WHERE organization_id IS NULL").get() as { n: number }).n
     ).toBe(19);
     expect(
-      (db.prepare("SELECT COUNT(*) AS n FROM seasonal_factors WHERE organization_id IS NOT NULL").get() as { n: number }).n
+      (await db.prepare("SELECT COUNT(*) AS n FROM seasonal_factors WHERE organization_id IS NOT NULL").get() as { n: number }).n
     ).toBe(0);
     expect(
-      (db.prepare("SELECT COUNT(*) AS n FROM churn_models WHERE organization_id IS NULL").get() as { n: number }).n
+      (await db.prepare("SELECT COUNT(*) AS n FROM churn_models WHERE organization_id IS NULL").get() as { n: number }).n
     ).toBe(1);
 
-    const res = refreshPredictions(1);
+    const res = await refreshPredictions(1);
     expect(res.forecasts).toBeGreaterThanOrEqual(0);
-    expect(db.prepare("PRAGMA foreign_key_check").all()).toEqual([]);
+    expect(await db.prepare("PRAGMA foreign_key_check").all()).toEqual([]);
 
     if (temp) for (const s of ["", "-wal", "-shm"]) fs.rmSync(`${dbPath}${s}`, { force: true });
   });

@@ -5,20 +5,20 @@ import { CONDITION_CODES } from "@/lib/weather/conditions";
 import { MANAGE_ROLES } from "@/lib/roles";
 
 export async function GET(req: NextRequest) {
-  const guard = requireRole(req, MANAGE_ROLES);
+  const guard = await requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
-  return NextResponse.json({ ok: true, factors: capacityFactorsFor(guard.session.organizationId) });
+  return NextResponse.json({ ok: true, factors: await capacityFactorsFor(guard.session.organizationId) });
 }
 
 export async function PATCH(req: NextRequest) {
-  const guard = requireRole(req, MANAGE_ROLES);
+  const guard = await requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
   const b = (await req.json().catch(() => null)) as Record<string, unknown> | null;
   if (!b?.condition_code || !CONDITION_CODES.includes(b.condition_code as never)) {
     return NextResponse.json({ ok: false, error: "شرایط نامعتبر است" }, { status: 400 });
   }
   const num = (v: unknown, d: number) => (typeof v === "number" && v > 0 ? v : d);
-  upsertCapacityFactor(guard.session.organizationId, {
+  await upsertCapacityFactor(guard.session.organizationId, {
     condition_code: String(b.condition_code),
     stop_factor: num(b.stop_factor, 1),
     service_time_factor: num(b.service_time_factor, 1),

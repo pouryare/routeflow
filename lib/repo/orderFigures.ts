@@ -1,4 +1,4 @@
-import type { DatabaseSync } from "node:sqlite";
+import type { Db } from "@/lib/database/client";
 import { lineKg, lineTotalToman, lineCostToman, type LineSnapshot } from "../orderMath";
 
 /** An order's weight in kilograms: its lines' kilograms added in line order, starting from zero.
@@ -35,12 +35,12 @@ const LINE_COLUMNS = `packs_ordered, packs_delivered, unit_price_toman, unit_cos
  *  off a back-order). A trigger on order_lines voids all three on ANY change to a line, so a writer
  *  that forgets this leaves them empty -- and an empty value makes every reader work the figure out
  *  from the lines itself -- rather than leaving a stale one. They are a cache, never the truth. */
-export function refreshOrderFigures(db: DatabaseSync, orderId: number): void {
-  const lines = db
+export async function refreshOrderFigures(db: Db, orderId: number): Promise<void> {
+  const lines = await db
     .prepare(`SELECT ${LINE_COLUMNS} FROM order_lines WHERE order_id = ? ORDER BY id`)
     .all(orderId) as unknown as LineSnapshot[];
   const f = orderFiguresOf(lines);
-  db.prepare("UPDATE orders SET kg_total = ?, total_toman = ?, cost_toman = ? WHERE id = ?").run(
+  await db.prepare("UPDATE orders SET kg_total = ?, total_toman = ?, cost_toman = ? WHERE id = ?").run(
     f.kg_total,
     f.total_toman,
     f.cost_toman,
@@ -52,12 +52,12 @@ export function refreshOrderFigures(db: DatabaseSync, orderId: number): void {
  *  whose lines were changed by something other than the writers above. An order with no lines is
  *  stored as zero. Safe to run on every boot (a pass that finds nothing to do) and returns how many
  *  orders it filled. */
-export function backfillOrderFigures(db: DatabaseSync): number {
+export async function backfillOrderFigures(db: Db): Promise<number> {
   // The write lock is taken BEFORE the read: lines read first and written later could
   // overwrite a figure a concurrent writer refilled in between with a stale one.
-  db.exec("BEGIN IMMEDIATE");
+  await db.exec("BEGIN IMMEDIATE");
   try {
-    const rows = db
+    const rows = await db
       .prepare(
         `SELECT ol.order_id AS order_id, ${LINE_COLUMNS.split(", ").map((c) => `ol.${c}`).join(", ")}
            FROM order_lines ol JOIN orders o ON o.id = ol.order_id
@@ -76,16 +76,16 @@ export function backfillOrderFigures(db: DatabaseSync): number {
     const set = db.prepare("UPDATE orders SET kg_total = ?, total_toman = ?, cost_toman = ? WHERE id = ?");
     for (const [orderId, lines] of byOrder) {
       const f = orderFiguresOf(lines);
-      set.run(f.kg_total, f.total_toman, f.cost_toman, orderId);
+      await set.run(f.kg_total, f.total_toman, f.cost_toman, orderId);
     }
     // What is still empty has no lines.
-    db.exec(
+    await db.exec(
       "UPDATE orders SET kg_total = COALESCE(kg_total, 0), total_toman = COALESCE(total_toman, 0), cost_toman = COALESCE(cost_toman, 0) WHERE kg_total IS NULL OR total_toman IS NULL OR cost_toman IS NULL"
     );
-    db.exec("COMMIT");
+    await db.exec("COMMIT");
     return byOrder.size;
   } catch (e) {
-    db.exec("ROLLBACK");
+    await db.exec("ROLLBACK");
     throw e;
   }
 }

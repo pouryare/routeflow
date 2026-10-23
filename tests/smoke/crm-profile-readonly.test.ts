@@ -10,10 +10,10 @@ it.skipIf(!process.env.CRM_READONLY_SMOKE_URL)("renders the real profile, inline
   const browser = await chromium.launch();
   try {
     const context = await browser.newContext({ serviceWorkers: "block" });
-    const cookie = sessionCookie();
-    const session = getSessionFromCookies(cookie.value);
+    const cookie = await sessionCookie();
+    const session = await getSessionFromCookies(cookie.value);
     if (!session) throw new Error("No valid smoke session");
-    const business = listBusinesses(session, { view: "all" }).rows[0];
+    const business = (await listBusinesses(session, { view: "all" })).rows[0];
     if (!business) throw new Error("No visible customer to verify");
     await context.addCookies([{ ...cookie, url: base }]);
     const page = await context.newPage();

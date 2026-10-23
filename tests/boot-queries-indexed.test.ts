@@ -50,8 +50,8 @@ describe("boot-time queries use indexes", () => {
     };
     let db: DatabaseSync;
     try {
-      const { getDb } = await import("@/lib/db");
-      db = getDb();
+      const { rawSqlite } = await import("@/lib/db");
+      db = await rawSqlite();
     } finally {
       DatabaseSync.prototype.prepare = origPrepare;
     }

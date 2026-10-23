@@ -17,30 +17,30 @@ import { tehranTodayIso } from "@/lib/jalali";
  *  on. It is only needed where a whole array of raw rows goes out, which is the roster below. */
 
 export async function GET(req: NextRequest) {
-  const guard = requireRole(req, [...PIN_POOL_ROLES, "field_rep", "delivery_driver"]);
+  const guard = await requireRole(req, [...PIN_POOL_ROLES, "field_rep", "delivery_driver"]);
   if (!guard.ok) return guard.response;
   const session = guard.session;
   const url = new URL(req.url);
 
   if (isVanRole(session.role)) {
-    const run = todaysRun(session.user.id, session.organizationId, tehranTodayIso());
+    const run = await todaysRun(session.user.id, session.organizationId, tehranTodayIso());
     return NextResponse.json({ ok: true, run });
   }
 
   // The dropdown's options, so the manager does not have to know who the drivers are.
   if (url.searchParams.get("drivers") === "1") {
-    return NextResponse.json({ ok: true, drivers: driversFor(session) });
+    return NextResponse.json({ ok: true, drivers: await driversFor(session) });
   }
   // The leads page's phone book: who currently holds which lead. A query branch rather than
   // its own route so the role check and the scoping live in one place, matching `drivers`.
   if (url.searchParams.get("assignments") === "1") {
-    return NextResponse.json({ ok: true, assignments: assignmentsFor(session) });
+    return NextResponse.json({ ok: true, assignments: await assignmentsFor(session) });
   }
-  return NextResponse.json({ ok: true, runs: plain(runsFor(session)) });
+  return NextResponse.json({ ok: true, runs: plain(await runsFor(session)) });
 }
 
 export async function POST(req: NextRequest) {
-  const guard = requireRole(req, PIN_POOL_ROLES);
+  const guard = await requireRole(req, PIN_POOL_ROLES);
   if (!guard.ok) return guard.response;
 
   const body = (await req.json().catch(() => null)) as {
@@ -58,7 +58,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const result = createRunFor(guard.session, {
+    const result = await createRunFor(guard.session, {
       driver_user_id: Number(body.driver_user_id),
       run_date: body.run_date,
       location_ids: (body.location_ids as unknown[]).map(Number),

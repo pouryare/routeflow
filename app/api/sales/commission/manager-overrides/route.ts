@@ -8,7 +8,7 @@ import { OWNER_ROLES } from "@/lib/roles";
  *  territory" rule /api/sales/commission/rates already enforces -- running a group is
  *  not the authority to decide what running it pays. */
 export async function POST(req: NextRequest) {
-  const guard = requireRole(req, OWNER_ROLES);
+  const guard = await requireRole(req, OWNER_ROLES);
   if (!guard.ok) return guard.response;
 
   const body = (await req.json().catch(() => null)) as {
@@ -34,13 +34,13 @@ export async function POST(req: NextRequest) {
   const managerId = rawId === undefined || rawId === null ? null : Number(rawId);
 
   if (managerId !== null) {
-    const isManager = groupManagerInOrg(managerId, orgScopeId(guard.session));
+    const isManager = await groupManagerInOrg(managerId, orgScopeId(guard.session));
     if (!isManager) {
       return NextResponse.json({ ok: false, error: "این حساب مدیر گروه نیست" }, { status: 400 });
     }
   }
 
-  const id = addManagerOverride({
+  const id = await addManagerOverride({
     manager_user_id: managerId,
     override_pct: pct,
     valid_from: validFrom,

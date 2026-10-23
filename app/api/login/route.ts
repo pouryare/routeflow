@@ -43,16 +43,16 @@ export async function POST(req: NextRequest) {
   // here is gone (spec §2.5, second release): every coworker has an account, and a
   // password several people know is not one anybody can be held to. The bootstrap path
   // for an owner locked out of their own account is scripts/create-user.mjs on the server.
-  const user = username ? findUserByUsername(username) : null;
+  const user = username ? await findUserByUsername(username) : null;
   const matches = verifyPassword(typeof password === "string" ? password : "", user?.password_hash ?? NO_ACCOUNT_HASH);
-  const log = (result: LoginResult) => {
+  const log = async (result: LoginResult) => {
     if (user?.organization_id != null) {
-      recordLogin({ organizationId: user.organization_id, userId: user.id, result, ip, userAgent: req.headers.get("user-agent") });
+      await recordLogin({ organizationId: user.organization_id, userId: user.id, result, ip, userAgent: req.headers.get("user-agent") });
     }
   };
   if (!user || !user.active || typeof password !== "string" || !matches) {
     // Only for a real account: a username that does not exist is not stored (lib/repo/loginEvents.ts).
-    if (user) log(user.active ? "bad_password" : "inactive");
+    if (user) await log(user.active ? "bad_password" : "inactive");
     return NextResponse.json({ ok: false, error: BAD_CREDENTIALS }, { status: 401 });
   }
 
@@ -61,11 +61,11 @@ export async function POST(req: NextRequest) {
   /* The founder's account sees every company, so the password alone is not enough for it once a second
      step has been switched on. No session yet: only a short-lived proof the password passed, which the
      second-factor route turns into a session when the code checks out. */
-  if (user.role === "platform_owner" && secondFactorRequired(user.id)) {
+  if (user.role === "platform_owner" && await secondFactorRequired(user.id)) {
     return NextResponse.json({ ok: true, secondFactor: true, challenge: createChallengeToken(user.id) });
   }
 
-  log("success");
+  await log("success");
   const res = NextResponse.json({ ok: true });
   res.cookies.set(
     COOKIE_NAME,

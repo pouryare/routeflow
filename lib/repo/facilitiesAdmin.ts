@@ -8,9 +8,9 @@ import { tombstone } from "./tombstones";
 
 /** Cheap change signature for the list's ETag: COUNT + MAX(updated_at). updated_at is what makes
  *  a pin move invalidate the tag. Scoped, so one company's edits do not bust another's cache. */
-export function facilitiesSignature(organizationId: number | null): { c: number; m: string | null } {
+export async function facilitiesSignature(organizationId: number | null): Promise<{ c: number; m: string | null }> {
   const org = orgClause("organization_id", organizationId);
-  return getDb().prepare(`SELECT COUNT(*) c, MAX(updated_at) m FROM facilities WHERE 1 = 1${org.sql}`).get(...org.params) as {
+  return await getDb().prepare(`SELECT COUNT(*) c, MAX(updated_at) m FROM facilities WHERE 1 = 1${org.sql}`).get(...org.params) as {
     c: number;
     m: string | null;
   };
@@ -18,14 +18,14 @@ export function facilitiesSignature(organizationId: number | null): { c: number;
 
 /** Which parts of a requested restore are still available: null when the id has been taken
  *  (an undo that overwrote whatever now holds it would be worse than landing on a new id). */
-export function resolveRestore(wanted: { id?: number; slug?: string } | undefined): { id: number; slug?: string } | null {
+export async function resolveRestore(wanted: { id?: number; slug?: string } | undefined): Promise<{ id: number; slug?: string } | null> {
   if (!wanted || !Number.isInteger(wanted.id)) return null;
   const db = getDb();
   const id = wanted.id as number;
-  if (db.prepare("SELECT 1 FROM facilities WHERE id = ?").get(id)) return null;
+  if (await db.prepare("SELECT 1 FROM facilities WHERE id = ?").get(id)) return null;
   if (typeof wanted.slug === "string" && wanted.slug) {
     // Slugs are unique per company; a different company's slug is no obstacle.
-    if (!db.prepare("SELECT 1 FROM facilities WHERE slug = ?").get(wanted.slug)) return { id, slug: wanted.slug };
+    if (!await db.prepare("SELECT 1 FROM facilities WHERE slug = ?").get(wanted.slug)) return { id, slug: wanted.slug };
   }
   return { id };
 }
@@ -46,9 +46,9 @@ export interface NewFacility {
 }
 
 /** A new site never takes the default origin; moving it is an explicit choice in the editor. */
-export function insertFacility(f: NewFacility): number {
+export async function insertFacility(f: NewFacility): Promise<number> {
   const now = new Date().toISOString();
-  const result = getDb()
+  const result = await getDb()
     .prepare(
       `INSERT INTO facilities (id, slug, kind, name, icon_key, address, lat, lng, maps_url, notes, is_default_origin, owner_username, group_id, created_at, updated_at, organization_id)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, ?, ?, ?, ?)`
@@ -65,9 +65,9 @@ export interface OwnedFacility {
 }
 
 /** One site of this company (null when absent or another tenant's). */
-export function findOwnFacility(id: number, organizationId: number | null): OwnedFacility | undefined {
+export async function findOwnFacility(id: number, organizationId: number | null): Promise<OwnedFacility | undefined> {
   const own = orgClause("organization_id", organizationId);
-  return getDb()
+  return await getDb()
     .prepare(`SELECT id, group_id, kind, organization_id FROM facilities WHERE id = ?${own.sql}`)
     .get(id, ...own.params) as OwnedFacility | undefined;
 }
@@ -75,31 +75,31 @@ export function findOwnFacility(id: number, organizationId: number | null): Owne
 /** Applies column changes and/or moves the default origin in one transaction, so a failure
  *  between the two cannot leave the company with zero origins (or two). `sets` are fixed
  *  `column = ?` fragments from the route. Throws on a database error. */
-export function updateFacility(
+export async function updateFacility(
   id: number,
   organizationId: number | null,
   sets: string[],
   values: (string | number | null)[],
   makeDefaultOrigin: boolean
-): void {
+): Promise<void> {
   const db = getDb();
   const own = orgClause("organization_id", organizationId);
   const now = new Date().toISOString();
-  db.exec("BEGIN");
+  await db.exec("BEGIN");
   try {
     if (sets.length > 0) {
-      db.prepare(`UPDATE facilities SET ${[...sets, "updated_at = ?"].join(", ")} WHERE id = ?${own.sql}`).run(...values, now, id, ...own.params);
+      await db.prepare(`UPDATE facilities SET ${[...sets, "updated_at = ?"].join(", ")} WHERE id = ?${own.sql}`).run(...values, now, id, ...own.params);
     }
     if (makeDefaultOrigin) {
       // One default origin per company, so clearing must not reach another company's.
-      const row = db.prepare("SELECT organization_id FROM facilities WHERE id = ?").get(id) as { organization_id: number | null };
+      const row = await db.prepare("SELECT organization_id FROM facilities WHERE id = ?").get(id) as { organization_id: number | null };
       const mine = orgClause("organization_id", row.organization_id);
-      db.prepare(`UPDATE facilities SET is_default_origin = 0, updated_at = ? WHERE is_default_origin = 1${mine.sql}`).run(now, ...mine.params);
-      db.prepare("UPDATE facilities SET is_default_origin = 1, updated_at = ? WHERE id = ?").run(now, id);
+      await db.prepare(`UPDATE facilities SET is_default_origin = 0, updated_at = ? WHERE is_default_origin = 1${mine.sql}`).run(now, ...mine.params);
+      await db.prepare("UPDATE facilities SET is_default_origin = 1, updated_at = ? WHERE id = ?").run(now, id);
     }
-    db.exec("COMMIT");
+    await db.exec("COMMIT");
   } catch (e) {
-    db.exec("ROLLBACK");
+    await db.exec("ROLLBACK");
     throw e;
   }
 }
@@ -111,35 +111,35 @@ export type DeleteFacilityResult =
 /** Deletes a site of this company. `canReach` is the caller's group rule, applied to the row
  *  before anything changes. The last site is refused; deleting the origin promotes a
  *  replacement from the SAME company (a home base first, then the oldest) in the same transaction. */
-export function deleteFacility(
+export async function deleteFacility(
   id: number,
   organizationId: number | null,
-  canReach: (groupId: number | null) => boolean
-): DeleteFacilityResult {
+  canReach: (groupId: number | null) => Promise<boolean>
+): Promise<DeleteFacilityResult> {
   const db = getDb();
-  const owning = findOwnFacility(id, organizationId);
-  const row = readFacility(db, id);
-  if (!row || !owning || !canReach(owning.group_id)) return { ok: false, reason: "not_found" };
+  const owning = await findOwnFacility(id, organizationId);
+  const row = await readFacility(db, id);
+  if (!row || !owning || !await canReach(owning.group_id)) return { ok: false, reason: "not_found" };
 
   const org = orgClause("organization_id", organizationId);
-  const total = (db.prepare(`SELECT COUNT(*) c FROM facilities WHERE 1 = 1${org.sql}`).get(...org.params) as { c: number }).c;
+  const total = (await db.prepare(`SELECT COUNT(*) c FROM facilities WHERE 1 = 1${org.sql}`).get(...org.params) as { c: number }).c;
   if (total <= 1) return { ok: false, reason: "last" };
 
   const now = new Date().toISOString();
   const mine = orgClause("organization_id", owning.organization_id);
-  db.exec("BEGIN");
+  await db.exec("BEGIN");
   try {
-    db.prepare("DELETE FROM facilities WHERE id = ?").run(id);
-    if (owning.organization_id !== null) tombstone(owning.organization_id, "facilities", id, db);
+    await db.prepare("DELETE FROM facilities WHERE id = ?").run(id);
+    if (owning.organization_id !== null) await tombstone(owning.organization_id, "facilities", id, db);
     if (row.is_default_origin === 1) {
-      db.prepare(
+      await db.prepare(
         `UPDATE facilities SET is_default_origin = 1, updated_at = ?
          WHERE id = (SELECT id FROM facilities WHERE 1 = 1${mine.sql} ORDER BY CASE kind WHEN 'home' THEN 0 ELSE 1 END, id LIMIT 1)`
       ).run(now, ...mine.params);
     }
-    db.exec("COMMIT");
+    await db.exec("COMMIT");
   } catch (e) {
-    db.exec("ROLLBACK");
+    await db.exec("ROLLBACK");
     throw e;
   }
   return { ok: true, deleted: row };

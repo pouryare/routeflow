@@ -14,7 +14,7 @@ import { commitState } from "@/components/sales/DayLaneBoard";
  *  failure halfway cannot leave the orders in the draft AND on a run, which would show them
  *  in two lanes at once and let whichever committed first silently lose the other. */
 export async function POST(req: NextRequest) {
-  const guard = requireRole(req, MANAGE_ROLES);
+  const guard = await requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
 
   const body = (await req.json().catch(() => null)) as { draftId?: number } | null;
@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
 
   // Resolved through the reader, which scopes by user. The id in the body is a lookup key,
   // not a permission.
-  const draft = draftsOf(orgId, userId).find((d) => d.id === body.draftId);
+  const draft = (await draftsOf(orgId, userId)).find((d) => d.id === body.draftId);
   if (!draft) {
     return NextResponse.json({ ok: false, error: "پیش‌نویس پیدا نشد" }, { status: 404 });
   }
@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
 
   try {
     // The run and the draft's removal share one transaction, inside lib/repo/. See commitDraft.
-    const runId = commitDraftFor({
+    const runId = await commitDraftFor({
       draftId: draft.id,
       organizationId: orgId,
       userId,

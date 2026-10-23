@@ -67,13 +67,13 @@ function readPlan(raw: unknown): Plan | null {
 }
 
 export async function GET(req: NextRequest) {
-  const guard = requireRole(req, OWNER_ROLES);
+  const guard = await requireRole(req, OWNER_ROLES);
   if (!guard.ok) return guard.response;
-  return NextResponse.json({ ok: true, plans: listPlans(guard.session.organizationId) });
+  return NextResponse.json({ ok: true, plans: await listPlans(guard.session.organizationId) });
 }
 
 export async function POST(req: NextRequest) {
-  const guard = requireRole(req, OWNER_ROLES);
+  const guard = await requireRole(req, OWNER_ROLES);
   if (!guard.ok) return guard.response;
 
   const body = (await req.json().catch(() => null)) as Record<string, unknown> | null;
@@ -91,7 +91,7 @@ export async function POST(req: NextRequest) {
   // Tenant-scoped, same as the rates route: an owner administers their own organisation's
   // staff. A cross-tenant id reads as "not found", which is also the more honest answer —
   // from this side of the wall that person does not exist at all.
-  if (personId !== null && !userInOrganization(guard.session.organizationId, personId)) {
+  if (personId !== null && !await userInOrganization(guard.session.organizationId, personId)) {
     return NextResponse.json({ ok: false, error: "کاربر پیدا نشد" }, { status: 404 });
   }
 
@@ -106,7 +106,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: problem }, { status: 422 });
   }
 
-  savePlan({
+  await savePlan({
     salesperson_user_id: personId,
     organization_id: guard.session.organizationId,
     plan,
@@ -117,7 +117,7 @@ export async function POST(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
-  const guard = requireRole(req, OWNER_ROLES);
+  const guard = await requireRole(req, OWNER_ROLES);
   if (!guard.ok) return guard.response;
 
   const q = new URL(req.url).searchParams;
@@ -131,6 +131,6 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "شناسه نامعتبر است" }, { status: 400 });
   }
 
-  deletePlan(guard.session.organizationId, personId, from);
+  await deletePlan(guard.session.organizationId, personId, from);
   return NextResponse.json({ ok: true });
 }

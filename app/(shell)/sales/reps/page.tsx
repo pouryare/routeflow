@@ -32,13 +32,13 @@ export default async function RepsPage({
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
   const jar = await cookies();
-  const session = getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
+  const session = await getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
   if (!session) redirect("/login");
   if (!(MANAGE_ROLES.includes(session.role) || session.role === "rep_manager")) redirect("/sales");
 
   const canDefine = isOwner(session.role) || session.role === "rep_manager";
   const mode = canDefine && one((await searchParams).view) === "define" ? "define" : "perform";
-  const reps = repsOverview(session.organizationId);
+  const reps = await repsOverview(session.organizationId);
 
   return (
     <>

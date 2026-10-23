@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 
 /** F112: every what's-new entry that concerns the reader's role, newest first. */
 export default async function UpdatesPage() {
-  const session = getSessionFromCookies((await cookies()).get(COOKIE_NAME)?.value);
+  const session = await getSessionFromCookies((await cookies()).get(COOKIE_NAME)?.value);
   if (!session) redirect("/login");
   const entries = notesFor(session.role);
 

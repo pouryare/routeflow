@@ -6,22 +6,22 @@ import { duplicatePairs, markSeparate, mergeBusinesses, DuplicateError } from "@
 /* Managers only: merging folds one customer's orders, payments and history into another's. Each side
    is still checked against what the caller may see. */
 export async function GET(req: NextRequest) {
-  const guard = requireRole(req, MANAGE_ROLES);
+  const guard = await requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
-  return NextResponse.json({ ok: true, pairs: duplicatePairs(guard.session) });
+  return NextResponse.json({ ok: true, pairs: await duplicatePairs(guard.session) });
 }
 
 export async function POST(req: NextRequest) {
-  const guard = requireRole(req, MANAGE_ROLES);
+  const guard = await requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
   const body = (await req.json().catch(() => null)) as { action?: string; keep_id?: number; drop_id?: number; a_id?: number; b_id?: number } | null;
   try {
     if (body?.action === "merge" && Number.isInteger(body.keep_id) && Number.isInteger(body.drop_id)) {
-      mergeBusinesses(guard.session, body.keep_id as number, body.drop_id as number);
+      await mergeBusinesses(guard.session, body.keep_id as number, body.drop_id as number);
       return NextResponse.json({ ok: true });
     }
     if (body?.action === "separate" && Number.isInteger(body.a_id) && Number.isInteger(body.b_id)) {
-      markSeparate(guard.session, body.a_id as number, body.b_id as number);
+      await markSeparate(guard.session, body.a_id as number, body.b_id as number);
       return NextResponse.json({ ok: true });
     }
     return NextResponse.json({ ok: false, error: "درخواست نامعتبر است" }, { status: 400 });

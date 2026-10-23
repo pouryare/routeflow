@@ -1,4 +1,4 @@
-import type { DatabaseSync } from "node:sqlite";
+import type { Db } from "@/lib/database/client";
 import { orgClause } from "../orgScope";
 
 /** The one read the Login-As route needs: the user an owner asked to act as.
@@ -16,10 +16,10 @@ export type ImpersonationTarget = {
   active: number;
 };
 
-export function readImpersonationTarget(db: DatabaseSync, userId: number): ImpersonationTarget | null {
+export async function readImpersonationTarget(db: Db, userId: number): Promise<ImpersonationTarget | null> {
   if (!Number.isInteger(userId)) return null;
   return (
-    (db
+    (await db
       .prepare(
         "SELECT id, role, group_id, organization_id, token_version, display_name, active FROM users WHERE id = ?",
       )
@@ -50,9 +50,9 @@ export type ImpersonatableUser = {
  *  Deactivated accounts are excluded, and so are deactivated ORGANISATIONS: offering one
  *  would mint a session that dies on the very next request, and the founder would blame
  *  the app for it. */
-export function readImpersonatable(db: DatabaseSync, organizationId: number | null): ImpersonatableUser[] {
+export async function readImpersonatable(db: Db, organizationId: number | null): Promise<ImpersonatableUser[]> {
   const org = orgClause("u.organization_id", organizationId);
-  const rows = db
+  const rows = await db
     .prepare(
       `SELECT u.id, u.display_name, u.role, u.group_id, u.organization_id, u.active,
               o.name AS organization_name
@@ -65,7 +65,7 @@ export function readImpersonatable(db: DatabaseSync, organizationId: number | nu
 
   // One grouped pass rather than a query per row: N+1 here is N queries per switcher open.
   const byUser = new Map<number, string[]>();
-  for (const r of db
+  for (const r of await db
     .prepare("SELECT user_id, role FROM user_roles ORDER BY role")
     .all() as Array<{ user_id: number; role: string }>) {
     (byUser.get(r.user_id) ?? byUser.set(r.user_id, []).get(r.user_id)!).push(r.role);

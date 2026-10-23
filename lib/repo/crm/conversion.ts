@@ -1,4 +1,4 @@
-import type { DatabaseSync } from "node:sqlite";
+import type { Db } from "@/lib/database/client";
 import { getDb, type SavedLocationRow } from "@/lib/db";
 import { districtIdForPoint } from "@/lib/groups";
 import { findDuplicates, type DupMatch } from "./dedupe";
@@ -61,13 +61,13 @@ export const leadCustomerCode = (locationId: number): string => `LEAD-${location
  *  would be invisible to the very group_manager whose group the lead belonged to -- and to the
  *  driver who made the sale, who then gets a 404 on the order they just closed.
  */
-export function promoteLeadToCustomer(
+export async function promoteLeadToCustomer(
   orgId: number,
   locationId: number,
   session: Parameters<typeof findDuplicates>[0],
-): Promotion {
+): Promise<Promotion> {
   const db = getDb();
-  const loc = db.prepare("SELECT * FROM saved_locations WHERE id = ? AND organization_id = ?")
+  const loc = await db.prepare("SELECT * FROM saved_locations WHERE id = ? AND organization_id = ?")
     .get(locationId, orgId) as SavedLocationRow | undefined;
   if (!loc) throw new LeadPromotionError(404, "مکان پیدا نشد");
   if (loc.lat === null || loc.lng === null) {
@@ -75,11 +75,11 @@ export function promoteLeadToCustomer(
   }
 
   // Already promoted: the retry path, and the path where two stops share one pin.
-  const existing = db.prepare("SELECT id FROM customers WHERE organization_id = ? AND lead_location_id = ?")
+  const existing = await db.prepare("SELECT id FROM customers WHERE organization_id = ? AND lead_location_id = ?")
     .get(orgId, locationId) as { id: number } | undefined;
   if (existing) return { customerId: existing.id, created: false, linked: [] };
 
-  const matches = findDuplicates(session, { name: loc.name, lat: loc.lat, lng: loc.lng });
+  const matches = await findDuplicates(session, { name: loc.name, lat: loc.lat, lng: loc.lng });
   if (matches.length > 0) {
     const hidden = matches.find((m) => !m.reachable);
     if (hidden) {
@@ -103,8 +103,8 @@ export function promoteLeadToCustomer(
     // The value is computed here rather than in the SQL: districtIdForPoint is a JS
     // function over boundary_geojson, and a first attempt at inlining it produced
     // "no such column: db" at runtime.
-    const linkedDistrict = districtIdForPoint(db, loc.lat, loc.lng);
-    db.prepare(
+    const linkedDistrict = await districtIdForPoint(db, loc.lat, loc.lng);
+    await db.prepare(
       `UPDATE customers
           SET lead_location_id = ?,
               district_id = COALESCE(district_id, ?)
@@ -124,8 +124,8 @@ export function promoteLeadToCustomer(
   // customer carried lat/lng but no district, and therefore no code, no territory and no
   // place on the map. Every other field looked right, which is what made it invisible.
   // Same function, and therefore the same precedence rules, as the add-lead path.
-  const districtId = districtIdForPoint(db, loc.lat, loc.lng);
-  const result = db.prepare(`
+  const districtId = await districtIdForPoint(db, loc.lat, loc.lng);
+  const result = await db.prepare(`
       INSERT INTO customers (customer_code, business_name, address, city, province, lat, lng, notes,
                              group_id, lead_location_id, district_id, synced_at, organization_id)
       VALUES (?, ?, ?, 'تهران', 'تهران', ?, ?, ?, ?, ?, ?, ?, ?)
@@ -144,10 +144,10 @@ export function promoteLeadToCustomer(
   if (result.changes === 0) {
     // The code was taken between the check above and here, or by an earlier attempt whose
     // row exists without the link. Either way the customer is already there.
-    const row = db.prepare("SELECT id FROM customers WHERE organization_id = ? AND customer_code = ?")
+    const row = await db.prepare("SELECT id FROM customers WHERE organization_id = ? AND customer_code = ?")
       .get(orgId, code) as { id: number } | undefined;
     if (!row) throw new LeadPromotionError(500, "تبدیل مکان انجام نشد");
-    db.prepare("UPDATE customers SET lead_location_id = ? WHERE id = ? AND organization_id = ?")
+    await db.prepare("UPDATE customers SET lead_location_id = ? WHERE id = ? AND organization_id = ?")
       .run(locationId, row.id, orgId);
     return { customerId: row.id, created: false, linked: [] };
   }
@@ -161,28 +161,28 @@ export function promoteLeadToCustomer(
  *  failure rather than only the ones we predicted. A dedup-linked promotion is never
  *  removed -- `created` is false for those, and the business was already a customer, so
  *  there is nothing of ours to take back. */
-export function unpromoteLead(orgId: number, promotion: Promotion): void {
+export async function unpromoteLead(orgId: number, promotion: Promotion): Promise<void> {
   if (!promotion.created) return;
   const db = getDb();
-  const orders = db.prepare("SELECT COUNT(*) AS n FROM orders WHERE customer_id = ? AND organization_id = ?")
+  const orders = await db.prepare("SELECT COUNT(*) AS n FROM orders WHERE customer_id = ? AND organization_id = ?")
     .get(promotion.customerId, orgId) as { n: number };
   if (orders.n > 0) return;
-  const gone = db.prepare("DELETE FROM customers WHERE id = ? AND organization_id = ? AND lead_location_id IS NOT NULL")
-    .run(promotion.customerId, orgId).changes > 0;
-  if (gone) tombstone(orgId, "customers", promotion.customerId, db);
+  const gone = (await db.prepare("DELETE FROM customers WHERE id = ? AND organization_id = ? AND lead_location_id IS NOT NULL")
+    .run(promotion.customerId, orgId)).changes > 0;
+  if (gone) await tombstone(orgId, "customers", promotion.customerId, db);
 }
 
 /** A delivered sale converts the same business row, inside the order transaction. */
-export function convertOnDelivery(conn: DatabaseSync, orgId: number, orderId: number, actorId: number | null): void {
-  const o = conn.prepare("SELECT customer_id, COALESCE(order_type, 'SALE') AS order_type FROM orders WHERE id = ? AND organization_id = ?")
+export async function convertOnDelivery(conn: Db, orgId: number, orderId: number, actorId: number | null): Promise<void> {
+  const o = await conn.prepare("SELECT customer_id, COALESCE(order_type, 'SALE') AS order_type FROM orders WHERE id = ? AND organization_id = ?")
     .get(orderId, orgId) as { customer_id: number; order_type: string } | undefined;
   if (!o || o.order_type !== "SALE") return;
-  const n = (conn.prepare(`SELECT COUNT(*) n FROM orders WHERE customer_id = ? AND organization_id = ? AND COALESCE(order_type, 'SALE') = 'SALE'
+  const n = (await conn.prepare(`SELECT COUNT(*) n FROM orders WHERE customer_id = ? AND organization_id = ? AND COALESCE(order_type, 'SALE') = 'SALE'
                             AND status IN ('DELIVERED', 'PARTIALLY_DELIVERED', 'CLOSED')`).get(o.customer_id, orgId) as { n: number }).n;
   const at = new Date().toISOString();
-  conn.prepare(`INSERT INTO activities (organization_id, customer_id, user_id, type, note, stage_to, verification_to, occurred_at, created_at)
+  await conn.prepare(`INSERT INTO activities (organization_id, customer_id, user_id, type, note, stage_to, verification_to, occurred_at, created_at)
                 VALUES (?, ?, ?, 'order', ?, ?, 'verified', ?, ?)`)
     .run(orgId, o.customer_id, actorId, `سفارش ${orderId} تحویل شد`, n >= 2 ? "repeat_customer" : "first_order", at, at);
-  conn.prepare("UPDATE customers SET first_order_at = COALESCE(first_order_at, ?) WHERE id = ? AND organization_id = ?").run(at, o.customer_id, orgId);
-  recomputeState(conn, o.customer_id);
+  await conn.prepare("UPDATE customers SET first_order_at = COALESCE(first_order_at, ?) WHERE id = ? AND organization_id = ?").run(at, o.customer_id, orgId);
+  await recomputeState(conn, o.customer_id);
 }

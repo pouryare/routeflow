@@ -18,8 +18,8 @@ import { linesByOrder } from "@/lib/repo/orderLines";
  * so the tenant and group scope is decided in one place per figure. */
 
 /** The stat tiles and charts at the top of /sales/dashboard. */
-export function dashboardFor(session: Session): SalesDashboard {
-  return salesDashboard(getDb(), session);
+export async function dashboardFor(session: Session): Promise<SalesDashboard> {
+  return await salesDashboard(getDb(), session);
 }
 
 export interface MoneyFigures {
@@ -30,9 +30,9 @@ export interface MoneyFigures {
 
 /** This Jalali month's commission statements for «بدهی و پورسانت», as far as the caller may see
  *  them (see commissionStatementsFor). */
-export function moneyFor(session: Session): MoneyFigures {
+export async function moneyFor(session: Session): Promise<MoneyFigures> {
   const today = toJalali(new Date().toISOString())!;
-  const { statements, driverStatements, managerStatements } = commissionStatementsFor(session, {
+  const { statements, driverStatements, managerStatements } = await commissionStatementsFor(session, {
     from: jalaliToIsoDate(today.jy, today.jm, 1),
     to: jalaliToIsoDate(today.jy, today.jm, today.jd),
   });
@@ -45,9 +45,9 @@ export interface StockFigures {
 }
 
 /** Warehouse position and each driver's fill rate for «انبار و تحویل». */
-export function stockFor(session: Session): StockFigures {
+export async function stockFor(session: Session): Promise<StockFigures> {
   const db = getDb();
-  return { stock: stockPosition(db, orgScopeId(session)), drivers: fillRateByDriver(db, session) };
+  return { stock: await stockPosition(db, orgScopeId(session)), drivers: await fillRateByDriver(db, session) };
 }
 
 export interface TeamToday {
@@ -64,11 +64,11 @@ export interface TeamToday {
  *  to. Scoped by orderFilter (organisation and group). Lines are read in one batched query, in
  *  line-id order within an order, so the kilogram sums are the same to the last digit as the
  *  one-query-per-order loop this replaced. */
-export function teamTodayFor(session: Session, todayIso: string): TeamToday {
+export async function teamTodayFor(session: Session, todayIso: string): Promise<TeamToday> {
   const db = getDb();
   const scope = orderFilter(session);
   const orders = (
-    db
+    await db
       .prepare(
         `SELECT o.id, COALESCE(u.display_name, 'بدون فروشنده') AS name
            FROM orders o
@@ -78,7 +78,7 @@ export function teamTodayFor(session: Session, todayIso: string): TeamToday {
       .all(todayIso, ...scope.params) as unknown as { id: number; name: string }[]
   ).map((o) => ({ id: o.id, name: o.name }));
 
-  const lines = linesByOrder(db, orders.map((o) => o.id));
+  const lines = await linesByOrder(db, orders.map((o) => o.id));
   const byPerson = new Map<string, { name: string; n: number; kg: number; revenue: number }>();
   for (const o of orders) {
     const ls = lines.get(o.id) ?? [];

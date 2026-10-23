@@ -3,7 +3,7 @@
  * lib/database/backfills.ts (run by getDb() while the connection is being opened) can post
  * journals without importing lib/db.ts back, which was an import cycle. ledger.ts re-exports
  * all of this, so no caller changes. */
-import type { DatabaseSync } from "node:sqlite";
+import type { Db } from "@/lib/database/client";
 import { sumToman } from "@/lib/money";
 import { toJalali } from "@/lib/jalali";
 
@@ -54,15 +54,15 @@ export function periodKeyOf(postedAt: string): string | null {
   return `${j.jy}-${String(j.jm).padStart(2, "0")}`;
 }
 
-function assertPeriodOpen(db: DatabaseSync, orgId: number, periodKey: string): void {
-  const existing = db
+async function assertPeriodOpen(db: Db, orgId: number, periodKey: string): Promise<void> {
+  const existing = await db
     .prepare("SELECT status FROM fiscal_periods WHERE organization_id = ? AND period_key = ?")
     .get(orgId, periodKey) as { status: string } | undefined;
 
   // A MISSING period auto-creates OPEN. The backfill restores history older than any
   // period a user could have closed, so a strict reading would make it refuse its own past.
   if (!existing) {
-    db.prepare(
+    await db.prepare(
       `INSERT INTO fiscal_periods (organization_id, period_key, status, created_at)
        VALUES (?, ?, 'open', ?)`
     ).run(orgId, periodKey, new Date().toISOString());
@@ -82,7 +82,7 @@ function assertPeriodOpen(db: DatabaseSync, orgId: number, periodKey: string): v
  * delivery door, the most common money event in this app. The caller owns the
  * transaction; use postJournalIn when you are not already inside one.
  */
-export function postJournal(db: DatabaseSync, input: PostInput): number {
+export async function postJournal(db: Db, input: PostInput): Promise<number> {
   const orgId = input.organizationId;
   const periodKey = periodKeyOf(input.postedAt);
   if (!periodKey) throw new LedgerError("تاریخ سند نامعتبر است");
@@ -105,25 +105,25 @@ export function postJournal(db: DatabaseSync, input: PostInput): number {
   const checkAcc = db.prepare("SELECT is_postable, active FROM accounts WHERE id = ?");
   for (const leg of input.legs) {
     if (!(leg.amountToman > 0)) throw new LedgerError("مبلغ ردیف باید بزرگ‌تر از صفر باشد");
-    const acc = checkAcc.get(leg.accountId) as
+    const acc = await checkAcc.get(leg.accountId) as
       | { is_postable: number; active: number }
       | undefined;
     if (!acc) throw new LedgerError("حساب یافت نشد");
     if (!acc.is_postable || !acc.active) throw new LedgerError("به این حساب نمی‌توان سند زد");
   }
 
-  assertPeriodOpen(db, orgId, periodKey);
+  await assertPeriodOpen(db, orgId, periodKey);
 
   // Gapless per organization. Safe because the caller's transaction is IMMEDIATE, which
   // is what makes this read-then-write atomic -- and the reason postJournal refuses to
   // run outside one.
-  const seqRow = db
+  const seqRow = await db
     .prepare("SELECT COALESCE(MAX(seq), 0) + 1 AS next FROM journals WHERE organization_id = ?")
     .get(orgId) as { next: number };
   const now = new Date().toISOString();
 
   const journalId = Number(
-    db
+    (await db
       .prepare(
         `INSERT INTO journals
            (organization_id, seq, posted_at, period_key, memo, source_type, source_id,
@@ -141,7 +141,7 @@ export function postJournal(db: DatabaseSync, input: PostInput): number {
         input.reversesJournalId ?? null,
         input.createdBy,
         now
-      ).lastInsertRowid
+      )).lastInsertRowid
   );
 
   const insLeg = db.prepare(
@@ -150,7 +150,7 @@ export function postJournal(db: DatabaseSync, input: PostInput): number {
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
   );
   for (const leg of input.legs) {
-    insLeg.run(
+    await insLeg.run(
       orgId,
       journalId,
       leg.accountId,

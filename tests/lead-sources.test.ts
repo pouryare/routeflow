@@ -18,39 +18,39 @@ afterAll(() => fs.rmSync(path.dirname(dbPath), { recursive: true, force: true })
 const sess = (role: string, gid: number | null = null): Session =>
   ({ user: { id: 1 } as never, role: role as never, groupId: gid, organizationId: 1, roles: [role] as Session["roles"], hasRole: (x) => x === role }) as Session;
 
-describe("leadSourceReport (F137)", () => {
+describe("leadSourceReport (F137)", async () => {
   const db = getDb();
-  ensureWarehouse(db);
+  await ensureWarehouse(db);
   const now = new Date().toISOString();
-  const owner = Number(db.prepare("INSERT INTO users (username,password_hash,display_name,role,active,created_at,organization_id) VALUES ('ls','x','م','owner',1,?,1)").run(now).lastInsertRowid);
+  const owner = Number((await db.prepare("INSERT INTO users (username,password_hash,display_name,role,active,created_at,organization_id) VALUES ('ls','x','م','owner',1,?,1)").run(now)).lastInsertRowid);
   const c = db.prepare("INSERT INTO customers (customer_code,business_name,lifecycle,synced_at,source_code,organization_id) VALUES (?,?,?,?,?,1)");
-  const insta = Number(c.run("L1", "a", "active", now, "INSTAGRAM").lastInsertRowid);
-  c.run("L2", "b", "lead", now, "INSTAGRAM");
-  c.run("L3", "c", "lead", now, "GOOGLE_MAPS");
-  c.run("L4", "d", "lead", now, null);
-  const product = createProduct(db, { name: "کره", kg_per_base_unit: 0.25, organization_id: 1 });
-  const packaging = createPackaging(db, { product_id: product, name: "جعبه", qty_per_pack: 10 });
-  setPrice(db, { product_id: product, price_toman: 1000, valid_from: "2026-01-01" });
-  const order = (date: string, packs: number) => {
-    const o = createOrder(db, {
+  const insta = Number((await c.run("L1", "a", "active", now, "INSTAGRAM")).lastInsertRowid);
+  await c.run("L2", "b", "lead", now, "INSTAGRAM");
+  await c.run("L3", "c", "lead", now, "GOOGLE_MAPS");
+  await c.run("L4", "d", "lead", now, null);
+  const product = await createProduct(db, { name: "کره", kg_per_base_unit: 0.25, organization_id: 1 });
+  const packaging = await createPackaging(db, { product_id: product, name: "جعبه", qty_per_pack: 10 });
+  await setPrice(db, { product_id: product, price_toman: 1000, valid_from: "2026-01-01" });
+  const order = async (date: string, packs: number) => {
+    const o = await createOrder(db, {
       customer_id: insta, order_date: date, created_by: owner, organization_id: 1, salesperson_user_id: owner,
       lines: [{ product_id: product, packaging_id: packaging, packs }],
     });
-    db.prepare("UPDATE orders SET status = 'DELIVERED' WHERE id = ?").run(o.id);
+    await db.prepare("UPDATE orders SET status = 'DELIVERED' WHERE id = ?").run(o.id);
   };
-  order("2026-01-10", 2); // first delivered order
-  order("2026-03-01", 3); // inside 90 days
-  order("2026-06-01", 50); // outside the window
+  await order("2026-01-10", 2); // first delivered order
+  await order("2026-03-01", 3); // inside 90 days
+  await order("2026-06-01", 50); // outside the window
 
-  it("counts leads and customers per source, with revenue in the first 90 days only", () => {
-    const rows = leadSourceReport(sess("owner"));
+  it("counts leads and customers per source, with revenue in the first 90 days only", async () => {
+    const rows = await leadSourceReport(sess("owner"));
     const ig = rows.find((r) => r.source === "INSTAGRAM")!;
     expect(ig).toMatchObject({ label: "اینستاگرام", leads: 2, converted: 1, rate: 0.5, revenue90: 5000 });
     expect(rows.find((r) => r.source === null)).toMatchObject({ label: "بدون منبع", leads: 1, converted: 0 });
     expect(rows[0].source).toBe("INSTAGRAM");
   });
 
-  it("a role outside the CRM gets nothing", () => {
-    expect(leadSourceReport(sess("delivery_driver"))).toEqual([]);
+  it("a role outside the CRM gets nothing", async () => {
+    expect(await leadSourceReport(sess("delivery_driver"))).toEqual([]);
   });
 });

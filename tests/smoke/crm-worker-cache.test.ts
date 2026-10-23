@@ -7,7 +7,7 @@ it.skipIf(!process.env.CRM_READONLY_SMOKE_URL)("replaces an obsolete cached map 
   const browser = await chromium.launch();
   try {
     const context = await browser.newContext({ serviceWorkers: "allow" });
-    await context.addCookies([{ ...sessionCookie(), url: base }]);
+    await context.addCookies([{ ...await sessionCookie(), url: base }]);
     const page = await context.newPage();
     const cdp = await context.newCDPSession(page);
     await cdp.send("Network.enable");

@@ -12,7 +12,7 @@ const VALID_STATUSES = ["visited", "needs_coverage", "not_allowed", "unknown"];
 // desktop "select several, set them all at once" flow) is one atomic write instead
 // of N separate requests.
 export async function PATCH(req: NextRequest) {
-  const guard = requireRole(req, MANAGE_ROLES);
+  const guard = await requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
   const { session } = guard;
 
@@ -38,7 +38,7 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "شناسه گروه نامعتبر است" }, { status: 400 });
   }
   // Territory can only be handed to one of the caller's own company's groups.
-  if (typeof group_id === "number" && !groupExists(group_id, orgScopeId(session))) {
+  if (typeof group_id === "number" && !await groupExists(group_id, orgScopeId(session))) {
     return NextResponse.json({ ok: false, error: "گروه پیدا نشد" }, { status: 400 });
   }
 
@@ -46,11 +46,11 @@ export async function PATCH(req: NextRequest) {
   // would return ok:true for a request that did not do what it said, and the caller would
   // have no way to tell a partial write from a whole one. 404, not 403, for the same
   // reason as the single-row route: a 403 confirms the districts exist.
-  if (anyUnreachable(ids as number[], (g) => canReachGroup(session, g))) {
+  if (await anyUnreachable(ids as number[], async (g) => await canReachGroup(session, g))) {
     return NextResponse.json({ ok: false, error: "منطقه پیدا نشد" }, { status: 404 });
   }
 
-  const { updated, regrouped } = bulkUpdateDistricts(
+  const { updated, regrouped } = await bulkUpdateDistricts(
     ids as number[],
     { coverage_status, group_id },
     { name: session.user.display_name, id: session.user.id },

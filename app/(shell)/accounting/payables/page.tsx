@@ -21,7 +21,7 @@ export const dynamic = "force-dynamic";
  *  buries the two who actually owe you money. */
 export default async function PayablesPage() {
   const organizationId = await requireAccounting("/accounting/payables");
-  const rows = agedPayables(organizationId);
+  const rows = await agedPayables(organizationId);
   const total = rows.reduce((s, r) => s + r.balanceToman, 0);
 
   return (

@@ -18,31 +18,31 @@ afterAll(() => {
 
 const ctx = { seller: 0, owner: 0 };
 
-beforeAll(() => {
+beforeAll(async () => {
   const db = getDb();
   const now = new Date().toISOString();
   const user = db.prepare(
     "INSERT INTO users (username, password_hash, display_name, role, active, created_at) VALUES (?, 'x', ?, ?, 1, ?)"
   );
-  ctx.owner = Number(user.run("o", "مالک", "owner", now).lastInsertRowid);
-  ctx.seller = Number(user.run("nazanin", "نازنین", "phone_sales", now).lastInsertRowid);
+  ctx.owner = Number((await user.run("o", "مالک", "owner", now)).lastInsertRowid);
+  ctx.seller = Number((await user.run("nazanin", "نازنین", "phone_sales", now)).lastInsertRowid);
 });
 
-const cols = (table: string) =>
-  (getDb().prepare(`PRAGMA table_info(${table})`).all() as unknown as { name: string }[]).map(
+const cols = async (table: string) =>
+  (await getDb().prepare(`PRAGMA table_info(${table})`).all() as unknown as { name: string }[]).map(
     (c) => c.name
   );
 
-const tableSql = (table: string) =>
+const tableSql = async (table: string) =>
   (
-    getDb()
+    await getDb()
       .prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name = ?")
       .get(table) as { sql: string }
   ).sql;
 
 describe("commission_rates", () => {
-  it("has the columns the module needs", () => {
-    expect(cols("commission_rates").sort()).toEqual(
+  it("has the columns the module needs", async () => {
+    expect((await cols("commission_rates")).sort()).toEqual(
       [
         // organization_id joined every tenant table once RouteFlow became multi-tenant.
         "organization_id",
@@ -57,29 +57,28 @@ describe("commission_rates", () => {
     );
   });
 
-  it("holds both rates as whole Toman", () => {
-    expect(tableSql("commission_rates")).toMatch(/rate_per_kg_toman\s+INTEGER/);
-    expect(tableSql("commission_rates")).toMatch(/urgent_rate_per_kg_toman\s+INTEGER/);
+  it("holds both rates as whole Toman", async () => {
+    expect(await tableSql("commission_rates")).toMatch(/rate_per_kg_toman\s+INTEGER/);
+    expect(await tableSql("commission_rates")).toMatch(/urgent_rate_per_kg_toman\s+INTEGER/);
   });
 
-  it("allows a company-wide rate with nobody named", () => {
-    expect(() =>
-      getDb()
+  it("allows a company-wide rate with nobody named", async () => {
+    await (async () =>
+      await getDb()
         .prepare(
           "INSERT INTO commission_rates (salesperson_user_id, rate_per_kg_toman, valid_from, created_at) VALUES (NULL, ?, ?, ?)"
         )
-        .run(2000, "2026-01-01", new Date().toISOString())
-    ).not.toThrow();
+        .run(2000, "2026-01-01", new Date().toISOString()))();
   });
 
-  it("allows several rates over time, which is the whole point", () => {
+  it("allows several rates over time, which is the whole point", async () => {
     const db = getDb();
     const insert = db.prepare(
       "INSERT INTO commission_rates (salesperson_user_id, rate_per_kg_toman, valid_from, created_at) VALUES (?, ?, ?, ?)"
     );
-    insert.run(ctx.seller, 2500, "2026-01-01", new Date().toISOString());
-    insert.run(ctx.seller, 3000, "2026-06-01", new Date().toISOString());
-    const n = db
+    await insert.run(ctx.seller, 2500, "2026-01-01", new Date().toISOString());
+    await insert.run(ctx.seller, 3000, "2026-06-01", new Date().toISOString());
+    const n = await db
       .prepare("SELECT COUNT(*) AS n FROM commission_rates WHERE salesperson_user_id = ?")
       .get(ctx.seller) as { n: number };
     expect(n.n).toBe(2);
@@ -87,8 +86,8 @@ describe("commission_rates", () => {
 });
 
 describe("commission_payments", () => {
-  it("has the columns the module needs", () => {
-    expect(cols("commission_payments").sort()).toEqual(
+  it("has the columns the module needs", async () => {
+    expect((await cols("commission_payments")).sort()).toEqual(
       [
         // organization_id joined every tenant table once RouteFlow became multi-tenant.
         "organization_id",
@@ -105,39 +104,37 @@ describe("commission_payments", () => {
     );
   });
 
-  it("holds the amount as whole Toman", () => {
-    expect(tableSql("commission_payments")).toMatch(/amount_toman\s+INTEGER/);
+  it("holds the amount as whole Toman", async () => {
+    expect(await tableSql("commission_payments")).toMatch(/amount_toman\s+INTEGER/);
   });
 
-  it("requires a person to pay", () => {
+  it("requires a person to pay", async () => {
     // A payment with nobody attached is money leaving with no statement to reconcile
     // it against.
-    expect(() =>
-      getDb()
+    await expect((async () =>
+      await getDb()
         .prepare(
           "INSERT INTO commission_payments (salesperson_user_id, amount_toman, paid_on, created_at) VALUES (NULL, ?, ?, ?)"
         )
-        .run(100000, "2026-08-01", new Date().toISOString())
-    ).toThrow();
+        .run(100000, "2026-08-01", new Date().toISOString()))()).rejects.toThrow();
   });
 
-  it("refuses to pay somebody who does not exist", () => {
-    expect(() =>
-      getDb()
+  it("refuses to pay somebody who does not exist", async () => {
+    await expect((async () =>
+      await getDb()
         .prepare(
           "INSERT INTO commission_payments (salesperson_user_id, amount_toman, paid_on, created_at) VALUES (?, ?, ?, ?)"
         )
-        .run(999999, 100000, "2026-08-01", new Date().toISOString())
-    ).toThrow();
+        .run(999999, 100000, "2026-08-01", new Date().toISOString()))()).rejects.toThrow();
   });
 
-  it("records a payment against a period", () => {
+  it("records a payment against a period", async () => {
     const db = getDb();
-    db.prepare(
+    await db.prepare(
       "INSERT INTO commission_payments (salesperson_user_id, amount_toman, paid_on, period_from, period_to, created_by, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)"
     ).run(ctx.seller, 500000, "2026-08-01", "2026-07-01", "2026-07-31", ctx.owner, new Date().toISOString());
 
-    const row = db
+    const row = await db
       .prepare("SELECT amount_toman, period_from FROM commission_payments WHERE salesperson_user_id = ?")
       .get(ctx.seller) as { amount_toman: number; period_from: string };
     expect(row.amount_toman).toBe(500000);

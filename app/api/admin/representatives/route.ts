@@ -10,18 +10,18 @@ import {
  *  group managers run territory, not the channel. `?candidates=1` returns the WHOLESALE
  *  customers eligible to become a representative. */
 export async function GET(req: NextRequest) {
-  const guard = requireRole(req, ["platform_owner", "owner", "rep_manager"]);
+  const guard = await requireRole(req, ["platform_owner", "owner", "rep_manager"]);
   if (!guard.ok) return guard.response;
 
   const org = guard.session.organizationId;
   if (req.nextUrl.searchParams.get("candidates") === "1") {
-    return NextResponse.json({ ok: true, candidates: listWholesaleCandidates(org) });
+    return NextResponse.json({ ok: true, candidates: await listWholesaleCandidates(org) });
   }
-  return NextResponse.json({ ok: true, representatives: listWithCustomer(org) });
+  return NextResponse.json({ ok: true, representatives: await listWithCustomer(org) });
 }
 
 export async function POST(req: NextRequest) {
-  const guard = requireRole(req, ["platform_owner", "owner", "rep_manager"]);
+  const guard = await requireRole(req, ["platform_owner", "owner", "rep_manager"]);
   if (!guard.ok) return guard.response;
 
   const body = (await req.json().catch(() => null)) as {
@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const id = createRepresentative(guard.session.organizationId, {
+    const id = await createRepresentative(guard.session.organizationId, {
       customer_id: Number(body.customer_id),
       rep_code: body.rep_code.trim(),
       manager_user_id: body.manager_user_id ?? null,

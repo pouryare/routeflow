@@ -31,20 +31,20 @@ let locA = 0;
 let locB = 0;
 let locC = 0;
 
-beforeAll(() => {
+beforeAll(async () => {
   const db = getDb();
   const now = new Date().toISOString();
   ownerId = Number(
-    db.prepare(
+    (await db.prepare(
       "INSERT INTO users (username, password_hash, display_name, role, group_id, active, created_at, organization_id) VALUES (?, ?, ?, 'owner', NULL, 1, ?, 1)"
-    ).run("lists-owner", "x:y", "مالک", now).lastInsertRowid
+    ).run("lists-owner", "x:y", "مالک", now)).lastInsertRowid
   );
   const insert = db.prepare(
     "INSERT INTO saved_locations (name, maps_url, lat, lng, resolution, created_at, organization_id) VALUES (?, ?, ?, ?, 'manual', ?, 1)"
   );
-  locA = Number(insert.run("رستوران الف", "https://maps.example/a", 35.7, 51.4, now).lastInsertRowid);
-  locB = Number(insert.run("رستوران ب", "https://maps.example/b", 35.71, 51.41, now).lastInsertRowid);
-  locC = Number(insert.run("رستوران ج", "https://maps.example/c", 35.72, 51.42, now).lastInsertRowid);
+  locA = Number((await insert.run("رستوران الف", "https://maps.example/a", 35.7, 51.4, now)).lastInsertRowid);
+  locB = Number((await insert.run("رستوران ب", "https://maps.example/b", 35.71, 51.41, now)).lastInsertRowid);
+  locC = Number((await insert.run("رستوران ج", "https://maps.example/c", 35.72, 51.42, now)).lastInsertRowid);
 });
 
 function post(body: unknown) {
@@ -73,7 +73,7 @@ describe("POST /api/lead-lists", () => {
     const body = await res.json();
     expect(body.ok).toBe(true);
 
-    const list = readLeadLists().find((l) => l.id === body.id);
+    const list = (await readLeadLists()).find((l) => l.id === body.id);
     // Order is the route, so it must come back exactly as sent -- not sorted.
     expect(list?.location_ids).toEqual([locB, locA]);
   });
@@ -95,7 +95,7 @@ describe("POST /api/lead-lists", () => {
 
   it("drops a repeated location instead of driving there twice", async () => {
     const body = await (await POST(post({ name: "تکراری", location_ids: [locA, locA, locB] }))).json();
-    const list = readLeadLists().find((l) => l.id === body.id);
+    const list = (await readLeadLists()).find((l) => l.id === body.id);
     expect(list?.location_ids).toEqual([locA, locB]);
   });
 });
@@ -104,13 +104,13 @@ describe("PATCH /api/lead-lists/[id]", () => {
   it("renames", async () => {
     const { id } = await (await POST(post({ name: "قدیمی" }))).json();
     expect((await PATCH(patch({ name: "تازه" }), ctx(id))).status).toBe(200);
-    expect(readLeadLists().find((l) => l.id === id)?.name).toBe("تازه");
+    expect((await readLeadLists()).find((l) => l.id === id)?.name).toBe("تازه");
   });
 
   it("replaces the membership wholesale, preserving the new order", async () => {
     const { id } = await (await POST(post({ name: "مسیر", location_ids: [locA, locB] }))).json();
     await PATCH(patch({ location_ids: [locC, locA] }), ctx(id));
-    expect(readLeadLists().find((l) => l.id === id)?.location_ids).toEqual([locC, locA]);
+    expect((await readLeadLists()).find((l) => l.id === id)?.location_ids).toEqual([locC, locA]);
   });
 
   it("skips a location that has since been deleted rather than failing the whole reorder", async () => {
@@ -118,7 +118,7 @@ describe("PATCH /api/lead-lists/[id]", () => {
     // the user's drag would silently do nothing.
     const { id } = await (await POST(post({ name: "با شناسه مرده" }))).json();
     await PATCH(patch({ location_ids: [locA, 999999, locB] }), ctx(id));
-    expect(readLeadLists().find((l) => l.id === id)?.location_ids).toEqual([locA, locB]);
+    expect((await readLeadLists()).find((l) => l.id === id)?.location_ids).toEqual([locA, locB]);
   });
 
   it("refuses an empty name", async () => {
@@ -147,13 +147,13 @@ describe("DELETE /api/lead-lists/[id]", () => {
     const body = await (await DELETE(new NextRequest("http://localhost/x", { method: "DELETE", headers: { cookie: authCookie() } }), ctx(id))).json();
     expect(body.deleted.name).toBe("رفتنی");
     expect(body.deleted.location_ids).toEqual([locA, locC]);
-    expect(readLeadLists().find((l) => l.id === id)).toBeUndefined();
+    expect((await readLeadLists()).find((l) => l.id === id)).toBeUndefined();
   });
 
   it("takes the membership with it, leaving no orphan rows", async () => {
     const { id } = await (await POST(post({ name: "کاسکید", location_ids: [locB] }))).json();
     await DELETE(new NextRequest("http://localhost/x", { method: "DELETE", headers: { cookie: authCookie() } }), ctx(id));
-    const left = getDb().prepare("SELECT COUNT(*) n FROM lead_list_items WHERE list_id = ?").get(id) as unknown as {
+    const left = await getDb().prepare("SELECT COUNT(*) n FROM lead_list_items WHERE list_id = ?").get(id) as unknown as {
       n: number;
     };
     expect(left.n).toBe(0);
@@ -162,7 +162,7 @@ describe("DELETE /api/lead-lists/[id]", () => {
   it("leaves the locations themselves alone", async () => {
     const { id } = await (await POST(post({ name: "بی‌ضرر", location_ids: [locA] }))).json();
     await DELETE(new NextRequest("http://localhost/x", { method: "DELETE", headers: { cookie: authCookie() } }), ctx(id));
-    expect(getDb().prepare("SELECT id FROM saved_locations WHERE id = ?").get(locA)).toBeTruthy();
+    expect(await getDb().prepare("SELECT id FROM saved_locations WHERE id = ?").get(locA)).toBeTruthy();
   });
 
   it("404s an unknown list", async () => {
@@ -176,17 +176,17 @@ describe("deleting a location", () => {
     const db = getDb();
     const now = new Date().toISOString();
     const doomed = Number(
-      db
+      (await db
         .prepare(
           "INSERT INTO saved_locations (name, maps_url, lat, lng, resolution, created_at, organization_id) VALUES (?, ?, ?, ?, 'manual', ?, 1)"
         )
-        .run("رفتنی", "https://maps.example/doomed", 35.6, 51.3, now).lastInsertRowid
+        .run("رفتنی", "https://maps.example/doomed", 35.6, 51.3, now)).lastInsertRowid
     );
     const { id } = await (await POST(post({ name: "شامل رفتنی", location_ids: [locA, doomed] }))).json();
 
-    db.prepare("DELETE FROM saved_locations WHERE id = ?").run(doomed);
+    await db.prepare("DELETE FROM saved_locations WHERE id = ?").run(doomed);
 
     // The cascade is what keeps a list from pointing at a location that no longer exists.
-    expect(readLeadLists().find((l) => l.id === id)?.location_ids).toEqual([locA]);
+    expect((await readLeadLists()).find((l) => l.id === id)?.location_ids).toEqual([locA]);
   });
 });

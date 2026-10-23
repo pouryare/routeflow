@@ -11,13 +11,13 @@ import { pullSince } from "@/lib/repo/syncPull";
  *  the founder's behalf — this is the authoritative, DB-backed refusal, and the shell's
  *  gate is only a hint that saves the browser a pointless request. */
 export async function GET(req: NextRequest) {
-  const session = getSession(req);
+  const session = await getSession(req);
   if (!session) return NextResponse.json({ ok: false, error: "احراز هویت نشده" }, { status: 401 });
   if (!hasSyncClient(session.role)) {
     return NextResponse.json({ ok: false, error: "این حساب همگام‌سازی ندارد" }, { status: 403 });
   }
 
   const since = req.nextUrl.searchParams.get("since");
-  const result = pullSince(session, since && since.length > 0 ? since : null);
+  const result = await pullSince(session, since && since.length > 0 ? since : null);
   return NextResponse.json({ ok: true, ...result, server_time: new Date().toISOString() });
 }

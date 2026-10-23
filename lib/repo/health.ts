@@ -54,15 +54,15 @@ function orderSignals(orderDates: string[], asOfIso: string) {
 
 // ---- Customer ----------------------------------------------------------------
 
-export function customerHealthFor(
+export async function customerHealthFor(
   organizationId: number,
   customerId: number,
   asOfIso: string = new Date().toISOString()
-): HealthResult {
+): Promise<HealthResult> {
   const db = getDb();
 
   const orderDates = (
-    db
+    await db
       .prepare(
         `SELECT order_date FROM orders
           WHERE organization_id = ? AND customer_id = ?
@@ -76,10 +76,10 @@ export function customerHealthFor(
   const qCut = new Date(Date.parse(asOfIso) - 90 * DAY_MS).toISOString();
   const prevCut = new Date(Date.parse(asOfIso) - 180 * DAY_MS).toISOString();
 
-  const debt = customerDebt(organizationId, customerId, asOfIso);
+  const debt = await customerDebt(organizationId, customerId, asOfIso);
   const creditLimit = Number(
     (
-      db
+      await db
         .prepare("SELECT COALESCE(credit_limit_toman, 0) AS l FROM customers WHERE id = ? AND organization_id = ?")
         .get(customerId, organizationId) as { l: number } | undefined
     )?.l ?? 0
@@ -87,7 +87,7 @@ export function customerHealthFor(
 
   const complaints90 = Number(
     (
-      db
+      await db
         .prepare(
           `SELECT COUNT(*) AS n FROM quality_complaints
             WHERE organization_id = ? AND customer_id = ?
@@ -97,7 +97,7 @@ export function customerHealthFor(
     ).n
   );
 
-  const marginRow = db
+  const marginRow = await db
     .prepare(
       `SELECT COALESCE(SUM(COALESCE(ol.packs_delivered, ol.packs_ordered) * ol.unit_price_toman), 0) AS rev,
               COALESCE(SUM(COALESCE(ol.packs_delivered, ol.packs_ordered) * ol.unit_cost_toman), 0) AS cost
@@ -125,18 +125,18 @@ export function customerHealthFor(
  *  per customer. Same inputs, same pure scorer as customerHealthFor -- tests/health-repo
  *  holds the two equal row for row. Keys are customer ids; an id with no rows scores as a
  *  customer with no history, exactly as the one-customer path does. */
-export function customerHealthMany(
+export async function customerHealthMany(
   organizationId: number,
   ids: number[],
   asOf?: string
-): Map<number, HealthResult> {
+): Promise<Map<number, HealthResult>> {
   const db = getDb();
   const asOfIso = asOf ?? new Date().toISOString();
   const qCut = new Date(Date.parse(asOfIso) - 90 * DAY_MS).toISOString();
   const prevCut = new Date(Date.parse(asOfIso) - 180 * DAY_MS).toISOString();
 
   const datesBy = new Map<number, string[]>();
-  for (const r of db
+  for (const r of await db
     .prepare(
       `SELECT customer_id, order_date FROM orders
         WHERE organization_id = ? AND status IN (${sqlStatusList(PRICED_ORDER_STATUSES)})
@@ -149,14 +149,14 @@ export function customerHealthMany(
   }
 
   const limitBy = new Map<number, number>();
-  for (const r of db
+  for (const r of await db
     .prepare("SELECT id, COALESCE(credit_limit_toman, 0) AS l FROM customers WHERE organization_id = ?")
     .all(organizationId) as { id: number; l: number }[]) {
     limitBy.set(r.id, Number(r.l));
   }
 
   const complaintsBy = new Map<number, number>();
-  for (const r of db
+  for (const r of await db
     .prepare(
       `SELECT customer_id, COUNT(*) AS n FROM quality_complaints
         WHERE organization_id = ? AND (status = 'open' OR reported_at >= ?)
@@ -167,7 +167,7 @@ export function customerHealthMany(
   }
 
   const marginBy = new Map<number, { rev: number; cost: number }>();
-  for (const r of db
+  for (const r of await db
     .prepare(
       `SELECT o.customer_id AS customer_id,
               COALESCE(SUM(COALESCE(ol.packs_delivered, ol.packs_ordered) * ol.unit_price_toman), 0) AS rev,
@@ -183,7 +183,7 @@ export function customerHealthMany(
   }
 
   // Without an explicit clock the debt pass is shared with the rest of the render.
-  const debts = asOf ? customerDebtsForOrg(organizationId, asOf) : customerDebtsForOrgOnce(organizationId);
+  const debts = asOf ? await customerDebtsForOrg(organizationId, asOf) : await customerDebtsForOrgOnce(organizationId);
 
   const out = new Map<number, HealthResult>();
   for (const id of ids) {
@@ -207,14 +207,14 @@ export function customerHealthMany(
 }
 
 /** One health row per customer the session may see. */
-export function customersHealthOverview(session: Session): CustomerHealthRow[] {
+export async function customersHealthOverview(session: Session): Promise<CustomerHealthRow[]> {
   const db = getDb();
-  const f = groupFilter(session);
-  const customers = db
+  const f = await groupFilter(session);
+  const customers = await db
     .prepare(`SELECT id, business_name FROM customers WHERE 1 = 1${f.sql}`)
     .all(...f.params) as { id: number; business_name: string }[];
 
-  const health = customerHealthMany(
+  const health = await customerHealthMany(
     session.organizationId,
     customers.map((c) => c.id)
   );
@@ -225,25 +225,25 @@ export function customersHealthOverview(session: Session): CustomerHealthRow[] {
 
 // ---- Salesperson ------------------------------------------------------------------
 
-export function salespersonScoreFor(
+export async function salespersonScoreFor(
   organizationId: number,
   userId: number,
   period: string
-): HealthResult {
+): Promise<HealthResult> {
   const db = getDb();
   const { from, toExcl } = periodRange(period);
   const now = new Date().toISOString();
   const activeCut = new Date(Date.parse(now) - 60 * DAY_MS).toISOString();
 
-  const targetFraction = targetProgress(organizationId, {
+  const targetFraction = (await targetProgress(organizationId, {
     user_id: userId,
     period,
     metric: "revenue_toman",
-  }).fraction;
+  })).fraction;
 
   const assigned = Number(
     (
-      db
+      await db
         .prepare(
           `SELECT COUNT(DISTINCT customer_id) AS n FROM orders
             WHERE organization_id = ? AND salesperson_user_id = ?`
@@ -253,7 +253,7 @@ export function salespersonScoreFor(
   );
   const active = Number(
     (
-      db
+      await db
         .prepare(
           `SELECT COUNT(DISTINCT customer_id) AS n FROM orders
             WHERE organization_id = ? AND salesperson_user_id = ?
@@ -264,7 +264,7 @@ export function salespersonScoreFor(
     ).n
   );
 
-  const samples = db
+  const samples = await db
     .prepare(
       `SELECT id, customer_id, order_date FROM orders
         WHERE organization_id = ? AND salesperson_user_id = ?
@@ -277,7 +277,7 @@ export function salespersonScoreFor(
   }[];
   let converted = 0;
   for (const s of samples) {
-    const followUp = db
+    const followUp = await db
       .prepare(
         `SELECT 1 FROM orders
           WHERE organization_id = ? AND customer_id = ?
@@ -294,7 +294,7 @@ export function salespersonScoreFor(
   }
   const sampleConversion = samples.length > 0 ? converted / samples.length : 0;
 
-  const book = db
+  const book = await db
     .prepare(
       `SELECT COALESCE(SUM(COALESCE(ol.packs_delivered, ol.packs_ordered) * ol.unit_price_toman), 0) AS rev
          FROM order_lines ol JOIN orders o ON o.id = ol.order_id
@@ -305,18 +305,18 @@ export function salespersonScoreFor(
   // Overdue on the book = the 30+ day bucket summed over the salesperson's customers.
   // total_toman is not a stored column, so this goes through customerDebt (which is the
   // same rule the customer's own health uses) rather than a bad JOIN.
-  const bookCustomers = db
+  const bookCustomers = await db
     .prepare(
       `SELECT DISTINCT customer_id FROM orders WHERE organization_id = ? AND salesperson_user_id = ?`
     )
     .all(organizationId, userId) as { customer_id: number }[];
   let bookOverdue = 0;
   for (const { customer_id } of bookCustomers) {
-    bookOverdue += customerDebt(organizationId, customer_id, now).bucket_30_plus;
+    bookOverdue += (await customerDebt(organizationId, customer_id, now)).bucket_30_plus;
   }
   const overdueRatio = book.rev > 0 ? Math.max(0, bookOverdue) / book.rev : 0;
 
-  const taskRow = db
+  const taskRow = await db
     .prepare(
       `SELECT
          SUM(CASE WHEN status = 'done' AND done_at IS NOT NULL AND done_at <= due_at THEN 1 ELSE 0 END) AS on_time,
@@ -340,15 +340,15 @@ export function salespersonScoreFor(
 
 // ---- Driver --------------------------------------------------------------------
 
-export function driverScoreFor(
+export async function driverScoreFor(
   organizationId: number,
   userId: number,
   period: string
-): HealthResult {
+): Promise<HealthResult> {
   const db = getDb();
   const { from, toExcl } = periodRange(period);
 
-  const stops = db
+  const stops = await db
     .prepare(
       `SELECT ds.status, ds.delivered_at, dr.run_date
          FROM delivery_stops ds
@@ -369,7 +369,7 @@ export function driverScoreFor(
     (s) => s.delivered_at !== null && s.delivered_at.slice(0, 10) <= s.run_date.slice(0, 10)
   ).length;
 
-  const packRow = db
+  const packRow = await db
     .prepare(
       `SELECT COALESCE(SUM(ol.packs_ordered), 0) AS ordered,
               COALESCE(SUM(COALESCE(ol.packs_delivered, 0)), 0) AS delivered
@@ -395,21 +395,21 @@ export function driverScoreFor(
 // ---- Materialise ------------------------------------------------------------------
 
 /** Write `health_score` snapshots at customer / salesperson / driver scope. */
-export function materialiseHealth(organizationId: number, period: string): number {
+export async function materialiseHealth(organizationId: number, period: string): Promise<number> {
   const db = getDb();
   const writes: SnapshotWrite[] = [];
 
-  for (const c of db
+  for (const c of await db
     .prepare("SELECT id FROM customers WHERE organization_id = ?")
     .all(organizationId) as { id: number }[]) {
-    const h = customerHealthFor(organizationId, c.id);
+    const h = await customerHealthFor(organizationId, c.id);
     writes.push({ metric: "health_score", scope_type: "customer", scope_id: c.id, period, value: h.score });
   }
 
   // People who HOLD phone_sales, whoever their primary. A widened literal is not enough:
   // a driver who also sells has no seller health metrics at all, and the board goes blank
   // for exactly the person doing both jobs.
-  const sellers = db
+  const sellers = await db
     .prepare(
       `SELECT u.id FROM users u JOIN user_roles _r ON _r.user_id = u.id AND _r.role = 'phone_sales'
         WHERE u.organization_id = ? AND u.active = 1`
@@ -421,11 +421,11 @@ export function materialiseHealth(organizationId: number, period: string): numbe
       scope_type: "salesperson",
       scope_id: s.id,
       period,
-      value: salespersonScoreFor(organizationId, s.id, period).score,
+      value: (await salespersonScoreFor(organizationId, s.id, period)).score,
     });
   }
 
-  const drivers = db
+  const drivers = await db
     .prepare(
       `SELECT u.id FROM users u JOIN user_roles _r ON _r.user_id = u.id AND _r.role IN ('delivery_driver', 'field_rep')
         WHERE u.organization_id = ? AND u.active = 1`
@@ -437,9 +437,9 @@ export function materialiseHealth(organizationId: number, period: string): numbe
       scope_type: "driver",
       scope_id: d.id,
       period,
-      value: driverScoreFor(organizationId, d.id, period).score,
+      value: (await driverScoreFor(organizationId, d.id, period)).score,
     });
   }
 
-  return upsertSnapshots(organizationId, writes);
+  return await upsertSnapshots(organizationId, writes);
 }

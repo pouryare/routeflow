@@ -47,18 +47,18 @@ function req(url: string, method: string, token: string, body?: unknown) {
   });
 }
 
-beforeEach(() => {
+beforeEach(async () => {
   const db = getDb();
-  db.exec(
+  await db.exec(
     "PRAGMA foreign_keys=OFF; DELETE FROM notification_prefs; DELETE FROM notification_channels; DELETE FROM notification_deliveries; DELETE FROM notifications; DELETE FROM push_subscriptions; DELETE FROM users WHERE id>0; PRAGMA foreign_keys=ON;"
   );
   const now = new Date().toISOString();
   seller = Number(
-    db
+    (await db
       .prepare(
         "INSERT INTO users (username,password_hash,display_name,role,active,created_at,organization_id) VALUES (?,?,?,?,1,?,1)"
       )
-      .run(`s${Date.now()}${Math.random()}`, "x:y", "ف", "phone_sales", now).lastInsertRowid
+      .run(`s${Date.now()}${Math.random()}`, "x:y", "ف", "phone_sales", now)).lastInsertRowid
   );
   sellerToken = createSessionToken({ uid: seller, role: "phone_sales", gid: null, oid: 1, tv: 0, name: "ف" });
 });
@@ -116,7 +116,7 @@ describe("PUT /api/notifications/channels", () => {
     expect(res.status).toBe(400);
     expect((await res.json()).ok).toBe(false);
     const n = (
-      getDb().prepare("SELECT COUNT(*) c FROM notification_channels WHERE user_id = ?").get(seller) as { c: number }
+      await getDb().prepare("SELECT COUNT(*) c FROM notification_channels WHERE user_id = ?").get(seller) as { c: number }
     ).c;
     expect(n).toBe(0);
   });
@@ -146,7 +146,7 @@ describe("/api/notifications/telegram-link", () => {
     expect(json.ok).toBe(true);
     expect(typeof json.url).toBe("string");
     expect(json.url.startsWith("https://t.me/")).toBe(true);
-    const row = getDb().prepare("SELECT telegram_link_nonce FROM users WHERE id = ?").get(seller) as {
+    const row = await getDb().prepare("SELECT telegram_link_nonce FROM users WHERE id = ?").get(seller) as {
       telegram_link_nonce: string | null;
     };
     expect(row.telegram_link_nonce).toBeTruthy();
@@ -160,12 +160,12 @@ describe("/api/notifications/telegram-link", () => {
   });
 
   it("DELETE clears telegram_chat_id and the pending nonce", async () => {
-    getDb()
+    await getDb()
       .prepare("UPDATE users SET telegram_chat_id = ?, telegram_link_nonce = ? WHERE id = ?")
       .run("55384695", "abc", seller);
     const res = await unlinkTelegram(req("/api/notifications/telegram-link", "DELETE", sellerToken));
     expect(res.status).toBe(200);
-    const row = getDb()
+    const row = await getDb()
       .prepare("SELECT telegram_chat_id, telegram_link_nonce FROM users WHERE id = ?")
       .get(seller) as { telegram_chat_id: string | null; telegram_link_nonce: string | null };
     expect(row.telegram_chat_id).toBe(null);
@@ -200,9 +200,9 @@ describe("POST /api/notifications/test", () => {
   it("writes a system.test row, flushes past the debounce, and reports the held/sent tuple", async () => {
     process.env.TELEGRAM_BOT_TOKEN = "test-token";
     const db = getDb();
-    db.prepare("UPDATE users SET telegram_chat_id = ? WHERE id = ?").run("55384695", seller);
+    await db.prepare("UPDATE users SET telegram_chat_id = ? WHERE id = ?").run("55384695", seller);
     // An all-day quiet window: the flush must hold rather than attempt a real send.
-    db.prepare(
+    await db.prepare(
       `INSERT INTO notification_channels (user_id, channel, enabled, quiet_start, quiet_end, critical_breaks_quiet, updated_at)
        VALUES (?, 'telegram', 1, '00:01', '00:00', 1, ?)`
     ).run(seller, new Date().toISOString());
@@ -217,13 +217,13 @@ describe("POST /api/notifications/test", () => {
     expect(json.org.held).toBe(1);
 
     const n = (
-      db
+      await db
         .prepare("SELECT COUNT(*) c FROM notifications WHERE user_id = ? AND type_code = 'system.test'")
         .get(seller) as { c: number }
     ).c;
     expect(n).toBe(1);
     // Held, so the channel stamp stays NULL and the next sweep retries it.
-    const stamp = db
+    const stamp = await db
       .prepare("SELECT tg_flushed_at FROM notifications WHERE user_id = ? LIMIT 1")
       .get(seller) as { tg_flushed_at: string | null };
     expect(stamp.tg_flushed_at).toBe(null);
@@ -239,21 +239,21 @@ describe("POST /api/notifications/test", () => {
     const now = new Date().toISOString();
 
     // The caller: connected, but inside an all-day quiet window -> must be HELD.
-    db.prepare("UPDATE users SET telegram_chat_id = ? WHERE id = ?").run("55384695", seller);
-    db.prepare(
+    await db.prepare("UPDATE users SET telegram_chat_id = ? WHERE id = ?").run("55384695", seller);
+    await db.prepare(
       `INSERT INTO notification_channels (user_id, channel, enabled, quiet_start, quiet_end, critical_breaks_quiet, updated_at)
        VALUES (?, 'telegram', 1, '00:01', '00:00', 1, ?)`
     ).run(seller, now);
 
     // A coworker in the same org: connected, no quiet hours, one pending loud row.
     const other = Number(
-      db
+      (await db
         .prepare(
           "INSERT INTO users (username,password_hash,display_name,role,active,created_at,organization_id,telegram_chat_id) VALUES (?,?,?,?,1,?,1,?)"
         )
-        .run(`o${Date.now()}${Math.random()}`, "x:y", "هم‌کار", "phone_sales", now, "55384696").lastInsertRowid
+        .run(`o${Date.now()}${Math.random()}`, "x:y", "هم‌کار", "phone_sales", now, "55384696")).lastInsertRowid
     );
-    db.prepare(
+    await db.prepare(
       `INSERT INTO notifications (organization_id, user_id, type_code, title_fa, group_key, priority, created_at)
        VALUES (1, ?, 'task.assigned', 'کار جدید', 'task:1', 'HIGH', ?)`
     ).run(other, now);
@@ -270,7 +270,7 @@ describe("POST /api/notifications/test", () => {
     expect(json.result.status).toBe("held");
 
     // And the caller's own row is genuinely still unflushed.
-    const mine = db
+    const mine = await db
       .prepare("SELECT tg_flushed_at FROM notifications WHERE user_id = ? AND type_code = 'system.test'")
       .get(seller) as { tg_flushed_at: string | null };
     expect(mine.tg_flushed_at).toBe(null);
@@ -279,32 +279,32 @@ describe("POST /api/notifications/test", () => {
   it("carries the catalogue priority rather than a hardcoded literal", async () => {
     process.env.TELEGRAM_BOT_TOKEN = "test-token";
     const db = getDb();
-    db.prepare("UPDATE users SET telegram_chat_id = ? WHERE id = ?").run("55384695", seller);
-    db.prepare(
+    await db.prepare("UPDATE users SET telegram_chat_id = ? WHERE id = ?").run("55384695", seller);
+    await db.prepare(
       `INSERT INTO notification_channels (user_id, channel, enabled, quiet_start, quiet_end, critical_breaks_quiet, updated_at)
        VALUES (?, 'telegram', 1, '00:01', '00:00', 1, ?)`
     ).run(seller, new Date().toISOString());
     // A tenant override wins over the NULL-org seed, exactly as `catalogueRow` resolves it.
-    db.prepare(
+    await db.prepare(
       `INSERT INTO notification_types
          (organization_id, code, name_fa, category, directedness, priority, group_scope, default_push, default_telegram, active, created_at, updated_at)
        VALUES (1, 'system.test', 'پیام آزمایشی', 'task', 'directed', 'CRITICAL', 'entity', 1, 1, 1, ?, ?)`
     ).run(new Date().toISOString(), new Date().toISOString());
 
     await postTest(req("/api/notifications/test", "POST", sellerToken, { channel: "telegram" }));
-    const row = db
+    const row = await db
       .prepare("SELECT priority FROM notifications WHERE user_id = ? AND type_code = 'system.test'")
       .get(seller) as { priority: string };
     expect(row.priority).toBe("CRITICAL");
 
-    db.prepare("DELETE FROM notification_types WHERE organization_id = 1 AND code = 'system.test'").run();
+    await db.prepare("DELETE FROM notification_types WHERE organization_id = 1 AND code = 'system.test'").run();
   });
 
   it("rate-limits a second test within the window", async () => {
     process.env.TELEGRAM_BOT_TOKEN = "test-token";
     const db = getDb();
-    db.prepare("UPDATE users SET telegram_chat_id = ? WHERE id = ?").run("55384695", seller);
-    db.prepare(
+    await db.prepare("UPDATE users SET telegram_chat_id = ? WHERE id = ?").run("55384695", seller);
+    await db.prepare(
       `INSERT INTO notification_channels (user_id, channel, enabled, quiet_start, quiet_end, critical_breaks_quiet, updated_at)
        VALUES (?, 'telegram', 1, '00:01', '00:00', 1, ?)`
     ).run(seller, new Date().toISOString());
@@ -321,8 +321,8 @@ describe("POST /api/notifications/test", () => {
     expect(blocked.status).toBe(400);
     process.env.TELEGRAM_BOT_TOKEN = "test-token";
     const db = getDb();
-    db.prepare("UPDATE users SET telegram_chat_id = ? WHERE id = ?").run("55384695", seller);
-    db.prepare(
+    await db.prepare("UPDATE users SET telegram_chat_id = ? WHERE id = ?").run("55384695", seller);
+    await db.prepare(
       `INSERT INTO notification_channels (user_id, channel, enabled, quiet_start, quiet_end, critical_breaks_quiet, updated_at)
        VALUES (?, 'telegram', 1, '00:01', '00:00', 1, ?)`
     ).run(seller, new Date().toISOString());

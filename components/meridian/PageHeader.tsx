@@ -32,7 +32,7 @@ export default async function PageHeader({ route, view }: { route: string; view?
      alone — the nav group and the sibling row are properties of the section, not the view. */
   const meta = pageMetaFor(route, view);
   const jar = await cookies();
-  const session = getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
+  const session = await getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
 
   if (!session) {
     /* The signed-out card still gets its help: "what is this screen" does not require a

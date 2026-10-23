@@ -10,7 +10,7 @@ import { applyMutations, type IncomingMutation } from "@/lib/repo/syncMutations"
  *  than a device that goes offline. Stated once, in lib/roles.ts, so the two routes cannot
  *  drift apart and behalf a third hand-written copy the shell used to imply. */
 export async function POST(req: NextRequest) {
-  const session = getSession(req);
+  const session = await getSession(req);
   if (!session) return NextResponse.json({ ok: false, error: "احراز هویت نشده" }, { status: 401 });
   if (!hasSyncClient(session.role)) {
     return NextResponse.json({ ok: false, error: "این حساب همگام‌سازی ندارد" }, { status: 403 });
@@ -31,6 +31,6 @@ export async function POST(req: NextRequest) {
   const stamped = muts.map((m) => ({ ...m, device_id: m.device_id ?? body?.device_id ?? null }));
   /* The impersonator rides along: this is an OFFLINE client, so a write queued in the
      * founder's browser under a driver's name must still record that the founder was there. */
-  const results = applyMutations(session.organizationId, session.user.id, stamped, session.actorId);
+  const results = await applyMutations(session.organizationId, session.user.id, stamped, session.actorId);
   return NextResponse.json({ ok: true, results, server_time: new Date().toISOString() });
 }

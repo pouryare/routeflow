@@ -24,37 +24,37 @@ let driverId = 0;
 let custId = 0;
 let otherCustId = 0;
 
-beforeAll(() => {
+beforeAll(async () => {
   const db = getDb();
-  db.exec(`INSERT INTO organizations (id,name,slug,created_at) VALUES (2,'Two','two','2026-01-01')`);
+  await db.exec(`INSERT INTO organizations (id,name,slug,created_at) VALUES (2,'Two','two','2026-01-01')`);
   const now = new Date().toISOString();
   ownerId = Number(
-    db
+    (await db
       .prepare(
         "INSERT INTO users (username,password_hash,display_name,role,group_id,active,created_at,organization_id) VALUES (?,?,?,'owner',NULL,1,?,1)"
       )
-      .run("lc-owner", "x:y", "مالک", now).lastInsertRowid
+      .run("lc-owner", "x:y", "مالک", now)).lastInsertRowid
   );
   driverId = Number(
-    db
+    (await db
       .prepare(
         "INSERT INTO users (username,password_hash,display_name,role,group_id,active,created_at,organization_id) VALUES (?,?,?,'delivery_driver',NULL,1,?,1)"
       )
-      .run("lc-driver", "x:y", "راننده", now).lastInsertRowid
+      .run("lc-driver", "x:y", "راننده", now)).lastInsertRowid
   );
   custId = Number(
-    db
+    (await db
       .prepare(
         "INSERT INTO customers (customer_code,business_name,lifecycle,synced_at,organization_id) VALUES ('L1','x','lead','2026-01-01',1)"
       )
-      .run().lastInsertRowid
+      .run()).lastInsertRowid
   );
   otherCustId = Number(
-    db
+    (await db
       .prepare(
         "INSERT INTO customers (customer_code,business_name,lifecycle,synced_at,organization_id) VALUES ('L1','y','lead','2026-01-01',2)"
       )
-      .run().lastInsertRowid
+      .run()).lastInsertRowid
   );
 });
 
@@ -76,7 +76,7 @@ describe("PATCH /api/customers/[id]/lifecycle", () => {
     const res = await PATCH(req(custId, "qualified"), ctx(custId));
     expect(res.status).toBe(200);
     expect(
-      (getDb().prepare("SELECT lifecycle FROM customers WHERE id=?").get(custId) as { lifecycle: string })
+      (await getDb().prepare("SELECT lifecycle FROM customers WHERE id=?").get(custId) as { lifecycle: string })
         .lifecycle
     ).toBe("qualified");
   });
@@ -99,7 +99,7 @@ describe("PATCH /api/customers/[id]/lifecycle", () => {
     const res = await PATCH(req(otherCustId, "qualified"), ctx(otherCustId));
     expect(res.status).toBe(409); // not found -> LifecycleError -> 409, never 200
     expect(
-      (getDb().prepare("SELECT lifecycle FROM customers WHERE id=?").get(otherCustId) as { lifecycle: string })
+      (await getDb().prepare("SELECT lifecycle FROM customers WHERE id=?").get(otherCustId) as { lifecycle: string })
         .lifecycle
     ).toBe("lead");
   });

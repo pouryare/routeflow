@@ -59,33 +59,33 @@ describe("the repeat-order flow asks before a likely double entry", () => {
 });
 
 describe("recentOpenOrders", () => {
-  it("lists open orders of the last 24 hours with their products; cancelled and older ones are left out", () => {
+  it("lists open orders of the last 24 hours with their products; cancelled and older ones are left out", async () => {
     const db = getDb();
-    ensureWarehouse(db);
+    await ensureWarehouse(db);
     const now = new Date().toISOString();
     const owner = Number(
-      db.prepare("INSERT INTO users (username,password_hash,display_name,role,active,created_at,organization_id) VALUES ('do','x','م','owner',1,?,1)").run(now).lastInsertRowid
+      (await db.prepare("INSERT INTO users (username,password_hash,display_name,role,active,created_at,organization_id) VALUES ('do','x','م','owner',1,?,1)").run(now)).lastInsertRowid
     );
     const cust = Number(
-      db.prepare("INSERT INTO customers (customer_code,business_name,lifecycle,synced_at,organization_id) VALUES ('DO','x','active',?,1)").run(now).lastInsertRowid
+      (await db.prepare("INSERT INTO customers (customer_code,business_name,lifecycle,synced_at,organization_id) VALUES ('DO','x','active',?,1)").run(now)).lastInsertRowid
     );
-    const product = createProduct(db, { name: "کره", kg_per_base_unit: 0.25, organization_id: 1 });
-    const packaging = createPackaging(db, { product_id: product, name: "جعبه", qty_per_pack: 10 });
-    setPrice(db, { product_id: product, price_toman: 1000, valid_from: "2026-01-01" });
-    const order = () =>
-      createOrder(db, {
+    const product = await createProduct(db, { name: "کره", kg_per_base_unit: 0.25, organization_id: 1 });
+    const packaging = await createPackaging(db, { product_id: product, name: "جعبه", qty_per_pack: 10 });
+    await setPrice(db, { product_id: product, price_toman: 1000, valid_from: "2026-01-01" });
+    const order = async () =>
+      await createOrder(db, {
         customer_id: cust, order_date: now.slice(0, 10), created_by: owner, organization_id: 1, salesperson_user_id: owner,
         lines: [{ product_id: product, packaging_id: packaging, packs: 1 }],
       });
-    const open = order();
-    const old = order();
-    db.prepare("UPDATE orders SET created_at = ? WHERE id = ?").run(new Date(Date.now() - 30 * 3600_000).toISOString(), old.id);
-    const gone = order();
-    db.prepare("UPDATE orders SET status = 'CANCELLED' WHERE id = ?").run(gone.id);
+    const open = await order();
+    const old = await order();
+    await db.prepare("UPDATE orders SET created_at = ? WHERE id = ?").run(new Date(Date.now() - 30 * 3600_000).toISOString(), old.id);
+    const gone = await order();
+    await db.prepare("UPDATE orders SET status = 'CANCELLED' WHERE id = ?").run(gone.id);
     const scope = { sql: " AND o.organization_id = ?", params: [1] };
-    const rows = recentOpenOrders(scope, cust);
+    const rows = await recentOpenOrders(scope, cust);
     expect(rows.map((r) => r.id)).toEqual([open.id]);
     expect(rows[0].product_ids).toEqual([product]);
-    expect(recentOpenOrders({ sql: " AND o.organization_id = ?", params: [2] }, cust)).toEqual([]);
+    expect(await recentOpenOrders({ sql: " AND o.organization_id = ?", params: [2] }, cust)).toEqual([]);
   });
 });

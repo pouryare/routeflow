@@ -21,14 +21,14 @@ export interface StoredHoliday {
   is_lunar: number;
 }
 
-export function upsertHoliday(input: {
+export async function upsertHoliday(input: {
   iso: string;
   title_fa: string;
   kind?: "official" | "commemorative";
   lunar?: boolean;
   note?: string | null;
-}): void {
-  getDb()
+}): Promise<void> {
+  await getDb()
     .prepare(
       `INSERT INTO holidays (iso_date, title_fa, kind, is_lunar, note, created_at)
        VALUES (?, ?, ?, ?, ?, ?)
@@ -48,8 +48,8 @@ export function upsertHoliday(input: {
     );
 }
 
-export function deleteHoliday(iso: string): void {
-  getDb().prepare("DELETE FROM holidays WHERE iso_date = ?").run(iso);
+export async function deleteHoliday(iso: string): Promise<void> {
+  await getDb().prepare("DELETE FROM holidays WHERE iso_date = ?").run(iso);
 }
 
 /** Every stored row, oldest first, for the owner screen.
@@ -57,8 +57,8 @@ export function deleteHoliday(iso: string): void {
  *  Shared reference data, so this is deliberately NOT tenant-scoped: a national holiday is
  *  the same in every tenant, which is why the table carries no organization_id (see
  *  lib/db.ts). Recording one is still an owner act — the gate lives in the route. */
-export function listStoredHolidays(): StoredHolidayRow[] {
-  return getDb()
+export async function listStoredHolidays(): Promise<StoredHolidayRow[]> {
+  return await getDb()
     .prepare(
       `SELECT iso_date, title_fa, kind, is_lunar, note, created_at
          FROM holidays
@@ -87,13 +87,13 @@ export function hasArabicScript(s: string): boolean {
 
 export { isRealIsoDate };
 
-function storedInMonth(jy: number, jm: number): Map<string, StoredHoliday> {
+async function storedInMonth(jy: number, jm: number): Promise<Map<string, StoredHoliday>> {
   const from = jalaliToIsoDate(jy, jm, 1).slice(0, 10);
   const last = jalaliMonthLength(jy, jm);
   const toExcl = new Date(Date.parse(jalaliToIsoDate(jy, jm, last)) + 86_400_000)
     .toISOString()
     .slice(0, 10);
-  const rows = getDb()
+  const rows = await getDb()
     .prepare("SELECT * FROM holidays WHERE iso_date >= ? AND iso_date < ?")
     .all(from, toExcl) as unknown as Array<{
     iso_date: string;
@@ -105,8 +105,8 @@ function storedInMonth(jy: number, jm: number): Map<string, StoredHoliday> {
 }
 
 /** One month, generated solar holidays merged with the stored lunar ones. */
-export function listHolidaysForMonth(jy: number, jm: number): Holiday[] {
-  const stored = storedInMonth(jy, jm);
+export async function listHolidaysForMonth(jy: number, jm: number): Promise<Holiday[]> {
+  const stored = await storedInMonth(jy, jm);
   const out: Holiday[] = holidaysForJalaliMonth(jy, jm).map((h) => {
     const s = stored.get(h.iso);
     return s

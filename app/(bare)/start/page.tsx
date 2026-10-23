@@ -25,7 +25,7 @@ export const dynamic = "force-dynamic";
  *  are currently in. */
 export default async function TodayPage() {
   const jar = await cookies();
-  const session = getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
+  const session = await getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
   if (!session) redirect("/login");
   if (session.roles.length < 2 && !isVanRole(session.role)) {
     /* Same rule as /driver: a platform_owner gets the notice and a way forward, everyone
@@ -36,7 +36,7 @@ export default async function TodayPage() {
     redirect(homePathFor(session.role));
   }
 
-  const data = todayFor(session);
+  const data = await todayFor(session);
 
   return (
     <main className="mx-auto min-h-screen w-full max-w-2xl px-[var(--space-4)] py-[var(--space-5)]" dir="rtl">

@@ -11,23 +11,23 @@ export interface WeekFigures {
   collected_toman: number;
 }
 
-function figures(session: Session, w: DayWindow): WeekFigures {
+async function figures(session: Session, w: DayWindow): Promise<WeekFigures> {
   const db = getDb();
   const o = orderFilter(session);
-  const sold = db
+  const sold = await db
     .prepare(
       `SELECT COUNT(*) AS n, COALESCE(SUM(o.total_toman), 0) AS t FROM orders o
         WHERE o.status IN (${sqlStatusList(PRICED_ORDER_STATUSES)}) AND o.order_date >= ? AND o.order_date < ?${o.sql}`
     )
     .get(w.from, w.toExcl, ...o.params) as { n: number; t: number };
-  const delivered = db
+  const delivered = await db
     .prepare(
       `SELECT COUNT(*) AS n FROM orders o
         WHERE o.status IN (${sqlStatusList(FULFILLED_ORDER_STATUSES)}) AND o.delivered_at >= ? AND o.delivered_at < ?${o.sql}`
     )
     .get(w.from, w.toExcl, ...o.params) as { n: number };
   const c = crmFilter(session, "c");
-  const paid = db
+  const paid = await db
     .prepare(
       `SELECT COALESCE(SUM(p.amount_toman), 0) AS t FROM payments p JOIN customers c ON c.id = p.customer_id
         WHERE p.voided_at IS NULL AND p.received_at >= ? AND p.received_at < ? AND p.organization_id = ?${c.sql}`
@@ -38,8 +38,8 @@ function figures(session: Session, w: DayWindow): WeekFigures {
 
 /** F67: this week so far and the same days of last week, for an owner or a group manager, each
  *  scoped the way their order and customer lists are. Null for every other role. */
-export function weekVsLast(session: Session, todayIso: string): { now: WeekFigures; before: WeekFigures; days: number } | null {
+export async function weekVsLast(session: Session, todayIso: string): Promise<{ now: WeekFigures; before: WeekFigures; days: number } | null> {
   if (!MANAGE_ROLES.includes(session.role)) return null;
   const { thisWeek, lastWeek, days } = weekWindows(todayIso);
-  return { now: figures(session, thisWeek), before: figures(session, lastWeek), days };
+  return { now: await figures(session, thisWeek), before: await figures(session, lastWeek), days };
 }

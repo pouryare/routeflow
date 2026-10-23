@@ -19,9 +19,9 @@ const TONE: Record<Tone, { label: string; color: string }> = {
 /** F108: one page for the app's own health, for the owner (the admin layout gates it). */
 export default async function StatusPage() {
   const jar = await cookies();
-  const session = getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
+  const session = await getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
   if (!session) redirect("/login");
-  const lines = statusLines(statusFacts(session.organizationId));
+  const lines = statusLines(await statusFacts(session.organizationId));
 
   return (
     <>
