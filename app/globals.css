@@ -21,6 +21,7 @@
 @import "@heroui/styles/components/toast.css" layer(components);
 @import "@heroui/styles/components/calendar.css" layer(components);
 @import "@heroui/styles/components/popover.css" layer(components);
+@import "@heroui/styles/components/alert.css" layer(components);
 @import "@heroui/styles/utilities";
 @import "@heroui/styles/variants";
 
@@ -3145,16 +3146,21 @@ body {
 .meridian .statepage__actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 6px; }
 .meridian .statepage__code { margin: 4px 0 0; font-size: 11.5px; color: var(--muted); }
 
-/* ---- Login-As banner (ImpersonationBanner.tsx) ---------------------------------------
-   Warm and unmissable on purpose: acting as someone else is the one state the reader
-   must never forget they are in. */
-.meridian .actas {
-  display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 12px;
-  padding: 10px 14px; border-radius: var(--r-lg); font-size: 13px; color: var(--ink);
+/* ---- The shell's state banners (Impersonation, ActingCompany, Role): HeroUI Alerts -------
+   Warm and unmissable on purpose: acting as someone else is the one state the reader must
+   never forget they are in, so the warning ones keep a tinted ground and border rather than
+   HeroUI's plain surface. The button wraps under the text on a phone. */
+.meridian .actas { align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 12px; padding: 10px 14px; }
+.meridian .actas__text { flex: 1; min-width: 12rem; }
+.meridian .actas .alert__description { color: var(--ink); font-size: 13px; line-height: 1.7; }
+.meridian .actas.alert--warning {
   background: color-mix(in srgb, var(--warn) 16%, var(--card));
   border: 1px solid color-mix(in srgb, var(--warn) 40%, transparent);
 }
-.meridian .actas__text { flex: 1; min-width: 0; }
+.meridian .actas.alert--accent { border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent); }
+/* The map's "you are near …, record a visit?" prompt (GeofenceWatcher.tsx). */
+.geofence-prompt { border: 1px solid var(--accent); }
+.geofence-prompt__actions { display: flex; gap: 8px; width: 100%; margin-block: 8px 4px; }
 
 /* ---- the Jalali date field (JalaliDateInput.tsx, items 19/21) ------------------------ */
 .meridian .jdate { position: relative; display: inline-block; }
