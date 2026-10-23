@@ -20,7 +20,12 @@
     "check:mobile": "node scripts/check-mobile-rules.mjs",
     "check:architecture": "node scripts/check-architecture.mjs --check",
     "typecheck": "next typegen && tsc --noEmit",
-    "perf:smoke": "bash scripts/perf/ci-smoke.sh"
+    "perf:smoke": "bash scripts/perf/ci-smoke.sh",
+    "db:pg:generate": "node --experimental-strip-types --no-warnings --import ./scripts/_ts-register.mjs scripts/pg/generate-baseline.ts",
+    "db:pg:migrate": "node-pg-migrate up -m db/migrations",
+    "db:pg:types": "kysely-codegen",
+    "db:pg:lint": "squawk db/migrations/*.sql",
+    "test:pg": "node scripts/pg/test-pg.mjs"
   },
   "dependencies": {
     "@heroui/react": "^3.2.6",
@@ -33,6 +38,7 @@
     "@types/leaflet.markercluster": "^1.5.6",
     "exceljs": "^4.4.0",
     "framer-motion": "^13.2.0",
+    "kysely": "^0.29.7",
     "leaflet": "^1.9.4",
     "leaflet-geosearch": "^4.4.0",
     "leaflet-routing-machine": "^3.2.12",
@@ -43,6 +49,7 @@
     "maplibre-gl": "^6.15.0",
     "next": "^16.4.2",
     "open-location-code": "^1.0.3",
+    "pg": "^8.23.1",
     "playwright": "^1.62.1",
     "react": "^19.3.0",
     "react-aria": "^3.53.1",
@@ -60,6 +67,7 @@
     "@types/leaflet": "^1.9.22",
     "@types/leaflet.heat": "^0.2.5",
     "@types/node": "^24.13.3",
+    "@types/pg": "^8.23.1",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/web-push": "^3.6.4",
@@ -68,6 +76,9 @@
     "eslint-config-next": "^16.4.2",
     "jsdom": "^30.0.1",
     "knip": "^6.42.1",
+    "kysely-codegen": "^0.20.0",
+    "node-pg-migrate": "^9.0.0",
+    "squawk-cli": "^2.70.0",
     "tailwindcss": "^4",
     "typescript": "^5",
     "vitest": "^5.0.5"

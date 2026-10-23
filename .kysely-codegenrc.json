@@ -1,0 +1,8 @@
+{
+  "dialect": "postgres",
+  "outFile": "lib/database/pg-schema.d.ts",
+  "numericParser": "number",
+  "typeMapping": { "int8": "number" },
+  "includePattern": "public.*",
+  "excludePattern": "public.{spatial_ref_sys,pgmigrations}"
+}
