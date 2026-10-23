@@ -61,7 +61,7 @@ export async function run(ctx: SeedContext): Promise<void> {
   for (let p = 0; p < purchases; p++) {
     const daysAgo = Math.round((p / purchases) * (scale.months * 30));
     const when = ctx.stamp(daysAgo);
-    const supplierId = await rng.pick(supplierIds);
+    const supplierId = rng.pick(supplierIds);
     const purchaseId = Number(
       (await insPurchase.run(
         supplierId, ctx.iso(daysAgo), `DEMO-INV-${String(p + 1).padStart(4, "0")}`,

@@ -13,7 +13,7 @@ Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 let root: Root | undefined;
 
 afterEach(async () => {
-  if (root) await act(() => root!.unmount());
+  if (root) await act(async () => { root!.unmount(); });
   root = undefined;
   state.map?.remove();
   state.map = null;
@@ -41,22 +41,22 @@ it("opens and closes the layers panel once per click after Strict Mode replay", 
   document.body.append(container, host);
   state.map = new Map(container).setView([35.7, 51.4], 10);
   root = createRoot(host);
-  await act(() => root!.render(createElement(StrictMode, null, createElement(Harness))));
+  await act(async () => { root!.render(createElement(StrictMode, null, createElement(Harness))); });
   const buttons = container.querySelectorAll<HTMLAnchorElement>(".layers-toggle-control a");
   expect(buttons).toHaveLength(1);
   const button = buttons[0];
   expect(button.querySelector("svg")).not.toBeNull();
-  await act(() => button.click());
+  await act(async () => { button.click(); });
   expect.soft(clicks).toHaveBeenCalledTimes(1);
   expect.soft(button.getAttribute("aria-expanded")).toBe("true");
   expect.soft(host.querySelector('[role="dialog"]')).not.toBeNull();
 
-  await act(() => button.click());
+  await act(async () => { button.click(); });
   expect(clicks).toHaveBeenCalledTimes(2);
   expect(button.getAttribute("aria-expanded")).toBe("false");
   expect(host.querySelector('[role="dialog"]')).toBeNull();
 
-  await act(() => root!.render(null));
+  await act(async () => { root!.render(null); });
   expect(container.querySelector(".layers-toggle-control")).toBeNull();
   button.click();
   expect(clicks).toHaveBeenCalledTimes(2);

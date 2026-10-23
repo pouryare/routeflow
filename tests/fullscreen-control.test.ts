@@ -17,7 +17,7 @@ let root: Root | undefined;
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 
 afterEach(async () => {
-  if (root) await act(() => root!.unmount());
+  if (root) await act(async () => { root!.unmount(); });
   root = undefined;
   state.map?.remove();
   state.map = null;
@@ -31,7 +31,7 @@ describe("fullscreen map control", () => {
     document.body.append(container, host);
     state.map = new Map(container).setView([35.7, 51.4], 10);
     root = createRoot(host);
-    await act(() => root!.render(createElement(StrictMode, null, createElement(FullscreenControl))));
+    await act(async () => { root!.render(createElement(StrictMode, null, createElement(FullscreenControl))); });
 
     expect(container.querySelectorAll(".leaflet-control-zoom-fullscreen")).toHaveLength(1);
     expect(container.querySelectorAll(".leaflet-control-zoom-in")).toHaveLength(1);
@@ -46,7 +46,7 @@ describe("fullscreen map control", () => {
     expect(container.classList.contains("leaflet-pseudo-fullscreen")).toBe(false);
     expect(button.getAttribute("aria-pressed")).toBe("false");
 
-    await act(() => root!.render(null));
+    await act(async () => { root!.render(null); });
     expect(container.querySelectorAll(".leaflet-control-zoom-fullscreen")).toHaveLength(0);
     expect(container.querySelectorAll(".leaflet-control-zoom-in")).toHaveLength(1);
   });

@@ -117,8 +117,8 @@ export async function appendOrderEvent(
 /** Hook points that Tasks 8 and 9 fill. Kept here so advanceOrder's effect switch has a
  *  single dispatch table and no forward import cycle. */
 export interface EffectHandlers {
-  createCreditApprovalTask?: (conn: Db, orgId: number, orderId: number, actorId: number | null) => void;
-  spawnBackorder?: (conn: Db, orgId: number, orderId: number, actorId: number | null) => void;
+  createCreditApprovalTask?: (conn: Db, orgId: number, orderId: number, actorId: number | null) => Promise<void>;
+  spawnBackorder?: (conn: Db, orgId: number, orderId: number, actorId: number | null) => Promise<void>;
 }
 const effectHandlers: EffectHandlers = {};
 export function registerOrderEffectHandlers(h: EffectHandlers): void {
@@ -168,10 +168,10 @@ async function runEffect(
         .run(orderId, orgId);
       return;
     case "createCreditApprovalTask":
-      effectHandlers.createCreditApprovalTask?.(conn, orgId, orderId, actorId);
+      await effectHandlers.createCreditApprovalTask?.(conn, orgId, orderId, actorId);
       return;
     case "spawnBackorder":
-      effectHandlers.spawnBackorder?.(conn, orgId, orderId, actorId);
+      await effectHandlers.spawnBackorder?.(conn, orgId, orderId, actorId);
       return;
   }
 }

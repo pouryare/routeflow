@@ -10,7 +10,7 @@ Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 let root: Root | undefined;
 
 afterEach(async () => {
-  if (root) await act(() => root!.unmount());
+  if (root) await act(async () => { root!.unmount(); });
   root = undefined;
   document.body.replaceChildren();
   /* Globals are restored HERE, not at the end of each test body. In the body, a test that
