@@ -1,4 +1,5 @@
 import { getDb } from "@/lib/db";
+import { WHATS_NEW_VERSIONS } from "@/lib/whatsNew";
 
 /** Per-member UI preferences for the Board & Pocket. Stored server-side (a blob on
  *  `users`) so a member's board choice follows them across devices. Merge-patched;
@@ -6,11 +7,14 @@ import { getDb } from "@/lib/db";
 export interface BoardPrefs {
   board_mobile_mode?: "pager" | "stack";
   board_default_view?: "status" | "time" | "workflow";
+  /** F112: the newest what's-new version this person dismissed. */
+  whats_new_seen?: string;
 }
 
 const ALLOWED: Record<keyof BoardPrefs, readonly string[]> = {
   board_mobile_mode: ["pager", "stack"],
   board_default_view: ["status", "time", "workflow"],
+  whats_new_seen: WHATS_NEW_VERSIONS,
 };
 
 export function getPrefs(userId: number): BoardPrefs {

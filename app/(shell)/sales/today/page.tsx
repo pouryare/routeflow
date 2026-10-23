@@ -22,6 +22,9 @@ import EarningsCard from "@/components/today/EarningsCard";
 import { weekVsLast } from "@/lib/repo/weekCompare";
 import WeekCompareCard from "@/components/today/WeekCompareCard";
 import { tehranTodayIso } from "@/lib/jalali";
+import { unseenFor } from "@/lib/whatsNew";
+import { getPrefs } from "@/lib/repo/prefs";
+import WhatsNewCard from "@/components/today/WhatsNewCard";
 
 
 export const dynamic = "force-dynamic";
@@ -38,6 +41,8 @@ export default async function SalesTodayPage() {
   const data = todayFor(session);
   const earnings = earningsSoFar(session);
   const week = weekVsLast(session, tehranTodayIso());
+  // Not while acting as someone else: dismissing it would mark THEIR notes as read.
+  const whatsNew = session.actorId === undefined ? unseenFor(session.role, getPrefs(session.user.id).whats_new_seen) : null;
 
   return (
     <>
@@ -81,6 +86,8 @@ export default async function SalesTodayPage() {
           <DuplicatesDeckEntry pairs={duplicatePairs(session).map((p) => ({ ...p, keep: { ...p.keep }, drop: { ...p.drop } }))} />
         </div>
       )}
+
+      {whatsNew && <WhatsNewCard entry={whatsNew} />}
 
       <ActionCards cards={suggestionsFor(session)} />
 

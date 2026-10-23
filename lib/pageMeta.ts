@@ -361,6 +361,11 @@ export const PAGE_META: Record<string, PageMeta> = {
     overview:
       "ورودهای اخیر حساب شما و خروج از دستگاه‌های دیگر. اگر ورودی را نمی‌شناسید، از همهٔ دستگاه‌ها خارج شوید و رمز را عوض کنید.",
   },
+  "/settings/updates": {
+    title: "تازه‌های برنامه",
+    titleEn: "What's new",
+    overview: "تغییرهای برنامه که به کار شما مربوط است، تازه‌ترین بالا. هر بار که چیزی عوض شود، اینجا کوتاه نوشته می‌شود.",
+  },
 };
 
 /** The meta for a path, by longest-prefix match — so /sales/orders/12 shows the orders
