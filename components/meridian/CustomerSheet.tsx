@@ -7,6 +7,8 @@ import { Icon } from "@/components/meridian/Icon";
 import { createPortal } from "react-dom";
 import { useSheetHost } from "@/components/meridian/useSheetHost";
 import { faDigits } from "@/lib/format";
+import { useSession } from "@/lib/useSession";
+import { canSell } from "@/lib/roles";
 
 /** پنجرهٔ مشتری — the artifact's bottom bento sheet.
  *
@@ -30,6 +32,7 @@ export default function CustomerSheet({
   onClose: () => void;
 }) {
   const data = useCustomerSummary(customerId);
+  const { role } = useSession();
   const failed = false;
 
   useEscapeKey(onClose, customerId !== null);
@@ -78,7 +81,7 @@ export default function CustomerSheet({
         <CustomerBento data={data} />
         {customerId !== null && <div style={{ padding: "16px 24px", display: "flex", flexWrap: "wrap", gap: 9 }}>
           <Link className="btn ghost" style={{ minHeight: 44 }} href={`/crm/${customerId}`}>اطلاعات و مخاطبان</Link>
-          <Link className="btn solid" style={{ minHeight: 44 }} href={`/sales/orders/new?customer=${customerId}`}>ثبت سفارش تازه</Link>
+          {canSell(role) && <Link className="btn solid" style={{ minHeight: 44 }} href={`/sales/orders/new?customer=${customerId}`}>ثبت سفارش تازه</Link>}
         </div>}
 
         {data && (

@@ -6,7 +6,8 @@ import { getSessionFromCookies } from "@/lib/session";
 import { pocketFor, pocketTeam } from "@/lib/repo/pocket";
 import Pocket from "@/components/pocket/Pocket";
 import PageHeader from "@/components/meridian/PageHeader";
-import { isVanRole } from "@/lib/roles";
+import { canSell, isVanRole } from "@/lib/roles";
+import { appTabs } from "@/lib/appNav";
 
 export const dynamic = "force-dynamic";
 
@@ -26,6 +27,8 @@ export default async function PocketPage() {
       initial={pocketFor(session, {})}
       team={pocketTeam(session)}
       viewerName={session.user.display_name}
+      canOrder={canSell(session.role)}
+      canPlan={appTabs(session).some((t) => t.ready && t.href === "/planner")}
     />    </>
   );
 }

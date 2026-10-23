@@ -22,7 +22,7 @@ import { statusLabel, isPreConfirm, isFulfilled } from "@/components/sales/order
 import PageHeader from "@/components/meridian/PageHeader";
 import ViewTabs, { type ViewTab } from "@/components/meridian/ViewTabs";
 import { oneOf, one, type SearchParams } from "@/lib/viewParam";
-import { isVanRole } from "@/lib/roles";
+import { canSell, isVanRole } from "@/lib/roles";
 
 export const dynamic = "force-dynamic";
 
@@ -80,10 +80,13 @@ function ListView({
   orders,
   onARun,
   focused,
+  mayOrder,
 }: {
   orders: OrderSummary[];
   onARun: Set<number>;
   focused: { id: number; business_name: string } | null;
+  /** canSell: a rep manager reads this list but the order API refuses their sale. */
+  mayOrder: boolean;
 }) {
   const customerCount = new Set(orders.map((o) => o.customer_name)).size;
   return (
@@ -106,12 +109,14 @@ function ListView({
               خروجی اکسل
             </a>
           )}
-          <Link
-            className="btn solid"
-            href={focused ? `/sales/orders/new?customer=${focused.id}` : "/sales/orders/new"}
-          >
-            ＋ ثبت سفارش تازه
-          </Link>
+          {mayOrder && (
+            <Link
+              className="btn solid"
+              href={focused ? `/sales/orders/new?customer=${focused.id}` : "/sales/orders/new"}
+            >
+              ＋ ثبت سفارش تازه
+            </Link>
+          )}
         </div>
       </div>
 
@@ -360,7 +365,7 @@ export default async function OrdersPage({
       ) : view === "journey" ? (
         <JourneyView session={session} orders={orders} mode={mode} askedOrderId={askedOrderId} />
       ) : (
-        <ListView orders={orders} onARun={onARun} focused={focused} />
+        <ListView orders={orders} onARun={onARun} focused={focused} mayOrder={canSell(session.role)} />
       )}
     </>
   );

@@ -37,10 +37,17 @@ export default function Pocket({
   initial,
   team,
   viewerName,
+  canOrder,
+  canPlan,
 }: {
   initial: PocketData;
   team: PocketTeamMember[];
   viewerName: string;
+  /** Offer only what the viewer can open, decided by the page that has the session: a rep
+   *  manager cannot record a sale (lib/roles canSell), and only the managers reach the
+   *  planner (appNav's `ready`, mirrored by proxy.ts). */
+  canOrder: boolean;
+  canPlan: boolean;
 }) {
   const [data, setData] = useState<PocketData>(initial);
   const [scopeId, setScopeId] = useState<number | null>(null);
@@ -235,12 +242,14 @@ export default function Pocket({
           <Icon name="plus" size="md" />
           + ثبت یادداشت
         </button>
-        <Link className="btn ghost" href="/sales/orders/new">
-          + ثبت سفارش تازه
-        </Link>
-        <Link className="btn ghost" href="/planner">
+        {canOrder && (
+          <Link className="btn ghost" href="/sales/orders/new">
+            + ثبت سفارش تازه
+          </Link>
+        )}
+        {canPlan && <Link className="btn ghost" href="/planner">
           + برنامه‌ریزی بازدید
-        </Link>
+        </Link>}
       </div>
 
       {quick ? (

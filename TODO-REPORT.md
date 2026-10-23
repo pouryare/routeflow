@@ -29,6 +29,7 @@ _Condensed 2026-10-23. Each finished piece of work is one line here; the full ea
   - [x] Holidays screen (`/sales/admin/holidays`) linked as «تعطیلات» under «تنظیمات سازمان» for owners; nothing linked to it before
   - [x] Names open what they name: customer names on the order page, payments and complaints open the customer (the order page keeps a map pin); supplier names on payables open the supplier; account names on the balance sheet and profit and loss open the ledger
   - [x] A ledger page lights «حسابداری» and shows its sibling tabs (`NAV_PARENT` + `currentTab` in `lib/appNav.ts`, one rule for the pill, page header and phone bar)
+  - [x] «ثبت سفارش تازه» only for roles that can sell (`SELL_ROLES` / `canSell` in `lib/roles`, shared with the order API): hidden for rep managers on the orders page, customer sheet, profile, purchase history and pocket; the form itself explains instead of failing on save. The pocket offers the planner only to roles that can open it
 
 ## Not done / gaps
 - [ ] Cheque cards and the cheque deck still show the customer as plain text: the card itself is the tap target (select / decide), so a link inside it would fight it
