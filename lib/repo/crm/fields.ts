@@ -7,6 +7,7 @@ import { isWorkingHours } from "@/lib/crm/hours";
 import { findDuplicates } from "./dedupe";
 import { CrmError, writableBusiness } from "./write";
 import { recomputeState } from "./state";
+import { recordOwnerChange } from "./ownerChange";
 
 function correction(session: Session, id: number, org: number, note: string, verified = false) {
   const now = new Date().toISOString();
@@ -123,8 +124,10 @@ export function updateBusinessFields(session: Session, id: number, raw: unknown)
       const others = findDuplicates(session, { instagram: values.instagram }).filter(m => m.kind === "instagram" && m.id !== id);
       if (others.length) throw new CrmError(409, "این صفحهٔ اینستاگرام مال کسب‌وکار دیگری است", { matches: others });
     }
-    if (session.role === "phone_sales" && b.owner_user_id === null) values.owner_user_id = session.user.id;
+    const claims = session.role === "phone_sales" && b.owner_user_id === null;
+    if (claims) values.owner_user_id = session.user.id;
     db.prepare(`UPDATE customers SET ${Object.keys(values).map(k => `${k} = ?`).join(",")} WHERE id = ? AND organization_id = ?`).run(...Object.values(values), id, org);
+    if (claims) recordOwnerChange(db, { organizationId: org, customerId: id, actorUserId: session.user.id, reason: "pool_claim", what: "owner", fromId: null, toId: session.user.id });
     correction(session, id, org, "اطلاعات کسب‌وکار اصلاح شد");
     db.exec("COMMIT");
   } catch (e) { db.exec("ROLLBACK"); throw e; }

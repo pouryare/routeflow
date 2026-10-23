@@ -6,6 +6,7 @@ import { emitEvent, type EventInput } from "@/lib/repo/events";
 import { districtIdForPoint, groupForPoint } from "@/lib/groups";
 import { OUTCOMES, type OutcomeCode } from "@/lib/crm/outcomes";
 import { recomputeState } from "./state";
+import { recordOwnerChange } from "./ownerChange";
 import { resolveDue, type DueSpec } from "@/lib/crm/due";
 import { nextOpenAt, parseHours } from "@/lib/crm/hours";
 import { normPhone } from "@/lib/crm/phone";
@@ -214,7 +215,7 @@ export function applyFlowCore(
     if (opts.claim && owner === null && session.role === "phone_sales") {
       db.prepare("UPDATE customers SET owner_user_id = ? WHERE id = ?").run(session.user.id, customerId);
       owner = session.user.id;
-      insertActivity(db, org, { customerId, userId: session.user.id, type: "owner_change", note: "برداشتن از استخر گروه", at });
+      recordOwnerChange(db, { organizationId: org, customerId, actorUserId: session.user.id, reason: "pool_claim", what: "owner", fromId: null, toId: session.user.id, at });
       events.push({ ...base, kind: "lead.claimed" });
     }
 
@@ -494,7 +495,7 @@ export function claimBusiness(session: Session, id: number): void {
   db.exec("BEGIN IMMEDIATE");
   try {
     db.prepare("UPDATE customers SET owner_user_id = ? WHERE id = ? AND owner_user_id IS NULL").run(session.user.id, id);
-    insertActivity(db, core.organization_id, { customerId: id, userId: session.user.id, type: "owner_change", note: "برداشتن از استخر گروه", at });
+    recordOwnerChange(db, { organizationId: core.organization_id, customerId: id, actorUserId: session.user.id, reason: "pool_claim", what: "owner", fromId: null, toId: session.user.id, at });
     if (core.next_task_id) db.prepare("UPDATE tasks SET assignee_user_id = ? WHERE id = ? AND status = 'open' AND assignee_user_id IS NULL").run(session.user.id, core.next_task_id);
     db.exec("COMMIT");
   } catch (e) {
