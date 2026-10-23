@@ -46,17 +46,5 @@
       "select"
     ],
     "reason": "Facility administration at a desk; creating a place on a phone is PlaceFlow."
-  },
-  "components/meridian/JalaliDateInput.tsx": {
-    "rules": [
-      "nativeDate"
-    ],
-    "reason": "The one component that owns the browser's date field (shown and returned as Jalali). Every other file goes through it, and the rules script limits who may import it."
-  },
-  "components/PasswordForm.tsx": {
-    "rules": [
-      "textField"
-    ],
-    "reason": "A password has to be typed; no chip or picker can stand in for a secret (F35 forced change, and the change by choice on /settings/security)."
   }
 }

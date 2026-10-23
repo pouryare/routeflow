@@ -16,6 +16,7 @@ import { useCallback, useMemo, useState } from "react";
 import { faNum, faToman } from "@/lib/format";
 import PaymentFlow from "@/components/flows/PaymentFlow";
 import { CHEQUE_STATUS_LABEL, CHEQUE_TRANSITIONS, type ChequeStatus } from "@/lib/chequeStates";
+import SmartPicker from "@/components/mobile/SmartPicker";
 
 interface Customer {
   id: number;
@@ -274,18 +275,13 @@ export default function ChequesBoard({ customers }: { customers: Customer[] }) {
       )}
 
       <form onSubmit={record} className="hidden gap-3 rounded-lg border border-border bg-surface p-4 md:grid md:grid-cols-3">
-        <select
-          className="rounded border border-border bg-bg p-2 text-sm"
+        <SmartPicker
+          scope="customers"
+          label="مشتری"
+          items={customers.map((c) => ({ id: String(c.id), label: c.business_name }))}
           value={form.customer_id}
-          onChange={(e) => setForm((f) => ({ ...f, customer_id: e.target.value }))}
-        >
-          <option value="">— مشتری —</option>
-          {customers.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.business_name}
-            </option>
-          ))}
-        </select>
+          onChange={(id) => setForm((f) => ({ ...f, customer_id: id }))}
+        />
         <label className="flex flex-col gap-1 text-xs text-text-muted">مبلغ (تومان)<input
           className="rounded border border-border bg-bg p-2 text-left font-mono text-sm w-full"
          

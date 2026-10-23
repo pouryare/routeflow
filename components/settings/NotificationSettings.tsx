@@ -1,10 +1,13 @@
 "use client";
 
+import ToggleSwitch from "@/components/ToggleSwitch";
+
 import { useCallback, useMemo, useState } from "react";
 import { friendlyError } from "@/lib/userMessage";
 import { Icon } from "@/components/meridian/Icon";
 import { useToast } from "@/components/ToastProvider";
 import { usePushSubscription } from "./usePushSubscription";
+import CheckField from "@/components/CheckField";
 
 type Channel = "push" | "telegram";
 
@@ -44,38 +47,6 @@ const CATEGORY_LABEL: Record<string, string> = {
   customer: "مشتریان",
 };
 const CATEGORY_ORDER = ["task", "order", "delivery", "finance", "customer"];
-
-function Switch({
-  on,
-  disabled,
-  label,
-  onChange,
-}: {
-  on: boolean;
-  disabled?: boolean;
-  label: string;
-  onChange: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={on}
-      aria-label={label}
-      disabled={disabled}
-      onClick={onChange}
-      className={`relative h-6 w-11 shrink-0 rounded-full border transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] disabled:cursor-not-allowed disabled:opacity-40 motion-reduce:transition-none ${
-        on ? "border-accent bg-accent" : "border-border bg-surface"
-      }`}
-    >
-      <Icon name="bell" size="md" />
-      <span
-        className="absolute top-0.5 h-4 w-4 rounded-full bg-[color:var(--bg)] transition-[right,left] duration-[var(--dur-base)] ease-[var(--ease-out)] motion-reduce:transition-none"
-        style={{ right: on ? "calc(100% - 1.25rem)" : "0.125rem" }}
-      />
-    </button>
-  );
-}
 
 export default function NotificationSettings({ initial }: { initial: PrefsMatrix }) {
   const [channels, setChannels] = useState(initial.channels);
@@ -235,7 +206,7 @@ export default function NotificationSettings({ initial }: { initial: PrefsMatrix
                   {off ? "در دسترس نیست" : s.connected ? "متصل" : "متصل نیست"}
                 </p>
               </div>
-              <Switch
+              <ToggleSwitch
                 on={s.enabled}
                 disabled={off}
                 label={`${CHANNEL_LABEL[ch]} — کلید اصلی`}
@@ -270,18 +241,15 @@ export default function NotificationSettings({ initial }: { initial: PrefsMatrix
                   className="rounded-[var(--radius-md)] border border-border bg-surface px-2 py-1 text-[length:var(--text-sm)] text-text disabled:opacity-40"
                 />
               </label>
-              <label className="flex items-center gap-2 pb-1">
-                <input
-                  type="checkbox"
-                  checked={s.critical_breaks_quiet}
-                  disabled={off}
-                  onChange={() => patchChannel(ch, { critical_breaks_quiet: !s.critical_breaks_quiet })}
-                  className="size-4 accent-[color:var(--accent)] disabled:opacity-40"
-                />
+              <CheckField
+                checked={s.critical_breaks_quiet}
+                disabled={off}
+                onChange={() => patchChannel(ch, { critical_breaks_quiet: !s.critical_breaks_quiet })}
+              >
                 <span className="text-[length:var(--text-xs)] text-text-muted">
                   اجازه بده هشدارهای بحرانی ساعات سکوت را بشکنند
                 </span>
-              </label>
+              </CheckField>
             </div>
 
             <div className="mt-3 flex flex-wrap gap-2 border-t border-border pt-3">
@@ -363,7 +331,7 @@ export default function NotificationSettings({ initial }: { initial: PrefsMatrix
                       {(["push", "telegram"] as const).map((ch) => (
                         <span key={ch} className="flex items-center gap-1.5">
                           <span className="text-[length:var(--text-xs)] text-text-faint">{CHANNEL_LABEL[ch]}</span>
-                          <Switch
+                          <ToggleSwitch
                             on={t[ch]}
                             disabled={!channels[ch].configured}
                             label={`${t.name_fa} — ${CHANNEL_LABEL[ch]}`}

@@ -7,6 +7,7 @@ import { useNavApp } from "@/components/NavAppSetting";
 import { navApp } from "@/lib/navApps";
 import { Icon } from "@/components/meridian/Icon";
 import { Origin } from "@/lib/plannerView";
+import CheckField from "@/components/CheckField";
 
 /** The planner's origin line: where the day is measured from, the picker, the route length and the optimise button. */
 export default function PlanOriginPanel({ origin, originPickerOpen, setOriginPickerOpen, returnToOrigin, toggleReturnToOrigin, facilities, originOverrideId, setOriginOverrideId, setMyPos, locate, dayLengthKm, warehouseDetour, googleRoute, navAppId, optimisation, applyOptimalOrder, optimising }: {
@@ -44,15 +45,11 @@ export default function PlanOriginPanel({ origin, originPickerOpen, setOriginPic
                 <span className="no-print"> <Icon name="chevron-down" size="sm" /></span>
               </button>
 
-              <label className="mr-auto flex cursor-pointer items-center gap-1.5 text-[length:var(--text-xs)] text-text-muted">
-                <input
-                  type="checkbox"
-                  checked={returnToOrigin}
-                  onChange={toggleReturnToOrigin}
-                  className="no-print accent-[color:var(--accent)]"
-                />
-                بازگشت به مبدأ
-              </label>
+              <span className="mr-auto">
+                <CheckField checked={returnToOrigin} onChange={() => toggleReturnToOrigin()} className="text-[length:var(--text-xs)] text-text-muted">
+                  بازگشت به مبدأ
+                </CheckField>
+              </span>
             </div>
 
             {originPickerOpen && (

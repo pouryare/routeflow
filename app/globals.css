@@ -22,6 +22,12 @@
 @import "@heroui/styles/components/calendar.css" layer(components);
 @import "@heroui/styles/components/popover.css" layer(components);
 @import "@heroui/styles/components/alert.css" layer(components);
+@import "@heroui/styles/components/checkbox.css" layer(components);
+@import "@heroui/styles/components/switch.css" layer(components);
+@import "@heroui/styles/components/input.css" layer(components);
+@import "@heroui/styles/components/input-group.css" layer(components);
+@import "@heroui/styles/components/textfield.css" layer(components);
+@import "@heroui/styles/components/field-error.css" layer(components);
 @import "@heroui/styles/utilities";
 @import "@heroui/styles/variants";
 
@@ -2062,6 +2068,8 @@ body {
 /* The bell's panel (NotificationBell.tsx): a HeroUI Popover around NotificationCenter, which
    sets its own width and scroll. */
 .meridian .notif-pop { overflow: hidden; direction: rtl; }
+/* The colour and font pickers' panels (AccentPicker.tsx, FontPicker.tsx). */
+.picker-pop { direction: rtl; }
 .meridian .notif-pop__dialog { padding: 0; }
 .meridian .pm__who { display: flex; align-items: center; gap: 10px; padding: 4px 4px 8px; }
 .meridian .pm__name { font-size: 13.5px; font-weight: 600; color: var(--ink); }
@@ -2103,7 +2111,7 @@ body {
 
 /* ---- the sun/moon toggle: one disc, morphed ------------------------------ */
 .meridian .themeToggle {
-  position: relative; width: 42px; height: 42px; border-radius: 999px;
+  position: relative; width: 44px; height: 44px; border-radius: 999px;
   border: 1px solid var(--line); background: var(--card); box-shadow: var(--sh-1);
   cursor: pointer; overflow: hidden; flex: none; padding: 0;
 }
@@ -3162,43 +3170,23 @@ body {
 .geofence-prompt { border: 1px solid var(--accent); }
 .geofence-prompt__actions { display: flex; gap: 8px; width: 100%; margin-block: 8px 4px; }
 
-/* ---- the Jalali date field (JalaliDateInput.tsx, items 19/21) ------------------------ */
-.meridian .jdate { position: relative; display: inline-block; }
-.meridian .jdate__field {
-  display: inline-flex; align-items: center; gap: 8px; min-width: 10rem; padding: 7px 10px;
-  border-radius: var(--r-md); border: 1px solid var(--line); background: var(--card);
-  color: var(--ink); font: inherit; font-size: 13.5px; cursor: pointer;
-}
-.meridian .jdate__field:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* ---- the Shamsi date field (PersianDateField.tsx, items 19/21) ------------------------
+   A HeroUI button that reads the day; the calendar opens in a bottom sheet. A day that is
+   unavailable (already booked) is struck rather than hidden: the gap would be a puzzle. */
+.meridian .jdate { display: inline-block; }
+.meridian .jdate__field.button { min-width: 10rem; justify-content: flex-start; font-variant-numeric: tabular-nums; }
 .meridian .jdate__placeholder { color: var(--muted); }
-.meridian .jdate__pop {
-  /* Fixed, not absolute. A bottom sheet scrolls, and an absolutely-positioned popover is
-   * clipped by its scroll container whichever way it opens -- which is why the calendar used
-   * to vanish under the fold at the bottom of a sheet. Fixed escapes it: the sheet's
-   * transform is `none` while open, so it is not a containing block. The offset is measured
-   * in JS, which is also what lets it flip above the field when there is no room below. */
-  position: fixed; z-index: 90; padding: 10px; border-radius: var(--r-lg); border: 1px solid var(--line);
-  background: var(--surface); box-shadow: var(--sh-3);
-  visibility: hidden;
-}
-.meridian .jdate__pop.placed { visibility: visible; }
-.meridian .jdate__head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
-.meridian .jdate__month { font-size: 13.5px; font-weight: 700; color: var(--ink); }
-.meridian .jdate__nav { width: 28px; height: 28px; border-radius: 999px; border: 0; background: var(--sunk); color: var(--ink-2); display: grid; place-items: center; cursor: pointer; }
-.meridian .jdate__grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
-.meridian .jdate__wd { font-size: 11px; color: var(--muted); text-align: center; padding: 4px 0; }
-.meridian .jdate__day {
-  height: 32px; border: 0; border-radius: var(--r-sm); background: transparent; color: var(--ink);
-  font: inherit; font-size: 13px; cursor: pointer; font-variant-numeric: tabular-nums;
-}
-.meridian .jdate__day:hover, .meridian .jdate__day.is-cursor { background: var(--sunk); }
-.meridian .jdate__day.is-today { box-shadow: inset 0 0 0 1px var(--accent); }
-.meridian .jdate__day.is-picked { background: var(--accent); color: var(--accent-ink); }
-/* A day the person is already booked for. Dimmed and struck rather than hidden: the gap
-   would otherwise be a puzzle, and the strike says "taken" without needing a colour. */
-.meridian .jdate__day.is-off { color: var(--faint); cursor: not-allowed; text-decoration: line-through; text-decoration-thickness: 1px; }
-.meridian .jdate__day.is-off:hover, .meridian .jdate__day.is-off.is-cursor { background: transparent; }
-.meridian .jdate__foot { display: flex; justify-content: space-between; margin-top: 8px; }
+.meridian .calendar__cell[data-unavailable] { text-decoration: line-through; text-decoration-thickness: 1px; }
+/* HeroUI's checkbox and switch (CheckField.tsx, ToggleSwitch.tsx): the row, or the 44 px
+   area around a bare switch, is the tap target; the 20 px box and track stay HeroUI's. */
+.checkfield__hit { display: flex; align-items: center; gap: 8px; min-height: 44px; cursor: pointer; }
+.toggle__hit { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; cursor: pointer; }
+/* TextInput / PasswordInput: a 44 px field with its label above, room under it before the next. */
+.textinput { margin-bottom: var(--space-3); gap: 4px; }
+.textinput .label { font-size: var(--text-xs); color: var(--text-muted); }
+.textinput .input, .textinput .input-group { min-height: 44px; font-size: var(--text-base); }
+.textinput .input-group__input { min-height: 44px; }
+.meridian .jdate__foot { display: flex; justify-content: space-between; gap: 8px; max-width: 360px; width: 100%; margin-inline: auto; }
 
 /* ---- empty states (EmptyState.tsx) ---------------------------------------------------
    A considered state, not a rendering that stopped halfway: an icon disc, what is empty,
@@ -4822,7 +4810,7 @@ body {
 /* The date field centres too, like everything else on the line. It needs `justify-content`
    on the wrapper rather than a margin on the field: inside a dialog `.jdate` is a stretched
    flex item, so its box is already full width and it is the button within it that sits at
-   the inline start. The popover is position:fixed now, so moving the field does not move it. */
+   the inline start. */
 .meridian [role="dialog"] .jdate { display: flex; justify-content: center; }
 .meridian .tapflow .tf-error { margin: 2px 0 0; font-size: 12px; color: var(--crit); }
 .meridian .tapflow .tf-input[aria-invalid="true"] { border-color: var(--crit); }

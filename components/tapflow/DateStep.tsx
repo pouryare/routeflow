@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { parseDate, type CalendarDate, type DateValue } from "@internationalized/date";
-import { Button, Calendar } from "@heroui/react";
+import { Button } from "@heroui/react";
+import { PersianCalendar } from "@/components/PersianDateField";
 import { Icon } from "@/components/meridian/Icon";
 import DayChips from "@/components/mobile/DayChips";
 import { addDaysIso } from "@/lib/flows/dates";
@@ -11,9 +11,7 @@ import { addDaysIso } from "@/lib/flows/dates";
  *  underneath is for the date nobody can express as an offset. A host renders this from
  *  `renderCustom` for a `date` step, passing the option that moves on.
  *
- *  The calendar is HeroUI's, shown in Shamsi months with Persian digits by HeroUIProvider's
- *  locale. Its values stay Gregorian `CalendarDate`s: React Aria hands back the calendar it was
- *  given, so `toString()` is the ISO day the flow stores, with no conversion of our own. */
+ *  The calendar is PersianCalendar: HeroUI's, in Shamsi months, storing ISO days. */
 export default function DateStep({ optionId, optionLabel, skip, from, presets, ariaLabel, submit }: {
   optionId: string;
   optionLabel: string;
@@ -43,7 +41,7 @@ export default function DateStep({ optionId, optionLabel, skip, from, presets, a
       </div>
       <p className="tf-sub">{presets.length ? "یا روز دیگری را انتخاب کنید" : "کدام روز؟"}</p>
       {presets.length ? (
-        <FlowCalendar value={iso} min={from} onChange={setIso} ariaLabel={ariaLabel} />
+        <PersianCalendar value={iso} min={from} onChange={setIso} ariaLabel={ariaLabel} />
       ) : (
         <DayChips value={iso} onChange={setIso} ariaLabel={ariaLabel} />
       )}
@@ -58,40 +56,5 @@ export default function DateStep({ optionId, optionLabel, skip, from, presets, a
         </Button>
       ) : null}
     </div>
-  );
-}
-
-/** One month, Saturday first, nothing before `min`. The month arrows carry our own icons,
- *  pointing the way the months move in a right-to-left grid. */
-function FlowCalendar({ value, min, onChange, ariaLabel }: {
-  value: string;
-  min: string;
-  onChange: (iso: string) => void;
-  ariaLabel: string;
-}) {
-  return (
-    <Calendar
-      className="flow-calendar"
-      aria-label={ariaLabel}
-      value={value ? parseDate(value) : null}
-      minValue={parseDate(min)}
-      firstDayOfWeek="sat"
-      onChange={(d: DateValue) => onChange(d.toString().slice(0, 10))}
-    >
-      <Calendar.Header>
-        <Calendar.Heading />
-        <Calendar.NavButton slot="previous" aria-label="ماه قبل">
-          <Icon name="chevron-right" size="sm" />
-        </Calendar.NavButton>
-        <Calendar.NavButton slot="next" aria-label="ماه بعد">
-          <Icon name="chevron-left" size="sm" />
-        </Calendar.NavButton>
-      </Calendar.Header>
-      {/* Narrow weekday names (ش ی د …): the long ones run into each other at phone width. */}
-      <Calendar.Grid weekdayStyle="narrow">
-        <Calendar.GridHeader>{(day: string) => <Calendar.HeaderCell>{day}</Calendar.HeaderCell>}</Calendar.GridHeader>
-        <Calendar.GridBody>{(date: CalendarDate) => <Calendar.Cell date={date} />}</Calendar.GridBody>
-      </Calendar.Grid>
-    </Calendar>
   );
 }

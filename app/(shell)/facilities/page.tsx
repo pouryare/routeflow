@@ -24,6 +24,7 @@ import { coordText } from "@/lib/clipboard";
 import CopyButton from "@/components/CopyButton";
 import { SkeletonLabel, SkeletonRows } from "@/components/Skeleton";
 import { Icon } from "@/components/meridian/Icon";
+import { ChipGroup } from "@/components/mobile/ChipGroup";
 
 // Leaflet touches window on import, so the picker can't be server-rendered.
 const LocationPinPicker = dynamic(() => import("@/components/LocationPinPicker"), { ssr: false });
@@ -416,22 +417,11 @@ export default function FacilitiesPage() {
              
               className="min-w-40 flex-1 rounded-[var(--radius-md)] border border-border bg-surface px-3 py-2 text-[length:var(--text-sm)] text-text outline-none transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] focus:border-accent w-full"
             /></label>
-            <select
-              aria-label="نوع مکان"
-              value={newKind}
-              onChange={(e) => {
-                const k = e.target.value as FacilityKind;
-                setNewKind(k);
-                setNewIconKey(defaultIconFor(k));
-              }}
-              className="rounded-[var(--radius-md)] border border-border bg-surface px-3 py-2 text-[length:var(--text-sm)] text-text outline-none focus:border-accent"
-            >
-              {FACILITY_KINDS.map((k) => (
-                <option key={k} value={k}>
-                  {KIND_NAME[k]}
-                </option>
-              ))}
-            </select>
+            <ChipGroup
+              group={{ id: "kind", label: "نوع مکان", mode: "single", neutral: "__none", value: newKind,
+                onChange: (v) => { if (v === "__none") return; const k = v as FacilityKind; setNewKind(k); setNewIconKey(defaultIconFor(k)); },
+                options: FACILITY_KINDS.map((k) => ({ id: k, label: KIND_NAME[k] })) }}
+            />
             {/* The icon is the person's choice, not the kind's. Two warehouses can look
                 different because they hold different things, and adding a kind later must
                 not change what every existing place of that kind looks like -- which is why
