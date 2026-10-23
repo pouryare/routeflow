@@ -99,6 +99,7 @@ describe("payment flow", () => {
     expect(chips).toContain(METHOD_LABEL.CASH);
     expect(chips).toContain("۸۰۰٬۰۰۰");
     expect(chips).toContain("تاریخ");
+    expect(chips).toContain("به حروف: هشتصد هزار تومان");
   });
 
   it("offers no 'credit note' (that is created by the system, not collected at a door)", () => {

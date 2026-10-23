@@ -421,6 +421,7 @@ How to read it: **10.1 is fact and decision** (the owner's words). **10.2 to 10.
 | RouteFlow gets an Android app: the web app wrapped in a Capacitor shell. | Decided. Needed because a PWA gets background location only while open (F6, F38, F103); also gives native barcode scanning and Bluetooth printing. Distribution route (domestic Android store or a direct file) is still open. |
 | SMS provider: Farazsms. | Decided. The official npm client `farazsms` (1.1.0, 2026-06-21) exists and has not been inspected; decide between it and a thin wrapper when the SMS slice starts. Consent, opt-out and any other customer channel stay open. |
 | Staff positions come from the phone's GPS for now. | Decided. No dedicated trackers, so a tracker server such as Traccar is not needed yet. Revisit if vehicles get hardware trackers. |
+| Amount in words (F116) uses our own small function, not `@persian-tools/persian-tools`. | Decided 2026-10-23. `lib/amountWords.ts`; one dependency fewer, wording under our control. |
 
 ### 10.2 Proposed platform choices
 

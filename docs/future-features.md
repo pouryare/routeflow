@@ -2397,6 +2397,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 **Library (2026-10-23):** `@persian-tools/persian-tools` has a number-to-words function; test it on real toman amounts before writing one by hand.
 
+**Built (2026-10-23), first slice:** the owner chose our own function over the library. `lib/amountWords.ts` (`numberToWords`, `tomanInWords`, tested in `tests/amount-words.test.ts`) writes whole amounts in the cheque style («یک هزار», groups joined with «و»). The delivery receipt prints the total in words under the figure (wrapped to the 384-dot width), and the payment confirmation shows the amount in words. Not yet: cheque entries, the payments list, and the rial wording.
+
 **Already in the app:** receipts are drawn on a 384-dot-wide canvas that both the Bluetooth thermal printer (ESC/POS) and the PDF share, with right-aligned text, Persian-aware line breaking and measurement (`lib/receiptLayout.ts`, `lib/deliveryReceipt.ts`). Amounts are whole toman with Persian digits (`lib/money.ts`, `lib/format.ts`). I found no number-to-words function anywhere.
 
 **Why parked:** Persian number words have grammar details (the connecting "و", the unit words for thousands, millions and billions, the toman versus rial wording); a wrong word is worse than none on a money document; the width of a long amount in words needs wrapping on the narrow receipt; wording must switch with the F-series toman and rial display setting if that is built.

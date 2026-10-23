@@ -88,6 +88,8 @@ export interface ReceiptData {
   phone?: string | null;
   lines: ReceiptLine[];
   totalLabel: string;
+  /** The total written out (F116), printed under the figure so it cannot be misread. */
+  totalWords?: string | null;
   paidLabel?: string | null;
   dueLabel?: string | null;
   driverName?: string | null;
@@ -195,6 +197,15 @@ export function drawReceipt(ctx: Ctx, data: ReceiptData, width: number): number 
   ctx.textAlign = "right";
   ctx.fillText("جمع کل", right, y);
   y += LINE + 2;
+
+  if (data.totalWords) {
+    ctx.font = "13px Vazirmatn, Tahoma, sans-serif";
+    for (const line of wrapText(measure, data.totalWords, inner)) {
+      ctx.fillText(line, right, y);
+      y += SMALL - 2;
+    }
+    y += 4;
+  }
 
   ctx.font = "15px Vazirmatn, Tahoma, sans-serif";
   for (const [label, value] of [
