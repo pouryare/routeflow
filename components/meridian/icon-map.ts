@@ -8,7 +8,7 @@ import {
   ArrowUpRight, ArrowLeft, ArrowRight, ArrowDown, ArrowUp, ArrowLeftRight,
   RotateCcw, Layers, Camera, FileText, Waypoints, ClipboardList,
   Radar, Sun, Contrast, Square, Banknote, Flag, Ellipsis, LocateFixed,
-  List, LayoutGrid, Repeat, PanelBottom, PanelRight, Phone, Maximize, Minimize,
+  List, LayoutGrid, Repeat, PanelBottom, PanelRight, Phone, Maximize, Minimize, Eye, EyeOff,
   type LucideIcon,
 } from "lucide-react";
 
@@ -37,6 +37,8 @@ export const ICONS = {
   minus: Minus,
   x: X,
   check: Check,
+  eye: Eye,
+  "eye-off": EyeOff,
   warn: TriangleAlert,
   package: Package,
   calendar: Calendar,

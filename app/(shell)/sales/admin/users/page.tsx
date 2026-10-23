@@ -1,5 +1,6 @@
 "use client";
 
+import { PasswordInput } from "@/components/TextInput";
 import { useUndoableAction } from "@/components/tapflow/useUndoableAction";
 import { labelCells } from "@/lib/tableCards";
 import SmartPicker from "@/components/mobile/SmartPicker";
@@ -310,14 +311,14 @@ export default function AdminUsersPage() {
             dir="ltr"
             className="rounded-md border border-border bg-surface-raised px-3 py-2 text-left font-mono text-sm text-text outline-none placeholder:text-text-faint focus:border-accent w-full"
           /></label>
-          <label className="flex flex-col gap-1 text-xs text-text-muted">رمز عبور<input
+          <PasswordInput
+            label="رمز عبور"
+            autoComplete="new-password"
             value={form.password}
-            onChange={(e) => setForm({ ...form, password: e.target.value })}
+            onChange={(password) => setForm({ ...form, password })}
             placeholder="حداقل ۸ نویسه"
-            type="password"
-            dir="ltr"
-            className="rounded-md border border-border bg-surface-raised px-3 py-2 text-left font-mono text-sm text-text outline-none placeholder:text-text-faint focus:border-accent w-full"
-          /></label>
+            className="mb-0"
+          />
           <div className="flex flex-col gap-1 text-xs text-text-muted">نقش
             <SmartPicker scope="admin-roles" label="نقش" items={ROLES.map((r) => ({ id: r, label: ROLE_LABEL[r] }))} value={form.role} onChange={(id) => setForm({ ...form, role: id as Role })} />
           </div>

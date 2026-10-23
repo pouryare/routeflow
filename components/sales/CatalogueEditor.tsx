@@ -8,6 +8,8 @@ import JalaliDatePicker from "@/components/JalaliDatePicker";
 import { toToman } from "@/lib/money";
 import { faToman } from "@/lib/format";
 import MarginHelperDrawer, { type DrawerProduct } from "./MarginHelperDrawer";
+import SmartPicker from "@/components/mobile/SmartPicker";
+import { ChipGroup } from "@/components/mobile/ChipGroup";
 
 interface ProductOption {
   id: number;
@@ -159,23 +161,17 @@ export default function CatalogueEditor({
         }}
       >
         <div className="md:col-span-2">
-          <label className={LABEL} htmlFor="k-product">
+          <span className={LABEL}>
             کالا
-          </label>
-          <select
-            id="k-product"
-            className={FIELD}
+          </span>
+          <SmartPicker
+            scope="products"
+            label="کالا"
+            items={products.map((p) => ({ id: String(p.id), label: p.name }))}
             value={kProduct}
-            onChange={(e) => setKProduct(e.target.value)}
-            required
-          >
-            <option value="">انتخاب کنید…</option>
-            {products.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </select>
+            onChange={setKProduct}
+            placeholder="انتخاب کنید…"
+          />
         </div>
         <div>
           <label className={LABEL} htmlFor="k-name">
@@ -233,44 +229,30 @@ export default function CatalogueEditor({
         }}
       >
         <div>
-          <label className={LABEL} htmlFor="r-product">
+          <span className={LABEL}>
             کالا
-          </label>
-          <select
-            id="r-product"
-            className={FIELD}
+          </span>
+          <SmartPicker
+            scope="products"
+            label="کالا"
+            items={products.map((p) => ({ id: String(p.id), label: p.name }))}
             value={rProduct}
-            onChange={(e) => {
-              setRProduct(e.target.value);
+            onChange={(id) => {
+              setRProduct(id);
               setRPackaging("");
             }}
-            required
-          >
-            <option value="">انتخاب کنید…</option>
-            {products.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </select>
+            placeholder="انتخاب کنید…"
+          />
         </div>
         <div>
-          <label className={LABEL} htmlFor="r-packaging">
+          <span className={LABEL}>
             بسته‌بندی
-          </label>
-          <select
-            id="r-packaging"
-            className={FIELD}
-            value={rPackaging}
-            onChange={(e) => setRPackaging(e.target.value)}
-          >
-            <option value="">همه بسته‌بندی‌ها</option>
-            {packagingsOf.map((k) => (
-              <option key={k.id} value={k.id}>
-                {k.name}
-              </option>
-            ))}
-          </select>
+          </span>
+          <ChipGroup
+            wrap
+            group={{ id: "r-packaging", label: "بسته‌بندی", mode: "single", value: rPackaging, onChange: (v) => setRPackaging(v as string),
+              options: [{ id: "", label: "همه بسته‌بندی‌ها" }, ...packagingsOf.map((k) => ({ id: String(k.id), label: k.name }))] }}
+          />
         </div>
         <div>
           <label className={LABEL} htmlFor="r-price">

@@ -3,11 +3,9 @@
 import { useState } from "react";
 import { friendlyError } from "@/lib/userMessage";
 import { Icon } from "@/components/meridian/Icon";
+import { PasswordInput } from "@/components/TextInput";
 
 const MIN_PASSWORD = 8;
-
-const FIELD =
-  "mb-[var(--space-3)] w-full rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] px-[var(--space-4)] py-[var(--space-2)] text-right font-mono text-[length:var(--text-base)] text-[var(--text)] outline-none focus:border-[var(--accent)] focus:shadow-[0_0_0_2px_var(--accent)]";
 
 /** Choosing a new password, in the two places it happens: the forced change after an owner
  *  set one (/password, F35) and a change by choice (/settings/security). One form so the two
@@ -67,42 +65,16 @@ export default function PasswordForm({
   return (
     <form onSubmit={onSubmit}>
       {askCurrent && (
-        <label className="flex flex-col gap-1 text-xs text-text-muted">
-          رمز فعلی
-          <input
-            type="password"
-            autoFocus={autoFocus}
-            autoComplete="current-password"
-            value={current}
-            onChange={(e) => setCurrent(e.target.value)}
-            dir="ltr"
-            className={FIELD}
-          />
-        </label>
+        <PasswordInput label="رمز فعلی" autoFocus={autoFocus} autoComplete="current-password" value={current} onChange={setCurrent} />
       )}
-      <label className="flex flex-col gap-1 text-xs text-text-muted">
-        رمز تازه (حداقل {MIN_PASSWORD.toLocaleString("fa-IR")} نویسه)
-        <input
-          type="password"
-          autoFocus={autoFocus && !askCurrent}
-          autoComplete="new-password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          dir="ltr"
-          className={FIELD}
-        />
-      </label>
-      <label className="flex flex-col gap-1 text-xs text-text-muted">
-        تکرار رمز
-        <input
-          type="password"
-          autoComplete="new-password"
-          value={repeat}
-          onChange={(e) => setRepeat(e.target.value)}
-          dir="ltr"
-          className={FIELD}
-        />
-      </label>
+      <PasswordInput
+        label={`رمز تازه (حداقل ${MIN_PASSWORD.toLocaleString("fa-IR")} نویسه)`}
+        autoFocus={autoFocus && !askCurrent}
+        autoComplete="new-password"
+        value={password}
+        onChange={setPassword}
+      />
+      <PasswordInput label="تکرار رمز" autoComplete="new-password" value={repeat} onChange={setRepeat} />
       {mismatch && <p className="mb-[var(--space-3)] text-[length:var(--text-sm)] text-[var(--warn)]">دو رمز یکی نیستند.</p>}
       {error && <p role="alert" className="mb-[var(--space-3)] text-[length:var(--text-sm)] text-[var(--crit)]">{error}</p>}
       <button

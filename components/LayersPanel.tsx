@@ -18,6 +18,7 @@ import { faDigits } from "@/lib/format";
 import type { ZoneKind, ZoneStatus } from "@/lib/trafficZones";
 import type { IconName } from "@/components/meridian/icon-map";
 import { Icon } from "@/components/meridian/Icon";
+import CheckField from "@/components/CheckField";
 
 /** The layers button, sitting with Leaflet's own controls.
  *
@@ -112,18 +113,14 @@ function Row({
   suffix?: React.ReactNode;
 }) {
   return (
-    <label
-      className={`flex cursor-pointer items-start gap-2.5 rounded-[var(--radius-md)] px-2 py-2 transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] ${
-        disabled ? "cursor-not-allowed opacity-45" : "hover:bg-white/5"
+    <CheckField
+      checked={checked}
+      disabled={disabled}
+      onChange={onChange}
+      className={`items-start gap-2.5 rounded-[var(--radius-md)] px-2 py-2 transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] ${
+        disabled ? "opacity-45" : "hover:bg-white/5"
       }`}
     >
-      <input
-        type="checkbox"
-        checked={checked}
-        disabled={disabled}
-        onChange={(e) => onChange(e.target.checked)}
-        className="mt-1 accent-[color:var(--accent)]"
-      />
       <span className="min-w-0 flex-1">
         <span className="flex items-center gap-1.5 text-[length:var(--text-sm)] text-text">
           <Icon name={icon} size="sm" />
@@ -132,7 +129,7 @@ function Row({
         </span>
         <span className="mt-0.5 block text-[length:var(--text-xs)] leading-5 text-text-faint">{hint}</span>
       </span>
-    </label>
+    </CheckField>
   );
 }
 

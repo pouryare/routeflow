@@ -3,17 +3,17 @@
 import Link from "next/link";
 import CollapsibleSection from "@/components/CollapsibleSection";
 import NavAppSetting from "@/components/NavAppSetting";
+import ToggleSwitch from "@/components/ToggleSwitch";
 import { Icon } from "@/components/meridian/Icon";
-import type { IconName } from "@/components/meridian/icon-map";
 import { faNum } from "@/lib/format";
 import { PRECISION_AUTO_ZOOM, type PrecisionMode } from "@/lib/precision";
+import CheckField from "@/components/CheckField";
 
 /** One labelled on/off switch of the settings panel. The five switches used to be five copies of the same markup. */
 function ToggleRow({
   title,
   hint,
   tightHint = false,
-  icon,
   checked,
   ariaLabel,
   onToggle,
@@ -22,7 +22,6 @@ function ToggleRow({
   hint: string;
   /** Some hints sit on a taller line; kept as they were. */
   tightHint?: boolean;
-  icon: IconName;
   checked: boolean;
   ariaLabel: string;
   onToggle: () => void;
@@ -33,21 +32,7 @@ function ToggleRow({
         <span className="text-[length:var(--text-sm)] text-text">{title}</span>
         <p className={`text-[length:var(--text-xs)] ${tightHint ? "leading-5 " : ""}text-text-faint`}>{hint}</p>
       </div>
-      <button
-        onClick={onToggle}
-        role="switch"
-        aria-checked={checked}
-        aria-label={ariaLabel}
-        className={`relative h-6 w-11 shrink-0 rounded-full border transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] ${
-          checked ? "border-accent bg-accent" : "border-border bg-surface"
-        }`}
-      >
-        <Icon name={icon} size="md" />
-        <span
-          className="absolute top-0.5 h-4 w-4 rounded-full bg-[color:var(--bg)] transition-[right,left] duration-[var(--dur-base)] ease-[var(--ease-out)]"
-          style={{ right: checked ? "calc(100% - 1.25rem)" : "0.125rem" }}
-        />
-      </button>
+      <ToggleSwitch on={checked} onChange={onToggle} label={ariaLabel} />
     </div>
   );
 }
@@ -76,7 +61,6 @@ export default function MapSettingsSection({
         <ToggleRow
           title="ثبت خودکار بازدید (GPS)"
           hint="وقتی نزدیک مشتری هستید پیشنهاد ثبت بازدید نمایش داده می‌شود"
-          icon="plus"
           checked={geofenceOn}
           ariaLabel="ثبت خودکار بازدید"
           onToggle={() => setGeofenceOn((v) => !v)}
@@ -86,30 +70,27 @@ export default function MapSettingsSection({
             position stream and the same battery cost as the toggle above, and
             presenting it as independent would imply otherwise. */}
         {geofenceOn && (
-          <label className="mt-2 flex items-start gap-2 text-[length:var(--text-xs)] leading-5 text-text-muted">
-            <input
-              type="checkbox"
-              checked={facilityGeofenceOn}
-              onChange={(e) => {
-                setFacilityGeofenceOn(e.target.checked);
-                localStorage.setItem("coverage_geofence_sites", e.target.checked ? "1" : "0");
-              }}
-              className="mt-0.5 accent-[color:var(--accent)]"
-            />
+          <CheckField
+            checked={facilityGeofenceOn}
+            onChange={(next) => {
+              setFacilityGeofenceOn(next);
+              localStorage.setItem("coverage_geofence_sites", next ? "1" : "0");
+            }}
+            className="mt-2 items-start text-[length:var(--text-xs)] leading-5 text-text-muted"
+          >
             <span>
               ثبت حضور در انبارها و مبدأ
               <span className="block text-text-faint">
                 رسیدن به انبار یا مبدأ هم ثبت می‌شود — مبنای گزارش ساعت کاری روزانه
               </span>
             </span>
-          </label>
+          </CheckField>
         )}
 
         <ToggleRow
           title="حالت رانندگی"
           hint="متن و دکمه‌ها بزرگ‌تر می‌شوند — برای استفاده با یک دست داخل خودرو"
           tightHint
-          icon="minimize"
           checked={driverMode}
           ariaLabel="حالت رانندگی"
           onToggle={() => {
@@ -123,7 +104,6 @@ export default function MapSettingsSection({
           title="نشانگرهای شکل‌دار"
           hint="به جای تکیه بر رنگ سبز/نارنجی/قرمز، هر وضعیت شکل خودش را می‌گیرد — دایره، مثلث، مربع"
           tightHint
-          icon="maximize"
           checked={shapedMarkers}
           ariaLabel="نشانگرهای شکل‌دار"
           onToggle={() => {
@@ -136,7 +116,6 @@ export default function MapSettingsSection({
         <ToggleRow
           title="نوار توقف بعدی"
           hint="توقف بعدی برنامه امروز را پایین نقشه نشان می‌دهد"
-          icon="layers"
           checked={nextStopOn}
           ariaLabel="نوار توقف بعدی"
           onToggle={() => {
@@ -149,7 +128,6 @@ export default function MapSettingsSection({
         <ToggleRow
           title="انتخاب چندتایی مناطق"
           hint="برای ویرایش‌های گروهی روی دسکتاپ"
-          icon="locate"
           checked={bulkMode}
           ariaLabel="حالت انتخاب چندتایی مناطق"
           onToggle={() => {

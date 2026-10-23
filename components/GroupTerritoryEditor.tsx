@@ -5,6 +5,8 @@ import { friendlyError } from "@/lib/userMessage";
 import { Icon } from "@/components/meridian/Icon";
 import type { DistrictProperties } from "@/lib/types";
 import { faNum } from "@/lib/format";
+import CheckField from "@/components/CheckField";
+import { ChipGroup } from "@/components/mobile/ChipGroup";
 
 export interface TerritoryGroup {
   id: number;
@@ -93,22 +95,11 @@ export default function GroupTerritoryEditor({
           placeholder="جستجوی منطقه یا محله" aria-label="جستجوی منطقه یا محله"
           className="min-w-48 flex-1 rounded-md border border-border bg-surface-raised px-3 py-2 text-right text-sm text-text outline-none placeholder:text-text-faint focus:border-accent"
         />
-        <select
-          aria-label="فیلتر مالک"
-          value={String(ownerFilter)}
-          onChange={(e) =>
-            setOwnerFilter(e.target.value === "all" ? "all" : e.target.value === "none" ? "none" : Number(e.target.value))
-          }
-          className="rounded-md border border-border bg-surface-raised px-3 py-2 text-sm text-text outline-none focus:border-accent"
-        >
-          <option value="all">همه محدوده‌ها</option>
-          <option value="none">بدون گروه</option>
-          {groups.map((g) => (
-            <option key={g.id} value={g.id}>
-              {g.name}
-            </option>
-          ))}
-        </select>
+        <ChipGroup
+          group={{ id: "owner", label: "فیلتر مالک", mode: "single", neutral: "all", value: String(ownerFilter),
+            onChange: (v) => setOwnerFilter(v === "all" ? "all" : v === "none" ? "none" : Number(v)),
+            options: [{ id: "none", label: "بدون گروه" }, ...groups.map((g) => ({ id: String(g.id), label: g.name }))] }}
+        />
       </div>
 
       <div className="mb-3 max-h-80 overflow-y-auto rounded-md border border-border">
@@ -120,13 +111,7 @@ export default function GroupTerritoryEditor({
               const owner = d.group_id === null ? null : groupById.get(d.group_id);
               return (
                 <li key={d.id} className="border-b border-border last:border-b-0">
-                  <label className="flex cursor-pointer items-center gap-3 px-3 py-2 hover:bg-surface-raised">
-                    <input
-                      type="checkbox"
-                      checked={selected.has(d.id)}
-                      onChange={() => toggle(d.id)}
-                      className="size-4 accent-[var(--accent)]"
-                    />
+                  <CheckField checked={selected.has(d.id)} onChange={() => toggle(d.id)} className="w-full gap-3 px-3 py-2 hover:bg-surface-raised">
                     <span className="flex-1 text-sm text-text">
                       {d.name}
                       {d.parent_name && <span className="text-text-faint"> — {d.parent_name}</span>}
@@ -143,7 +128,7 @@ export default function GroupTerritoryEditor({
                     ) : (
                       <span className="text-xs text-text-faint">بدون گروه</span>
                     )}
-                  </label>
+                  </CheckField>
                 </li>
               );
             })}
@@ -153,19 +138,12 @@ export default function GroupTerritoryEditor({
 
       <div className="flex flex-wrap items-center gap-2">
         <span className="font-mono text-xs text-text-muted">{faNum(selected.size)} انتخاب شده</span>
-        <select
-          aria-label="گروه مقصد"
-          value={String(target)}
-          onChange={(e) => setTarget(e.target.value === "none" ? "none" : Number(e.target.value))}
-          className="rounded-md border border-border bg-surface-raised px-3 py-2 text-sm text-text outline-none focus:border-accent"
-        >
-          {groups.map((g) => (
-            <option key={g.id} value={g.id}>
-              {g.name}
-            </option>
-          ))}
-          <option value="none">بدون گروه</option>
-        </select>
+        <ChipGroup
+          wrap
+          group={{ id: "target", label: "گروه مقصد", mode: "single", neutral: "__none", value: String(target),
+            onChange: (v) => { if (v !== "__none") setTarget(v === "none" ? "none" : Number(v)); },
+            options: [...groups.map((g) => ({ id: String(g.id), label: g.name })), { id: "none", label: "بدون گروه" }] }}
+        />
         <button
           type="button"
           onClick={assign}

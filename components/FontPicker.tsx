@@ -13,8 +13,8 @@
  *  `--font-ui` by app/globals.css under `:root[data-font="<id>"]`.
  */
 
-import { useDismissOnOutside } from "@/lib/useDismissOnOutside";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Button, Popover } from "@heroui/react";
+import { useEffect, useState } from "react";
 import {
   FONT_CHANGE_EVENT,
   applyFont,
@@ -57,10 +57,6 @@ export default function FontPicker({
 }) {
   const [font, setFont] = useFont();
   const [open, setOpen] = useState(false);
-  const root = useRef<HTMLDivElement>(null);
-
-  const dismiss = useCallback(() => setOpen(false), []);
-  useDismissOnOutside(open, dismiss, root);
 
   const current = FONT_CHOICES.find((f) => f.id === font) ?? FONT_CHOICES[0];
 
@@ -70,14 +66,12 @@ export default function FontPicker({
       : "flex h-9 w-9 items-center justify-center rounded-full border border-border bg-surface transition-[transform,border-color] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:border-accent active:scale-[0.98]";
 
   return (
-    <div ref={root} className={`relative ${className}`}>
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        aria-haspopup="true"
-        aria-expanded={open}
+    <div className={className}>
+      <Popover isOpen={open} onOpenChange={setOpen}>
+      <Button
+        isIconOnly
+        variant="ghost"
         aria-label={`قلم برنامه — اکنون ${current.label}`}
-        title={`قلم: ${current.label}`}
         className={trigger}
       >
         {/* No document glyph. «آ» below is set in the LIVE ui font, so the trigger is already a
@@ -91,19 +85,13 @@ export default function FontPicker({
         >
           آ
         </span>
-      </button>
+      </Button>
 
-      {open && (
-        <div
+        <Popover.Content placement="bottom end" offset={6} className="picker-pop">
+        <Popover.Dialog
           dir="rtl"
-          role="dialog"
           aria-label="انتخاب قلم"
-          /* Same edge maths as AccentPicker: the map trigger is pinned to the physical
-             right edge so its popover hangs leftward (`right-0`); the header trigger sits
-             at the visual left in this RTL bar so its popover opens rightward (`end-0`). */
-          className={`absolute z-[var(--z-panel)] w-[15rem] max-w-[calc(100vw-2rem)] rounded-[var(--radius-lg)] border border-border bg-surface-raised p-2.5 shadow-[var(--elev-2)] ${
-            variant === "map" ? "right-0 top-12" : "end-0 top-11"
-          }`}
+          className="w-[15rem] max-w-[calc(100vw-2rem)] p-2.5"
         >
           <p className="mb-2 px-1 font-mono text-[length:var(--text-xs)] uppercase tracking-[0.12em] text-text-faint">
             قلم
@@ -149,8 +137,9 @@ export default function FontPicker({
           <p className="mt-2 px-1 text-[length:var(--text-xs)] leading-5 text-text-faint">
             عنوان‌های درشت با قلم «داماوند» می‌مانند و تغییر نمی‌کنند.
           </p>
-        </div>
-      )}
+        </Popover.Dialog>
+        </Popover.Content>
+      </Popover>
     </div>
   );
 }
