@@ -17,7 +17,7 @@ afterAll(() => {
 
 async function seed(orgId: number, code: string, wholesale = false) {
   const db = getDb();
-  await db.exec(`INSERT OR IGNORE INTO organizations (id,name,slug,created_at) VALUES (${orgId},'O','o${orgId}','2026-01-01')`);
+  await db.exec(`INSERT INTO organizations (id,name,slug,created_at) VALUES (${orgId},'O','o${orgId}','2026-01-01') ON CONFLICT DO NOTHING`);
   const custId = Number(
     (await db
       .prepare(

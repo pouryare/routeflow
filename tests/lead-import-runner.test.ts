@@ -20,7 +20,7 @@ const ORG = 1;
 beforeAll(async () => {
   await dbReady();
   await getDb()
-    .prepare(`INSERT OR IGNORE INTO organizations (id, name, slug, created_at) VALUES (?, ?, ?, ?)`)
+    .prepare(`INSERT INTO organizations (id, name, slug, created_at) VALUES (?, ?, ?, ?) ON CONFLICT DO NOTHING`)
     .run(ORG, "org", "org", new Date().toISOString());
 });
 

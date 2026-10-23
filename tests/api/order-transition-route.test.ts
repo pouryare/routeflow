@@ -64,7 +64,7 @@ beforeEach(async () => {
   );
   const now = new Date().toISOString();
   await db.prepare(
-    "INSERT OR IGNORE INTO organizations (id,name,slug,created_at) VALUES (2,'B','b',?)"
+    "INSERT INTO organizations (id,name,slug,created_at) VALUES (2,'B','b',?) ON CONFLICT DO NOTHING"
   ).run(now);
   owner = Number(
     (await db

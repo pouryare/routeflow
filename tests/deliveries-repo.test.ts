@@ -31,11 +31,9 @@ let reason = 0;
 
 beforeEach(async () => {
   const db = getDb();
-  await db.exec("PRAGMA foreign_keys = OFF;");
   await db.exec(
-    "DELETE FROM order_events; DELETE FROM stock_reservations; DELETE FROM stock_movements; DELETE FROM batches; DELETE FROM delivery_line_batches; DELETE FROM delivery_lines; DELETE FROM deliveries; DELETE FROM payment_allocations; DELETE FROM payments; DELETE FROM delivery_stops; DELETE FROM delivery_runs; DELETE FROM order_lines; DELETE FROM orders; DELETE FROM packagings; DELETE FROM products; DELETE FROM customers; DELETE FROM facilities; DELETE FROM users WHERE id > 0;"
+    "PRAGMA foreign_keys = OFF; DELETE FROM order_events; DELETE FROM stock_reservations; DELETE FROM stock_movements; DELETE FROM batches; DELETE FROM delivery_line_batches; DELETE FROM delivery_lines; DELETE FROM deliveries; DELETE FROM payment_allocations; DELETE FROM payments; DELETE FROM delivery_stops; DELETE FROM delivery_runs; DELETE FROM order_lines; DELETE FROM orders; DELETE FROM packagings; DELETE FROM products; DELETE FROM customers; DELETE FROM facilities; DELETE FROM users WHERE id > 0; PRAGMA foreign_keys = ON;"
   );
-  await db.exec("PRAGMA foreign_keys = ON;");
   const now = new Date().toISOString();
   const u = db.prepare(
     "INSERT INTO users (username,password_hash,display_name,role,active,created_at,organization_id) VALUES (?,?,?,?,1,?,1)"

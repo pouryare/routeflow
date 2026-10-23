@@ -122,7 +122,7 @@ describe("orderEntryFor", () => {
         .prepare("INSERT INTO users (username, password_hash, display_name, role, group_id, active, created_at, organization_id) VALUES ('oe-seller', 'x:y', 'seller', 'phone_sales', ?, 1, '2026-01-01', 1)")
         .run(a.groupId)).lastInsertRowid
     );
-    await getDb().prepare("INSERT OR IGNORE INTO user_roles (user_id, role) VALUES (?, 'phone_sales')").run(sellerId);
+    await getDb().prepare("INSERT INTO user_roles (user_id, role) VALUES (?, 'phone_sales') ON CONFLICT DO NOTHING").run(sellerId);
     const owner = await orderEntryFor(ownerA());
     expect(owner.customers.map((c) => c.id)).toEqual(expect.arrayContaining([a.customerId, otherGroupCustomer]));
     expect(owner.customers.map((c) => c.id)).not.toContain(b.customerId);

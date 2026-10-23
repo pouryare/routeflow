@@ -64,8 +64,9 @@ async function notifs(typeCode: string): Promise<NotifRow[]> {
 async function routeLoud(userId: number, typeCode: string): Promise<void> {
   await getDb()
     .prepare(
-      `INSERT OR REPLACE INTO notification_prefs (user_id, type_code, channel, enabled, updated_at)
-       VALUES (?, ?, 'telegram', 1, ?)`
+      `INSERT INTO notification_prefs (user_id, type_code, channel, enabled, updated_at)
+       VALUES (?, ?, 'telegram', 1, ?)
+       ON CONFLICT (user_id, type_code, channel) DO UPDATE SET enabled = excluded.enabled, updated_at = excluded.updated_at`
     )
     .run(userId, typeCode, new Date().toISOString());
 }

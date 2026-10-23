@@ -24,7 +24,7 @@ beforeAll(async () => {
   founderId = Number(
     (await db.prepare("INSERT INTO users (username, password_hash, display_name, role, active, token_version, created_at, organization_id) VALUES ('f', 'x:y', 'F', 'platform_owner', 1, 0, '2026-01-01', 1)").run()).lastInsertRowid
   );
-  await db.prepare("INSERT OR IGNORE INTO user_roles (user_id, role) VALUES (?, 'platform_owner')").run(founderId);
+  await db.prepare("INSERT INTO user_roles (user_id, role) VALUES (?, 'platform_owner') ON CONFLICT DO NOTHING").run(founderId);
 });
 
 const req = (method: string, acting?: number) => {

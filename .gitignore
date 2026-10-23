@@ -99,3 +99,4 @@ graphify-out/
 /.cline/
 /.clinerules/
 /superpowers-cline/
+.pg-test-results.json

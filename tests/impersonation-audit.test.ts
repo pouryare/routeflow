@@ -38,18 +38,18 @@ describe("impersonated_by", () => {
      founder and a driver, so the two ids below are real rows. */
   beforeAll(async () => {
     const d = getDb();
-    await d.exec(`INSERT OR IGNORE INTO organizations (id,name,slug,created_at) VALUES (1,'O','o','2026-01-01')`);
+    await d.exec(`INSERT INTO organizations (id,name,slug,created_at) VALUES (1,'O','o','2026-01-01') ON CONFLICT DO NOTHING`);
     await d.prepare(
-      "INSERT OR IGNORE INTO users (id,username,password_hash,display_name,role,organization_id,active,created_at) VALUES (?,?,?,?,?,1,1,?)"
+      "INSERT INTO users (id,username,password_hash,display_name,role,organization_id,active,created_at) VALUES (?,?,?,?,?,1,1,?) ON CONFLICT DO NOTHING"
     ).run(1, "founder", "x", "founder", "platform_owner", "2026-01-01");
     await d.prepare(
-      "INSERT OR IGNORE INTO users (id,username,password_hash,display_name,role,organization_id,active,created_at) VALUES (?,?,?,?,?,1,1,?)"
+      "INSERT INTO users (id,username,password_hash,display_name,role,organization_id,active,created_at) VALUES (?,?,?,?,?,1,1,?) ON CONFLICT DO NOTHING"
     ).run(5, "driver", "x", "driver", "delivery_driver", "2026-01-01");
 
     /* order_events and activity_log both FK to a real row, so the fixture needs one
        customer and one order rather than a hand-written order_id. */
     await d.exec(
-      "INSERT OR IGNORE INTO customers (id,customer_code,business_name,lifecycle,synced_at,organization_id) VALUES (1,'C1','x','active','2026-01-01',1)"
+      "INSERT INTO customers (id,customer_code,business_name,lifecycle,synced_at,organization_id) VALUES (1,'C1','x','active','2026-01-01',1) ON CONFLICT DO NOTHING"
     );
     /* `orders` has FIVE NOT NULL columns and a CHECK over the 12-state machine, and
      * `INSERT OR IGNORE` swallows every one of them: the exec returns no error and the row

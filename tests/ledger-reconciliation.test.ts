@@ -49,8 +49,8 @@ const paid = async (clause: string) =>
 beforeAll(async () => {
   const db = getDb();
   await db.prepare(
-    `INSERT OR IGNORE INTO users (id, username, password_hash, display_name, role, organization_id, created_at)
-     VALUES (?, 'recon-tester', 'x', 'Recon Tester', 'owner', ?, '2026-01-01')`
+    `INSERT INTO users (id, username, password_hash, display_name, role, organization_id, created_at)
+     VALUES (?, 'recon-tester', 'x', 'Recon Tester', 'owner', ?, '2026-01-01') ON CONFLICT DO NOTHING`
   ).run(1, ORG);
   /* customers has NO created_at column -- verified with PRAGMA table_info on a fresh
      database: customer_code/business_name/synced_at are NOT NULL, lifecycle defaults
@@ -216,7 +216,7 @@ describe("the reconciliation gate", () => {
   it("keeps one tenant's payments out of another tenant's postings", async () => {
     await getDb()
       .prepare(
-        "INSERT OR IGNORE INTO organizations (id, name, slug, created_at) VALUES (2, 'Second', 'second', '2026-01-01')"
+        "INSERT INTO organizations (id, name, slug, created_at) VALUES (2, 'Second', 'second', '2026-01-01') ON CONFLICT DO NOTHING"
       )
       .run();
     const n = (

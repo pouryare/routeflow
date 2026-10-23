@@ -40,7 +40,7 @@ beforeAll(async () => {
         .prepare("INSERT INTO users (username, password_hash, display_name, role, group_id, active, created_at, organization_id) VALUES (?, 'x:y', ?, ?, ?, 1, '2026-01-01', ?)")
         .run(`cv-${role}-${tag}`, `${role} ${tag}`, role, gid, org)).lastInsertRowid
     );
-    await getDb().prepare("INSERT OR IGNORE INTO user_roles (user_id, role) VALUES (?, ?)").run(id, role);
+    await getDb().prepare("INSERT INTO user_roles (user_id, role) VALUES (?, ?) ON CONFLICT DO NOTHING").run(id, role);
     return id;
   };
   ids.sellerA = await mk("a", "phone_sales", 1, a.groupId);
