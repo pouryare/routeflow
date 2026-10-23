@@ -21,6 +21,24 @@ _Condensed 2026-10-23. Each finished piece of work is one line here; the full ea
   - [x] F89 prices a customer paid, beside the list price, on the customer page and map panel
   - [x] F35 a password an owner chose must be replaced at first sign-in (`/password`)
   - [x] F116 amount in words (our own function) on the delivery receipt and payment confirmation
+- [x] Small-difficulty batch (PR for `claude/project-thread-7n1enu`), first slices on existing code, no new library:
+  - [x] F84 help for today, CRM, payments, planner and runs
+  - [x] F58 «سبد همیشگی» in the quick order flow; F62 «خریدهای این مشتری» pinned in the product picker
+  - [x] F72 duplicate order warning (same customer, same products, open, last 24 hours)
+  - [x] F98 note search in the search overlay
+  - [x] F54 data quality page (`/sales/data-quality`)
+  - [x] F40 new customer checklist; F47 open cheques and complaints on the customer page
+  - [x] F142 snooze a task an hour or to tomorrow 9:00, at most three times
+  - [x] F133 required lessons per role and a manager table
+  - [x] F137 lead source report (`/sales/lead-sources`)
+  - [x] F101 all of a run's delivery notes in one print (`/print/run/[id]`)
+  - [x] F23 printable price list (`/print/price-list`)
+  - [x] F19 this month's commission so far on the seller's briefing
+  - [x] F67 this week against the same days last week on the manager's briefing
+  - [x] F16 owner morning digest by push and Telegram from 07:00
+  - [x] F8 «موعد سفارش امروز» panel for sellers
+  - [x] F112 what's-new card shown once, history at `/settings/updates`
+  - [x] Built markers in `docs/future-features.md` for these and PR #57's items; roadmap section 1 status and 1a
 
 ## Not done / gaps
 - [ ] Check the server's backup folder: before this batch the backup script never produced a database copy
@@ -39,12 +57,23 @@ _Condensed 2026-10-23. Each finished piece of work is one line here; the full ea
 - [ ] `tests/playwrightExtract.test.ts` and the smoke suite need Chromium the cloud container lacks
 - [ ] Ratchets (long functions 74, unused exports 221, raw role checks 57) only fall as files are touched
 - [ ] Offline covers delivery, receipts, cheques, complaints, order drafts and new customers only
+- [ ] F133: the required lessons per role (`content/academy/_manifest.json` `required_for`) are a guess for the owner to confirm
+- [ ] F16 sends only when the rule sweep runs after 07:00 Tehran; check the cron calls `/api/rules/run` in the morning
+- [ ] F23 is one list per company (prices have no per-group series) and has no shared link
+- [ ] F137 has no spend entry, so no return figure; it counts all time
+- [ ] F98 does not search task or complaint text; F72 checks only orders the caller can see
+- [ ] F142 does not cover the old map reminders or notifications; F8 has no dismiss
+- [ ] F112 card is on the sales briefing only, not the drivers' `/today`
+- [ ] F101 lists reversal lines one by one, while the total is net
+- [ ] Left for later: F104 (not reached; nothing blocks it), and, waiting on a missing prerequisite, F74, F77, F85, F86, F91, F114, F69, F31, F42, F34, F95, F140, F2, F5, F117, F38
 
 ## Next steps
-1. Merge PR #57 once CI is green
-2. Owner checks the backup folder and picks an off-site destination (F138 part 2)
-3. Record delay reasons on deliveries so the reason report's delay section fills
-4. Owner runs `delete-stale-branches.sh`
-5. Check the outside services from the Iranian server
-6. Decide the Android distribution route before F6 starts
-7. Data-layer decision record, then the PostgreSQL spike
+1. Merge the small-difficulty batch PR once CI is green
+2. Owner confirms the F133 required lessons and that the morning sweep runs after 07:00
+3. Owner checks the backup folder and picks an off-site destination (F138 part 2)
+4. Record delay reasons on deliveries so the reason report's delay section fills
+5. F104 customer snapshot sheet (small, nothing blocks it)
+6. Owner runs `delete-stale-branches.sh`
+7. Check the outside services from the Iranian server
+8. Decide the Android distribution route before F6 starts
+9. Data-layer decision record, then the PostgreSQL spike
