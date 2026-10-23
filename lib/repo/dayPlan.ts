@@ -112,7 +112,7 @@ const PLANNABLE_SQL = `
           AND o.status <> 'PLANNED'
      )
      @@SCOPE@@
-   GROUP BY o.id
+   GROUP BY o.id, c.id
    ORDER BY o.id DESC
    LIMIT ?`;
 

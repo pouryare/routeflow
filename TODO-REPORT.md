@@ -75,7 +75,7 @@ _Condensed 2026-10-23. Each finished piece of work is one line here; the full ea
   - [x] Baseline migration generated from the SQLite schema (`npm run db:pg:generate`; CI fails if it drifts), applied with node-pg-migrate; Squawk lints later migrations; Kysely types in `lib/database/pg-schema.d.ts`
   - [x] `lib/database/pg.ts`: the same `Db` interface on `pg` (placeholders, insert ids, camelCase aliases, numbers, one client per transaction, statement-level rollback like SQLite); `DB_DIALECT=postgres` switches to it
   - [x] Portable fixes found on the way: null-safe `IS ?`, `date(...)` arithmetic, two-argument `MAX`, constraint checks by code (`lib/database/errors.ts`), test fixtures without `INSERT OR IGNORE`
-  - [x] CI job: builds the image, checks the extensions, the baseline and the types, and runs the unit suite on Postgres: 510 of 597 files pass, the rest are on `tests/pg-known-failures.txt`
+  - [x] CI job: builds the image, checks the extensions, the baseline and the types, and runs the unit suite on Postgres: 520 of 597 files pass, the rest are on `tests/pg-known-failures.txt`
 
 ## Not done / gaps
 - [ ] HeroUI move: `BottomSheet`, `FilterSheet`, `DrillSheet`, `CustomerSheet` and the other sheets are still hand-built; answer buttons (`tf-opt`), chips, tabs, tables, Jalali pickers outside the date step and menus are not moved yet
@@ -95,7 +95,7 @@ _Condensed 2026-10-23. Each finished piece of work is one line here; the full ea
 - [ ] Founder's second login step off until turned on at `/switch`; confirm the live `SESSION_SECRET` is 32+ characters
 - [ ] Unverified claims in parked features: F51, F56, F57, F67, F69, F71, F73, F75, F97, F102, F113, F147 (`docs/roadmap.md` section 8)
 - [ ] Open decisions: Android distribution route and iPhone support; off-site backup machine (decided: a second owned machine over SSH; which one is open); charts library vs custom
-- [ ] PostgreSQL phase 3: 87 test files still fail on Postgres (strict GROUP BY, `SELECT DISTINCT ... ORDER BY`, SQLite-only test helpers such as `sqlite_master` and `rawSqlite`, a few aliases); `xid8` sync watermark; row-level security. Phases 4–5 (server, backups, cut-over, removing SQLite) not started
+- [ ] PostgreSQL phase 3: 77 test files still fail on Postgres (strict GROUP BY, `SELECT DISTINCT ... ORDER BY`, SQLite-only test helpers such as `sqlite_master` and `rawSqlite`, a few aliases); `xid8` sync watermark; row-level security. Phases 4–5 (server, backups, cut-over, removing SQLite) not started
 - [ ] The app has not been clicked through on Postgres yet, only tested; the demo seed (`npm run seed:demo`) writes SQLite only
 - [ ] Inside a Postgres transaction each statement runs in a savepoint (SQLite's statement-level rollback); costs three round trips per statement, revisit once the code no longer relies on it
 - [ ] Seed scripts in `scripts/` (demo seed included) still write SQLite directly; they move in phase 3
