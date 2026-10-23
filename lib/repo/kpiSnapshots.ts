@@ -663,7 +663,7 @@ export async function kpiBoard(
   const targetRows = await db
     .prepare(
       `SELECT metric, target_value FROM targets
-        WHERE organization_id = ? AND period = ? AND user_id IS ? AND group_id IS ?`
+        WHERE organization_id = ? AND period = ? AND user_id IS NOT DISTINCT FROM ? AND group_id IS NOT DISTINCT FROM ?`
     )
     .all(
       organizationId,

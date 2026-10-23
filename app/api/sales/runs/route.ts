@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireRole, groupFilter, canReachGroup, orgScopeId } from "@/lib/session";
 import { DeliveryError } from "@/lib/delivery";
 import { findDriverInOrg, listRuns, newRun } from "@/lib/repo/deliveryRunsAdmin";
+import { isUniqueViolation } from "@/lib/database/errors";
 
 const PLANNERS = ["platform_owner", "owner", "group_manager"] as const;
 
@@ -50,7 +51,7 @@ export async function POST(req: NextRequest) {
     }
     // UNIQUE(driver, date). Two runs for one driver on one day is always a mistake, and
     // an unhandled constraint here would be a 500 on an ordinary double-click.
-    if (e instanceof Error && /UNIQUE/.test(e.message)) {
+    if (isUniqueViolation(e)) {
       return NextResponse.json(
         { ok: false, error: "برای این راننده در این تاریخ مسیر ثبت شده است" },
         { status: 400 }

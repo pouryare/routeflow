@@ -17,6 +17,7 @@ const ROOT = join(__dirname, "..");
 const BANNED: { re: RegExp; use: string }[] = [
   { re: /\bdate\(\s*'now'/i, use: "pass tehranTodayIso() as a parameter (date('now') is the UTC day)" },
   { re: /\bdatetime\(\s*'now'/i, use: "pass new Date().toISOString() as a parameter" },
+  { re: /\bdate\(\s*(\?|\w+\.\w+\s*,)/, use: "addDays() from lib/database/dialect, or compute the date in TypeScript" },
   { re: /\bjulianday\(/i, use: "daysBetween() from lib/database/dialect" },
   { re: /\bstrftime\(/i, use: "format the date in TypeScript" },
   { re: /\bgroup_concat\(/i, use: "stringAgg() from lib/database/dialect" },
@@ -25,6 +26,7 @@ const BANNED: { re: RegExp; use: string }[] = [
   { re: /\bPRAGMA\b/, use: "nothing outside lib/database/: the schema is fixed once migrations have run" },
   { re: /\bsqlite_master\b/i, use: "nothing outside lib/database/" },
   { re: /\bIFNULL\(/i, use: "COALESCE()" },
+  { re: /\bIS\s+\?/i, use: "IS NOT DISTINCT FROM ? (null-safe equality in both engines)" },
 ];
 
 /* The one-shot CRM column migration, which is SQLite's own upgrade path and has no PostgreSQL

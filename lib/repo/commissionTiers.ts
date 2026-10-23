@@ -78,7 +78,7 @@ async function rowsFor(
   return await db
     .prepare(
       `SELECT ${SELECT_COLS} FROM commission_tiers
-        WHERE organization_id = ? AND salesperson_user_id IS ?
+        WHERE organization_id = ? AND salesperson_user_id IS NOT DISTINCT FROM ?
         ORDER BY id`,
     )
     .all(organizationId, salespersonId) as unknown as TierRow[];
@@ -158,7 +158,7 @@ export async function savePlan(input: {
   await db.tx(async () => {
     await db.prepare(
       `DELETE FROM commission_tiers
-        WHERE organization_id = ? AND salesperson_user_id IS ? AND valid_from = ?`,
+        WHERE organization_id = ? AND salesperson_user_id IS NOT DISTINCT FROM ? AND valid_from = ?`,
     ).run(input.organization_id, input.salesperson_user_id, validFrom);
 
     const ins = db.prepare(
@@ -195,7 +195,7 @@ export async function deletePlan(
 ): Promise<void> {
   await db.prepare(
     `DELETE FROM commission_tiers
-      WHERE organization_id = ? AND salesperson_user_id IS ? AND valid_from = ?`,
+      WHERE organization_id = ? AND salesperson_user_id IS NOT DISTINCT FROM ? AND valid_from = ?`,
   ).run(organizationId, salespersonUserId, validFrom.slice(0, 10));
 }
 

@@ -3,6 +3,7 @@ import { requireRole, canReachGroup, orgScopeId } from "@/lib/session";
 import { DeliveryError } from "@/lib/delivery";
 import { addOrderToRun, orderForRun, runGroup } from "@/lib/repo/deliveryRunsAdmin";
 import { MANAGE_ROLES } from "@/lib/roles";
+import { isUniqueViolation } from "@/lib/database/errors";
 
 /* A function, not a module-level response: a Response body can be read once, so the second request
    to reach this answer got an empty body. */
@@ -45,7 +46,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     if (e instanceof DeliveryError) {
       return NextResponse.json({ ok: false, error: e.message }, { status: 400 });
     }
-    if (e instanceof Error && /UNIQUE/.test(e.message)) {
+    if (isUniqueViolation(e)) {
       return NextResponse.json(
         { ok: false, error: "این سفارش قبلاً روی این مسیر است" },
         { status: 400 }
