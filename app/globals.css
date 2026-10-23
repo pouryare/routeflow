@@ -34,6 +34,7 @@
 @import "@heroui/styles/components/avatar.css" layer(components);
 @import "@heroui/styles/components/skeleton.css" layer(components);
 @import "@heroui/styles/components/empty-state.css" layer(components);
+@import "@heroui/styles/components/disclosure.css" layer(components);
 @import "@heroui/styles/utilities";
 @import "@heroui/styles/variants";
 
@@ -3537,9 +3538,10 @@ body {
   overflow: hidden;
 }
 .meridian .sect__head { display: flex; align-items: center; gap: 6px; }
+.meridian .sect__heading { flex: 1; min-width: 0; margin: 0; font: inherit; display: flex; }
 .meridian .sect__btn {
   flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px;
-  padding: 11px 13px; border: 0; background: transparent; cursor: pointer;
+  min-height: 44px; padding: 11px 13px; border: 0; background: transparent; cursor: pointer;
   font-family: var(--fa); font-size: 13.5px; color: var(--ink); text-align: start;
   transition: background 160ms var(--ease);
 }
