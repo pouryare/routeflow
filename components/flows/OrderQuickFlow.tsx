@@ -9,10 +9,10 @@ import FlowDone from "@/components/tapflow/FlowDone";
 import { useFlowHost } from "@/components/tapflow/useFlowHost";
 import { EMPTY_CONTEXT, type FlowContext, type FlowState } from "@/lib/crm/flows/types";
 import {
-  itemsFromLastOrder, orderChips, orderLastSummary, orderQuickFlow, orderRequest, pickLastOrder,
-  type CatalogueProduct,
+  itemsFromLastOrder, orderChips, orderLastSummary, orderQuickFlow, orderRequest, pickLastOrder, usualCounts,
+  type BasketLine, type CatalogueProduct,
 } from "@/lib/flows/orderQuick";
-import { faNum } from "@/lib/format";
+import { faNum, faToman } from "@/lib/format";
 import { faJalaliDate, tehranTodayIso } from "@/lib/jalali";
 
 export interface QuickCustomer {
@@ -23,7 +23,15 @@ export interface QuickCustomer {
   credit_limit_toman: number | null;
 }
 
-type Last = { for: number; status: "ready" | "none"; items: NonNullable<FlowContext["items"]>; summary: string };
+type Last = {
+  for: number;
+  status: "ready" | "none";
+  items: NonNullable<FlowContext["items"]>;
+  summary: string;
+  /** F58: the usual basket as `adjust` JSON, when it differs from the last order. */
+  usual?: string;
+  usualSummary?: string;
+};
 
 const FAILURE = "سفارش ثبت نشد. اینترنت را بررسی کنید و دوباره تلاش کنید.";
 
@@ -70,6 +78,7 @@ export default function OrderQuickFlow({
       try {
         const list = (await (await fetch(`/api/sales/orders?customer=${who}&limit=10`)).json()) as {
           orders?: { id: number; status: string; order_date: string }[];
+          usual?: BasketLine[];
         };
         const o = pickLastOrder(list.orders ?? []);
         if (!o) {
@@ -87,11 +96,23 @@ export default function OrderQuickFlow({
         }
         const total = items.reduce((s, i) => s + (i.qty ?? 0) * (i.price ?? 0), 0);
         const recap = orderLastSummary(faJalaliDate(o.order_date), items.map((i) => ({ label: i.label.split(" · ")[0], packs: i.qty ?? 0 })), total);
+        /* F58: usual lines the last order did not have join the items at zero, so «same as
+           last time» is unchanged and the stepper can still reach them. */
+        const usualItems = itemsFromLastOrder(list.usual ?? [], products).items;
+        const all = [...items, ...usualItems.filter((u) => !items.some((i) => i.id === u.id)).map((u) => ({ ...u, qty: 0 }))];
+        const counts = usualCounts(all, usualItems);
+        const usualTotal = usualItems.reduce((s, i) => s + (i.qty ?? 0) * (i.price ?? 0), 0);
         setLast({
           for: who,
           status: "ready",
-          items,
+          items: all,
           summary: dropped > 0 ? `${recap} · ${faNum(dropped)} قلم دیگر قابل سفارش نیست` : recap,
+          ...(counts
+            ? {
+                usual: JSON.stringify(counts),
+                usualSummary: `${usualItems.map((i) => `${i.label.split(" · ")[0]} ${faNum(i.qty ?? 0)}`).join("، ")} · ${faToman(usualTotal)}`,
+              }
+            : {}),
         });
       } catch {
         if (alive) setLast({ for: who, status: "none", items: [], summary: "" });
@@ -114,6 +135,7 @@ export default function OrderQuickFlow({
         today,
         last: who === null ? "loading" : mine ? mine.status : "loading",
         last_summary: mine?.summary ?? "",
+        ...(mine?.usual ? { usual: mine.usual, usual_summary: mine.usualSummary ?? "" } : {}),
         ...(c ? { customer_id: String(c.id), customer: c.business_name, debt: String(c.debt) } : {}),
         ...(c?.credit_limit_toman != null ? { credit_limit: String(c.credit_limit_toman) } : {}),
       },

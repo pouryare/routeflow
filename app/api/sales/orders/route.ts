@@ -6,6 +6,7 @@ import { OrderError } from "@/lib/orders";
 import { orderMixIn, ordersIn, placeOrder } from "@/lib/repo/routeAdapters";
 import { parseOrderRequest } from "@/lib/orderRequest";
 import { customerPriceHistory } from "@/lib/repo/customerPrices";
+import { customerUsualBasket } from "@/lib/repo/usualBasket";
 import {
   LeadPromotionError,
   promoteLeadToCustomer,
@@ -51,7 +52,10 @@ export async function GET(req: NextRequest) {
   // F89: the last prices this shop paid per product and pack, beside the list price then.
   const prices = customerId ? customerPriceHistory(scope, Number(customerId)) : [];
 
-  return NextResponse.json({ ok: true, orders, products, prices });
+  // F58: the lines this shop orders most of the time, for the repeat-order flow.
+  const usual = customerId ? customerUsualBasket(scope, Number(customerId)) : [];
+
+  return NextResponse.json({ ok: true, orders, products, prices, usual });
 }
 
 export async function POST(req: NextRequest) {
