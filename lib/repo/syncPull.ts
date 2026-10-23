@@ -17,15 +17,34 @@ export interface PullResult {
 const EPOCH = "1970-01-01T00:00:00.000Z";
 
 /** Rows this session may see that changed since `since` (null = a full snapshot), plus
- *  tombstones, plus the new watermark (the max change-time seen, so an immediate re-pull
- *  returns nothing).
+ *  tombstones, plus the new watermark.
+ *
+ *  The watermark is the newest change seen (rows AND tombstones), but never later than the
+ *  millisecond BEFORE this pull started. The filters are strict (`> since`) and timestamps
+ *  are millisecond ISO strings, so a watermark equal to "now" would hide anything written
+ *  later in that same millisecond -- a delete stamped at T right after a pull that saw a
+ *  row at T was simply never sent, and the device kept the deleted row for good. Capping
+ *  the watermark at start-1ms means the current millisecond is always asked for again: a
+ *  row stamped in it may arrive twice, which is harmless because the device upserts by id
+ *  and a tombstone deletes by id. A pull whose changes are all older than its own
+ *  millisecond still advances to the newest of them, so an idle re-pull returns nothing.
+ *
+ *  This holds because every timestamp here comes from the same server clock and each
+ *  write is stamped and committed in one synchronous step; a writer in another process
+ *  with a long transaction could still commit an older stamp after a pull read past it.
  *
  *  A driver gets their own runs and everything a stop needs; a salesperson / manager /
  *  owner gets their group's recent orders and customers. The catalogue
  *  (products / prices / packagings) goes to everyone in full -- it is small and a driver
  *  at a door needs a price. */
-export function pullSince(session: Session, since: string | null): PullResult {
+export function pullSince(
+  session: Session,
+  since: string | null,
+  now: Date = new Date()
+): PullResult {
   const db = getDb();
+  // Taken before any read: everything stamped before this millisecond is already visible.
+  const settled = new Date(now.getTime() - 1).toISOString();
   const org = session.organizationId;
   const from = since ?? EPOCH;
   const rows: PullRow[] = [];
@@ -256,9 +275,12 @@ export function pullSince(session: Session, since: string | null): PullResult {
     );
   }
 
+  const tombstones = tombstonesSince(org, since);
+  for (const t of tombstones) seen(t.deleted_at);
+
   return {
-    watermark: maxChange,
+    watermark: maxChange > settled ? settled : maxChange,
     rows,
-    tombstones: tombstonesSince(org, since),
+    tombstones,
   };
 }
