@@ -42,6 +42,8 @@ export interface RunStop {
   id: number;
   order_id: number;
   order_no: string;
+  /** F132: the driver sees an urgent stop tagged. */
+  priority: string;
   customer_id: number;
   customer_name: string;
   address: string | null;
@@ -331,7 +333,7 @@ export function readRun(db: DatabaseSync, runId: number): RunDetail | null {
   const stopRows = db
     .prepare(
       `SELECT ds.id, ds.order_id, ds.status, ds.collected_toman, ds.sort_order, ds.notes,
-              o.order_no, o.customer_id,
+              o.order_no, o.priority, o.customer_id,
               c.business_name AS customer_name, c.address, c.phone, c.lat, c.lng
          FROM delivery_stops ds
          JOIN orders o ON o.id = ds.order_id

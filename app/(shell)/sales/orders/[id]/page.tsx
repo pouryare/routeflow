@@ -18,6 +18,9 @@ import BentoStrip, {
 } from "@/components/BentoStrip";
 import { isVanRole, MANAGE_ROLES } from "@/lib/roles";
 import ComplaintFromOrder from "@/components/flows/ComplaintFromOrder";
+import OrderPriorityToggle from "@/components/sales/OrderPriorityToggle";
+import PriorityTag from "@/components/sales/PriorityTag";
+import { canSetPriority } from "@/lib/orderPriority";
 
 export const dynamic = "force-dynamic";
 
@@ -93,6 +96,11 @@ export default async function OrderDetailPage({
           }
         >
           {order.status === "DRAFT" && <ConfirmOrderButton orderId={order.id} />}
+          {MANAGE_ROLES.includes(session.role) && canSetPriority(order.status) ? (
+            <OrderPriorityToggle orderId={order.id} priority={order.priority} />
+          ) : (
+            <PriorityTag priority={order.priority} />
+          )}
         </BentoIdentity>
 
         <BentoTile

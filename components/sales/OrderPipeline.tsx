@@ -15,6 +15,7 @@ import { useIsNarrow } from "@/lib/useIsNarrow";
 import Pocketed from "@/components/meridian/Pocketed";
 import Avatar from "@/components/meridian/Avatar";
 import { STAGES, stageOf, moveRefusal, type StageKey } from "./orderStage";
+import PriorityTag from "@/components/sales/PriorityTag";
 
 /** Documents an order carries by stage: an invoice once priced, a delivery note once on
  *  a van. Drives the peeking slips behind the card. */
@@ -28,6 +29,8 @@ const STAGE_DOCS: Record<StageKey, { papers: 0 | 1 | 2; tone?: "good" | "warn" |
 export interface PipelineOrder {
   id: number;
   order_no: string;
+  /** Optional so callers built before F132 still type-check; absent reads as NORMAL. */
+  priority?: string;
   customer_name: string;
   salesperson_name: string | null;
   status: string;
@@ -266,7 +269,7 @@ export default function OrderPipeline({ orders }: { orders: PipelineOrder[] }) {
                   >
                     <Icon name="package" size="md" />
                     <div className="top">
-                      <span className="n">{o.customer_name}</span>
+                      <span className="n">{o.customer_name} <PriorityTag priority={o.priority} /></span>
                       <span className="amt">{faNum(o.total_toman)}</span>
                     </div>
                     <div className="m">
