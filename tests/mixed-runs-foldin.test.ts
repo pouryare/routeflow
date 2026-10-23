@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { sqliteOnly, tableInfo, tableNames } from "./helpers/schema";
 
 /** Phase 2: one run per driver-day, holding orders AND visits.
  *
@@ -97,13 +98,8 @@ const SESSION = {
 afterAll(() => {
   for (const s of ["", "-wal", "-shm"]) fs.rmSync(`${dbPath}${s}`, { force: true });
 });
-async function tableNames(): Promise<string[]> {
-  return (await db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all() as { name: string }[])
-    .map((r) => r.name);
-}
-
 async function colsOf(table: string): Promise<string[]> {
-  return (await db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[]).map((c) => c.name);
+  return (await tableInfo(table) as { name: string }[]).map((c) => c.name);
 }
 
 async function tableSql(table: string): Promise<string> {
@@ -139,7 +135,7 @@ describe("Phase 2 — lead_runs folded into delivery_runs", () => {
     expect(await tableNames()).not.toContain("lead_runs");
   });
 
-  it("lead_run_stops is created pointing at delivery_runs from the start", async () => {
+  it.skipIf(sqliteOnly)("lead_run_stops is created pointing at delivery_runs from the start", async () => {
     const sql = await tableSql("lead_run_stops");
     expect(sql).toContain("REFERENCES delivery_runs(id)");
     expect(sql).not.toContain("REFERENCES lead_runs(id)");
@@ -153,7 +149,7 @@ describe("Phase 2 — lead_runs folded into delivery_runs", () => {
     expect(await count("lead_run_stops")).toBe(2);
   });
 
-  it("gives delivery_runs a `kind`, defaulted so existing rows read as delivery-only", async () => {
+  it.skipIf(sqliteOnly)("gives delivery_runs a `kind`, defaulted so existing rows read as delivery-only", async () => {
     expect(await colsOf("delivery_runs")).toContain("kind");
     expect(await tableSql("delivery_runs")).toContain("'mixed'");
   });
@@ -177,7 +173,7 @@ describe("Phase 2 — lead_runs folded into delivery_runs", () => {
     expect(n.n).toBe(2);
   });
 
-  it("re-points lead_run_stops.run_id at delivery_runs(id)", async () => {
+  it.skipIf(sqliteOnly)("re-points lead_run_stops.run_id at delivery_runs(id)", async () => {
     const sql = await tableSql("lead_run_stops");
     expect(sql).toContain("REFERENCES delivery_runs(id)");
     expect(sql).not.toContain("REFERENCES lead_runs(id)");

@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterAll } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
-import { clearLedger } from "./helpers/ledgerTeardown";
+import { clearLedger, dropTrigger } from "./helpers/ledgerTeardown";
 
 const testDbPath = path.join(
   os.tmpdir(),
@@ -32,14 +32,16 @@ beforeEach(async () => {
   const db = getDb();
   /* FIRST: the ledger is append-only and its AR leg holds a real FK to customers, so the
      `DELETE FROM customers` below would fail once a receipt has been posted. Children
-     before parents. Note the two `DROP TRIGGER` lines in that exec are for `activities`,
+     before parents. Note the two `dropTrigger` calls below are for `activities`,
      a DIFFERENT table and a long-standing fixture convenience -- nothing to do with the
      ledger, whose triggers this helper works around by recreating the table rather than
      disabling the guarantee. */
   await clearLedger(db);
+  await dropTrigger(db, "activities_no_update", "activities");
+  await dropTrigger(db, "activities_no_delete", "activities");
 
   await db.exec(
-    "DROP TRIGGER IF EXISTS activities_no_update; DROP TRIGGER IF EXISTS activities_no_delete; DELETE FROM activities; DELETE FROM order_events; DELETE FROM stock_reservations; DELETE FROM deliveries; DELETE FROM delivery_lines; DELETE FROM delivery_line_batches; DELETE FROM stock_movements; DELETE FROM batches; DELETE FROM payment_allocations; DELETE FROM payments; DELETE FROM delivery_stops; DELETE FROM delivery_runs; DELETE FROM order_lines; DELETE FROM orders; DELETE FROM packagings; DELETE FROM products; DELETE FROM customers; DELETE FROM users WHERE id > 0;"
+    "DELETE FROM activities; DELETE FROM order_events; DELETE FROM stock_reservations; DELETE FROM deliveries; DELETE FROM delivery_lines; DELETE FROM delivery_line_batches; DELETE FROM stock_movements; DELETE FROM batches; DELETE FROM payment_allocations; DELETE FROM payments; DELETE FROM delivery_stops; DELETE FROM delivery_runs; DELETE FROM order_lines; DELETE FROM orders; DELETE FROM packagings; DELETE FROM products; DELETE FROM customers; DELETE FROM users WHERE id > 0;"
   );
 
   const now = new Date().toISOString();

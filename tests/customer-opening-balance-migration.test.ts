@@ -2,6 +2,7 @@ import { describe, it, expect, afterAll } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
+import { sqliteOnly, tableInfo } from "./helpers/schema";
 
 const testDbPath = path.join(
   os.tmpdir(),
@@ -17,7 +18,7 @@ afterAll(() => {
 
 describe("opening balance migration", () => {
   it("drops the debt_* columns and adds opening_balance_toman defaulting to 0", async () => {
-    const cols = await getDb().prepare("PRAGMA table_info(customers)").all() as {
+    const cols = await tableInfo("customers") as {
       name: string;
       type: string;
       notnull: number;
@@ -43,7 +44,7 @@ describe("opening balance migration", () => {
     expect(row.opening_balance_toman).toBe(0);
   });
 
-  it("keeps the per-tenant unique customer_code constraint", async () => {
+  it.skipIf(sqliteOnly)("keeps the per-tenant unique customer_code constraint", async () => {
     const sql = (
       await db_sql()
     );

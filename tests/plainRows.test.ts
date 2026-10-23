@@ -22,7 +22,9 @@ beforeAll(async () => {
     .run("C1", "رستوران نمونه", new Date().toISOString());
 });
 
-describe("rows straight from node:sqlite", () => {
+/* node:sqlite's own behaviour, so only asked of SQLite: pg returns ordinary objects, and
+   plain() below is what keeps the pages safe on both. */
+describe.skipIf(process.env.DB_DIALECT === "postgres")("rows straight from node:sqlite", () => {
   it("have a null prototype, which is the whole problem", async () => {
     // Documenting the behaviour this helper exists for. React refuses to serialise a
     // null-prototype object across the server/client boundary: "Only plain objects, and

@@ -2,6 +2,7 @@ import { describe, it, expect, afterAll } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
+import { tableInfo } from "./helpers/schema";
 
 const testDbPath = path.join(
   os.tmpdir(),
@@ -20,8 +21,7 @@ afterAll(() => {
 
 describe("facilities schema", () => {
   it("allows a facility with no location", async () => {
-    const db = getDb();
-    const info = await db.prepare("PRAGMA table_info(facilities)").all() as {
+    const info = await tableInfo("facilities") as {
       name: string;
       notnull: number;
     }[];

@@ -2,6 +2,7 @@ import { describe, it, expect, afterAll } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
+import { sqliteOnly, tableInfo } from "./helpers/schema";
 
 const dbPath = path.join(os.tmpdir(), `rf-product-log-${Date.now()}-${Math.random().toString(36).slice(2)}.db`);
 process.env.ROUTEFLOW_DB_PATH = dbPath;
@@ -18,9 +19,8 @@ afterAll(() => {
 const session = (org: number) => ({ organizationId: org, role: "owner", user: { id: 1 } }) as never;
 
 describe("product change log", () => {
-  it("the widened activity log keeps its columns and is rebuilt only once", async () => {
-    const db = getDb();
-    const cols = (await db.prepare("PRAGMA table_info(activity_log)").all() as { name: string }[]).map((c) => c.name);
+  it.skipIf(sqliteOnly)("the widened activity log keeps its columns and is rebuilt only once", async () => {
+    const cols = (await tableInfo("activity_log") as { name: string }[]).map((c) => c.name);
     expect(cols).toContain("changed_by_user_id");
     expect(cols).toContain("impersonated_by");
     applyQuickWins(await rawSqlite()); // a second run is a no-op

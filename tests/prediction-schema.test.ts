@@ -2,6 +2,7 @@ import { describe, it, expect, afterAll } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
+import { indexExists, tableInfo } from "./helpers/schema";
 
 const testDbPath = path.join(
   os.tmpdir(),
@@ -22,13 +23,11 @@ describe("prediction schema", () => {
       expect(await db.prepare(`SELECT COUNT(*) n FROM ${t}`).get(), t).toBeTruthy();
       expect((TENANT_TABLES as readonly string[]).includes(t), t).toBe(true);
     }
-    expect(
-      await db.prepare("SELECT name FROM sqlite_master WHERE type='index' AND name='ix_forecasts_read'").get()
-    ).toBeTruthy();
+    expect(await indexExists("ix_forecasts_read")).toBe(true);
   });
 
   it("adds the five learned_* columns to capacity_factors", async () => {
-    const cols = (await getDb().prepare("PRAGMA table_info(capacity_factors)").all() as { name: string }[]).map(
+    const cols = (await tableInfo("capacity_factors") as { name: string }[]).map(
       (c) => c.name
     );
     for (const c of [

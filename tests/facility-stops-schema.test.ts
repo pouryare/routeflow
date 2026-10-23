@@ -2,6 +2,7 @@ import { describe, it, expect, afterAll } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
+import { tableInfo } from "./helpers/schema";
 
 const testDbPath = path.join(
   os.tmpdir(),
@@ -79,9 +80,8 @@ describe("facility stops schema", () => {
   it("carries no organization_id of its own", async () => {
     // Both reach delivery_runs, which is in TENANT_TABLES, so the tenant sweep already
     // stamps them. A redundant scope column is an invitation to filter against the wrong one.
-    const db = getDb();
     for (const t of ["run_facility_stops", "run_unload_lines"]) {
-      const cols = (await db.prepare(`PRAGMA table_info(${t})`).all() as { name: string }[]).map(
+      const cols = (await tableInfo(t) as { name: string }[]).map(
         (c) => c.name
       );
       expect(cols).not.toContain("organization_id");
@@ -203,8 +203,7 @@ describe("facility stops schema", () => {
   });
 
   it("order_id is still NOT NULL, so the guard above cannot be bypassed", async () => {
-    const db = getDb();
-    const cols = await db.prepare("PRAGMA table_info(delivery_stops)").all() as {
+    const cols = await tableInfo("delivery_stops") as {
       name: string;
       notnull: number;
     }[];

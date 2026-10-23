@@ -1,0 +1,19 @@
+# Test files about SQLite itself, which scripts/pg/test-pg.mjs leaves out of the PostgreSQL run.
+# Each upgrades an old SQLite file through the boot migrations and backfills, or reads SQLite's
+# own query planner or pragmas. PostgreSQL starts from db/migrations, generated from the same
+# schema (CI fails if they drift), so these have nothing to check there. They go when SQLite
+# does (Wave P, phase 5). One file per line, then `#` and why.
+tests/boot-queries-indexed.test.ts # SQLite's EXPLAIN QUERY PLAN for the boot backfills
+tests/perf-indexes.test.ts # SQLite's EXPLAIN QUERY PLAN; PostgreSQL plans are checked separately
+tests/db-pragmas.test.ts # the pragmas the SQLite connection sets
+tests/schema-snapshot.test.ts # pins the SQLite schema text that the baseline is generated from
+tests/lead-pin-foldin.test.ts # boot migration folding lead pins on an old SQLite file
+tests/lead-runs-fold-idempotence.test.ts # boot migration folding lead runs on an old SQLite file
+tests/legacy-payment-backfill.test.ts # boot backfill on an old SQLite file
+tests/stock-ledger-backfill.test.ts # boot backfill on an old SQLite file
+tests/ledger-reconciliation.test.ts # the boot ledger backfill's gate on an old SQLite file
+tests/facilities-migration-referenced.test.ts # SQLite table rebuild of facilities on an old file
+tests/district-rebuild-populated.test.ts # SQLite table rebuild of districts on an old file
+tests/salesperson-migration.test.ts # upgrades a production-shaped SQLite file
+tests/seed-demo-refusal.test.ts # the demo seed's file-path guard; tests/seed-demo-refusal-pg.test.ts is the PostgreSQL one
+tests/seed-demo-guard.test.ts # the old reversible demo script, which opens an SQLite file directly

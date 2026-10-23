@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
+import { indexDef, tableInfo } from "./helpers/schema";
 
 const testDbPath = path.join(
   os.tmpdir(),
@@ -23,19 +24,16 @@ beforeAll(async () => {
 });
 
 async function cols(t: string): Promise<string[]> {
-  return (await getDb().prepare(`PRAGMA table_info(${t})`).all() as { name: string }[]).map((c) => c.name);
+  return (await tableInfo(t) as { name: string }[]).map((c) => c.name);
 }
 
 describe("offline-first schema", () => {
   it("adds client_uuid + a partial unique index to every offline-writable table", async () => {
-    const db = getDb();
     for (const t of ["orders", "payments", "deliveries", "customers"]) {
       expect(await cols(t), t).toContain("client_uuid");
-      const idx = await db
-        .prepare("SELECT sql FROM sqlite_master WHERE type='index' AND name = ?")
-        .get(`ix_${t}_client_uuid`) as { sql: string } | undefined;
-      expect(idx?.sql ?? "", t).toContain("UNIQUE INDEX");
-      expect(idx?.sql ?? "", t).toContain("WHERE client_uuid IS NOT NULL");
+      const sql = (await indexDef(`ix_${t}_client_uuid`)) ?? "";
+      expect(sql, t).toContain("UNIQUE INDEX");
+      expect(sql, t).toMatch(/WHERE \(?client_uuid IS NOT NULL/);
     }
   });
 

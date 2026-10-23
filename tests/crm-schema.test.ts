@@ -2,6 +2,7 @@ import { describe, it, expect, afterAll } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
+import { tableInfo } from "./helpers/schema";
 
 const testDbPath = path.join(os.tmpdir(), `rf-crm-schema-${Date.now()}-${Math.random().toString(36).slice(2)}.db`);
 process.env.ROUTEFLOW_DB_PATH = testDbPath;
@@ -14,7 +15,7 @@ afterAll(() => {
   for (const s of ["", "-wal", "-shm"]) fs.rmSync(`${testDbPath}${s}`, { force: true });
 });
 
-const cols = async (t: string) => (await getDb().prepare(`PRAGMA table_info(${t})`).all() as { name: string }[]).map((c) => c.name);
+const cols = async (t: string) => (await tableInfo(t) as { name: string }[]).map((c) => c.name);
 const NOW = "2026-09-01T00:00:00.000Z";
 
 describe("CRM schema", () => {

@@ -2,6 +2,7 @@ import { describe, it, expect, afterAll } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
+import { sqliteOnly, tableExists, tableInfo } from "./helpers/schema";
 
 const testDbPath = path.join(os.tmpdir(), `rf-notif-p2-schema-${Date.now()}-${Math.random().toString(36).slice(2)}.db`);
 process.env.ROUTEFLOW_DB_PATH = testDbPath;
@@ -15,14 +16,13 @@ afterAll(() => {
 });
 
 async function cols(t: string): Promise<string[]> {
-  return (await getDb().prepare(`PRAGMA table_info(${t})`).all() as { name: string }[]).map((c) => c.name);
+  return (await tableInfo(t) as { name: string }[]).map((c) => c.name);
 }
 
 describe("Phase 2 notification schema", () => {
   it("creates the three loud-channel tables", async () => {
-    const db = getDb();
     for (const t of ["notification_prefs", "notification_channels", "notification_deliveries"]) {
-      expect(await db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name = ?").get(t), t).toBeTruthy();
+      expect(await tableExists(t), t).toBe(true);
     }
     expect((await cols("notification_prefs")).sort()).toEqual(["channel", "enabled", "type_code", "updated_at", "user_id"]);
     expect((await cols("notification_channels")).sort()).toEqual(
@@ -107,7 +107,7 @@ describe("Phase 2 notification schema", () => {
     expect(loudByDefault("ambient", "HIGH")).toBe(0);
   });
 
-  it("re-running getDb() migrations is a no-op", async () => {
+  it.skipIf(sqliteOnly)("re-running getDb() migrations is a no-op", async () => {
     const before = await getDb().prepare("SELECT COUNT(*) c FROM notification_types").get() as { c: number };
     const rulesBefore = await getDb()
       .prepare("SELECT COUNT(*) c FROM rules WHERE organization_id IS NULL")

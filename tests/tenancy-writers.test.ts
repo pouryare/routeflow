@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
+import { tableInfo } from "./helpers/schema";
 
 const testDbPath = path.join(
   os.tmpdir(),
@@ -122,7 +123,7 @@ describe("API write paths stamp the session's organisation", () => {
     // This is the whole point of districts being shared, and it is why the org-stamping
     // check above does not apply to this route.
     expect(
-      (await db.prepare("PRAGMA table_info(districts)").all()).map((c) => c.name),
+      (await tableInfo("districts")).map((c) => c.name),
       "districts must not carry an organization_id"
     ).not.toContain("organization_id");
 

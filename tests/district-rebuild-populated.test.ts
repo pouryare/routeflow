@@ -3,6 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
+import { tableInfo } from "./helpers/schema";
 
 /** The districts rebuild must not lose rows on a POPULATED table.
  *
@@ -83,7 +84,7 @@ describe("the districts rebuild on a populated table", () => {
   });
 
   it("dropped organization_id and the org-scoped key", async () => {
-    const cols = (await getDb().prepare("PRAGMA table_info(districts)").all() as { name: string }[]).map((c) => c.name);
+    const cols = (await tableInfo("districts") as { name: string }[]).map((c) => c.name);
     expect(cols).not.toContain("organization_id");
     const sql = (await getDb().prepare("SELECT sql FROM sqlite_master WHERE name = 'districts'").get() as { sql: string }).sql;
     expect(sql).toContain("UNIQUE(name, level, parent_name)");

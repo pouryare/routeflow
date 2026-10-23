@@ -2,6 +2,7 @@ import { describe, it, expect, afterAll, beforeAll } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
+import { tableInfo } from "./helpers/schema";
 
 const testDbPath = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "rf-audit-")), "t.db");
 process.env.ROUTEFLOW_DB_PATH = testDbPath;
@@ -73,7 +74,7 @@ describe("impersonated_by", () => {
 
   it("the three audit tables all have the column", async () => {
     for (const t of ["activity_log", "order_events", "events"]) {
-      const cols = (await db().prepare("SELECT name FROM pragma_table_info(?)").all(t) as Array<{ name: string }>)
+      const cols = (await tableInfo(t) as Array<{ name: string }>)
         .map((c) => c.name);
       expect(cols, t).toContain("impersonated_by");
     }

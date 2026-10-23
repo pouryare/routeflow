@@ -2,6 +2,7 @@ import { describe, it, expect, afterAll } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
+import { indexesOn, tableInfo } from "./helpers/schema";
 
 const testDbPath = path.join(os.tmpdir(), `rf-dcode-${Date.now()}-${Math.random().toString(36).slice(2)}.db`);
 process.env.ROUTEFLOW_DB_PATH = testDbPath;
@@ -13,7 +14,7 @@ afterAll(() => {
   for (const s of ["", "-wal", "-shm"]) fs.rmSync(`${testDbPath}${s}`, { force: true });
 });
 
-const cols = async () => (await getDb().prepare("PRAGMA table_info(districts)").all() as { name: string }[]).map((c) => c.name);
+const cols = async () => (await tableInfo("districts") as { name: string }[]).map((c) => c.name);
 const geo = JSON.stringify({ type: "Polygon", coordinates: [[[51.4, 35.7], [51.5, 35.7], [51.5, 35.8], [51.4, 35.8], [51.4, 35.7]]] });
 const NOW = new Date().toISOString();
 const ins = async (name: string, isCustom = 0, code: string | null = null) =>
@@ -54,9 +55,6 @@ describe("district code columns", () => {
   });
 
   it("indexes code so the search prefix query is not a table scan", async () => {
-    const rows = await getDb()
-      .prepare("SELECT name FROM sqlite_master WHERE type = 'index' AND tbl_name = 'districts'")
-      .all() as { name: string }[];
-    expect(rows.map((r) => r.name)).toContain("ix_districts_code");
+    expect(await indexesOn("districts")).toContain("ix_districts_code");
   });
 });

@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
+import { tableInfo, tableNames } from "./helpers/schema";
 
 /** Point this at a *copy* of the production database to prove the migration works on
  *  real rows: `ROUTEFLOW_MIGRATION_CHECK_DB=/tmp/copy.db npx vitest run tests/tenancy-*`.
@@ -34,7 +35,7 @@ beforeAll(async () => {
 });
 
 async function cols(table: string): Promise<string[]> {
-  return (await getDb().prepare(`PRAGMA table_info(${table})`).all() as unknown as { name: string }[]).map(
+  return (await tableInfo(table) as unknown as { name: string }[]).map(
     (c) => c.name
   );
 }
@@ -105,9 +106,8 @@ describe("platform_owner", () => {
 
 describe("organization_id backfill", () => {
   it("covers every business table", async () => {
-    const db = getDb();
     for (const table of TENANT_TABLES) {
-      const tableCols = (await db.prepare(`PRAGMA table_info(${table})`).all() as unknown as {
+      const tableCols = (await tableInfo(table) as unknown as {
         name: string;
       }[]).map((c) => c.name);
       expect(tableCols, `${table} is missing organization_id`).toContain("organization_id");
@@ -142,12 +142,7 @@ describe("organization_id backfill", () => {
     // A table added later without a tenant column is the exact failure this catches: it
     // would be readable by every organisation, and would look like nothing at all until
     // a second tenant is on the system.
-    const db = getDb();
-    const all = (
-      await db
-        .prepare(`SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'`)
-        .all() as unknown as { name: string }[]
-    ).map((r) => r.name);
+    const all = await tableNames();
 
     // Tables that legitimately carry no tenant of their own: the tenant list itself,
     // rows that reach a tenant through their parent, and infrastructure that is not

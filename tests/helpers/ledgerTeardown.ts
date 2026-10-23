@@ -62,3 +62,9 @@ export async function clearLedger(db: Db): Promise<void> {
   // coupled to how many rows a previous test happened to leave behind.
   await db.exec("DELETE FROM sqlite_sequence WHERE name IN ('journals','ledger_entries','fiscal_periods')");
 }
+
+/** Drops a guard trigger so a fixture can reset an append-only table such as `activities`.
+ *  PostgreSQL names triggers per table, so its DROP TRIGGER needs the table too. */
+export async function dropTrigger(db: Db, name: string, table: string): Promise<void> {
+  await db.exec(dialect() === "postgres" ? `DROP TRIGGER IF EXISTS ${name} ON ${table}` : `DROP TRIGGER IF EXISTS ${name}`);
+}

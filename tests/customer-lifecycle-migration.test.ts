@@ -2,6 +2,7 @@ import { describe, it, expect, afterAll } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
+import { indexesOn, tableInfo } from "./helpers/schema";
 
 // A dedicated env override, read BEFORE lib/db is imported, so a real-data copy can be
 // checked without tests/tenancy-schema.test.ts's unconditional overwrite getting in the
@@ -20,7 +21,7 @@ afterAll(() => {
 
 describe("customers M2 migration", () => {
   it("adds the lifecycle columns and drops status", async () => {
-    const cols = (await getDb().prepare("PRAGMA table_info(customers)").all() as { name: string }[]).map(
+    const cols = (await tableInfo("customers") as { name: string }[]).map(
       (c) => c.name
     );
     for (const c of [
@@ -38,10 +39,7 @@ describe("customers M2 migration", () => {
   });
 
   it("keeps the business_name index", async () => {
-    const idx = await getDb()
-      .prepare("SELECT name FROM sqlite_master WHERE type='index' AND tbl_name='customers'")
-      .all() as { name: string }[];
-    expect(idx.map((i) => i.name)).toContain("idx_customers_business_name");
+    expect(await indexesOn("customers")).toContain("idx_customers_business_name");
   });
 
   it.skipIf(realDbPath)("defaults lifecycle to 'lead' and enforces the enum", async () => {

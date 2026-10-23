@@ -274,8 +274,7 @@ describe("postJournal", () => {
   it("postJournal nests inside a caller's transaction without opening its own", async () => {
     const db = getDb();
     const before = await countJournals();
-    await db.exec("BEGIN IMMEDIATE");
-    try {
+    await db.tx(async () => {
       await postJournal(db, {
         organizationId: ORG,
         postedAt: "2026-07-14T11:00:00.000Z",
@@ -286,11 +285,7 @@ describe("postJournal", () => {
           { accountId: await ar(), side: "C", amountToman: 999 },
         ],
       });
-      await db.exec("COMMIT");
-    } catch (e) {
-      await db.exec("ROLLBACK");
-      throw e;
-    }
+    });
     expect(await countJournals()).toBe(before + 1);
   });
 
