@@ -5,6 +5,7 @@ import { getSessionFromCookies } from "@/lib/session";
 import PageHeader from "@/components/meridian/PageHeader";
 import { Icon } from "@/components/meridian/Icon";
 import LoginEventList from "@/components/LoginEventList";
+import ChangePasswordSection from "@/components/ChangePasswordSection";
 import { myRecentLogins } from "@/lib/repo/loginEvents";
 
 export const dynamic = "force-dynamic";
@@ -12,7 +13,9 @@ export const dynamic = "force-dynamic";
 const BUTTON =
   "touch inline-flex min-h-11 items-center gap-[var(--space-2)] justify-center rounded-[var(--radius-md)] border px-[var(--space-4)] py-[var(--space-2)] text-[length:var(--text-sm)] cursor-pointer";
 
-/** Your own sign-in security: end your sessions on other devices (F107) and see your last sign-ins (F110). */
+/** Your own sign-in security: change your password, end your sessions on other devices (F107)
+ *  and see your last sign-ins (F110). The password section is hidden under Login-As, where the
+ *  API refuses it: an owner acting as someone must not choose that person's password. */
 export default async function SecuritySettingsPage({
   searchParams,
 }: {
@@ -57,6 +60,7 @@ export default async function SecuritySettingsPage({
           </form>
         )}
       </section>
+      {!impersonating && <ChangePasswordSection />}
       <section className="card mt-[var(--space-4)] flex flex-col gap-[var(--space-3)] p-[var(--space-4)]" dir="rtl">
         <h2 className="sechead__title">ورودهای اخیر شما</h2>
         <LoginEventList rows={logins} />

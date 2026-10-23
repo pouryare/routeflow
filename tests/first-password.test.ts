@@ -122,3 +122,45 @@ describe("a password an owner chose must be replaced (F35)", () => {
     expect(findUserById(id)?.must_change_password).toBe(1);
   });
 });
+
+describe("changing your own password by choice", () => {
+  const voluntary = (username: string) => {
+    const id = newStaff(username);
+    getDb().prepare("UPDATE users SET must_change_password = 0 WHERE id = ?").run(id);
+    const user = findUserById(id)!;
+    const cookie = createSessionToken({ uid: id, role: user.role, gid: user.group_id, oid: 1, tv: 0, name: "t" });
+    return { id, cookie };
+  };
+
+  it("asks for the current password, and a wrong one changes nothing", async () => {
+    const { id, cookie } = voluntary("vp-wrong");
+    expect((await change(jsonReq("/api/me/password", { password: "a-new-secret" }, cookie))).status).toBe(400);
+    const res = await change(jsonReq("/api/me/password", { password: "a-new-secret", current: "not-it" }, cookie));
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toBe("رمز فعلی درست نیست");
+    expect(verifyPassword("given-by-owner", findUserById(id)!.password_hash)).toBe(true);
+  });
+
+  it("refuses a new password that is the current one", async () => {
+    const { cookie } = voluntary("vp-same");
+    const res = await change(jsonReq("/api/me/password", { password: "given-by-owner", current: "given-by-owner" }, cookie));
+    expect(res.status).toBe(400);
+  });
+
+  it("with the right current password, saves it and ends other sessions", async () => {
+    const { id, cookie } = voluntary("vp-ok");
+    const res = await change(jsonReq("/api/me/password", { password: "a-new-secret", current: "given-by-owner" }, cookie));
+    expect(res.status).toBe(200);
+    expect(verifyPassword("a-new-secret", findUserById(id)!.password_hash)).toBe(true);
+    expect(getSessionFromCookies(cookie)).toBeNull();
+    expect(getSessionFromCookies(cookieOf(res))?.user.id).toBe(id);
+  });
+
+  it("slows guessing: the sixth wrong current password in a window is refused outright", async () => {
+    const { cookie } = voluntary("vp-guess");
+    for (let i = 0; i < 5; i++) {
+      expect((await change(jsonReq("/api/me/password", { password: "a-new-secret", current: `guess-${i}` }, cookie))).status).toBe(400);
+    }
+    expect((await change(jsonReq("/api/me/password", { password: "a-new-secret", current: "given-by-owner" }, cookie))).status).toBe(429);
+  });
+});
