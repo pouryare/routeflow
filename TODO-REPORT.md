@@ -343,3 +343,22 @@ Full write-up: `docs/architecture-audit-2026-10-22.md`. Steps 1 to 3 are merged 
 2. Spike: run the schema and one vertical (orders) on Postgres, async
 3. Port the repo layer file by file, then migrations, then tests
 4. Write the one-time data copy and rehearse it on a production backup
+
+## Technology stack for the Postgres move (2026-10-23, investigation only, no code changed)
+
+### Done
+- [x] Read `docs/roadmap.md`, `docs/future-features.md`, `docs/crm-erp-plan.md` and the current routing, jobs and photo code; matched the parked features (F1 to F148) to the technology each needs
+- [x] Recommendation: PostgreSQL with PostGIS, pg_trgm and row-level security; `pg` + Kysely (not Prisma); plain SQL migrations; a pg-boss worker process; S3-compatible object storage; Valkey together with the first real-time feature
+- [x] Revised the earlier estimate: with no live data to keep, the data copy and the old migration history drop out, so the move is smaller than first said
+
+### Not done / gaps
+- [ ] Nothing built or installed; no decision record written
+- [ ] Open inputs: where the server is hosted (decides self-hosted vs managed), SMS and messaging provider, fleet size for GPS pings, whether any current data must be kept
+- [ ] `lib/routing/osrmFetch.ts` still uses the public OSRM demo server and `VROOM_URL` is unset outside production; flagged, not changed
+
+### Next steps
+1. Confirm the assumptions above (hosting, one-database multi-company model, data to keep)
+2. Write a short decision record for the data layer: Postgres, per-transaction context for row-level security, Kysely, SQL migrations
+3. Spike: one baseline schema plus the orders vertical, async, with row-level security on
+4. Add the pg-boss worker, then port the repo layer module by module
+5. Add object storage, Valkey and the rest only when the wave that needs them starts
