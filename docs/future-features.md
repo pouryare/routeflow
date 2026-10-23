@@ -43,6 +43,8 @@ Origin: the 2026-10-20 mobile-first brainstorm. The pieces that are *not* ambiti
 
 **What:** a press-and-hold microphone button next to every optional note field (`tf-input` on the `note` steps, complaint description, visit notes, reminder text). Persian speech to text, shown as editable text before saving.
 
+**Technology to consider (2026-10-23):** per-company switches and usage numbers (Umami); see `docs/roadmap.md`, section 10.
+
 **Why parked:** Persian recognition quality varies by accent, noise and phone; browser `SpeechRecognition` support is uneven (works in Chrome Android, unreliable elsewhere, often cloud-backed); vans are noisy.
 
 **Open questions**
@@ -260,6 +262,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 **What:** forecast stock need per product from sales history, and draft purchase orders to suppliers for a manager to confirm.
 
+**Technology to consider (2026-10-23):** an H3 hexagon grid for counting per area; see `docs/roadmap.md`, section 10.
+
 **Already in the app:** demand forecasting exists. `lib/predict` smooths demand on a deseasonalised series and `lib/predict/inventory.ts` computes the reorder point (average daily sales × lead time + safety stock); `/sales/forecast` shows the demand table. Missing: supplier lead times and minimum orders, and drafting purchase orders from the result.
 
 **Why parked:** perishables with batches and expiry make "how much to buy" depend on shelf life; supplier lead times and minimum quantities must be modelled; poor forecasts cost real money.
@@ -295,6 +299,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 ## F13. Offline-first everywhere
 
 **What:** extend the driver app's offline sync so sales, warehouse and payment flows also work without signal and reconcile cleanly when it returns.
+
+**Technology to consider (2026-10-23):** offline vector maps (PMTiles with MapLibre, stored by the Capacitor shell); see `docs/roadmap.md`, section 10.
 
 **Correction (found later):** the offline layer reaches beyond drivers. `lib/offline` (IndexedDB store, outbox, sync engine, device-generated ids) already queues draft orders (create, edit, submit), delivery start and complete, payments, cheques, complaints and new-customer capture, and the pull sends orders and customers to sales roles too (`lib/repo/syncPull.ts`, `lib/repo/syncMutations.ts`). Order approval, planning, freezing and credit decisions are refused offline on purpose. Tasks, notes and call outcomes are not covered (see F105).
 
@@ -428,6 +434,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 ## F20. Daily visit route for salespeople
 
 **What:** a suggested daily visit route built from customers due for a call or visit (see F8), pending leads and overdue balances, ordered to minimise travel, with a one-tap start.
+
+**Technology to consider (2026-10-23):** offline vector maps (PMTiles with MapLibre, stored by the Capacitor shell); see `docs/roadmap.md`, section 10.
 
 **Already in the app:** `visit_plans` and the schedule page already hold planned visits on the calendar (`/sales/schedule`), and the routing engine orders delivery stops. What is missing is *building* the day's visit list automatically and ordering it for travel.
 
@@ -1151,6 +1159,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 **What:** each customer's preferred receiving hours, honoured by the route planner and shown to the driver, so a shop is not visited when it is closed or busy.
 
+**Technology to consider (2026-10-23):** Valhalla for delivery-zone areas and for matching GPS pings to roads; see `docs/roadmap.md`, section 10.
+
 **Already in the app:** customers have opening hours (`working_hours_json`, with `parseHours` and `nextOpenAt`), used to pick a good time for calls and visits (`lib/repo/crm/write.ts`) and shown on the driver's visit list (`lib/repo/crm/driverVisits.ts`). The route solver adapter (`lib/routing/vroom.ts`) accepts a per-stop `time_window`. I found no code that fills that window from the customer's hours when planning delivery runs, so opening hours currently inform visits, not routes.
 
 **Why parked:** hard windows can make a plan infeasible or much longer; opening hours are not the same as receiving hours (a shop may receive goods before opening); wrong or missing hours would silently distort plans.
@@ -1638,6 +1648,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 **What:** when tomorrow's (or next week's) confirmed orders exceed van capacity or driver availability, warn the planner a day ahead, with options (move some orders, add a van, split the day).
 
+**Technology to consider (2026-10-23):** an H3 hexagon grid for counting per area; see `docs/roadmap.md`, section 10.
+
 **Already in the app:** vehicles carry limits for stops, weight and volume (`max_stops`, `max_weight_kg`, `max_volume_m3`), and `lib/dayCapacity.ts` splits orders across days against those limits when the planner builds runs (`lib/repo/dayPlan.ts`, `readPlannableOrders`). The briefing shows unplanned orders. It does not warn ahead that a coming day is over capacity.
 
 **Why parked:** capacity depends on which vehicles and drivers are available that day (F25 is not built); orders keep arriving until cut-off, so an early warning can be wrong; the weather capacity factors (`capacity_factors`, learned in `lib/predict/capacityLearning.ts`) change the effective capacity.
@@ -1858,6 +1870,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 ## F92. Territory revenue map
 
 **What:** a map of revenue by district compared with the district's potential (customers and prospects), to show where growth is available and which districts are over- or under-served.
+
+**Technology to consider (2026-10-23):** an H3 hexagon grid for counting per area; see `docs/roadmap.md`, section 10.
 
 **Technology to consider (2026-10-23):** deck.gl on MapLibre for many points and areas; see `docs/roadmap.md`, section 10.
 
@@ -2080,6 +2094,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 ## F103. Rep mileage log
 
 **What:** distance driven by each salesperson on visits, estimated from the locations of the customers visited that day (or entered at month end), for reimbursement and for comparing effort across territories.
+
+**Technology to consider (2026-10-23):** Valhalla for delivery-zone areas and for matching GPS pings to roads; see `docs/roadmap.md`, section 10.
 
 **Decision (2026-10-23):** background location comes from the Capacitor Android shell; see F6.
 
@@ -2582,6 +2598,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 ## F127. Tenant usage and plan limits
 
 **What:** for the platform owner, per-organisation counts (users, active customers, orders per month, photo storage, messages) against limits for each plan, with warnings before a limit is reached.
+
+**Technology to consider (2026-10-23):** per-company switches and usage numbers (Umami); see `docs/roadmap.md`, section 10.
 
 **Already in the app:** every organisation has a `plan` field (default "standard"), but nothing in the code reads it besides creating the row, so it has no effect today. Vendor reads of tenant data are logged. Usage numbers (users, orders, photos) can be counted from existing tables, and photo storage sits on disk under `data/photos`.
 
