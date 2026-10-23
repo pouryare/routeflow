@@ -9,10 +9,6 @@ export type Generated<T> = T extends ColumnType<infer S, infer I, infer U>
   ? ColumnType<S, I | undefined, U>
   : ColumnType<T, T | undefined, T>;
 
-export type Numeric = ColumnType<number, number | string, number | string>;
-
-export type Timestamp = ColumnType<Date, Date | string, Date | string>;
-
 export interface Accounts {
   active: Generated<number>;
   code: string;
@@ -533,26 +529,6 @@ export interface Forecasts {
   yhat_lo: number;
 }
 
-export interface GeographyColumns {
-  coord_dimension: number | null;
-  f_geography_column: string | null;
-  f_table_catalog: string | null;
-  f_table_name: string | null;
-  f_table_schema: string | null;
-  srid: number | null;
-  type: string | null;
-}
-
-export interface GeometryColumns {
-  coord_dimension: number | null;
-  f_geometry_column: string | null;
-  f_table_catalog: string | null;
-  f_table_name: string | null;
-  f_table_schema: string | null;
-  srid: number | null;
-  type: string | null;
-}
-
 export interface Groups {
   active: Generated<number>;
   color: string | null;
@@ -926,57 +902,6 @@ export interface Payments {
   void_reason: string | null;
   voided_at: string | null;
   voided_by: number | null;
-}
-
-export interface PgStatStatements {
-  blk_read_time: number | null;
-  blk_write_time: number | null;
-  calls: number | null;
-  dbid: number | null;
-  jit_emission_count: number | null;
-  jit_emission_time: number | null;
-  jit_functions: number | null;
-  jit_generation_time: number | null;
-  jit_inlining_count: number | null;
-  jit_inlining_time: number | null;
-  jit_optimization_count: number | null;
-  jit_optimization_time: number | null;
-  local_blks_dirtied: number | null;
-  local_blks_hit: number | null;
-  local_blks_read: number | null;
-  local_blks_written: number | null;
-  max_exec_time: number | null;
-  max_plan_time: number | null;
-  mean_exec_time: number | null;
-  mean_plan_time: number | null;
-  min_exec_time: number | null;
-  min_plan_time: number | null;
-  plans: number | null;
-  query: string | null;
-  queryid: number | null;
-  rows: number | null;
-  shared_blks_dirtied: number | null;
-  shared_blks_hit: number | null;
-  shared_blks_read: number | null;
-  shared_blks_written: number | null;
-  stddev_exec_time: number | null;
-  stddev_plan_time: number | null;
-  temp_blk_read_time: number | null;
-  temp_blk_write_time: number | null;
-  temp_blks_read: number | null;
-  temp_blks_written: number | null;
-  toplevel: boolean | null;
-  total_exec_time: number | null;
-  total_plan_time: number | null;
-  userid: number | null;
-  wal_bytes: Numeric | null;
-  wal_fpi: number | null;
-  wal_records: number | null;
-}
-
-export interface PgStatStatementsInfo {
-  dealloc: number | null;
-  stats_reset: Timestamp | null;
 }
 
 export interface Photos {
@@ -1518,8 +1443,6 @@ export interface DB {
   fiscal_periods: FiscalPeriods;
   forecast_models: ForecastModels;
   forecasts: Forecasts;
-  geography_columns: GeographyColumns;
-  geometry_columns: GeometryColumns;
   groups: Groups;
   holidays: Holidays;
   journals: Journals;
@@ -1549,8 +1472,6 @@ export interface DB {
   packagings: Packagings;
   payment_allocations: PaymentAllocations;
   payments: Payments;
-  pg_stat_statements: PgStatStatements;
-  pg_stat_statements_info: PgStatStatementsInfo;
   photos: Photos;
   platform_access_log: PlatformAccessLog;
   product_costs: ProductCosts;

@@ -4,5 +4,5 @@
   "numericParser": "number",
   "typeMapping": { "int8": "number" },
   "includePattern": "public.*",
-  "excludePattern": "public.{spatial_ref_sys,pgmigrations}"
+  "excludePattern": "public.{spatial_ref_sys,pgmigrations,geometry_columns,geography_columns,pg_stat_statements,pg_stat_statements_info}"
 }
