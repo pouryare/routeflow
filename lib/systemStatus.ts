@@ -22,6 +22,9 @@ export interface StatusFacts {
   lastSyncAt: string | null;
   customersSyncedAt: string | null;
   lastNotificationAt: string | null;
+  /** F16: when the newest owner morning digest was queued. It is written by the rule sweep, so
+   *  its age also says whether the server's sweep timer runs in the morning. */
+  lastDigestAt: string | null;
   failedSignIns24h: number;
   dbBytes: number | null;
 }
@@ -96,6 +99,16 @@ export function statusLines(f: StatusFacts, now: Date = new Date()): StatusLine[
       tone: f.lastNotificationAt ? "good" : "unknown",
       at: f.lastNotificationAt,
       detail: f.lastNotificationAt ? "آخرین اعلانی که به تلگرام یا گوشی فرستاده شد" : "هنوز اعلانی بیرون فرستاده نشده",
+    },
+    {
+      key: "digest",
+      label: "خلاصهٔ صبح",
+      // One a day from 07:00, so a day and a bit without one means the sweep did not run then.
+      tone: ageTone(f.lastDigestAt, now, 26, 50),
+      at: f.lastDigestAt,
+      detail: !f.lastDigestAt
+        ? "هنوز خلاصه‌ای ساخته نشده؛ اجرای خودکار «به‌روزرسانی کارها» روی سرور باید هر صبح بعد از ساعت ۷ انجام شود"
+        : "خلاصهٔ کارهای روز که هر صبح برای مالک فرستاده می‌شود",
     },
     {
       key: "signins",

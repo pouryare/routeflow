@@ -1,4 +1,4 @@
 [
-  { "slug": "01-market-and-customer", "module": 1, "title_fa": "مبانی بازار و مشتری", "order": 1, "status": "stub" },
-  { "slug": "02-phone-sales", "module": 2, "title_fa": "فروش تلفنی", "order": 2, "status": "stub" }
+  { "slug": "01-market-and-customer", "module": 1, "title_fa": "مبانی بازار و مشتری", "order": 1, "status": "stub", "required_for": ["phone_sales", "field_rep", "group_manager"] },
+  { "slug": "02-phone-sales", "module": 2, "title_fa": "فروش تلفنی", "order": 2, "status": "stub", "required_for": ["phone_sales"] }
 ]

@@ -13,14 +13,14 @@ import {
   type SearchHit, type SearchKind,
 } from "@/lib/searchModel";
 
-const KIND_ICON: Record<SearchKind, IconName> = { page: "link", customer: "building", order: "receipt", user: "user", district: "map-pin" };
+const KIND_ICON: Record<SearchKind, IconName> = { page: "link", customer: "building", order: "receipt", user: "user", district: "map-pin", note: "clipboard" };
 const SECTION: Record<SearchKind | "recent", string> = {
-  recent: "اخیر", page: "صفحه‌ها", district: "مناطق", customer: "مشتریان", order: "سفارش‌ها", user: "ورود به‌جای کاربر",
+  recent: "اخیر", page: "صفحه‌ها", district: "مناطق", customer: "مشتریان", order: "سفارش‌ها", user: "ورود به‌جای کاربر", note: "یادداشت‌ها",
 };
 
 type Section = { key: SearchKind | "recent"; hits: SearchHit[] };
-type Remote = { customers: SearchHit[]; orders: SearchHit[]; users: SearchHit[]; districts: SearchHit[] };
-const NO_REMOTE: Remote = { customers: [], orders: [], users: [], districts: [] };
+type Remote = { customers: SearchHit[]; orders: SearchHit[]; users: SearchHit[]; districts: SearchHit[]; notes: SearchHit[] };
+const NO_REMOTE: Remote = { customers: [], orders: [], users: [], districts: [], notes: [] };
 
 /** One search for the whole app (spec D4): pages, customers and orders, full-screen.
  *
@@ -87,7 +87,7 @@ function Panel({ onClose, tabs }: { onClose: () => void; tabs: AppTab[] }) {
     const t = window.setTimeout(() => {
       fetch(`/api/search?q=${encodeURIComponent(q)}`, { signal: ctl.signal })
         .then((r) => (r.ok ? r.json() : NO_REMOTE))
-        .then((j) => setRemote({ customers: j.customers ?? [], orders: j.orders ?? [], users: j.users ?? [], districts: j.districts ?? [], for: q }))
+        .then((j) => setRemote({ customers: j.customers ?? [], orders: j.orders ?? [], users: j.users ?? [], districts: j.districts ?? [], notes: j.notes ?? [], for: q }))
         .catch(() => { /* aborted by the next keystroke, or offline: pages still answer */ });
     }, 180);
     return () => { window.clearTimeout(t); ctl.abort(); };
@@ -106,6 +106,8 @@ function Panel({ onClose, tabs }: { onClose: () => void; tabs: AppTab[] }) {
       { key: "customer", hits: fresh ? remote.customers : [] },
       { key: "order", hits: fresh ? remote.orders : [] },
       { key: "user", hits: fresh ? remote.users : [] },
+      // F98: call and visit notes last, after the records themselves.
+      { key: "note", hits: fresh ? remote.notes : [] },
     ] as Section[]).filter((s) => s.hits.length > 0);
   }, [q, recent, remote, fresh, tabs]);
 

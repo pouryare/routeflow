@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { HELP, getHelp, isTodo, todoHelpIds, __resetTodo } from "@/lib/help";
+import { pageMetaFor } from "@/lib/pageMeta";
 
 describe("meridian help registry", () => {
   beforeEach(() => __resetTodo());
@@ -33,6 +34,14 @@ describe("meridian help registry", () => {
       expect(e.title.length).toBeGreaterThan(0);
       expect(e.what.length).toBeGreaterThan(0);
       expect(e.how.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("F84: the five busiest screens open written help, not the placeholder", () => {
+    for (const [route, view] of [["/sales/today"], ["/crm"], ["/sales/payments"], ["/planner"], ["/sales/schedule", "runs"]]) {
+      const id = pageMetaFor(route, view).help;
+      expect(id, route).toBeTruthy();
+      expect(isTodo(getHelp(id as string)), route).toBe(false);
     }
   });
 });

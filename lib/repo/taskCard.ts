@@ -1,3 +1,5 @@
+import { canSnooze } from "@/lib/taskSnooze";
+
 /** The shape both the Pocket and the Board hand to the client for a single task, plus
  *  the mapper from a joined SQL row. One definition so the two surfaces never drift.
  *
@@ -18,6 +20,8 @@ export interface TaskCard {
   customer: { id: number; name: string } | null;
   assignee: { id: number; name: string } | null;
   recur: boolean;
+  /** F142: whether «later» is offered (open, normal or low priority, under the snooze cap). */
+  snoozable: boolean;
 }
 
 export interface TaskCardRow {
@@ -35,12 +39,13 @@ export interface TaskCardRow {
   assignee_user_id: number | null;
   assignee_name: string | null;
   recur: number | null;
+  snooze_count: number;
 }
 
 /** The SELECT column list + joins that produce a `TaskCardRow`. `t` is the tasks alias. */
 export const TASK_CARD_SELECT = `
   t.id, t.kind, t.title, t.status, t.stage, t.started_at, t.due_at, t.priority,
-  t.entity_type, t.entity_id, t.assignee_user_id,
+  t.entity_type, t.entity_id, t.assignee_user_id, t.snooze_count,
   c.business_name AS customer_name,
   au.display_name AS assignee_name,
   EXISTS (
@@ -70,6 +75,7 @@ export function rowToCard(r: TaskCardRow): TaskCard {
       ? { id: r.assignee_user_id, name: r.assignee_name ?? `#${r.assignee_user_id}` }
       : null,
     recur: Boolean(r.recur),
+    snoozable: canSnooze(r),
   };
 }
 

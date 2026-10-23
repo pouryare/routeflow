@@ -12,6 +12,8 @@ import SplineChart from "@/components/charts/SplineChart";
 import PageHeader from "@/components/meridian/PageHeader";
 import { isVanRole, isOwner } from "@/lib/roles";
 import { recentProductChanges } from "@/lib/repo/productLog";
+import Link from "next/link";
+import { Icon } from "@/components/meridian/Icon";
 
 
 export const dynamic = "force-dynamic";
@@ -66,6 +68,13 @@ export default async function ProductsPage() {
     <>
     <PageHeader route="/sales/products" />
     <div className="flex flex-col gap-[var(--space-5)]">
+      {/* F23: today's prices as a sheet to print or save as PDF and send to a customer. */}
+      {products.length > 0 && (
+        <Link href="/print/price-list" className="btn inline-flex min-h-[44px] items-center gap-[var(--space-2)] self-start">
+          <Icon name="edit" size="sm" />
+          برگهٔ قیمت برای مشتری
+        </Link>
+      )}
       {products.length === 0 ? (
         <p className="rounded-[var(--radius-lg)] border border-dashed border-[var(--border)] p-[var(--space-6)] text-center text-[length:var(--text-sm)] text-[var(--text-muted)]">
           هنوز کالایی ثبت نشده است.

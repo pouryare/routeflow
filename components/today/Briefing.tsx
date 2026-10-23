@@ -24,7 +24,7 @@ const TONE_KARGAH: Record<string, string> = {
 
 function Item({ item, variant }: { item: BriefingItem; variant: Variant }) {
   if (item.action?.kind === "task_outcome") {
-    return <TaskRow taskId={item.action.task_id} customerId={item.action.customer_id} label={item.label} sub={item.sub} />;
+    return <TaskRow taskId={item.action.task_id} customerId={item.action.customer_id} label={item.label} sub={item.sub} snoozable={item.action.snoozable} />;
   }
   const tone = variant === "meridian" ? TONE_KARGAH : TONE_PLAIN;
   const inner = (

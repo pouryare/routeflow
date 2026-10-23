@@ -14,6 +14,7 @@ import { useIsNarrow } from "@/lib/useIsNarrow";
 import AfterCallFlow from "@/components/crm/AfterCallFlow";
 import { Icon, type IconName } from "@/components/meridian/Icon";
 import { tehranTodayIso } from "@/lib/jalali";
+import SnoozeChoices from "@/components/today/SnoozeChoices";
 
 const KIND_TONE = TASK_KIND_TONE as Record<string, string>;
 const DUE_LABEL = (c: TaskCard, now = tehranTodayIso()) =>
@@ -149,6 +150,7 @@ export default function Pocket({
               ثبت نتیجه
             </button>
           ) : null}
+          {c.snoozable ? <SnoozeChoices taskId={c.id} onDone={() => void refetch(scopeId)} /> : null}
           {c.customer ? (
             <button
               type="button"

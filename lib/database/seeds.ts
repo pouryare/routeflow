@@ -238,6 +238,7 @@ export const NOTIFICATION_TYPE_SEED: NotificationTypeSeed[] = [
   { code: "customer.overdue",        name_fa: "مشتری شما عقب‌افتاده است",     category: "customer", directedness: "directed", priority: "NORMAL",   group_scope: "entity" },
   { code: "cheque.due_soon",         name_fa: "سررسید چک نزدیک است",         category: "finance",  directedness: "directed", priority: "HIGH",     group_scope: "entity" },
   { code: "reminder.due",            name_fa: "یادآوری سررسید",              category: "task",     directedness: "directed", priority: "NORMAL",   group_scope: "type_day" },
+  { code: "owner.digest",            name_fa: "خلاصهٔ صبح برای مالک",        category: "task",     directedness: "directed", priority: "NORMAL",   group_scope: "type_day" },
   { code: "system.test",             name_fa: "پیام آزمایشی",                category: "task",     directedness: "directed", priority: "NORMAL",   group_scope: "entity" },
 ];
 

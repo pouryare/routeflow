@@ -9,13 +9,14 @@ import OutcomeFlow from "@/components/flows/OutcomeFlow";
 import { useHeldSave } from "@/components/crm/useHeldSave";
 import { useToast } from "@/components/ToastProvider";
 import { friendlyError } from "@/lib/userMessage";
+import SnoozeChoices from "./SnoozeChoices";
 
 interface ObjectionCard {
   title_fa: string;
   script_fa: string;
 }
 
-export default function TaskRow({ taskId, label, sub, customerId }: { taskId: number; label: string; sub?: string; customerId?: number }) {
+export default function TaskRow({ taskId, label, sub, customerId, snoozable = false }: { taskId: number; label: string; sub?: string; customerId?: number; snoozable?: boolean }) {
   const router = useRouter();
   const toast = useToast();
   const { hold, cancel } = useHeldSave();
@@ -104,6 +105,7 @@ export default function TaskRow({ taskId, label, sub, customerId }: { taskId: nu
             ثبت نتیجهٔ این کار
           </button>
         )}
+        {snoozable && <SnoozeChoices taskId={taskId} onDone={() => router.refresh()} />}
         <button
           type="button"
           onClick={remove}

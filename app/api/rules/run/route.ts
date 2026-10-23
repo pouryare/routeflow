@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { sweepScope, sweepResponse } from "@/lib/sweepAuth";
 import { runSweepRules, escalateStaleRuns, flushAllNotifications } from "@/lib/repo/rules";
+import { queueMorningDigests } from "@/lib/repo/morningDigest";
 
 export const dynamic = "force-dynamic";
 
@@ -15,6 +16,8 @@ export async function POST(req: NextRequest) {
   for (const organization_id of scope.orgIds) {
     const fired = runSweepRules(organization_id).length;
     const escalated = escalateStaleRuns(organization_id);
+    // F16: the owner's morning digest rides the same flush, once a day from 07:00 Tehran.
+    queueMorningDigests(organization_id);
     await flushAllNotifications(organization_id);
     results.push({ organization_id, fired, escalated });
   }

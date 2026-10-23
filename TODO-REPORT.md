@@ -21,7 +21,26 @@ _Condensed 2026-10-23. Each finished piece of work is one line here; the full ea
   - [x] F89 prices a customer paid, beside the list price, on the customer page and map panel
   - [x] F35 a password an owner chose must be replaced at first sign-in (`/password`)
   - [x] F116 amount in words (our own function) on the delivery receipt and payment confirmation
-- [ ] UI reachability batch (every page reachable, no dead-end links; plan in the "UI reachability test ideas" doc):
+- [x] Small-difficulty batch (PR for `claude/project-thread-7n1enu`), first slices on existing code, no new library:
+  - [x] F84 help for today, CRM, payments, planner and runs
+  - [x] F58 «سبد همیشگی» in the quick order flow; F62 «خریدهای این مشتری» pinned in the product picker
+  - [x] F72 duplicate order warning (same customer, same products, open, last 24 hours)
+  - [x] F98 note search in the search overlay
+  - [x] F54 data quality page (`/sales/data-quality`)
+  - [x] F40 new customer checklist; F47 open cheques and complaints on the customer page
+  - [x] F142 snooze a task an hour or to tomorrow 9:00, at most three times
+  - [x] F133 required lessons per role and a manager table
+  - [x] F137 lead source report (`/sales/lead-sources`)
+  - [x] F101 all of a run's delivery notes in one print (`/print/run/[id]`)
+  - [x] F23 printable price list (`/print/price-list`)
+  - [x] F19 this month's commission so far on the seller's briefing
+  - [x] F67 this week against the same days last week on the manager's briefing
+  - [x] F16 owner morning digest by push and Telegram from 07:00
+  - [x] F8 «موعد سفارش امروز» panel for sellers
+  - [x] F112 what's-new card shown once, history at `/settings/updates`
+  - [x] Built markers in `docs/future-features.md` for these and PR #57's items; roadmap section 1 status and 1a
+- [x] Owner delegated the two open points: required lessons decided (module 1 for phone sales, field reps and group managers; module 2 for phone sales), and a «خلاصهٔ صبح» line on the status page shows whether the morning digest goes out
+- [x] UI reachability batch (every page reachable, no dead-end links; plan in the "UI reachability test ideas" doc):
   - [x] Avatar menu shows only links the role can open (`lib/accountLinks.ts`): «ورود به‌عنوان…» for owners only, no map link for van roles
   - [x] Offline page: «تلاش دوباره» retries the page asked for, «صفحهٔ اصلی» goes to the role's home (was a map link drivers cannot open)
   - [x] Change your own password on `/settings/security`, asking for the current one (rate-limited); `/password` and this share `components/PasswordForm.tsx`
@@ -30,7 +49,7 @@ _Condensed 2026-10-23. Each finished piece of work is one line here; the full ea
   - [x] Names open what they name: customer names on the order page, payments and complaints open the customer (the order page keeps a map pin); supplier names on payables open the supplier; account names on the balance sheet and profit and loss open the ledger
   - [x] A ledger page lights «حسابداری» and shows its sibling tabs (`NAV_PARENT` + `currentTab` in `lib/appNav.ts`, one rule for the pill, page header and phone bar)
   - [x] «ثبت سفارش تازه» only for roles that can sell (`SELL_ROLES` / `canSell` in `lib/roles`, shared with the order API): hidden for rep managers on the orders page, customer sheet, profile, purchase history and pocket; the form itself explains instead of failing on save. The pocket offers the planner only to roles that can open it
-  - [x] Lead charts moved from the retired `/analytics` to «سرنخ‌ها» on the sales dashboard (status, funnel, average score; `lib/leadStats.ts`); the fake «تبدیل شده» funnel step and the distance-coloured pin map dropped; `/analytics` deleted
+  - [x] Lead charts moved from the retired `/analytics` to «سرنخ‌ها» on the sales dashboard (status, funnel, average score; `lib/leadStats.ts`); the fake «تبدیل شده» funnel step and the distance-coloured pin map dropped; `/analytics` deleted; with no scored leads the score chart says so instead of showing blank space
   - [x] Six redirect stub pages deleted with no redirects (the app has no users yet): `/sales/board`, `/sales/journey`, `/sales/deliveries`, `/sales/runs`, `/sales/analysis`, `/sales/admin/representatives`; their meta, the proxy special case and the stale-surface audit entries went with them; the runs view keeps its copy in `VIEW_META`
   - [x] `/today` (briefing and multi-role picker) renamed to `/start`, so it no longer shares a name with `/sales/today`; no redirect
   - [x] Guard test `tests/every-page-reachable.test.ts`: every page is a nav destination for some role, linked from rendering code, or exempt with a written reason (checked: it fails when the holidays tab is removed)
@@ -54,9 +73,17 @@ _Condensed 2026-10-23. Each finished piece of work is one line here; the full ea
 - [ ] `tests/playwrightExtract.test.ts` and the smoke suite need Chromium the cloud container lacks
 - [ ] Ratchets (long functions 74, unused exports 221, raw role checks 57) only fall as files are touched
 - [ ] Offline covers delivery, receipts, cheques, complaints, order drafts and new customers only
+- [ ] F16 needs the server's `routeflow-sweep-rules` timer to run after 07:00 (its unit file is on the server, not in the repo); the status page's «خلاصهٔ صبح» line shows if it does not
+- [ ] F23 is one list per company (prices have no per-group series) and has no shared link
+- [ ] F137 has no spend entry, so no return figure; it counts all time
+- [ ] F98 does not search task or complaint text; F72 checks only orders the caller can see
+- [ ] F142 does not cover the old map reminders or notifications; F8 has no dismiss
+- [ ] F112 card is on the sales briefing only, not the drivers' `/today`
+- [ ] F101 lists reversal lines one by one, while the total is net
+- [ ] Left for later: F104 (not reached; nothing blocks it), and, waiting on a missing prerequisite, F74, F77, F85, F86, F91, F114, F69, F31, F42, F34, F95, F140, F2, F5, F117, F38
 
 ## Next steps
-1. Merge PR #57 once CI is green
+1. Merge the UI reachability PR once CI is green (merge commit)
 2. Owner checks the backup folder and picks an off-site destination (F138 part 2)
 3. Record delay reasons on deliveries so the reason report's delay section fills
 4. Owner runs `delete-stale-branches.sh`

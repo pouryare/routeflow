@@ -7,6 +7,9 @@ import { orderMixIn, ordersIn, placeOrder } from "@/lib/repo/routeAdapters";
 import { parseOrderRequest } from "@/lib/orderRequest";
 import { customerPriceHistory } from "@/lib/repo/customerPrices";
 import { SELL_ROLES } from "@/lib/roles";
+import { customerUsualBasket } from "@/lib/repo/usualBasket";
+import { recentOpenOrders } from "@/lib/repo/recentOpenOrders";
+import { onboardingFor } from "@/lib/repo/onboarding";
 import {
   LeadPromotionError,
   promoteLeadToCustomer,
@@ -52,7 +55,17 @@ export async function GET(req: NextRequest) {
   // F89: the last prices this shop paid per product and pack, beside the list price then.
   const prices = customerId ? customerPriceHistory(scope, Number(customerId)) : [];
 
-  return NextResponse.json({ ok: true, orders, products, prices });
+  // F58: the lines this shop orders most of the time, for the repeat-order flow.
+  const usual = customerId ? customerUsualBasket(scope, Number(customerId)) : [];
+
+  // F72: open orders from the last 24 hours, so order entry can ask before a double entry.
+  const recent_open = customerId ? recentOpenOrders(scope, Number(customerId)) : [];
+
+  // F40: what a new customer is still missing before the first delivery (a warning only).
+  const org = orgScopeId(guard.session);
+  const onboarding = customerId && org !== null ? onboardingFor(org, Number(customerId)) : null;
+
+  return NextResponse.json({ ok: true, orders, products, prices, usual, recent_open, onboarding });
 }
 
 export async function POST(req: NextRequest) {

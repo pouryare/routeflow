@@ -4,6 +4,7 @@ import { faJalaliDate } from "@/lib/jalali";
 import { roundToman } from "@/lib/money";
 import { resolveRequestedDay } from "@/lib/requestedDay";
 import { addDaysIso } from "@/lib/flows/dates";
+import { duplicateOf, type OpenOrderBrief } from "@/lib/duplicateOrder";
 
 /** A repeat order: «same as last time?», adjust if not, pick the delivery day, confirm.
  *
@@ -23,7 +24,10 @@ import { addDaysIso } from "@/lib/flows/dates";
  *    day_pick     a calendar day (exact date)
  *    exit         "full": leave for the full form, send nothing
  *  vars: today, customer_id, customer, last ("ready"|"none"|"loading"), last_summary,
- *        debt, credit_limit (toman, optional) */
+ *        debt, credit_limit (toman, optional),
+ *        usual / usual_summary (F58, optional): the usual basket as `adjust` JSON and its recap,
+ *        recent_open (F72, optional): JSON OpenOrderBrief[], the customer's open orders of the last day
+ *    exit         also "dup": open the existing order instead (`dup_id`), send nothing */
 type Vals = { values: Record<string, string> };
 
 const num = (v: string | undefined): number => (v ? Number(v) : 0);
@@ -102,8 +106,12 @@ export const orderQuickFlow: FlowConfig = {
         };
         if (ctx.vars.last === "loading") return [{ id: "wait", label: "در حال بارگذاری…", next: "same" }];
         if (ctx.vars.last !== "ready") return [full];
+        const usual: FlowOption[] = ctx.vars.usual
+          ? [{ id: "usual", label: "سبد همیشگی", sub: ctx.vars.usual_summary, next: "day", put: { adjust: ctx.vars.usual } }]
+          : [];
         return [
           { id: "yes", label: "همان سفارش قبلی", sub: "تعداد همان قبلی است", tone: "rec", next: "day" },
+          ...usual,
           { id: "change", label: "تغییر می‌دهم", sub: "تعداد هر قلم را اصلاح می‌کنید", next: "adjust" },
           full,
         ];
@@ -156,6 +164,8 @@ export const orderQuickFlow: FlowConfig = {
       kind: "choice",
       q: "سفارش ثبت شود؟",
       sub: (ctx, s) => {
+        const twin = orderTwin(ctx, s);
+        if (twin) return `این مشتری سفارش باز ${twin.order_no} را با همین کالاها در ۲۴ ساعت گذشته دارد. شاید دوباره ثبت شده باشد.`;
         const lines = orderLines(ctx, s);
         const parts = [`${faNum(lines.length)} قلم · جمع ${faToman(orderTotal(ctx, s))}`];
         if (overCreditLimit(ctx, s)) {
@@ -164,10 +174,24 @@ export const orderQuickFlow: FlowConfig = {
         parts.push("سفارش به‌صورت پیش‌نویس ثبت می‌شود و در صفحهٔ سفارش تأیید می‌شود.");
         return parts.join(" · ");
       },
-      options: [{ id: "ok", label: "ثبت سفارش", tone: "rec", save: true }],
+      options: (ctx, s): FlowOption[] => {
+        const twin = orderTwin(ctx, s);
+        if (!twin) return [{ id: "ok", label: "ثبت سفارش", tone: "rec", save: true }];
+        return [
+          { id: "open_dup", label: "باز کردن همان سفارش", sub: twin.order_no, save: true, put: { exit: "dup", dup_id: String(twin.id) } },
+          { id: "ok", label: "سفارش تازه است، ثبت شود", save: true },
+        ];
+      },
     },
   },
 };
+
+/** F72: the open order of the last day these lines repeat, if any. */
+function orderTwin(ctx: FlowContext, st: Vals): OpenOrderBrief | null {
+  if (!ctx.vars.recent_open) return null;
+  const recent = JSON.parse(ctx.vars.recent_open) as OpenOrderBrief[];
+  return duplicateOf(recent, orderLines(ctx, st).map((l) => l.product_id));
+}
 
 /** The exact body POST /api/sales/orders expects. The order is created as a DRAFT. */
 export function orderRequest(ctx: FlowContext, st: Vals) {
@@ -203,6 +227,59 @@ export function orderChips(ctx: FlowContext, st: Vals): string[] {
 const NOT_REPEATABLE = new Set(["DRAFT", "CANCELLED", "RETURNED"]);
 export function pickLastOrder<T extends { status: string }>(orders: T[]): T | null {
   return orders.find((o) => !NOT_REPEATABLE.has(o.status)) ?? null;
+}
+
+export interface BasketLine {
+  product_id: number;
+  packaging_id: number;
+  packs_ordered: number;
+}
+
+/** F58: how many recent orders the usual basket is read from, and how many of them a line must
+ *  be in to count as usual. */
+export const USUAL_WINDOW = 5;
+const USUAL_MIN_ORDERS = 3;
+
+/** The customer's usual basket: every product and pack that appears in at least three of their
+ *  last five repeatable orders (`orders`, newest first, each one's lines), at the median number
+ *  of packs it was ordered in (rounded up to a whole pack). Fewer than three orders means no
+ *  usual basket yet: one or two orders are «last time», not a habit. */
+export function usualBasket(orders: BasketLine[][]): BasketLine[] {
+  const recent = orders.slice(0, USUAL_WINDOW);
+  if (recent.length < USUAL_MIN_ORDERS) return [];
+  const seen = new Map<string, { line: BasketLine; packs: number[] }>();
+  for (const lines of recent) {
+    const inThis = new Map<string, number>();
+    for (const l of lines) {
+      if (!(l.packs_ordered > 0)) continue;
+      const key = `${l.product_id}:${l.packaging_id}`;
+      inThis.set(key, (inThis.get(key) ?? 0) + l.packs_ordered);
+      if (!seen.has(key)) seen.set(key, { line: l, packs: [] });
+    }
+    for (const [key, packs] of inThis) seen.get(key)!.packs.push(packs);
+  }
+  const out: BasketLine[] = [];
+  for (const { line, packs } of seen.values()) {
+    if (packs.length < USUAL_MIN_ORDERS) continue;
+    const sorted = [...packs].sort((a, b) => a - b);
+    const mid = Math.floor(sorted.length / 2);
+    const median = sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+    out.push({ product_id: line.product_id, packaging_id: line.packaging_id, packs_ordered: Math.ceil(median) });
+  }
+  return out;
+}
+
+/** The usual basket as `adjust` counts over the flow's items, or null when there is none or it
+ *  is the same as the last order (then «همان سفارش قبلی» already says it). */
+export function usualCounts(
+  items: NonNullable<FlowContext["items"]>,
+  usual: { id: number; qty?: number }[],
+): Record<number, number> | null {
+  if (usual.length === 0) return null;
+  const counts = Object.fromEntries(items.map((i) => [i.id, 0])) as Record<number, number>;
+  for (const u of usual) counts[u.id] = u.qty ?? 0;
+  const same = items.every((i) => (counts[i.id] ?? 0) === (i.qty ?? 0));
+  return same ? null : counts;
 }
 
 export interface CatalogueProduct {

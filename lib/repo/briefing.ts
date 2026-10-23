@@ -1,3 +1,4 @@
+import { canSnooze } from "@/lib/taskSnooze";
 import { getDb } from "@/lib/db";
 import type { Session } from "@/lib/session";
 import { scopeGroupIds } from "@/lib/session";
@@ -13,13 +14,15 @@ import { faNum, faToman } from "@/lib/format";
 import { customerHref } from "@/lib/deepLink";
 import { isVanRole } from "../roles";
 import { stopCountsByRun, remainingByRun } from "./runStops";
+import { reorderSignals } from "./suggestions";
+import { dueToday, orderHref } from "@/lib/briefingSuggestions";
 
 export interface BriefingItem {
   label: string;
   sub?: string;
   href?: string;
   tone?: "good" | "warn" | "crit" | "info";
-  action?: { kind: "task_outcome"; task_id: number; customer_id?: number } | { kind: "link"; href: string };
+  action?: { kind: "task_outcome"; task_id: number; customer_id?: number; snoozable?: boolean } | { kind: "link"; href: string };
 }
 export interface BriefingPanel {
   key: string;
@@ -98,8 +101,30 @@ export function todayFor(session: Session): Briefing {
              this panel put it straight under a Persian heading. */
           sub: taskPriorityLabel(t.priority),
           action: t.entity_type === "customer" && t.entity_id
-            ? { kind: "task_outcome", task_id: t.id, customer_id: t.entity_id }
-            : { kind: "task_outcome", task_id: t.id },
+            ? { kind: "task_outcome", task_id: t.id, customer_id: t.entity_id, snoozable: canSnooze(t) }
+            : { kind: "task_outcome", task_id: t.id, snoozable: canSnooze(t) },
+        }))
+      )
+    );
+
+    /* F8: who is due to order today by their own rhythm, each opening the quick order flow on
+       that customer. A customer with an order already open is left out. */
+    const open = new Set(
+      (db
+        .prepare(
+          `SELECT DISTINCT customer_id FROM orders WHERE organization_id = ? AND salesperson_user_id = ?
+              AND status IN ('DRAFT', 'PENDING_REVIEW', 'PENDING_CREDIT', 'ON_HOLD', 'CONFIRMED', 'PLANNED', 'READY', 'OUT_FOR_DELIVERY')`
+        )
+        .all(org, session.user.id) as { customer_id: number }[]).map((r) => r.customer_id)
+    );
+    panels.push(
+      panel(
+        "due_today",
+        "موعد سفارش امروز",
+        dueToday(reorderSignals(org, session.user.id, today), open).map((r) => ({
+          label: r.name,
+          sub: `معمولاً هر ${faNum(r.typicalGapDays)} روز · ${faNum(r.daysSinceLast)} روز از آخرین خرید`,
+          href: orderHref(r.customerId),
         }))
       )
     );

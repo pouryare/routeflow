@@ -11,6 +11,7 @@ import { applyNotificationsRolesSeeds } from "./migrations/06-notifications-role
 import { applyLedgersAndLateColumns } from "./migrations/07-ledgers-and-late-columns";
 import { applyFounderSecondFactor } from "./migrations/08-founder-second-factor";
 import { applyQuickWins } from "./migrations/09-quick-wins";
+import { applyEasyBatch } from "./migrations/10-easy-batch";
 
 export function runMigrations(db: DatabaseSync): void {
   applyEarlyColumns(db);
@@ -22,4 +23,5 @@ export function runMigrations(db: DatabaseSync): void {
   applyLedgersAndLateColumns(db);
   applyFounderSecondFactor(db);
   applyQuickWins(db);
+  applyEasyBatch(db);
 }

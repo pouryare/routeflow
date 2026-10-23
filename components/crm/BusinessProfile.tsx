@@ -19,6 +19,7 @@ import { useToast } from "@/components/ToastProvider";
 import CustomerBento from "@/components/meridian/CustomerBento";
 import CustomerPriceHistory from "@/components/PriceHistoryList";
 import BusinessDetails from "./BusinessDetails";
+import CustomerOpenItems from "./CustomerOpenItems";
 import HoursPicker from "./HoursPicker";
 import type { FlowConfig } from "@/lib/crm/flows/types";
 
@@ -103,6 +104,13 @@ export default function BusinessProfile({ initial, initialTimeline, canOrder }: 
     {(profile.business.verification ?? "unverified") === "unverified" && <section className="tile"><strong>اطلاعات تأییدنشده</strong><p>نام و راه تماس را در تماس یا بازدید بررسی کنید.</p>{profile.canWrite && <button className="inline-flex items-center justify-center gap-[var(--space-2)] btn solid" style={TOUCH} onClick={() => setEdit({ kind: "verify" })}>
     <Icon name="check" size="md" />
     تأیید اطلاعات</button>}</section>}
+    {profile.onboarding?.isNew && profile.onboarding.missing.length > 0 && <section className="tile" aria-label="آماده‌سازی مشتری تازه"><h2>آماده‌سازی مشتری تازه</h2>
+      <p>پیش از نخستین تحویل این‌ها را کامل کنید. سفارش بدون آن‌ها هم ثبت می‌شود.</p>
+      <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 6 }}>
+        {profile.onboarding.items.map(i => <li key={i.key} style={{ display: "flex", gap: 8, alignItems: "center", color: i.done ? "var(--text-muted)" : "var(--warn)" }}>
+          <Icon name={i.done ? "check" : "warn"} size="sm" />{i.label}{i.done ? " · ثبت شده" : " · ثبت نشده"}</li>)}
+      </ul>
+    </section>}
     <BusinessDetails business={profile.business} canWrite={profile.canWrite} disabled={busy} onPatch={patch} onHours={openHours} />
     <section className="tile"><h2>شناخت پیش از بازدید</h2>
       <div style={{ display: "grid", gap: 6 }}>
@@ -136,6 +144,7 @@ export default function BusinessProfile({ initial, initialTimeline, canOrder }: 
       <Icon name="plus" size="md" />
       افزودن مخاطب</button>}
     </section><CustomerBento data={profile.summary} />
+    {profile.open && <CustomerOpenItems data={profile.open} />}
     <CustomerPriceHistory customerId={profile.business.id} />
     <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}><Link className="btn ghost" style={TOUCH} href={`/sales/orders?customer=${profile.business.id}`}>همهٔ سفارش‌ها</Link></div>
     <section className="tile"><h2>تاریخچه</h2>{!history.items.length && <p>رویدادی ثبت نشده است.</p>}

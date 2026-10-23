@@ -17,6 +17,14 @@ import RolePicker from "@/components/today/RolePicker";
 import SweepButton from "@/components/SweepButton";
 import PageHeader from "@/components/meridian/PageHeader";
 import { isVanRole, roleLabel, MANAGE_ROLES } from "@/lib/roles";
+import { earningsSoFar } from "@/lib/repo/earningsSoFar";
+import EarningsCard from "@/components/today/EarningsCard";
+import { weekVsLast } from "@/lib/repo/weekCompare";
+import WeekCompareCard from "@/components/today/WeekCompareCard";
+import { tehranTodayIso } from "@/lib/jalali";
+import { unseenFor } from "@/lib/whatsNew";
+import { getPrefs } from "@/lib/repo/prefs";
+import WhatsNewCard from "@/components/today/WhatsNewCard";
 
 
 export const dynamic = "force-dynamic";
@@ -31,6 +39,10 @@ export default async function SalesTodayPage() {
   if (isVanRole(session.role)) redirect("/driver");
 
   const data = todayFor(session);
+  const earnings = earningsSoFar(session);
+  const week = weekVsLast(session, tehranTodayIso());
+  // Not while acting as someone else: dismissing it would mark THEIR notes as read.
+  const whatsNew = session.actorId === undefined ? unseenFor(session.role, getPrefs(session.user.id).whats_new_seen) : null;
 
   return (
     <>
@@ -75,7 +87,12 @@ export default async function SalesTodayPage() {
         </div>
       )}
 
+      {whatsNew && <WhatsNewCard entry={whatsNew} />}
+
       <ActionCards cards={suggestionsFor(session)} />
+
+      {earnings && <EarningsCard e={earnings} />}
+      {week && <WeekCompareCard {...week} />}
 
       <Briefing data={data} variant="meridian" />
     </div>    </>

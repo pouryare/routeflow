@@ -11,6 +11,7 @@ const facts = (over: Partial<StatusFacts> = {}): StatusFacts => ({
   lastSyncAt: hoursAgo(1),
   customersSyncedAt: hoursAgo(24),
   lastNotificationAt: hoursAgo(2),
+  lastDigestAt: hoursAgo(5),
   failedSignIns24h: 0,
   dbBytes: 1_048_576,
   ...over,
@@ -35,6 +36,12 @@ describe("statusLines", () => {
     expect(tone(facts({ forecastAt: null }), "forecast")).toBe("unknown");
     expect(tone(facts({ failedSignIns24h: 6 }), "signins")).toBe("warn");
     expect(tone(facts({ failedSignIns24h: 25 }), "signins")).toBe("bad");
+  });
+
+  it("flags a morning digest that stopped coming (F16)", () => {
+    expect(tone(facts({ lastDigestAt: null }), "digest")).toBe("unknown");
+    expect(tone(facts({ lastDigestAt: hoursAgo(30) }), "digest")).toBe("warn");
+    expect(tone(facts({ lastDigestAt: hoursAgo(60) }), "digest")).toBe("bad");
   });
 
   it("never calls a quiet sync day broken on its own", () => {

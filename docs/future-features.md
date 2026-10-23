@@ -143,9 +143,11 @@ Origin: the 2026-10-20 mobile-first brainstorm. The pieces that are *not* ambiti
 
 ---
 
-## F35. Force a new password on first sign-in
+## F35. Force a new password on first sign-in — built (first slice)
 
 **What:** an account created from the phone (or the desk) gets a one-time password that is shown once and shared. Nothing makes the person change it, so it stays their password until they do.
+
+**Built (2026-10-23), first slice:** accounts an owner creates or resets carry `must_change_password` (migration 09); `proxy.ts` sends every page to /password and answers APIs with 403 until a new password is saved (PR #57).
 
 **Why parked:** there is no `must_change_password` state anywhere today (users table, sign-in, session); adding it touches login, the session cookie and every route that assumes a signed-in user can proceed.
 
@@ -213,9 +215,11 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 ---
 
-## F8. Reorder prediction (who is due to order)
+## F8. Reorder prediction (who is due to order) — built (first slice)
 
 **What:** from each customer's order history, estimate when they usually reorder and what. Customers who are "due" go onto the salesperson's call list with a pre-filled order draft.
+
+**Built (2026-10-23), first slice:** a «موعد سفارش امروز» panel on a phone salesperson's briefing: customers one to two usual gaps (median days between fulfilled orders, at least three orders) past their last order with no open order, each opening the quick order flow. There is no dismiss yet.
 
 **Why parked:** needs enough history per customer; seasonal and irregular buyers produce noisy predictions; wrong suggestions erode trust fast.
 
@@ -369,9 +373,11 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 ---
 
-## F16. Owner mobile dashboard with push alerts
+## F16. Owner mobile dashboard with push alerts — built (first slice)
 
 **What:** a daily summary and push alerts for exceptions (large unpaid balances, failed deliveries, stock-outs, bounced cheques), tuned for the owner on a phone.
+
+**Built (2026-10-23), first slice:** the rule sweep queues one «خلاصهٔ صبح» notification per owner per day from 07:00 Tehran, built from the owner's briefing panels and this week's order count; the existing flush sends it by push and Telegram under quiet hours, and the new `owner.digest` type can be turned off in notification settings. It depends on the server's rule-sweep timer running after 07:00; the owner's status page has a «خلاصهٔ صبح» line that turns yellow after 26 hours without one, so a missing morning run shows. Instant exception alerts are not built.
 
 **Why parked:** alert fatigue; thresholds differ per business; real push delivery needs real devices and cannot be tested here.
 
@@ -428,9 +434,11 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 ---
 
-## F19. Salesperson earnings view and commission simulator
+## F19. Salesperson earnings view and commission simulator — built (first slice)
 
 **What:** show a rep "if you close these three orders you earn X", and let managers try a commission rule change on last month's data before applying it.
+
+**Built (2026-10-23), first slice:** a read-only «پورسانت این ماه تا امروز» card on a phone salesperson's briefing, from the same `statementFor` the commission page and payroll use. The simulator is not built.
 
 **Already in the app:** the commission engine and `commission_rates` / `commission_payments`; payroll output must stay byte-identical, so the simulator must reuse the same calculation, not copy it.
 
@@ -503,9 +511,11 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 ---
 
-## F23. Digital catalogue and price list
+## F23. Digital catalogue and price list — built (first slice)
 
 **What:** a shareable catalogue or price list per customer group (photos, units, prices), sent through Telegram or WhatsApp or opened as a web page.
+
+**Built (2026-10-23), first slice:** /print/price-list prints today's prices of the active, priced packagings (or saves them as PDF from the browser), linked from the products page. Prices have no per-group series, so it is one list per company; no shared link yet.
 
 **Why parked:** each group may see different prices, so a shared link must not leak another group's prices; keeping the list current when prices change; image sizes on weak connections.
 
@@ -838,9 +848,11 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 ---
 
-## F40. Customer onboarding checklist
+## F40. Customer onboarding checklist — built (first slice)
 
 **What:** a new customer's first-order steps tracked until complete: credit limit set, location confirmed, price group chosen, contact person recorded, first delivery slot agreed. Incomplete items show on the owner's task list and the customer page.
+
+**Built (2026-10-23), first slice:** a four-item checklist (location, price group, contact, credit limit) on the customer page and as a warning in the order form until the customer's first confirmed order (`lib/onboarding.ts`).
 
 **Technology to consider (2026-10-23):** a contact picker (Contact Picker API or `@capacitor-community/contacts`) to fill name and phone; see `docs/roadmap.md`, section 10.
 
@@ -985,9 +997,11 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 ---
 
-## F47. Customer 360 page
+## F47. Customer 360 page — built (first slice)
 
 **What:** one screen for a customer with orders, payments and balance, cheques, complaints, calls and visits, tasks, ratings, churn and credit risk, and next best action.
+
+**Built (2026-10-23), first slice:** the customer page shows open cheques (managers only) and open complaints under the summary (`lib/repo/customer360.ts`).
 
 **Already in the app:** the customer detail panel and page (`components/CustomerDetailPanel.tsx`, `/crm/[id]`) with the history timeline, purchase history, photos and reminders, plus the unified timeline (`lib/crm/timeline.ts`, kinds: activity, task, order, payment). Missing: cheques, complaints, balance and risk in the same place, and a clear "what to do next" line.
 
@@ -1123,9 +1137,11 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 ---
 
-## F54. Data quality dashboard
+## F54. Data quality dashboard — built (first slice)
 
 **What:** customers missing a location, phone number, district, owner or price group, with a completeness score per group and per rep, and one-tap fix tasks.
+
+**Built (2026-10-23), first slice:** /sales/data-quality, managers only: active and dormant customers missing a location, phone or district, grouped, each linking to the customer.
 
 **Already in the app:** customer health scoring (`lib/repo/health.ts`) is about customer performance, not record completeness. The duplicates tool covers repeated customers. The lead import and CRM flows validate on entry. There is no completeness view for existing records.
 
@@ -1205,9 +1221,11 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 ---
 
-## F58. Order templates and favourites
+## F58. Order templates and favourites — built (first slice)
 
 **What:** each customer's usual basket (or several named baskets) one tap away when starting an order, instead of retyping lines.
+
+**Built (2026-10-23), first slice:** the quick order's «same as last time» step offers «سبد همیشگی»: lines that appear in at least three of the last five orders, at the median pack count rounded up (`lib/flows/orderQuick.ts` `usualBasket`). Named templates are not built.
 
 **Already in the app:** the repeat-order flow in `lib/flows/orderQuick.ts` already offers "same as last time?": it picks the customer's latest repeatable order (`pickLastOrder`, skipping drafts, cancelled and returned orders) and rebuilds its lines priced from today's catalogue (`itemsFromLastOrder`). What is missing: a basket that is not just the last order (the usual one), named templates (weekly stock, weekend), and a "favourite products" row.
 
@@ -1284,9 +1302,11 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 ---
 
-## F62. Customer-specific product visibility
+## F62. Customer-specific product visibility — built (first slice)
 
 **What:** hide products from customers or groups that don't buy them, so reps and customers see shorter, relevant lists.
+
+**Built (2026-10-23), first slice:** the order form's product picker pins «خریدهای این مشتری» above the frequent items: the usual basket first, then the customer's most bought products (`lib/customerProducts.ts`).
 
 **Already in the app:** products have a global `active` flag. I found no per-customer or per-group visibility.
 
@@ -1385,9 +1405,11 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 ---
 
-## F67. Friday weekly scorecard
+## F67. Friday weekly scorecard — built (first slice)
 
 **What:** an automatic weekly summary for each manager and the owner, generated on Friday at the end of the Persian week (Saturday to Friday): orders, deliveries, collection, complaints, visits, targets, with the change from the previous week.
+
+**Built (2026-10-23), first slice:** a «این هفته در برابر هفتهٔ قبل» card on the owner's and manager's briefing: confirmed orders, sales, deliveries and money received, Saturday to today, against the same days of last week. KPI snapshots are monthly, so it reads orders and payments directly. No Friday message yet.
 
 **Already in the app:** the briefing panels (`lib/repo/briefing.ts`), KPI snapshots and health scores (`lib/repo/health.ts`, `kpi_snapshots`), targets, and a scheduled sweep with weekly recurrence rules (`weekly:<day>`, including `fri`, in `lib/tasks/recurrence.ts`). Notifications reach people through push and Telegram. There is no weekly digest.
 
@@ -1490,9 +1512,11 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 ---
 
-## F72. Duplicate order warning
+## F72. Duplicate order warning — built (first slice)
 
 **What:** warn when a customer already has a near-identical open order (same products, close quantities, same or neighbouring day), which usually means a double entry, and offer to open that order instead.
+
+**Built (2026-10-23), first slice:** before saving, the order form and the quick flow warn when the same customer has an open order with the same products created in the last 24 hours, with «open that order» or «save, it is new» (`lib/duplicateOrder.ts`). Only orders the caller can see are checked.
 
 **Already in the app:** nothing I could find warns about a repeated order. The duplicate-customer tool (`lib/repo/crm/duplicates.ts`) is about customer records, not orders.
 
@@ -1741,9 +1765,11 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 ---
 
-## F84. In-app help and tooltips
+## F84. In-app help and tooltips — built (first slice)
 
 **What:** short Persian help for each screen and field (what it is, how to read it, what to do next), reachable from a small `(i)` button and editable by the owner without a developer.
+
+**Built (2026-10-23), first slice:** help entries for the five busiest screens (today, CRM, payments, planner, runs) in `lib/help/index.ts`, opened from each page header's (i) button.
 
 **Already in the app:** a help registry exists (`lib/help`, with `getHelp` and a typed entry: title, what it shows, how to read it). The `(i)` button is `components/meridian/CardHelp.tsx`: a deliberate click opens a small panel, an unwritten entry shows a calm "coming soon" line, and unwritten ids are collected for a help-debt backlog (`tests/meridian-help.test.ts`). It is used on a small number of dashboard cards; the registry has only a handful of written entries. The sales academy (`/sales/academy`) covers lessons and objection cards, which is training rather than per-screen help.
 
@@ -1841,9 +1867,11 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 ---
 
-## F89. Customer price history
+## F89. Customer price history — built (first slice)
 
 **What:** every price a customer has been charged (and, once quotes exist, offered) for each product, with dates and the list price at the time, to settle "you charged me less last time" and to spot unplanned discounts.
+
+**Built (2026-10-23), first slice:** the order form and the customer page show the last five prices the customer paid per product and pack, from the frozen order lines, scoped by `orderFilter` (PR #57).
 
 **Already in the app:** each order line freezes the price it was sold at (`unit_price_toman`, with `price_id` pointing at the dated list price), so the history is in the data. The customer page shows a purchase history with each order's number, status, date, payment status, total and line count, and a product mix with packs and totals per product (`components/PurchaseHistory.tsx`). It does not show unit price per product over time, and quotes are not recorded (F29).
 
@@ -2027,9 +2055,11 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 ---
 
-## F98. Customer note and visit search
+## F98. Customer note and visit search — built (first slice)
 
 **What:** search across all call and visit notes for a phrase, such as "closing for renovation" or "prefers morning", to find the customers affected, with results scoped to what the searcher may see.
+
+**Built (2026-10-23), first slice:** the search overlay has a «یادداشت‌ها» section that searches activity notes of the customers the caller can see (at least 3 characters, the newest 3000 notes). Task and complaint text are not searched.
 
 **Already in the app:** a global search overlay already finds customers, orders and other records, with Persian-aware matching (it folds Arabic and Persian letter forms and digits, `lib/persian.ts`, `lib/repo/search.ts`) and the same group and role scoping as the pages it mirrors. Call and visit notes are stored on activities (`insertActivity`, with a `note` column) and shown on the customer timeline, but they are not searched.
 
@@ -2047,9 +2077,11 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 ---
 
-## F99. Product catalogue change log
+## F99. Product catalogue change log — built (first slice)
 
 **What:** a history of product creation, renaming, pack-size and unit changes, price entries and deactivation, with who changed it and when, shown on the product page.
+
+**Built (2026-10-23), first slice:** adding a product or packaging and moving reorder levels write to the activity log; the owner sees the latest 30 changes on the products page (PR #57).
 
 **Already in the app:** prices and costs are already versioned as dated, insert-only rows (`product_prices`, `product_costs`), so price history exists in the data. A generic activity log (`logActivity` into `activity_log`: entity, event type, old and new value, note, who) is used for districts, visit plans, photos and the duplicate-customer merge. The product routes do not write to it, so renames, unit and pack changes and deactivation leave no history.
 
@@ -2067,9 +2099,11 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 ---
 
-## F100. Customer ownership change history
+## F100. Customer ownership change history — built (first slice)
 
 **What:** when a customer moves between salespeople or groups, record who moved it, when, from whom to whom and why, and show it on the customer page and in a report.
+
+**Built (2026-10-23), first slice:** `recordOwnerChange` writes both sides by name from every path that changes a customer's owner or group (PR #57).
 
 **Already in the app:** an `owner_change` activity ("change of owner") appears on the customer timeline (`lib/crm/timeline.ts`), but it is written only when a salesperson takes a customer from the group pool, with the note "taken from the group pool" and no previous owner (`lib/repo/crm/write.ts`). A reassign request exists (`requestReassign`). I found no record of a manager moving a customer from one rep to another, or of a group change.
 
@@ -2087,9 +2121,11 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 ---
 
-## F101. Bulk delivery notes per run
+## F101. Bulk delivery notes per run — built (first slice)
 
 **What:** print all of a run's delivery notes in one go, in stop order, with a cover sheet (driver, van, totals, cash to collect), instead of printing them one at a time.
+
+**Built (2026-10-23), first slice:** /print/run/[id] prints a cover sheet and one delivery note per pending stop, page by page, linked from the day board's run lanes; for managers who can reach the run and the run's own driver.
 
 **Already in the app:** the receipt handed over at the door is built from one stop's numbers (`lib/deliveryReceipt.ts`, `lib/receiptLayout.ts`) and printed from the delivery flow ("print receipt") and from done stops; the planner and report pages have print buttons (`components/PrintButton.tsx`). That is the customer's copy after delivery. There is no pre-printed note per stop for the run and no multi-page print.
 
@@ -2223,9 +2259,11 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 ---
 
-## F107. Device and session management
+## F107. Device and session management — built (first slice)
 
 **What:** each person sees where they are signed in, can sign out another device, and the owner can end a lost phone's access, which matters more now that data is cached on phones (offline orders, customers and, later, tasks).
+
+**Built (2026-10-23), first slice:** /settings/security ends sessions on other devices or everywhere by raising `users.token_version` (PR #57).
 
 **Already in the app:** sessions are stateless signed cookies, and each user has a `token_version`: raising it makes every token already issued to that user invalid immediately (that is how a password reset or deactivation takes effect, `lib/auth.ts`). Sign-out exists. What does not exist is a list of devices or sessions: because nothing is stored per session, the app can sign someone out everywhere but cannot show or end one device.
 
@@ -2243,9 +2281,11 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 ---
 
-## F108. System status page for the owner
+## F108. System status page for the owner — built (first slice)
 
 **What:** one page showing the app's own health: last sync activity, last backup and how old it is, failed notifications, errors and slow queries from the last day, how fresh the imported data is, and whether outside services (routing, weather, messaging) respond.
+
+**Built (2026-10-23), first slice:** /sales/admin/status, owner only: backup, nightly runs, last sync, data freshness, last notification, failed sign-ins and database size (PR #57).
 
 **Technology to consider (2026-10-23):** a backup fire drill whose last result the status page shows; see `docs/roadmap.md`, section 10.
 
@@ -2289,9 +2329,11 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 ---
 
-## F110. Login activity log
+## F110. Login activity log — built (first slice)
 
 **What:** a record of who signed in, when, from which device and address, plus failed attempts, visible to the owner, so odd sign-ins can be spotted.
+
+**Built (2026-10-23), first slice:** every sign-in attempt on a real account is kept 90 days in `login_events`; the owner sees the last 100, each person their own last 10 (PR #57).
 
 **Already in the app:** the login route limits attempts per address and per username with an in-memory counter (`lib/rateLimit.ts`), which forgets everything on restart and is not a log. Changes to records are logged separately (`activity_log`, see F27). I found no stored sign-in history and no last-login time on users.
 
@@ -2329,9 +2371,11 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 ---
 
-## F112. What's new notes
+## F112. What's new notes — built (first slice)
 
 **What:** short release notes shown once after an update, written for staff ("the order screen now remembers the delivery day"), so changes are learned without a meeting.
+
+**Built (2026-10-23), first slice:** notes in `lib/whatsNew/notes.ts`, keyed by release date with optional roles per line; a card on the sales briefing shows unseen lines once, «دیدم» stores the version in `users.prefs_json`, and /settings/updates lists the history. Drivers' /today page does not show the card yet.
 
 **Already in the app:** the sales academy (`/sales/academy`) holds lessons and objection cards for selling, and the help registry (F84) explains cards. Neither announces changes to the app itself. I found no release notes or version display for users.
 
@@ -2765,9 +2809,11 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 ---
 
-## F132. Order priority flag
+## F132. Order priority flag — built (first slice)
 
 **What:** a one-tap urgent flag at order entry (and for a manager to set later), shown first in planning and clearly on the driver's stop, with an optional reason.
+
+**Built (2026-10-23), first slice:** managers flip an open order between normal and urgent on the order page; a tag shows on the order, the board and the driver's stop (PR #57).
 
 **Already in the app:** this is partly built. Orders have a `priority` column (default `NORMAL`), and the route planner reads it and passes a numeric weight to the solver: `URGENT` 100, `KEY_ACCOUNT` 60, `NORMAL` 10, `FLEXIBLE` 1 (`lib/repo/routing.ts`), so the optimiser already prefers urgent deliveries. A requested delivery day left empty already means "as soon as possible" (the planning notes say there is deliberately no separate flag for it), and driver commission rates have an optional higher "urgent" rate per kilogram (`urgent_rate_per_kg_toman`). I could not find any screen or route that sets the priority value, so in practice every order stays `NORMAL`, and the driver stop card does not show it. I did not verify what feeds the urgent commission rate.
 
@@ -2785,9 +2831,11 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 ---
 
-## F133. Required training and completion tracking
+## F133. Required training and completion tracking — built (first slice)
 
 **What:** managers define which lessons are required for each role, and see per person which required lessons are done, overdue or missing, with a reminder to the person.
+
+**Built (2026-10-23), first slice:** `required_for` roles on academy modules in the manifest and a manager table of who has finished which required lesson. Decided (2026-10-23, delegated by the owner): «مبانی بازار و مشتری» for phone sales, field reps and group managers (who coach them), «فروش تلفنی» for phone sales.
 
 **Already in the app:** the sales academy has a lesson manifest (slug, module, title, order, status; two modules so far: market and customer, and phone sales, under `content/academy`) and records when a user completes a lesson (`lesson_progress`, `markLessonDone` in `lib/repo/academy.ts`). Each person can see their own progress. There is no notion of a required lesson, no role mapping and no manager view.
 
@@ -2867,9 +2915,11 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 ---
 
-## F137. Lead source return on spend
+## F137. Lead source return on spend — built (first slice)
 
 **What:** record what each lead source costs (flyers, ads, trade-show stands, referral rewards, a rep's time on field visits) and compare it with the customers and revenue each source produced, to decide where to spend more.
+
+**Built (2026-10-23), first slice:** /sales/lead-sources, managers: leads, converted customers and first-90-day revenue per source, all time. Spend entry is not built, so there is no return figure yet.
 
 **Already in the app:** every lead has a source chosen from a fixed list of nine: Google Maps, Google search, Snappfood, Tapsi Food, Instagram, referral, existing customer, field visit and other, with a source detail and link, and the id of the customer who referred it (`LEAD_SOURCES` in `lib/crm/vocab.ts`; `source_code`, `source_detail`, `source_url` and `referred_by_customer_id` on the customer). Leads that are lost carry one of fourteen lost reasons. Conversion to a customer and the revenue of that customer are in the data, so counts and revenue per source can be derived. Spend per source is not recorded anywhere.
 
@@ -2973,9 +3023,11 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 ---
 
-## F142. Snooze for alerts and tasks
+## F142. Snooze for alerts and tasks — built (first slice)
 
 **What:** "remind me in an hour / this afternoon / tomorrow" on a notification or a task, instead of dismissing or ignoring it.
+
+**Built (2026-10-23), first slice:** «later» on a task moves its due time by an hour or to tomorrow 9:00, at most three times and never for urgent work (`lib/taskSnooze.ts`, `tasks.snooze_count`, migration 10). Reminders in «کارهای من» are tasks, so they snooze too; the old map reminders and notifications do not.
 
 **Already in the app:** the notification feed has unread counts and mark-as-read (`lib/repo/notifications.ts`), reminders and tasks have due dates and statuses (open, done, dismissed), and the map's arrival prompt has its own snooze for a stop the driver waved away (`lib/arrival.ts`, `components/GeofenceWatcher.tsx`). Push notifications can carry one action button. A general snooze for notifications or tasks does not exist.
 
@@ -3015,9 +3067,11 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 ---
 
-## F144. Failure, cancellation, return and delay reason reports
+## F144. Failure, cancellation, return and delay reason reports — built (first slice)
 
 **What:** counts and trends of failed deliveries, cancelled orders, returns, delays and lost leads, grouped by reason, customer, route, driver, group and period, with a plain "what is the biggest cause this month" line.
+
+**Built (2026-10-23), first slice:** /sales/reasons counts failures, cancellations, returns and delays by reason over 30, 90 or 365 days, with order value, scoped to the manager's group (PR #57).
 
 **Already in the app:** the capture half exists. Reasons are kept in a table by area (failed delivery, delayed delivery, order cancel, order return) with shipped defaults and per-organisation overrides (`reason_codes`). The order action sheet requires a reason for cancel, return and failed delivery (`lib/flows/orderAction.ts`: `REASON_DOMAIN`, `needsReason`), and the reason is stored on the order's history entry (`order_events.reason_code_id`) and on the stop (failure and delay reasons); the order page's timeline shows it. Lost leads store one of fourteen lost reasons (`lost_reason_code`). I found no query that counts or groups by reason anywhere. The "why did sales change" analysis (`lib/repo/why.ts`) splits a change in sales by territory, salesperson and funnel stage, not by reason.
 

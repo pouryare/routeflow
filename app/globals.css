@@ -1527,6 +1527,13 @@ body {
   .no-print {
     display: none !important;
   }
+  /* F101: one delivery note per sheet, after the run's cover sheet. */
+  .run-notes__page {
+    break-after: page;
+  }
+  .run-notes__page:last-child {
+    break-after: auto;
+  }
   .print-report {
     background: #ffffff !important;
   }

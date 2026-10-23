@@ -84,8 +84,8 @@ describe("where each destination lives", () => {
   const groupOf = (href: string) => owner.find((t) => t.href === href)?.group;
   const hrefsIn = (g: AppGroupId) => owner.filter((t) => t.group === g).map((t) => t.href).sort();
 
-  it("customers: the CRM, the map, map pins, complaints and the photo gallery", () => {
-    expect(hrefsIn("customers")).toEqual(["/crm", "/gallery", "/leads", "/map", "/sales/complaints"]);
+  it("customers: the CRM, the map, map pins, complaints, the photo gallery and data quality", () => {
+    expect(hrefsIn("customers")).toEqual(["/crm", "/gallery", "/leads", "/map", "/sales/complaints", "/sales/data-quality"]);
   });
   it("the CRM is every role's but the driver's", () => {
     for (const role of ["owner", "group_manager", "rep_manager", "phone_sales"] as const) {
@@ -149,7 +149,7 @@ describe("where each destination lives", () => {
   });
 
   it("every read-only overview is a report, the forecast included", () => {
-    expect(hrefsIn("reports")).toEqual(["/report", "/sales", "/sales/dashboard", "/sales/forecast", "/sales/reasons"].sort());
+    expect(hrefsIn("reports")).toEqual(["/report", "/sales", "/sales/dashboard", "/sales/forecast", "/sales/lead-sources", "/sales/reasons"].sort());
   });
 
   it("academy is team material, not administration", () => {

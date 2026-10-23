@@ -1,4 +1,5 @@
 import { makeRepo } from "./base";
+import { canSnooze, snoozedDue, type SnoozeChoice } from "@/lib/taskSnooze";
 import { resolveRuleRunsFor } from "./rules";
 import { tryEmitEvent } from "./events";
 import {
@@ -33,6 +34,8 @@ export interface TaskRow {
   created_by: number | null;
   created_at: string;
   done_at: string | null;
+  /** F142: how many times this task was put off (lib/taskSnooze.ts caps it). */
+  snooze_count: number;
 }
 
 export const tasksRepo = makeRepo<TaskRow>("tasks", { tenant: true });
@@ -283,4 +286,15 @@ export function dismissTask(organizationId: number, id: number): void {
   if (row.entity_type && row.entity_id) {
     resolveRuleRunsFor(organizationId, row.entity_type, row.entity_id);
   }
+}
+
+/** F142: put an open task off by an hour or to 09:00 tomorrow. Refused for critical and high
+ *  priority work and after three snoozes. Returns the new due time. */
+export function snoozeTask(organizationId: number, id: number, choice: SnoozeChoice, nowIso = new Date().toISOString()): string {
+  const row = tasksRepo.get(organizationId, id);
+  if (!row) throw new TaskError("کار پیدا نشد");
+  if (!canSnooze(row)) throw new TaskError("این کار را نمی‌شود عقب انداخت؛ انجامش دهید یا حذفش کنید");
+  const due = snoozedDue(choice, nowIso);
+  tasksRepo.patch(organizationId, id, { due_at: due, snooze_count: row.snooze_count + 1 });
+  return due;
 }
