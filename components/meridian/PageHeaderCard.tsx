@@ -1,10 +1,10 @@
 "use client";
 
-import Link from "next/link";
 import { useCallback, useEffect, useRef } from "react";
 import { carvedCardPath } from "@/lib/design/carve";
 import type { AppTab } from "@/lib/appNav";
 import { CardHelp } from "@/components/meridian/CardHelp";
+import RouteTabs from "@/components/RouteTabs";
 
 /** The card every shell page opens with: what this screen is, in a couple of lines, with
  *  the section's sibling tabs sitting in a bay cut out of its top edge.
@@ -85,13 +85,9 @@ export default function PageHeaderCard({
       {/* A SIBLING of the carved element, never a child: clip-path clips descendants, so
           tabs placed inside are erased by the very bay that exists to hold them. */}
       {tabs.length > 0 && (
-        <nav className="phc__tabs" ref={row} aria-label={`بخش‌های ${title}`}>
-          {tabs.map((t) => (
-            <Link key={t.href} href={t.href} aria-current={t.href === currentHref ? "page" : undefined}>
-              {t.label}
-            </Link>
-          ))}
-        </nav>
+        <div className="phc__tabs" ref={row}>
+          <RouteTabs tabs={tabs} current={currentHref} label={`بخش‌های ${title}`} />
+        </div>
       )}
       <div className="phc" ref={card}>
         <div className="phc__body">

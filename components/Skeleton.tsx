@@ -6,19 +6,27 @@
  *  height up front, which is the entire point; the shimmer is only there so the reader
  *  can tell a placeholder from an empty state.
  *
- *  Not a client component: no state, no effects, no handlers. It renders inside client
- *  components and server ones alike.
+ *  The blocks are HeroUI's Skeleton, drawn as spans so a line can sit inside running
+ *  text. A client module because HeroUI's is, and because the span is drawn by a render
+ *  function, which cannot cross from a server component; every prop here is a string, so
+ *  server pages render these as before.
  */
+"use client";
+
+import type { ComponentPropsWithRef } from "react";
+import { Skeleton } from "@heroui/react";
+
+const asSpan = (props: ComponentPropsWithRef<"span">) => <span {...props} />;
 
 /** One line of text. `w` is a Tailwind width class so a list of these can be given
  *  uneven lengths -- equal-length bars read as a table, not as prose. */
 export function SkeletonLine({ w = "w-full", className = "" }: { w?: string; className?: string }) {
-  return <span className={`skeleton block h-3 ${w} ${className}`} />;
+  return <Skeleton render={asSpan} animationType="shimmer" className={`block h-3 ${w} ${className}`} />;
 }
 
 /** A rectangle: a thumbnail, a map, a chart. */
 export function SkeletonBlock({ className = "" }: { className?: string }) {
-  return <span className={`skeleton block ${className}`} />;
+  return <Skeleton render={asSpan} animationType="shimmer" className={`block ${className}`} />;
 }
 
 /** The repeated-row case -- the shape of every list in this app: one bordered card with
