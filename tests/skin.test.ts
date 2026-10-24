@@ -9,8 +9,8 @@ import { THEME_INIT_SCRIPT, SKIN_KEY } from "@/lib/theme";
 describe("meridian ground temperature", () => {
   const css = readFileSync("app/globals.css", "utf8");
   const bgOf = (block: string) => {
-    const m = css.match(new RegExp(`${block}\\s*{[^}]*?--bg:\\s*(#[0-9A-Fa-f]{6})`, "s"));
-    if (!m) throw new Error(`no --bg found in ${block}`);
+    const m = css.match(new RegExp(`${block}\\s*{[^}]*?--background:\\s*(#[0-9A-Fa-f]{6})`, "s"));
+    if (!m) throw new Error(`no --background (the old --bg) found in ${block}`);
     const hex = m[1];
     return { r: parseInt(hex.slice(1, 3), 16), b: parseInt(hex.slice(5, 7), 16), hex };
   };

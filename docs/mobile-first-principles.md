@@ -104,10 +104,16 @@ them). A drivers' page is a bare single screen without the bar.
 
 ## 6. Look and feel
 
-Spacing and colour come from the `.meridian` tokens (`var(--space-*)`, `var(--accent)`, `--line`,
-`--card`); chosen state is the accent fill **plus** a check icon, never colour alone. Icons come from
-`<Icon>` only. The sheet container is `.sheet` (via `BottomSheet`); `.sheet-on-mobile` turns older
-side panels into bottom sheets. Motion is short and disabled for reduced motion.
+The parts are HeroUI's (MASTER.md "Base components"): a Button or ToggleButton for an answer
+(`components/tapflow/Answer.tsx`), a SearchField above a long list, a Drawer for every sheet (via
+`BottomSheet`), Tabs for page rows, Calendar for the rare full date. Colour comes from HeroUI's token
+names in the `.meridian` scope (`--background`, `--foreground`, `--surface`, `--default`, `--muted`,
+`--accent`, `--accent-foreground`, `--danger` …); the older names (`--line`, `--card`, `--text`)
+still resolve as aliases but new rules do not use them. Spacing is `var(--space-*)`. HeroUI's own
+heights are lifted to the 44 / 52 px floor in `globals.css`, so a new HeroUI part is not a reason to
+drop below it. Chosen state is the accent fill **plus** a check icon, never colour alone. Icons come
+from `<Icon>` only. `.sheet-on-mobile` turns older side panels into bottom sheets. Motion is short and
+disabled for reduced motion.
 
 ## 7. How to build one
 

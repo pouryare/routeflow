@@ -137,30 +137,43 @@ Rules:
   leaves the surrounding UI alone. Status hues (`--good`/`--warn`/`--crit`) never move:
   they mean the same thing on `/report`, and only their opacity is tuned per ground.
 
-## Color `CHANGED`
+## Color `CHANGED` — HeroUI token names
 
 Same semantic roles in both themes; different values. Status meaning never moves.
 Every figure below is computed, not eyeballed — see `scripts/check-contrast.mjs`.
+
+**The token names are HeroUI's (2026-10-24, `docs/roadmap.md` 10.1).** Inside `.meridian` the
+values are written under HeroUI's names — `--background`, `--foreground`, `--surface`,
+`--surface-secondary`, `--surface-tertiary`, `--muted`, `--accent-foreground`, `--success`,
+`--warning`, `--danger` and their `-soft` fills — so HeroUI's own parts and ours read one
+palette. The older names in the second column are `var()` aliases of them, defined once in
+the "HeroUI tokens, and the older names as aliases" block of `app/globals.css`; they exist so
+rules written before HeroUI keep resolving. **New rules use the HeroUI name.** That block also
+restates HeroUI's calculated tokens (hover, soft and focus mixes, `--default`, `--field-*`,
+`--overlay`, `--separator`, `--surface-shadow`) from this palette, because HeroUI declares them
+on `:root`, where they would mix the default violet-grey rather than the chosen theme.
+
+The map (outside `.meridian`) still reads its own `:root` palette under the older names.
 
 ### Light (default)
 
 | Token | Hex | vs `--bg` | vs `--surface` | Role |
 |---|---|---|---|---|
-| `--bg` | `#F1F3F6` | — | — | Cool ground. Never pure white, never warm. |
-| `--surface` | `#FFFFFF` | — | — | Cards lift *off* the ground |
-| `--surface-2` | `#F8FAFC` | — | — | Inset rows, quiet fills |
-| `--surface-sunk` | `#E8ECF1` | — | — | Tab trough, progress track |
-| `--border` | `#E0E5EC` | — | — | Hairlines |
+| `--background` (`--bg`) | `#F1F3F6` | — | — | Cool ground. Never pure white, never warm. |
+| `--surface` (`--card`) | `#FFFFFF` | — | — | Cards lift *off* the ground |
+| `--surface-secondary` (`--surface-2`, `--card-2`) | `#F8FAFC` | — | — | Inset rows, quiet fills |
+| `--surface-tertiary` (`--surface-sunk`, `--sunk`) — also `--default` | `#E8ECF1` | — | — | Tab trough, progress track |
+| `--border` (`--line`) — also `--separator` | `#E0E5EC` | — | — | Hairlines |
 | `--border-strong` | `#CDD4DE` | — | — | Emphasized borders |
-| `--text` | `#1A1F26` | 14.90 | 16.56 | Primary text |
-| `--text-muted` | `#5C6672` | 5.25 | 5.84 | Secondary text |
+| `--foreground` (`--text`, `--ink`) | `#1A1F26` | 14.90 | 16.56 | Primary text |
+| `--muted` (`--text-muted`) | `#5C6672` | 5.25 | 5.84 | Secondary text |
 | `--text-faint` | `#656E7B` | 4.63 | 5.16 | Readable; close to `--text-muted` by design (was `#828A98`, 3.1:1, which failed for the 150+ labels that used it) |
 | `--accent` | `#0077BC` | 4.33 | 4.81 | Ocean. **Fills only** |
 | `--accent-text` | `#006EAE` | 4.92 | 5.47 | Accent *as text* — links, amounts due |
-| `--accent-ink` | `#FFFFFF` | 4.81 on accent | — | Text on an accent fill |
-| `--good` | `#4F6B4A` | 5.34 | 5.94 | تحویل‌شده / پرداخت‌شده |
-| `--warn` | `#7A5409` | 6.09 | 6.78 | تأییدشده / بخشی |
-| `--crit` | `#A11B3F` | 6.88 | 7.65 | بدهی بحرانی / لغوشده |
+| `--accent-foreground` (`--accent-ink`) | `#FFFFFF` | 4.81 on accent | — | Text on an accent fill |
+| `--success` (`--good`) | `#4F6B4A` | 5.34 | 5.94 | تحویل‌شده / پرداخت‌شده |
+| `--warning` (`--warn`) | `#7A5409` | 6.09 | 6.78 | تأییدشده / بخشی |
+| `--danger` (`--crit`) | `#A11B3F` | 6.88 | 7.65 | بدهی بحرانی / لغوشده |
 | `--info` | `#2E6382` | 5.86 | 6.52 | در مسیر |
 | `--tint-plum` | `#6B4FA0` | 5.81 | 6.46 | Avatar tint only — carries no status |
 
@@ -168,21 +181,21 @@ Every figure below is computed, not eyeballed — see `scripts/check-contrast.mj
 
 | Token | Hex | vs `--bg` | vs `--surface` | Note |
 |---|---|---|---|---|
-| `--bg` | `#0F1214` | — | — | Cool near-black, **not** the map's blue-black |
-| `--surface` | `#171B20` | — | — | |
-| `--surface-2` | `#1D2228` | — | — | |
-| `--surface-sunk` | `#232A31` | — | — | |
-| `--border` | `#28323A` | — | — | |
+| `--background` (`--bg`) | `#0F1214` | — | — | Cool near-black, **not** the map's blue-black |
+| `--surface` (`--card`) | `#171B20` | — | — | |
+| `--surface-secondary` (`--surface-2`, `--card-2`) | `#1D2228` | — | — | |
+| `--surface-tertiary` (`--surface-sunk`, `--sunk`) — also `--default` | `#232A31` | — | — | |
+| `--border` (`--line`) — also `--separator` | `#28323A` | — | — | |
 | `--border-strong` | `#37414A` | — | — | |
-| `--text` | `#EDF1F5` | 16.56 | 15.21 | |
-| `--text-muted` | `#8B98A5` | 6.39 | 5.86 | |
+| `--foreground` (`--text`, `--ink`) | `#EDF1F5` | 16.56 | 15.21 | |
+| `--muted` (`--text-muted`) | `#8B98A5` | 6.39 | 5.86 | |
 | `--text-faint` | `#828C97` | 5.50 | 5.05 | Clears text here; light's cannot |
 | `--accent` | `#3BA6F5` | 7.13 | 6.54 | Lifted — light's ocean is muddy on black |
 | `--accent-text` | `#46A6EF` | 7.13 | 6.54 | Near-same value; dark needs no split |
-| `--accent-ink` | `#030E19` | 7.36 on accent | — | **Near-black, not white** |
-| `--good` | `#93C289` | 9.24 | 8.48 | |
-| `--warn` | `#E0A64A` | 8.70 | 7.99 | |
-| `--crit` | `#F2789B` | 7.10 | 6.52 | |
+| `--accent-foreground` (`--accent-ink`) | `#030E19` | 7.36 on accent | — | **Near-black, not white** |
+| `--success` (`--good`) | `#93C289` | 9.24 | 8.48 | |
+| `--warning` (`--warn`) | `#E0A64A` | 8.70 | 7.99 | |
+| `--danger` (`--crit`) | `#F2789B` | 7.10 | 6.52 | |
 | `--info` | `#83B9DC` | 8.90 | 8.17 | |
 | `--tint-plum` | `#B79EEA` | 8.14 | 7.47 | |
 
@@ -275,6 +288,9 @@ Two changes of substance:
   a resting card carries shadow only, and `--border` is reserved for genuine dividers.
   A card that has both a hairline and a shadow reads as two competing edges.
 
+**HeroUI's shadows are these.** `--surface-shadow` is `--sh-1` and `--overlay-shadow` is
+`--sh-3` inside `.meridian`, so a HeroUI card, popover or drawer lifts the same way ours do.
+
 **A clipped shape takes `filter: drop-shadow(...)`, not `box-shadow`.** The carved bay
 card (below) is cut with `clip-path`, and a box-shadow is drawn on the border box, which
 the clip then removes — the card loses its shadow entirely. `--card-drop` is the
@@ -346,6 +362,11 @@ every surface reads as "a slightly different rounded rectangle" — the eye cann
 which is exactly what sameness feels like. `--r-*` is the canonical scale and `--radius-*`
 now **aliases** it inside `.meridian`, so a rule may use whichever name reads better at the
 call site without the two drifting apart again. Both spellings resolve to the same numbers.
+
+**HeroUI parts keep HeroUI's radius.** Its `--radius` (0.5rem) and `--field-radius` (12px,
+the same as `--radius-md`) are left as shipped: buttons, chips and tabs are fully rounded
+there too, and fields land on our `--radius-md`. Answer cards (`.tf-opt`), day chips and
+keypad keys keep `--r-md` / `--r-lg`, because they are cards a thumb lands on, not pills.
 
 **Corners are superellipses, at 1.5.** `corner-shape: superellipse(1.5)` is applied to every
 surface above `--radius-sm` (chips and pills keep true circles — a squircle on a 999px radius is
@@ -574,23 +595,30 @@ the reader asked for). One is a motion-sickness trigger; the other is an animati
 
 ---
 
-## Base components `SHIPPED`
+## Base components `SHIPPED` — HeroUI
 
-> **Moving to HeroUI (decided 2026-10-23, `docs/roadmap.md` 10.1).** The owner chose the full
-> HeroUI look, so this section and the colour, radius and elevation sections are being retired
-> screen by screen. Already on HeroUI: the tap-flow sheet (Drawer), its date step (Calendar),
-> its confirm/back/skip/close buttons (Button) and every toast. Until a part moves, the rules
-> below still describe it.
+The base parts are HeroUI 3 (`@heroui/react`, React Aria underneath), themed by the tokens
+above. Each part's stylesheet is imported one by one at the top of `app/globals.css`; add a
+part's sheet in the same change that first uses it. What we use, and where it lives:
 
-- **Button** — `--surface` bg, 1px `--border`, `--radius-md`. Primary: `--accent` fill
-  with `#04191C` text (dark) / `#FFFFFF` text (light). Hover: border→accent, text→accent,
-  scale 1.03, `--dur-base`. Active: scale 0.98, `--dur-fast`. Focus: 2px `--accent`
-  outline at 2px offset. Disabled: 40% opacity, no pointer events.
-- **Input / select** — `--surface` bg, 1px `--border`, `--radius-md`, mono for numerics.
-  Focus: border→accent + glow (dark) / border→accent + ring (light).
-- **Card** — `--surface`, `--elev-1`, `--radius-lg`, `padding: var(--space-4)`.
-- **Status pill** — `--radius-sm`, mono `--text-xs` tracked, colored dot + 16% tinted
-  fill, text in the full status color, Persian word always present.
+| Need | HeroUI part | Our wrapper / note |
+|---|---|---|
+| Button, icon button | `Button` | 44 px floor, 52 px for `size="lg"` (rule in `globals.css`, held by `tests/heroui-setup.test.ts`) |
+| Answer in a flow, picker or deck | `Button` / `ToggleButton` | `components/tapflow/Answer.tsx` (`AnswerButton`, `SkipButton`, `AnswerSearch`) |
+| Search above a list | `SearchField` | `AnswerSearch`; 52 px, 16 px type |
+| Text field | `TextField`, `Input`, `InputGroup` | |
+| Sheet / overlay | `Drawer` | `components/mobile/BottomSheet.tsx`; never a hand-rolled modal |
+| Toast with undo | `Toast` | |
+| Day / date | `Calendar` (Shamsi) | `PersianCalendar` in `components/PersianDateField.tsx`; day chips first (`DayChips`, `ToggleButton`s) |
+| Tabs that are pages | `Tabs` with links | `components/RouteTabs.tsx` |
+| Status word | `Chip` | `StatusPill` |
+| Avatar, skeleton, empty state, disclosure | `Avatar`, `Skeleton`, `EmptyState`, `Disclosure` | |
+| Report table, pager | HeroUI's `table` / `pagination` classes | `AcctTable`, `Pager`: server pages with real links, so only the classes |
+| Checkbox, switch, alert, popover | as named | |
+
+Still ours, styled with the HeroUI token names: `Keypad`, `SwipeRow`, the phone bottom bar,
+`FilterChips`, the signature cards below, the charts, and the map markers.
+
 - **Map marker** — 14px diamond, status fill, 2px `--bg` ring, status glow, idle ping.
 - **Facility marker** — `--facility`, distinguished by silhouette before color:
   warehouse a filled hexagon (26×29, center-anchored, crate knocked out); home base a
@@ -681,10 +709,10 @@ Catmull-Rom through the points converted to cubic béziers, an area fill under t
 series, the comparison series as a dotted line, and a tooltip that follows the nearest
 point. In RTL **the oldest day sits on the right**.
 
-### Notification island `SHIPPED`
-Unchanged in behaviour; re-skinned. Still the one primitive behind toasts, the geofence
-prompt and the next-stop bar. The `width`/`height` exemption documented under Motion
-still applies and still has the same justification.
+### Notification island `RETIRED`
+Toasts are HeroUI's `Toast` now, and the island's styles were removed with the other dead
+rules in phase 6 of the HeroUI move. The `width`/`height` exemption under Motion no longer
+has a user.
 
 ### Bento detail strip `SHIPPED`
 Unchanged in structure; re-skinned. On phones it is the bottom sheet, which is now also

@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { Icon } from "@/components/meridian/Icon";
 import BottomSheet from "@/components/mobile/BottomSheet";
+import { AnswerButton, AnswerSearch, SkipButton } from "@/components/tapflow/Answer";
 import { getRecentsUser } from "@/lib/recentsUser";
 import { loadHistory, rank, record, saveHistory, usual, type History } from "@/lib/recents";
 
@@ -82,10 +83,9 @@ export default function SmartPicker({
               <div className="tf-group">{pinned.label}</div>
               <div className="tf-grid">
                 {first.map((i) => (
-                  <button key={i.id} type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] tf-opt" aria-pressed={i.id === value} onClick={() => pick(i.id)}>
-                    <Icon name="repeat" size="md" />
+                  <AnswerButton key={i.id} icon="repeat" selected={i.id === value} onPress={() => pick(i.id)}>
                     {i.label}
-                  </button>
+                  </AnswerButton>
                 ))}
               </div>
             </>
@@ -95,45 +95,33 @@ export default function SmartPicker({
               <div className="tf-group">پرکاربردها</div>
               <div className="tf-grid">
                 {frequent.map((i) => (
-                  <button key={i.id} type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] tf-opt" onClick={() => pick(i.id)}>
-                    <Icon name="star" size="md" />
+                  <AnswerButton key={i.id} icon="star" onPress={() => pick(i.id)}>
                     {i.label}
-                  </button>
+                  </AnswerButton>
                 ))}
               </div>
             </>
           )}
-          <input
-            className="tf-input"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="جستجو…"
-            aria-label={`جستجوی ${label}`}
-            autoFocus={frequent.length === 0 && first.length === 0}
-            autoComplete="off"
-          />
+          <AnswerSearch value={q} onChange={setQ} label={`جستجوی ${label}`} autoFocus={frequent.length === 0 && first.length === 0} />
           <div className="tf-grid one">
             {ranked.map((i) => (
-              <button key={i.id} type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] tf-opt" aria-pressed={i.id === value} onClick={() => pick(i.id)}>
-                <Icon name="check" size="md" />
+              <AnswerButton key={i.id} icon="check" selected={i.id === value} onPress={() => pick(i.id)}>
                 {i.label}
-              </button>
+              </AnswerButton>
             ))}
             {ranked.length === 0 && <p className="tf-note">چیزی پیدا نشد</p>}
           </div>
           {more > 0 && <p className="tf-note">برای دیدن بقیه نام را جستجو کنید</p>}
           {clearLabel && value !== "" && (
-            <button
-              type="button"
-              className="inline-flex items-center justify-center gap-[var(--space-2)] tf-skip"
-              onClick={() => {
+            <SkipButton
+              icon="x"
+              onPress={() => {
                 onChange("");
                 setOpen(false);
               }}
             >
-              <Icon name="x" size="md" />
               {clearLabel}
-            </button>
+            </SkipButton>
           )}
         </div>
       </BottomSheet>

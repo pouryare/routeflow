@@ -147,7 +147,7 @@ export default function LocationCard({
             onClick={onToggleRun}
             disabled={location.lat === null || location.lng === null}
             aria-label={inRun ? `حذف ${location.name} از مسیر` : `افزودن ${location.name} به مسیر`}
-            className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-[var(--radius-sm)] border font-mono text-[length:var(--text-xs)] transition-colors disabled:opacity-30
+            className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-[var(--radius-sm)] border font-mono text-[length:var(--text-xs)] transition-colors disabled:opacity-30
               ${inRun
                 ? "border-accent bg-accent text-accent-ink"
                 : "border-border text-text-muted hover:border-accent hover:text-accent"
@@ -163,19 +163,19 @@ export default function LocationCard({
             href={navigateUrl(navAppId, { lat: location.lat!, lng: location.lng! }, location.name)}
             target="_blank"
             rel="noopener noreferrer"
-            className="rounded-[var(--radius-sm)] border border-border px-2.5 py-1.5 text-[length:var(--text-xs)] text-accent transition-colors hover:border-accent hover:text-accent inline-flex items-center gap-1.5"
+            className="min-h-11 rounded-[var(--radius-sm)] border border-border px-2.5 py-1.5 text-[length:var(--text-xs)] text-accent transition-colors hover:border-accent hover:text-accent inline-flex items-center gap-1.5"
           >
             <Icon name="route" size="sm" /> مسیریابی
           </a>
         )}
 
-        <CopyButton value={location.maps_url} label="لینک اصلی" what="کپی لینک اصلی" className="px-2.5 py-1.5" />
-        <CopyButton value={() => `${window.location.origin}/leads?l=${location.id}`} label="لینک" what="کپی لینک این مکان" className="px-2.5 py-1.5" />
+        <CopyButton value={location.maps_url} label="لینک اصلی" what="کپی لینک اصلی" className="min-h-11 px-2.5 py-1.5" />
+        <CopyButton value={() => `${window.location.origin}/leads?l=${location.id}`} label="لینک" what="کپی لینک این مکان" className="min-h-11 px-2.5 py-1.5" />
 
         <button
           type="button"
           onClick={onPin}
-          className="inline-flex items-center justify-center gap-[var(--space-2)] rounded-[var(--radius-sm)] border border-border px-2.5 py-1.5 text-[length:var(--text-xs)] text-text-faint hover:border-accent hover:text-accent transition-colors inline-flex items-center gap-1.5"
+          className="inline-flex items-center justify-center gap-[var(--space-2)] min-h-11 rounded-[var(--radius-sm)] border border-border px-2.5 py-1.5 text-[length:var(--text-xs)] text-text-faint hover:border-accent hover:text-accent transition-colors inline-flex items-center gap-1.5"
         >
           <Icon name="map-pin" size="sm" /> ویرایش مکان
         </button>
@@ -184,7 +184,7 @@ export default function LocationCard({
           <button
             type="button"
             onClick={onTogglePriority}
-            className={`rounded-[var(--radius-sm)] border px-2 py-1.5 text-[length:var(--text-xs)] transition-colors inline-flex items-center gap-1.5
+            className={`min-h-11 rounded-[var(--radius-sm)] border px-2 py-1.5 text-[length:var(--text-xs)] transition-colors inline-flex items-center gap-1.5
               ${location.priority
                 ? "border-accent bg-accent text-accent-ink"
                 : "border-border text-text-faint hover:border-accent hover:text-accent"
@@ -199,7 +199,7 @@ export default function LocationCard({
           <button
             type="button"
             onClick={onAddToPlan}
-            className="inline-flex items-center justify-center gap-[var(--space-2)] rounded-[var(--radius-sm)] border border-accent bg-accent/10 px-2 py-1.5 text-[length:var(--text-xs)] text-accent transition-colors hover:bg-accent hover:text-accent-ink inline-flex items-center gap-1.5"
+            className="inline-flex items-center justify-center gap-[var(--space-2)] min-h-11 rounded-[var(--radius-sm)] border border-accent bg-accent/10 px-2 py-1.5 text-[length:var(--text-xs)] text-accent transition-colors hover:bg-accent hover:text-accent-ink inline-flex items-center gap-1.5"
           >
             <Icon name="calendar" size="sm" /> افزودن به برنامه
           </button>

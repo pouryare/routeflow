@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Button } from "@heroui/react";
 import { Icon } from "@/components/meridian/Icon";
 import Keypad from "@/components/mobile/Keypad";
+import { AnswerButton } from "./Answer";
 import { faNum } from "@/lib/format";
 import type { ResolvedOption } from "@/lib/crm/flows/types";
 
@@ -40,11 +41,10 @@ export default function AmountStep({ prefill, chips, option, label, unit = "تو
       {chips?.length ? (
         <div className="tf-grid">
           {chips.map((c) => (
-            <button key={c.label} type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] tf-opt" onClick={() => setText(String(c.value))}>
-              <Icon name="check" size="md" />
+            <AnswerButton key={c.label} icon="check" onPress={() => setText(String(c.value))}>
               {c.label}
               <small>{faNum(c.value)}</small>
-            </button>
+            </AnswerButton>
           ))}
         </div>
       ) : null}

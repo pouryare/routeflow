@@ -1,8 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { Button, ToggleButton } from "@heroui/react";
 import { Icon } from "@/components/meridian/Icon";
-import JalaliDateInput from "@/components/meridian/JalaliDateInput";
+import { PersianCalendar } from "@/components/PersianDateField";
 import { dayChoices, solarHolidaysAround, weekDays } from "@/lib/dayChoices";
 import { tehranTodayIso } from "@/lib/jalali";
 
@@ -10,7 +11,10 @@ import { tehranTodayIso } from "@/lib/jalali";
  *  fortnight, and only then the full calendar. Replaces a date field as the first thing shown.
  *
  *  Holidays the calendar knows (the solar ones) are marked, or hidden when `skipHolidays` (a
- *  delivery day); Fridays are marked, never hidden. `value` is an ISO day or "". */
+ *  delivery day); Fridays are marked, never hidden. `value` is an ISO day or "".
+ *
+ *  Built on HeroUI: each day is a ToggleButton, so the chosen one is announced as pressed, and
+ *  the full calendar is PersianCalendar (HeroUI's, in Shamsi months). */
 export default function DayChips({
   value,
   onChange,
@@ -39,17 +43,16 @@ export default function DayChips({
   const strip = useMemo(() => weekDays(today, 14, known), [today, known]);
 
   const chip = (iso: string, label: string, sub: string | undefined, flag: string | undefined) => (
-    <button
+    <ToggleButton
       key={iso}
-      type="button"
       className={`daychip${value === iso ? " daychip--on" : ""}${flag ? ` daychip--${flag}` : ""}`}
-      aria-pressed={value === iso}
-      onClick={() => onChange(iso)}
+      isSelected={value === iso}
+      onChange={() => onChange(iso)}
     >
       <Icon name={value === iso ? "check" : "calendar"} size="sm" />
       <span>{label}</span>
       {sub ? <small>{flag === "holiday" ? `${sub} · تعطیل` : flag === "weekend" ? `${sub} · جمعه` : sub}</small> : null}
-    </button>
+    </ToggleButton>
   );
 
   return (
@@ -60,10 +63,10 @@ export default function DayChips({
             c.kind === "day" ? (
               chip(c.iso!, c.label, c.sub, c.flag)
             ) : (
-              <button key="other" type="button" className="daychip" onClick={() => setMode("strip")}>
+              <Button key="other" variant="secondary" className="daychip" onPress={() => setMode("strip")}>
                 <Icon name="arrow-left" size="sm" />
                 <span>{c.label}</span>
-              </button>
+              </Button>
             ),
           )}
         </div>
@@ -71,18 +74,18 @@ export default function DayChips({
       {mode === "strip" && (
         <>
           <div className="daychips__row daychips__row--strip">{strip.map((d) => chip(d.iso!, d.label, d.sub, d.flag))}</div>
-          <button type="button" className="daychips__link" onClick={() => setMode("calendar")}>
+          <Button variant="ghost" className="daychips__link" onPress={() => setMode("calendar")}>
             <Icon name="calendar" size="sm" />
             تقویم کامل
-          </button>
+          </Button>
         </>
       )}
-      {mode === "calendar" && <JalaliDateInput value={value} onChange={onChange} aria-label={ariaLabel} />}
+      {mode === "calendar" && <PersianCalendar value={value} onChange={onChange} ariaLabel={ariaLabel} />}
       {mode !== "chips" && (
-        <button type="button" className="daychips__link" onClick={() => setMode("chips")}>
+        <Button variant="ghost" className="daychips__link" onPress={() => setMode("chips")}>
           <Icon name="arrow-right" size="sm" />
           برگشت به روزهای نزدیک
-        </button>
+        </Button>
       )}
     </div>
   );

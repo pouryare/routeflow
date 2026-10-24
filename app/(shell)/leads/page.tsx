@@ -162,7 +162,7 @@ export default function LeadsPage() {
             <button
               type="button"
               onClick={() => setShowAssigned((v) => !v)}
-              className="shrink-0 rounded-[var(--radius-sm)] border border-border px-2 py-1 text-text-muted transition-colors hover:border-accent hover:text-accent"
+              className="inline-flex min-h-11 shrink-0 items-center rounded-[var(--radius-sm)] border border-border px-3 text-text-muted transition-colors hover:border-accent hover:text-accent"
             >
               <Icon name="list" size="md" />
               {showAssigned ? "پنهان‌کردن سپرده‌شده‌ها" : "نمایش مکان‌های سپرده‌شده"}
@@ -217,7 +217,7 @@ export default function LeadsPage() {
                   if (newIds.length === 0) return;
                   updateRun([...run, ...newIds]);
                 }}
-                className="rounded-[var(--radius-sm)] px-2 py-1 text-[length:var(--text-xs)] border border-accent text-accent hover:bg-accent hover:text-accent-ink transition-colors flex items-center gap-1"
+                className="rounded-[var(--radius-sm)] px-3 min-h-11 text-[length:var(--text-xs)] border border-accent text-accent hover:bg-accent hover:text-accent-ink transition-colors flex items-center gap-1"
               >
                 <Icon name="check" size="sm" /> انتخاب همه
               </button>

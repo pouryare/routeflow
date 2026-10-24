@@ -94,7 +94,7 @@ export default function PoolViewPocket({
                     type="button"
                     onClick={(e) => { e.stopPropagation(); onToggleRun(loc.id); }}
                     disabled={loc.lat === null || loc.lng === null}
-                    className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-[var(--radius-sm)] border font-mono text-[length:var(--text-xs)] transition-colors disabled:opacity-30 ${
+                    className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-[var(--radius-sm)] border font-mono text-[length:var(--text-xs)] transition-colors disabled:opacity-30 ${
                       inRun ? "border-accent bg-accent text-accent-ink" : "border-border text-text-muted hover:border-accent hover:text-accent"
                     }`}
                   >

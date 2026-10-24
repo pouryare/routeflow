@@ -21,7 +21,7 @@ export default function PoolViewToggle({ activeView, onChange }: PoolViewToggleP
             aria-selected={isActive}
             aria-label={view.label}
             onClick={() => { onChange(view.mode); saveViewMode(view.mode); }}
-            className={`pool-toggle-item flex items-center gap-1.5 rounded-[var(--radius-md)] border px-3 py-2 text-[length:var(--text-sm)] transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] whitespace-nowrap ${
+            className={`pool-toggle-item flex min-h-11 items-center gap-1.5 rounded-[var(--radius-md)] border px-3 py-2 text-[length:var(--text-sm)] transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] whitespace-nowrap ${
               isActive
                 ? "border-accent bg-accent/10 text-accent"
                 : "border-border text-text-muted hover:border-accent hover:text-accent"

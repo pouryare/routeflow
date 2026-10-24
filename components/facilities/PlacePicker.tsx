@@ -101,7 +101,7 @@ export default function PlacePicker({
                 onPick(f);
                 close();
               }}
-              className="flex w-full items-center gap-2 rounded-[var(--radius-sm)] px-1.5 py-1.5 text-right transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:bg-white/5"
+              className="flex min-h-11 w-full items-center gap-2 rounded-[var(--radius-sm)] px-1.5 py-1.5 text-right transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:bg-white/5"
             >
               {/* The icon is here — <Art/> draws the facility's own chosen marker, which is
                   exactly the icon that matters: it is the same shape the map will draw. */}
@@ -149,7 +149,7 @@ export default function PlacePicker({
         type="button"
         onClick={() => setOnMap(true)}
         disabled={!MapEditor}
-        className="flex w-full items-center gap-2 rounded-[var(--radius-sm)] px-1.5 py-1.5 text-right text-[length:var(--text-xs)] text-accent transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:bg-white/5 disabled:cursor-not-allowed disabled:text-text-faint"
+        className="flex min-h-11 w-full items-center gap-2 rounded-[var(--radius-sm)] px-1.5 py-1.5 text-right text-[length:var(--text-xs)] text-accent transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:bg-white/5 disabled:cursor-not-allowed disabled:text-text-faint"
       >
         <Icon name="map-pin" size="sm" /> اینجا نیست؟ روی نقشه مشخص کن
       </button>
@@ -157,7 +157,7 @@ export default function PlacePicker({
       <button
         type="button"
         onClick={close}
-        className="mt-0.5 w-full rounded-[var(--radius-sm)] px-1.5 py-1 text-[length:var(--text-xs)] text-text-faint transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:text-text"
+        className="mt-0.5 min-h-11 w-full rounded-[var(--radius-sm)] px-1.5 py-1 text-[length:var(--text-xs)] text-text-faint transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:text-text"
       >
         <Icon name="x" size="sm" />
         انصراف از انتخاب مکان
@@ -195,7 +195,7 @@ function Trigger({
           open(true);
           onOpen?.();
         }}
-        className="flex items-center gap-1 rounded-[var(--radius-sm)] border border-border px-2 py-1 text-[length:var(--text-xs)] text-text-muted transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:border-accent hover:text-accent"
+        className="flex min-h-11 items-center gap-1 rounded-[var(--radius-sm)] border border-border px-3 text-[length:var(--text-xs)] text-text-muted transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:border-accent hover:text-accent"
       >
         <PinIcon />
         <Icon name="map-pin" size="sm" />
@@ -206,7 +206,7 @@ function Trigger({
           type="button"
           onClick={onClear}
           aria-label="پاک کردن موقعیت"
-          className="rounded-[var(--radius-sm)] px-1.5 py-1 text-text-faint transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:text-text"
+          className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-[var(--radius-sm)] px-1.5 text-text-faint transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:text-text"
         >
           <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
             <path

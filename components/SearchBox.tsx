@@ -404,7 +404,7 @@ export default function SearchBox({
                   </button>
                 </span>
               ) : (
-                <button type="button" onClick={() => onSetPosition?.()} className="rounded-[var(--radius-sm)] px-2 py-1 text-[length:var(--text-xs)] border border-border text-text-muted hover:border-accent hover:text-accent">
+                <button type="button" onClick={() => onSetPosition?.()} className="inline-flex min-h-11 items-center rounded-[var(--radius-sm)] px-3 text-[length:var(--text-xs)] border border-border text-text-muted hover:border-accent hover:text-accent">
                   <Icon name="map-pin" size="sm" /> تعیین موقعیت
                 </button>
               )}

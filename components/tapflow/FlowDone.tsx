@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Icon } from "@/components/meridian/Icon";
 import { faDigits } from "@/lib/crm/vocab";
+import { SkipButton } from "./Answer";
 
 /** The done screen: what was saved, the likeliest next moves, and a return after `seconds`. */
 export default function FlowDone({ chips, next, actions, seconds = 5, onReturn }: {
@@ -29,9 +30,7 @@ export default function FlowDone({ chips, next, actions, seconds = 5, onReturn }
       </div>
       {actions ? <div className="tf-acts">{actions}</div> : null}
       <p className="tf-sub">برگشت به فهرست در {faDigits(String(Math.max(left, 0)))}…</p>
-      <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] tf-skip" onClick={go}>
-      <Icon name="undo" size="md" />
-      همین حالا برگرد</button>
+      <SkipButton icon="undo" onPress={go}>همین حالا برگرد</SkipButton>
     </div>
   );
 }

@@ -4,13 +4,14 @@ import { useState, type ReactNode } from "react";
 import { Button } from "@heroui/react";
 import BottomSheet from "@/components/mobile/BottomSheet";
 import { Icon } from "@/components/meridian/Icon";
-import JalaliDateInput from "@/components/meridian/JalaliDateInput";
+import { PersianCalendar } from "@/components/PersianDateField";
 import { answerStep, backStep, SKIP, viewStep } from "@/lib/crm/flows/machine";
 import type { FlowConfig, FlowContext, FlowState, ResolvedOption, ResolvedStep } from "@/lib/crm/flows/types";
 import { labelDue, resolveDue } from "@/lib/crm/due";
 import { nextOpenAt, type WorkingHours } from "@/lib/crm/hours";
 import { useChoiceFeedback } from "./useChoiceFeedback";
 import AmountStep from "./AmountStep";
+import { AnswerButton, SkipButton } from "./Answer";
 import PickStep from "./PickStep";
 import StepperStep from "./StepperStep";
 import type { FlowItem } from "@/lib/flows/item";
@@ -131,13 +132,12 @@ function StepBody({ view, submit, hours, onNavigate, navigateUrl, vars, items }:
   if (pickFor) {
     return (
       <div className="tf-grid one">
-        <JalaliDateInput value={date} onChange={setDate} aria-label="روز" />
-        <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] tf-go" disabled={!date} onClick={() => submit(pickFor, date)}>
-        <Icon name="calendar" size="md" />
-        همین روز</button>
-        <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] tf-skip" onClick={() => setPickFor(null)}>
-        <Icon name="arrow-right" size="md" />
-        برگشت</button>
+        <PersianCalendar value={date} onChange={setDate} ariaLabel="روز" />
+        <Button variant="primary" size="lg" fullWidth isDisabled={!date} onPress={() => submit(pickFor, date)}>
+          <Icon name="calendar" size="md" />
+          همین روز
+        </Button>
+        <SkipButton icon="arrow-right" onPress={() => setPickFor(null)}>برگشت</SkipButton>
       </div>
     );
   }
@@ -160,12 +160,11 @@ function StepBody({ view, submit, hours, onNavigate, navigateUrl, vars, items }:
     const sub = subFor(o);
     const isSelected = feedback.selected === o.id;
     return (
-      <button key={o.id} type="button" aria-pressed={isSelected}
-        className={`tf-opt ${o.tone ?? ""}${isSelected ? " on" : ""}`} disabled={needsText || feedback.selected !== null} onClick={() => tap(o)}>
+      <AnswerButton key={o.id} selected={isSelected} tone={o.tone} isDisabled={needsText || feedback.selected !== null} onPress={() => tap(o)}>
         {o.label}
         {sub ? <small>{sub}</small> : null}
         {isSelected ? <span className="tick" aria-hidden><Icon name="check" size="sm" /></span> : null}
-      </button>
+      </AnswerButton>
     );
   };
 
@@ -193,22 +192,20 @@ function StepBody({ view, submit, hours, onNavigate, navigateUrl, vars, items }:
       {view.kind === "multi" ? (
         <div className="tf-grid one">
           {view.choices.map((c) => (
-            <button key={c.id} type="button" aria-pressed={picked.includes(c.id)} className={`tf-opt${picked.includes(c.id) ? " on" : ""}`}
-              onClick={() => setPicked((xs) => (xs.includes(c.id) ? xs.filter((x) => x !== c.id) : [...xs, c.id]))}>
-              <Icon name="check" size="md" />
+            <AnswerButton key={c.id} icon="check" selected={picked.includes(c.id)}
+              onPress={() => setPicked((xs) => (xs.includes(c.id) ? xs.filter((x) => x !== c.id) : [...xs, c.id]))}>
               {c.label}
-            </button>
+            </AnswerButton>
           ))}
         </div>
       ) : null}
       {view.kind === "choice" ? (
         <div className="tf-grid one">
           {view.choices.map((c) => (
-            <button key={c.id} type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] tf-opt"
-              onClick={() => { if (view.id === "navigate" && onNavigate && navigateUrl) { onNavigate(navigateUrl); } else { submit(c.id); } }}>
-              <Icon name="check" size="md" />
+            <AnswerButton key={c.id} icon="check"
+              onPress={() => { if (view.id === "navigate" && onNavigate && navigateUrl) { onNavigate(navigateUrl); } else { submit(c.id); } }}>
               {c.label}
-            </button>
+            </AnswerButton>
           ))}
         </div>
       ) : null}
