@@ -1,10 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import { Button } from "@heroui/react";
 import { Icon } from "@/components/meridian/Icon";
 import { faNum } from "@/lib/format";
 import { clampCount, type FlowItem } from "@/lib/flows/item";
 import type { ResolvedOption } from "@/lib/crm/flows/types";
+import { AnswerButton } from "./Answer";
 
 /** One row per line, each prefilled with what was expected, so "everything was as ordered"
  *  needs no taps and a shortfall is one tap on the one line that came up short. The answer is
@@ -24,25 +26,19 @@ export default function StepperStep({ items, option, submit }: {
             {i.label}
             {i.unit ? <small> · {i.unit}</small> : null}
           </span>
-          <button type="button" className="inline-flex items-center justify-center gap-[var(--space-1)] tf-opt" aria-label={`کم کردن ${i.label}`} onClick={() => bump(i, -1)}>
-            <Icon name="minus" size="md" />
+          <AnswerButton icon="minus" ariaLabel={`کم کردن ${i.label}`} onPress={() => bump(i, -1)}>
             کم
-          </button>
+          </AnswerButton>
           <b>{faNum(n[i.id] ?? 0)}</b>
-          <button type="button" className="inline-flex items-center justify-center gap-[var(--space-1)] tf-opt" aria-label={`اضافه کردن ${i.label}`} onClick={() => bump(i, 1)}>
-            <Icon name="plus" size="md" />
+          <AnswerButton icon="plus" ariaLabel={`اضافه کردن ${i.label}`} onPress={() => bump(i, 1)}>
             زیاد
-          </button>
+          </AnswerButton>
         </div>
       ))}
-      <button
-        type="button"
-        className="inline-flex items-center justify-center gap-[var(--space-2)] tf-go"
-        onClick={() => submit(option.id, JSON.stringify(n))}
-      >
+      <Button variant="primary" size="lg" fullWidth onPress={() => submit(option.id, JSON.stringify(n))}>
         <Icon name="check" size="md" />
         {option.label}
-      </button>
+      </Button>
     </div>
   );
 }

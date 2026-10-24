@@ -5,6 +5,7 @@ import { Button } from "@heroui/react";
 import { PersianCalendar } from "@/components/PersianDateField";
 import { Icon } from "@/components/meridian/Icon";
 import DayChips from "@/components/mobile/DayChips";
+import { AnswerButton } from "./Answer";
 import { addDaysIso } from "@/lib/flows/dates";
 
 /** A day, for a flow step. The presets are answers: tapping one submits at once. The calendar
@@ -28,15 +29,9 @@ export default function DateStep({ optionId, optionLabel, skip, from, presets, a
     <div className="tf-date">
       <div className="tf-grid">
         {presets.map((p) => (
-          <button
-            key={p.days}
-            type="button"
-            className="inline-flex items-center justify-center gap-[var(--space-2)] tf-opt"
-            onClick={() => submit(optionId, addDaysIso(from, p.days))}
-          >
-            <Icon name="calendar" size="md" />
+          <AnswerButton key={p.days} icon="calendar" onPress={() => submit(optionId, addDaysIso(from, p.days))}>
             {p.label}
-          </button>
+          </AnswerButton>
         ))}
       </div>
       <p className="tf-sub">{presets.length ? "یا روز دیگری را انتخاب کنید" : "کدام روز؟"}</p>

@@ -14,6 +14,6 @@ describe("mobile rules (docs/mobile-first-principles.md)", () => {
     for (const [file, why] of Object.entries(PRESENTATIONAL_ONLY)) expect((why as string).length, file).toBeGreaterThan(10);
   });
   it("only the recorded files import the calendar input", () => {
-    expect(jalaliImporters()).toContain("components/mobile/DayChips.tsx");
+    expect(jalaliImporters()).toContain("components/AddReminder.tsx");
   });
 });

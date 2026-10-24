@@ -37,6 +37,8 @@
 @import "@heroui/styles/components/disclosure.css" layer(components);
 @import "@heroui/styles/components/table.css" layer(components);
 @import "@heroui/styles/components/pagination.css" layer(components);
+@import "@heroui/styles/components/toggle-button.css" layer(components);
+@import "@heroui/styles/components/search-field.css" layer(components);
 @import "@heroui/styles/utilities";
 @import "@heroui/styles/variants";
 
@@ -4776,6 +4778,19 @@ body {
 .meridian .tapflow .tf-opt.on small { color: var(--accent-ink); }
 .meridian .tapflow .tf-opt.on .tick { position: absolute; top: 6px; inset-inline-end: 8px; font-size: 12px; font-weight: 700; }
 .meridian .tapflow .tf-opt { position: relative; }
+/* The answer is a HeroUI Button or ToggleButton (components/tapflow/Answer.tsx). HeroUI sizes
+   both as one short pill line; an answer is a card that wraps and may carry a note under it. */
+.meridian .tf-opt.button, .meridian .tf-opt.toggle-button { height: auto; width: auto; white-space: normal; }
+.meridian .tf-opt.button[data-disabled="true"], .meridian .tf-opt.toggle-button[data-disabled="true"] { opacity: .45; cursor: not-allowed; }
+.meridian .tf-skip.button { height: 44px; width: auto; }
+/* The search above a long answer list: HeroUI's SearchField, at the 52 px answer height and
+   16 px type so a phone does not zoom into it. */
+.meridian .tf-search .search-field__group { height: 52px; border-radius: var(--r-md); }
+.meridian .tf-search .search-field__input { font-size: 16px; }
+.meridian .tf-search .search-field__clear-button { min-width: 44px; min-height: 44px; }
+/* Day chips are HeroUI ToggleButtons (components/mobile/DayChips.tsx), sized as day cards. */
+.meridian .daychip.toggle-button, .meridian .daychip.button { height: auto; width: auto; white-space: normal; }
+.meridian .daychips__link.button { height: 44px; width: auto; }
 /* A person rather than a choice: avatar and name on one line. The base .tf-opt is a
    column, and its selector beats a plain utility, so this lives here on purpose. */
 .meridian .tapflow .tf-opt.tf-person { flex-direction: row; align-items: center; gap: 10px; padding: 10px 12px; }

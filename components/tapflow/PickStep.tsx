@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Icon } from "@/components/meridian/Icon";
+import { AnswerButton, AnswerSearch, SkipButton } from "./Answer";
 import { getRecentsUser } from "@/lib/recentsUser";
 import { loadHistory, rank, record, saveHistory } from "@/lib/recents";
 
@@ -32,21 +32,19 @@ export default function PickStep({ choices, optionId, extras = [], submit, place
   };
   return (
     <div className="tf-pick">
-      <input className="tf-input" value={q} onChange={(e) => setQ(e.target.value)} placeholder={placeholder} aria-label={placeholder} />
+      <AnswerSearch value={q} onChange={setQ} label={placeholder} placeholder={placeholder} />
       <div className="tf-grid one">
         {shown.map((c) => (
-          <button key={c.id} type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] tf-opt" onClick={() => pick(c.id)}>
-            <Icon name="check" size="md" />
+          <AnswerButton key={c.id} icon="check" onPress={() => pick(c.id)}>
             {c.label}
-          </button>
+          </AnswerButton>
         ))}
       </div>
       {more > 0 ? <p className="tf-note">برای دیدن بقیه نام را جستجو کنید</p> : null}
       {extras.map((o) => (
-        <button key={o.id} type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] tf-skip" onClick={() => submit(o.id)}>
-          <Icon name="arrow-left" size="md" />
+        <SkipButton key={o.id} onPress={() => submit(o.id)}>
           {o.label}
-        </button>
+        </SkipButton>
       ))}
     </div>
   );

@@ -2,7 +2,9 @@
 
 import { useState, type ReactNode } from "react";
 import { Icon } from "@/components/meridian/Icon";
+import { Button } from "@heroui/react";
 import BottomSheet from "@/components/mobile/BottomSheet";
+import { AnswerButton, SkipButton } from "@/components/tapflow/Answer";
 import { faNum } from "@/lib/format";
 import type { DeckChoice } from "@/lib/decisions";
 
@@ -45,10 +47,10 @@ export default function DecisionDeck<T>({
           <div className="deck__done">
             <Icon name="check" size="lg" />
             <p>{decided > 0 ? `همه تصمیم‌ها گرفته شد · ${faNum(decided)} مورد` : "موردی برای تصمیم‌گیری نیست"}</p>
-            <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] tf-go" onClick={onClose}>
+            <Button variant="primary" size="lg" fullWidth onPress={onClose}>
               <Icon name="check" size="md" />
               بستن این فهرست
-            </button>
+            </Button>
           </div>
         ) : (
           <>
@@ -60,24 +62,20 @@ export default function DecisionDeck<T>({
             </div>
             <div className="deck__choices">
               {choices.map((c) => (
-                <button
+                <AnswerButton
                   key={c.id}
-                  type="button"
-                  className={`inline-flex items-center justify-center gap-[var(--space-2)] tf-opt${c.tone === "bad" ? " bad" : c.tone === "good" ? " rec" : ""}`}
-                  onClick={() => {
+                  icon={c.tone === "bad" ? "x" : "check"}
+                  tone={c.tone === "bad" ? "bad" : c.tone === "good" ? "rec" : undefined}
+                  onPress={() => {
                     onDecide(item, c.id);
                     setDecided((n) => n + 1);
                     next();
                   }}
                 >
-                  <Icon name={c.tone === "bad" ? "x" : "check"} size="md" />
                   {c.label}
-                </button>
+                </AnswerButton>
               ))}
-              <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] tf-skip" onClick={next}>
-                <Icon name="arrow-left" size="md" />
-                این مورد بعداً
-              </button>
+              <SkipButton onPress={next}>این مورد بعداً</SkipButton>
             </div>
           </>
         )}
