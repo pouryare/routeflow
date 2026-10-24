@@ -174,11 +174,12 @@ const SURFACE_BASE = {
     "--surface-sunk": "#242A31", "--border": "#2A313B", "--border-strong": "#37414C",
   },
 };
-/* The artifact's own names for the same six rungs -- both sets exist because the map
-   chrome reads one and the /sales stylesheet reads the other. */
-const SURFACE_ALIAS = {
-  "--card": "--surface", "--card-2": "--surface-2", "--sunk": "--surface-sunk",
-  "--line": "--border", "--line-2": "--border-strong",
+/* The names the rungs are written under in the stylesheet. Inside `.meridian` HeroUI's
+   token names are the source (MASTER.md "Colour"); the older names (--bg, --surface-2,
+   --card, --line ...) are var() aliases of them in app/globals.css, so they follow each
+   theme without being emitted here. The solver keeps the older names internally. */
+const SURFACE_EMIT = {
+  "--bg": "--background", "--surface-2": "--surface-secondary", "--surface-sunk": "--surface-tertiary",
 };
 /* How saturated the tinted paper is allowed to get. Deliberately well above a hair of
    chroma -- the ask is for the surface to clearly take the accent hue, not to hint at
@@ -206,7 +207,6 @@ function surfaceTokens(hue, skin, id) {
     const c = Math.min(C, SURFACE_C_CEIL[skin], maxChroma(L, hue));
     out[k] = oklchToHex(L, c, hue).hex;
   }
-  for (const [alias, src] of Object.entries(SURFACE_ALIAS)) out[alias] = out[src];
   out["--gcard-hue-rotate"] = `${gcardRotate(hue, id)}deg`;
   return out;
 }
@@ -624,9 +624,11 @@ function css(themes) {
      any choice is made. */
   L.push(`:root, :root .meridian {`);
   for (const [k, v] of Object.entries(dflt.skins.light.tokens)) L.push(`  ${k}: ${v};`);
+  L.push(`  --accent-foreground: ${dflt.skins.light.tokens["--accent-ink"]};`);
   L.push(`}`);
   L.push(`:root[data-skin="dark"], :root[data-skin="dark"] .meridian {`);
   for (const [k, v] of Object.entries(dflt.skins.dark.tokens)) L.push(`  ${k}: ${v};`);
+  L.push(`  --accent-foreground: ${dflt.skins.dark.tokens["--accent-ink"]};`);
   L.push(`}`);
 
   /* The map tokens again, this time selected by the BASEMAP's ground rather than by the
@@ -650,6 +652,9 @@ function css(themes) {
         : `:root[data-accent="${t.id}"][data-skin="dark"] .meridian, :root[data-accent="${t.id}"][data-skin="dark"]`;
       L.push(`${sel} {`);
       for (const [k, v] of Object.entries(t.skins[skin].tokens)) L.push(`  ${k}: ${v};`);
+      // HeroUI's name for the ink on an accent fill. --accent-ink stays for the map, which
+      // sits outside .meridian and reads the older name.
+      L.push(`  --accent-foreground: ${t.skins[skin].tokens["--accent-ink"]};`);
       L.push(`  --series-single: var(--accent);`);
       L.push(`}`);
 
@@ -659,7 +664,7 @@ function css(themes) {
         ? `:root[data-accent="${t.id}"] .meridian`
         : `:root[data-accent="${t.id}"][data-skin="dark"] .meridian`;
       L.push(`${surfSel} {`);
-      for (const [k, v] of Object.entries(surfaceTokens(t.hue, skin, t.id))) L.push(`  ${k}: ${v};`);
+      for (const [k, v] of Object.entries(surfaceTokens(t.hue, skin, t.id))) L.push(`  ${SURFACE_EMIT[k] ?? k}: ${v};`);
       L.push(`}`);
     }
     for (const ground of ["light", "dark"]) {

@@ -50,11 +50,13 @@ const ratio = (a, b) => {
 };
 
 /** Anything a reader must actually read. */
-const TEXT = ["--text", "--text-muted", "--accent-text", "--good", "--warn", "--crit", "--info", "--tint-plum"];
+/*  HeroUI names: inside .meridian they hold the values and the older ones are aliases
+    (--text is --foreground, --crit is --danger ...; MASTER.md "Colour"). */
+const TEXT = ["--foreground", "--muted", "--accent-text", "--success", "--warning", "--danger", "--info", "--tint-plum"];
 /** Non-text: decorative glyphs, disabled day numbers, separators. 3:1 per MASTER.md. */
 const NON_TEXT = ["--text-faint"];
 
-const GROUNDS = ["--bg", "--surface"];
+const GROUNDS = ["--background", "--surface"];
 
 let failures = 0;
 const say = (ok, line) => {
@@ -85,18 +87,18 @@ for (const [theme, selector] of [
   }
 
   // The accent is a FILL in light, so it is its ink that has to pass, not the accent.
-  if (t["--accent-ink"] && t["--accent"]) {
-    const r = ratio(t["--accent-ink"], t["--accent"]);
-    say(r >= 4.5, `${theme} --accent-ink on --accent: ${r.toFixed(2)} (need 4.5)`);
+  if (t["--accent-foreground"] && t["--accent"]) {
+    const r = ratio(t["--accent-foreground"], t["--accent"]);
+    say(r >= 4.5, `${theme} --accent-foreground on --accent: ${r.toFixed(2)} (need 4.5)`);
   } else {
-    say(false, `${theme}: --accent-ink or --accent missing from the ${selector} block`);
+    say(false, `${theme}: --accent-foreground or --accent missing from the ${selector} block`);
   }
 
   // Soft-tinted pills carry their status word; the word answers to the pill, not the page.
   for (const [ink, fill] of [
-    ["--good", "--good-soft"],
-    ["--warn", "--warn-soft"],
-    ["--crit", "--crit-soft"],
+    ["--success", "--success-soft"],
+    ["--warning", "--warning-soft"],
+    ["--danger", "--danger-soft"],
     ["--info", "--info-soft"],
     ["--accent-text", "--accent-soft"],
   ]) {
@@ -112,7 +114,7 @@ for (const [theme, selector] of [
   // the worst case: every other stop is that colour mixed toward --surface, which moves
   // it away from the ink in light and toward it in dark, never past it.
   for (const wash of ["--wash-peach", "--wash-mint", "--wash-sand", "--wash-sky"]) {
-    for (const ink of ["--text", "--wash-ink-muted"]) {
+    for (const ink of ["--foreground", "--wash-ink-muted"]) {
       if (!t[ink] || !t[wash]) {
         say(false, `${theme} ${ink} on ${wash}: MISSING`);
         continue;
@@ -146,10 +148,10 @@ const THEME_IDS = [
    held to the base baseline rather than to the absolute. */
 const SURFACE_CREAM = {
   light: {
-    "--bg": "#F1F3F6", "--surface": "#FFFFFF", "--surface-2": "#F8FAFC", "--surface-sunk": "#E8ECF1",
+    "--background": "#F1F3F6", "--surface": "#FFFFFF", "--surface-secondary": "#F8FAFC", "--surface-tertiary": "#E8ECF1",
   },
   dark: {
-    "--bg": "#0F1214", "--surface": "#181B20", "--surface-2": "#1E2228", "--surface-sunk": "#242A31",
+    "--background": "#0F1214", "--surface": "#181B20", "--surface-secondary": "#1E2228", "--surface-tertiary": "#242A31",
   },
 };
 const SURFACE_INK = {

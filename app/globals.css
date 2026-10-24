@@ -410,17 +410,6 @@ body {
    twice the height of its neighbours. cqi resolves against this tile's own inline size, so
    the same component reads large in a wide tile and merely large-ish in a narrow one --
    which is the behaviour a display size actually needs in a responsive grid.             */
-.stat-tile {
-  container-type: inline-size;
-}
-
-.stat-tile__value {
-  font-size: clamp(var(--text-lg), 11cqi, var(--text-2xl));
-  line-height: 1.15;
-  /* A money figure and its unit are one thing; breaking between them is never the right
-     line break, and there is always another break point earlier in the string. */
-  text-wrap: balance;
-}
 
 /* ---- Document-pocket card -----------------------------------------------------------
    The card is a pocket and its attachments peek over the top edge. The wrapper carries the
@@ -431,65 +420,14 @@ body {
   padding-top: 14px;
 }
 
-.pocket__papers {
-  position: absolute;
-  inset-inline-start: var(--space-5);
-  top: 0;
-  height: 20px;
-  pointer-events: none;
-}
-
 /* A sheet of paper, seen edge-on. Only the top ~14px is ever visible; the rest is behind
    the card, which is what makes it read as tucked in rather than stuck on. */
-.pocket__paper {
-  position: absolute;
-  top: 0;
-  width: 46px;
-  height: 34px;
-  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
-  background: var(--surface-raised);
-  border: 1px solid var(--border-strong);
-  border-bottom: none;
-  transform-origin: bottom center;
-}
-
-.pocket__card {
-  position: relative;
-  z-index: 5;
-  display: block;
-  padding: var(--space-4);
-  border-radius: var(--radius-lg);
-  border: 1px solid var(--border);
-  background: var(--surface);
-  text-decoration: none;
-  transition:
-    border-color var(--dur-base) var(--ease-out),
-    box-shadow var(--dur-base) var(--ease-out),
-    transform var(--dur-base) var(--spring-snap);
-}
 
 /* The wash. A radial bleeding up from the top edge in the status colour, so the card is
    tinted by its own state without the state becoming the whole surface. */
-.pocket__card {
-  background-image: radial-gradient(
-    120% 90% at 50% 0%,
-    color-mix(in srgb, var(--pocket-tone) 14%, transparent) 0%,
-    transparent 58%
-  );
-}
 
-.pocket__card:hover {
-  border-color: var(--border-strong);
-  box-shadow: var(--elev-2);
-  transform: translateY(-1px);
-}
 /* The papers lift a touch further than the card, so the stack separates on hover instead
    of moving as one slab. */
-.pocket:hover .pocket__paper {
-  transform: translateX(calc(var(--paper-i) * 26px)) translateY(-3px)
-    rotate(calc((var(--paper-i) - 0.5) * -7deg));
-  transition: transform var(--dur-base) var(--spring-snap);
-}
 
 /* ---- Chart tooltip pill -------------------------------------------------------------
    Floats above the active reading. Translated by -50%/-120% of its own size rather than
@@ -515,103 +453,18 @@ body {
    ghost settles on --spring-drop, because this is direct manipulation and the overshoot
    is what closes the loop between the hand and the thing being moved.                   */
 
-.order-card {
-  display: block;
-  width: 100%;
-  text-align: start;
-  padding: var(--space-3);
-  border-radius: var(--radius-lg);
-  background: var(--surface-raised);
-  box-shadow: var(--elev-1);
-  cursor: grab;
-  /* Without this the browser claims the gesture for scrolling on the first touchmove and
-     pointermove stops firing -- the drag simply does not exist on a phone. It is the one
-     line that decides whether this feature works for the people using it in a vehicle. */
-  touch-action: none;
-  transition:
-    box-shadow var(--dur-base) var(--ease-out),
-    opacity var(--dur-base) var(--ease-out),
-    transform var(--dur-base) var(--spring-snap);
-}
-.order-card:hover { box-shadow: var(--elev-2); transform: scale(1.01); }
-.order-card:active { cursor: grabbing; }
-
 /* The original stays in place, dimmed, rather than being removed: pulling the card out of
    the list would collapse everything below it upward, so the column would reflow under
    the cursor mid-drag and the drop target the user was aiming at would move. */
-.order-card--lifted { opacity: 0.35; box-shadow: none; }
-
-.drag-ghost {
-  position: fixed;
-  /* Physical top/left, deliberately -- not the logical properties used everywhere else in
-     this file. The transform that positions this element is built from pointer clientX/
-     clientY, which are measured from the viewport's left edge in every direction mode. In
-     RTL `inset-inline-start` resolves to `right`, so the ghost anchored there and then
-     translated by a positive clientX flew off the right edge of the screen: present in the
-     DOM, invisible on screen. Logical properties are correct for text-directional layout
-     and wrong for a box being placed at a physical pointer coordinate. */
-  top: 0;
-  left: 0;
-  z-index: var(--z-toast);
-  pointer-events: none;
-  padding: var(--space-3);
-  border-radius: var(--radius-lg);
-  border: 1px solid var(--accent);
-  background: var(--surface-raised);
-  box-shadow: var(--elev-2);
-  transition: transform var(--dur-settle) var(--spring-drop);
-}
-
-.run-column {
-  padding: var(--space-4);
-  border-radius: var(--radius-xl);
-  border: 1px solid var(--border);
-  background: var(--surface);
-  transition:
-    border-color var(--dur-base) var(--ease-out),
-    box-shadow var(--dur-base) var(--ease-out),
-    transform var(--dur-base) var(--spring-snap);
-}
 
 /* Armed: a drag is in flight, so every column shows it will accept one. Dashed rather
    than coloured -- colouring all of them at once would say every column is the target. */
-.run-column--armed { border-style: dashed; border-color: var(--border-strong); }
-
-.run-column--target {
-  border-style: solid;
-  border-color: var(--accent);
-  box-shadow: var(--elev-2), 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
-  transform: scale(1.02);
-}
-
-.run-column__hint {
-  opacity: 0;
-  color: var(--text-faint);
-  transition: opacity var(--dur-base) var(--ease-out), color var(--dur-base) var(--ease-out);
-}
-.run-column--armed .run-column__hint { opacity: 1; }
-.run-column--target .run-column__hint { opacity: 1; color: var(--accent); }
 
 /* Tier 2 choreography. Capped at eight: past that a cascade stops reading as sequence and
    starts reading as the page being slow to draw. */
 @keyframes board-item-in {
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
-}
-.board-stagger > * { animation: board-item-in 260ms var(--ease-out) backwards; }
-.board-stagger > *:nth-child(1) { animation-delay: 0ms; }
-.board-stagger > *:nth-child(2) { animation-delay: 40ms; }
-.board-stagger > *:nth-child(3) { animation-delay: 80ms; }
-.board-stagger > *:nth-child(4) { animation-delay: 120ms; }
-.board-stagger > *:nth-child(5) { animation-delay: 160ms; }
-.board-stagger > *:nth-child(6) { animation-delay: 200ms; }
-.board-stagger > *:nth-child(7) { animation-delay: 240ms; }
-.board-stagger > *:nth-child(8) { animation-delay: 280ms; }
-.board-stagger > *:nth-child(n + 9) { animation-delay: 320ms; }
-
-@media (prefers-reduced-motion: reduce) {
-  .board-stagger > * { animation: none; }
-  .drag-ghost, .order-card, .run-column { transition: none; }
 }
 
 /* ---- Bulk lead import: the decode shimmer -------------------------------------------
@@ -656,28 +509,10 @@ body {
    containment says the box takes its dimensions from the inline style rather than from
    the content it holds. Without the last one the measured content would fight the
    animation for control of the width every frame.                                       */
-.island {
-  position: relative;
-  overflow: hidden;
-  border-radius: var(--radius-2xl);
-  contain: layout paint size;
-  transition:
-    width var(--dur-morph) var(--spring-pop),
-    height var(--dur-morph) var(--spring-pop);
-}
 
 /* The painted pill: fill, shadow and the tone hairline, on ONE node. It never changes --
    the toast keeps its surface for its whole life, which is the point of the drain being a
    progress bar rather than a fade (see `.island__fill`). */
-.island__surface {
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background: var(--surface-raised);
-  box-shadow: var(--elev-3);
-  border: 1px solid color-mix(in srgb, var(--island-tone) 32%, transparent);
-  pointer-events: none;
-}
 
 /* The deadline, drawn as a progress bar: the tone floods the whole pill at the start and
    is eaten away as the clock runs down, uncovering the plain surface beneath.
@@ -705,33 +540,9 @@ body {
    surviving colour sits against the closing ✕. Reversed from the start-anchored drain the
    3px bar used: the reader's eye arrives at the glyph first, so the colour leaving from
    under the glyph is the end of the sentence being read out loud. */
-.island__fill {
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background: color-mix(in srgb, var(--island-tone) 28%, transparent);
-  clip-path: inset(0 var(--drained, 0%) 0 0);
-  pointer-events: none;
-}
-[dir="ltr"] .island__fill {
-  clip-path: inset(0 0 0 var(--drained, 0%));
-}
 
 /* The constant. Anchored to the top so a two-line message grows downward past it rather
    than dragging the glyph to the middle of a panel it is supposed to be labelling. */
-.island__icon {
-  position: absolute;
-  inset-inline-start: 0;
-  top: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 52px;
-  height: 40px;
-  color: var(--island-tone);
-  font-size: var(--text-md);
-  line-height: 1;
-}
 
 /* Fixed width, not a percentage of the island: the content has to report its natural size
    while the island is still 52px wide, or the first measurement comes back as the width of
@@ -747,32 +558,9 @@ body {
    there the content height equals the island height exactly, so -50% is a no-op and the text
    keeps growing downward past the top-anchored icon, which is the behaviour `.island__icon`'s
    own comment asks for. */
-.island__content {
-  position: absolute;
-  inset-inline-start: 52px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 368px; /* MAX_W - icon column, mirrored in Island.tsx */
-  opacity: 0;
-  transition: opacity calc(var(--dur-morph) / 2) var(--ease-out);
-}
 
 /* Delayed by a third of the morph so the box is visibly travelling before the text lands.
    Cross-fading them together reads as a panel that was always there and merely faded in. */
-.island--open .island__content {
-  opacity: 1;
-  transition-delay: calc(var(--dur-morph) / 3);
-}
-
-.island__measure {
-  width: max-content;
-  max-width: 100%;
-  padding: var(--space-2) var(--space-3) var(--space-2) var(--space-2);
-  font-size: var(--text-sm);
-  line-height: 1.5;
-  color: var(--text);
-  text-align: center;
-}
 
 /* The undo deadline is now the whole pill draining -- see `.island__surface` above.
    The 3px `.island__timer` track it replaces is gone, along with the `.island::after`
@@ -786,9 +574,7 @@ body {
 @media (prefers-reduced-motion: reduce) {
   /* The global block already zeroes the duration. Stated again because a morph that
      snaps between two sizes is the correct reduced-motion behaviour, not a bug. */
-  .island {
-    transition: none;
-  }
+  
 }
 
 /* ---- Theme toggle: one disc, morphed ------------------------------------------------
@@ -1036,7 +822,6 @@ body {
   color: var(--accent);
   filter: drop-shadow(0 0 6px var(--accent));
 }
-.basemap-toggle-control a,
 .layers-toggle-control a {
   display: flex !important;
   align-items: center;
@@ -1052,25 +837,6 @@ body {
 }
 .layers-toggle-control a.is-open {
   color: var(--accent);
-}
-.layers-badge {
-  position: absolute;
-  top: -5px;
-  inset-inline-start: -5px;
-  min-width: 15px;
-  height: 15px;
-  padding: 0 3px;
-  border-radius: 999px;
-  background: var(--accent);
-  /* --accent-ink, not --bg. This is an --accent fill carrying 9px/700 digits, which is
-     exactly the pair --accent-ink is solved for; --bg happened to clear 4.5 against the
-     old terracotta in dark and never did in light (4.10). Checked per theme now. */
-  color: var(--accent-ink);
-  font-family: var(--font-jetbrains-mono), monospace;
-  font-size: 9px;
-  font-weight: 700;
-  line-height: 15px;
-  text-align: center;
 }
 
 /* ---- Toning the quiet basemap.
@@ -1309,9 +1075,7 @@ body {
   from { opacity: 0; transform: scale(0.97); }
   to { opacity: 1; transform: scale(1); }
 }
-.modal-backdrop-enter {
-  animation: modal-backdrop-in var(--dur-base) var(--ease-out) backwards;
-}
+
 .modal-card-enter {
   animation: modal-card-in var(--dur-slow) var(--ease-out) backwards;
 }
@@ -1325,12 +1089,6 @@ body {
 }
 /* The exit class goes on the backdrop and drives its only child, the card, so one
    class and one timer close the whole modal. */
-.modal-exit {
-  animation: modal-backdrop-out 180ms var(--ease-out) both;
-}
-.modal-exit > * {
-  animation: modal-card-out 150ms var(--ease-out) both;
-}
 
 /* ---- Sidebar entrance stagger. Replaces a gsap.from() on the panel's children, which
    was the only thing keeping ~55KB gzipped of animation library on the map's critical
@@ -1365,18 +1123,9 @@ body {
   from { opacity: 1; transform: translateY(0); }
   to { opacity: 0; transform: translateY(-8px); }
 }
-.toast-enter {
-  animation: toast-in var(--dur-base) var(--ease-out) backwards;
-}
-.toast-exit {
-  animation: toast-out 180ms var(--ease-out) both;
-}
+
 @media (prefers-reduced-motion: reduce) {
-  .toast-enter,
-  .toast-exit,
-  .customer-panel-exit,
-  .modal-exit,
-  .modal-exit > * {
+  .customer-panel-exit {
     animation-duration: 1ms;
   }
   .sidebar-stagger > * {
@@ -1631,32 +1380,31 @@ body {
    ═══════════════════════════════════════════════════════════════════════════ */
 .meridian {
   /* ---- Colour: light is the default and the identity ---------------------- */
-  --bg: #F0F3F6;
+  --background: #F0F3F6;
   --surface: #FFFFFF;
-  --surface-2: #F8FAFC;
-  --surface-sunk: #E7ECF1;
+  --surface-secondary: #F8FAFC;
+  --surface-tertiary: #E7ECF1;
   --border: #DFE6EC;
   --border-strong: #CBD5DD;
-  --text: #1A1F26;
-  --text-muted: #5C6672;
+  --foreground: #1A1F26;
   /* Was #828A98 (3.1:1) and documented as non-text only, but 150+ readable labels use it, so
      it is now solved to 4.5 on --bg. The two roles sit close together; --text-muted stays the
      darker of the pair. */
   --text-faint: #656E7B;
   --accent: #0077BC;        /* fills only in light */
   --accent-text: #006EAE;   /* accent as text: 4.55 on --bg */
-  --accent-ink: #FFFFFF;    /* on an --accent fill: 4.65 */
-  --good: #4F6B4A;
-  --warn: #7A5409;
-  --crit: #A11B3F;          /* crimson, not orange-red: ΔE 35 from --accent */
+  --accent-foreground: #FFFFFF;    /* on an --accent fill: 4.65 */
+  --success: #4F6B4A;
+  --warning: #7A5409;
+  --danger: #A11B3F;          /* crimson, not orange-red: ΔE 35 from --accent */
   --info: #2E6382;
   --tint-plum: #6B4FA0;
 
   /* Soft pill fills. The status word answers to the pill, not to the page. */
   --accent-soft: #E4F2FE;
-  --good-soft: #E9F0E6;
-  --warn-soft: #FBF1DD;
-  --crit-soft: #FBE9EE;
+  --success-soft: #E9F0E6;
+  --warning-soft: #FBF1DD;
+  --danger-soft: #FBE9EE;
   --info-soft: #E5F0F6;
   --plum-soft: #F2ECFA;
 
@@ -1688,15 +1436,9 @@ body {
      --ink IS --text -- because the map chrome reads one set and the artifact's
      stylesheet reads the other, and re-pointing either would mean rewriting
      one of the two. */
-  --card: #FFFFFF;
-  --card-2: #F8FAFC;
-  --sunk: #E7ECF1;
-  --ink: #1A1F26;
   --ink-2: #3F4753;
   --muted: #5C6672;
   --faint: #ABB2BE;
-  --line: #DFE6EC;
-  --line-2: #CBD5DD;
   --accent-2: #0065A1;
   --sage: #4F6B4A;      --sage-soft: #E9F0E6;
   --amber: #8A5F0D;     --amber-soft: #FBF1DD;
@@ -1786,28 +1528,27 @@ body {
    The attribute is data-skin, NOT data-theme: /sales carries its own toggle and
    must not fight the map's theme switch.                                       */
 :root[data-skin="dark"] .meridian {
-  --bg: #0F1214;
+  --background: #0F1214;
   --surface: #171B20;
-  --surface-2: #1D2228;
-  --surface-sunk: #232A31;
+  --surface-secondary: #1D2228;
+  --surface-tertiary: #232A31;
   --border: #28323A;
   --border-strong: #37414A;
-  --text: #EDF1F5;
-  --text-muted: #8B98A5;
+  --foreground: #EDF1F5;
   --text-faint: #828C97;
   --accent: #3BA6F5;
   --accent-text: #3BA6F5;
-  --accent-ink: #030E19;   /* NOT white — white on this accent is 3.01:1 */
-  --good: #93C289;
-  --warn: #E0A64A;
-  --crit: #F2789B;
+  --accent-foreground: #030E19;   /* NOT white — white on this accent is 3.01:1 */
+  --success: #93C289;
+  --warning: #E0A64A;
+  --danger: #F2789B;
   --info: #83B9DC;
   --tint-plum: #B79EEA;
 
   --accent-soft: #202A33;
-  --good-soft: #22301F;
-  --warn-soft: #33280F;
-  --crit-soft: #3A1B25;
+  --success-soft: #22301F;
+  --warning-soft: #33280F;
+  --danger-soft: #3A1B25;
   --info-soft: #1B2A34;
   --plum-soft: #2A2337;
 
@@ -1829,15 +1570,9 @@ body {
      rather than blue-black, the terracotta lifts to #3BA6F5 because the
      light-mode brick disappears against it, and every "soft" tint is re-solved
      as a deep tone rather than a pale one. */
-  --card: #171B20;
-  --card-2: #1D2228;
-  --sunk: #232A31;
-  --ink: #EDF1F5;
   --ink-2: #B7C0CB;
   --muted: #8B98A5;
   --faint: #69727D;
-  --line: #28323A;
-  --line-2: #37414A;
   --accent-2: #61B9FF;
   --sage: #93C289;  --sage-soft: #22301F;
   --amber: #E0A64A; --amber-soft: #33280F;
@@ -1867,86 +1602,98 @@ body {
   --card-drop: drop-shadow(0 1px 2px rgba(0,0,0,.5)) drop-shadow(0 14px 30px rgba(0,0,0,.6));
 }
 
-/* ---- HeroUI token hand-over -------------------------------------------------
-   HeroUI's parts read their own token names (--background, --foreground, --default,
-   --danger …). Its theme declares them on :root, so inside this scope they would show
-   HeroUI's grey-violet defaults and ignore the accent theme and the dark skin. Here they
-   take the palette above instead, which moves with data-accent and data-skin because
-   every one is a var(). HeroUI's calculated tokens (hover, soft, focus mixes) are restated
-   too: declared on :root they would mix :root's colours, not this scope's.
-   Our own components read these names as well (Keypad, SwipeRow, the bottom bar, the
-   signature cards); MASTER.md "Colour" lists both sets. */
+/* ---- HeroUI tokens, and the older names as aliases -----------------------------
+   Inside this scope HeroUI's token names are the source (MASTER.md "Colour"): the two
+   blocks above and the generated accent themes write --background, --foreground,
+   --surface-secondary, --danger ... and nothing else. Every older name below is a var()
+   of one of them, kept so the rules written before HeroUI keep resolving; new rules use
+   the HeroUI name. Aliases resolve on the .meridian element itself, so they follow
+   data-accent and data-skin with no per-theme copy.
+
+   HeroUI's calculated tokens (hover, soft and focus mixes) are restated here too: its
+   theme declares them on :root, where they would mix :root's colours, not this scope's. */
 .meridian {
-  --background: var(--bg);
-  --foreground: var(--text);
-  --surface-foreground: var(--text);
-  --surface-secondary: var(--surface-2);
-  --surface-secondary-foreground: var(--text);
-  --surface-tertiary: var(--surface-sunk);
-  --surface-tertiary-foreground: var(--text);
+  /* Older names. */
+  --bg: var(--background);
+  --text: var(--foreground);
+  --ink: var(--foreground);
+  --text-muted: var(--muted);
+  --surface-2: var(--surface-secondary);
+  --surface-sunk: var(--surface-tertiary);
+  --card: var(--surface);
+  --card-2: var(--surface-secondary);
+  --sunk: var(--surface-tertiary);
+  --line: var(--border);
+  --line-2: var(--border-strong);
+  --accent-ink: var(--accent-foreground);
+  --good: var(--success);
+  --warn: var(--warning);
+  --crit: var(--danger);
+  --good-soft: var(--success-soft);
+  --warn-soft: var(--warning-soft);
+  --crit-soft: var(--danger-soft);
+
+  /* HeroUI names this palette has no rung of its own for. */
+  --surface-foreground: var(--foreground);
+  --surface-secondary-foreground: var(--foreground);
+  --surface-tertiary-foreground: var(--foreground);
   --overlay: var(--surface);
-  --overlay-foreground: var(--text);
-  --default: var(--surface-sunk);
-  --default-foreground: var(--text);
-  --accent-foreground: var(--accent-ink);
-  --success: var(--good);
-  --warning: var(--warn);
-  --danger: var(--crit);
+  --overlay-foreground: var(--foreground);
+  --default: var(--surface-tertiary);
+  --default-foreground: var(--foreground);
   --success-foreground: #FFFFFF;
   --warning-foreground: #FFFFFF;
   --danger-foreground: #FFFFFF;
   --field-background: var(--surface);
-  --field-foreground: var(--text);
+  --field-foreground: var(--foreground);
   --field-placeholder: var(--text-faint);
   --separator: var(--border);
   --focus: var(--accent);
   --link: var(--accent-text);
   --segment: var(--surface);
-  --segment-foreground: var(--text);
+  --segment-foreground: var(--foreground);
   --surface-shadow: var(--sh-1);
   --overlay-shadow: var(--sh-3);
 
-  --surface-hover: color-mix(in oklab, var(--surface) 92%, var(--text) 8%);
-  --background-secondary: color-mix(in oklab, var(--bg) 96%, var(--text) 4%);
-  --background-tertiary: color-mix(in oklab, var(--bg) 92%, var(--text) 8%);
-  --default-hover: color-mix(in oklab, var(--surface-sunk) 94%, var(--text) 6%);
-  --accent-hover: color-mix(in oklab, var(--accent) 90%, var(--accent-ink) 10%);
-  --success-hover: color-mix(in oklab, var(--good) 90%, #FFFFFF 10%);
-  --warning-hover: color-mix(in oklab, var(--warn) 90%, #FFFFFF 10%);
-  --danger-hover: color-mix(in oklab, var(--crit) 90%, #FFFFFF 10%);
-  --field-hover: color-mix(in oklab, var(--surface) 96%, var(--text) 4%);
+  /* HeroUI's calculated tokens, mixed from this scope's colours. */
+  --surface-hover: color-mix(in oklab, var(--surface) 92%, var(--foreground) 8%);
+  --background-secondary: color-mix(in oklab, var(--background) 96%, var(--foreground) 4%);
+  --background-tertiary: color-mix(in oklab, var(--background) 92%, var(--foreground) 8%);
+  --default-hover: color-mix(in oklab, var(--surface-tertiary) 94%, var(--foreground) 6%);
+  --accent-hover: color-mix(in oklab, var(--accent) 90%, var(--accent-foreground) 10%);
+  --success-hover: color-mix(in oklab, var(--success) 90%, #FFFFFF 10%);
+  --warning-hover: color-mix(in oklab, var(--warning) 90%, #FFFFFF 10%);
+  --danger-hover: color-mix(in oklab, var(--danger) 90%, #FFFFFF 10%);
+  --field-hover: color-mix(in oklab, var(--surface) 96%, var(--foreground) 4%);
   --field-focus: var(--surface);
-  --field-border-hover: color-mix(in oklab, var(--border) 88%, var(--text) 12%);
-  --field-border-focus: color-mix(in oklab, var(--border) 74%, var(--text) 26%);
-  --default-soft: color-mix(in oklab, var(--surface-sunk) 50%, transparent);
-  --default-soft-foreground: var(--text);
-  --default-soft-hover: color-mix(in oklab, var(--surface-sunk) 70%, transparent);
-  /* The soft fills are the solved pill pairs, not HeroUI's 15 % mixes: the word on each
-     is checked at 4.5:1 by scripts/check-contrast.mjs. */
+  --field-border-hover: color-mix(in oklab, var(--border) 88%, var(--foreground) 12%);
+  --field-border-focus: color-mix(in oklab, var(--border) 74%, var(--foreground) 26%);
+  --default-soft: color-mix(in oklab, var(--surface-tertiary) 50%, transparent);
+  --default-soft-foreground: var(--foreground);
+  --default-soft-hover: color-mix(in oklab, var(--surface-tertiary) 70%, transparent);
+  /* The soft fills are the solved pill pairs above, not HeroUI's 15 % mixes: the word on
+     each is checked at 4.5:1 by scripts/check-contrast.mjs. */
   --accent-soft-foreground: var(--accent-text);
   --accent-soft-hover: color-mix(in oklab, var(--accent-soft) 85%, var(--accent) 15%);
-  --danger-soft: var(--crit-soft);
-  --danger-soft-foreground: var(--crit);
-  --danger-soft-hover: color-mix(in oklab, var(--crit-soft) 85%, var(--crit) 15%);
-  --warning-soft: var(--warn-soft);
-  --warning-soft-foreground: var(--warn);
-  --warning-soft-hover: color-mix(in oklab, var(--warn-soft) 85%, var(--warn) 15%);
-  --success-soft: var(--good-soft);
-  --success-soft-foreground: var(--good);
-  --success-soft-hover: color-mix(in oklab, var(--good-soft) 85%, var(--good) 15%);
-  --separator-secondary: color-mix(in oklab, var(--surface) 85%, var(--text) 15%);
-  --separator-tertiary: color-mix(in oklab, var(--surface) 81%, var(--text) 19%);
-  --border-secondary: color-mix(in oklab, var(--surface) 78%, var(--text) 22%);
-  --border-tertiary: color-mix(in oklab, var(--surface) 66%, var(--text) 34%);
+  --danger-soft-foreground: var(--danger);
+  --danger-soft-hover: color-mix(in oklab, var(--danger-soft) 85%, var(--danger) 15%);
+  --warning-soft-foreground: var(--warning);
+  --warning-soft-hover: color-mix(in oklab, var(--warning-soft) 85%, var(--warning) 15%);
+  --success-soft-foreground: var(--success);
+  --success-soft-hover: color-mix(in oklab, var(--success-soft) 85%, var(--success) 15%);
+  --separator-secondary: color-mix(in oklab, var(--surface) 85%, var(--foreground) 15%);
+  --separator-tertiary: color-mix(in oklab, var(--surface) 81%, var(--foreground) 19%);
+  --border-secondary: color-mix(in oklab, var(--surface) 78%, var(--foreground) 22%);
+  --border-tertiary: color-mix(in oklab, var(--surface) 66%, var(--foreground) 34%);
 }
-/* Dark lifts the status colours, so the ink on a status fill turns dark, as --accent-ink does. */
+/* Dark lifts the status colours, so the ink on a status fill turns dark, as the accent's does. */
 :root[data-skin="dark"] .meridian {
-  --success-foreground: var(--bg);
-  --warning-foreground: var(--bg);
-  --danger-foreground: var(--bg);
-  --success-hover: color-mix(in oklab, var(--good) 90%, #000000 10%);
-  --warning-hover: color-mix(in oklab, var(--warn) 90%, #000000 10%);
-  --danger-hover: color-mix(in oklab, var(--crit) 90%, #000000 10%);
+  --success-foreground: var(--background);
+  --warning-foreground: var(--background);
+  --danger-foreground: var(--background);
+  --success-hover: color-mix(in oklab, var(--success) 90%, #000000 10%);
+  --warning-hover: color-mix(in oklab, var(--warning) 90%, #000000 10%);
+  --danger-hover: color-mix(in oklab, var(--danger) 90%, #000000 10%);
 }
 
 /* Figures line up or they are not figures.
@@ -3074,7 +2821,6 @@ body {
   .meridian .funnel__meta { grid-column: 1 / -1; }
 }
 
-
 /* ---- the journey's order picker and summary ------------------------------ */
 /* ---- the KPI bar and its hero (item 10, KpiStrip.tsx) --------------------------
    One headline metric large, the rest as one connected strip: segments share their
@@ -3339,79 +3085,10 @@ body {
    heavier day. The axis is stop order, not time: nothing records planned arrival times.
    The tooltip is display:none until hover/focus so hidden tips never widen the scroll
    area. RunTimeline.tsx. */
-.meridian .mlanes { --head: 13rem; display: flex; flex-direction: column; gap: 10px; overflow-x: auto; padding-bottom: 2px; }
-.meridian .mlanes__axis,
-.meridian .mlanes__lane {
-  display: grid; align-items: center; gap: 12px;
-  grid-template-columns: var(--head) minmax(calc(var(--stops) * 2.25rem), 1fr);
-}
-.meridian .mlanes__ticks,
-.meridian .mlanes__track {
-  list-style: none; margin: 0; padding: 0; display: grid;
-  grid-template-columns: repeat(var(--stops), minmax(2.25rem, 1fr));
-}
-.meridian .mlanes__ticks { font-size: 11px; color: var(--muted); text-align: center; font-variant-numeric: tabular-nums; }
-.meridian .mlanes__head { display: flex; align-items: center; gap: 10px; min-width: 0; }
-.meridian .mlanes__who { display: flex; flex-direction: column; min-width: 0; }
-.meridian .mlanes__name { font-size: 13.5px; font-weight: 600; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.meridian .mlanes__meta { font-size: 11.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.meridian .mlanes__track { position: relative; height: 36px; align-items: center; }
-.meridian .mlanes__track::before {
-  content: ""; position: absolute; top: 50%; height: 3px; transform: translateY(-50%);
-  inset-inline-start: calc(50% / var(--stops));
-  width: calc((var(--filled) - 1) * 100% / var(--stops));
-  border-radius: 3px; background: var(--line-2);
-}
-.meridian .mlanes__stop { position: relative; display: grid; place-items: center; height: 100%; outline: none; cursor: default; }
-.meridian .mlanes__dot {
-  position: relative; z-index: 1; width: 16px; height: 16px; border-radius: 999px;
-  background: var(--card); box-shadow: inset 0 0 0 3px var(--muted);
-  transition: transform 160ms var(--ease);
-}
-.meridian .mlanes__stop--delivered .mlanes__dot { background: var(--good); box-shadow: none; }
-.meridian .mlanes__stop--refused .mlanes__dot { background: var(--crit); box-shadow: none; }
-.meridian .mlanes__stop--skipped .mlanes__dot { background: var(--warn); box-shadow: none; }
-.meridian .mlanes__stop:hover .mlanes__dot,
-.meridian .mlanes__stop:focus-visible .mlanes__dot { transform: scale(1.3); }
-.meridian .mlanes__stop:focus-visible .mlanes__dot { outline: 2px solid var(--accent); outline-offset: 2px; }
-.meridian .mlanes__tip {
-  display: none; position: absolute; z-index: 5; bottom: calc(100% - 2px); left: 50%;
-  transform: translateX(-50%); flex-direction: column; gap: 2px; white-space: nowrap;
-  padding: 6px 9px; border-radius: var(--r-sm); border: 1px solid var(--line);
-  background: var(--surface); box-shadow: var(--sh-3); font-size: 12px; color: var(--ink-2);
-}
-.meridian .mlanes__tip b { color: var(--ink); font-weight: 600; }
-.meridian .mlanes__stop:hover .mlanes__tip,
-.meridian .mlanes__stop:focus-visible .mlanes__tip { display: flex; }
-.meridian .mlanes__empty { margin: 0; font-size: 12.5px; color: var(--muted); }
-.meridian .mlanes__legend { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; color: var(--muted); }
-.meridian .mlanes__legend li { display: inline-flex; align-items: center; gap: 6px; }
-.meridian .mlanes__swatch { width: 10px; height: 10px; border-radius: 999px; background: var(--card); box-shadow: inset 0 0 0 2px var(--muted); }
-.meridian .mlanes__swatch--delivered { background: var(--good); box-shadow: none; }
-.meridian .mlanes__swatch--refused { background: var(--crit); box-shadow: none; }
-.meridian .mlanes__swatch--skipped { background: var(--warn); box-shadow: none; }
-@media (max-width: 620px) { .meridian .mlanes { --head: 8.5rem; } }
 
 /* ---- «کارکرد رانندگان»: a streak of days per driver (item 14) --------------------
    Weeks run with the reading direction: in RTL the oldest week sits at the start (right)
    and this week at the end. DriverStreaks.tsx; the grid is lib/streak.ts. */
-.meridian .streaks { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 14px; }
-.meridian .streaks__row { display: grid; grid-template-columns: minmax(0, 15rem) minmax(0, 1fr); gap: 16px; align-items: center; }
-.meridian .streaks__who { display: flex; align-items: center; gap: 10px; min-width: 0; }
-.meridian .streaks__text { display: flex; flex-direction: column; min-width: 0; }
-.meridian .streaks__name { font-size: 13.5px; font-weight: 600; color: var(--ink); }
-.meridian .streaks__meta { font-size: 11.5px; color: var(--muted); }
-.meridian .streak { display: flex; gap: 3px; overflow-x: auto; padding-bottom: 2px; }
-.meridian .streak__days,
-.meridian .streak__week { display: grid; grid-template-rows: repeat(7, 12px); gap: 3px; flex: none; }
-.meridian .streak__days { font-size: 9.5px; line-height: 12px; color: var(--muted); padding-inline-end: 4px; }
-.meridian .streak__cell { width: 12px; height: 12px; border-radius: 3px; background: var(--sunk); }
-.meridian .streak__cell--1 { background: color-mix(in srgb, var(--accent) 30%, var(--sunk)); }
-.meridian .streak__cell--2 { background: color-mix(in srgb, var(--accent) 55%, var(--sunk)); }
-.meridian .streak__cell--3 { background: color-mix(in srgb, var(--accent) 78%, var(--sunk)); }
-.meridian .streak__cell--4 { background: var(--accent); }
-.meridian .streak__cell--future { background: transparent; box-shadow: inset 0 0 0 1px var(--line); }
-@media (max-width: 760px) { .meridian .streaks__row { grid-template-columns: 1fr; } }
 
 .meridian .picker { padding: 0 24px 6px; display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
 .meridian .picker__label { font-size: 12.5px; color: var(--muted); flex: none; }
@@ -3449,7 +3126,11 @@ body {
 /* ---- 6 · schedule: month + day rail -------------------------------------- */
 .meridian .sched { display: grid; grid-template-columns: 1fr 1.15fr; gap: 14px; align-items: start; max-width: 1200px; }
 .meridian .cal { padding: 6px 22px 22px; }
-.meridian .calgrid { display: grid; grid-template-columns: repeat(7,1fr); gap: 4px; margin-top: 8px; }
+/* minmax(0, 1fr): a day button carries an icon and a 44 px floor, and plain 1fr let seven of
+   them push the grid past a phone's card. */
+.meridian .calgrid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; margin-top: 8px; }
+.meridian .calgrid .day { min-width: 0; }
+@media (max-width: 767px) { .meridian .calgrid .day > svg:first-child { width: 16px; height: 16px; } }
 .meridian .calgrid .dow { text-align: center; font-size: 11.5px; color: var(--muted); padding-bottom: 6px; }
 .meridian .day {
   aspect-ratio: 1; border: 0; background: transparent; border-radius: 12px;
@@ -3596,7 +3277,9 @@ body {
   .meridian .pockets { grid-template-columns: 1fr; padding-inline: 16px; }
   .meridian .bento { grid-template-columns: 1fr; padding-inline: 16px; }
   .meridian .board, .meridian .hint { padding-inline: 16px; }
-  .meridian .cal, .meridian .rail { padding-inline: 16px; }
+  .meridian .rail { padding-inline: 16px; }
+  /* Seven 44 px days need the width: 10 px sides keep each one at the floor on a 390 px phone. */
+  .meridian .cal { padding-inline: 10px; }
   .meridian .bhead { padding-inline: 16px; }
 }
 
@@ -3802,10 +3485,6 @@ body {
 .meridian .stchip[data-tone="sage"] { color: var(--sage); }
 .meridian .stchip[data-tone="sky"] { color: var(--sky); }
 .meridian .stchip[aria-pressed="true"][data-tone] { color: var(--card); }
-.meridian .stsort {
-  font: inherit; font-size: 12.5px; color: var(--ink-2); background: var(--card);
-  border: 1px solid var(--line); border-radius: var(--r-md); padding: 9px 12px; cursor: pointer;
-}
 
 .meridian .stgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; }
 .meridian .stcard {
@@ -4019,6 +3698,7 @@ body {
   --map-boundary: #76828D;
   --map-selected: #0074B7;
   --map-unknown: #727C85;
+  --accent-foreground: #FFFFFF;
 }
 :root[data-skin="dark"], :root[data-skin="dark"] .meridian {
   --accent: #3BA6F5;
@@ -4034,6 +3714,7 @@ body {
   --map-boundary: #56626C;
   --map-selected: #40AAF9;
   --map-unknown: #616A73;
+  --accent-foreground: #030E19;
 }
 :root [data-ground="light"] {
   --map-stroke-major: #485A6B;
@@ -4063,20 +3744,16 @@ body {
   --map-boundary: #76828D;
   --map-selected: #0074B7;
   --map-unknown: #727C85;
+  --accent-foreground: #FFFFFF;
   --series-single: var(--accent);
 }
 :root[data-accent="ocean"] .meridian {
-  --bg: #F0F3F6;
+  --background: #F0F3F6;
   --surface: #FFFFFF;
-  --surface-2: #F8FAFC;
-  --surface-sunk: #E7ECF1;
+  --surface-secondary: #F8FAFC;
+  --surface-tertiary: #E7ECF1;
   --border: #DFE6EC;
   --border-strong: #CBD5DD;
-  --card: #FFFFFF;
-  --card-2: #F8FAFC;
-  --sunk: #E7ECF1;
-  --line: #DFE6EC;
-  --line-2: #CBD5DD;
   --gcard-hue-rotate: -157deg;
 }
 :root[data-accent="ocean"][data-skin="dark"] .meridian, :root[data-accent="ocean"][data-skin="dark"] {
@@ -4093,20 +3770,16 @@ body {
   --map-boundary: #56626C;
   --map-selected: #40AAF9;
   --map-unknown: #616A73;
+  --accent-foreground: #030E19;
   --series-single: var(--accent);
 }
 :root[data-accent="ocean"][data-skin="dark"] .meridian {
-  --bg: #0F1214;
+  --background: #0F1214;
   --surface: #171B20;
-  --surface-2: #1D2228;
-  --surface-sunk: #232A31;
+  --surface-secondary: #1D2228;
+  --surface-tertiary: #232A31;
   --border: #28323A;
   --border-strong: #37414A;
-  --card: #171B20;
-  --card-2: #1D2228;
-  --sunk: #232A31;
-  --line: #28323A;
-  --line-2: #37414A;
   --gcard-hue-rotate: -157deg;
 }
 :root[data-accent="ocean"] [data-ground="light"] {
@@ -4137,20 +3810,16 @@ body {
   --map-boundary: #998876;
   --map-selected: #C0532B;
   --map-unknown: #7D7166;
+  --accent-foreground: #FFFFFF;
   --series-single: var(--accent);
 }
 :root[data-accent="terracotta"] .meridian {
-  --bg: #F1F3F6;
+  --background: #F1F3F6;
   --surface: #FFFFFF;
-  --surface-2: #F8FAFC;
-  --surface-sunk: #E8ECF1;
+  --surface-secondary: #F8FAFC;
+  --surface-tertiary: #E8ECF1;
   --border: #E0E5EC;
   --border-strong: #CDD4DE;
-  --card: #FFFFFF;
-  --card-2: #F8FAFC;
-  --sunk: #E8ECF1;
-  --line: #E0E5EC;
-  --line-2: #CDD4DE;
   --gcard-hue-rotate: 0deg;
 }
 :root[data-accent="terracotta"][data-skin="dark"] .meridian, :root[data-accent="terracotta"][data-skin="dark"] {
@@ -4167,20 +3836,16 @@ body {
   --map-boundary: #6E6055;
   --map-selected: #E8734A;
   --map-unknown: #7D7166;
+  --accent-foreground: #241009;
   --series-single: var(--accent);
 }
 :root[data-accent="terracotta"][data-skin="dark"] .meridian {
-  --bg: #0F1214;
+  --background: #0F1214;
   --surface: #181B20;
-  --surface-2: #1E2228;
-  --surface-sunk: #242A31;
+  --surface-secondary: #1E2228;
+  --surface-tertiary: #242A31;
   --border: #2A313B;
   --border-strong: #37414C;
-  --card: #181B20;
-  --card-2: #1E2228;
-  --sunk: #242A31;
-  --line: #2A313B;
-  --line-2: #37414C;
   --gcard-hue-rotate: 0deg;
 }
 :root[data-accent="terracotta"] [data-ground="light"] {
@@ -4211,20 +3876,16 @@ body {
   --map-boundary: #858072;
   --map-selected: #866C00;
   --map-unknown: #7E7A6F;
+  --accent-foreground: #FFFFFF;
   --series-single: var(--accent);
 }
 :root[data-accent="gold"] .meridian {
-  --bg: #F4F3EF;
+  --background: #F4F3EF;
   --surface: #FFFFFF;
-  --surface-2: #FBFAF7;
-  --surface-sunk: #EDECE6;
+  --surface-secondary: #FBFAF7;
+  --surface-tertiary: #EDECE6;
   --border: #E7E4DD;
   --border-strong: #D7D3C8;
-  --card: #FFFFFF;
-  --card-2: #FBFAF7;
-  --sunk: #EDECE6;
-  --line: #E7E4DD;
-  --line-2: #D7D3C8;
   --gcard-hue-rotate: 50deg;
 }
 :root[data-accent="gold"][data-skin="dark"] .meridian, :root[data-accent="gold"][data-skin="dark"] {
@@ -4241,20 +3902,16 @@ body {
   --map-boundary: #656053;
   --map-selected: #C39E00;
   --map-unknown: #6D695D;
+  --accent-foreground: #120D01;
   --series-single: var(--accent);
 }
 :root[data-accent="gold"][data-skin="dark"] .meridian {
-  --bg: #12110E;
+  --background: #12110E;
   --surface: #1D1B15;
-  --surface-2: #24221B;
-  --surface-sunk: #2C2921;
+  --surface-secondary: #24221B;
+  --surface-tertiary: #2C2921;
   --border: #343025;
   --border-strong: #444034;
-  --card: #1D1B15;
-  --card-2: #24221B;
-  --sunk: #2C2921;
-  --line: #343025;
-  --line-2: #444034;
   --gcard-hue-rotate: 50deg;
 }
 :root[data-accent="gold"] [data-ground="light"] {
@@ -4285,20 +3942,16 @@ body {
   --map-boundary: #7E8374;
   --map-selected: #63790A;
   --map-unknown: #787C71;
+  --accent-foreground: #FFFFFF;
   --series-single: var(--accent);
 }
 :root[data-accent="olive"] .meridian {
-  --bg: #F2F3F0;
+  --background: #F2F3F0;
   --surface: #FFFFFF;
-  --surface-2: #F9FAF8;
-  --surface-sunk: #EBEDE7;
+  --surface-secondary: #F9FAF8;
+  --surface-tertiary: #EBEDE7;
   --border: #E3E6DE;
   --border-strong: #D1D5CA;
-  --card: #FFFFFF;
-  --card-2: #F9FAF8;
-  --sunk: #EBEDE7;
-  --line: #E3E6DE;
-  --line-2: #D1D5CA;
   --gcard-hue-rotate: 80deg;
 }
 :root[data-accent="olive"][data-skin="dark"] .meridian, :root[data-accent="olive"][data-skin="dark"] {
@@ -4315,20 +3968,16 @@ body {
   --map-boundary: #5E6355;
   --map-selected: #92AC4B;
   --map-unknown: #676B5F;
+  --accent-foreground: #0B0F02;
   --series-single: var(--accent);
 }
 :root[data-accent="olive"][data-skin="dark"] .meridian {
-  --bg: #11120F;
+  --background: #11120F;
   --surface: #1A1C16;
-  --surface-2: #21231C;
-  --surface-sunk: #282B22;
+  --surface-secondary: #21231C;
+  --surface-tertiary: #282B22;
   --border: #2F3227;
   --border-strong: #3E4236;
-  --card: #1A1C16;
-  --card-2: #21231C;
-  --sunk: #282B22;
-  --line: #2F3227;
-  --line-2: #3E4236;
   --gcard-hue-rotate: 80deg;
 }
 :root[data-accent="olive"] [data-ground="light"] {
@@ -4359,20 +4008,16 @@ body {
   --map-boundary: #76847B;
   --map-selected: #008451;
   --map-unknown: #727E76;
+  --accent-foreground: #FFFFFF;
   --series-single: var(--accent);
 }
 :root[data-accent="emerald"] .meridian {
-  --bg: #F0F4F2;
+  --background: #F0F4F2;
   --surface: #FFFFFF;
-  --surface-2: #F8FAF9;
-  --surface-sunk: #E7EDEA;
+  --surface-secondary: #F8FAF9;
+  --surface-tertiary: #E7EDEA;
   --border: #DFE7E2;
   --border-strong: #CBD7CF;
-  --card: #FFFFFF;
-  --card-2: #F8FAF9;
-  --sunk: #E7EDEA;
-  --line: #DFE7E2;
-  --line-2: #CBD7CF;
   --gcard-hue-rotate: 116deg;
 }
 :root[data-accent="emerald"][data-skin="dark"] .meridian, :root[data-accent="emerald"][data-skin="dark"] {
@@ -4389,20 +4034,16 @@ body {
   --map-boundary: #55635B;
   --map-selected: #2EBA7A;
   --map-unknown: #616C65;
+  --accent-foreground: #031108;
   --series-single: var(--accent);
 }
 :root[data-accent="emerald"][data-skin="dark"] .meridian {
-  --bg: #0F1210;
+  --background: #0F1210;
   --surface: #171C19;
-  --surface-2: #1D241F;
-  --surface-sunk: #232C26;
+  --surface-secondary: #1D241F;
+  --surface-tertiary: #232C26;
   --border: #28342D;
   --border-strong: #37433C;
-  --card: #171C19;
-  --card-2: #1D241F;
-  --sunk: #232C26;
-  --line: #28342D;
-  --line-2: #37433C;
   --gcard-hue-rotate: 116deg;
 }
 :root[data-accent="emerald"] [data-ground="light"] {
@@ -4433,20 +4074,16 @@ body {
   --map-boundary: #728584;
   --map-selected: #007F7F;
   --map-unknown: #6F7E7D;
+  --accent-foreground: #FFFFFF;
   --series-single: var(--accent);
 }
 :root[data-accent="teal"] .meridian {
-  --bg: #F0F4F4;
+  --background: #F0F4F4;
   --surface: #FFFFFF;
-  --surface-2: #F7FBFA;
-  --surface-sunk: #E6EDED;
+  --surface-secondary: #F7FBFA;
+  --surface-tertiary: #E6EDED;
   --border: #DDE7E7;
   --border-strong: #C8D7D6;
-  --card: #FFFFFF;
-  --card-2: #F7FBFA;
-  --sunk: #E6EDED;
-  --line: #DDE7E7;
-  --line-2: #C8D7D6;
   --gcard-hue-rotate: 153deg;
 }
 :root[data-accent="teal"][data-skin="dark"] .meridian, :root[data-accent="teal"][data-skin="dark"] {
@@ -4463,20 +4100,16 @@ body {
   --map-boundary: #526564;
   --map-selected: #00B5B5;
   --map-unknown: #5D6C6C;
+  --accent-foreground: #001111;
   --series-single: var(--accent);
 }
 :root[data-accent="teal"][data-skin="dark"] .meridian {
-  --bg: #0E1212;
+  --background: #0E1212;
   --surface: #151C1C;
-  --surface-2: #1B2424;
-  --surface-sunk: #212C2C;
+  --surface-secondary: #1B2424;
+  --surface-tertiary: #212C2C;
   --border: #253434;
   --border-strong: #344343;
-  --card: #151C1C;
-  --card-2: #1B2424;
-  --sunk: #212C2C;
-  --line: #253434;
-  --line-2: #344343;
   --gcard-hue-rotate: 153deg;
 }
 :root[data-accent="teal"] [data-ground="light"] {
@@ -4507,20 +4140,16 @@ body {
   --map-boundary: #7D7F8E;
   --map-selected: #5D61C3;
   --map-unknown: #777985;
+  --accent-foreground: #FFFFFF;
   --series-single: var(--accent);
 }
 :root[data-accent="indigo"] .meridian {
-  --bg: #F2F3F6;
+  --background: #F2F3F6;
   --surface: #FFFFFF;
-  --surface-2: #F9FAFC;
-  --surface-sunk: #EAEBF1;
+  --surface-secondary: #F9FAFC;
+  --surface-tertiary: #EAEBF1;
   --border: #E3E4EC;
   --border-strong: #D1D3DE;
-  --card: #FFFFFF;
-  --card-2: #F9FAFC;
-  --sunk: #EAEBF1;
-  --line: #E3E4EC;
-  --line-2: #D1D3DE;
   --gcard-hue-rotate: -124deg;
 }
 :root[data-accent="indigo"][data-skin="dark"] .meridian, :root[data-accent="indigo"][data-skin="dark"] {
@@ -4537,20 +4166,16 @@ body {
   --map-boundary: #5D5F6D;
   --map-selected: #9099FF;
   --map-unknown: #666874;
+  --accent-foreground: #0A0C1A;
   --series-single: var(--accent);
 }
 :root[data-accent="indigo"][data-skin="dark"] .meridian {
-  --bg: #111114;
+  --background: #111114;
   --surface: #1A1A20;
-  --surface-2: #202128;
-  --surface-sunk: #272931;
+  --surface-secondary: #202128;
+  --surface-tertiary: #272931;
   --border: #2E303B;
   --border-strong: #3D3F4B;
-  --card: #1A1A20;
-  --card-2: #202128;
-  --sunk: #272931;
-  --line: #2E303B;
-  --line-2: #3D3F4B;
   --gcard-hue-rotate: -124deg;
 }
 :root[data-accent="indigo"] [data-ground="light"] {
@@ -4581,20 +4206,16 @@ body {
   --map-boundary: #857D8A;
   --map-selected: #8E4CB3;
   --map-unknown: #7E7782;
+  --accent-foreground: #FFFFFF;
   --series-single: var(--accent);
 }
 :root[data-accent="purple"] .meridian {
-  --bg: #F4F2F5;
+  --background: #F4F2F5;
   --surface: #FFFFFF;
-  --surface-2: #FAF9FB;
-  --surface-sunk: #EDEAF0;
+  --surface-secondary: #FAF9FB;
+  --surface-tertiary: #EDEAF0;
   --border: #E7E3EA;
   --border-strong: #D7D1DB;
-  --card: #FFFFFF;
-  --card-2: #FAF9FB;
-  --sunk: #EDEAF0;
-  --line: #E7E3EA;
-  --line-2: #D7D1DB;
   --gcard-hue-rotate: -90deg;
 }
 :root[data-accent="purple"][data-skin="dark"] .meridian, :root[data-accent="purple"][data-skin="dark"] {
@@ -4611,20 +4232,16 @@ body {
   --map-boundary: #655D6A;
   --map-selected: #CB87F3;
   --map-unknown: #6C6671;
+  --accent-foreground: #120917;
   --series-single: var(--accent);
 }
 :root[data-accent="purple"][data-skin="dark"] .meridian {
-  --bg: #121114;
+  --background: #121114;
   --surface: #1D191F;
-  --surface-2: #242026;
-  --surface-sunk: #2C272F;
+  --surface-secondary: #242026;
+  --surface-tertiary: #2C272F;
   --border: #342E38;
   --border-strong: #433D48;
-  --card: #1D191F;
-  --card-2: #242026;
-  --sunk: #2C272F;
-  --line: #342E38;
-  --line-2: #433D48;
   --gcard-hue-rotate: -90deg;
 }
 :root[data-accent="purple"] [data-ground="light"] {
@@ -4655,20 +4272,16 @@ body {
   --map-boundary: #897B85;
   --map-selected: #A44491;
   --map-unknown: #82767E;
+  --accent-foreground: #FFFFFF;
   --series-single: var(--accent);
 }
 :root[data-accent="raspberry"] .meridian {
-  --bg: #F5F2F4;
+  --background: #F5F2F4;
   --surface: #FFFFFF;
-  --surface-2: #FBF9FB;
-  --surface-sunk: #EFEAEE;
+  --surface-secondary: #FBF9FB;
+  --surface-tertiary: #EFEAEE;
   --border: #EAE2E7;
   --border-strong: #DBD0D7;
-  --card: #FFFFFF;
-  --card-2: #FBF9FB;
-  --sunk: #EFEAEE;
-  --line: #EAE2E7;
-  --line-2: #DBD0D7;
   --gcard-hue-rotate: -66deg;
 }
 :root[data-accent="raspberry"][data-skin="dark"] .meridian, :root[data-accent="raspberry"][data-skin="dark"] {
@@ -4685,20 +4298,16 @@ body {
   --map-boundary: #6A5D66;
   --map-selected: #E47FCE;
   --map-unknown: #70656D;
+  --accent-foreground: #150812;
   --series-single: var(--accent);
 }
 :root[data-accent="raspberry"][data-skin="dark"] .meridian {
-  --bg: #131113;
+  --background: #131113;
   --surface: #1E191D;
-  --surface-2: #261F24;
-  --surface-sunk: #2F272C;
+  --surface-secondary: #261F24;
+  --surface-tertiary: #2F272C;
   --border: #372D34;
   --border-strong: #473C44;
-  --card: #1E191D;
-  --card-2: #261F24;
-  --sunk: #2F272C;
-  --line: #372D34;
-  --line-2: #473C44;
   --gcard-hue-rotate: -66deg;
 }
 :root[data-accent="raspberry"] [data-ground="light"] {
@@ -4729,20 +4338,16 @@ body {
   --map-boundary: #7A808E;
   --map-selected: #696F7A;
   --map-unknown: #757A85;
+  --accent-foreground: #FFFFFF;
   --series-single: var(--accent);
 }
 :root[data-accent="graphite"] .meridian {
-  --bg: #F1F3F6;
+  --background: #F1F3F6;
   --surface: #FFFFFF;
-  --surface-2: #F9FAFC;
-  --surface-sunk: #E9ECF1;
+  --surface-secondary: #F9FAFC;
+  --surface-tertiary: #E9ECF1;
   --border: #E1E5EC;
   --border-strong: #CED3DE;
-  --card: #FFFFFF;
-  --card-2: #F9FAFC;
-  --sunk: #E9ECF1;
-  --line: #E1E5EC;
-  --line-2: #CED3DE;
   --gcard-hue-rotate: 0deg;
 }
 :root[data-accent="graphite"][data-skin="dark"] .meridian, :root[data-accent="graphite"][data-skin="dark"] {
@@ -4759,20 +4364,16 @@ body {
   --map-boundary: #5A606D;
   --map-selected: #9CA2AF;
   --map-unknown: #646974;
+  --accent-foreground: #070D1A;
   --series-single: var(--accent);
 }
 :root[data-accent="graphite"][data-skin="dark"] .meridian {
-  --bg: #101214;
+  --background: #101214;
   --surface: #181B20;
-  --surface-2: #1F2228;
-  --surface-sunk: #262931;
+  --surface-secondary: #1F2228;
+  --surface-tertiary: #262931;
   --border: #2C303B;
   --border-strong: #3B404B;
-  --card: #181B20;
-  --card-2: #1F2228;
-  --sunk: #262931;
-  --line: #2C303B;
-  --line-2: #3B404B;
   --gcard-hue-rotate: 0deg;
 }
 :root[data-accent="graphite"] [data-ground="light"] {
@@ -4823,15 +4424,9 @@ body {
 .meridian .tapflow .flow-drawer__skip { justify-self: center; color: var(--muted); }
 .meridian .tapflow .flow-calendar { width: 100%; max-width: 360px; margin-inline: auto; }
 .meridian .tapflow .tf-nav { display: flex; align-items: center; justify-content: space-between; min-height: 28px; }
-.meridian .tapflow .tf-back {
-  position: absolute; inset-block-start: 50%; inset-inline-start: 0; transform: translateY(-50%);
-  display: inline-flex; align-items: center; gap: 5px;
-  min-height: 44px; padding: 0 14px; border: 1px solid var(--line); border-radius: 999px;
-  background: var(--card); color: var(--muted);
-  font: inherit; font-size: 13px; font-weight: 500; cursor: pointer; touch-action: manipulation;
-}
+
 .meridian .tapflow .tf-nav { min-height: 44px; }
-.meridian .tapflow .tf-back:active { background: var(--accent-soft); color: var(--text); }
+
 .meridian .tapflow .tf-steps { display: flex; gap: 4px; max-width: 100%; }
 /* Shrinkable, never growing: a twelve-step flow must not push the row wider than the sheet. */
 .meridian .tapflow .tf-steps i { width: 18px; min-width: 3px; flex: 1 1 18px; max-width: 18px; height: 4px; border-radius: 999px; background: var(--line-2); }
@@ -4920,7 +4515,7 @@ body {
 /* The progress dots belong on the centre line, so the back button leaves the flow and is
    pinned to the inline-start edge rather than sharing a row with them. */
 .meridian .tapflow .tf-nav { justify-content: center; position: relative; }
-.meridian .tapflow .tf-back { position: absolute; inset-inline-start: 0; }
+
 /* A capped block hugs the inline start by default, and `justify-content` only centres the
    items *inside* it -- margin-inline is what actually centres the block in the sheet. */
 .meridian .tapflow .tf-grid,
@@ -5096,17 +4691,16 @@ body {
    lib/squircle.ts is fitted to match, so both engines draw the same corner. */
 @supports (corner-shape: superellipse(1.5)) {
   .meridian .kblock,
-  .meridian .card,
-  .meridian .gcard,
-  .meridian .face,
-  .meridian .pocketed__face,
-  .meridian .island,
-  .meridian .mwork,
-  .meridian .mapside,
-  .meridian .prow,
-  .meridian .ptile,
-  .meridian .pagehead,
-  .meridian .seg-item > a {
+.meridian .card,
+.meridian .gcard,
+.meridian .face,
+.meridian .pocketed__face,
+.meridian .mwork,
+.meridian .mapside,
+.meridian .prow,
+.meridian .ptile,
+.meridian .pagehead,
+.meridian .seg-item > a {
     corner-shape: superellipse(1.5);
   }
 }
@@ -5169,12 +4763,11 @@ body {
   }
 
   .meridian .reveal,
-  .meridian .kblock,
-  .meridian .gcard,
-  .meridian .prow,
-  .meridian .ptile,
-  .meridian .mwork,
-  .meridian .bento-tile {
+.meridian .kblock,
+.meridian .gcard,
+.meridian .prow,
+.meridian .ptile,
+.meridian .mwork {
     animation: meridian-reveal linear both;
     animation-timeline: view();
     /* `entry` only, and NOT `cover`. `cover` spans the element's whole time in
@@ -5193,10 +4786,9 @@ body {
      once" cap: the cap existed because a wall-clock stagger compounds against
      the reader, and a clamped positional one cannot. See MASTER.md Tier 2. */
   .meridian .kblock,
-  .meridian .gcard,
-  .meridian .prow,
-  .meridian .ptile,
-  .meridian .bento-tile {
+.meridian .gcard,
+.meridian .prow,
+.meridian .ptile {
     animation-delay: min(calc(sibling-index() * var(--stagger-base)), 240ms);
   }
 }
@@ -5212,12 +4804,11 @@ body {
    scroll-driven work too. */
 @media (prefers-reduced-motion: reduce) {
   .meridian .reveal,
-  .meridian .kblock,
-  .meridian .gcard,
-  .meridian .prow,
-  .meridian .ptile,
-  .meridian .mwork,
-  .meridian .bento-tile {
+.meridian .kblock,
+.meridian .gcard,
+.meridian .prow,
+.meridian .ptile,
+.meridian .mwork {
     animation: none !important;
     animation-timeline: auto !important;
     animation-delay: 0ms !important;
