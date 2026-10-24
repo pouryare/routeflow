@@ -46,3 +46,15 @@ export async function tombstonesSince(
         )
         .all(organizationId) as unknown as Tombstone[]);
 }
+
+/** Tombstones for one org written by transaction `xid` or later: the PostgreSQL watermark
+ *  (lib/repo/syncPull.ts). Rows from before sync_xid existed count as transaction 0. */
+export async function tombstonesSinceXid(organizationId: number, xid: string, db?: Db): Promise<Tombstone[]> {
+  return (await (db ?? getDb())
+    .prepare(
+      `SELECT entity_type, entity_id, deleted_at FROM deleted_rows
+        WHERE organization_id = ? AND COALESCE(sync_xid, '0') >= CAST(? AS xid8)
+        ORDER BY deleted_at`
+    )
+    .all(organizationId, xid)) as unknown as Tombstone[];
+}

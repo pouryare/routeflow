@@ -5,6 +5,7 @@ import { geometryVersion } from "@/lib/districtGeometry";
 import { districtPropertiesIn } from "@/lib/repo/routeAdapters";
 import { requireRole, scopeGroupIds } from "@/lib/session";
 import { MANAGE_ROLES } from "@/lib/roles";
+import { isUniqueViolation } from "@/lib/database/errors";
 
 // Properties only -- no `boundary_geojson`. Geometry moved to the version-stamped,
 // indefinitely-cached /api/districts/geometry, so this response stays around 50KB and
@@ -47,7 +48,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, id });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "خطا";
-    if (msg.includes("UNIQUE")) {
+    if (isUniqueViolation(e)) {
       return NextResponse.json({ ok: false, error: "منطقه‌ای با این نام از قبل وجود دارد" }, { status: 409 });
     }
     return NextResponse.json({ ok: false, error: msg }, { status: 500 });

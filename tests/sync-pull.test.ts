@@ -4,6 +4,8 @@ import path from "node:path";
 import os from "node:os";
 import type { Session } from "@/lib/session";
 
+const PG = process.env.DB_DIALECT === "postgres";
+
 const testDbPath = path.join(
   os.tmpdir(),
   `rf-sync-pull-${Date.now()}-${Math.random().toString(36).slice(2)}.db`
@@ -119,7 +121,16 @@ describe("pullSince", () => {
     const later = new Date(Date.now() + 5);
     const first = await pullSince(sess(driverA, "delivery_driver", 1, groupA), null, later);
     const second = await pullSince(sess(driverA, "delivery_driver", 1, groupA), first.watermark, later);
-    expect(second.rows).toEqual([]);
+    if (PG) {
+      /* PostgreSQL's watermark is the oldest transaction running anywhere on the server, and
+         the other test files are writing in parallel, so rows this pull already sent may come
+         again. What must hold is that nothing NEW appears: everything is a repeat. */
+      const key = (r: { table: string; row: Record<string, unknown> }) => `${r.table}:${String(r.row.id)}`;
+      const sent = new Set(first.rows.map(key));
+      expect(second.rows.filter((r) => !sent.has(key(r)))).toEqual([]);
+    } else {
+      expect(second.rows).toEqual([]);
+    }
     expect(second.tombstones).toEqual([]);
   });
 
@@ -130,7 +141,9 @@ describe("pullSince", () => {
     expect(second.tombstones.map((t) => t.entity_id)).toContain(999);
   });
 
-  describe("same-millisecond ties", () => {
+  /* The timestamp watermark's edge cases. PostgreSQL's watermark is a transaction id, which has
+     no ties; tests/sync-watermark-pg.test.ts covers what it is for. */
+  describe.skipIf(PG)("same-millisecond ties", () => {
     // A fixed clock so the tie is certain rather than a matter of luck. T is the pull's own
     // millisecond; a row stamped at T is visible to the pull, and a delete stamped at T
     // lands just after it.

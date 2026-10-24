@@ -2,6 +2,7 @@ import { afterAll, describe, expect, it } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
+import { tableInfo } from "./helpers/schema";
 
 const testDbPath = path.join(os.tmpdir(), `rf-crm-intel-schema-${Date.now()}-${Math.random().toString(36).slice(2)}.db`);
 process.env.ROUTEFLOW_DB_PATH = testDbPath;
@@ -14,7 +15,7 @@ afterAll(async () => {
   for (const s of ["", "-wal", "-shm"]) fs.rmSync(`${testDbPath}${s}`, { force: true });
 });
 
-const cols = async (t: string) => (await getDb().prepare(`PRAGMA table_info(${t})`).all() as { name: string }[]).map((c) => c.name);
+const cols = async (t: string) => (await tableInfo(t) as { name: string }[]).map((c) => c.name);
 const NOW = "2026-09-01T00:00:00.000Z";
 
 describe("walk-in intel + tags schema", () => {
@@ -34,6 +35,6 @@ describe("walk-in intel + tags schema", () => {
     expect(row).toEqual({ supply_channel: "competitor", visit_window: "morning", visit_note: "سراغ آقای رضایی", uses_products_json: "[3,7]" });
     const tags = await db.prepare("SELECT tag FROM customer_tags WHERE customer_id = ? ORDER BY tag").all(id) as { tag: string }[];
     expect(tags.map((t) => t.tag)).toEqual(["snappfood"]);
-    await expect((async () => await db.prepare("INSERT INTO customer_tags (organization_id, customer_id, tag, created_at) VALUES (1, ?, 'snappfood', ?)").run(id, NOW))()).rejects.toThrow(/UNIQUE/);
+    await expect((async () => await db.prepare("INSERT INTO customer_tags (organization_id, customer_id, tag, created_at) VALUES (1, ?, 'snappfood', ?)").run(id, NOW))()).rejects.toThrow(/UNIQUE|duplicate key/);
   });
 });

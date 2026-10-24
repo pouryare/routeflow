@@ -2,7 +2,7 @@ import { getDb } from "@/lib/db";
 import { crmFilter, type Session } from "@/lib/session";
 import { FULFILLED_ORDER_STATUSES, sqlStatusList } from "@/lib/orderStateMachine";
 import { LEAD_SOURCES, LEAD_SOURCE_LABEL, isOneOf } from "@/lib/crm/vocab";
-import { addDays } from "@/lib/database/dialect";
+import { addDays, round } from "@/lib/database/dialect";
 
 /** F137: what each lead source has produced, from data already stored: how many records came in
  *  from it, how many became customers (have a delivered order), and what those customers bought in
@@ -38,7 +38,7 @@ export async function leadSourceReport(session: Session): Promise<SourceRow[]> {
        ),
        early AS (
          SELECT o.customer_id,
-                SUM((SELECT COALESCE(SUM(ROUND(COALESCE(l.packs_delivered, l.packs_ordered) * l.unit_price_toman)), 0)
+                SUM((SELECT COALESCE(SUM(${round("COALESCE(l.packs_delivered, l.packs_ordered) * l.unit_price_toman")}), 0)
                        FROM order_lines l WHERE l.order_id = o.id)) AS revenue
            FROM orders o JOIN firsts fr ON fr.customer_id = o.customer_id
           WHERE o.status IN (${fulfilled}) AND o.order_date <= ${addDays("fr.first_day", REVENUE_WINDOW_DAYS)}

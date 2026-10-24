@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
 import { clearLedger } from "./helpers/ledgerTeardown";
+import { tableInfo } from "./helpers/schema";
 
 const testDbPath = path.join(
   os.tmpdir(),
@@ -111,7 +112,7 @@ describe("customerDebt", () => {
     const db = getDb();
     // Task 4 adds the column; until then customerDebt treats it as 0. Simulate the
     // post-migration state by adding it here if it is absent.
-    const hasCol = (await db.prepare("PRAGMA table_info(customers)").all() as { name: string }[]).some(
+    const hasCol = (await tableInfo("customers") as { name: string }[]).some(
       (c) => c.name === "opening_balance_toman"
     );
     if (!hasCol) await db.exec("ALTER TABLE customers ADD COLUMN opening_balance_toman INTEGER NOT NULL DEFAULT 0");

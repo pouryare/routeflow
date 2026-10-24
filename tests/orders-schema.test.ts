@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
+import { sqliteOnly, tableInfo } from "./helpers/schema";
 
 const testDbPath = path.join(
   os.tmpdir(),
@@ -50,7 +51,7 @@ beforeAll(async () => {
 });
 
 async function cols(table: string): Promise<string[]> {
-  return (await getDb().prepare(`PRAGMA table_info(${table})`).all() as unknown as { name: string }[]).map(
+  return (await tableInfo(table) as unknown as { name: string }[]).map(
     (c) => c.name
   );
 }
@@ -124,7 +125,7 @@ describe("orders", () => {
     );
   });
 
-  it("holds money as whole Toman", async () => {
+  it.skipIf(sqliteOnly)("holds money as whole Toman", async () => {
     expect(await tableSql("orders")).toMatch(/paid_toman\s+INTEGER/);
   });
 
@@ -202,7 +203,7 @@ describe("order_lines", () => {
     );
   });
 
-  it("holds both money columns as whole Toman", async () => {
+  it.skipIf(sqliteOnly)("holds both money columns as whole Toman", async () => {
     const sql = await tableSql("order_lines");
     expect(sql).toMatch(/unit_price_toman\s+INTEGER/);
     expect(sql).toMatch(/unit_cost_toman\s+INTEGER/);

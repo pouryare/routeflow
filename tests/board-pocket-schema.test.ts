@@ -2,6 +2,7 @@ import { describe, it, expect, afterAll } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
+import { sqliteOnly, tableInfo } from "./helpers/schema";
 
 const testDbPath = path.join(
   os.tmpdir(),
@@ -17,7 +18,7 @@ afterAll(() => {
 
 describe("board & pocket schema", () => {
   it("tasks has nullable stage + started_at columns", async () => {
-    const cols = await getDb().prepare("PRAGMA table_info(tasks)").all() as { name: string; notnull: number }[];
+    const cols = await tableInfo("tasks") as { name: string; notnull: number }[];
     for (const name of ["stage", "started_at"]) {
       const c = cols.find((x) => x.name === name);
       expect(c, name).toBeTruthy();
@@ -26,12 +27,12 @@ describe("board & pocket schema", () => {
   });
 
   it("users has a nullable prefs_json column", async () => {
-    const cols = await getDb().prepare("PRAGMA table_info(users)").all() as { name: string }[];
+    const cols = await tableInfo("users") as { name: string }[];
     expect(cols.some((c) => c.name === "prefs_json")).toBe(true);
   });
 
-  it("task_recurrences exists with the expected columns and a priority CHECK", async () => {
-    const cols = (await getDb().prepare("PRAGMA table_info(task_recurrences)").all() as { name: string }[]).map(
+  it.skipIf(sqliteOnly)("task_recurrences exists with the expected columns and a priority CHECK", async () => {
+    const cols = (await tableInfo("task_recurrences") as { name: string }[]).map(
       (c) => c.name
     );
     for (const n of [
@@ -74,7 +75,7 @@ describe("board & pocket schema", () => {
         .run(now, now))()).rejects.toThrow();
   });
 
-  it("folds customer reminders into tasks, once, idempotently", async () => {
+  it.skipIf(sqliteOnly)("folds customer reminders into tasks, once, idempotently", async () => {
     const db = getDb();
     const now = new Date().toISOString();
     await db.prepare(

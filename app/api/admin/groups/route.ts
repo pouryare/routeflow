@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createGroup, listGroups } from "@/lib/repo/groupsAdmin";
 import { orgScopeId, requireRole } from "@/lib/session";
 import { OWNER_ROLES } from "@/lib/roles";
+import { isUniqueViolation } from "@/lib/database/errors";
 
 /** Fixed palette rather than free-form colour input.
  *
@@ -58,7 +59,7 @@ export async function POST(req: NextRequest) {
     const msg = e instanceof Error ? e.message : "خطا";
     // A duplicate name is a thing the owner did, not a server fault -- 409 so the form can
     // say so, rather than a 500 that reads as "the app is broken".
-    if (msg.includes("UNIQUE")) {
+    if (isUniqueViolation(e)) {
       return NextResponse.json({ ok: false, error: "گروهی با این نام از قبل وجود دارد" }, { status: 409 });
     }
     return NextResponse.json({ ok: false, error: msg }, { status: 500 });

@@ -2,6 +2,7 @@ import { describe, it, expect, afterAll } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
+import { sqliteOnly, tableInfo } from "./helpers/schema";
 
 const testDbPath = path.join(
   os.tmpdir(),
@@ -18,7 +19,7 @@ afterAll(() => {
 describe("cheques schema", () => {
   it("has an INTEGER NOT NULL amount and a status CHECK", async () => {
     const db = getDb();
-    const cols = await db.prepare("PRAGMA table_info(cheques)").all() as {
+    const cols = await tableInfo("cheques") as {
       name: string;
       type: string;
       notnull: number;
@@ -32,7 +33,7 @@ describe("cheques schema", () => {
         .run())()).rejects.toThrow();
   });
 
-  it("is unique per (organization_id, customer_id, cheque_no)", async () => {
+  it.skipIf(sqliteOnly)("is unique per (organization_id, customer_id, cheque_no)", async () => {
     const sql = (
       await getDb().prepare("SELECT sql FROM sqlite_master WHERE name='cheques'").get() as { sql: string }
     ).sql;

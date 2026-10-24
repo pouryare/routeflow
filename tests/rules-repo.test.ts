@@ -105,7 +105,9 @@ describe("rules repo", () => {
 
     const n = await escalateStaleRuns(1, "2026-03-01T10:30:00.000Z");
     expect(n).toBe(1);
-    const rr = await getDb().prepare("SELECT escalated_at, task_id FROM rule_runs").get() as { escalated_at: string | null; task_id: number };
+    const rr = await getDb().prepare(
+      "SELECT rr.escalated_at, rr.task_id FROM rule_runs rr JOIN rules r ON r.id = rr.rule_id WHERE r.code = 'delivery_failed_retry'"
+    ).get() as { escalated_at: string | null; task_id: number };
     expect(rr.escalated_at).not.toBeNull();
     const t = await getDb().prepare("SELECT assignee_user_id, priority FROM tasks WHERE id = ?").get(rr.task_id) as { assignee_user_id: number; priority: string };
     expect(t).toEqual({ assignee_user_id: owner, priority: "CRITICAL" });

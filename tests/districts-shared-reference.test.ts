@@ -2,6 +2,7 @@ import { describe, it, expect, afterAll } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
+import { sqliteOnly, tableInfo } from "./helpers/schema";
 
 const testDbPath = path.join(os.tmpdir(), `rf-districts-shared-${Date.now()}-${Math.random().toString(36).slice(2)}.db`);
 process.env.ROUTEFLOW_DB_PATH = testDbPath;
@@ -13,7 +14,7 @@ afterAll(() => {
   for (const s of ["", "-wal", "-shm"]) fs.rmSync(`${testDbPath}${s}`, { force: true });
 });
 
-const cols = async (t: string) => (await getDb().prepare(`PRAGMA table_info(${t})`).all() as { name: string }[]).map((c) => c.name);
+const cols = async (t: string) => (await tableInfo(t) as { name: string }[]).map((c) => c.name);
 const schema = async (t: string) =>
   (await getDb().prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?").get(t) as { sql: string }).sql;
 
@@ -39,7 +40,7 @@ describe("districts are shared reference data, not tenant data", () => {
     expect(await cols("districts")).not.toContain("organization_id");
   });
 
-  it("keeps the plain natural key", async () => {
+  it.skipIf(sqliteOnly)("keeps the plain natural key", async () => {
     expect(await schema("districts")).toContain("UNIQUE(name, level, parent_name)");
     expect(await schema("districts")).not.toContain("organization_id");
   });

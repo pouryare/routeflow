@@ -36,3 +36,10 @@ export function greatest(a: string, b: string): string {
 export function addDays(expr: string, days: number): string {
   return dialect() === "postgres" ? `CAST(CAST(${expr} AS date) + ${days} AS text)` : `date(${expr}, '+${days} days')`;
 }
+
+/** `expr` rounded to `digits` places, halves away from zero as SQLite and roundToman do.
+ *  PostgreSQL rounds a double precision half to even, so it rounds the numeric instead. */
+export function round(expr: string, digits = 0): string {
+  const d = digits ? `, ${digits}` : "";
+  return dialect() === "postgres" ? `ROUND(CAST(${expr} AS numeric)${d})` : `ROUND(${expr}${d})`;
+}

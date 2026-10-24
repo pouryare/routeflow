@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
+import { tableInfo } from "./helpers/schema";
 
 const testDbPath = path.join(
   os.tmpdir(),
@@ -22,7 +23,7 @@ beforeAll(async () => {
 });
 
 async function cols(t: string): Promise<string[]> {
-  return (await getDb().prepare(`PRAGMA table_info(${t})`).all() as { name: string }[]).map((c) => c.name);
+  return (await tableInfo(t) as { name: string }[]).map((c) => c.name);
 }
 
 describe("routing schema", () => {

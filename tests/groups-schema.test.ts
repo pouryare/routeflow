@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
+import { tableInfo } from "./helpers/schema";
 
 const testDbPath = path.join(os.tmpdir(), `coverage-test-groups-${Date.now()}-${Math.random().toString(36).slice(2)}.db`);
 process.env.ROUTEFLOW_DB_PATH = testDbPath;
@@ -18,7 +19,7 @@ beforeAll(async () => {
 });
 
 async function cols(table: string): Promise<string[]> {
-  return (await getDb().prepare(`PRAGMA table_info(${table})`).all() as unknown as { name: string }[]).map((c) => c.name);
+  return (await tableInfo(table) as unknown as { name: string }[]).map((c) => c.name);
 }
 
 describe("groups schema", () => {

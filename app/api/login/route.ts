@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { withDbScope } from "@/lib/database/scope";
 import { createChallengeToken, createSessionToken, verifyPassword, COOKIE_NAME, MAX_AGE_SECONDS } from "@/lib/auth";
 import { secondFactorRequired } from "@/lib/repo/secondFactor";
 import { clientKey, rateLimit, rateLimitReset } from "@/lib/rateLimit";
@@ -17,7 +18,12 @@ const BAD_CREDENTIALS = "نام کاربری یا رمز عبور اشتباه �
    and a real one in tens of milliseconds, which lists who works here. */
 const NO_ACCOUNT_HASH = `${"00".repeat(16)}:${"00".repeat(64)}`;
 
+/** Runs as "system" for row-level security (lib/database/scope.ts): the sign-in form: no session exists yet, and the username lookup and the login log span every company. */
 export async function POST(req: NextRequest) {
+  return await withDbScope("system", () => signIn(req));
+}
+
+async function signIn(req: NextRequest) {
   const ip = clientKey(req);
   // Two buckets. The per-address one is generous: with no usable address every caller shares
   // "unknown", and a tight shared limit let one person's typos lock everybody out. The tight

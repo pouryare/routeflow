@@ -2,6 +2,7 @@ import { describe, it, expect, afterAll } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
+import { indexExists } from "./helpers/schema";
 
 const testDbPath = path.join(
   os.tmpdir(),
@@ -22,10 +23,7 @@ describe("analysis schema", () => {
       expect(await db.prepare(`SELECT COUNT(*) n FROM ${t}`).get(), t).toBeTruthy();
       expect((TENANT_TABLES as readonly string[]).includes(t), t).toBe(true);
     }
-    const idx = await db
-      .prepare("SELECT name FROM sqlite_master WHERE type='index' AND name='ix_kpi_snapshots_read'")
-      .get();
-    expect(idx).toBeTruthy();
+    expect(await indexExists("ix_kpi_snapshots_read")).toBe(true);
   });
 
   it("seeds exactly fourteen NULL-org definitions, once, none tenant-owned", async () => {

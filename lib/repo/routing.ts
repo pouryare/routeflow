@@ -190,7 +190,7 @@ export async function routableDeliveriesFor(
         WHERE d.organization_id = ? AND d.status = 'PLANNED'
           AND o.order_date = ? AND o.status IN ('CONFIRMED', 'PLANNED')
           AND c.lat IS NOT NULL AND c.lng IS NOT NULL${groupClause}
-        GROUP BY d.id`
+        GROUP BY d.id, o.id, c.id`
     )
     .all(...(params as never[])) as unknown as {
     delivery_id: number;

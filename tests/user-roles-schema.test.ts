@@ -2,6 +2,7 @@ import { describe, it, expect, afterAll } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
+import { tableExists } from "./helpers/schema";
 
 const testDbPath = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "rf-userroles-")), "t.db");
 process.env.ROUTEFLOW_DB_PATH = testDbPath;
@@ -26,10 +27,7 @@ async function mkUser(username: string, role: string, org = 8): Promise<number> 
 
 describe("the user_roles table", () => {
   it("exists", async () => {
-    const row = await getDb()
-      .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='user_roles'")
-      .get();
-    expect(row).toBeTruthy();
+    expect(await tableExists("user_roles")).toBe(true);
   });
 
   it("gives a fresh account its own primary role in the set", async () => {

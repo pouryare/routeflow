@@ -2,13 +2,15 @@ import { describe, expect, it, beforeAll, afterAll } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { readPlannableOrders, readPlannedDays } from "@/lib/repo/dayPlan";
 
 const testDbPath = path.join(os.tmpdir(), `rf-day-plan-${Date.now()}-${process.pid}.db`);
 process.env.ROUTEFLOW_DB_PATH = testDbPath;
 process.env.SESSION_SECRET = "test-secret";
 
+/* Imported after ROUTEFLOW_DB_PATH is set: a static import is hoisted above it, and lib/db would
+   open data/routeflow.db, the real database. */
 const { getDb } = await import("@/lib/db");
+const { readPlannableOrders, readPlannedDays } = await import("@/lib/repo/dayPlan");
 
 afterAll(() => {
   for (const s of ["", "-wal", "-shm"]) fs.rmSync(`${testDbPath}${s}`, { force: true });

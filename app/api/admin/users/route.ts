@@ -6,6 +6,7 @@ import { hashPassword } from "@/lib/auth";
 import { requireRole } from "@/lib/session";
 import { OWNER_ROLES } from "@/lib/roles";
 import { lastSignInByUser } from "@/lib/repo/loginEvents";
+import { isUniqueViolation } from "@/lib/database/errors";
 
 const MIN_PASSWORD = 8;
 
@@ -87,7 +88,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, id });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "خطا";
-    if (msg.includes("UNIQUE")) {
+    if (isUniqueViolation(e)) {
       return NextResponse.json({ ok: false, error: "این نام کاربری از قبل گرفته شده است" }, { status: 409 });
     }
     return NextResponse.json({ ok: false, error: msg }, { status: 500 });

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { withDbScope } from "@/lib/database/scope";
 import { COOKIE_NAME, MAX_AGE_SECONDS, createSessionToken, parseChallengeToken } from "@/lib/auth";
 import { clientKey, rateLimit, rateLimitReset } from "@/lib/rateLimit";
 import { findUserById } from "@/lib/users";
@@ -11,7 +12,12 @@ const REFUSED = "کد نادرست است یا منقضی شده";
 
 /** Second step of the founder's sign-in: the proof the password passed plus a code from the authenticator
  *  app (or an unused recovery code). Public like /api/login, because no session exists yet. */
+/** Runs as "system" for row-level security (lib/database/scope.ts): the second sign-in step: no session exists yet. */
 export async function POST(req: NextRequest) {
+  return await withDbScope("system", () => secondStep(req));
+}
+
+async function secondStep(req: NextRequest) {
   const body = (await req.json().catch(() => null)) as { challenge?: unknown; code?: unknown } | null;
   const uid = parseChallengeToken(body?.challenge);
   if (uid === null || typeof body?.code !== "string") {

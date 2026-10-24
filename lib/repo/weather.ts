@@ -13,6 +13,7 @@ import type { WeatherReading } from "@/lib/weather/conditions";
 import type { ForecastRow } from "@/lib/weather/calendarForecast";
 import { parseAirQuality, type AirDay } from "@/lib/weather/openMeteoAir";
 import { resolvedCapacityFactorsFor } from "@/lib/repo/capacityLearning";
+import { round } from "@/lib/database/dialect";
 
 export interface SnapshotRow extends WeatherSnapshotInput {
   id: number;
@@ -145,7 +146,7 @@ export async function customerCellsFor(session: Session, limit = 60): Promise<La
   const gf = await groupFilter(session);
   return await getDb()
     .prepare(
-      `SELECT DISTINCT ROUND(lat, 2) AS lat, ROUND(lng, 2) AS lng
+      `SELECT DISTINCT ${round("lat", 2)} AS lat, ${round("lng", 2)} AS lng
          FROM customers WHERE lat IS NOT NULL AND lng IS NOT NULL${gf.sql} LIMIT ${limit}`
     )
     .all(...gf.params) as unknown as LatLng[];

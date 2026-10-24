@@ -123,6 +123,8 @@ describe("the demo seed refuses the real database", () => {
   });
 
   it("did not touch the real database", () => {
+    // No file at all is the strongest "not touched"; a clean checkout has none until the app runs.
+    if (!fs.existsSync(realDb)) return;
     const db = new DatabaseSync(realDb, { readOnly: true });
     const orgs = db.prepare("SELECT COUNT(*) c FROM organizations").get() as { c: number };
     /* One organisation — the real tenant. The demo builds its own, in its own file. */

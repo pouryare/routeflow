@@ -101,7 +101,7 @@ export async function assertInvariants(ctx: SeedContext): Promise<void> {
         GROUP BY j.id
        HAVING SUM(CASE WHEN e.side = 'D' THEN e.amount_toman ELSE 0 END)
            <> SUM(CASE WHEN e.side = 'C' THEN e.amount_toman ELSE 0 END)
-     )`,
+     ) t`,
   );
   if (unbalanced > 0) failures.push(`${unbalanced} journal(s) do not balance (Dr <> Cr)`);
 
@@ -117,9 +117,9 @@ export async function assertInvariants(ctx: SeedContext): Promise<void> {
          LEFT JOIN (SELECT order_id, SUM(packs_ordered * unit_price_toman) AS line_total
                       FROM order_lines WHERE is_reversal = 0 GROUP BY order_id) l
                 ON l.order_id = o.id
-        GROUP BY pa.order_id
+        GROUP BY pa.order_id, l.line_total
        HAVING SUM(pa.amount_toman) > COALESCE(l.line_total, 0)
-     )`,
+     ) t`,
   );
   if (overpaid > 0) failures.push(`${overpaid} order(s) have allocations exceeding their total`);
 

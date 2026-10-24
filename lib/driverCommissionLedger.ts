@@ -204,16 +204,20 @@ export async function allDriverStatements(
     groupId === undefined
       ? await db
           .prepare(
-            `SELECT DISTINCT u.id FROM users u
-               JOIN user_roles r ON r.user_id = u.id AND r.role IN ('delivery_driver', 'field_rep')
-              WHERE u.active = 1${org.sql} ORDER BY u.display_name`
+            `SELECT u.id FROM users u
+              WHERE u.active = 1${org.sql}
+                AND EXISTS (SELECT 1 FROM user_roles r
+                             WHERE r.user_id = u.id AND r.role IN ('delivery_driver', 'field_rep'))
+              ORDER BY u.display_name`
           )
           .all(...org.params)
       : await db
           .prepare(
-            `SELECT DISTINCT u.id FROM users u
-               JOIN user_roles r ON r.user_id = u.id AND r.role IN ('delivery_driver', 'field_rep')
-              WHERE u.active = 1 AND u.group_id = ?${org.sql} ORDER BY u.display_name`
+            `SELECT u.id FROM users u
+              WHERE u.active = 1 AND u.group_id = ?${org.sql}
+                AND EXISTS (SELECT 1 FROM user_roles r
+                             WHERE r.user_id = u.id AND r.role IN ('delivery_driver', 'field_rep'))
+              ORDER BY u.display_name`
           )
           .all(groupId, ...org.params)
   ) as unknown as { id: number }[];

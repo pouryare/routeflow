@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
+import { tableInfo } from "./helpers/schema";
 
 const testDbPath = path.join(os.tmpdir(), `rf-scoped-reads-${Date.now()}-${Math.random().toString(36).slice(2)}.db`);
 process.env.ROUTEFLOW_DB_PATH = testDbPath;
@@ -63,7 +64,7 @@ describe("tasks and alerts are scoped by group", () => {
   it("alerts: same rule", async () => {
     const db = getDb();
     const now = new Date().toISOString();
-    const cols = (await db.prepare("PRAGMA table_info(alerts)").all() as { name: string }[]).map((c) => c.name);
+    const cols = (await tableInfo("alerts") as { name: string }[]).map((c) => c.name);
     expect(cols).toContain("group_id");
     const ins = db.prepare("INSERT INTO alerts (organization_id, category, severity, title, group_id, created_at) VALUES (1, 'stock', 'warning', ?, ?, ?)");
     await ins.run("الف", g1, now); await ins.run("ب", g2, now); await ins.run("همه", null, now);
