@@ -1867,6 +1867,88 @@ body {
   --card-drop: drop-shadow(0 1px 2px rgba(0,0,0,.5)) drop-shadow(0 14px 30px rgba(0,0,0,.6));
 }
 
+/* ---- HeroUI token hand-over -------------------------------------------------
+   HeroUI's parts read their own token names (--background, --foreground, --default,
+   --danger …). Its theme declares them on :root, so inside this scope they would show
+   HeroUI's grey-violet defaults and ignore the accent theme and the dark skin. Here they
+   take the palette above instead, which moves with data-accent and data-skin because
+   every one is a var(). HeroUI's calculated tokens (hover, soft, focus mixes) are restated
+   too: declared on :root they would mix :root's colours, not this scope's.
+   Our own components read these names as well (Keypad, SwipeRow, the bottom bar, the
+   signature cards); MASTER.md "Colour" lists both sets. */
+.meridian {
+  --background: var(--bg);
+  --foreground: var(--text);
+  --surface-foreground: var(--text);
+  --surface-secondary: var(--surface-2);
+  --surface-secondary-foreground: var(--text);
+  --surface-tertiary: var(--surface-sunk);
+  --surface-tertiary-foreground: var(--text);
+  --overlay: var(--surface);
+  --overlay-foreground: var(--text);
+  --default: var(--surface-sunk);
+  --default-foreground: var(--text);
+  --accent-foreground: var(--accent-ink);
+  --success: var(--good);
+  --warning: var(--warn);
+  --danger: var(--crit);
+  --success-foreground: #FFFFFF;
+  --warning-foreground: #FFFFFF;
+  --danger-foreground: #FFFFFF;
+  --field-background: var(--surface);
+  --field-foreground: var(--text);
+  --field-placeholder: var(--text-faint);
+  --separator: var(--border);
+  --focus: var(--accent);
+  --link: var(--accent-text);
+  --segment: var(--surface);
+  --segment-foreground: var(--text);
+  --surface-shadow: var(--sh-1);
+  --overlay-shadow: var(--sh-3);
+
+  --surface-hover: color-mix(in oklab, var(--surface) 92%, var(--text) 8%);
+  --background-secondary: color-mix(in oklab, var(--bg) 96%, var(--text) 4%);
+  --background-tertiary: color-mix(in oklab, var(--bg) 92%, var(--text) 8%);
+  --default-hover: color-mix(in oklab, var(--surface-sunk) 94%, var(--text) 6%);
+  --accent-hover: color-mix(in oklab, var(--accent) 90%, var(--accent-ink) 10%);
+  --success-hover: color-mix(in oklab, var(--good) 90%, #FFFFFF 10%);
+  --warning-hover: color-mix(in oklab, var(--warn) 90%, #FFFFFF 10%);
+  --danger-hover: color-mix(in oklab, var(--crit) 90%, #FFFFFF 10%);
+  --field-hover: color-mix(in oklab, var(--surface) 96%, var(--text) 4%);
+  --field-focus: var(--surface);
+  --field-border-hover: color-mix(in oklab, var(--border) 88%, var(--text) 12%);
+  --field-border-focus: color-mix(in oklab, var(--border) 74%, var(--text) 26%);
+  --default-soft: color-mix(in oklab, var(--surface-sunk) 50%, transparent);
+  --default-soft-foreground: var(--text);
+  --default-soft-hover: color-mix(in oklab, var(--surface-sunk) 70%, transparent);
+  /* The soft fills are the solved pill pairs, not HeroUI's 15 % mixes: the word on each
+     is checked at 4.5:1 by scripts/check-contrast.mjs. */
+  --accent-soft-foreground: var(--accent-text);
+  --accent-soft-hover: color-mix(in oklab, var(--accent-soft) 85%, var(--accent) 15%);
+  --danger-soft: var(--crit-soft);
+  --danger-soft-foreground: var(--crit);
+  --danger-soft-hover: color-mix(in oklab, var(--crit-soft) 85%, var(--crit) 15%);
+  --warning-soft: var(--warn-soft);
+  --warning-soft-foreground: var(--warn);
+  --warning-soft-hover: color-mix(in oklab, var(--warn-soft) 85%, var(--warn) 15%);
+  --success-soft: var(--good-soft);
+  --success-soft-foreground: var(--good);
+  --success-soft-hover: color-mix(in oklab, var(--good-soft) 85%, var(--good) 15%);
+  --separator-secondary: color-mix(in oklab, var(--surface) 85%, var(--text) 15%);
+  --separator-tertiary: color-mix(in oklab, var(--surface) 81%, var(--text) 19%);
+  --border-secondary: color-mix(in oklab, var(--surface) 78%, var(--text) 22%);
+  --border-tertiary: color-mix(in oklab, var(--surface) 66%, var(--text) 34%);
+}
+/* Dark lifts the status colours, so the ink on a status fill turns dark, as --accent-ink does. */
+:root[data-skin="dark"] .meridian {
+  --success-foreground: var(--bg);
+  --warning-foreground: var(--bg);
+  --danger-foreground: var(--bg);
+  --success-hover: color-mix(in oklab, var(--good) 90%, #000000 10%);
+  --warning-hover: color-mix(in oklab, var(--warn) 90%, #000000 10%);
+  --danger-hover: color-mix(in oklab, var(--crit) 90%, #000000 10%);
+}
+
 /* Figures line up or they are not figures.
    `.mono` is the artifact's name for it; `.num` is kept because the pages written before
    the port use it, and they are the same rule. */
@@ -2373,7 +2455,7 @@ body {
 /* ---- 2 · the spline chart ------------------------------------------------ */
 .meridian .chartbox { padding: 8px 24px 22px; position: relative; max-width: 1300px; }
 .meridian .spark { width: 100%; height: auto; display: block; overflow: visible; touch-action: none; }
-.meridian .grid-l { stroke: var(--line); stroke-width: 1; }
+.meridian .grid-l { stroke: var(--border); stroke-width: 1; }
 .meridian .ser-a { fill: none; stroke: var(--accent); stroke-width: 3.2; stroke-linecap: round; }
 .meridian .ser-b {
   fill: none; stroke: var(--serie-b); stroke-width: 2.6; stroke-linecap: round;
@@ -2382,11 +2464,11 @@ body {
 .meridian .xl { font-family: var(--fa); font-size: 12px; fill: var(--muted); }
 .meridian .hit { fill: transparent; cursor: pointer; }
 .meridian .pt {
-  fill: var(--card); stroke: var(--accent); stroke-width: 3;
+  fill: var(--surface); stroke: var(--accent); stroke-width: 3;
   opacity: 0; transition: opacity 160ms var(--ease);
 }
 .meridian .dot-p {
-  fill: var(--card); stroke: var(--accent); stroke-width: 2.6;
+  fill: var(--surface); stroke: var(--accent); stroke-width: 2.6;
   /* 460ms --spring per dot, with the last of seven starting at 960ms, put the chart's
      last point on screen about 1.4s after the page. Halved, and the overshoot dropped —
      a point that springs past its own radius reads as a wobble, not as landing. */
@@ -2403,7 +2485,7 @@ body {
 }
 .meridian .vline.on { opacity: 1; }
 .meridian .tip {
-  position: absolute; pointer-events: none; background: var(--card);
+  position: absolute; pointer-events: none; background: var(--surface);
   border-radius: 14px; box-shadow: var(--sh-2); padding: 9px 14px;
   font-size: 13px; white-space: nowrap; opacity: 0;
   transform: translate(-50%,-6px) scale(.94);
@@ -2431,7 +2513,7 @@ body {
    JS, because the notch is a fixed size while the card is fluid; drop-shadow
    (not box-shadow) is what follows a clipped shape.                          */
 .meridian .cradlewrap { position: relative; margin-top: 16px; }
-.meridian .cradlecard { background: var(--card); filter: var(--card-drop); border-radius: var(--r-2xl); }
+.meridian .cradlecard { background: var(--surface); filter: var(--card-drop); border-radius: var(--r-2xl); }
 .meridian .cradlecard.carved { border-radius: 0; }
 .meridian .shoulder {
   position: absolute; top: 0; inset-inline-end: 26px; height: 62px;
@@ -2439,14 +2521,14 @@ body {
 }
 .meridian .shoulder b {
   font-family: var(--en); font-size: 17px; font-weight: 700;
-  color: var(--ink); letter-spacing: -.02em;
+  color: var(--foreground); letter-spacing: -.02em;
 }
 .meridian .cradle {
   position: absolute; top: 8px; inset-inline-start: 30px; display: flex; z-index: 2;
 }
 .meridian .cradle .av {
   width: 52px; height: 52px; border-radius: 999px; display: grid; place-items: center;
-  font-weight: 600; font-size: 16px; border: 4px solid var(--bg);
+  font-weight: 600; font-size: 16px; border: 4px solid var(--background);
   margin-inline-start: -14px; position: relative;
   transition: transform 260ms var(--spring);
 }
@@ -2457,9 +2539,9 @@ body {
   min-width: 21px; height: 21px; border-radius: 999px;
   background: var(--accent); color: #fff; font-family: var(--en);
   font-size: 11px; font-weight: 700; display: grid; place-items: center;
-  border: 2px solid var(--bg); padding: 0 4px;
+  border: 2px solid var(--background); padding: 0 4px;
 }
-.meridian .cradle .av.add { background: var(--sunk); color: var(--muted); font-size: 20px; cursor: pointer; }
+.meridian .cradle .av.add { background: var(--surface-tertiary); color: var(--muted); font-size: 20px; cursor: pointer; }
 .meridian .cradlebody { padding: 80px 26px 26px; }
 .meridian .cradlebody h2 { margin: 0 0 4px; font-size: 18px; font-weight: 600; }
 .meridian .cradlebody p { margin: 0; font-size: 13.5px; color: var(--muted); }
@@ -2469,11 +2551,11 @@ body {
    tabs in a bay cut out of its top edge. Same carve device as .cradlewrap, but the bay
    is measured to the tab row rather than assumed — see PageHeaderCard. */
 .meridian .phcwrap { position: relative; margin-bottom: 20px; }
-.meridian .phc { background: var(--card); filter: var(--card-drop); border-radius: var(--r-2xl); }
+.meridian .phc { background: var(--surface); filter: var(--card-drop); border-radius: var(--r-2xl); }
 .meridian .phc.carved { border-radius: 0; }
 .meridian .phc__body { padding: 26px; }
 .meridian .phc.carved .phc__body { padding-block-start: 74px; }
-.meridian .phc__title { margin: 0 0 6px; font-size: 20px; font-weight: 700; color: var(--ink); }
+.meridian .phc__title { margin: 0 0 6px; font-size: 20px; font-weight: 700; color: var(--foreground); }
 /* The day briefing's panels (Briefing.tsx, meridian variant). Item 4: they were a
    full-width single column, each a short list stretched across the page. */
 /* The Hello header: photo, name, one number.
@@ -2504,10 +2586,10 @@ body {
   min-width: 0;
   padding: var(--space-3);
   border-radius: var(--r-xl);
-  background: var(--card);
+  background: var(--surface);
   box-shadow: var(--sh-1);
   text-decoration: none;
-  color: var(--text);
+  color: var(--foreground);
   transition: box-shadow 160ms var(--ease);
 }
 .meridian .actile--action:hover {
@@ -2554,12 +2636,12 @@ body {
   margin: 0;
   font-size: var(--text-xl);
   font-weight: 600;
-  color: var(--text);
+  color: var(--foreground);
 }
 .meridian .hello__meta {
   margin: 0;
   font-size: var(--text-sm);
-  color: var(--text-muted);
+  color: var(--muted);
 }
 .meridian .hello__figure {
   margin-top: var(--space-3);
@@ -2574,16 +2656,16 @@ body {
   font-size: var(--text-3xl);
   font-weight: 700;
   line-height: 1.1;
-  color: var(--text);
+  color: var(--foreground);
 }
 .meridian .hello__caption {
   font-size: var(--text-sm);
-  color: var(--text-muted);
+  color: var(--muted);
 }
 .meridian .hello__quiet {
   margin: var(--space-4) 0 0;
   font-size: var(--text-sm);
-  color: var(--text-muted);
+  color: var(--muted);
 }
 
 .meridian .briefing-grid {
@@ -2617,7 +2699,7 @@ body {
 .meridian .docs { position: absolute; inset-block-start: 0; inset-inline: 14px; height: 70px; z-index: 0; }
 .meridian .pocket:hover .docs, .meridian .pocket:focus-within .docs { z-index: 3; }
 .meridian .doc {
-  position: absolute; inset-block-start: 0; width: 138px; background: var(--card);
+  position: absolute; inset-block-start: 0; width: 138px; background: var(--surface);
   border-radius: 12px;
   box-shadow: 0 2px 6px rgba(30,41,59,.10), 0 10px 24px -12px rgba(30,41,59,.3);
   padding: 10px 12px;
@@ -2677,7 +2759,7 @@ body {
 .meridian .pill::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
 .meridian .pill.done { background: var(--sage-soft); color: var(--sage); }
 .meridian .pill.conf { background: var(--amber-soft); color: var(--amber); }
-.meridian .pill.draft { background: var(--sunk); color: var(--muted); }
+.meridian .pill.draft { background: var(--surface-tertiary); color: var(--muted); }
 .meridian .face .more { font-size: 12.5px; color: var(--accent); font-weight: 600; }
 
 /* On the dark skin the warm-brown shadows on the slips behind a PocketCard vanish and
@@ -2710,7 +2792,7 @@ body {
   position: absolute; inset-block-start: 0;
   inset-inline-end: calc(var(--si, 0) * 30px);
   width: min(64%, 148px); height: 42px;
-  background: var(--card); border-radius: 10px 10px 4px 4px;
+  background: var(--surface); border-radius: 10px 10px 4px 4px;
   box-shadow: 0 2px 6px rgba(30,41,59,.10), 0 10px 24px -12px rgba(30,41,59,.30);
   transform: translateY(calc(16px + var(--si, 0) * 4px))
     rotate(calc((var(--si, 0) - .5) * 6deg));
@@ -2734,9 +2816,9 @@ body {
 .meridian .pocketed[data-fan]:focus-within .pocketed__slip:nth-child(3) {
   transform: translate(48px, 10px) rotate(-13deg) scale(1.02);
 }
-.meridian .pocketed[data-tone="good"] .pocketed__slip { border-top: 2px solid var(--good); }
-.meridian .pocketed[data-tone="warn"] .pocketed__slip { border-top: 2px solid var(--warn); }
-.meridian .pocketed[data-tone="crit"] .pocketed__slip { border-top: 2px solid var(--crit); }
+.meridian .pocketed[data-tone="good"] .pocketed__slip { border-top: 2px solid var(--success); }
+.meridian .pocketed[data-tone="warn"] .pocketed__slip { border-top: 2px solid var(--warning); }
+.meridian .pocketed[data-tone="crit"] .pocketed__slip { border-top: 2px solid var(--danger); }
 .meridian .pocketed[data-tone="info"] .pocketed__slip { border-top: 2px solid var(--info); }
 .meridian .pocketed__face {
   position: relative; z-index: 1;
@@ -4787,6 +4869,8 @@ body {
    16 px type so a phone does not zoom into it. */
 .meridian .tf-search .search-field__group { height: 52px; border-radius: var(--r-md); }
 .meridian .tf-search .search-field__input { font-size: 16px; }
+/* The group draws the focus ring; the input inside it must not draw a second box. */
+.meridian .tapflow .tf-search input:focus-visible { outline: none; }
 .meridian .tf-search .search-field__clear-button { min-width: 44px; min-height: 44px; }
 /* Day chips are HeroUI ToggleButtons (components/mobile/DayChips.tsx), sized as day cards. */
 .meridian .daychip.toggle-button, .meridian .daychip.button { height: auto; width: auto; white-space: normal; }
@@ -5160,7 +5244,7 @@ body {
 .meridian .sticky-action { padding: 8px 0; }
 .meridian .sticky-action__btn {
   min-height: 44px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 0 22px;
-  border: 0; border-radius: var(--r-md); background: var(--accent); color: var(--accent-ink);
+  border: 0; border-radius: var(--r-md); background: var(--accent); color: var(--accent-foreground);
   font: inherit; font-size: 15px; font-weight: 700; cursor: pointer;
 }
 .meridian .sticky-action__btn:disabled { opacity: .5; cursor: not-allowed; }
@@ -5169,7 +5253,7 @@ body {
   .meridian .app { padding-bottom: calc(92px + env(safe-area-inset-bottom)); }
   .meridian .bottomnav {
     display: flex; position: fixed; inset-inline: 0; inset-block-end: 0; z-index: 60;
-    background: var(--bg); border-top: 1px solid var(--line); direction: rtl;
+    background: var(--background); border-top: 1px solid var(--separator); direction: rtl;
     padding-bottom: env(safe-area-inset-bottom);
   }
   .meridian .bottomnav__item {
@@ -5178,19 +5262,22 @@ body {
     font: inherit; font-size: 11px; line-height: 1.2; text-decoration: none; cursor: pointer;
   }
   .meridian .bottomnav__item span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .meridian .bottomnav__item[aria-current="page"] { color: var(--accent); font-weight: 600; }
+  /* The page you are on: HeroUI's soft accent pill behind the icon, as its tabs mark a selection. */
+  .meridian .bottomnav__item[aria-current="page"] { color: var(--accent-soft-foreground); font-weight: 600; }
+  .meridian .bottomnav__item > svg { box-sizing: content-box; padding: 3px 16px; border-radius: 999px; transition: background-color 160ms var(--ease); }
+  .meridian .bottomnav__item[aria-current="page"] > svg { background: var(--accent-soft); }
   .meridian .bottomnav__item:focus-visible { outline: 2px solid var(--accent); outline-offset: -3px; }
   .meridian .qa-fab {
     display: inline-flex; align-items: center; gap: 6px; position: fixed; z-index: 60;
     inset-inline-end: 14px; inset-block-end: calc(70px + env(safe-area-inset-bottom));
     min-height: 48px; padding: 0 18px; border: 0; border-radius: 999px; background: var(--accent);
-    color: var(--accent-ink); font: inherit; font-size: 15px; font-weight: 700; cursor: pointer;
+    color: var(--accent-foreground); font: inherit; font-size: 15px; font-weight: 700; cursor: pointer;
     box-shadow: 0 6px 20px -6px rgba(30,41,59,.45);
   }
   .meridian .sticky-action {
     position: fixed; inset-inline: 0; z-index: 59;
     inset-block-end: calc(56px + env(safe-area-inset-bottom)); padding: 8px 14px;
-    background: linear-gradient(to top, var(--bg) 70%, transparent);
+    background: linear-gradient(to top, var(--background) 70%, transparent);
   }
   .meridian .sticky-action__btn { width: 100%; min-height: 52px; font-size: 16px; }
   .meridian .sticky-action-gap { height: 76px; }
@@ -5203,8 +5290,8 @@ body {
    state is the accent, never colour alone (a check icon rides with it). */
 .meridian .picker-trigger {
   width: 100%; min-height: 52px; display: flex; align-items: center; justify-content: space-between; gap: 10px;
-  padding: 0 14px; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--card);
-  color: var(--text); font: inherit; font-size: 15px; text-align: start; cursor: pointer;
+  padding: 0 14px; border: 1px solid var(--border); border-radius: var(--r-md); background: var(--surface);
+  color: var(--foreground); font: inherit; font-size: 15px; text-align: start; cursor: pointer;
 }
 .meridian .picker-trigger__empty { color: var(--muted); }
 .meridian .picker-trigger:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
@@ -5218,27 +5305,32 @@ body {
 .meridian .keypad__readout span { font-size: 14px; color: var(--muted); }
 .meridian .keypad__quick { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
 .meridian .keypad__chip {
-  min-height: 44px; padding: 0 14px; border: 1px solid var(--line); border-radius: 999px; background: var(--card);
-  color: var(--text); font: inherit; font-size: 14px; font-variant-numeric: tabular-nums; cursor: pointer;
+  min-height: 44px; padding: 0 14px; border: 0; border-radius: 999px; background: var(--accent-soft);
+  color: var(--accent-soft-foreground); font-weight: 500; font: inherit; font-size: 14px; font-variant-numeric: tabular-nums; cursor: pointer;
 }
 .meridian .keypad__grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+/* Keys in HeroUI's look: the soft default fill, no outline, pressed shrinks a little as a
+   HeroUI button does. */
 .meridian .keypad__key {
-  min-height: 56px; display: grid; place-items: center; border: 1px solid var(--line); border-radius: var(--r-md);
-  background: var(--card); color: var(--text); font: inherit; font-size: 22px; font-weight: 600; cursor: pointer;
+  min-height: 56px; display: grid; place-items: center; border: 0; border-radius: var(--r-lg);
+  background: var(--default); color: var(--default-foreground); font: inherit; font-size: 22px; font-weight: 600; cursor: pointer;
+  transition: transform 160ms var(--ease), background-color 100ms ease-out;
 }
-.meridian .keypad__key:active { background: var(--accent-soft); }
+@media (hover: hover) { .meridian .keypad__key:hover, .meridian .keypad__chip:hover { background: var(--default-hover); } }
+.meridian .keypad__key:active { background: var(--accent-soft); color: var(--accent-soft-foreground); transform: scale(.97); }
+@media (prefers-reduced-motion: reduce) { .meridian .keypad__key { transition: none; } .meridian .keypad__key:active { transform: none; } }
 .meridian .keypad__key:focus-visible, .meridian .keypad__chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .meridian .daychips { display: grid; gap: 8px; }
 .meridian .daychips__row { display: flex; flex-wrap: wrap; gap: 8px; }
 .meridian .daychips__row--strip { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; scroll-snap-type: x proximity; }
 .meridian .daychip {
   min-height: 52px; min-width: 76px; display: inline-flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 2px; padding: 6px 12px; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--card);
-  color: var(--text); font: inherit; font-size: 14px; font-weight: 500; cursor: pointer; scroll-snap-align: start; flex: none;
+  gap: 2px; padding: 6px 12px; border: 1px solid var(--border); border-radius: var(--r-md); background: var(--surface);
+  color: var(--foreground); font: inherit; font-size: 14px; font-weight: 500; cursor: pointer; scroll-snap-align: start; flex: none;
 }
 .meridian .daychip small { font-size: 11px; font-weight: 400; color: var(--muted); }
-.meridian .daychip--on { border-color: var(--accent); background: var(--accent); color: var(--accent-ink); }
-.meridian .daychip--on small { color: var(--accent-ink); }
+.meridian .daychip--on { border-color: var(--accent); background: var(--accent); color: var(--accent-foreground); }
+.meridian .daychip--on small { color: var(--accent-foreground); }
 .meridian .daychip--holiday:not(.daychip--on), .meridian .daychip--weekend:not(.daychip--on) { border-style: dashed; }
 .meridian .daychips__link {
   justify-self: start; min-height: 44px; display: inline-flex; align-items: center; gap: 6px; padding: 0 6px;
@@ -5253,11 +5345,11 @@ body {
 .meridian .filterchips__group--wrap { flex-wrap: wrap; }
 .meridian .filterchip {
   min-height: 44px; display: inline-flex; align-items: center; gap: 6px; padding: 0 14px; flex: none;
-  border: 1px solid var(--line); border-radius: 999px; background: var(--card); color: var(--text);
+  border: 1px solid var(--border); border-radius: 999px; background: var(--surface); color: var(--foreground);
   font: inherit; font-size: 14px; cursor: pointer; white-space: nowrap;
 }
-.meridian .filterchip--on { border-color: var(--accent); background: var(--accent); color: var(--accent-ink); }
-.meridian .filterchip__badge { min-width: 20px; height: 20px; padding: 0 5px; display: inline-grid; place-items: center; border-radius: 999px; background: var(--accent-ink); color: var(--accent); font-size: 12px; }
+.meridian .filterchip--on { border-color: var(--accent); background: var(--accent); color: var(--accent-foreground); }
+.meridian .filterchip__badge { min-width: 20px; height: 20px; padding: 0 5px; display: inline-grid; place-items: center; border-radius: 999px; background: var(--accent-foreground); color: var(--accent); font-size: 12px; }
 .meridian .filterchip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .meridian .filtersheet { display: grid; gap: 14px; padding: 0 16px 20px; }
 .meridian .filtersheet__group { display: grid; gap: 8px; }
@@ -5266,22 +5358,23 @@ body {
    The face moves; the action it will run shows underneath. The same actions exist as buttons:
    visually hidden on phones until focused (keyboard / screen reader), plain buttons from 768px. */
 .meridian .swiperow { position: relative; overflow: hidden; }
-.meridian .swiperow__face { position: relative; background: var(--card); touch-action: pan-y; }
+.meridian .swiperow__face { position: relative; background: var(--surface); touch-action: pan-y; }
 .meridian .swiperow__under {
   position: absolute; inset: 0; display: flex; align-items: center; gap: 8px; padding: 0 18px;
-  font-size: 14px; font-weight: 600; color: var(--accent-ink); background: var(--accent);
+  font-size: 14px; font-weight: 600; color: var(--accent-foreground); background: var(--accent);
 }
-.meridian .swiperow__under--bad { background: var(--crit); }
+.meridian .swiperow__under--bad { background: var(--danger); }
 .meridian .swiperow__under--start { justify-content: flex-start; }
 .meridian .swiperow__under--end { justify-content: flex-end; }
 .meridian .swiperow__under--commit { filter: brightness(1.08); }
 .meridian .swiperow__buttons { display: flex; flex-wrap: wrap; gap: 8px; }
 .meridian .swiperow__btn {
-  min-height: 44px; display: inline-flex; align-items: center; gap: 6px; padding: 0 14px;
-  border: 1px solid var(--line); border-radius: var(--r-md); background: var(--card); color: var(--text);
-  font: inherit; font-size: 13px; cursor: pointer;
+  min-height: 44px; display: inline-flex; align-items: center; gap: 6px; padding: 0 16px;
+  border: 0; border-radius: 999px; background: var(--default); color: var(--default-foreground);
+  font: inherit; font-size: 13px; font-weight: 500; cursor: pointer;
 }
-.meridian .swiperow__btn--bad { color: var(--crit); }
+@media (hover: hover) { .meridian .swiperow__btn:hover { background: var(--default-hover); } }
+.meridian .swiperow__btn--bad { background: var(--danger-soft); color: var(--danger-soft-foreground); }
 @media (max-width: 767.98px) {
   .meridian .swiperow__buttons:not(:focus-within) {
     position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
