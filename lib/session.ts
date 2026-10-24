@@ -3,6 +3,7 @@ import { COOKIE_NAME, parseSessionToken } from "./auth";
 import { getDb, type Role, type UserRow } from "./db";
 import { isVanRole } from "./roles";
 import { rolesFor } from "./repo/userRoles";
+import { scopeForCompany, setRequestScopeResolver, withDbScope, type DbScope } from "./database/scope";
 
 export interface Session {
   user: UserRow;
@@ -53,6 +54,12 @@ export async function getSession(req: NextRequest): Promise<Session | null> {
  *  so both entry points delegate here. One implementation means a page and its API route
  *  can never disagree about who the caller is. */
 export async function getSessionFromCookies(token: string | undefined | null): Promise<Session | null> {
+  /* Finding out who is asking comes before there is a company to scope to, and a platform
+     owner's Login-As actor lives in another company, so these lookups read as "system". */
+  return await withDbScope("system", () => resolveSession(token));
+}
+
+async function resolveSession(token: string | undefined | null): Promise<Session | null> {
   const claims = parseSessionToken(token);
   if (!claims) return null;
 
@@ -113,6 +120,25 @@ export async function getSessionFromCookies(token: string | undefined | null): P
     hasRole: (r: Role) => roles.includes(r),
   };
 }
+
+/* Row-level security (lib/database/scope.ts): inside a request, every statement runs for the
+   signed-in company, read from the same cookie getSession reads. No session means no company,
+   and no company's rows. Remembered for a few seconds per cookie, since it is asked before
+   every statement; a deactivation therefore reaches the database's scope within that time, and
+   the session checks above see it at once. */
+const SCOPE_TTL_MS = 5_000;
+const scopeCache = new Map<string, { scope: DbScope; until: number }>();
+setRequestScopeResolver(COOKIE_NAME, async (token) => {
+  if (!token) return "";
+  const now = Date.now();
+  const hit = scopeCache.get(token);
+  if (hit && hit.until > now) return hit.scope;
+  const session = await getSessionFromCookies(token);
+  const scope: DbScope = session ? scopeForCompany(orgScopeId(session)) : "";
+  if (scopeCache.size > 1000) scopeCache.clear();
+  scopeCache.set(token, { scope, until: now + SCOPE_TTL_MS });
+  return scope;
+});
 
 export async function requireRole(req: NextRequest, roles: Role[]): Promise<Guard> {
   const session = await getSession(req);

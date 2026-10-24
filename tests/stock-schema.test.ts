@@ -2,6 +2,7 @@ import { describe, it, expect, afterAll } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
+import { sqliteOnly, tableInfo } from "./helpers/schema";
 
 const testDbPath = path.join(
   os.tmpdir(),
@@ -21,13 +22,13 @@ describe("stock & batches schema", () => {
     for (const t of ["batches", "stock_movements", "delivery_line_batches", "quality_complaints"]) {
       expect(await db.prepare(`SELECT COUNT(*) n FROM ${t}`).get()).toEqual({ n: 0 });
     }
-    const cols = (await db.prepare("PRAGMA table_info(products)").all() as { name: string }[]).map(
+    const cols = (await tableInfo("products") as { name: string }[]).map(
       (c) => c.name
     );
     expect(cols).toContain("shelf_life_days");
   });
 
-  it("batches are unique per (organization_id, product_id, batch_code)", async () => {
+  it.skipIf(sqliteOnly)("batches are unique per (organization_id, product_id, batch_code)", async () => {
     const sql = (
       await getDb().prepare("SELECT sql FROM sqlite_master WHERE name='batches'").get() as { sql: string }
     ).sql;

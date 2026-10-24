@@ -16,7 +16,7 @@ import { isVanRole } from "../roles";
 import { stopCountsByRun, remainingByRun } from "./runStops";
 import { reorderSignals } from "./suggestions";
 import { dueToday, orderHref } from "@/lib/briefingSuggestions";
-import { daysBetween } from "@/lib/database/dialect";
+import { daysBetween, round } from "@/lib/database/dialect";
 
 export interface BriefingItem {
   label: string;
@@ -235,8 +235,7 @@ export async function todayFor(session: Session): Promise<Briefing> {
     const todays = await db
       .prepare(
         `SELECT o.id, o.order_no, o.status, c.business_name AS customer_name,
-                COALESCE(SUM(ROUND(COALESCE(ol.packs_delivered, ol.packs_ordered)
-                                    * ol.unit_price_toman)), 0) AS total_toman
+                COALESCE(SUM(${round("COALESCE(ol.packs_delivered, ol.packs_ordered) * ol.unit_price_toman")}), 0) AS total_toman
            FROM orders o
            JOIN customers c ON c.id = o.customer_id
            LEFT JOIN order_lines ol ON ol.order_id = o.id

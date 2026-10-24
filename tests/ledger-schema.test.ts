@@ -2,6 +2,7 @@ import { describe, it, expect, afterAll, beforeAll } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
+import { sqliteOnly, tableInfo } from "./helpers/schema";
 
 const testDbPath = path.join(
   os.tmpdir(),
@@ -54,7 +55,7 @@ afterAll(() => {
 describe("ledger schema", () => {
   it("amount_toman is INTEGER, NOT NULL and strictly positive", async () => {
     const db = getDb();
-    const cols = await db.prepare("PRAGMA table_info(ledger_entries)").all() as {
+    const cols = await tableInfo("ledger_entries") as {
       name: string;
       type: string;
       notnull: number;
@@ -138,14 +139,13 @@ describe("ledger schema", () => {
   });
 
   it("accounts has no organization_id -- the chart is global", async () => {
-    const cols = await getDb().prepare("PRAGMA table_info(accounts)").all() as { name: string }[];
+    const cols = await tableInfo("accounts") as { name: string }[];
     expect(cols.find((c) => c.name === "organization_id")).toBeUndefined();
   });
 
   it("journals, ledger_entries and fiscal_periods are all tenant-scoped", async () => {
-    const db = getDb();
     for (const t of ["journals", "ledger_entries", "fiscal_periods"]) {
-      const cols = await db.prepare(`PRAGMA table_info(${t})`).all() as {
+      const cols = await tableInfo(t) as {
         name: string;
         notnull: number;
       }[];
@@ -212,19 +212,19 @@ describe("ledger schema", () => {
   it("gives every postable account a unique Persian name", async () => {
     const db = getDb();
     const dupeCode = await db
-      .prepare("SELECT code, COUNT(*) AS n FROM accounts GROUP BY code HAVING n > 1")
+      .prepare("SELECT code, COUNT(*) AS n FROM accounts GROUP BY code HAVING COUNT(*) > 1")
       .all();
     expect(dupeCode).toEqual([]);
     // Two postable accounts sharing a Persian label are indistinguishable in a dropdown.
     const dupeFa = await db
       .prepare(
-        "SELECT name_fa, COUNT(*) AS n FROM accounts WHERE is_postable = 1 GROUP BY name_fa HAVING n > 1"
+        "SELECT name_fa, COUNT(*) AS n FROM accounts WHERE is_postable = 1 GROUP BY name_fa HAVING COUNT(*) > 1"
       )
       .all();
     expect(dupeFa).toEqual([]);
   });
 
-  it("seeding twice does not duplicate the chart", async () => {
+  it.skipIf(sqliteOnly)("seeding twice does not duplicate the chart", async () => {
     const { seedAccounts } = await import("@/lib/db");
     const before = (await getDb().prepare("SELECT COUNT(*) AS n FROM accounts").get() as { n: number }).n;
     seedAccounts(await rawSqlite());

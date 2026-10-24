@@ -104,15 +104,15 @@ async function stalledOrderCandidates(session: Session): Promise<Candidate[]> {
   const cutoff = new Date(Date.now() - STALLED_DAYS * DAY_MS).toISOString();
   const rows = await db
     .prepare(
-      `SELECT o.id, o.status,
+      `SELECT * FROM (SELECT o.id, o.status,
               (SELECT MAX(e.created_at) FROM order_events e WHERE e.order_id = o.id) AS last_event,
               COALESCE(SUM(COALESCE(ol.packs_delivered, ol.packs_ordered) * ol.unit_price_toman), 0) AS value
          FROM orders o
          LEFT JOIN order_lines ol ON ol.order_id = o.id
         WHERE o.organization_id = ?
           AND o.status IN ('CONFIRMED', 'PLANNED', 'READY')${scope.sql}
-        GROUP BY o.id
-       HAVING last_event IS NULL OR last_event < ?`
+        GROUP BY o.id) t
+        WHERE last_event IS NULL OR last_event < ?`
     )
     .all(session.organizationId, ...scope.params, cutoff) as unknown as StalledRow[];
 
@@ -279,7 +279,7 @@ async function crossSellCandidates(session: Session): Promise<Candidate[]> {
          JOIN orders o ON o.id = ol.order_id
          JOIN products p ON p.id = ol.product_id
         WHERE o.organization_id = ? AND o.status IN (${sqlStatusList(FULFILLED_ORDER_STATUSES)})${oScope.sql}
-        GROUP BY ol.product_id
+        GROUP BY ol.product_id, p.id
         ORDER BY buyers DESC
         LIMIT 1`
     )

@@ -20,6 +20,7 @@ import {
   holidaysForJalaliYear,
   holidaysForJalaliMonth,
 } from "@/lib/holidays";
+import { tableInfo } from "./helpers/schema";
 
 afterAll(() => {
   for (const s of ["", "-wal", "-shm"]) fs.rmSync(`${testDbPath}${s}`, { force: true });
@@ -274,7 +275,7 @@ describe("the holidays table (the lunar ones)", () => {
   });
 
   it("has no organization_id — a national holiday is the same in every tenant", async () => {
-    const cols = (await getDb().prepare("PRAGMA table_info(holidays)").all() as { name: string }[]).map(
+    const cols = (await tableInfo("holidays") as { name: string }[]).map(
       (c) => c.name,
     );
     expect(cols).not.toContain("organization_id");

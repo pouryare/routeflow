@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
+import { tableInfo } from "./helpers/schema";
 
 const testDbPath = path.join(
   os.tmpdir(),
@@ -133,7 +134,7 @@ describe("deliveries schema", () => {
 
   it("adds delivery_id to delivery_line_batches", async () => {
     const cols = (
-      await getDb().prepare("PRAGMA table_info(delivery_line_batches)").all() as { name: string }[]
+      await tableInfo("delivery_line_batches") as { name: string }[]
     ).map((c) => c.name);
     expect(cols).toContain("delivery_id");
   });

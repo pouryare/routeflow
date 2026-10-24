@@ -93,6 +93,11 @@ _Condensed 2026-10-23. Each finished piece of work is one line here; the full ea
   - [x] `lib/database/pg.ts`: the same `Db` interface on `pg` (placeholders, insert ids, camelCase aliases, numbers, one client per transaction, statement-level rollback like SQLite); `DB_DIALECT=postgres` switches to it
   - [x] Portable fixes found on the way: null-safe `IS ?`, `date(...)` arithmetic, two-argument `MAX`, constraint checks by code (`lib/database/errors.ts`), test fixtures without `INSERT OR IGNORE`
   - [x] CI job: builds the image, checks the extensions, the baseline and the types, and runs the unit suite on Postgres: 520 of 597 files pass, the rest are on `tests/pg-known-failures.txt`
+- [x] Wave P phase 3 (PR #68):
+  - [x] Every test file passes on Postgres; `tests/pg-known-failures.txt` is empty. App SQL made strict-SQL safe (GROUP BY, HAVING aliases, `ROUND`, `UPDATE OR IGNORE`, DISTINCT with ORDER BY); test helpers ask either engine (`tests/helpers/schema.ts`); files that only make sense on SQLite are in `tests/pg-sqlite-only.txt`, each with a reason
+  - [x] Demo seed builds on Postgres in its own `routeflow_demo` database and refuses the real one; all 24 invariants pass
+  - [x] `xid8` sync watermark: a trigger stamps `sync_xid` on the 15 synced tables, the pull hands back `x:<snapshot xmin>`, so a row committed after a pull is no longer lost (`tests/sync-watermark-pg.test.ts`)
+  - [x] Row-level security: the app connects as `routeflow_app`; every table with `organization_id` has a per-company policy keyed on `rf.scope`, which the adapter sets before each statement from the signed-in session; no session means no rows (`tests/row-level-security-pg.test.ts`); CI runs the whole Postgres suite as that role
 
 ## Not done / gaps
 - [ ] HeroUI move: answer buttons (`tf-opt`), chips, tabs, tables and the notification feed's rows are not moved yet; 86 raw text fields remain (only login and passwords use `TextInput`); the inline reset-password field in the users table and the location card's checkbox (the card is the tap target) stay native; the search overlay and the map's side panels are still hand-built
@@ -116,15 +121,20 @@ _Condensed 2026-10-23. Each finished piece of work is one line here; the full ea
 - [ ] Founder's second login step off until turned on at `/switch`; confirm the live `SESSION_SECRET` is 32+ characters
 - [ ] Unverified claims in parked features: F51, F56, F57, F67, F69, F71, F73, F75, F97, F102, F113, F147 (`docs/roadmap.md` section 8)
 - [ ] Open decisions: Android distribution route and iPhone support; off-site backup machine (decided: a second owned machine over SSH; which one is open); charts library vs custom
-- [ ] PostgreSQL phase 3: 77 test files still fail on Postgres (strict GROUP BY, `SELECT DISTINCT ... ORDER BY`, SQLite-only test helpers such as `sqlite_master` and `rawSqlite`, a few aliases); `xid8` sync watermark; row-level security. Phases 4–5 (server, backups, cut-over, removing SQLite) not started
-- [ ] The app has not been clicked through on Postgres yet, only tested; the demo seed (`npm run seed:demo`) writes SQLite only
+- [ ] PostgreSQL phases 4–5 (server, backups, cut-over by re-seeding, removing SQLite) not started
+- [ ] The app has not been clicked through on Postgres yet, only tested
+- [ ] Row-level security covers tables with their own `organization_id`; child tables (order lines, allocations and similar) rely on their parent row and the app's filters
+- [ ] Under the app role each statement outside a transaction costs one extra round trip (setting `rf.scope`); measure on the server
+- [ ] Route tests call handlers directly, so they run as `system`; only `tests/row-level-security-pg.test.ts` checks the request scope
+- [ ] No index on `sync_xid` yet; add one per synced table if the pull gets slow
+- [ ] The demo seed is about five times slower on Postgres than on SQLite (about 2 minutes)
 - [ ] Inside a Postgres transaction each statement runs in a savepoint (SQLite's statement-level rollback); costs three round trips per statement, revisit once the code no longer relies on it
-- [ ] Seed scripts in `scripts/` (demo seed included) still write SQLite directly; they move in phase 3
+- [ ] The old `scripts/seed-demo.mjs` (small demo, used by `seed-demo-guard`) still writes SQLite only
 - [ ] Client screens (`app/(shell)` pages, `components`) are outside the forgotten-await lint; they start fetches on purpose without waiting
 - [ ] Nothing tested from Iran (weather, Telegram, push, map tiles, OSRM, registries)
 - [ ] The smoke suite is not in CI, which is how four of its tests went stale; in the cloud container it runs once Playwright's expected headless shell is pointed at the installed one, but map tiles (tile.openstreetmap.org) cannot load there, so `/map`, `/leads` and the CRM profile test fail on console errors
 - [ ] Other actions that need a warehouse (stock movements, purchases, route planning, delivery) still answer 500 when there is none
-- [ ] Ratchets (long functions 74, unused exports 221, raw role checks 57) only fall as files are touched
+- [ ] Ratchets (long functions 74, unused exports 220, raw role checks 57) only fall as files are touched
 - [ ] Offline covers delivery, receipts, cheques, complaints, order drafts and new customers only
 - [ ] F16 needs the server's `routeflow-sweep-rules` timer to run after 07:00 (its unit file is on the server, not in the repo); the status page's «خلاصهٔ صبح» line shows if it does not
 - [ ] F23 is one list per company (prices have no per-group series) and has no shared link
@@ -136,12 +146,11 @@ _Condensed 2026-10-23. Each finished piece of work is one line here; the full ea
 - [ ] Left for later: F104 (not reached; nothing blocks it), and, waiting on a missing prerequisite, F74, F77, F85, F86, F91, F114, F69, F31, F42, F34, F95, F140, F2, F5, F117, F38
 
 ## Next steps
-1. Merge the HeroUI phase 4 PR once CI is green (merge commit)
-2. HeroUI phase 5: SmartPicker, DayChips, tap-flow steps and DecisionDeck rebuilt on HeroUI parts; keypad, swipe rows, bottom bar, signature cards and charts restyled with HeroUI tokens; the small tap targets listed above
-3. HeroUI token hand-over: HeroUI's palette and radii as the source, Meridian names as aliases, then remove dead CSS
-4. PostgreSQL phase 3: empty `tests/pg-known-failures.txt`, `xid8` sync watermark, row-level security
-5. Decide whether the smoke suite joins CI (needs Chromium on the runner; map tiles stubbed)
-6. Owner checks the backup folder and picks an off-site destination (F138 part 2)
-7. Record delay reasons on deliveries so the reason report's delay section fills
-8. Check the outside services from the Iranian server
-9. Decide the Android distribution route before F6 starts
+1. HeroUI phase 5: SmartPicker, DayChips, tap-flow steps and DecisionDeck rebuilt on HeroUI parts; keypad, swipe rows, bottom bar, signature cards and charts restyled with HeroUI tokens; the small tap targets listed above
+2. HeroUI token hand-over: HeroUI's palette and radii as the source, Meridian names as aliases, then remove dead CSS
+3. PostgreSQL phase 4: the server, backups and cut-over by re-seeding; click the app through on Postgres first
+4. Decide whether the smoke suite joins CI (needs Chromium on the runner; map tiles stubbed)
+5. Owner checks the backup folder and picks an off-site destination (F138 part 2)
+6. Record delay reasons on deliveries so the reason report's delay section fills
+7. Check the outside services from the Iranian server
+8. Decide the Android distribution route before F6 starts

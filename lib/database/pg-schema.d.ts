@@ -292,6 +292,7 @@ export interface Customers {
   source_detail: string | null;
   source_url: string | null;
   supply_channel: string | null;
+  sync_xid: string | null;
   synced_at: string;
   temperature: string | null;
   temperature_manual: Generated<number>;
@@ -318,6 +319,7 @@ export interface DeletedRows {
   entity_type: string;
   id: Generated<number>;
   organization_id: number;
+  sync_xid: string | null;
 }
 
 export interface Deliveries {
@@ -344,6 +346,7 @@ export interface Deliveries {
   seq: Generated<number>;
   signature_path: string | null;
   status: Generated<string>;
+  sync_xid: string | null;
 }
 
 export interface DeliveryLineBatches {
@@ -387,6 +390,7 @@ export interface DeliveryRuns {
   run_date: string;
   started_at: string | null;
   status: Generated<string>;
+  sync_xid: string | null;
   updated_at: string;
   vehicle_id: number | null;
   weather_json: string | null;
@@ -403,6 +407,7 @@ export interface DeliveryStops {
   run_id: number;
   sort_order: Generated<number>;
   status: Generated<string>;
+  sync_xid: string | null;
 }
 
 export interface Districts {
@@ -484,6 +489,7 @@ export interface Facilities {
   organization_id: number | null;
   owner_username: string | null;
   slug: string;
+  sync_xid: string | null;
   updated_at: string;
 }
 
@@ -650,6 +656,7 @@ export interface LeadRunStops {
   location_id: number;
   run_id: number;
   sort_order: Generated<number>;
+  sync_xid: string | null;
 }
 
 export interface LeadVisitActivities {
@@ -822,6 +829,7 @@ export interface OrderLines {
   product_id: number;
   qty_per_pack: number;
   reverses_line_id: number | null;
+  sync_xid: string | null;
   unit_cost_toman: Generated<number>;
   unit_price_toman: number;
 }
@@ -851,6 +859,7 @@ export interface Orders {
   requested_kind: string | null;
   salesperson_user_id: number | null;
   status: Generated<string>;
+  sync_xid: string | null;
   total_toman: number | null;
   updated_at: string;
 }
@@ -874,6 +883,7 @@ export interface Packagings {
   name: string;
   product_id: number;
   qty_per_pack: number;
+  sync_xid: string | null;
 }
 
 export interface PaymentAllocations {
@@ -940,6 +950,7 @@ export interface ProductPrices {
   packaging_id: number | null;
   price_toman: number;
   product_id: number;
+  sync_xid: string | null;
   valid_from: string;
 }
 
@@ -956,6 +967,7 @@ export interface Products {
   reorder_point: number | null;
   shelf_life_days: number | null;
   sku: string | null;
+  sync_xid: string | null;
   target_stock: number | null;
   updated_at: string;
   volume_m3_per_base_unit: number | null;
@@ -1156,6 +1168,7 @@ export interface RunFacilityStops {
   role: string;
   run_id: number;
   status: Generated<string>;
+  sync_xid: string | null;
   updated_at: string;
 }
 
@@ -1169,6 +1182,7 @@ export interface RunUnloadLines {
   product_id: number;
   qty_base: number;
   run_id: number;
+  sync_xid: string | null;
 }
 
 export interface Sales {
@@ -1201,6 +1215,7 @@ export interface SavedLocations {
   rating_volume: number | null;
   resolution: Generated<string>;
   status: string | null;
+  sync_xid: string | null;
   updated_at: string | null;
   visit_outcome: string | null;
 }

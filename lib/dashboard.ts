@@ -19,6 +19,7 @@ import {
   sqlStatusList,
 } from "./orderStateMachine";
 import { jalaliMonthKey, JALALI_MONTHS, JALALI_WEEKDAYS } from "./jalali";
+import { round } from "@/lib/database/dialect";
 
 export interface Series {
   key: string;
@@ -99,8 +100,8 @@ export async function salesDashboard(db: Db, session: Session): Promise<SalesDas
      old naive sum in the last digit or two; nothing downstream depends on more than that.
      The inner joins mirror the old row-by-row query so the same orders are counted. */
   const EFF = "COALESCE(ol.packs_delivered, ol.packs_ordered)";
-  const LINE_TOTAL = `CAST(ROUND(${EFF} * ol.unit_price_toman) AS INTEGER)`;
-  const LINE_COST = `CAST(ROUND(${EFF} * ol.unit_cost_toman) AS INTEGER)`;
+  const LINE_TOTAL = `CAST(${round(`${EFF} * ol.unit_price_toman`)} AS INTEGER)`;
+  const LINE_COST = `CAST(${round(`${EFF} * ol.unit_cost_toman`)} AS INTEGER)`;
   const LINE_KG = `(${EFF} * ol.qty_per_pack * ol.kg_per_base_unit)`;
   const fulfilled = sqlStatusList(FULFILLED_ORDER_STATUSES);
 

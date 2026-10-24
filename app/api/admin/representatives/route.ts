@@ -5,6 +5,7 @@ import {
   listWithCustomer,
   listWholesaleCandidates,
 } from "@/lib/repo/representatives";
+import { isUniqueViolation } from "@/lib/database/errors";
 
 /** The representative network for one organisation. owner and rep_manager only --
  *  group managers run territory, not the channel. `?candidates=1` returns the WHOLESALE
@@ -41,7 +42,7 @@ export async function POST(req: NextRequest) {
     });
     return NextResponse.json({ ok: true, id }, { status: 201 });
   } catch (e) {
-    if (e instanceof Error && /UNIQUE/.test(e.message)) {
+    if (isUniqueViolation(e)) {
       return NextResponse.json(
         { ok: false, error: "این مشتری قبلاً نماینده شده یا کد نماینده تکراری است" },
         { status: 409 }

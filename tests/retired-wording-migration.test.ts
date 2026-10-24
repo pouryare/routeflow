@@ -3,6 +3,7 @@ import { dbLayerSource } from "./helpers/dbLayerSource";
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
+import { tableInfo } from "./helpers/schema";
 
 const testDbPath = path.join(
   os.tmpdir(),
@@ -24,9 +25,8 @@ afterAll(() => {
  *  organisation has edited is theirs. */
 describe("retired wording in stored rows", () => {
   it("every rewording names a real table and column", async () => {
-    const db = getDb();
     for (const r of REWORDED) {
-      const cols = (await db.prepare(`PRAGMA table_info(${r.table})`).all() as { name: string }[]).map((c) => c.name);
+      const cols = (await tableInfo(r.table) as { name: string }[]).map((c) => c.name);
       expect(cols, `${r.table}.${r.column}`).toContain(r.column);
     }
   });

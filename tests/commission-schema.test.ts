@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
+import { sqliteOnly, tableInfo } from "./helpers/schema";
 
 const testDbPath = path.join(
   os.tmpdir(),
@@ -29,7 +30,7 @@ beforeAll(async () => {
 });
 
 const cols = async (table: string) =>
-  (await getDb().prepare(`PRAGMA table_info(${table})`).all() as unknown as { name: string }[]).map(
+  (await tableInfo(table) as unknown as { name: string }[]).map(
     (c) => c.name
   );
 
@@ -57,7 +58,7 @@ describe("commission_rates", () => {
     );
   });
 
-  it("holds both rates as whole Toman", async () => {
+  it.skipIf(sqliteOnly)("holds both rates as whole Toman", async () => {
     expect(await tableSql("commission_rates")).toMatch(/rate_per_kg_toman\s+INTEGER/);
     expect(await tableSql("commission_rates")).toMatch(/urgent_rate_per_kg_toman\s+INTEGER/);
   });
@@ -104,7 +105,7 @@ describe("commission_payments", () => {
     );
   });
 
-  it("holds the amount as whole Toman", async () => {
+  it.skipIf(sqliteOnly)("holds the amount as whole Toman", async () => {
     expect(await tableSql("commission_payments")).toMatch(/amount_toman\s+INTEGER/);
   });
 

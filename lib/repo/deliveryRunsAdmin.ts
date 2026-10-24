@@ -18,7 +18,7 @@ export async function listRuns(scope: Scope, organizationId: number | null) {
          JOIN users u ON u.id = dr.driver_user_id
          LEFT JOIN delivery_stops ds ON ds.run_id = dr.id
         WHERE 1 = 1${scope.sql}${org.sql}
-        GROUP BY dr.id
+        GROUP BY dr.id, u.id
         ORDER BY dr.run_date DESC, dr.id DESC
         LIMIT 60`
     )

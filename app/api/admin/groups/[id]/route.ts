@@ -3,6 +3,7 @@ import { deleteGroup, groupExists, groupMemberCount, updateGroup } from "@/lib/r
 import { orgScopeId, requireRole } from "@/lib/session";
 import { GROUP_PALETTE } from "../route";
 import { OWNER_ROLES } from "@/lib/roles";
+import { isUniqueViolation } from "@/lib/database/errors";
 
 export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/admin/groups/[id]">) {
   const guard = await requireRole(req, OWNER_ROLES);
@@ -51,7 +52,7 @@ export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/admin/grou
     await updateGroup(groupId, organizationId, sets, values);
   } catch (e) {
     const msg = e instanceof Error ? e.message : "خطا";
-    if (msg.includes("UNIQUE")) {
+    if (isUniqueViolation(e)) {
       return NextResponse.json({ ok: false, error: "گروهی با این نام از قبل وجود دارد" }, { status: 409 });
     }
     return NextResponse.json({ ok: false, error: msg }, { status: 500 });

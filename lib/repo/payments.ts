@@ -13,6 +13,7 @@ import { tryEmitEvent } from "./events";
 import { postReceipt, postReceiptReversal, receiptJournalIdFor } from "./ledgerPostings";
 
 import { mapSeq } from "@/lib/seq";
+import { round } from "@/lib/database/dialect";
 export type { CustomerDebt };
 
 /** A refusal the caller shows the user, not a bug. */
@@ -695,7 +696,7 @@ export async function customerDebtsForOrg(
                 o.paid_toman AS paid_toman,
                 COALESCE(
                   o.total_toman,
-                  (SELECT COALESCE(SUM(CAST(ROUND(COALESCE(l.packs_delivered, l.packs_ordered) * l.unit_price_toman) AS INTEGER)), 0)
+                  (SELECT COALESCE(SUM(CAST(${round("COALESCE(l.packs_delivered, l.packs_ordered) * l.unit_price_toman")} AS INTEGER)), 0)
                      FROM order_lines l WHERE l.order_id = o.id)
                 ) AS total
            FROM orders o

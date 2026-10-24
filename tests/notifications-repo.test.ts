@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterAll } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
+import { sqliteOnly } from "./helpers/schema";
 
 const testDbPath = path.join(os.tmpdir(), `rf-notif-repo-${Date.now()}-${Math.random().toString(36).slice(2)}.db`);
 process.env.ROUTEFLOW_DB_PATH = testDbPath;
@@ -75,7 +76,7 @@ describe("notification schema", () => {
     }
   });
 
-  it("re-running seedNotificationTypes does not duplicate rows", async () => {
+  it.skipIf(sqliteOnly)("re-running seedNotificationTypes does not duplicate rows", async () => {
     const { seedNotificationTypes } = await import("@/lib/db");
     const db = getDb();
     seedNotificationTypes(await rawSqlite());

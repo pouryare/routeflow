@@ -6,6 +6,8 @@ import { createHash } from "node:crypto";
 import { pathToFileURL } from "node:url";
 
 import { filterSeq, mapSeq } from "@/lib/seq";
+import { foreignKeys, tableInfo, tableNames } from "./helpers/schema";
+import { dialect } from "@/lib/database/dialect";
 /* Cross-tenant guardrail over EVERY api route (architecture audit, step 1).
  *
  * The data layer enforces tenancy by convention: each query has to remember its own
@@ -100,30 +102,53 @@ let b: Awaited<ReturnType<typeof seedTwoOrgs>>["b"];
 let candidateIds: string[] = [];
 let aOwnerCookie = "";
 
-/** Every table that carries organization_id, fingerprinted for org 2 only. */
+/** Which tables hold company B's rows: those with organization_id, and the child tables
+ *  (product_prices, packagings, order_lines, ...) that belong to a company through a parent row.
+ *  Read from the schema once; the probes below change rows, never tables. */
+let shape: Promise<{ tables: string[]; children: { t: string; from: string; parent: string }[] }> | null = null;
+function orgShape() {
+  return (shape ??= (async () => {
+    const all = await tableNames();
+    const tables = await filterSeq(all, async (name) => (await tableInfo(name)).some((c) => c.name === "organization_id"));
+    const orgTableSet = new Set(tables);
+    const children: { t: string; from: string; parent: string }[] = [];
+    for (const t of all.filter((name) => !orgTableSet.has(name))) {
+      for (const fk of await foreignKeys(t)) {
+        if (orgTableSet.has(fk.table) && (fk.to === "id" || fk.to === null)) children.push({ t, from: fk.from, parent: fk.table });
+      }
+    }
+    return { tables, children };
+  })());
+}
+
+/** Every row of company B's, hashed. */
 async function fingerprintOrgB(): Promise<string> {
   const db = getDb();
-  const tables = await filterSeq((await db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name").all() as { name: string }[])
-    .map((t) => t.name), async (name) => (await db.prepare(`PRAGMA table_info("${name}")`).all() as { name: string }[]).some((c) => c.name === "organization_id"));
-  const h = createHash("sha256");
-  for (const t of tables) {
-    const rows = await db.prepare(`SELECT * FROM "${t}" WHERE organization_id = 2 ORDER BY rowid`).all();
-    h.update(t).update(JSON.stringify(rows));
+  const { tables, children } = await orgShape();
+  const parts = [
+    ...tables.map((t) => ({ key: t, from: `"${t}" x WHERE x.organization_id = 2` })),
+    ...children.map((c) => ({
+      key: `${c.t}.${c.from}`,
+      from: `"${c.t}" x WHERE x."${c.from}" IN (SELECT id FROM "${c.parent}" WHERE organization_id = 2)`,
+    })),
+  ];
+  /* PostgreSQL: one statement for the lot. The write probe takes a fingerprint after every
+     call, thousands of them, and a round trip per table made that run past its timeout. */
+  if (dialect() === "postgres") {
+    const row = await db
+      .prepare(
+        `SELECT md5(string_agg(h, '|' ORDER BY k)) AS f FROM (${parts
+          .map((p) => `SELECT '${p.key}' AS k, md5(COALESCE(string_agg(CAST(x AS text), ',' ORDER BY CAST(x AS text)), '')) AS h FROM ${p.from}`)
+          .join(" UNION ALL ")}) t`
+      )
+      .get() as { f: string };
+    return row.f;
   }
-  /* Child tables (product_prices, packagings, order_lines, ...) carry no organization_id of their
-     own: they belong to a company through a parent row. Fingerprint the rows hanging off company B's. */
-  const orgTableSet = new Set(tables);
-  const children = (await db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name").all() as { name: string }[])
-    .map((t) => t.name)
-    .filter((name) => !orgTableSet.has(name));
-  for (const t of children) {
-    const fks = (await db.prepare(`PRAGMA foreign_key_list("${t}")`).all() as { from: string; table: string; to: string | null }[]).filter(
-      (fk) => orgTableSet.has(fk.table) && (fk.to === "id" || fk.to === null)
-    );
-    for (const fk of fks) {
-      const rows = await db.prepare(`SELECT * FROM "${t}" WHERE "${fk.from}" IN (SELECT id FROM "${fk.table}" WHERE organization_id = 2) ORDER BY rowid`).all();
-      h.update(`${t}.${fk.from}`).update(JSON.stringify(rows));
-    }
+  const h = createHash("sha256");
+  for (const p of parts) {
+    // Sorted here rather than by rowid, which PostgreSQL has no counterpart for.
+    const rows = (await db.prepare(`SELECT x.* FROM ${p.from}`).all()).map((r) => JSON.stringify(r)).sort();
+    h.update(p.key).update(rows.join("\n"));
   }
   return h.digest("hex");
 }
@@ -273,9 +298,8 @@ beforeAll(async () => {
     .filter(([k, v]) => k !== "orgId" && typeof v === "number" && v > 0)
     .map(([, v]) => String(v));
   /* Plus the id of every company-B row in every tenant table, so a handler keyed on any of them is tried. */
-  const orgTables = await filterSeq((await db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'").all() as { name: string }[])
-    .map((t) => t.name), async (name) => {
-      const cols = (await db.prepare(`PRAGMA table_info("${name}")`).all() as { name: string }[]).map((c) => c.name);
+  const orgTables = await filterSeq(await tableNames(), async (name) => {
+      const cols = (await tableInfo(name) as { name: string }[]).map((c) => c.name);
       return cols.includes("organization_id") && cols.includes("id");
     });
   const rowIds = (await mapSeq(orgTables, async (t) => (await db.prepare(`SELECT id FROM "${t}" WHERE organization_id = 2 LIMIT 20`).all() as { id: number }[]).map((r) => String(r.id)))).flat();

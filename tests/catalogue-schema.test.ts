@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
+import { indexesOn, sqliteOnly, tableInfo } from "./helpers/schema";
 
 const testDbPath = path.join(
   os.tmpdir(),
@@ -21,7 +22,7 @@ beforeAll(async () => {
 });
 
 async function cols(table: string): Promise<string[]> {
-  return (await getDb().prepare(`PRAGMA table_info(${table})`).all() as unknown as { name: string }[]).map(
+  return (await tableInfo(table) as unknown as { name: string }[]).map(
     (c) => c.name
   );
 }
@@ -36,12 +37,12 @@ async function tableSql(table: string): Promise<string> {
 
 async function seedProduct(name = "کره گیاهی مرحبا"): Promise<number> {
   const now = new Date().toISOString();
-  await getDb()
+  const r = await getDb()
     .prepare(
       "INSERT INTO products (name, base_unit, kg_per_base_unit, created_at, updated_at) VALUES (?, ?, ?, ?, ?)"
     )
     .run(name, "عدد", 0.25, now, now);
-  return (await getDb().prepare("SELECT last_insert_rowid() AS id").get() as { id: number }).id;
+  return Number(r.lastInsertRowid);
 }
 
 describe("products", () => {
@@ -70,7 +71,7 @@ describe("products", () => {
     );
   });
 
-  it("holds cost as whole Toman, not REAL", async () => {
+  it.skipIf(sqliteOnly)("holds cost as whole Toman, not REAL", async () => {
     // The rule from lib/money.ts: the legacy REAL money columns stay as history, but
     // nothing new is allowed to be a float. A cost that drifts is a margin that drifts.
     expect(await tableSql("products")).toMatch(/avg_cost_toman\s+INTEGER/);
@@ -151,7 +152,7 @@ describe("product_prices", () => {
     );
   });
 
-  it("holds price as whole Toman, not REAL", async () => {
+  it.skipIf(sqliteOnly)("holds price as whole Toman, not REAL", async () => {
     expect(await tableSql("product_prices")).toMatch(/price_toman\s+INTEGER/);
   });
 
@@ -170,9 +171,6 @@ describe("product_prices", () => {
   });
 
   it("is indexed for the lookup it exists to serve", async () => {
-    const idx = await getDb()
-      .prepare("SELECT name FROM sqlite_master WHERE type='index' AND tbl_name='product_prices'")
-      .all() as { name: string }[];
-    expect(idx.some((i) => i.name.includes("product_prices"))).toBe(true);
+    expect((await indexesOn("product_prices")).some((name) => name.includes("product_prices"))).toBe(true);
   });
 });

@@ -226,7 +226,7 @@ describe("createOrder", () => {
     const db = getDb();
     for (let i = 0; i < 5; i++) await createOrder(db, draftInput());
     const dupes = await db
-      .prepare("SELECT order_no, COUNT(*) AS n FROM orders GROUP BY order_no HAVING n > 1")
+      .prepare("SELECT order_no, COUNT(*) AS n FROM orders GROUP BY order_no HAVING COUNT(*) > 1")
       .all();
     expect(dupes).toEqual([]);
   });
