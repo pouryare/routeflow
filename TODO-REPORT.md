@@ -87,6 +87,15 @@ _Condensed 2026-10-23. Each finished piece of work is one line here; the full ea
   - [x] Status pill is a HeroUI Chip, avatars are HeroUI Avatars, skeletons are HeroUI Skeletons, empty states sit in HeroUI's EmptyState; our `.chip` class is now `.choicechip`
   - [x] Collapsible sections are HeroUI Disclosures (heading + trigger, 44 px; body still mounts only while open)
   - [x] Accounting tables and the pager wear HeroUI's table and pagination look on their own server markup; pager links are 44 px and clear the phone's «ثبت» button
+- [x] HeroUI phase 5, rebuilds and restyle:
+  - [x] Every answer in a flow, picker or deck is a HeroUI Button or ToggleButton (`components/tapflow/Answer.tsx`): SmartPicker, PickStep, DayChips, the TapFlow option grid and lists, amount chips, stepper, date presets, FlowDone, DecisionDeck; list search is HeroUI's SearchField; the full calendar in day chips and the pick-a-day step is the Shamsi PersianCalendar
+  - [x] HeroUI's token names take the app's palette inside `.meridian`, so HeroUI parts follow the accent theme and the dark skin; Keypad keys, swipe buttons and the bottom bar take HeroUI's filled look; signature cards and the spline chart read the HeroUI names
+  - [x] The small targets found in phase 4 (period chips, trial-balance codes, lead pool controls, «… سفارش دیگر», place picker, star rating, briefing links) are 44 px
+  - [x] The month grid on «برنامهٔ تحویل» stays inside its card on a phone (it ran off the left edge)
+- [x] HeroUI phase 6, hand-over and clean-up:
+  - [x] HeroUI names hold the values (`--background`, `--foreground`, `--surface-secondary`, `--danger` …); the older names are aliases; the accent-theme generator and the contrast check use the HeroUI names (500 pairs pass)
+  - [x] About 620 lines of dead CSS removed (island, old toast and modal animations, unused board, lanes, streaks and stat-tile rules)
+  - [x] MASTER.md colour, elevation, radius and base-component sections and section 6 of `docs/mobile-first-principles.md` rewritten around HeroUI
 - [x] Wave P phase 2 (PostgreSQL next to SQLite):
   - [x] `db/Dockerfile` and `db/compose.yml`: Postgres 18 with PostGIS, `pg_trgm`, `btree_gist`, `pg_stat_statements`, `pg_duckdb`, `wal_level = logical`
   - [x] Baseline migration generated from the SQLite schema (`npm run db:pg:generate`; CI fails if it drifts), applied with node-pg-migrate; Squawk lints later migrations; Kysely types in `lib/database/pg-schema.d.ts`
@@ -95,12 +104,13 @@ _Condensed 2026-10-23. Each finished piece of work is one line here; the full ea
   - [x] CI job: builds the image, checks the extensions, the baseline and the types, and runs the unit suite on Postgres: 520 of 597 files pass, the rest are on `tests/pg-known-failures.txt`
 
 ## Not done / gaps
-- [ ] HeroUI move: answer buttons (`tf-opt`), chips, tabs, tables and the notification feed's rows are not moved yet; 86 raw text fields remain (only login and passwords use `TextInput`); the inline reset-password field in the users table and the location card's checkbox (the card is the tap target) stay native; the search overlay and the map's side panels are still hand-built
+- [ ] HeroUI move: the filter chips, the «بیشتر» menu links (`tf-opt` links in BottomNav, QuickActions, FilterSheet, CRM flows, OrderForm, ExpenseFlow, DriverPicker) and the notification feed's rows are not on HeroUI parts yet; 86 raw text fields remain (only login and passwords use `TextInput`); the inline reset-password field in the users table and the location card's checkbox (the card is the tap target) stay native; the search overlay and the map's side panels are still hand-built
 - [ ] Accounting tables and the pager use HeroUI's classes, not its Table and Pagination components (those are client React Aria grids and buttons; the reports are server pages with phone card rows and real page links)
-- [ ] Small tap targets seen while checking phase 4, outside it: accounting period chips (33 px), account code links in the trial balance (19 px), lead pool toggles and actions (30–41 px), the orders board's «… سفارش دیگر» links (18 px)
+- [ ] The Leaflet zoom buttons are 36 px; the weather credit link on «برنامهٔ تحویل» is an inline link in a sentence (17 px)
 - [ ] HeroUI tab rows point `aria-controls` at a panel that is not there (the page under the row is the panel)
 - [ ] Headless Chromium sometimes leaves parts of a long page's open sheet unpainted until the next repaint; the layout is right (measured) and a repaint draws it, but check on a real phone
-- [ ] HeroUI look is partial: inside `.meridian` HeroUI parts still read Meridian's `--accent`, `--surface`, `--border`, `--muted` and `--radius-*`; the token hand-over (and the dead `.island` / `.toast` CSS) is its own step
+- [ ] Old token names (`--card`, `--line`, `--text` …) are still read by about 2,000 older rules; they are aliases now, and go as those rules are touched
+- [ ] Headless Chromium does not finish painting the 100-order list on `/sales/orders` (the page is 28,000 px tall); the same on the build before this batch, so check on a real phone and consider paging that list
 - [ ] The toast no longer shows the draining bar for the undo window; HeroUI's toast has none
 - [ ] HeroUI's Persian year picker looks off by about 21 years (`getGregorianYearOffset("persian")` is -600); not used yet, test before using it
 - [ ] `npm run seed:demo` fails when run with today as the as-of date («تاریخ سفارش خارج از بازهٔ مجاز است»); an earlier `--as-of` works
@@ -136,12 +146,11 @@ _Condensed 2026-10-23. Each finished piece of work is one line here; the full ea
 - [ ] Left for later: F104 (not reached; nothing blocks it), and, waiting on a missing prerequisite, F74, F77, F85, F86, F91, F114, F69, F31, F42, F34, F95, F140, F2, F5, F117, F38
 
 ## Next steps
-1. Merge the HeroUI phase 4 PR once CI is green (merge commit)
-2. HeroUI phase 5: SmartPicker, DayChips, tap-flow steps and DecisionDeck rebuilt on HeroUI parts; keypad, swipe rows, bottom bar, signature cards and charts restyled with HeroUI tokens; the small tap targets listed above
-3. HeroUI token hand-over: HeroUI's palette and radii as the source, Meridian names as aliases, then remove dead CSS
-4. PostgreSQL phase 3: empty `tests/pg-known-failures.txt`, `xid8` sync watermark, row-level security
-5. Decide whether the smoke suite joins CI (needs Chromium on the runner; map tiles stubbed)
-6. Owner checks the backup folder and picks an off-site destination (F138 part 2)
-7. Record delay reasons on deliveries so the reason report's delay section fills
-8. Check the outside services from the Iranian server
-9. Decide the Android distribution route before F6 starts
+1. Merge the HeroUI phases 5 and 6 PR once CI is green (merge commit)
+2. Move the remaining `tf-opt` menu links and the filter chips onto HeroUI parts, and the raw text fields onto `TextInput`
+3. PostgreSQL phase 3: empty `tests/pg-known-failures.txt`, `xid8` sync watermark, row-level security
+4. Decide whether the smoke suite joins CI (needs Chromium on the runner; map tiles stubbed)
+5. Owner checks the backup folder and picks an off-site destination (F138 part 2)
+6. Record delay reasons on deliveries so the reason report's delay section fills
+7. Check the outside services from the Iranian server
+8. Decide the Android distribution route before F6 starts
