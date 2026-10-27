@@ -143,7 +143,6 @@ install -d -m 755 /etc/routeflow
 if [ ! -f "$ENV_FILE" ]; then
   ( umask 027
     cat > "$ENV_FILE" <<ENV
-DB_DIALECT=postgres
 DATABASE_URL=postgres:///$DB_NAME?host=$SOCKET_DIR
 PG_APP_ROLE=$APP_ROLE
 SESSION_SECRET=$(head -c 48 /dev/urandom | base64 | tr -d '\n=+/')

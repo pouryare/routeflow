@@ -9,7 +9,7 @@ process.env.ROUTEFLOW_DB_PATH = testDbPath;
 process.env.SESSION_SECRET = "test-secret";
 
 const { getDb, TENANT_TABLES } = await import("@/lib/db");
-const { backfillCrm, initialFacts } = await import("@/lib/repo/crm/migrate");
+const { initialFacts } = await import("@/lib/repo/crm/migrate");
 
 afterAll(() => {
   for (const s of ["", "-wal", "-shm"]) fs.rmSync(`${testDbPath}${s}`, { force: true });
@@ -42,32 +42,12 @@ describe("CRM schema", () => {
   });
 });
 
-describe("backfillCrm", () => {
+describe("initialFacts", () => {
   it("maps lifecycle to the initial facts", () => {
     expect(initialFacts("lead", 0, NOW)).toMatchObject({ verification_to: "unverified", stage_to: null, contact_status_to: null, signal: null });
     expect(initialFacts("qualified", 0, NOW)).toMatchObject({ stage_to: "interested", signal: "warm", contact_status_to: "contacted" });
     expect(initialFacts("active", 2, NOW).stage_to).toBe("repeat_customer");
     expect(initialFacts("active", 1, NOW).stage_to).toBe("first_order");
     expect(initialFacts("dormant", 0, NOW).stage_to).toBe("customer");
-  });
-  it("backfills owner, primary contact, phone_norm and state = replay", async () => {
-    const db = getDb();
-    const uid = Number((await db.prepare("INSERT INTO users (username,password_hash,display_name,role,created_at,organization_id) VALUES ('bf1','x','فاطمه','phone_sales',?,1)").run(NOW)).lastInsertRowid);
-    const lead = Number((await db.prepare("INSERT INTO customers (customer_code,business_name,contact_person,phone,synced_at,organization_id,lifecycle) VALUES ('BF-1','سرنخ','علی','0912 000 1234',?,1,'lead')").run(NOW)).lastInsertRowid);
-    const qual = Number((await db.prepare("INSERT INTO customers (customer_code,business_name,salesperson,synced_at,organization_id,lifecycle) VALUES ('BF-2','پیگیری','فاطمه',?,1,'qualified')").run(NOW)).lastInsertRowid);
-    await db.prepare("DELETE FROM app_meta WHERE key = 'crm_backfill_v1'").run();
-    await backfillCrm(db);
-
-    const l = await db.prepare("SELECT * FROM customers WHERE id = ?").get(lead) as Record<string, unknown>;
-    expect(l).toMatchObject({ phone_norm: "9120001234", verification: "unverified", contact_status: "not_contacted", sales_stage: "unknown", temperature: "cold" });
-    expect(await db.prepare("SELECT name, is_primary FROM contacts WHERE customer_id = ?").get(lead)).toEqual({ name: "علی", is_primary: 1 });
-
-    const q = await db.prepare("SELECT * FROM customers WHERE id = ?").get(qual) as Record<string, unknown>;
-    expect(q).toMatchObject({ owner_user_id: uid, verification: "verified", contact_status: "contacted", sales_stage: "interested", temperature: "warm", last_contacted_at: NOW });
-    expect((await db.prepare("SELECT COUNT(*) n FROM activities WHERE customer_id = ? AND type = 'system'").get(qual) as { n: number }).n).toBe(1);
-
-    // idempotent: a second run is a no-op
-    await backfillCrm(db);
-    expect((await db.prepare("SELECT COUNT(*) n FROM activities WHERE customer_id = ?").get(qual) as { n: number }).n).toBe(1);
   });
 });

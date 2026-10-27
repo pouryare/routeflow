@@ -4,7 +4,6 @@ import path from "node:path";
 import os from "node:os";
 import type { Session } from "@/lib/session";
 
-const PG = process.env.DB_DIALECT === "postgres";
 
 const testDbPath = path.join(
   os.tmpdir(),
@@ -114,23 +113,16 @@ describe("pullSince", () => {
     expect(custIds).not.toContain(custOther);
   });
 
-  it("an immediate re-pull at the watermark returns no rows once the clock has moved on", async () => {
+  it("an immediate re-pull at the watermark returns nothing new", async () => {
     await runFor(driverA, custA);
-    // Pull a few ms "later" so nothing was stamped in the pull's own millisecond; that
-    // millisecond is deliberately asked for again (see the tie tests below).
-    const later = new Date(Date.now() + 5);
-    const first = await pullSince(sess(driverA, "delivery_driver", 1, groupA), null, later);
-    const second = await pullSince(sess(driverA, "delivery_driver", 1, groupA), first.watermark, later);
-    if (PG) {
-      /* PostgreSQL's watermark is the oldest transaction running anywhere on the server, and
-         the other test files are writing in parallel, so rows this pull already sent may come
-         again. What must hold is that nothing NEW appears: everything is a repeat. */
-      const key = (r: { table: string; row: Record<string, unknown> }) => `${r.table}:${String(r.row.id)}`;
-      const sent = new Set(first.rows.map(key));
-      expect(second.rows.filter((r) => !sent.has(key(r)))).toEqual([]);
-    } else {
-      expect(second.rows).toEqual([]);
-    }
+    const first = await pullSince(sess(driverA, "delivery_driver", 1, groupA), null);
+    const second = await pullSince(sess(driverA, "delivery_driver", 1, groupA), first.watermark);
+    /* The watermark is the oldest transaction running anywhere on the server, and the other
+       test files are writing in parallel, so rows this pull already sent may come again. What
+       must hold is that nothing NEW appears: everything is a repeat. */
+    const key = (r: { table: string; row: Record<string, unknown> }) => `${r.table}:${String(r.row.id)}`;
+    const sent = new Set(first.rows.map(key));
+    expect(second.rows.filter((r) => !sent.has(key(r)))).toEqual([]);
     expect(second.tombstones).toEqual([]);
   });
 
@@ -139,59 +131,6 @@ describe("pullSince", () => {
     await tombstone(1, "order_line", 999);
     const second = await pullSince(sess(driverA, "delivery_driver", 1, groupA), first.watermark);
     expect(second.tombstones.map((t) => t.entity_id)).toContain(999);
-  });
-
-  /* The timestamp watermark's edge cases. PostgreSQL's watermark is a transaction id, which has
-     no ties; tests/sync-watermark-pg.test.ts covers what it is for. */
-  describe.skipIf(PG)("same-millisecond ties", () => {
-    // A fixed clock so the tie is certain rather than a matter of luck. T is the pull's own
-    // millisecond; a row stamped at T is visible to the pull, and a delete stamped at T
-    // lands just after it.
-    const T = new Date("2030-06-01T10:00:00.123Z");
-    const stampProduct = async (at: string) =>
-      await getDb().prepare("UPDATE products SET updated_at = ? WHERE id = ?").run(at, product);
-    const stampTombstone = async (id: number, at: string) =>
-      await getDb()
-        .prepare(
-          "INSERT INTO deleted_rows (organization_id, entity_type, entity_id, deleted_at) VALUES (1, 'order_line', ?, ?)"
-        )
-        .run(id, at);
-
-    it("a tombstone stamped in the same millisecond as the last pull still arrives", async () => {
-      await stampProduct(T.toISOString());
-      const first = await pullSince(sess(driverA, "delivery_driver", 1, groupA), null, T);
-      // Before the fix the watermark was T itself and `deleted_at > T` hid the delete.
-      expect(first.watermark < T.toISOString()).toBe(true);
-
-      await stampTombstone(4242, T.toISOString());
-      const second = await pullSince(sess(driverA, "delivery_driver", 1, groupA), first.watermark, T);
-      expect(second.tombstones.map((t) => t.entity_id)).toContain(4242);
-    });
-
-    it("a row stamped in the pull's millisecond is sent again (the device upserts by id)", async () => {
-      await stampProduct(T.toISOString());
-      const first = await pullSince(sess(driverA, "delivery_driver", 1, groupA), null, T);
-      const again = await pullSince(sess(driverA, "delivery_driver", 1, groupA), first.watermark, T);
-      const ids = again.rows.filter((r) => r.table === "products").map((r) => r.row.id);
-      expect(ids).toEqual([product]);
-    });
-
-    it("once the clock passes T the watermark reaches T and stops repeating it", async () => {
-      await stampProduct(T.toISOString());
-      const after = new Date(T.getTime() + 1);
-      const first = await pullSince(sess(driverA, "delivery_driver", 1, groupA), null, after);
-      const again = await pullSince(sess(driverA, "delivery_driver", 1, groupA), first.watermark, after);
-      expect(again.rows.filter((r) => r.table === "products")).toEqual([]);
-    });
-
-    it("the watermark covers tombstones, so a delete newer than every row is not re-sent", async () => {
-      await stampProduct("2030-01-01T00:00:00.000Z");
-      await stampTombstone(77, "2030-03-01T00:00:00.000Z");
-      const first = await pullSince(sess(driverA, "delivery_driver", 1, groupA), null, T);
-      expect(first.watermark).toBe("2030-03-01T00:00:00.000Z");
-      const again = await pullSince(sess(driverA, "delivery_driver", 1, groupA), first.watermark, T);
-      expect(again.tombstones).toEqual([]);
-    });
   });
 
   it("does not leak another organisation's rows to a salesperson", async () => {
@@ -271,12 +210,10 @@ describe("deleting a run tells the phones", () => {
     const { deleteRun } = await import("@/lib/delivery");
     const { snapshotDeletes } = await import("@/lib/offline/snapshotDeletes");
     const run = await runFor(driverA, custA);
-    const later = new Date(Date.now() + 5);
-    const first = await pullSince(sess(driverA, "delivery_driver", 1, groupA), null, later);
+    const first = await pullSince(sess(driverA, "delivery_driver", 1, groupA), null);
     const stopIds = first.rows.filter((r) => r.table === "delivery_stops").map((r) => Number(r.row.id));
     expect(stopIds.length).toBe(1);
 
-    await new Promise((r) => setTimeout(r, 10));
     await deleteRun(getDb(), run);
     const second = await pullSince(sess(driverA, "delivery_driver", 1, groupA), first.watermark);
     const keys = snapshotDeletes(second.tombstones, second.rows).map(([t, id]) => `${t}:${id}`);

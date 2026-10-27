@@ -7,7 +7,7 @@
 //   node --experimental-strip-types scripts/telegram-poll.ts                                    (SQLite)
 //   node --experimental-strip-types --import ./scripts/_ts-register.mjs scripts/telegram-poll.ts   (PostgreSQL)
 //
-// On PostgreSQL (DB_DIALECT=postgres, DATABASE_URL) it opens the app's own connection, which needs the
+// It opens the app's own connection (DATABASE_URL), which needs the
 // module hook above for the `@/` imports; set TELEGRAM_OFFSET_PATH to a file the service user can
 // write (default data/telegram-offset).
 //

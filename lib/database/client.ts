@@ -2,10 +2,10 @@
  * implements it); the shape is the one the code was written against on SQLite -- prepare(sql), then
  * get / all / run -- with `?` placeholders that the adapter turns into $1, $2, ... */
 
-export type SqlValue = null | number | bigint | string | Uint8Array | boolean;
+type SqlValue = null | number | bigint | string | Uint8Array | boolean;
 export type Row = Record<string, unknown>;
 
-export interface RunResult {
+interface RunResult {
   changes: number | bigint;
   /** The id column of the last row an INSERT returned; 0 when the statement returns none. */
   lastInsertRowid: number | bigint;

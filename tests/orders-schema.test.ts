@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
-import { sqliteOnly, tableInfo } from "./helpers/schema";
+import { tableInfo } from "./helpers/schema";
 
 const testDbPath = path.join(
   os.tmpdir(),
@@ -54,14 +54,6 @@ async function cols(table: string): Promise<string[]> {
   return (await tableInfo(table) as unknown as { name: string }[]).map(
     (c) => c.name
   );
-}
-
-async function tableSql(table: string): Promise<string> {
-  return (
-    await getDb()
-      .prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name = ?")
-      .get(table) as { sql: string }
-  ).sql;
 }
 
 async function insertOrder(orderNo: string, status = "DRAFT"): Promise<number> {
@@ -125,9 +117,6 @@ describe("orders", () => {
     );
   });
 
-  it.skipIf(sqliteOnly)("holds money as whole Toman", async () => {
-    expect(await tableSql("orders")).toMatch(/paid_toman\s+INTEGER/);
-  });
 
   it("refuses two orders with the same number", async () => {
     await insertOrder("1405-00001");
@@ -203,11 +192,6 @@ describe("order_lines", () => {
     );
   });
 
-  it.skipIf(sqliteOnly)("holds both money columns as whole Toman", async () => {
-    const sql = await tableSql("order_lines");
-    expect(sql).toMatch(/unit_price_toman\s+INTEGER/);
-    expect(sql).toMatch(/unit_cost_toman\s+INTEGER/);
-  });
 
   it("freezes the conversion factors on the line rather than referencing them", async () => {
     // The whole design rests on this: qty_per_pack and kg_per_base_unit are columns on

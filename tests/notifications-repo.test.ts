@@ -2,13 +2,12 @@ import { describe, it, expect, beforeEach, afterAll } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
-import { sqliteOnly } from "./helpers/schema";
 
 const testDbPath = path.join(os.tmpdir(), `rf-notif-repo-${Date.now()}-${Math.random().toString(36).slice(2)}.db`);
 process.env.ROUTEFLOW_DB_PATH = testDbPath;
 process.env.SESSION_SECRET = "test-secret";
 
-const { getDb, rawSqlite } = await import("@/lib/db");
+const { getDb } = await import("@/lib/db");
 const { recipientsFor, fanOutNotifications, listNotificationGroups, unreadGroupCount, markGroupsRead } = await import(
   "@/lib/repo/notifications"
 );
@@ -76,15 +75,6 @@ describe("notification schema", () => {
     }
   });
 
-  it.skipIf(sqliteOnly)("re-running seedNotificationTypes does not duplicate rows", async () => {
-    const { seedNotificationTypes } = await import("@/lib/db");
-    const db = getDb();
-    seedNotificationTypes(await rawSqlite());
-    seedNotificationTypes(await rawSqlite());
-    const n = (await db.prepare("SELECT COUNT(*) c FROM notification_types WHERE organization_id IS NULL").get() as { c: number }).c;
-    const distinct = (await db.prepare("SELECT COUNT(DISTINCT code) c FROM notification_types WHERE organization_id IS NULL").get() as { c: number }).c;
-    expect(n).toBe(distinct);
-  });
 });
 
 describe("recipientsFor", () => {

@@ -13,7 +13,6 @@
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { spawnSync } from "node:child_process";
-import { DatabaseSync } from "node:sqlite";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -24,16 +23,14 @@ import { databaseUrl, dropDatabases } from "../scripts/pg/fresh-database.mjs";
 const REPO = path.resolve(__dirname, "..");
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), "rf-demobuild-"));
 
-/* On PostgreSQL the demo goes to a database of its own on the test server, named for this
-   run; on SQLite to a file in a temp folder. */
-const PG = process.env.DB_DIALECT === "postgres";
+/* The demo goes to a database of its own on the test server, named for this run. */
 const BASE_URL = process.env.DATABASE_URL ?? "";
-const target = (name: string) => (PG ? `rf_demo_${process.pid}_${name}` : path.join(dir, `${name}.db`));
+const target = (name: string) => `rf_demo_${process.pid}_${name}`;
 const dbPath = target("demo");
 /* The child seeds DATABASE_URL's server directly: it must not take the per-test-file copy. */
 const childEnv = { ...process.env, SESSION_SECRET: "x", ROUTEFLOW_PG_TEMPLATE: "" };
-/* A Postgres build is slower than an SQLite one: every statement is its own round trip. */
-const BUILD_TIMEOUT = PG ? 400_000 : 120_000;
+/* Every statement is its own round trip, so a build takes a while. */
+const BUILD_TIMEOUT = 400_000;
 
 const seed = (db: string) =>
   spawnSync(
@@ -55,27 +52,18 @@ beforeAll(() => {
 }, BUILD_TIMEOUT);
 
 afterAll(async () => {
-  if (PG) await dropDatabases(BASE_URL, dbPath, `rf_demo_${process.pid}_%`);
-  else for (const s of ["", "-wal", "-shm"]) fs.rmSync(`${dbPath}${s}`, { force: true });
+  await dropDatabases(BASE_URL, dbPath, `rf_demo_${process.pid}_%`);
   fs.rmSync(dir, { recursive: true, force: true });
 });
 
 /** One count from a built demo, read-only. */
 async function countIn(db: string, sql: string, ...p: Array<string | number>): Promise<number> {
-  if (PG) {
-    const client = new pg.Client({ connectionString: databaseUrl(BASE_URL, db) });
-    await client.connect();
-    try {
-      return Number((await client.query(toPg(sql), p)).rows[0].c);
-    } finally {
-      await client.end();
-    }
-  }
-  const handle = new DatabaseSync(db, { readOnly: true });
+  const client = new pg.Client({ connectionString: databaseUrl(BASE_URL, db) });
+  await client.connect();
   try {
-    return (handle.prepare(sql).get(...p) as { c: number }).c;
+    return Number((await client.query(toPg(sql), p)).rows[0].c);
   } finally {
-    handle.close();
+    await client.end();
   }
 }
 const n = (sql: string, ...p: Array<string | number>) => countIn(dbPath, sql, ...p);
@@ -163,8 +151,7 @@ describe("the built demo is internally consistent", () => {
     try {
       expect(await countIn(second, `SELECT COUNT(*) c FROM orders`)).toBe(await n(`SELECT COUNT(*) c FROM orders`));
     } finally {
-      if (PG) await dropDatabases(BASE_URL, second);
-      else for (const s of ["", "-wal", "-shm"]) fs.rmSync(`${second}${s}`, { force: true });
+      await dropDatabases(BASE_URL, second);
     }
   }, BUILD_TIMEOUT);
 });

@@ -2,7 +2,7 @@ import { describe, it, expect, afterAll } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
-import { sqliteOnly, tableInfo } from "./helpers/schema";
+import { tableInfo } from "./helpers/schema";
 
 const testDbPath = path.join(os.tmpdir(), `rf-districts-shared-${Date.now()}-${Math.random().toString(36).slice(2)}.db`);
 process.env.ROUTEFLOW_DB_PATH = testDbPath;
@@ -15,9 +15,6 @@ afterAll(() => {
 });
 
 const cols = async (t: string) => (await tableInfo(t) as { name: string }[]).map((c) => c.name);
-const schema = async (t: string) =>
-  (await getDb().prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?").get(t) as { sql: string }).sql;
-
 /** districts is geography: Tehran's 22 mantaghe are the same for every organisation.
  *
  *  The schema said otherwise. districts sat in TENANT_TABLES -- whose stated purpose is to
@@ -40,10 +37,6 @@ describe("districts are shared reference data, not tenant data", () => {
     expect(await cols("districts")).not.toContain("organization_id");
   });
 
-  it.skipIf(sqliteOnly)("keeps the plain natural key", async () => {
-    expect(await schema("districts")).toContain("UNIQUE(name, level, parent_name)");
-    expect(await schema("districts")).not.toContain("organization_id");
-  });
 
   it("keeps every other district column the code and geometry depend on", async () => {
     // The rebuild replaces the table wholesale, so a column quietly left out of the

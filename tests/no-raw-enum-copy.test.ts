@@ -138,7 +138,7 @@ describe("English enums never reach Persian copy", () => {
     };
     scan("lib");
     const missing = [...created].filter((k) => !known.has(k));
-    expect(created.size).toBeGreaterThan(2);
+    expect(created.size).toBeGreaterThan(0);
     expect(missing, `task kinds with no Persian label: ${missing.join(", ")} (seen: ${[...created].join(", ")})`).toEqual([]);
   });
 

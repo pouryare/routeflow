@@ -11,7 +11,7 @@
 import crypto from "node:crypto";
 import { openScriptDb } from "./_db.mjs";
 
-// The database is ROUTEFLOW_DB_PATH (SQLite), or with DB_DIALECT=postgres the server DATABASE_URL points at.
+// The database is the one DATABASE_URL points at (set -a; . /etc/routeflow/env; set +a).
 // Kept in step with lib/roles.ts by a test -- this script is plain ESM run straight by
 // node with no build step, so it cannot import the TypeScript definition.
 const ROLES = ["platform_owner", "owner", "group_manager", "rep_manager", "phone_sales", "field_rep", "delivery_driver"];

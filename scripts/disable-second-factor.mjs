@@ -5,7 +5,7 @@
 //
 //   node scripts/disable-second-factor.mjs <username>
 //
-// The database is ROUTEFLOW_DB_PATH (SQLite), or with DB_DIALECT=postgres the server DATABASE_URL points at.
+// The database is the one DATABASE_URL points at (set -a; . /etc/routeflow/env; set +a).
 import { openScriptDb } from "./_db.mjs";
 
 const username = process.argv[2];

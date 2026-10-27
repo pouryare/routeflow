@@ -1,7 +1,5 @@
 import type { Db } from "@/lib/database/client";
 
-import { mapSeq } from "@/lib/seq";
-import { dialect } from "@/lib/database/dialect";
 /** Clear the ledger so a test fixture can reset the tables it owns.
  *
  *  `journals` and `ledger_entries` are APPEND-ONLY by trigger -- that is the feature, and
@@ -30,44 +28,15 @@ import { dialect } from "@/lib/database/dialect";
  *  and recreate the ledger tables in production on every test run. That was tried and
  *  reverted; see `.cline/journal.md`. Keep this an explicit, per-suite call. */
 export async function clearLedger(db: Db): Promise<void> {
-  /* PostgreSQL: replica mode skips the append-only triggers and the foreign-key checks for
-     this one statement batch, and the identities restart as sqlite_sequence's rows did. */
-  if (dialect() === "postgres") {
-    await db.exec(
-      `SET session_replication_role = replica;
-       DELETE FROM ledger_entries; DELETE FROM journals; DELETE FROM fiscal_periods;
-       SET session_replication_role = DEFAULT;
-       SELECT setval(pg_get_serial_sequence('ledger_entries', 'id'), 1, false);
-       SELECT setval(pg_get_serial_sequence('journals', 'id'), 1, false);
-       SELECT setval(pg_get_serial_sequence('fiscal_periods', 'id'), 1, false);`
-    );
-    return;
-  }
-  const ddl = async (name: string) =>
-    await db
-      .prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?")
-      .get(name) as { sql: string } | undefined;
-
-  const tables = ["ledger_entries", "journals", "fiscal_periods"] as const;
-  const saved = await mapSeq(tables, async (t) => [t, await ddl(t)] as const);
-
-  await db.exec("PRAGMA foreign_keys = OFF");
-  try {
-    for (const [t] of saved) await db.exec(`DROP TABLE IF EXISTS ${t}`);
-    for (const [, row] of saved) if (row?.sql) await db.exec(row.sql);
-  } finally {
-    await db.exec("PRAGMA foreign_keys = ON");
-  }
-
-  // The sequences restart too, so a fixture that asserts on a literal journal id is not
-  // coupled to how many rows a previous test happened to leave behind.
-  await db.exec("DELETE FROM sqlite_sequence WHERE name IN ('journals','ledger_entries','fiscal_periods')");
-}
-
-/** Drops a guard trigger so a fixture can reset an append-only table such as `activities`.
- *  Not on PostgreSQL: the suite runs as the app's role, which does not own the tables and may
- *  not drop their triggers. There the fixture's reset runs between `PRAGMA foreign_keys = OFF`
- *  and `ON`, which lib/database/pg.ts turns into replica mode, and replica mode skips them. */
-export async function dropTrigger(db: Db, name: string): Promise<void> {
-  if (dialect() !== "postgres") await db.exec(`DROP TRIGGER IF EXISTS ${name}`);
+  /* Replica mode skips the append-only triggers and the foreign-key checks for this one
+     statement batch, and the identities restart so a fixture that asserts on a literal journal
+     id is not coupled to how many rows a previous test left behind. */
+  await db.exec(
+    `SET session_replication_role = replica;
+     DELETE FROM ledger_entries; DELETE FROM journals; DELETE FROM fiscal_periods;
+     SET session_replication_role = DEFAULT;
+     SELECT setval(pg_get_serial_sequence('ledger_entries', 'id'), 1, false);
+     SELECT setval(pg_get_serial_sequence('journals', 'id'), 1, false);
+     SELECT setval(pg_get_serial_sequence('fiscal_periods', 'id'), 1, false);`
+  );
 }

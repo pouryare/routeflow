@@ -1,8 +1,7 @@
-/* The PostgreSQL side of the Db interface (Wave P, phase 2). Selected with DB_DIALECT=postgres
- * and DATABASE_URL; SQLite stays the default until the cut-over.
+/* The PostgreSQL implementation of the Db interface, on DATABASE_URL (Wave P).
  *
- * App SQL is written once for both engines (lib/database/dialect.ts and the dialect guard
- * test), so this adapter only bridges what the drivers do differently:
+ * App SQL is written with `?` placeholders and the portable helpers in lib/database/dialect.ts,
+ * so this adapter only bridges what the driver does differently from the interface:
  *   - `?` placeholders become `$1, $2...`;
  *   - a camelCase alias (`AS nameFa`, and every later use of it) is quoted, since PostgreSQL
  *     folds unquoted names to lower case and the row would come back as `namefa`;

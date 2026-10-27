@@ -1,11 +1,10 @@
 import { describe, expect, it, vi, afterEach } from "vitest";
-import { DatabaseSync } from "node:sqlite";
 import { isRealIsoDate } from "@/lib/isoDate";
 import { clamp, round2 } from "@/lib/math";
 import { jalaliMonthKey, jalaliYmd } from "@/lib/jalali";
 import { withRunningBalance } from "@/lib/runningBalance";
 import { withEntityLabels } from "@/lib/repo/entityLabels";
-import { sqliteDb } from "@/lib/database/client";
+import type { Db } from "@/lib/database/client";
 import { compareTaskCards } from "@/lib/repo/taskCard";
 import { routeLength, straightLine } from "@/lib/routing/distance";
 import { reorderGain } from "@/lib/routing/reorderGain";
@@ -76,11 +75,16 @@ describe("withRunningBalance", () => {
 });
 
 describe("withEntityLabels", () => {
-  const raw = new DatabaseSync(":memory:");
-  const db = sqliteDb(() => raw);
-  raw.exec(`CREATE TABLE customers (id INTEGER PRIMARY KEY, business_name TEXT);
-           CREATE TABLE districts (id INTEGER PRIMARY KEY, name TEXT);
-           INSERT INTO customers VALUES (5, 'کافه الف'); INSERT INTO districts VALUES (5, 'منطقه ۵');`);
+  /* A stand-in for the two lookups it makes: the table name in the SQL picks the rows. */
+  const tables: Record<string, { id: number; name: string }[]> = {
+    customers: [{ id: 5, name: "کافه الف" }],
+    districts: [{ id: 5, name: "منطقه ۵" }],
+  };
+  const db = {
+    prepare: (sql: string) => ({
+      all: async (...ids: number[]) => (tables[/FROM (\w+)/.exec(sql)![1]] ?? []).filter((r) => ids.includes(r.id)),
+    }),
+  } as unknown as Db;
   it("labels by type, so customer 5 and district 5 do not collide", async () => {
     const out = await withEntityLabels(db, [
       { entity_type: "customer", entity_id: 5 },

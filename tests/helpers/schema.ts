@@ -1,13 +1,9 @@
-/* Reading the live schema the same way on SQLite and PostgreSQL, for the schema tests.
+/* Reading the live schema from the PostgreSQL catalog, for the schema tests.
  *
- * SQLite answers through PRAGMA table_info and sqlite_master; PostgreSQL through its catalog.
- * These helpers return SQLite's shapes and type names on both, so a test that asks "does
- * customers have opening_balance_toman, NOT NULL, INTEGER?" reads the same either way.
- *
- * What has no counterpart is the CREATE statement's own text (`SELECT sql FROM sqlite_master`):
- * PostgreSQL keeps no source text. Tests that read it are SQLite-only; see `sqliteOnly`. */
+ * The helpers return the shapes and type names the tests were first written against (PRAGMA
+ * table_info's columns, INTEGER / REAL / TEXT / BLOB), so a test that asks "does customers have
+ * opening_balance_toman, NOT NULL, INTEGER?" still reads the same. */
 import type { Db } from "@/lib/database/client";
-import { dialect } from "@/lib/database/dialect";
 
 /* lib/db is imported when first asked for, never at the top: a test sets ROUTEFLOW_DB_PATH
    before it imports lib/db, and a static import here would be hoisted above that. */
@@ -23,11 +19,8 @@ export interface ColumnInfo {
 
 const SQLITE_TYPE: Record<string, string> = { bigint: "INTEGER", "double precision": "REAL", text: "TEXT", bytea: "BLOB" };
 
-const isPg = () => dialect() === "postgres";
-
-/** PRAGMA table_info(table), on either engine. */
+/** PRAGMA table_info(table), read from the catalog. */
 export async function tableInfo(table: string): Promise<ColumnInfo[]> {
-  if (!isPg()) return (await (await db()).prepare(`PRAGMA table_info(${table})`).all()) as unknown as ColumnInfo[];
   const rows = (await (await db())
     .prepare(
       `SELECT c.column_name AS name, c.data_type AS type,
@@ -54,35 +47,26 @@ export async function tableInfo(table: string): Promise<ColumnInfo[]> {
   }));
 }
 
-/** The indexes on `table`, named as created (SQLite's implicit autoindexes and PostgreSQL's
- *  primary-key and UNIQUE-constraint indexes are left out on both). */
+/** The indexes on `table`, named as created (primary-key and UNIQUE-constraint indexes are left out). */
 export async function indexesOn(table: string): Promise<string[]> {
-  const rows = isPg()
-    ? await (await db())
-        .prepare(
-          `SELECT i.indexname AS name FROM pg_indexes i
-            WHERE i.schemaname = 'public' AND i.tablename = ?
-              AND NOT EXISTS (SELECT 1 FROM pg_constraint k WHERE k.conname = i.indexname)`
-        )
-        .all(table)
-    : await (await db())
-        .prepare("SELECT name FROM sqlite_master WHERE type = 'index' AND tbl_name = ? AND sql IS NOT NULL")
-        .all(table);
+  const rows = await (await db())
+    .prepare(
+      `SELECT i.indexname AS name FROM pg_indexes i
+        WHERE i.schemaname = 'public' AND i.tablename = ?
+          AND NOT EXISTS (SELECT 1 FROM pg_constraint k WHERE k.conname = i.indexname)`
+    )
+    .all(table);
   return (rows as unknown as { name: string }[]).map((r) => r.name);
 }
 
 export async function indexExists(name: string): Promise<boolean> {
-  const row = isPg()
-    ? await (await db()).prepare("SELECT 1 AS x FROM pg_indexes WHERE schemaname = 'public' AND indexname = ?").get(name)
-    : await (await db()).prepare("SELECT 1 AS x FROM sqlite_master WHERE type = 'index' AND name = ?").get(name);
+  const row = await (await db()).prepare("SELECT 1 AS x FROM pg_indexes WHERE schemaname = 'public' AND indexname = ?").get(name);
   return row !== undefined;
 }
 
-/** The CREATE INDEX statement, as SQLite stored it or as PostgreSQL prints it back. */
+/** The CREATE INDEX statement, as PostgreSQL prints it back. */
 export async function indexDef(name: string): Promise<string | undefined> {
-  const row = isPg()
-    ? await (await db()).prepare("SELECT indexdef AS sql FROM pg_indexes WHERE schemaname = 'public' AND indexname = ?").get(name)
-    : await (await db()).prepare("SELECT sql FROM sqlite_master WHERE type = 'index' AND name = ?").get(name);
+  const row = await (await db()).prepare("SELECT indexdef AS sql FROM pg_indexes WHERE schemaname = 'public' AND indexname = ?").get(name);
   return (row as { sql: string } | undefined)?.sql;
 }
 
@@ -90,24 +74,21 @@ export async function tableExists(name: string): Promise<boolean> {
   return (await tableNames()).includes(name);
 }
 
-/** Every table the app made (not SQLite's own, not PostGIS's or node-pg-migrate's). */
+/** Every table the app made (not PostGIS's or node-pg-migrate's). */
 export async function tableNames(): Promise<string[]> {
-  const rows = isPg()
-    ? await (await db())
-        .prepare(
-          `SELECT table_name AS name FROM information_schema.tables
-            WHERE table_schema = 'public' AND table_type = 'BASE TABLE'
-              AND table_name NOT IN ('spatial_ref_sys', 'pgmigrations')
-            ORDER BY table_name`
-        )
-        .all()
-    : await (await db()).prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name").all();
+  const rows = await (await db())
+    .prepare(
+      `SELECT table_name AS name FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_type = 'BASE TABLE'
+          AND table_name NOT IN ('spatial_ref_sys', 'pgmigrations')
+        ORDER BY table_name`
+    )
+    .all();
   return (rows as unknown as { name: string }[]).map((r) => r.name);
 }
 
-/** PRAGMA foreign_key_list(table)'s from / table / to, on either engine. */
+/** PRAGMA foreign_key_list(table)'s from / table / to, read from the catalog. */
 export async function foreignKeys(table: string): Promise<{ from: string; table: string; to: string | null }[]> {
-  if (!isPg()) return (await (await db()).prepare(`PRAGMA foreign_key_list("${table}")`).all()) as unknown as { from: string; table: string; to: string | null }[];
   return (await (await db())
     .prepare(
       `SELECT kcu.column_name AS "from", ccu.table_name AS "table", ccu.column_name AS "to"
@@ -120,9 +101,3 @@ export async function foreignKeys(table: string): Promise<{ from: string; table:
     )
     .all(table)) as unknown as { from: string; table: string; to: string | null }[];
 }
-
-/** `it.skipIf(sqliteOnly)` marks a test about SQLite itself: its CREATE text, its pragmas, or
- *  the boot migrations that upgrade an old SQLite file. PostgreSQL starts from the baseline
- *  generated from that same schema (CI fails if they drift), so these have nothing to check
- *  there; they go when SQLite does (Wave P, phase 5). */
-export const sqliteOnly = process.env.DB_DIALECT === "postgres";

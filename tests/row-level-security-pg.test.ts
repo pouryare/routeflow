@@ -9,7 +9,7 @@ import path from "node:path";
  *  Only on PostgreSQL as the app role (npm run test:pg sets PG_APP_ROLE): SQLite has no
  *  row-level security, and the tables' owner is not subject to it. */
 
-const ON = process.env.DB_DIALECT === "postgres" && !!process.env.PG_APP_ROLE;
+const ON = !!process.env.PG_APP_ROLE; // scripts/pg/test-pg.mjs sets it
 process.env.ROUTEFLOW_DB_PATH = path.join(os.tmpdir(), `rf-rls-${Date.now()}.db`);
 process.env.SESSION_SECRET = "test-secret-for-row-level-security";
 

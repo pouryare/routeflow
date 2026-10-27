@@ -1,6 +1,6 @@
 # Running RouteFlow on its own PostgreSQL server
 
-This is the operator's page for the PostgreSQL side (Wave P, phase 4): setting the server up, what the backups do, how to restore, and how to move the app over from SQLite. The files it refers to are in `db/server/` and `scripts/pg/`. `db/README.md` covers development; this page covers a machine that real people use.
+This is the operator's page for the PostgreSQL side (Wave P, phase 4): setting the server up, what the backups do, how to restore, and how to move the app over. The files it refers to are in `db/server/` and `scripts/pg/`. `db/README.md` covers development; this page covers a machine that real people use.
 
 One machine is assumed: PostgreSQL and the app together, a second machine you own for the off-site copy. Nothing here needs a paid or foreign service.
 
@@ -24,7 +24,6 @@ The app connects over the local socket as the operating-system user that runs it
 `/etc/routeflow/env`, written by `install.sh` and read by the app's service and by the timers:
 
 ```
-DB_DIALECT=postgres
 DATABASE_URL=postgres:///routeflow?host=/var/run/postgresql
 PG_APP_ROLE=routeflow_app
 SESSION_SECRET=<generated>
@@ -45,17 +44,17 @@ Add `EnvironmentFile=/etc/routeflow/env` to the app's own unit. If you set `PG_A
 
 pg_duckdb is optional. It comes from the Pigsty repository, not PGDG; if it is installed when `install.sh` runs, it is added to the preload list and created in the database.
 
-## Moving the app from SQLite
+## Moving the app to PostgreSQL
 
-The data is dummy, so the move is a fresh start rather than a copy.
+The data is dummy, so the move is a fresh start rather than a copy. The release that contains this page has no SQLite code at all: the app needs `DATABASE_URL` and will not start without it.
 
 1. Set the server up as above. The database is empty apart from the baseline (company 1 exists, no users).
 2. Make the first owner: `set -a; . /etc/routeflow/env; set +a; node scripts/create-user.mjs <username> <password> "<Name>" platform_owner` (then `owner` accounts the same way, or from the users screen once you can sign in).
-3. Optional, for a training copy: `DB_DIALECT=postgres DATABASE_URL=postgres:///postgres?host=/var/run/postgresql npm run seed:demo` builds the demo company in its own database `routeflow_demo`; it refuses to write to the database `DATABASE_URL` names. Point a second copy of the app at it if you want one.
-4. Stop the app, add `EnvironmentFile=/etc/routeflow/env` to its unit, start it. `ROUTEFLOW_DB_PATH` can stay where it is; with `DB_DIALECT=postgres` it is ignored.
+3. Optional, for a training copy: `DATABASE_URL=postgres:///postgres?host=/var/run/postgresql npm run seed:demo` builds the demo company in its own database `routeflow_demo`; it refuses to write to the database `DATABASE_URL` names. Point a second copy of the app at it if you want one (`npm run dev:demo`).
+4. Stop the app, add `EnvironmentFile=/etc/routeflow/env` to its unit, deploy this release, start it. `ROUTEFLOW_DB_PATH` and `data/routeflow.db` are no longer read; delete them when you are happy.
 5. Sign in, click through the day's screens, and run `node scripts/pg/doctor.mjs` again.
 
-**Going back:** stop the app, remove `DB_DIALECT` from the unit's environment, start it. The SQLite file is untouched. Keep it until the Postgres side has run a few weeks.
+**Going back:** there is no switch any more. Stop the app and deploy the previous release (the last one before Wave P phase 5), which still runs on its SQLite file; that file is untouched until you delete it. Keep it until the Postgres side has run a few weeks.
 
 ## Restoring
 

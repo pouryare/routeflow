@@ -10,59 +10,12 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # One job: the app runs on PostgreSQL only. The server image builds, types and lint pass, the
+  # migrations pass Squawk, the unit suite runs against PostgreSQL, the production build meets its
+  # page-time budget, and the server scripts check out.
   check:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
-    env:
-      PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1"
-      NEXT_TELEMETRY_DISABLED: "1"
-      SESSION_SECRET: ci-secret-not-for-production-0123456789
-    steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
-
-      # package.json's dependencies (next, node:sqlite usage) need a recent Node 22.
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
-        with:
-          node-version: 22
-          check-latest: true
-          cache: npm
-
-      - run: npm ci
-
-      - name: Type-check
-        run: npm run typecheck
-
-      - name: Lint
-        run: npm run lint
-
-      # Structural ratchet (docs/architecture-audit-2026-10-22.md): import cycles, direct database
-      # imports in routes/pages, lib/db.ts size, tenant SELECTs with no organisation scope. Each
-      # number may only fall; after improving one, run `node scripts/check-architecture.mjs --write`.
-      - name: Architecture ratchet
-        run: npm run check:architecture
-
-      # tests/playwrightExtract needs a real browser and tests/smoke drives one; both have their own
-      # config and are not part of this job. Excludes are explicit because passing --exclude replaces
-      # vitest's defaults.
-      - name: Unit tests
-        run: >
-          npx vitest run
-          --exclude "**/node_modules/**"
-          --exclude "tests/smoke/**"
-          --exclude "tests/playwrightExtract.test.ts"
-
-      # Builds for production, seeds the small demo dataset, starts the server and times every main
-      # page against a generous budget. This is what fails if a page suddenly takes seconds, which
-      # is how a missing index or a new N+1 shows up.
-      - name: Production build and page-time budget
-        run: npm run perf:smoke
-
-  # PostgreSQL (Wave P): the server image builds, the generated baseline and types match the
-  # SQLite schema, migrations pass Squawk, and the unit suite runs against PostgreSQL with no
-  # failure beyond tests/pg-known-failures.txt (which may only shrink), and the server scripts check out.
-  postgres:
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 40
     env:
       PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1"
       NEXT_TELEMETRY_DISABLED: "1"
@@ -100,16 +53,25 @@ jobs:
           for e in btree_gist pg_duckdb pg_stat_statements pg_trgm postgis; do echo ",$got," | grep -q ",$e," || { echo "missing $e"; exit 1; }; done
           docker exec pg psql -U postgres -tAc "SHOW wal_level" | grep -qx logical
 
-      - name: Baseline migration matches the SQLite schema
-        run: |
-          npm run db:pg:generate
-          git diff --exit-code -- db/migrations
+      - name: Type-check
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      # Structural ratchet (docs/architecture-audit-2026-10-22.md): import cycles, direct database
+      # imports in routes/pages, lib/db.ts size, tenant SELECTs with no organisation scope. Each
+      # number may only fall; after improving one, run `node scripts/check-architecture.mjs --write`.
+      - name: Architecture ratchet
+        run: npm run check:architecture
 
       - name: Migrations pass Squawk
         run: npm run db:pg:lint
 
-      - name: Unit tests on PostgreSQL, against the known-failures list
-        run: npm run test:pg
+      # tests/playwrightExtract needs a real browser and tests/smoke drives one; both have their own
+      # config and are not part of this job.
+      - name: Unit tests on PostgreSQL
+        run: npm test
 
       - name: Kysely types match the database
         run: DATABASE_URL=postgres://postgres:ci@localhost:5432/rf_template npx kysely-codegen --verify
@@ -123,3 +85,9 @@ jobs:
           for f in scripts/pg/*.mjs scripts/_db.mjs; do node --check "$f"; done
           RF_EXPECT_PGBACKREST=0 PG_APP_ROLE=routeflow_app \
             DATABASE_URL=postgres://postgres:ci@localhost:5432/rf_template node scripts/pg/doctor.mjs
+
+      # Builds for production, seeds the small demo dataset into its own database, starts the server
+      # and times every main page against a generous budget. This is what fails if a page suddenly
+      # takes seconds, which is how a missing index or a new N+1 shows up.
+      - name: Production build and page-time budget
+        run: npm run perf:smoke

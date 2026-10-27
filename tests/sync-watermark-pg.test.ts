@@ -14,7 +14,6 @@ import type { Session } from "@/lib/session";
  *  SQLite has one writer at a time, so the race cannot happen there and this file only runs
  *  on PostgreSQL. */
 
-const PG = process.env.DB_DIALECT === "postgres";
 process.env.ROUTEFLOW_DB_PATH = path.join(os.tmpdir(), `rf-sync-xid-${Date.now()}.db`);
 process.env.SESSION_SECRET = "test-secret";
 
@@ -33,7 +32,6 @@ let ownerId = 0;
 let product = 0;
 
 beforeAll(async () => {
-  if (!PG) return;
   const { getDb, DB_PATH } = await import("@/lib/db");
   const { testDatabaseUrl } = await import("@/lib/database/pg");
   const db = getDb();
@@ -56,7 +54,7 @@ afterAll(async () => {
   await writer?.end();
 });
 
-describe.skipIf(!PG)("the PostgreSQL sync watermark", () => {
+describe("the PostgreSQL sync watermark", () => {
   it("is a transaction id", async () => {
     const { pullSince } = await import("@/lib/repo/syncPull");
     expect((await pullSince(owner(ownerId), null)).watermark).toMatch(/^x:\d+$/);

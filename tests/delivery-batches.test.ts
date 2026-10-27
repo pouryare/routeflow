@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterAll } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
-import { clearLedger, dropTrigger } from "./helpers/ledgerTeardown";
+import { clearLedger } from "./helpers/ledgerTeardown";
 
 const testDbPath = path.join(
   os.tmpdir(),
@@ -39,8 +39,6 @@ beforeEach(async () => {
      set ROUTEFLOW_DB_PATH, so this must stay an explicit per-suite call and never a global
      setupFiles hook, which would run against the real data/routeflow.db. */
   await clearLedger(db);
-  await dropTrigger(db, "activities_no_update");
-  await dropTrigger(db, "activities_no_delete");
 
   await db.exec(
     "PRAGMA foreign_keys = OFF; DELETE FROM activities; DELETE FROM order_events; DELETE FROM stock_reservations; DELETE FROM deliveries; DELETE FROM delivery_lines; DELETE FROM delivery_line_batches; DELETE FROM stock_movements; DELETE FROM batches; DELETE FROM payment_allocations; DELETE FROM payments; DELETE FROM delivery_stops; DELETE FROM delivery_runs; DELETE FROM order_lines; DELETE FROM orders; DELETE FROM purchase_lines; DELETE FROM purchases; DELETE FROM packagings; DELETE FROM products; DELETE FROM customers; DELETE FROM users WHERE id > 0; PRAGMA foreign_keys = ON;"

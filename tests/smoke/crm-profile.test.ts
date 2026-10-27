@@ -1,25 +1,24 @@
 import { afterAll, beforeAll, expect, it } from "vitest";
 import { chromium, type Browser } from "playwright";
-import { DatabaseSync } from "node:sqlite";
+import { getDb } from "@/lib/db";
 import { startDevServer, BASE } from "./server";
 import { sessionCookie } from "./session";
 
 let browser: Browser;
 let stop: () => Promise<void>;
-let db: DatabaseSync;
 beforeAll(async () => {
-  /* startDevServer repoints ROUTEFLOW_DB_PATH at a fresh VACUUM copy; open the DB only
-   * after that, or the writes land in production while the server reads the snapshot. */
+  /* startDevServer repoints DATABASE_URL at a fresh copy; open the DB only after that,
+   * or the writes land in the source while the server reads the copy. */
   stop = await startDevServer();
-  db = new DatabaseSync(process.env.ROUTEFLOW_DB_PATH!);
   browser = await chromium.launch();
 });
-afterAll(async () => { await browser?.close(); await stop?.(); db.close(); });
+afterAll(async () => { await browser?.close(); await stop?.(); });
 it("edits tags, Instagram and pre-visit intel on a snapshot, persisting across reload", async () => {
   const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
   await context.addCookies([{ ...await sessionCookie(), url: BASE }]);
-  const user = db.prepare("SELECT organization_id FROM users WHERE active=1 ORDER BY CASE role WHEN 'platform_owner' THEN 0 WHEN 'owner' THEN 1 ELSE 2 END,id LIMIT 1").get() as { organization_id: number };
-  const id = Number(db.prepare("INSERT INTO customers (organization_id,customer_code,business_name,synced_at,lat,lng) VALUES (?,?,'آزمایش شناخت',?,35.7,51.4)").run(user.organization_id, `smoke-intel-${Date.now()}`, new Date().toISOString()).lastInsertRowid);
+  const db = getDb();
+  const user = await db.prepare("SELECT organization_id FROM users WHERE active=1 ORDER BY CASE role WHEN 'platform_owner' THEN 0 WHEN 'owner' THEN 1 ELSE 2 END,id LIMIT 1").get() as { organization_id: number };
+  const id = Number((await db.prepare("INSERT INTO customers (organization_id,customer_code,business_name,synced_at,lat,lng) VALUES (?,?,'آزمایش شناخت',?,35.7,51.4)").run(user.organization_id, `smoke-intel-${Date.now()}`, new Date().toISOString())).lastInsertRowid);
   const page = await context.newPage();
   const errors: string[] = [];
   page.on("pageerror", e => errors.push(e.message));

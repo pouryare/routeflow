@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { sqliteOnly, tableInfo, tableNames } from "./helpers/schema";
+import { tableInfo, tableNames } from "./helpers/schema";
 
 /** Phase 2: one run per driver-day, holding orders AND visits.
  *
@@ -102,14 +102,6 @@ async function colsOf(table: string): Promise<string[]> {
   return (await tableInfo(table) as { name: string }[]).map((c) => c.name);
 }
 
-async function tableSql(table: string): Promise<string> {
-  return (
-    await db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name=?").get(table) as
-      | { sql: string }
-      | undefined
-  )!.sql;
-}
-
 async function count(table: string): Promise<number> {
   return (await db.prepare(`SELECT COUNT(*) AS n FROM ${table}`).get() as { n: number }).n;
 }
@@ -135,24 +127,12 @@ describe("Phase 2 — lead_runs folded into delivery_runs", () => {
     expect(await tableNames()).not.toContain("lead_runs");
   });
 
-  it.skipIf(sqliteOnly)("lead_run_stops is created pointing at delivery_runs from the start", async () => {
-    const sql = await tableSql("lead_run_stops");
-    expect(sql).toContain("REFERENCES delivery_runs(id)");
-    expect(sql).not.toContain("REFERENCES lead_runs(id)");
-    /* The two cascades that matter: a deleted run takes its visits, a deleted pin takes its
-     * stop. The second one is why the lead-pin fold has to check for live stops at all. */
-    expect(sql).toContain("ON DELETE CASCADE");
-  });
 
   it("the run this file created is a real, working run", async () => {
     expect(await count("delivery_runs")).toBe(1);
     expect(await count("lead_run_stops")).toBe(2);
   });
 
-  it.skipIf(sqliteOnly)("gives delivery_runs a `kind`, defaulted so existing rows read as delivery-only", async () => {
-    expect(await colsOf("delivery_runs")).toContain("kind");
-    expect(await tableSql("delivery_runs")).toContain("'mixed'");
-  });
 
   it("after the fold the run lives on delivery_runs and is marked mixed", async () => {
     const row = await db
@@ -173,13 +153,6 @@ describe("Phase 2 — lead_runs folded into delivery_runs", () => {
     expect(n.n).toBe(2);
   });
 
-  it.skipIf(sqliteOnly)("re-points lead_run_stops.run_id at delivery_runs(id)", async () => {
-    const sql = await tableSql("lead_run_stops");
-    expect(sql).toContain("REFERENCES delivery_runs(id)");
-    expect(sql).not.toContain("REFERENCES lead_runs(id)");
-    /* Every stop must satisfy the new key, which is the whole point of the rebuild. */
-    expect(await db.prepare("PRAGMA foreign_key_check").all()).toEqual([]);
-  });
 
   it("does NOT give lead_run_stops an organization_id — tenancy stays on the run", async () => {
     // Deliberate and easy to break: the copy-by-PRAGMA idiom adds whatever columns the source
