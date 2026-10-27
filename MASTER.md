@@ -614,6 +614,7 @@ part's sheet in the same change that first uses it. What we use, and where it li
 | Status word | `Chip` | `StatusPill` |
 | Avatar, skeleton, empty state, disclosure | `Avatar`, `Skeleton`, `EmptyState`, `Disclosure` | |
 | Report table, pager | HeroUI's `table` / `pagination` classes | `AcctTable`, `Pager`: server pages with real links, so only the classes |
+| Pocket card face and papers | `Card` (transparent and secondary) | `PocketCard`; our `.card` rule skips `.face` and `.doc`; the fan and the frosted face are ours |
 | Checkbox, switch, alert, popover | as named | |
 
 Still ours, styled with the HeroUI token names: `Keypad`, `SwipeRow`, the phone bottom bar,

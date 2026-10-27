@@ -1,4 +1,5 @@
 
+import { Card } from "@heroui/react";
 import { Icon } from "@/components/meridian/Icon";export interface PocketDoc {
   /** The document's name — «رسید تحویل», «فاکتور», «برگهٔ مسیر». */
   label: string;
@@ -48,7 +49,7 @@ export default function PocketCard({
       <Icon name="receipt" size="md" />
       <div className="docs" aria-hidden>
         {docs.map((d) => (
-          <div className="doc" key={d.label}>
+          <Card key={d.label} variant="secondary" className="doc">
             <div className="dt">{d.label}</div>
             <div className="dv">{d.value}</div>
             <div className="bars">
@@ -59,10 +60,10 @@ export default function PocketCard({
                 />
               ))}
             </div>
-          </div>
+          </Card>
         ))}
       </div>
-      <div className="face">
+      <Card variant="transparent" className="face">
         <div className="who">{customer}</div>
         <div className="meta">{meta}</div>
         <div className="amt mono">
@@ -75,7 +76,7 @@ export default function PocketCard({
             {docs.length > 0 ? `${docs.length === 1 ? "۱" : "۲"} سند` : "هنوز سندی ندارد"}
           </span>
         </div>
-      </div>
+      </Card>
     </button>
   );
 }

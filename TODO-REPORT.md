@@ -96,6 +96,7 @@ _Condensed 2026-10-23. Each finished piece of work is one line here; the full ea
   - [x] HeroUI names hold the values (`--background`, `--foreground`, `--surface-secondary`, `--danger` …); the older names are aliases; the accent-theme generator and the contrast check use the HeroUI names (500 pairs pass)
   - [x] About 620 lines of dead CSS removed (island, old toast and modal animations, unused board, lanes, streaks and stat-tile rules)
   - [x] MASTER.md colour, elevation, radius and base-component sections and section 6 of `docs/mobile-first-principles.md` rewritten around HeroUI
+- [x] Pocket cards on HeroUI Card: the face is a transparent Card and the two papers behind it are secondary Cards, so shape, fill and shadow come from the same tokens as other HeroUI parts; the fan, the frosted face and the tap button stay ours (`PocketCard`)
 - [x] Wave P phase 2 (PostgreSQL next to SQLite):
   - [x] `db/Dockerfile` and `db/compose.yml`: Postgres 18 with PostGIS, `pg_trgm`, `btree_gist`, `pg_stat_statements`, `pg_duckdb`, `wal_level = logical`
   - [x] Baseline migration generated from the SQLite schema (`npm run db:pg:generate`; CI fails if it drifts), applied with node-pg-migrate; Squawk lints later migrations; Kysely types in `lib/database/pg-schema.d.ts`
