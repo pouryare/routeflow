@@ -1,5 +1,6 @@
 "use client";
 
+import { AnswerLink } from "@/components/tapflow/Answer";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
@@ -48,15 +49,7 @@ export default function BottomNav({ primary, more, account }: BottomTabs) {
             <div className="tf-group">{g.label}</div>
             <div className="tf-grid one">
               {g.tabs.map((t) => (
-                <Link
-                  key={t.href}
-                  href={t.href}
-                  className="inline-flex items-center justify-center gap-[var(--space-2)] tf-opt"
-                  onClick={() => setMoreOpen(false)}
-                >
-                  <Icon name="arrow-left" size="md" />
-                  {t.label}
-                </Link>
+                <AnswerLink key={t.href} href={t.href} icon="arrow-left" onPress={() => setMoreOpen(false)}>{t.label}</AnswerLink>
               ))}
             </div>
           </section>
@@ -66,15 +59,7 @@ export default function BottomNav({ primary, more, account }: BottomTabs) {
             <div className="tf-group">حساب من</div>
             <div className="tf-grid one">
               {account.map((l) => (
-                <Link
-                  key={l.href}
-                  href={l.href}
-                  className="inline-flex items-center justify-center gap-[var(--space-2)] tf-opt"
-                  onClick={() => setMoreOpen(false)}
-                >
-                  <Icon name={l.icon} size="md" />
-                  {l.label}
-                </Link>
+                <AnswerLink key={l.href} href={l.href} icon={l.icon} onPress={() => setMoreOpen(false)}>{l.label}</AnswerLink>
               ))}
             </div>
           </section>

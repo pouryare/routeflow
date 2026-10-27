@@ -1,5 +1,6 @@
 "use client";
 
+import { AnswerButton, GoButton, SkipButton } from "@/components/tapflow/Answer";
 import { useState } from "react";
 import { Icon } from "@/components/meridian/Icon";
 import type { CustomStepApi } from "@/components/tapflow/TapFlow";
@@ -32,13 +33,10 @@ export default function HoursPicker({ api }: { api: CustomStepApi }) {
   // stay chips keep their own on/off state (weekday multi-select); pick chips light up for
   // the feedback beat, then run their onClick (state jump / next phase) after it.
   const chip = (key: string | number, text: string, on: boolean, onClick: () => void, cls = "") => (
-    <button key={key} type="button" aria-pressed={on || feedback.selected === String(key)}
-      className={`tf-opt ${cls}${on ? " on" : ""}${!on && feedback.selected === String(key) ? " on" : ""}`}
-      disabled={feedback.selected !== null && feedback.selected !== String(key)}
-      onClick={() => (on ? onClick() : feedback.choose(String(key), onClick))}>
-      {text}
+    <AnswerButton key={key} selected={on || feedback.selected === String(key)} className={cls} isDisabled={feedback.selected !== null && feedback.selected !== String(key)} onPress={() => (on ? onClick() : feedback.choose(String(key), onClick))}>
+{text}
       {feedback.selected === String(key) ? <span className="tick" aria-hidden><Icon name="check" size="sm" /></span> : null}
-    </button>
+</AnswerButton>
   );
 
   return (
@@ -52,9 +50,7 @@ export default function HoursPicker({ api }: { api: CustomStepApi }) {
             {PRESETS.map((p) => chip(p.label, p.label, false, () => { setDays(p.days); setPhase("from"); }))}
             {chip("custom", "روزهای خاص…", false, () => { setDays([]); setPhase("custom"); })}
           </div>
-          {ranges.length === 0 ? <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] tf-skip" onClick={() => api.submit("skip")}>
-          <Icon name="help" size="md" />
-          نمی‌دانم</button> : null}
+          {ranges.length === 0 ? <SkipButton icon="help" onPress={() => api.submit("skip")}>نمی‌دانم</SkipButton> : null}
         </>
       )}
 
@@ -64,9 +60,7 @@ export default function HoursPicker({ api }: { api: CustomStepApi }) {
           <div className="tf-grid three">
             {WEEKDAY_LABEL.map((d, i) => chip(i, d, days.includes(i), () => setDays((xs) => (xs.includes(i) ? xs.filter((x) => x !== i) : [...xs, i]))))}
           </div>
-          <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] tf-go" disabled={days.length === 0} onClick={() => setPhase("from")}>
-          <Icon name="arrow-left" size="md" />
-          ادامه به سؤال بعد</button>
+          <GoButton icon="arrow-left" isDisabled={days.length === 0} onPress={() => setPhase("from")}>ادامه به سؤال بعد</GoButton>
         </>
       )}
 
@@ -96,9 +90,7 @@ export default function HoursPicker({ api }: { api: CustomStepApi }) {
             {chip("again", "بازهٔ دیگر در همین روزها", false, () => setPhase("from"))}
             {chip("other", "روزهای دیگر، ساعت دیگر", false, () => setPhase("days"))}
           </div>
-          <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] tf-go" onClick={() => api.submit("ok", JSON.stringify(ranges))}>
-          <Icon name="palette" size="md" />
-          تمام</button>
+          <GoButton icon="palette" onPress={() => api.submit("ok", JSON.stringify(ranges))}>تمام</GoButton>
         </>
       )}
     </div>

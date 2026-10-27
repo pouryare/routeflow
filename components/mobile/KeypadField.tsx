@@ -1,5 +1,6 @@
 "use client";
 
+import { GoButton } from "@/components/tapflow/Answer";
 import { useState } from "react";
 import { Icon } from "@/components/meridian/Icon";
 import BottomSheet from "@/components/mobile/BottomSheet";
@@ -61,17 +62,10 @@ export default function KeypadField({
               setOpen(false);
             }}
           />
-          <button
-            type="button"
-            className="inline-flex items-center justify-center gap-[var(--space-2)] tf-go"
-            onClick={() => {
+          <GoButton icon="check" onPress={() => {
               onChange(draft);
               setOpen(false);
-            }}
-          >
-            <Icon name="check" size="md" />
-            تأیید عدد
-          </button>
+            }}>تأیید عدد</GoButton>
         </div>
       </BottomSheet>
     </>

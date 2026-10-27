@@ -1,6 +1,6 @@
 "use client";
 
-import { Icon } from "@/components/meridian/Icon";
+import { GoButton, SkipButton } from "@/components/tapflow/Answer";
 import BottomSheet from "@/components/mobile/BottomSheet";
 import { ChipGroup, type FilterGroup, isActive, neutralOf } from "@/components/mobile/ChipGroup";
 
@@ -17,19 +17,8 @@ export default function FilterSheet({ open, onClose, groups }: { open: boolean; 
             <ChipGroup group={g} wrap />
           </section>
         ))}
-        <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] tf-go" onClick={onClose}>
-          <Icon name="check" size="md" />
-          نمایش نتایج
-        </button>
-        <button
-          type="button"
-          className="inline-flex items-center justify-center gap-[var(--space-2)] tf-skip"
-          disabled={!any}
-          onClick={() => groups.forEach((g) => g.onChange(neutralOf(g)))}
-        >
-          <Icon name="x" size="md" />
-          پاک کردن فیلترها
-        </button>
+        <GoButton icon="check" onPress={onClose}>نمایش نتایج</GoButton>
+        <SkipButton icon="x" isDisabled={!any} onPress={() => groups.forEach((g) => g.onChange(neutralOf(g)))}>پاک کردن فیلترها</SkipButton>
       </div>
     </BottomSheet>
   );

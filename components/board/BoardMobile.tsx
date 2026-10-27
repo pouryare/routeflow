@@ -1,5 +1,6 @@
 "use client";
 
+import { AnswerButton } from "@/components/tapflow/Answer";
 import BottomSheet from "@/components/mobile/BottomSheet";
 import { Icon } from "@/components/meridian/Icon";
 import { taskKindLabel } from "@/lib/tasks/labels";
@@ -237,10 +238,7 @@ function MoveSheet({
         {lanesFor(view, card.kind)
           .filter((l) => l.id !== fromLane)
           .map((l) => (
-            <button key={l.id} type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] tf-opt" onClick={() => onPick(l.id)}>
-              <Icon name="grip-vertical" size="md" />
-              {l.label}
-            </button>
+            <AnswerButton key={l.id} icon="grip-vertical" onPress={() => onPick(l.id)}>{l.label}</AnswerButton>
           ))}
       </div>
     </BottomSheet>

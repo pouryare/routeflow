@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Button } from "@heroui/react";
 import { Icon } from "@/components/meridian/Icon";
 import FilterSheet from "@/components/mobile/FilterSheet";
 import { ChipGroup, isActive, type FilterGroup } from "@/components/mobile/ChipGroup";
@@ -24,11 +25,11 @@ export default function FilterChips({ groups }: { groups: FilterGroup[] }) {
           <ChipGroup key={g.id} group={g} />
         ))}
         {tucked.length > 0 && (
-          <button type="button" className={`filterchip${count ? " filterchip--on" : ""}`} aria-haspopup="dialog" onClick={() => setOpen(true)}>
+          <Button variant="secondary" className={`filterchip${count ? " filterchip--on" : ""}`} aria-haspopup="dialog" onPress={() => setOpen(true)}>
             <Icon name="filter" size="sm" />
             فیلترها
             {count > 0 && <b className="filterchip__badge">{faNum(count)}</b>}
-          </button>
+          </Button>
         )}
       </div>
       {tucked.length > 0 && <FilterSheet open={open} onClose={() => setOpen(false)} groups={tucked} />}

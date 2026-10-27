@@ -1,5 +1,6 @@
 "use client";
 
+import { ToggleButton } from "@heroui/react";
 import { Icon } from "@/components/meridian/Icon";
 
 /* The chip primitives shared by FilterChips (the row) and FilterSheet (the tucked-away groups).
@@ -42,16 +43,15 @@ export function ChipGroup({ group, wrap = false }: { group: FilterGroup; wrap?: 
   return (
     <div className={`filterchips__group${wrap ? " filterchips__group--wrap" : ""}`} role="group" aria-label={group.label}>
       {group.options.map((o) => (
-        <button
+        <ToggleButton
           key={o.id}
-          type="button"
           className={`filterchip${on(group, o.id) ? " filterchip--on" : ""}`}
-          aria-pressed={on(group, o.id)}
-          onClick={() => toggle(group, o.id)}
+          isSelected={on(group, o.id)}
+          onChange={() => toggle(group, o.id)}
         >
           <Icon name={on(group, o.id) ? "check" : "filter"} size="sm" />
           {o.label}
-        </button>
+        </ToggleButton>
       ))}
     </div>
   );
