@@ -112,8 +112,14 @@ if [ -n "${OFFSITE_HOST:-}" ]; then
   install -d -o postgres -g postgres -m 700 "$SSH_DIR"
   [ -f "$SSH_DIR/routeflow_backup" ] || as_postgres ssh-keygen -q -t ed25519 -N '' -C "routeflow-backup@$(hostname)" -f "$SSH_DIR/routeflow_backup"
   as_postgres sh -c "ssh-keyscan -H '$OFFSITE_HOST' >> '$SSH_DIR/known_hosts' 2>/dev/null; sort -u -o '$SSH_DIR/known_hosts' '$SSH_DIR/known_hosts'"
-  echo "  Put this key in ~$OFFSITE_USER/.ssh/authorized_keys on $OFFSITE_HOST (and create $OFFSITE_PATH there):"
+  echo "  On $OFFSITE_HOST: create $OFFSITE_PATH owned by $OFFSITE_USER, raise its open-file limit (restores read thousands of files over one"
+  echo "  SFTP session): echo '$OFFSITE_USER soft nofile 65536' and '$OFFSITE_USER hard nofile 65536' into /etc/security/limits.d/routeflow-backup.conf."
+  echo "  Put this key in ~$OFFSITE_USER/.ssh/authorized_keys there:"
   cat "$SSH_DIR/routeflow_backup.pub"
+  if ! as_postgres ssh -i "$SSH_DIR/routeflow_backup" -o BatchMode=yes -o ConnectTimeout=10 "${OFFSITE_USER:?set OFFSITE_USER}@$OFFSITE_HOST" "test -d '${OFFSITE_PATH:?set OFFSITE_PATH}'"; then
+    echo "  Cannot reach $OFFSITE_HOST with that key yet (or $OFFSITE_PATH is missing). Add the key, then run this again." >&2
+    exit 3
+  fi
   sed -e "s|<OFFSITE_PATH>|${OFFSITE_PATH:?set OFFSITE_PATH}|" -e "s|<OFFSITE_HOST>|$OFFSITE_HOST|" -e "s|<OFFSITE_USER>|${OFFSITE_USER:?set OFFSITE_USER}|" \
       -e "s|<CIPHER_PASS>|$CIPHER_PASS|g" -e "s|<PGDATA>|$PGDATA|" "$HERE/pgbackrest.conf" > /etc/pgbackrest/pgbackrest.conf
 else
@@ -154,7 +160,6 @@ install -d -o postgres -g "$APP_USER" -m 2775 /var/lib/routeflow/backups
 
 if [ "$NO_MIGRATE" = 0 ]; then
   step "Migrations and the final check"
-  chown -R "$APP_USER" "$APP_DIR/node_modules" 2>/dev/null || true
   runuser -u "$APP_USER" -- env $(grep -v '^#' "$ENV_FILE" | xargs) bash -c "cd '$APP_DIR' && npm run --silent db:pg:migrate"
   runuser -u "$APP_USER" -- env $(grep -v '^#' "$ENV_FILE" | xargs) bash -c "cd '$APP_DIR' && node scripts/pg/doctor.mjs" || {
     echo "The check found problems above; the first backup may simply not have run yet: sudo systemctl start routeflow-backup@full"

@@ -12,6 +12,7 @@
 // backup checks on a development machine.
 
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
@@ -133,15 +134,19 @@ try {
         else if (hours > 26) fail("last backup", `${Math.round(hours)} hours ago`);
         else ok("last backup", `${Math.round(hours)} hours ago, ${s.database?.file ?? "no label"}`);
       } catch {
-        fail("last backup", `no readable backup-status.json in ${dir}`);
+        warn("last backup", `no backup-status.json in ${dir} yet; the first backup writes it (systemctl start routeflow-backup@full)`);
       }
     }
-    try {
-      execFileSync("pgbackrest", ["--stanza=" + (process.env.PGBACKREST_STANZA ?? "routeflow"), "check"], { stdio: "pipe" });
-      ok("pgbackrest check", "archive and repositories answer");
-    } catch (e) {
-      const text = String(e.stderr ?? e.message).trim().split("\n").slice(-2).join(" ");
-      fail("pgbackrest check", text || "pgbackrest is not installed or not configured");
+    if (os.userInfo().username !== "postgres") {
+      warn("pgbackrest check", "skipped: pgBackRest only runs as the postgres user (sudo -u postgres node scripts/pg/doctor.mjs)");
+    } else {
+      try {
+        execFileSync("pgbackrest", ["--stanza=" + (process.env.PGBACKREST_STANZA ?? "routeflow"), "check"], { stdio: "pipe" });
+        ok("pgbackrest check", "archive and repositories answer");
+      } catch (e) {
+        const text = String(e.stderr ?? e.message).trim().split("\n").slice(-2).join(" ");
+        fail("pgbackrest check", text || "pgbackrest is not installed or not configured");
+      }
     }
   }
 } finally {

@@ -35,6 +35,18 @@ const run = (cmd, args, opts = {}) => execFileSync(cmd, args, { encoding: "utf8"
 const pgbackrest = (...args) => run("pgbackrest", [`--stanza=${STANZA}`, ...args]);
 const bin = process.env.RF_PG_BIN || run("pg_config", ["--bindir"]).trim();
 
+/** Recovery refuses to start with smaller capacity settings than the server that wrote the WAL. */
+async function capacitySettings(connectionString) {
+  const client = new pg.Client({ connectionString });
+  await client.connect();
+  try {
+    const names = ["max_connections", "max_worker_processes", "max_wal_senders", "max_prepared_transactions", "max_locks_per_transaction", "max_replication_slots", "wal_level"];
+    return (await client.query("SELECT name, setting FROM pg_settings WHERE name = ANY($1)", [names])).rows;
+  } finally {
+    await client.end();
+  }
+}
+
 async function tableCounts(connectionString) {
   const client = new pg.Client({ connectionString });
   await client.connect();
@@ -63,8 +75,21 @@ async function drill(repoKey, live) {
     // type=immediate stops at the point the backup became consistent; promote ends recovery.
     pgbackrest(`--repo=${repoKey}`, `--pg1-path=${data}`, "--type=immediate", "--target-action=promote", "restore");
     const port = 40000 + Math.floor(Math.random() * 20000);
-    const options = `-p ${port} -c archive_mode=off -c archive_command=/bin/true -c listen_addresses= -c unix_socket_directories=${dir} -c max_wal_senders=0 -c log_directory=${dir} -c logging_collector=off`;
-    run(path.join(bin, "pg_ctl"), ["-D", data, "-o", options, "-w", "-t", "600", "-l", path.join(dir, "server.log"), "start"]);
+    /* Debian keeps postgresql.conf and pg_hba.conf in /etc/postgresql, outside the data directory
+       pgBackRest copies, so a restore has none: give the scratch server its own. */
+    const capacity = (await capacitySettings(LIVE)).map((r) => `${r.name} = '${r.setting}'`).join("\n");
+    fs.writeFileSync(path.join(data, "postgresql.conf"), `# restore drill\nfsync = off\n${capacity}\n`);
+    fs.writeFileSync(path.join(data, "pg_hba.conf"), "local all all trust\n");
+    fs.writeFileSync(path.join(data, "pg_ident.conf"), "");
+    const options = `-p ${port} -c archive_mode=off -c archive_command=/bin/true -c listen_addresses= -c unix_socket_directories=${dir}`;
+    try {
+      run(path.join(bin, "pg_ctl"), ["-D", data, "-o", options, "-w", "-t", "600", "-l", path.join(dir, "server.log"), "start"]);
+    } catch (e) {
+      const lines = fs.existsSync(path.join(dir, "server.log")) ? fs.readFileSync(path.join(dir, "server.log"), "utf8").trim().split("\n") : [];
+      const bad = lines.filter((l) => /FATAL|PANIC|ERROR/.test(l));
+      const log = (bad.length ? bad : lines.slice(-4)).slice(0, 3).map((l) => l.replace(/^\S+ \S+ \S+ \[\d+\] /, "")).join(" | ");
+      throw new Error(`the restored server did not start: ${log || e.message}`);
+    }
     running = true;
     const dbName = new URL(LIVE).pathname.slice(1) || "postgres";
     const counts = await tableCounts(`postgres://${os.userInfo().username}@/${dbName}?host=${encodeURIComponent(dir)}&port=${port}`);
@@ -107,7 +132,8 @@ try {
       results.push(r);
       console.log(`[drill] repo${key} ${r.label}: ${r.ok ? "restored and readable" : `FAILED, ${r.problem}`} (${r.seconds}s, ${r.rowsRestored} rows)`);
     } catch (e) {
-      const detail = String(e?.stderr || e?.message || e).trim().split("\n").slice(-3).join(" ").slice(0, 400);
+      const lines = String(e?.stderr || e?.message || e).trim().split("\n").map((l) => l.trim()).filter(Boolean);
+      const detail = (lines.filter((l) => /\bERROR\b/.test(l))[0] ?? lines.slice(-3).join(" ")).slice(0, 400);
       results.push({ repo: key, ok: false, problem: detail });
       console.error(`[drill] repo${key} FAILED: ${detail}`);
     }

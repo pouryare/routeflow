@@ -38,7 +38,7 @@ Add `EnvironmentFile=/etc/routeflow/env` to the app's own unit. If you set `PG_A
 
 1. Check out the repository on the server (`/opt/routeflow`), `npm ci`, and have Node 22 or newer.
 2. If `apt.postgresql.org` is not reachable from the server, set `PGDG_URL` to a mirror you can reach.
-3. On the second machine, create a user for the copies and a folder: `useradd -m rfbackup; mkdir /srv/routeflow-pgbackrest; chown rfbackup /srv/routeflow-pgbackrest`.
+3. On the second machine, create a user for the copies and a folder: `useradd -m rfbackup; mkdir /srv/routeflow-pgbackrest; chown rfbackup /srv/routeflow-pgbackrest`. Also raise that user's open-file limit: `printf 'rfbackup soft nofile 65536\nrfbackup hard nofile 65536\n' > /etc/security/limits.d/routeflow-backup.conf`. pgBackRest 2.50 keeps a file handle open per file it reads over SFTP, and the default limit of 1024 stops a restore after about 1,000 files (found by the restore drill; the backups themselves were fine).
 4. On the server: `sudo OFFSITE_HOST=<second machine> OFFSITE_USER=rfbackup OFFSITE_PATH=/srv/routeflow-pgbackrest db/server/install.sh`. It prints a public key; add it to `~rfbackup/.ssh/authorized_keys` on the second machine and run the script again (the stanza check needs the key to work).
 5. Copy `/etc/pgbackrest/cipher-pass` to a place that is not on either machine. Without it the backups cannot be read.
 6. `sudo systemctl start routeflow-backup@full`, then `journalctl -u routeflow-backup@full`. Then `node scripts/pg/doctor.mjs` (with the env from `/etc/routeflow/env`) should end with no FAIL. The owner's status page (`/sales/admin/status`) shows the backup as soon as `backup-status.json` exists.

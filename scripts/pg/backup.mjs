@@ -37,6 +37,13 @@ if (!["full", "diff", "incr"].includes(type)) {
   process.exit(2);
 }
 
+/** The line that says what went wrong: pgBackRest's own ERROR, else the last few lines. */
+const why = (e) => {
+  const lines = String(e?.stderr || e?.stdout || e?.message || e).trim().split("\n").map((l) => l.trim()).filter(Boolean);
+  const errors = lines.filter((l) => /\bERROR\b/.test(l));
+  return (errors.length ? errors.slice(0, 2) : lines.slice(-3)).join(" ").replace(/^\S+ \S+ \S+ ERROR: /, "").slice(0, 500);
+};
+
 const pgbackrest = (...args) => execFileSync("pgbackrest", [`--stanza=${STANZA}`, ...args], { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
 const info = () => JSON.parse(pgbackrest("info", "--output=json"))[0];
 
@@ -97,7 +104,7 @@ try {
   writeStatus({ ok: true, startedAt, finishedAt: new Date().toISOString(), database, photos, error: null });
   console.log(`[backup] completed: ${database.file}${photos ? `, ${photos.file}` : ""}`);
 } catch (e) {
-  const detail = String(e?.stderr || e?.message || e).trim().split("\n").slice(-3).join(" ").slice(0, 500);
+  const detail = why(e);
   writeStatus({ ok: false, startedAt, finishedAt: new Date().toISOString(), database: null, photos: null, error: detail });
   console.error("[backup] FAILED:", detail);
   process.exitCode = 1;
