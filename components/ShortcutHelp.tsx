@@ -1,6 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
+import { Kbd } from "@heroui/react";
 import BottomSheet from "@/components/mobile/BottomSheet";
 import { helpRows, type Binding } from "@/lib/hotkeys";
 
@@ -47,9 +48,7 @@ export default function ShortcutHelp({
         {helpRows(bindings, pathname).map((s) => (
           <div key={s.keys} className="flex items-center justify-between gap-3">
             <dt className="shrink-0">
-              <kbd className="rounded-[var(--radius-sm)] border border-border bg-surface px-2 py-1 font-mono text-[length:var(--text-xs)] text-accent">
-                {s.keys}
-              </kbd>
+              <Kbd><Kbd.Content>{s.keys}</Kbd.Content></Kbd>
             </dt>
             <dd className="text-[length:var(--text-sm)] text-text-muted">{s.description}</dd>
           </div>

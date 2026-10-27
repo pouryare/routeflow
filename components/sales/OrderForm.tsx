@@ -9,6 +9,7 @@ import { faToman, faNum } from "@/lib/format";
 import { roundToman } from "@/lib/money";
 import { MAX_PACKS_PER_LINE, parsePacks } from "@/lib/orderLimits";
 import { Icon } from "@/components/meridian/Icon";
+import BusyIcon from "@/components/meridian/BusyIcon";
 import SmartPicker from "@/components/mobile/SmartPicker";
 import KeypadField from "@/components/mobile/KeypadField";
 import DayChips from "@/components/mobile/DayChips";
@@ -485,7 +486,7 @@ export default function OrderForm({
           disabled={busy || !customer || lines.length === 0}
           className="inline-flex items-center justify-center gap-[var(--space-2)] rounded-[var(--radius-md)] border border-[var(--accent)] bg-[var(--accent)] px-[var(--space-5)] py-[var(--space-3)] text-[length:var(--text-base)] font-medium text-accent-ink transition-[filter,transform] duration-[var(--dur-base)] hover:brightness-110 active:scale-[0.98] disabled:opacity-40"
         >
-          <Icon name="package" size="md" />
+          <BusyIcon busy={busy} name="package" />
           {busy ? "در حال ثبت…" : "ثبت پیش‌نویس"}
         </button>
       </div>

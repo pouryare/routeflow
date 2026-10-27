@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { Kbd } from "@heroui/react";
 import { Icon } from "@/components/meridian/Icon";
 import SearchOverlay from "@/components/meridian/SearchOverlay";
 import type { AppTab } from "@/lib/appNav";
@@ -50,7 +51,7 @@ export default function SearchSlot({ tabs }: { tabs: AppTab[] }) {
       >
         <Icon name="search" size="sm" />
         <span className="searchslot__label">جستجو…</span>
-        <kbd className="searchslot__kbd" aria-hidden="true">Ctrl K</kbd>
+        <Kbd className="searchslot__kbd" aria-hidden="true"><Kbd.Content>Ctrl K</Kbd.Content></Kbd>
       </button>
       <SearchOverlay open={open} onClose={close} tabs={tabs} />
     </>

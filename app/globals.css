@@ -18,6 +18,10 @@
 @import "@heroui/styles/components/description.css" layer(components);
 @import "@heroui/styles/components/button.css" layer(components);
 @import "@heroui/styles/components/spinner.css" layer(components);
+@import "@heroui/styles/components/progress-bar.css" layer(components);
+@import "@heroui/styles/components/kbd.css" layer(components);
+@import "@heroui/styles/components/tag.css" layer(components);
+@import "@heroui/styles/components/tag-group.css" layer(components);
 @import "@heroui/styles/components/drawer.css" layer(components);
 @import "@heroui/styles/components/toast.css" layer(components);
 @import "@heroui/styles/components/calendar.css" layer(components);
@@ -4432,10 +4436,8 @@ body {
 
 .meridian .tapflow .tf-nav { min-height: 44px; }
 
-.meridian .tapflow .tf-steps { display: flex; gap: 4px; max-width: 100%; }
-/* Shrinkable, never growing: a twelve-step flow must not push the row wider than the sheet. */
-.meridian .tapflow .tf-steps i { width: 18px; min-width: 3px; flex: 1 1 18px; max-width: 18px; height: 4px; border-radius: 999px; background: var(--line-2); }
-.meridian .tapflow .tf-steps i.on { background: var(--accent); }
+.meridian .activetags { display: flex; flex-wrap: wrap; gap: var(--space-2); padding-top: var(--space-2); }
+.meridian .tapflow .tf-steps { width: 96px; max-width: 40%; }
 .meridian .tapflow .tf-q { margin: 0; font-size: 19px; font-weight: 700; line-height: 1.4; text-wrap: balance; }
 .meridian .tapflow .tf-sub { margin: -6px 0 0; font-size: 13px; color: var(--muted); }
 .meridian .tapflow .tf-grid { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
