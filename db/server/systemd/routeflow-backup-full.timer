@@ -1,0 +1,10 @@
+[Unit]
+Description=RouteFlow full backup, weekly
+
+[Timer]
+OnCalendar=Sun *-*-* 01:30:00 Asia/Tehran
+Persistent=true
+Unit=routeflow-backup@full.service
+
+[Install]
+WantedBy=timers.target

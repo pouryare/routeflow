@@ -59,7 +59,7 @@ jobs:
 
   # PostgreSQL (Wave P): the server image builds, the generated baseline and types match the
   # SQLite schema, migrations pass Squawk, and the unit suite runs against PostgreSQL with no
-  # failure beyond tests/pg-known-failures.txt (which may only shrink).
+  # failure beyond tests/pg-known-failures.txt (which may only shrink), and the server scripts check out.
   postgres:
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -113,3 +113,13 @@ jobs:
 
       - name: Kysely types match the database
         run: DATABASE_URL=postgres://postgres:ci@localhost:5432/rf_template npx kysely-codegen --verify
+
+      # The server scripts (db/server, scripts/pg) parse, and the doctor passes on a freshly migrated
+      # database: every table with organization_id has its policy, the app role cannot see other
+      # companies, the sync triggers are there. Backups are skipped (no pgBackRest in this job).
+      - name: Server scripts parse; doctor passes on the migrated template
+        run: |
+          bash -n db/server/install.sh
+          for f in scripts/pg/*.mjs scripts/_db.mjs; do node --check "$f"; done
+          RF_EXPECT_PGBACKREST=0 PG_APP_ROLE=routeflow_app \
+            DATABASE_URL=postgres://postgres:ci@localhost:5432/rf_template node scripts/pg/doctor.mjs

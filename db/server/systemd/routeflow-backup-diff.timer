@@ -1,0 +1,10 @@
+[Unit]
+Description=RouteFlow differential backup, daily except Sunday
+
+[Timer]
+OnCalendar=Mon..Sat *-*-* 01:30:00 Asia/Tehran
+Persistent=true
+Unit=routeflow-backup@diff.service
+
+[Install]
+WantedBy=timers.target
