@@ -4,6 +4,7 @@ _Condensed 2026-10-23. Each finished piece of work is one line here; the full ea
 
 ## Done
 - [x] Actions minutes cut (`claude/project-thread-lb9196`): draft PRs skip CI, `main` runs only `check` after a merge, docs-only changes skip CI, shorter timeouts; secret scan for going public and `docs/make-repo-public.md`; `LICENSE` (all rights reserved)
+- [x] «Not done» batch: (?) on single figures (`GradientStat help`, 11 stat cards on the sales summary, dashboard and stock pages; copy in `lib/help/figures.ts`); notification feed rows, the receipt-photo picker (`FileTrigger`) and the map's saved-list, route, day-plan and customer-list buttons are HeroUI `Button`s now
 - [x] Shortlist audit of the Gemini technology list (decisions and one table row per adopted or later library in `docs/roadmap.md` 10.6; one server, manager-written quizzes) and `react-error-boundary` 6.1.6 added: one `WidgetBoundary` around every chart, sheet body, map, and the header search, bell and sync island, so one failing widget no longer replaces the page
 - [x] Full-app audit, 41 findings (`docs/archive/AUDIT-2026-10-20.md`), all fixed or decided across PR #24 and the steps that followed
 - [x] Performance pass (PR #17), mobile-first TapFlow rollout (PRs #26, #27), architecture audit steps 1–7 (PRs #43–#46 and later)
@@ -132,8 +133,8 @@ _Condensed 2026-10-23. Each finished piece of work is one line here; the full ea
 - [ ] `WidgetBoundary` logs to the browser console only; it should feed the structured logging and error tracker (F108) when those exist
 - [ ] Not guarded yet: the order form, pipeline and board panels (they sit inside the page-level error screen); add a boundary where a widget has failed on its own in practice
 - [ ] A desktop-only Modal and a Dropdown were not added: the sheet select with search (`SmartPicker`, `SearchableGroup`) covers select, combo box and dropdown on phones, and no screen needs a desktop yes/no modal yet; add one when a screen asks
-- [ ] The margin table could not be seen with real data in the demo database (checked with a mocked response); the (?) is on pages, shared sheets, pickers and the cards above; the driver and login pages sit outside `.meridian` and have none; figure-level help (one number inside a card) exists only for the dashboard's three figures
-- [ ] HeroUI move: the notification feed's rows, the receipt-photo label in `ExpenseFlow` (it wraps a file input) and the map's side panels are still hand-built; the location card's checkbox (the card is the tap target) stays native
+- [ ] The margin table could not be seen with real data in the demo database (checked with a mocked response); the (?) is on pages, shared sheets, pickers and the cards above; the driver and login pages sit outside `.meridian` and have none; figure-level help covers the 11 stat cards only, not figures inside charts or table rows
+- [ ] HeroUI move: the map's floating controls (`mapbtn` toggles, the search clear, the radius chips and the picker buttons in `LeadsMap` / `CoverageMap`) and the run panel's drag handle (pointer-drag, must stay native) are still hand-built; the location card's checkbox (the card is the tap target) stays native
 - [ ] Accounting tables and the pager use HeroUI's classes, not its Table and Pagination components (those are client React Aria grids and buttons; the reports are server pages with phone card rows and real page links)
 - [ ] The Leaflet zoom buttons are 36 px; the weather credit link on «برنامهٔ تحویل» is an inline link in a sentence (17 px)
 - [ ] HeroUI tab rows point `aria-controls` at a panel that is not there (the page under the row is the panel)

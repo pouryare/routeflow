@@ -96,12 +96,14 @@ export default async function StockPage() {
     <PageHeader route="/sales/stock" />
     <div className="flex flex-col gap-[var(--space-5)]">
       <div className="statrow">
-        <GradientStat tone="peach" label="ارزش کل انبار" value={faNum(totalValue)} unit="تومان" chip={`از ${faNum(stock.length)} کالای فعال`} />
+        <GradientStat tone="peach" label="ارزش کل انبار"
+          help="fig.stock-value" value={faNum(totalValue)} unit="تومان" chip={`از ${faNum(stock.length)} کالای فعال`} />
         <GradientStat
           tone="sand"
           small
           icon="warn"
           label="کالای بحرانی"
+          help="fig.stock-critical"
           value={faNum(critCount)}
           chip={critCount > 0 ? "زیر نقطهٔ سفارش -- نیاز به خرید فوری" : "چیزی زیر نقطهٔ سفارش نیست"}
           chipTone="amber"
@@ -111,6 +113,7 @@ export default async function StockPage() {
           small
           icon="receipt"
           label="خرید این ماه"
+          help="fig.purchases-month"
           value={`${faNum(monthPurchases.n)} فقره`}
           chip={`به ارزش ${faToman(monthPurchases.total)}`}
           chipTone="sky"
