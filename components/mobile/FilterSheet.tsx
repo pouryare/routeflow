@@ -1,5 +1,6 @@
 "use client";
 
+import { HelpHint, HelpRow } from "@/components/meridian/HelpHint";
 import { GoButton, SkipButton } from "@/components/tapflow/Answer";
 import BottomSheet from "@/components/mobile/BottomSheet";
 import { ChipGroup, type FilterGroup, isActive, neutralOf } from "@/components/mobile/ChipGroup";
@@ -11,6 +12,12 @@ export default function FilterSheet({ open, onClose, groups }: { open: boolean; 
   return (
     <BottomSheet open={open} title="فیلترها" onClose={onClose} closeLabel="بستن فیلترها">
       <div className="filtersheet">
+        <HelpRow>
+          <HelpHint title="فیلترها" label="راهنمای فیلترها">
+            <p className="mhelp__what">هر گروه را با لمس گزینه‌ها روشن کنید؛ فهرست پشت این صفحه همان لحظه تغییر می‌کند.</p>
+            <p className="mhelp__how">لمس دوبارهٔ یک گزینه آن را برمی‌دارد. «پاک کردن فیلترها» همه را برمی‌دارد.</p>
+          </HelpHint>
+        </HelpRow>
         {groups.map((g) => (
           <section key={g.id} className="filtersheet__group">
             <div className="tf-group">{g.label}</div>
