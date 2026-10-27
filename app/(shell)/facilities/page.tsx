@@ -1,5 +1,6 @@
 "use client";
 
+import { FieldInput } from "@/components/FieldInput";
 import PlaceEntry from "@/components/flows/PlaceEntry";
 import { useRunAfterMount } from "@/lib/useRunAfterMount";
 import { friendlyError } from "@/lib/userMessage";
@@ -280,12 +281,12 @@ export default function FacilitiesPage() {
                         }}
                         className="flex flex-wrap items-center gap-2"
                       >
-                        <input
+                        <FieldInput
                           value={renameDraft}
                           onChange={(e) => setRenameDraft(e.target.value)}
                           autoFocus
                           onKeyDown={(e) => e.key === "Escape" && setRenamingId(null)}
-                          className="min-w-40 flex-1 rounded-[var(--radius-sm)] border border-accent bg-surface px-2 py-1 text-[length:var(--text-sm)] text-text outline-none"
+                          className="min-w-40 flex-1 text-[length:var(--text-sm)] text-text"
                         />
                         <button
                           type="submit"
@@ -411,11 +412,11 @@ export default function FacilitiesPage() {
           {/* On a phone: kind, name, position. The form below stays from md up. */}
           <PlaceEntry onAdded={() => void load()} />
           <div className="hidden flex-wrap gap-2 md:flex">
-            <label className="flex flex-col gap-1 text-xs text-text-muted">نام مکان<input
+            <label className="flex flex-col gap-1 text-xs text-text-muted">نام مکان<FieldInput
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
              
-              className="min-w-40 flex-1 rounded-[var(--radius-md)] border border-border bg-surface px-3 py-2 text-[length:var(--text-sm)] text-text outline-none transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] focus:border-accent w-full"
+              className="min-w-40 flex-1 text-[length:var(--text-sm)] text-text w-full"
             /></label>
             <ChipGroup
               group={{ id: "kind", label: "نوع مکان", mode: "single", neutral: "__none", value: newKind,

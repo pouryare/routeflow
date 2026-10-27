@@ -1,5 +1,6 @@
 "use client";
 
+import { FieldInput } from "@/components/FieldInput";
 import { GoButton } from "@/components/tapflow/Answer";
 import { useEffect, useState } from "react";
 import { Icon } from "@/components/meridian/Icon";
@@ -71,14 +72,14 @@ export default function BasicsStep({ api, prefillPhone, onOpenExisting, onReques
 
   return (
     <>
-      <input className="tf-input" value={name} onChange={(e) => setName(e.target.value)} placeholder="نام کسب‌وکار" aria-label="نام کسب‌وکار" autoFocus={!name} />
-      <input className="tf-input ltr" value={phone}
+      <FieldInput  value={name} onChange={(e) => setName(e.target.value)} placeholder="نام کسب‌وکار" aria-label="نام کسب‌وکار" autoFocus={!name} />
+      <FieldInput className="ltr" value={phone}
         onChange={(e) => { setPhone(sanitizePhoneInput(e.target.value)); setBranchOf(null); }}
         onBlur={() => setPhoneTouched(true)}
         placeholder={foodApp ? "تلفن (اگر دارید)" : "0912 ___ ____"} aria-label="تلفن" type="tel" inputMode="tel"
         aria-invalid={invalid} aria-describedby={invalid ? "lead-phone-error" : undefined} />
       {invalid ? <p id="lead-phone-error" role="alert" className="tf-error">شماره تلفن معتبر وارد کنید؛ فقط رقم و پیش‌شمارهٔ ایران مجاز است.</p> : null}
-      <input className="tf-input ltr" value={instagram} onChange={(e) => { setInstagram(e.target.value); setBranchOf(null); }} placeholder="اینستاگرام: ‎@page (اختیاری)" aria-label="صفحهٔ اینستاگرام" inputMode="url" autoCapitalize="none" />
+      <FieldInput className="ltr" value={instagram} onChange={(e) => { setInstagram(e.target.value); setBranchOf(null); }} placeholder="اینستاگرام: ‎@page (اختیاری)" aria-label="صفحهٔ اینستاگرام" inputMode="url" autoCapitalize="none" />
       {checkFailedShown ? (
         <div className="tf-card block">
           <b>بررسی تکراری‌بودن انجام نشد</b>

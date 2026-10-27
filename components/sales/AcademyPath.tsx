@@ -1,5 +1,6 @@
 "use client";
 
+import { FieldInput } from "@/components/FieldInput";
 import { useMemo, useState } from "react";
 import { Icon } from "@/components/meridian/Icon";
 import { faNum } from "@/lib/format";
@@ -128,7 +129,7 @@ export default function AcademyPath({ cards, modules, done }: { cards: Card[]; m
           </h3>
           <label className="acad__search">
             <Icon name="search" size="sm" />
-            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="جستجو در پاسخ‌ها…" aria-label="جستجو در پاسخ‌ها" />
+            <FieldInput value={q} onChange={(e) => setQ(e.target.value)} placeholder="جستجو در پاسخ‌ها…" aria-label="جستجو در پاسخ‌ها" />
           </label>
         </div>
         {filtered.length === 0 ? (

@@ -1,5 +1,6 @@
 "use client";
 
+import { FieldInput } from "@/components/FieldInput";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import SectionHead from "@/components/meridian/SectionHead";
@@ -97,7 +98,7 @@ export default function FounderSecurity() {
             <Icon name="link" size="md" />
             باز کردن در برنامه
           </a>
-          <input type="text" inputMode="numeric" autoComplete="one-time-code" dir="ltr" placeholder="000000" value={code} onChange={(e) => setCode(e.target.value)} className={INPUT} aria-label="کد ۶ رقمی" />
+          <FieldInput type="text" inputMode="numeric" autoComplete="one-time-code" dir="ltr" placeholder="000000" value={code} onChange={(e) => setCode(e.target.value)} className={INPUT} aria-label="کد ۶ رقمی" />
           <button type="button" className={BUTTON} disabled={busy || !code.trim()} onClick={() => void act("confirm")}>
             <Icon name="check" size="md" />
             تأیید و فعال‌سازی
@@ -105,7 +106,7 @@ export default function FounderSecurity() {
         </div>
       ) : status.enabled ? (
         <div className="flex flex-col gap-[var(--space-2)]">
-          <input type="text" inputMode="numeric" autoComplete="one-time-code" dir="ltr" placeholder="کد برای غیرفعال‌سازی" value={code} onChange={(e) => setCode(e.target.value)} className={INPUT} aria-label="کد فعلی" />
+          <FieldInput type="text" inputMode="numeric" autoComplete="one-time-code" dir="ltr" placeholder="کد برای غیرفعال‌سازی" value={code} onChange={(e) => setCode(e.target.value)} className={INPUT} aria-label="کد فعلی" />
           <button type="button" className={GHOST} disabled={busy || !code.trim()} onClick={() => void act("disable")}>
             <Icon name="x" size="md" />
             غیرفعال کردن

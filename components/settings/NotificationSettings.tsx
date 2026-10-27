@@ -1,5 +1,6 @@
 "use client";
 
+import { FieldInput } from "@/components/FieldInput";
 import ToggleSwitch from "@/components/ToggleSwitch";
 
 import { useCallback, useMemo, useState } from "react";
@@ -217,7 +218,7 @@ export default function NotificationSettings({ initial }: { initial: PrefsMatrix
             <div className="flex flex-wrap items-end gap-3 border-t border-border pt-3">
               <label className="flex flex-col gap-1">
                 <span className="text-[length:var(--text-xs)] text-text-muted">شروع سکوت</span>
-                <input
+                <FieldInput
                   type="time"
                   defaultValue={s.quiet_start ?? ""}
                   disabled={off}
@@ -225,12 +226,12 @@ export default function NotificationSettings({ initial }: { initial: PrefsMatrix
                     const v = e.target.value || null;
                     if (v !== s.quiet_start) patchChannel(ch, { quiet_start: v });
                   }}
-                  className="rounded-[var(--radius-md)] border border-border bg-surface px-2 py-1 text-[length:var(--text-sm)] text-text disabled:opacity-40"
+                  className="text-[length:var(--text-sm)] text-text"
                 />
               </label>
               <label className="flex flex-col gap-1">
                 <span className="text-[length:var(--text-xs)] text-text-muted">پایان سکوت</span>
-                <input
+                <FieldInput
                   type="time"
                   defaultValue={s.quiet_end ?? ""}
                   disabled={off}
@@ -238,7 +239,7 @@ export default function NotificationSettings({ initial }: { initial: PrefsMatrix
                     const v = e.target.value || null;
                     if (v !== s.quiet_end) patchChannel(ch, { quiet_end: v });
                   }}
-                  className="rounded-[var(--radius-md)] border border-border bg-surface px-2 py-1 text-[length:var(--text-sm)] text-text disabled:opacity-40"
+                  className="text-[length:var(--text-sm)] text-text"
                 />
               </label>
               <CheckField

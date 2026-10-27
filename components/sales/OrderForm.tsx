@@ -1,5 +1,6 @@
 "use client";
 
+import { FieldInput } from "@/components/FieldInput";
 import { useEffect, useMemo, useState } from "react";
 import { friendlyError } from "@/lib/userMessage";
 import { useRouter } from "next/navigation";
@@ -354,7 +355,7 @@ export default function OrderForm({
           <label className={LABEL} htmlFor="notes">
             یادداشت
           </label>
-          <input
+          <FieldInput
             id="notes"
             className={FIELD}
             value={notes}

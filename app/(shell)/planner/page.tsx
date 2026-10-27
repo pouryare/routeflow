@@ -1,5 +1,6 @@
 "use client";
 
+import { FieldInput } from "@/components/FieldInput";
 import VisitPlanEntry from "@/components/flows/VisitPlanEntry";
 import { useRunAfterMount } from "@/lib/useRunAfterMount";
 import { friendlyError } from "@/lib/userMessage";
@@ -706,11 +707,11 @@ export default function PlannerPage() {
           {/* On a phone: two taps, no keyboard. The search box stays from md up. */}
           <VisitPlanEntry customers={customers} leads={leads} selectedDate={selectedDate} onAdded={loadWeek} />
           <div className="relative hidden md:block">
-            <input
+            <FieldInput
               value={addQuery}
               onChange={(e) => setAddQuery(e.target.value)}
               placeholder="نام مشتری یا سرنخ…" aria-label="نام مشتری یا سرنخ"
-              className="w-full rounded-[var(--radius-md)] border border-border bg-surface px-3 py-2 text-[length:var(--text-sm)] text-text outline-none transition-[border-color] duration-[var(--dur-base)] ease-[var(--ease-out)] placeholder:text-text-faint focus:border-accent"
+              className="w-full text-[length:var(--text-sm)] text-text"
             />
             {addCandidates.length > 0 && (
               <div className="absolute z-10 mt-1 w-full overflow-hidden rounded-[var(--radius-md)] border border-border bg-surface-raised elevate-accent">

@@ -1,4 +1,5 @@
 "use client";
+import { FieldInput } from "@/components/FieldInput";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import type { Profile } from "@/lib/repo/crm/profile";
 import { BUSINESS_TYPES, BUSINESS_TYPE_LABEL, PRICE_TIERS, PRICE_TIER_LABEL, isOneOf } from "@/lib/crm/vocab";
@@ -119,7 +120,7 @@ export default function BusinessDetails({ business, canWrite, disabled, onPatch,
             })}
           </span>
         ) : (
-          <input autoFocus className="tf-input" aria-label={row.label} value={value} inputMode={row.kind === "phone" ? "tel" : "text"}
+          <FieldInput autoFocus  aria-label={row.label} value={value} inputMode={row.kind === "phone" ? "tel" : "text"}
             dir={row.kind === "phone" ? "ltr" : undefined}
             onChange={e => setEdit(cur => cur && { ...cur, value: row.kind === "phone" ? sanitizePhoneInput(e.target.value) : e.target.value })} />
         )}

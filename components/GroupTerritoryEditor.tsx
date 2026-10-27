@@ -1,5 +1,6 @@
 "use client";
 
+import { FieldInput } from "@/components/FieldInput";
 import { useMemo, useState } from "react";
 import { friendlyError } from "@/lib/userMessage";
 import { Icon } from "@/components/meridian/Icon";
@@ -89,11 +90,11 @@ export default function GroupTerritoryEditor({
       <h2 className="sechead__title mb-3">تخصیص محدوده</h2>
 
       <div className="mb-3 flex flex-wrap gap-2">
-        <input
+        <FieldInput
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
           placeholder="جستجوی منطقه یا محله" aria-label="جستجوی منطقه یا محله"
-          className="min-w-48 flex-1 rounded-md border border-border bg-surface-raised px-3 py-2 text-right text-sm text-text outline-none placeholder:text-text-faint focus:border-accent"
+          className="min-w-48 flex-1 text-right text-text"
         />
         <ChipGroup
           group={{ id: "owner", label: "فیلتر مالک", mode: "single", neutral: "all", value: String(ownerFilter),

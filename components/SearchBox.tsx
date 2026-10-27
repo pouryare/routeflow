@@ -1,5 +1,6 @@
 "use client";
 
+import { FieldInput } from "@/components/FieldInput";
 import FilterChips from "@/components/mobile/FilterChips";
 import { friendlyError } from "@/lib/userMessage";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -334,7 +335,7 @@ export default function SearchBox({
       ) : (
       <>
       <div className="relative">
-      <input
+      <FieldInput
         ref={inputRef ?? localInputRef}
         value={externalValue ?? query}
         onChange={(e) => {

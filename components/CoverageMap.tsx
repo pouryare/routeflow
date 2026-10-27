@@ -1,5 +1,6 @@
 "use client";
 
+import { FieldInput } from "@/components/FieldInput";
 import SmartPicker from "@/components/mobile/SmartPicker";
 import { tehranTodayIso } from "@/lib/jalali";
 import { useRunAfterMount } from "@/lib/useRunAfterMount";
@@ -1032,13 +1033,13 @@ export default function CoverageMap({
               filter of sections, so it is not mistaken for the customer search that
               floats over the map. */}
           <div className="relative mt-3">
-            <input
+            <FieldInput
               ref={sectionFilterRef}
               value={sectionFilter}
               onChange={(e) => setSectionFilter(e.target.value)}
               placeholder="فیلتر بخش‌ها…"
               aria-label="فیلتر بخش‌های پنل"
-              className="w-full rounded-[var(--radius-md)] border border-border bg-surface py-1.5 pe-2 ps-7 text-[length:var(--text-xs)] text-text outline-none transition-[border-color] duration-[var(--dur-base)] ease-[var(--ease-out)] placeholder:text-text-faint focus:border-accent"
+              className="w-full pe-2 ps-7 text-[length:var(--text-xs)] text-text"
             />
             {sectionFilter && (
               <button

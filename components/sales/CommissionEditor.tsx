@@ -1,5 +1,6 @@
 "use client";
 
+import { FieldInput } from "@/components/FieldInput";
 import { ChipGroup } from "@/components/mobile/FilterChips";
 import SmartPicker from "@/components/mobile/SmartPicker";
 import KeypadField from "@/components/mobile/KeypadField";
@@ -429,7 +430,7 @@ export default function CommissionEditor({
                 <label className="flex w-[110px] flex-col">
                   <span className="text-[length:var(--text-xs)] text-[var(--text-faint)]">از</span>
                   {i === 0 ? (
-                    <input className={FIELD} value={t.from} inputMode="decimal" disabled aria-label="شروع پلهٔ اول" readOnly />
+                    <FieldInput className={FIELD} value={t.from} inputMode="decimal" disabled aria-label="شروع پلهٔ اول" readOnly />
                   ) : (
                     <KeypadField
                       label={`شروع پلهٔ ${i + 1}`}
@@ -442,7 +443,7 @@ export default function CommissionEditor({
                 <label className="flex w-[110px] flex-col">
                   <span className="text-[length:var(--text-xs)] text-[var(--text-faint)]">تا</span>
                   {i === tierRows.length - 1 ? (
-                    <input className={FIELD} value="به بالا" disabled readOnly aria-label="پایان پلهٔ آخر" />
+                    <FieldInput className={FIELD} value="به بالا" disabled readOnly aria-label="پایان پلهٔ آخر" />
                   ) : (
                     <KeypadField
                       label={`پایان پلهٔ ${i + 1}`}

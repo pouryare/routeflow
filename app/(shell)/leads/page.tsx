@@ -1,5 +1,6 @@
 "use client";
 
+import { FieldInput } from "@/components/FieldInput";
 import FilterChips from "@/components/mobile/FilterChips";
 import dynamic from "next/dynamic";
 import Link from "next/link";
@@ -182,12 +183,12 @@ export default function LeadsPage() {
                 همه مکان‌ها ({faNum(available.length)})
               </h2>
               <div className="relative shrink-0">
-                <input
+                <FieldInput
                   type="text"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="جستجوی نام مکان…"
-                  className="w-48 rounded-[var(--radius-sm)] border border-border bg-bg px-3 py-1.5 pl-7 text-[length:var(--text-xs)] text-text placeholder:text-text-faint outline-none transition-colors focus:border-accent"
+                  className="w-48 text-[length:var(--text-xs)] text-text"
                   aria-label="جستجوی مکان"
                 />
                 {/* One icon, one side, swapped by emptiness: a magnifier while the field is

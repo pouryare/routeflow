@@ -1,5 +1,6 @@
 "use client";
 
+import { FieldInput } from "@/components/FieldInput";
 import JalaliDateInput from "@/components/meridian/JalaliDateInput";
 import { Icon } from "@/components/meridian/Icon";
 import { useState } from "react";
@@ -70,7 +71,7 @@ export default function QuickAdd({
       ) : null}
       <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12, color: "var(--muted)" }}>
         {kind === "reminder" ? "متن یادآوری" : "متن یادداشت"}
-        <input
+        <FieldInput
         value={text}
         onChange={(e) => setText(e.target.value)}
         placeholder={kind === "reminder" ? "مثلاً: تماس با مدیر خرید" : "مثلاً: ساعت کاری عوض شده"}

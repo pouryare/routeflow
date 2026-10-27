@@ -1,5 +1,6 @@
 "use client";
 
+import { FieldInput } from "@/components/FieldInput";
 import { useRunAfterMount } from "@/lib/useRunAfterMount";
 import { friendlyError } from "@/lib/userMessage";
 import { Icon } from "@/components/meridian/Icon";
@@ -114,11 +115,11 @@ export default function AdminGroupsPage() {
       <form onSubmit={create} className="rounded-lg border border-border bg-surface p-4">
         <h2 className="sechead__title mb-3">گروه تازه</h2>
         <div className="flex flex-wrap items-center gap-2">
-          <label className="flex flex-col gap-1 text-xs text-text-muted">نام گروه<input
+          <label className="flex flex-col gap-1 text-xs text-text-muted">نام گروه<FieldInput
             value={name}
             onChange={(e) => setName(e.target.value)}
            
-            className="min-w-48 flex-1 rounded-md border border-border bg-surface-raised px-3 py-2 text-right text-sm text-text outline-none placeholder:text-text-faint focus:border-accent w-full"
+            className="min-w-48 flex-1 text-right text-text w-full"
           /></label>
           {/* Fixed palette, not a colour picker: these tints share the map with the
               coverage-status colours, and a free-form choice could land on the exact red
@@ -190,7 +191,7 @@ export default function AdminGroupsPage() {
                 </div>
                 {renaming?.id === g.id ? (
                   <span className="flex flex-wrap items-center gap-[var(--space-2)] text-xs">
-                    <input
+                    <FieldInput
                       autoFocus
                       value={renaming.name}
                       onChange={(e) => setRenaming({ id: g.id, name: e.target.value })}
@@ -199,7 +200,7 @@ export default function AdminGroupsPage() {
                         if (e.key === "Escape") setRenaming(null);
                       }}
                       placeholder="نام تازهٔ گروه" aria-label="نام تازهٔ گروه"
-                      className="rounded border border-border bg-bg px-2 py-1 text-sm"
+                      
                     />
                     <button
                       type="button"

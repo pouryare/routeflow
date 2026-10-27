@@ -1,5 +1,6 @@
 "use client";
 
+import { FieldInput } from "@/components/FieldInput";
 import SmartPicker from "@/components/mobile/SmartPicker";
 import { useCardDrag } from "@/components/board/useCardDrag";
 import RunPanel, { type RunStop } from "@/components/leads/RunPanel";
@@ -177,13 +178,13 @@ export default function RouteSection({
             <div className="mb-3 flex flex-wrap items-center gap-2">
               <label className="flex items-center gap-1.5 text-[length:var(--text-xs)] text-text-muted">
                 تعداد مقصد در هر روز:
-                <input
+                <FieldInput
                   type="number"
                   min={2}
                   max={50}
                   value={stopsPerDay}
                   onChange={(e) => setStopsPerDay(Math.max(2, Number(e.target.value) || 2))}
-                  className="w-16 rounded-[var(--radius-sm)] border border-border bg-bg px-1.5 py-1 text-center text-text outline-none focus:border-accent"
+                  className="w-16 text-center text-text"
                 />
               </label>
               <button

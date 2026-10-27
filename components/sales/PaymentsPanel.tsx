@@ -1,5 +1,6 @@
 "use client";
 
+import { FieldInput } from "@/components/FieldInput";
 import { tehranTodayIso, faJalaliDateTime } from "@/lib/jalali";
 import { useRunAfterMount } from "@/lib/useRunAfterMount";
 import { friendlyError } from "@/lib/userMessage";
@@ -231,8 +232,8 @@ export default function PaymentsPanel({ customers }: { customers: Customer[] }) 
         <div className="grid grid-cols-2 gap-3">
           <label className="flex flex-col gap-1 text-sm">
             مبلغ (تومان)
-            <input
-              className="rounded border border-border bg-bg p-2 text-left font-mono"
+            <FieldInput
+              className="text-left font-mono"
               inputMode="numeric"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
@@ -255,8 +256,8 @@ export default function PaymentsPanel({ customers }: { customers: Customer[] }) 
           </label>
           <label className="flex flex-col gap-1 text-sm">
             شمارهٔ پیگیری / کارت‌خوان
-            <input
-              className="rounded border border-border bg-bg p-2"
+            <FieldInput
+              
               value={reference}
               onChange={(e) => setReference(e.target.value)}
             />
@@ -265,7 +266,7 @@ export default function PaymentsPanel({ customers }: { customers: Customer[] }) 
 
         <label className="flex flex-col gap-1 text-sm">
           یادداشت
-          <input className="rounded border border-border bg-bg p-2" value={note} onChange={(e) => setNote(e.target.value)} />
+          <FieldInput  value={note} onChange={(e) => setNote(e.target.value)} />
         </label>
 
         <p className="text-xs text-text-muted">
@@ -396,8 +397,8 @@ export default function PaymentsPanel({ customers }: { customers: Customer[] }) 
                               <p className="m-0 text-xs text-text-muted">
                                 این کار دریافت را حذف نمی‌کند: یک سند معکوس در دفتر ثبت می‌شود و ردیف اصلی خط‌خورده باقی می‌ماند.
                               </p>
-                              <label className="flex flex-col gap-1 text-xs text-text-muted">دلیل ابطال دریافت<input
-                                className="rounded border border-border bg-bg p-2 text-sm w-full"
+                              <label className="flex flex-col gap-1 text-xs text-text-muted">دلیل ابطال دریافت<FieldInput
+                                className="w-full"
                                 placeholder="دلیل ابطال را بنویسید"
                                 value={voiding.reason}
                                 onChange={(e) => setVoiding({ ...voiding, reason: e.target.value })}
