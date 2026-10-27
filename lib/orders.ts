@@ -66,6 +66,9 @@ export interface CreateOrderInput {
   /** Which control the reader used, kept so «هفتهٔ بعد» still reads as a week after it has
    *  been resolved to a concrete `requested_day`. */
   requested_kind?: RequestedKind | null;
+  /** Loading history (the demo seed): the order date may be older than the window a person
+   *  typing a slip is held to. Never set from a request. */
+  historical?: boolean;
   lines: LineInput[];
 }
 
@@ -230,7 +233,7 @@ export async function createOrder(
 ): Promise<{ id: number; order_no: string }> {
   if (input.lines.length === 0) throw new OrderError("سفارش بدون قلم ثبت نمی‌شود");
   assertValidLines(input.lines);
-  assertValidOrderDate(input.order_date);
+  if (!input.historical) assertValidOrderDate(input.order_date);
   if (input.notes != null && input.notes.length > MAX_NOTES_LENGTH) {
     throw new OrderError(`یادداشت حداکثر ${MAX_NOTES_LENGTH} نویسه است`);
   }

@@ -99,6 +99,7 @@ export async function run(ctx: SeedContext): Promise<void> {
         created_by: rng.pick(sellers),
         organization_id: ctx.orgId,
         salesperson_user_id: rng.pick(sellers),
+        historical: true,
         lines,
       });
       orders++;
