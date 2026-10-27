@@ -18,6 +18,8 @@
 @import "@heroui/styles/components/description.css" layer(components);
 @import "@heroui/styles/components/button.css" layer(components);
 @import "@heroui/styles/components/spinner.css" layer(components);
+@import "@heroui/styles/components/list-box.css" layer(components);
+@import "@heroui/styles/components/list-box-item.css" layer(components);
 @import "@heroui/styles/components/progress-bar.css" layer(components);
 @import "@heroui/styles/components/kbd.css" layer(components);
 @import "@heroui/styles/components/tag.css" layer(components);
@@ -4467,6 +4469,15 @@ body {
 .meridian .tf-opt.button, .meridian .tf-opt.toggle-button { height: auto; width: auto; white-space: normal; }
 .meridian .tf-opt.button[data-disabled="true"], .meridian .tf-opt.toggle-button[data-disabled="true"] { opacity: .45; cursor: not-allowed; }
 .meridian .tf-skip.button { height: 44px; width: auto; }
+/* A long answer list as a HeroUI ListBox (AnswerList): the rows are the same 52 px cards. */
+.meridian .tf-list { display: flex; flex-direction: column; gap: 8px; width: 100%; padding: 0; background: transparent; box-shadow: none; }
+.meridian .tf-list__row {
+  min-height: 54px; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 12px;
+  border-radius: var(--r-md); border: 1px solid var(--line); background: var(--card); color: var(--text);
+  font-size: 15px; font-weight: 500; cursor: pointer;
+}
+.meridian .tf-list__row[data-selected="true"] { border-color: var(--accent); background: var(--accent); color: var(--accent-ink); }
+.meridian .tf-list__row[data-focus-visible="true"] { outline: 2px solid var(--accent); outline-offset: 2px; }
 /* The search above a long answer list: HeroUI's SearchField, at the 52 px answer height and
    16 px type so a phone does not zoom into it. */
 .meridian .tf-search .search-field__group { height: 52px; border-radius: var(--r-md); }
@@ -5089,3 +5100,6 @@ body {
 @media (max-width: 767.98px) {
   .meridian .board.pipe .task { touch-action: pan-y; }
 }
+
+/* A sortable report table (HeroUI Table): the name column keeps room, the numbers scroll in the container. */
+.meridian .kblock .table__column:first-child, .meridian .kblock .table__cell:first-child { min-width: 130px; }

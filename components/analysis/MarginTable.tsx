@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Table, type SortDescriptor } from "@heroui/react";
 import { friendlyError } from "@/lib/userMessage";
 
 import { Icon } from "@/components/meridian/Icon";
-import { visibleRows } from "@/components/analysis/marginRows";
+import { sortRows, visibleRows } from "@/components/analysis/marginRows";
 interface MarginRow {
   key: string;
   label: string;
@@ -21,6 +22,14 @@ const DIMS: { key: string; label: string }[] = [
   { key: "phone_sales", label: "فروشنده" },
   { key: "group", label: "منطقه" },
   { key: "representative", label: "نماینده" },
+];
+
+const COLS: { id: keyof MarginRow; label: string }[] = [
+  { id: "label", label: "نام" },
+  { id: "revenue_toman", label: "فروش" },
+  { id: "margin_toman", label: "سود" },
+  { id: "margin_pct", label: "حاشیه" },
+  { id: "share_pct", label: "سهم سود" },
 ];
 
 const fa = (n: number) => Math.round(n).toLocaleString("fa-IR");
@@ -62,7 +71,10 @@ export default function MarginTable({ period }: { period: string }) {
   const fresh = loaded && loaded.dim === dim && loaded.period === period;
   const rows = fresh ? loaded.rows : null;
   const err = fresh ? loaded.err : null;
-  const { shown, hidden } = visibleRows(rows ?? [], expandedDim === dim);
+  // Sorted here, in the browser: the rows are already all loaded, so no round trip.
+  const [sort, setSort] = useState<SortDescriptor | undefined>(undefined);
+  const sorted = sortRows(rows ?? [], sort);
+  const { shown, hidden } = visibleRows(sorted, expandedDim === dim);
 
   return (
     <div className="kblock" dir="rtl">
@@ -94,42 +106,34 @@ export default function MarginTable({ period }: { period: string }) {
       )}
       {rows && rows.length > 0 && (
         <div className="kblock__body overflow-x-auto">
-          <table className="w-full border-collapse text-[length:var(--text-sm)]">
-            <thead>
-              <tr className="text-[var(--text-muted)]">
-                <th className="border-b border-[var(--border)] py-1 text-right font-medium">نام</th>
-                <th className="border-b border-[var(--border)] py-1 text-left font-medium">فروش</th>
-                <th className="border-b border-[var(--border)] py-1 text-left font-medium">سود</th>
-                <th className="border-b border-[var(--border)] py-1 text-left font-medium">حاشیه</th>
-                <th className="border-b border-[var(--border)] py-1 text-left font-medium">سهم سود</th>
-              </tr>
-            </thead>
-            <tbody>
-              {shown.map((r) => (
-                <tr key={r.key}>
-                  <td className="border-b border-[var(--border)] py-1 text-[var(--text)]">{r.label}</td>
-                  <td className="border-b border-[var(--border)] py-1 text-left tabular-nums text-[var(--text-muted)]">
-                    {fa(r.revenue_toman)}
-                  </td>
-                  <td
-                    className="border-b border-[var(--border)] py-1 text-left tabular-nums"
-                    style={{ color: r.margin_toman < 0 ? "var(--crit)" : "var(--text)" }}
-                  >
-                    {fa(r.margin_toman)}
-                  </td>
-                  <td
-                    className="border-b border-[var(--border)] py-1 text-left tabular-nums"
-                    style={{ color: r.margin_pct < 0.1 ? "var(--warn)" : "var(--text-muted)" }}
-                  >
-                    {Math.round(r.margin_pct * 100).toLocaleString("fa-IR")}٪
-                  </td>
-                  <td className="border-b border-[var(--border)] py-1 text-left tabular-nums text-[var(--text-muted)]">
-                    {Math.round(r.share_pct * 100).toLocaleString("fa-IR")}٪
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <Table>
+            <Table.ScrollContainer>
+              <Table.Content aria-label="حاشیهٔ مشارکتی" sortDescriptor={sort} onSortChange={setSort}>
+                <Table.Header>
+                  {COLS.map((c, i) => (
+                    <Table.Column key={c.id} id={c.id} isRowHeader={i === 0} allowsSorting>
+                      {({ sortDirection }) => <Table.SortableColumnHeader sortDirection={sortDirection}>{c.label}</Table.SortableColumnHeader>}
+                    </Table.Column>
+                  ))}
+                </Table.Header>
+                <Table.Body>
+                  {shown.map((r) => (
+                    <Table.Row key={r.key} id={r.key}>
+                      <Table.Cell>{r.label}</Table.Cell>
+                      <Table.Cell className="tabular-nums">{fa(r.revenue_toman)}</Table.Cell>
+                      <Table.Cell className="tabular-nums" style={{ color: r.margin_toman < 0 ? "var(--crit)" : undefined }}>
+                        {fa(r.margin_toman)}
+                      </Table.Cell>
+                      <Table.Cell className="tabular-nums" style={{ color: r.margin_pct < 0.1 ? "var(--warn)" : undefined }}>
+                        {Math.round(r.margin_pct * 100).toLocaleString("fa-IR")}٪
+                      </Table.Cell>
+                      <Table.Cell className="tabular-nums">{Math.round(r.share_pct * 100).toLocaleString("fa-IR")}٪</Table.Cell>
+                    </Table.Row>
+                  ))}
+                </Table.Body>
+              </Table.Content>
+            </Table.ScrollContainer>
+          </Table>
           {hidden > 0 && (
             <button
               type="button"

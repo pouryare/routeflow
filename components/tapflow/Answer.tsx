@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { Button, SearchField, ToggleButton } from "@heroui/react";
+import { Button, ListBox, SearchField, ToggleButton } from "@heroui/react";
 import { Icon, type IconName } from "@/components/meridian/Icon";
 
 /** The answer button every tap flow, picker and decision is made of: a HeroUI Button, or a
@@ -83,5 +83,40 @@ export function AnswerSearch({
         <SearchField.ClearButton aria-label="پاک کردن جستجو" />
       </SearchField.Group>
     </SearchField>
+  );
+}
+
+/** A long list of answers as a HeroUI ListBox: one tap picks, arrow keys move, a screen reader
+ *  hears "list, 12 items". Rows keep the 52 px answer size (`.tf-list` rules). `selected` marks
+ *  the current choice with a check; leave it undefined for a list of actions. */
+export function AnswerList({
+  items,
+  selected,
+  onPick,
+  label,
+  empty = "چیزی پیدا نشد",
+}: {
+  items: { id: string; label: string }[];
+  selected?: string;
+  onPick: (id: string) => void;
+  label: string;
+  empty?: string;
+}) {
+  return (
+    <ListBox
+      aria-label={label}
+      className="tf-list"
+      selectionMode="single"
+      selectedKeys={selected ? [selected] : []}
+      onAction={(k) => onPick(String(k))}
+      renderEmptyState={() => <p className="tf-note">{empty}</p>}
+    >
+      {items.map((i) => (
+        <ListBox.Item key={i.id} id={i.id} textValue={i.label} className="tf-list__row">
+          {i.label}
+          {selected === undefined ? null : <ListBox.ItemIndicator />}
+        </ListBox.Item>
+      ))}
+    </ListBox>
   );
 }
