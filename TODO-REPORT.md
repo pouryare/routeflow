@@ -123,9 +123,11 @@ _Condensed 2026-10-23. Each finished piece of work is one line here; the full ea
   - [x] Leaflet map buttons are 44 px; the (?) help is also on the filter sheet, item counter, decision deck and date sheet
   - [x] Filter groups with 9 or more options become one chip that opens a sheet with search and a ListBox (`SearchableGroup`)
 
+- [x] (?) help everywhere it is needed: 38 pages that had none (`lib/help/pages.ts`) and about 40 cards and sections (`lib/help/cards.ts`): dashboard, map sidebar, orders, pocket, predictions, analysis, accounting checks; `CollapsibleSection` and `SectionHead` take a `help` id; `tests/card-help.test.ts` keeps ids and copy in step
+
 ## Not done / gaps
 - [ ] A desktop-only Modal and a Dropdown were not added: the sheet select with search (`SmartPicker`, `SearchableGroup`) covers select, combo box and dropdown on phones, and no screen needs a desktop yes/no modal yet; add one when a screen asks
-- [ ] The margin table could not be seen with real data in the demo database (checked with a mocked response); the (?) is on the shared sheets and pickers, not on every page card
+- [ ] The margin table could not be seen with real data in the demo database (checked with a mocked response); the (?) is on pages, shared sheets, pickers and the cards above; the driver and login pages sit outside `.meridian` and have none; figure-level help (one number inside a card) exists only for the dashboard's three figures
 - [ ] HeroUI move: the notification feed's rows, the receipt-photo label in `ExpenseFlow` (it wraps a file input) and the map's side panels are still hand-built; the location card's checkbox (the card is the tap target) stays native
 - [ ] Accounting tables and the pager use HeroUI's classes, not its Table and Pagination components (those are client React Aria grids and buttons; the reports are server pages with phone card rows and real page links)
 - [ ] The Leaflet zoom buttons are 36 px; the weather credit link on «برنامهٔ تحویل» is an inline link in a sentence (17 px)

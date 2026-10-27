@@ -616,7 +616,7 @@ part's sheet in the same change that first uses it. What we use, and where it li
 | Report table, pager | HeroUI's `table` / `pagination` classes | `AcctTable`, `Pager`: server pages with real links, so only the classes |
 | Pocket card face and papers | `Card` (transparent and secondary) | `PocketCard`; our `.card` rule skips `.face` and `.doc`; the fan and the frosted face are ours |
 | Checkbox, switch, alert, popover | as named | |
-| (?) help beside a component | `Popover` | `components/meridian/HelpHint.tsx` (a Popover, not a Tooltip: tooltips never open on touch); `HelpRow` puts it on its own row |
+| (?) help beside a component, card or page | `Popover` | `components/meridian/HelpHint.tsx` (a Popover, not a Tooltip: tooltips never open on touch); `HelpRow` puts it on its own row |
 | Saving button | `Spinner` | `BusyIcon` swaps the button's icon while it works |
 | Progress | `ProgressBar` | `FlowProgress` (tap flows), `leadImport/ProgressBar` |
 | Applied filter | `TagGroup` / `Tag` | `ActiveTags`: removable tags under the filter chips |
