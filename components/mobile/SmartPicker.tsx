@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { HelpHint, HelpRow } from "@/components/meridian/HelpHint";
 import { Icon } from "@/components/meridian/Icon";
 import BottomSheet from "@/components/mobile/BottomSheet";
 import { AnswerButton, AnswerSearch, SkipButton } from "@/components/tapflow/Answer";
@@ -78,6 +79,12 @@ export default function SmartPicker({
       </button>
       <BottomSheet open={open} title={label} onClose={() => setOpen(false)} closeLabel="بستن فهرست">
         <div className="smartpicker">
+          <HelpRow>
+            <HelpHint title={`انتخاب ${label}`} label={`راهنمای انتخاب ${label}`}>
+              <p className="mhelp__what">موردهایی که بیشتر انتخاب کرده‌اید بالای فهرست می‌آیند و با یک لمس انتخاب می‌شوند.</p>
+              <p className="mhelp__how">برای پیدا کردن بقیه، نام را در کادر جستجو بنویسید.</p>
+            </HelpHint>
+          </HelpRow>
           {first.length > 0 && pinned && (
             <>
               <div className="tf-group">{pinned.label}</div>

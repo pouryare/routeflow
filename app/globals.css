@@ -1815,6 +1815,8 @@ body {
    while the header keeps the height its small glyph needs. The panel is drawn in `.meridian`
    (HeroUIProvider), so these rules are not nested under the card. */
 .meridian .mhelp { position: relative; display: inline-flex; }
+/* The row a component's (?) sits in: the end corner, above the component, about 20 px tall. */
+.meridian .helprow { display: flex; justify-content: flex-end; min-height: 20px; }
 .meridian .mhelp__trigger.button { width: 44px; min-width: 44px; height: 44px; margin: -12px; color: var(--muted); }
 .meridian .mhelp__trigger.button:hover { color: var(--ink); }
 .meridian .mhelp__panel { width: 18rem; max-width: calc(100vw - 2rem); direction: rtl; }

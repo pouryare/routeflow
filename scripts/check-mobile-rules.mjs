@@ -61,7 +61,7 @@ export const HERO_OVERLAYS = ["Modal", "AlertDialog", "Popover", "Dropdown", "To
 /** The files allowed to import one of HERO_OVERLAYS, each with the reason it is right there.
  *  A new importer fails the check until it is added here with its reason (section 8). */
 export const HERO_OVERLAY_REASONS = {
-  "components/meridian/CardHelp.tsx": "a few lines of help anchored to the (i) that asked for them; a sheet would cover the card it explains, and a Tooltip never opens on touch",
+  "components/meridian/HelpHint.tsx": "a few lines of help anchored to the (?) that asked for them; a sheet would cover the component it explains, and a Tooltip never opens on touch",
   "components/meridian/ProfileMenu.tsx": "the account and appearance panel hangs from the avatar in the top bar on every width; the phone's own way to these links is the «بیشتر» sheet",
   "components/AccentPicker.tsx": "ten swatches hanging from the colour button inside the profile panel and on the map; a sheet would hide the page the colour is being judged against",
   "components/FontPicker.tsx": "four faces hanging from the «آ» button inside the profile panel and on the map; a sheet would hide the text the face is being judged against",
