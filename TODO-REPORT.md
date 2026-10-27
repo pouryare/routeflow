@@ -3,6 +3,7 @@
 _Condensed 2026-10-23. Each finished piece of work is one line here; the full earlier text is in git history (`git log -p TODO-REPORT.md`)._
 
 ## Done
+- [x] Shortlist audit of the Gemini technology list (decisions and one table row per adopted or later library in `docs/roadmap.md` 10.6; one server, manager-written quizzes) and `react-error-boundary` 6.1.6 added: one `WidgetBoundary` around every chart, sheet body, map, and the header search, bell and sync island, so one failing widget no longer replaces the page
 - [x] Full-app audit, 41 findings (`docs/archive/AUDIT-2026-10-20.md`), all fixed or decided across PR #24 and the steps that followed
 - [x] Performance pass (PR #17), mobile-first TapFlow rollout (PRs #26, #27), architecture audit steps 1–7 (PRs #43–#46 and later)
 - [x] Sync pull same-millisecond tie fixed (PR #54); parked features F4–F148 written up; roadmap themes and waves; platform decisions in `docs/roadmap.md` section 10
@@ -124,6 +125,8 @@ _Condensed 2026-10-23. Each finished piece of work is one line here; the full ea
   - [x] Filter groups with 9 or more options become one chip that opens a sheet with search and a ListBox (`SearchableGroup`)
 
 ## Not done / gaps
+- [ ] `WidgetBoundary` logs to the browser console only; it should feed the structured logging and error tracker (F108) when those exist
+- [ ] Not guarded yet: the order form, pipeline and board panels (they sit inside the page-level error screen); add a boundary where a widget has failed on its own in practice
 - [ ] A desktop-only Modal and a Dropdown were not added: the sheet select with search (`SmartPicker`, `SearchableGroup`) covers select, combo box and dropdown on phones, and no screen needs a desktop yes/no modal yet; add one when a screen asks
 - [ ] The margin table could not be seen with real data in the demo database (checked with a mocked response); the (?) is on the shared sheets and pickers, not on every page card
 - [ ] HeroUI move: the notification feed's rows, the receipt-photo label in `ExpenseFlow` (it wraps a file input) and the map's side panels are still hand-built; the location card's checkbox (the card is the tap target) stays native
@@ -173,11 +176,12 @@ _Condensed 2026-10-23. Each finished piece of work is one line here; the full ea
 - [ ] Left for later: F104 (not reached; nothing blocks it), and, waiting on a missing prerequisite, F74, F77, F85, F86, F91, F114, F69, F31, F42, F34, F95, F140, F2, F5, F117, F38
 
 ## Next steps
-1. Owner checks the pocket cards, the (?) help, the filter sheets and the text fields on a real phone
-2. Move the remaining `tf-opt` menu links and the filter chips onto HeroUI parts, and the raw text fields onto `TextInput`
-3. PostgreSQL phase 4: the server, backups and cut-over by re-seeding; click the app through on Postgres first
-4. Decide whether the smoke suite joins CI (needs Chromium on the runner; map tiles stubbed)
-5. Owner checks the backup folder and picks an off-site destination (F138 part 2)
-6. Record delay reasons on deliveries so the reason report's delay section fills
-7. Check the outside services from the Iranian server
-8. Decide the Android distribution route before F6 starts
+1. Adopt the audited small libraries as their features start: `pino`, `web-vitals`, `lru-cache`, Valibot, `nuqs`, `@tanstack/react-virtual` (roadmap 10.6); design the chat on server-sent events plus an `events` table
+2. Owner checks the pocket cards, the (?) help, the filter sheets and the text fields on a real phone
+3. Move the remaining `tf-opt` menu links and the filter chips onto HeroUI parts, and the raw text fields onto `TextInput`
+4. PostgreSQL phase 4: the server, backups and cut-over by re-seeding; click the app through on Postgres first
+5. Decide whether the smoke suite joins CI (needs Chromium on the runner; map tiles stubbed)
+6. Owner checks the backup folder and picks an off-site destination (F138 part 2)
+7. Record delay reasons on deliveries so the reason report's delay section fills
+8. Check the outside services from the Iranian server
+9. Decide the Android distribution route before F6 starts

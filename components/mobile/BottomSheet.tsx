@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 import { Button, Drawer } from "@heroui/react";
 import { Icon } from "@/components/meridian/Icon";
+import WidgetBoundary from "@/components/WidgetBoundary";
 
 /** Every bottom sheet in the app, on a HeroUI bottom Drawer (docs/roadmap.md §10): the «بیشتر»
  *  list, the quick actions, the filters, a card's breakdown, the customer sheet and the tap
@@ -50,7 +51,7 @@ export default function BottomSheet({
               </Button>
             </Drawer.Header>
             <Drawer.Body className={bodyClassName} aria-live={live ? "polite" : undefined}>
-              {children}
+              <WidgetBoundary label="محتوای این برگه">{children}</WidgetBoundary>
             </Drawer.Body>
           </Drawer.Dialog>
         </Drawer.Content>

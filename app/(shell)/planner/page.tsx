@@ -35,6 +35,7 @@ import PlanDayList from "@/components/planner/PlanDayList";
 import PlanOriginPanel from "@/components/planner/PlanOriginPanel";
 
 import { LeadLocation, AddCandidate, PlanRow, toDateStr, dayLabel, dateLabel, Origin, RETURN_KEY, readReturnToOrigin, addCandidatesFor, pickCandidatesFor } from "@/lib/plannerView";
+import WidgetBoundary from "@/components/WidgetBoundary";
 
 const PlannerPickMap = dynamic(() => import("@/components/PlannerPickMap"), { ssr: false });
 const PlannerRouteMap = dynamic(() => import("@/components/PlannerRouteMap"), { ssr: false });
@@ -810,11 +811,11 @@ export default function PlannerPage() {
         {/* Keyed by the pane: a map first mounted inside a hidden pane has no size, so switching
             to it remounts the map in a visible container instead of leaving a grey box. */}
         <div className={`no-print ${pane === "list" ? "hidden md:block" : ""}`}>
-          <PlannerRouteMap key={pane} stops={routeStops} facilities={facilities} />
+          <WidgetBoundary label="نقشهٔ مسیر"><PlannerRouteMap key={pane} stops={routeStops} facilities={facilities} /></WidgetBoundary>
           {/* Choosing visits on the map: one pin each, or the nearest N to where the day starts. */}
           <div className="mt-4">
             <h2 className="sechead__title mb-2">انتخاب مکان‌ها از روی نقشه</h2>
-            <PlannerPickMap key={`pick-${pane}-${selectedDate}`} candidates={pickCandidates} origin={origin} dayLabel={dayLabel(new Date(selectedDate))} onAdd={addPicked} />
+            <WidgetBoundary label="نقشهٔ انتخاب مکان‌ها"><PlannerPickMap key={`pick-${pane}-${selectedDate}`} candidates={pickCandidates} origin={origin} dayLabel={dayLabel(new Date(selectedDate))} onAdd={addPicked} /></WidgetBoundary>
           </div>
         </div>
       </div>
