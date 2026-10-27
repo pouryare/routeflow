@@ -116,10 +116,17 @@ _Condensed 2026-10-23. Each finished piece of work is one line here; the full ea
   - [x] Picker list is a HeroUI ListBox (`AnswerList`); the picker sheet already is the select / combo box with search
   - [x] Margin report is a sortable HeroUI Table (sorted in the browser)
 
+- [x] HeroUI leftovers batch:
+  - [x] «بیشتر» and quick-action rows are `AnswerLink`s; CRM steps, filter sheet, keypad field and board move sheet use `GoButton`, `SkipButton`, `AnswerButton`; filter chips are HeroUI ToggleButtons
+  - [x] 81 raw text fields and textareas are HeroUI `Input` / `TextArea` (`FieldInput`, `FieldArea`); only file, checkbox, radio and range inputs stay native
+  - [x] Rules inside `.meridian` use the HeroUI colour names (288 uses renamed); the older names stay as aliases for the few rules outside it and for inline classes
+  - [x] Leaflet map buttons are 44 px; the (?) help is also on the filter sheet, item counter, decision deck and date sheet
+  - [x] Filter groups with 9 or more options become one chip that opens a sheet with search and a ListBox (`SearchableGroup`)
+
 ## Not done / gaps
-- [ ] Dropdown, Select, ComboBox and Modal were not added as separate parts: the picker sheet covers select / combo box, and no screen needs a desktop-only yes/no modal or a menu with search yet; add them when a screen asks
-- [ ] The margin table could not be seen with real data in the demo database (checked with a mocked response); the `(?)` is not yet on every component
-- [ ] HeroUI move: the filter chips, the «بیشتر» menu links (`tf-opt` links in BottomNav, QuickActions, FilterSheet, CRM flows, OrderForm, ExpenseFlow, DriverPicker) and the notification feed's rows are not on HeroUI parts yet; 86 raw text fields remain (only login and passwords use `TextInput`); the inline reset-password field in the users table and the location card's checkbox (the card is the tap target) stay native; the search overlay and the map's side panels are still hand-built
+- [ ] A desktop-only Modal and a Dropdown were not added: the sheet select with search (`SmartPicker`, `SearchableGroup`) covers select, combo box and dropdown on phones, and no screen needs a desktop yes/no modal yet; add one when a screen asks
+- [ ] The margin table could not be seen with real data in the demo database (checked with a mocked response); the (?) is on the shared sheets and pickers, not on every page card
+- [ ] HeroUI move: the notification feed's rows, the receipt-photo label in `ExpenseFlow` (it wraps a file input) and the map's side panels are still hand-built; the location card's checkbox (the card is the tap target) stays native
 - [ ] Accounting tables and the pager use HeroUI's classes, not its Table and Pagination components (those are client React Aria grids and buttons; the reports are server pages with phone card rows and real page links)
 - [ ] The Leaflet zoom buttons are 36 px; the weather credit link on «برنامهٔ تحویل» is an inline link in a sentence (17 px)
 - [ ] HeroUI tab rows point `aria-controls` at a panel that is not there (the page under the row is the panel)
@@ -166,7 +173,7 @@ _Condensed 2026-10-23. Each finished piece of work is one line here; the full ea
 - [ ] Left for later: F104 (not reached; nothing blocks it), and, waiting on a missing prerequisite, F74, F77, F85, F86, F91, F114, F69, F31, F42, F34, F95, F140, F2, F5, F117, F38
 
 ## Next steps
-1. Merge the HeroUI extras PR once CI is green (merge commit); owner checks the pocket cards and the new (?) on a real phone
+1. Owner checks the pocket cards, the (?) help, the filter sheets and the text fields on a real phone
 2. Move the remaining `tf-opt` menu links and the filter chips onto HeroUI parts, and the raw text fields onto `TextInput`
 3. PostgreSQL phase 4: the server, backups and cut-over by re-seeding; click the app through on Postgres first
 4. Decide whether the smoke suite joins CI (needs Chromium on the runner; map tiles stubbed)

@@ -604,9 +604,9 @@ part's sheet in the same change that first uses it. What we use, and where it li
 | Need | HeroUI part | Our wrapper / note |
 |---|---|---|
 | Button, icon button | `Button` | 44 px floor, 52 px for `size="lg"` (rule in `globals.css`, held by `tests/heroui-setup.test.ts`) |
-| Answer in a flow, picker or deck | `Button` / `ToggleButton` | `components/tapflow/Answer.tsx` (`AnswerButton`, `SkipButton`, `AnswerSearch`) |
+| Answer in a flow, picker or deck | `Button` / `ToggleButton` / `Link` | `components/tapflow/Answer.tsx` (`AnswerButton`, `GoButton`, `SkipButton`, `AnswerLink`, `AnswerSearch`, `AnswerList`) |
 | Search above a list | `SearchField` | `AnswerSearch`; 52 px, 16 px type |
-| Text field | `TextField`, `Input`, `InputGroup` | |
+| Text field | `TextField`, `Input`, `InputGroup`, `TextArea` | `TextInput` / `PasswordInput` for a labelled field with its error; `FieldInput` / `FieldArea` (`components/FieldInput.tsx`) for a bare field that has its own label or layout |
 | Sheet / overlay | `Drawer` | `components/mobile/BottomSheet.tsx`; never a hand-rolled modal |
 | Toast with undo | `Toast` | |
 | Day / date | `Calendar` (Shamsi) | `PersianCalendar` in `components/PersianDateField.tsx`; day chips first (`DayChips`, `ToggleButton`s) |
@@ -621,11 +621,11 @@ part's sheet in the same change that first uses it. What we use, and where it li
 | Progress | `ProgressBar` | `FlowProgress` (tap flows), `leadImport/ProgressBar` |
 | Applied filter | `TagGroup` / `Tag` | `ActiveTags`: removable tags under the filter chips |
 | Keyboard key | `Kbd` | shortcut help, search slot |
-| Long list of answers | `ListBox` | `AnswerList` (in `Answer.tsx`); `SmartPicker` is the sheet select / combo box with search |
+| Long list of answers | `ListBox` | `AnswerList` (in `Answer.tsx`); `SmartPicker` is the sheet select / combo box with search; a filter group with 9 or more options is `SearchableGroup` (`ChipGroup.tsx`): one chip, a sheet with search and a multi-select ListBox |
 | Sortable client table | `Table` | `MarginTable` (reports stay server pages) |
 
 Still ours, styled with the HeroUI token names: `Keypad`, `SwipeRow`, the phone bottom bar,
-`FilterChips`, the signature cards below, the charts, and the map markers.
+the signature cards below, the charts, and the map markers.
 
 - **Map marker** — 14px diamond, status fill, 2px `--bg` ring, status glow, idle ping.
 - **Facility marker** — `--facility`, distinguished by silhouette before color:

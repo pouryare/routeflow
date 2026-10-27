@@ -1,7 +1,11 @@
 "use client";
 
-import { ToggleButton } from "@heroui/react";
+import { useState } from "react";
+import { Button, ListBox, ToggleButton, type Selection } from "@heroui/react";
 import { Icon } from "@/components/meridian/Icon";
+import BottomSheet from "@/components/mobile/BottomSheet";
+import { AnswerSearch, GoButton } from "@/components/tapflow/Answer";
+import { faNum } from "@/lib/format";
 
 /* The chip primitives shared by FilterChips (the row) and FilterSheet (the tucked-away groups).
  * They used to live in FilterChips.tsx, which imports FilterSheet, which imports them back: an
@@ -54,5 +58,53 @@ export function ChipGroup({ group, wrap = false }: { group: FilterGroup; wrap?: 
         </ToggleButton>
       ))}
     </div>
+  );
+}
+
+/** A group with more options than fit a row of chips (customers' salespeople, product groups)
+ *  becomes one chip that opens a sheet: a search box, then the options as a HeroUI ListBox,
+ *  ticked as they are tapped. Always with search, never a long scrolling row. */
+export const SEARCHABLE_FROM = 9;
+
+export function SearchableGroup({ group }: { group: FilterGroup }) {
+  const [open, setOpen] = useState(false);
+  const [q, setQ] = useState("");
+  const multi = group.mode === "multi";
+  const chosen = multi ? (group.value as string[]) : isActive(group) ? [group.value as string] : [];
+  const shown = group.options.filter((o) => o.label.includes(q.trim()));
+  const onSelect = (keys: Selection) => {
+    const next = keys === "all" ? group.options.map((o) => o.id) : [...keys].map(String);
+    if (multi) group.onChange(next);
+    else group.onChange(next.find((k) => k !== group.value) ?? neutralOf(group));
+  };
+  return (
+    <>
+      <Button variant="secondary" className={`filterchip${chosen.length ? " filterchip--on" : ""}`} aria-haspopup="dialog" onPress={() => { setQ(""); setOpen(true); }}>
+        <Icon name="filter" size="sm" />
+        {group.label}
+        {chosen.length > 0 && <b className="filterchip__badge">{faNum(chosen.length)}</b>}
+      </Button>
+      <BottomSheet open={open} title={group.label} onClose={() => setOpen(false)} closeLabel={`بستن فهرست ${group.label}`}>
+        <div className="smartpicker">
+          <AnswerSearch value={q} onChange={setQ} label={`جستجوی ${group.label}`} />
+          <ListBox
+            aria-label={group.label}
+            className="tf-list"
+            selectionMode={multi ? "multiple" : "single"}
+            selectedKeys={chosen}
+            onSelectionChange={onSelect}
+            renderEmptyState={() => <p className="tf-note">چیزی پیدا نشد</p>}
+          >
+            {shown.map((o) => (
+              <ListBox.Item key={o.id} id={o.id} textValue={o.label} className="tf-list__row">
+                {o.label}
+                <ListBox.ItemIndicator />
+              </ListBox.Item>
+            ))}
+          </ListBox>
+          <GoButton icon="check" onPress={() => setOpen(false)}>تأیید</GoButton>
+        </div>
+      </BottomSheet>
+    </>
   );
 }
