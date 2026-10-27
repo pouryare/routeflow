@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { Button, ListBox, SearchField, ToggleButton } from "@heroui/react";
+import { Button, Link, ListBox, SearchField, ToggleButton, buttonVariants } from "@heroui/react";
 import { Icon, type IconName } from "@/components/meridian/Icon";
 
 /** The answer button every tap flow, picker and decision is made of: a HeroUI Button, or a
@@ -50,9 +50,9 @@ export function AnswerButton({
 }
 
 /** The quiet way out under a list of answers: «کالا مشخص نیست», «بستن». */
-export function SkipButton({ icon = "arrow-left", onPress, children }: { icon?: IconName; onPress: () => void; children: ReactNode }) {
+export function SkipButton({ icon = "arrow-left", isDisabled, onPress, children }: { icon?: IconName; isDisabled?: boolean; onPress: () => void; children: ReactNode }) {
   return (
-    <Button variant="ghost" className="tf-skip" onPress={onPress}>
+    <Button variant="ghost" className="tf-skip" isDisabled={isDisabled} onPress={onPress}>
       <Icon name={icon} size="md" />
       {children}
     </Button>
@@ -118,5 +118,28 @@ export function AnswerList({
         </ListBox.Item>
       ))}
     </ListBox>
+  );
+}
+
+/** The one confirming button under an answer step: HeroUI's primary Button at the 52 px answer
+ *  size, full width. Used where a step has typed or chosen something and needs «ادامه». */
+export function GoButton({ icon, isDisabled, onPress, children }: { icon?: IconName; isDisabled?: boolean; onPress: () => void; children: ReactNode }) {
+  return (
+    <Button variant="primary" size="lg" fullWidth className="tf-go" isDisabled={isDisabled} onPress={onPress}>
+      {icon ? <Icon name={icon} size="md" /> : null}
+      {children}
+    </Button>
+  );
+}
+
+/** An answer that is a page: HeroUI's Link wearing the secondary Button look and the `tf-opt`
+ *  card shape, so the «بیشتر» menu rows match the answers around them. Client navigation goes
+ *  through HeroUIProvider's RouterProvider. */
+export function AnswerLink({ href, icon, onPress, children }: { href: string; icon?: IconName; onPress?: () => void; children: ReactNode }) {
+  return (
+    <Link href={href} onPress={onPress} className={`${buttonVariants({ variant: "secondary" })} tf-opt`}>
+      {icon ? <Icon name={icon} size="md" /> : null}
+      {children}
+    </Link>
   );
 }

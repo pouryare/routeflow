@@ -1,5 +1,6 @@
 "use client";
 
+import { FieldInput } from "@/components/FieldInput";
 import { useState } from "react";
 import CollapsibleSection from "@/components/CollapsibleSection";
 import { Icon } from "@/components/meridian/Icon";
@@ -114,7 +115,7 @@ export default function LeadListsBar({
             return (
               <li key={list.id} className={`rounded-[var(--radius-md)] border px-3 py-2 ${isActive ? "border-accent bg-accent/5" : "border-border bg-surface"}`}>
                 {isEditing ? (
-                  <input
+                  <FieldInput
                     autoFocus
                     value={draft}
                     onChange={(e) => setDraft(e.target.value)}
@@ -124,7 +125,7 @@ export default function LeadListsBar({
                       if (e.key === "Escape") setEditingId(null);
                     }}
                     aria-label={`نام جدید برای ${list.name}`}
-                    className="w-full rounded-[var(--radius-sm)] border border-border bg-bg px-2 py-1 text-[length:var(--text-xs)] text-text outline-none focus:border-accent"
+                    className="w-full text-[length:var(--text-xs)] text-text"
                   />
                 ) : (
                   <>
@@ -222,14 +223,14 @@ export default function LeadListsBar({
       )}
 
       <div className="mt-3 flex items-center gap-2">
-        <input
+        <FieldInput
           type="text"
           value={newName}
           onChange={(e) => onNewNameChange(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter" && newName.trim()) onCreate(newName); }}
           placeholder="نام فهرست تازه…"
           aria-label="نام فهرست تازه"
-          className="flex-1 rounded-[var(--radius-sm)] border border-border bg-bg px-2 py-1.5 text-[length:var(--text-xs)] text-text placeholder:text-text-faint outline-none focus:border-accent"
+          className="flex-1 text-[length:var(--text-xs)] text-text"
         />
         <button
           type="button"

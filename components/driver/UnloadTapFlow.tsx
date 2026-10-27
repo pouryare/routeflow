@@ -14,6 +14,7 @@
 //
 // More than one line is the NORMAL case — «خراب ۵ کیلو» beside «تاریخ مصرف گذشته ۲ کارتن».
 
+import { FieldInput } from "@/components/FieldInput";
 import BusyIcon from "@/components/meridian/BusyIcon";
 import { Icon } from "@/components/meridian/Icon";
 import { useMemo, useState } from "react";
@@ -124,13 +125,13 @@ export default function UnloadTapFlow({
 
             <label className="flex items-center gap-2 text-[length:var(--text-xs)] text-text-muted">
               <span>{p.unitLabel ?? "مقدار"}</span>
-              <input
+              <FieldInput
                 type="number"
                 inputMode="numeric"
                 min={0}
                 value={qty[p.productId] ?? String(p.shouldReturn)}
                 onChange={(e) => setQty((prev) => ({ ...prev, [p.productId]: e.target.value }))}
-                className="w-24 rounded-[var(--radius-sm)] border border-border bg-surface px-2 py-1 text-[length:var(--text-xs)] text-text outline-none focus:border-accent"
+                className="w-24 text-[length:var(--text-xs)] text-text"
               />
               <span className="text-text-faint">باید برگردد: {p.shouldReturn}</span>
             </label>

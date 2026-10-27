@@ -1,5 +1,6 @@
 "use client";
 
+import { FieldInput } from "@/components/FieldInput";
 import FilterChips from "@/components/mobile/FilterChips";
 import KeypadField from "@/components/mobile/KeypadField";
 import { faJalaliDate } from "@/lib/jalali";
@@ -118,7 +119,7 @@ export default function InventoryBoard({ rows, canEdit }: { rows: InventoryRow[]
       <div className="sttoolbar">
         <label className="stsearch">
           <Icon name="search" size="sm" />
-          <input type="text" placeholder="جستجوی کالا…" aria-label="جستجوی کالا" value={q} onChange={(e) => setQ(e.target.value)} />
+          <FieldInput type="text" placeholder="جستجوی کالا…" aria-label="جستجوی کالا" value={q} onChange={(e) => setQ(e.target.value)} />
         </label>
         <div className="stchips" role="group" aria-label="فیلتر وضعیت">
           <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] stchip" aria-pressed={filter === "all"} onClick={() => setFilter("all")}>

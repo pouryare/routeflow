@@ -1,5 +1,6 @@
 "use client";
 
+import { FieldInput } from "@/components/FieldInput";
 import SmartPicker from "@/components/mobile/SmartPicker";
 import KeypadField from "@/components/mobile/KeypadField";
 import { tehranTodayIso, faJalaliDate, faJalaliDateTime } from "@/lib/jalali";
@@ -133,9 +134,9 @@ export default function BatchesPanel({ products }: { products: Product[] }) {
           value={form.product_id}
           onChange={(id) => setForm((f) => ({ ...f, product_id: id }))}
         />
-        <label className="flex flex-col gap-1 text-xs text-text-muted">کد سری ساخت<input className="rounded border border-border bg-bg p-2 text-sm w-full" placeholder="خودکار اگر خالی" value={form.batch_code} onChange={(e) => setForm((f) => ({ ...f, batch_code: e.target.value }))} /></label>
+        <label className="flex flex-col gap-1 text-xs text-text-muted">کد سری ساخت<FieldInput className="w-full" placeholder="خودکار اگر خالی" value={form.batch_code} onChange={(e) => setForm((f) => ({ ...f, batch_code: e.target.value }))} /></label>
         <div className="flex flex-col gap-1 text-xs text-text-muted">مقدار دریافتی<KeypadField label="مقدار دریافتی" value={form.qty_received_base} onChange={(v) => setForm((f) => ({ ...f, qty_received_base: v }))} decimal /></div>
-        <label className="flex flex-col gap-1 text-xs text-text-muted">مرجع سری ساخت تأمین‌کننده<input className="rounded border border-border bg-bg p-2 text-sm w-full" value={form.supplier_batch_ref} onChange={(e) => setForm((f) => ({ ...f, supplier_batch_ref: e.target.value }))} /></label>
+        <label className="flex flex-col gap-1 text-xs text-text-muted">مرجع سری ساخت تأمین‌کننده<FieldInput className="w-full" value={form.supplier_batch_ref} onChange={(e) => setForm((f) => ({ ...f, supplier_batch_ref: e.target.value }))} /></label>
         <label className="flex items-center gap-1 text-xs text-text-muted">
           تولید
           <JalaliDateInput value={form.produced_at} onChange={(iso) => setForm((f) => ({ ...f, produced_at: iso }))} aria-label="تاریخ تولید" />

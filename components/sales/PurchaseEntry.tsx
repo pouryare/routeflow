@@ -1,5 +1,6 @@
 "use client";
 
+import { FieldInput } from "@/components/FieldInput";
 import SmartPicker from "@/components/mobile/SmartPicker";
 import KeypadField from "@/components/mobile/KeypadField";
 import { tehranTodayIso } from "@/lib/jalali";
@@ -129,7 +130,7 @@ export default function PurchaseEntry({ products }: { products: Product[] }) {
           <label className={LABEL} htmlFor="supplier">
             تأمین‌کننده
           </label>
-          <input
+          <FieldInput
             id="supplier"
             className={FIELD}
             value={supplier}
@@ -147,7 +148,7 @@ export default function PurchaseEntry({ products }: { products: Product[] }) {
           <label className={LABEL} htmlFor="invoice">
             شماره فاکتور
           </label>
-          <input
+          <FieldInput
             id="invoice"
             className={FIELD}
             value={invoiceNo}

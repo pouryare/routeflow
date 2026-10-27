@@ -1,5 +1,6 @@
 "use client";
 
+import { FieldInput } from "@/components/FieldInput";
 import { PasswordInput } from "@/components/TextInput";
 import { useUndoableAction } from "@/components/tapflow/useUndoableAction";
 import { labelCells } from "@/lib/tableCards";
@@ -47,7 +48,7 @@ interface GroupRow {
 function TelegramCell({ user, onSave }: { user: UserRow; onSave: (v: string | null) => Promise<boolean> }) {
   const current = user.telegram_chat_id ?? "";
   return (
-    <input
+    <FieldInput
       key={current}
       defaultValue={current}
       dir="ltr"
@@ -59,7 +60,7 @@ function TelegramCell({ user, onSave }: { user: UserRow; onSave: (v: string | nu
         if (v === current) return;
         onSave(v || null);
       }}
-      className="w-32 rounded-md border border-border bg-surface-raised px-2 py-1 text-left font-mono text-xs text-text outline-none placeholder:text-text-faint focus:border-accent"
+      className="w-32 text-left font-mono text-text"
     />
   );
 }
@@ -298,18 +299,18 @@ export default function AdminUsersPage() {
       <form onSubmit={create} className="hidden rounded-lg border border-border bg-surface p-4 md:block">
         <h2 className="sechead__title mb-3">حساب تازه</h2>
         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-          <label className="flex flex-col gap-1 text-xs text-text-muted">نام نمایشی<input
+          <label className="flex flex-col gap-1 text-xs text-text-muted">نام نمایشی<FieldInput
             value={form.display_name}
             onChange={(e) => setForm({ ...form, display_name: e.target.value })}
            
-            className="rounded-md border border-border bg-surface-raised px-3 py-2 text-right text-sm text-text outline-none placeholder:text-text-faint focus:border-accent w-full"
+            className="text-right text-text w-full"
           /></label>
-          <label className="flex flex-col gap-1 text-xs text-text-muted">نام کاربری<input
+          <label className="flex flex-col gap-1 text-xs text-text-muted">نام کاربری<FieldInput
             value={form.username}
             onChange={(e) => setForm({ ...form, username: e.target.value })}
            
             dir="ltr"
-            className="rounded-md border border-border bg-surface-raised px-3 py-2 text-left font-mono text-sm text-text outline-none placeholder:text-text-faint focus:border-accent w-full"
+            className="text-left font-mono text-text w-full"
           /></label>
           <PasswordInput
             label="رمز عبور"
@@ -325,12 +326,12 @@ export default function AdminUsersPage() {
           <div className="flex flex-col gap-1 text-xs text-text-muted">گروه
             <SmartPicker scope="admin-groups" label="گروه" items={groups.map((g) => ({ id: String(g.id), label: g.name }))} value={form.role === "owner" ? "" : form.group_id} onChange={(id) => setForm({ ...form, group_id: id })} placeholder={form.role === "owner" ? "بدون گروه (مالک)" : "گروه را انتخاب کنید"} />
           </div>
-          <label className="flex flex-col gap-1 text-xs text-text-muted">شناسه همکار<input
+          <label className="flex flex-col gap-1 text-xs text-text-muted">شناسه همکار<FieldInput
             value={form.staff_code}
             onChange={(e) => setForm({ ...form, staff_code: e.target.value })}
            
             dir="ltr"
-            className="rounded-md border border-border bg-surface-raised px-3 py-2 text-left font-mono text-sm text-text outline-none placeholder:text-text-faint focus:border-accent w-full"
+            className="text-left font-mono text-text w-full"
           /></label>
         </div>
         <button
@@ -375,7 +376,7 @@ export default function AdminUsersPage() {
                       />
                     </td>
                     <td className="p-2">
-                      <input
+                      <FieldInput
                         key={u.display_name}
                         defaultValue={u.display_name}
                         dir="rtl"
@@ -386,11 +387,11 @@ export default function AdminUsersPage() {
                           if (v === u.display_name) return;
                           send(`/api/admin/users/${u.id}`, "PATCH", { display_name: v });
                         }}
-                        className="w-32 rounded-md border border-border bg-surface-raised px-2 py-1 text-right text-xs text-text outline-none placeholder:text-text-faint focus:border-accent"
+                        className="w-32 text-right text-text"
                       />
                     </td>
                     <td className="p-2">
-                      <input
+                      <FieldInput
                         key={u.username}
                         defaultValue={u.username}
                         dir="ltr"
@@ -401,7 +402,7 @@ export default function AdminUsersPage() {
                           if (v === u.username) return;
                           send(`/api/admin/users/${u.id}`, "PATCH", { username: v });
                         }}
-                        className="w-28 rounded-md border border-border bg-surface-raised px-2 py-1 text-left font-mono text-xs text-text outline-none placeholder:text-text-faint focus:border-accent"
+                        className="w-28 text-left font-mono text-text"
                       />
                     </td>
                     <td className="p-2">
@@ -424,7 +425,7 @@ export default function AdminUsersPage() {
                       />
                     </td>
                     <td className="p-2">
-                      <input
+                      <FieldInput
                         key={u.staff_code ?? ""}
                         defaultValue={u.staff_code ?? ""}
                         dir="ltr"
@@ -435,7 +436,7 @@ export default function AdminUsersPage() {
                           if (v === (u.staff_code ?? "")) return;
                           send(`/api/admin/users/${u.id}`, "PATCH", { staff_code: v || null });
                         }}
-                        className="w-24 rounded-md border border-border bg-surface-raised px-2 py-1 text-left font-mono text-xs text-text outline-none placeholder:text-text-faint focus:border-accent"
+                        className="w-24 text-left font-mono text-text"
                       />
                     </td>
                     <td className="p-2">
@@ -461,7 +462,7 @@ export default function AdminUsersPage() {
                       <div className="flex gap-2 text-xs">
                         {resetting?.id === u.id ? (
                           <span className="flex flex-wrap items-center gap-2">
-                            <input
+                            <FieldInput
                               type="password"
                               autoComplete="new-password"
                               autoFocus
@@ -472,7 +473,7 @@ export default function AdminUsersPage() {
                                 if (e.key === "Escape") setResetting(null);
                               }}
                               placeholder="رمز تازه (حداقل ۸ نویسه)" aria-label={`رمز تازه برای ${u.display_name}`}
-                              className="rounded border border-border bg-bg px-2 py-1 text-sm"
+                              
                             />
                             <button
                               type="button"

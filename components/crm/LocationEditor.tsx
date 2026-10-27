@@ -1,4 +1,5 @@
 "use client";
+import { FieldInput } from "@/components/FieldInput";
 import { useEffect, useRef, useState } from "react";
 import { isAllowedLinkHost, extractLatLng } from "@/lib/geoLinks";
 import { Icon } from "@/components/meridian/Icon";
@@ -96,8 +97,8 @@ export default function LocationEditor({ initial, onConfirm, onCancel, expandabl
     <div ref={panel} tabIndex={-1} className={`location-edit${expanded ? " location-edit-expanded" : ""}`} role={expanded ? "dialog" : undefined} aria-modal={expanded || undefined} aria-label="ویرایش موقعیت">
       <div className="location-edit-heading"><strong>ویرایش موقعیت</strong>{expandable && <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn ghost" aria-label={expanded ? "بازگشت به ویرایش کوچک" : "بزرگ‌نمایی ناحیهٔ ویرایش"} onClick={() => changeExpanded(!expanded)}><Icon name="maximize" size="sm" />{expanded ? "بازگشت به ویرایش کوچک" : "بزرگ‌نمایی ناحیهٔ ویرایش"}</button>}</div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 8 }}>
-        <input
-          className="tf-input ltr"
+        <FieldInput
+          className="ltr"
           value={link}
           disabled={saving}
           onChange={(e) => { request.current++; setResolving(false); setLink(e.target.value); }}

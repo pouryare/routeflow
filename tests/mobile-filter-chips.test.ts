@@ -55,4 +55,14 @@ describe("ChipGroup (shared by FilterChips and FilterSheet)", () => {
     expect(out).not.toContain("filterchips__group--wrap");
     expect(renderToStaticMarkup(h(ChipGroup, { group: single, wrap: true }))).toContain("filterchips__group--wrap");
   });
+  it("a group with many options is one chip that opens a searchable sheet, with a count", () => {
+    const many: FilterGroup = {
+      id: "s", label: "فروشنده", mode: "multi", value: ["u1", "u2"], onChange: noop,
+      options: Array.from({ length: 12 }, (_, i) => ({ id: `u${i}`, label: `فروشنده ${i}` })),
+    };
+    const out = renderToStaticMarkup(h(FilterChips, { groups: [many] }));
+    expect(out).toContain("فروشنده");
+    expect(out).toContain("filterchip__badge");
+    expect(out).not.toContain("aria-pressed");
+  });
 });

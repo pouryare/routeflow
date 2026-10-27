@@ -1,5 +1,6 @@
 "use client";
 
+import { FieldInput } from "@/components/FieldInput";
 import { ChipGroup } from "@/components/mobile/FilterChips";
 import SmartPicker from "@/components/mobile/SmartPicker";
 import { useCallback, useEffect, useState } from "react";
@@ -149,10 +150,10 @@ export default function RepDefinitions() {
           </label>
           <label className="flex flex-col gap-1 text-[length:var(--text-xs)] text-text-muted">
             کد نماینده
-            <input
+            <FieldInput
               value={repCode}
               onChange={(e) => setRepCode(e.target.value)}
-              className="rounded-[var(--radius-sm)] border border-border bg-surface px-2 py-1 font-mono text-text"
+              className="font-mono text-text"
             />
           </label>
           <button type="submit" disabled={busy || !customerId || !repCode.trim()} className="inline-flex items-center justify-center gap-[var(--space-2)] btn solid">

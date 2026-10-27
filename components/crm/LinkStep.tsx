@@ -1,5 +1,7 @@
 "use client";
 
+import { FieldInput } from "@/components/FieldInput";
+import { GoButton, SkipButton } from "@/components/tapflow/Answer";
 import { useState } from "react";
 import { friendlyError } from "@/lib/userMessage";
 import { Icon } from "@/components/meridian/Icon";
@@ -39,18 +41,14 @@ export default function LinkStep({ api }: { api: CustomStepApi }) {
   return (
     <>
       <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 8 }}>
-        <input className="tf-input ltr" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://maps.app.goo.gl/…" aria-label="لینک" inputMode="url" />
+        <FieldInput className="ltr" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://maps.app.goo.gl/…" aria-label="لینک" inputMode="url" />
         <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn ghost" onClick={() => void paste()}>
         <Icon name="clipboard" size="md" />
         چسباندن</button>
       </div>
       {err ? <div className="tf-card warn">{err}</div> : null}
-      <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] tf-go" disabled={!url.trim() || busy} onClick={() => void resolve(url.trim())}>
-      <Icon name="link" size="md" />
-      {busy ? "در حال خواندن لینک…" : "خواندن لینک و ادامه"}</button>
-      <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] tf-skip" onClick={() => api.submit("nolink")}>
-      <Icon name="link" size="md" />
-      لینک ندارم</button>
+      <GoButton icon="link" isDisabled={!url.trim() || busy} onPress={() => void resolve(url.trim())}>{busy ? "در حال خواندن لینک…" : "خواندن لینک و ادامه"}</GoButton>
+      <SkipButton icon="link" onPress={() => api.submit("nolink")}>لینک ندارم</SkipButton>
     </>
   );
 }

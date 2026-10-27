@@ -1,5 +1,6 @@
 "use client";
 
+import { FieldInput } from "@/components/FieldInput";
 import { useState, type ReactNode } from "react";
 import { Button } from "@heroui/react";
 import BottomSheet from "@/components/mobile/BottomSheet";
@@ -172,7 +173,7 @@ function StepBody({ view, submit, hours, onNavigate, navigateUrl, vars, items }:
   return (
     <>
       {view.input ? (
-        <input
+        <FieldInput
           className={`tf-input${view.input.ltr ? " ltr" : ""}`}
           value={text}
           onChange={(e) => setText(e.target.value)}

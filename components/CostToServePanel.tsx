@@ -1,5 +1,6 @@
 "use client";
 
+import { FieldInput } from "@/components/FieldInput";
 import { useMemo, useState } from "react";
 import { Icon } from "@/components/meridian/Icon";
 import { useHydrated } from "@/lib/useHydrated";
@@ -160,12 +161,12 @@ export default function CostToServePanel({
           <div className="mb-2 flex flex-wrap items-center gap-2">
             <label className="flex items-center gap-2 text-[length:var(--text-xs)] text-text-muted">
               هزینه هر کیلومتر (تومان)
-              <input
+              <FieldInput
                 value={costPerKm}
                 onChange={(e) => updateCost(e.target.value)}
                 inputMode="numeric"
                 placeholder="مثلاً ۵۰۰۰"
-                className="w-28 rounded-[var(--radius-sm)] border border-border bg-surface px-2 py-1 font-mono text-[length:var(--text-xs)] text-text outline-none focus:border-accent"
+                className="w-28 font-mono text-[length:var(--text-xs)] text-text"
               />
             </label>
             <div className="flex gap-1 rounded-[var(--radius-md)] border border-border bg-surface p-1">

@@ -1,5 +1,6 @@
 "use client";
 
+import { FieldInput, FieldArea } from "@/components/FieldInput";
 import { SavedLocation } from "@/app/(shell)/leads/hooks/useLeads";
 import StarRating from "@/components/StarRating";
 import CopyButton from "@/components/CopyButton";
@@ -98,12 +99,12 @@ export default function LocationCard({
         <span className={`mt-1 h-2.5 w-2.5 shrink-0 rounded-full ${statusColor}`} title={statusLabel} />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <input
+            <FieldInput
               type="text"
               aria-label={`نام مکان ${location.name}`}
               defaultValue={location.name}
               onBlur={(e) => onNameChange(e.target.value)}
-              className="bg-transparent text-text font-medium text-[length:var(--text-sm)] outline-none border-b border-transparent focus:border-accent min-w-0 flex-1"
+              className="text-text font-medium text-[length:var(--text-sm)] min-w-0 flex-1"
             />
             {inRun && (
               <span className="shrink-0 rounded bg-accent/15 px-1.5 py-0.5 text-[length:var(--text-xs)] text-accent">
@@ -208,12 +209,12 @@ export default function LocationCard({
 
       {onNotesChange && (
         <div className="mt-2 pt-2 border-t border-border">
-          <textarea
+          <FieldArea
             value={notes ?? ""}
             onChange={(e) => onNotesChange(e.target.value)}
             placeholder="یادداشت…"
             rows={2}
-            className="w-full rounded-[var(--radius-sm)] border border-border bg-transparent px-2 py-1 text-[length:var(--text-sm)] text-text outline-none focus:border-accent resize-none placeholder:text-text-faint"
+            className="w-full text-[length:var(--text-sm)] text-text resize-none"
           />
         </div>
       )}

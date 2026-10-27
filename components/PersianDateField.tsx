@@ -1,5 +1,6 @@
 "use client";
 
+import { HelpHint, HelpRow } from "@/components/meridian/HelpHint";
 import { useMemo, useState } from "react";
 import { GregorianCalendar, PersianCalendar as ShamsiCalendar, parseDate, toCalendar, type CalendarDate, type DateValue } from "@internationalized/date";
 import { Button, Calendar } from "@heroui/react";
@@ -119,6 +120,12 @@ export default function PersianDateField({
       </Button>
 
       <BottomSheet open={open} title={title} onClose={() => setOpen(false)} closeLabel="بستن تقویم">
+        <HelpRow>
+          <HelpHint title="انتخاب تاریخ" label="راهنمای انتخاب تاریخ">
+            <p className="mhelp__what">روی یک روز بزنید تا انتخاب شود؛ با پیکان‌ها ماه را عوض کنید.</p>
+            <p className="mhelp__how">«امروز» تاریخ امروز را می‌گذارد.</p>
+          </HelpHint>
+        </HelpRow>
         <PersianCalendar value={value} onChange={pick} isDisabled={isDisabled} ariaLabel={title} />
         <div className="jdate__foot">
           <Button variant="tertiary" onPress={() => pick(todayIso())}>

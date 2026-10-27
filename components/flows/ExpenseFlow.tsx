@@ -1,5 +1,6 @@
 "use client";
 
+import { SkipButton } from "@/components/tapflow/Answer";
 import { useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import TapFlow, { type CustomStepApi } from "@/components/tapflow/TapFlow";
@@ -96,10 +97,7 @@ export default function ExpenseFlow({
             }}
           />
         </label>
-        <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] tf-skip" onClick={() => api.submit("none")}>
-          <Icon name="arrow-left" size="md" />
-          بدون عکس
-        </button>
+        <SkipButton icon="arrow-left" onPress={() => api.submit("none")}>بدون عکس</SkipButton>
       </div>
     ) : null;
 

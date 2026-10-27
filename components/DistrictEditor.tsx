@@ -1,5 +1,6 @@
 "use client";
 
+import { FieldArea } from "@/components/FieldInput";
 import { useState } from "react";
 import { friendlyError } from "@/lib/userMessage";
 import { DistrictFeature, CoverageStatus, STATUS_LABEL, STATUS_COLOR } from "@/lib/types";
@@ -62,11 +63,11 @@ export default function DistrictEditor({
 
 
       <label className="mb-1.5 block text-[length:var(--text-sm)] font-medium text-text">یادداشت</label>
-      <textarea
+      <FieldArea
         value={notes}
         onChange={(e) => setNotes(e.target.value)}
         rows={3}
-        className="mb-4 w-full resize-none rounded-[var(--radius-md)] border border-border bg-surface px-3 py-2 text-[length:var(--text-base)] text-text outline-none transition-[border-color,box-shadow] duration-[var(--dur-base)] ease-[var(--ease-out)] placeholder:text-text-faint focus:border-accent focus:elevate-accent"
+        className="mb-4 w-full resize-none text-[length:var(--text-base)] text-text"
         placeholder="مثلاً: دلیل ممنوعیت، یا آخرین باری که سر زدید"
       />
 

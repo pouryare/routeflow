@@ -1,5 +1,6 @@
 "use client";
 
+import { HelpHint, HelpRow } from "@/components/meridian/HelpHint";
 import { useState, type ReactNode } from "react";
 import { Icon } from "@/components/meridian/Icon";
 import { Button } from "@heroui/react";
@@ -43,6 +44,12 @@ export default function DecisionDeck<T>({
   return (
     <BottomSheet open={open} title={title} onClose={onClose} closeLabel="بستن تصمیم‌ها">
       <div className="deck">
+        <HelpRow>
+          <HelpHint title="تصمیم‌ها" label="راهنمای تصمیم‌ها">
+            <p className="mhelp__what">هر کارت یک تصمیم می‌خواهد؛ یکی از دکمه‌ها را بزنید تا کارت بعدی بیاید.</p>
+            <p className="mhelp__how">«بعداً» کارت را رد می‌کند. هر تصمیم تا ۵ ثانیه قابل برگشت است.</p>
+          </HelpHint>
+        </HelpRow>
         {item === undefined ? (
           <div className="deck__done">
             <Icon name="check" size="lg" />

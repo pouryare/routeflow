@@ -1,5 +1,6 @@
 "use client";
 
+import { FieldInput } from "@/components/FieldInput";
 import { useCallback, useEffect, useState } from "react";
 import { Icon } from "@/components/meridian/Icon";
 import BusinessCard from "./BusinessCard";
@@ -66,7 +67,7 @@ export default function CrmBoard({ initialRows, initialCounts, initialView }: {
     <div style={{ display: "grid", gap: 12, padding: "0 16px 96px" }}>
       <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
         <div style={{ position: "relative", flex: 1 }}>
-          <input
+          <FieldInput
             style={{
               flex: 1,
               paddingLeft: 14,

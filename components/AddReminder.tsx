@@ -1,5 +1,6 @@
 "use client";
 
+import { FieldInput } from "@/components/FieldInput";
 import JalaliDateInput from "@/components/meridian/JalaliDateInput";
 import { Icon } from "@/components/meridian/Icon";
 import { useState } from "react";
@@ -81,11 +82,11 @@ export default function AddReminder({
       ) : (
         <div className="flex flex-col gap-2">
           <JalaliDateInput value={dueDate} onChange={setDueDate} aria-label="تاریخ یادآوری" />
-          <label className="flex flex-col gap-1 text-xs text-text-muted">متن یادآوری<input
+          <label className="flex flex-col gap-1 text-xs text-text-muted">متن یادآوری<FieldInput
             value={message}
             onChange={(e) => setMessage(e.target.value)}
            
-            className="rounded-[var(--radius-md)] border border-border bg-surface px-3 py-2 text-[length:var(--text-sm)] text-text outline-none transition-[border-color] duration-[var(--dur-base)] ease-[var(--ease-out)] placeholder:text-text-faint focus:border-accent w-full"
+            className="text-[length:var(--text-sm)] text-text w-full"
           /></label>
           <div className="flex gap-2">
             <button
