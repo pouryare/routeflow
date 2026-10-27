@@ -1,7 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { getDb, DB_PATH } from "@/lib/db";
-import { dialect } from "@/lib/database/dialect";
+import { getDb } from "@/lib/db";
 import { newestForecastAt } from "./forecast";
 import type { BackupStatus, StatusFacts } from "../systemStatus";
 
@@ -19,14 +18,6 @@ export function readBackupStatus(dir: string = backupDir()): BackupStatus | null
     return typeof parsed?.finishedAt === "string" ? parsed : null;
   } catch {
     return null;
-  }
-}
-
-function fileBytes(file: string): number {
-  try {
-    return fs.statSync(file).size;
-  } catch {
-    return 0;
   }
 }
 
@@ -56,10 +47,6 @@ export async function statusFacts(organizationId: number, now: Date = new Date()
         dayAgo
       ) ?? 0,
   };
-  // Measured after the reads: the database file is opened by the first statement, not before.
-  const dbBytes =
-    dialect() === "postgres"
-      ? ((await one<number>("SELECT pg_database_size(current_database()) AS t")) ?? 0)
-      : fileBytes(DB_PATH) + fileBytes(`${DB_PATH}-wal`);
+  const dbBytes = (await one<number>("SELECT pg_database_size(current_database()) AS t")) ?? 0;
   return { ...facts, dbBytes: dbBytes > 0 ? dbBytes : null };
 }

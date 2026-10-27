@@ -1,98 +1,34 @@
-/* The database behind getDb(). SQLite by default: opening the file, its pragmas, and the boot
- * schema and migrations every statement waits for. With DB_DIALECT=postgres it is the pool in
- * ./pg.ts instead, against a database whose schema node-pg-migrate has already applied. */
-import { DatabaseSync } from "node:sqlite";
+/* The database behind getDb(): the PostgreSQL pool in ./pg.ts, against a database whose schema
+ * node-pg-migrate has already applied (db/migrations). DATABASE_URL names it.
+ *
+ * Tests never use DATABASE_URL's own database. With ROUTEFLOW_PG_TEMPLATE set, each test file gets a
+ * copy of that template named after ROUTEFLOW_DB_PATH, which a test sets to a path of its own before
+ * it imports lib/db (the name is only a key now: no file is opened). scripts/pg/test-pg.mjs builds
+ * the template, sets both, and is what `npm test` runs. */
 import path from "node:path";
-import fs from "node:fs";
-import { instrumentSlowSql, slowSqlThresholdMs } from "../slowSql";
-import { createBaseSchema } from "./schema";
-import { runMigrations } from "./migrate";
-import { sqliteDb, type Db } from "./client";
-import { dialect } from "./dialect";
+import type { Db } from "./client";
 import { pgDb, testDatabaseUrl } from "./pg";
 
+/** The key that names a test file's own database. Unused outside tests. */
 export const DB_PATH = process.env.ROUTEFLOW_DB_PATH || path.join(process.cwd(), "data", "routeflow.db");
 
-let _db: DatabaseSync | null = null;
-let _ready: Promise<void> | null = null;
 let _asyncDb: Db | null = null;
-
 let _pgReady: (() => Promise<void>) | null = null;
 
 /** The database the app uses. Every call is asynchronous (see lib/database/client.ts). */
 export function getDb(): Db {
   if (_asyncDb) return _asyncDb;
-  if (dialect() === "postgres") {
-    const base = process.env.DATABASE_URL;
-    if (!base) throw new Error("DB_DIALECT=postgres needs DATABASE_URL");
-    const template = process.env.ROUTEFLOW_PG_TEMPLATE;
-    const test = template ? testDatabaseUrl(base, template, DB_PATH) : null;
-    _pgReady = test?.ready ?? (async () => {});
-    return (_asyncDb = pgDb(test?.url ?? base, _pgReady));
-  }
-  return (_asyncDb = sqliteDb(openSqlite, dbReady, closeSqlite));
+  const base = process.env.DATABASE_URL;
+  if (!base) throw new Error("DATABASE_URL is not set: it names the PostgreSQL database (see db/README.md)");
+  const template = process.env.ROUTEFLOW_PG_TEMPLATE;
+  const test = template ? testDatabaseUrl(base, template, DB_PATH) : null;
+  _pgReady = test?.ready ?? (async () => {});
+  return (_asyncDb = pgDb(test?.url ?? base, _pgReady));
 }
 
-/** Resolves once the database can take statements: on SQLite, once the schema and the boot
- *  migrations have run. getDb() and tx() wait for it on their own; only code that takes the
- *  raw handle needs it. */
+/** Resolves once the database can take statements (a test's copy of the template exists). getDb()
+ *  waits for it on its own; only code that takes the connection string needs it. */
 export function dbReady(): Promise<void> {
-  if (dialect() === "postgres") {
-    getDb();
-    return _pgReady!();
-  }
-  openSqlite();
-  return _ready!;
-}
-
-/** The synchronous node:sqlite handle, after the boot migrations. Only for the SQLite-specific
- *  boot code in lib/database/ and the tests that check it: everything else goes through
- *  getDb(), which is what moves to PostgreSQL. */
-export async function rawSqlite(): Promise<DatabaseSync> {
-  if (dialect() === "postgres") throw new Error("rawSqlite() is SQLite only");
-  await dbReady();
-  return openSqlite();
-}
-
-function closeSqlite(): void {
-  const db = _db;
-  _db = null;
-  _ready = null;
-  db?.close();
-}
-
-function openSqlite(): DatabaseSync {
-  if (_db) return _db;
-
-  fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
-  const db = new DatabaseSync(DB_PATH);
-  // Opt-in: ROUTEFLOW_SLOW_SQL_MS=200 logs any statement that takes that long, migrations included.
-  const slowMs = slowSqlThresholdMs();
-  if (slowMs > 0) instrumentSlowSql(db, slowMs);
-  db.exec("PRAGMA journal_mode = WAL;");
-  db.exec("PRAGMA foreign_keys = ON;");
-  /* Read tuning. synchronous is deliberately left at FULL: the offline outbox drops a fact
-     once the server acknowledges it, so a commit lost after an ack would never be re-sent.
-     cache_size is negative = KiB, so -65536 is 64 MiB. mmap_size lets large reads skip a
-     copy. busy_timeout makes a second writer wait rather than throw SQLITE_BUSY -- the
-     lead-import runner and the request path share this file. */
-  db.exec("PRAGMA temp_store = MEMORY;");
-  db.exec("PRAGMA cache_size = -65536;");
-  db.exec("PRAGMA mmap_size = 268435456;");
-  db.exec("PRAGMA busy_timeout = 5000;");
-
-  createBaseSchema(db);
-  _db = db;
-  /* A few migrations call app code, which is asynchronous now, so the migrations run as a
-     promise that every statement waits for. If they fail, every waiting statement fails with
-     the same error and the next call opens the file and tries again, as a failed open did. */
-  _ready = runMigrations(db, sqliteDb(() => db)).catch((e) => {
-    if (_db === db) {
-      _db = null;
-      _ready = null;
-      db.close();
-    }
-    throw e;
-  });
-  return db;
+  getDb();
+  return _pgReady!();
 }

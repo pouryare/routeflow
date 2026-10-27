@@ -27,26 +27,6 @@ export interface Tombstone {
   deleted_at: string;
 }
 
-/** Tombstones for one org since a watermark (exclusive). `since` null = all of them. */
-export async function tombstonesSince(
-  organizationId: number,
-  since: string | null,
-  db?: Db
-): Promise<Tombstone[]> {
-  const conn = db ?? getDb();
-  return since
-    ? (await conn
-        .prepare(
-          "SELECT entity_type, entity_id, deleted_at FROM deleted_rows WHERE organization_id = ? AND deleted_at > ? ORDER BY deleted_at"
-        )
-        .all(organizationId, since) as unknown as Tombstone[])
-    : (await conn
-        .prepare(
-          "SELECT entity_type, entity_id, deleted_at FROM deleted_rows WHERE organization_id = ? ORDER BY deleted_at"
-        )
-        .all(organizationId) as unknown as Tombstone[]);
-}
-
 /** Tombstones for one org written by transaction `xid` or later: the PostgreSQL watermark
  *  (lib/repo/syncPull.ts). Rows from before sync_xid existed count as transaction 0. */
 export async function tombstonesSinceXid(organizationId: number, xid: string, db?: Db): Promise<Tombstone[]> {

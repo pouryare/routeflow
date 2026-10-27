@@ -37,17 +37,12 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { DatabaseSync } from "node:sqlite";
 import { consumeTelegramStart } from "../lib/repo/telegramLink.ts";
-import { sqliteDb, type Db } from "../lib/database/client.ts";
-
-const PG = process.env.DB_DIALECT === "postgres";
+import type { Db } from "../lib/database/client.ts";
 
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 
-// Same resolution as lib/db.ts, so the worker and the app always open the same file.
-const DB_PATH = process.env.ROUTEFLOW_DB_PATH || path.join(process.cwd(), "data", "routeflow.db");
-const OFFSET_PATH = PG ? process.env.TELEGRAM_OFFSET_PATH || path.join(process.cwd(), "data", "telegram-offset") : `${DB_PATH}.telegram-offset`;
+const OFFSET_PATH = process.env.TELEGRAM_OFFSET_PATH || path.join(process.cwd(), "data", "telegram-offset");
 
 const LINKED_REPLY = "حساب تلگرام شما به RouteFlow متصل شد.";
 // Anything that is not a valid deep link gets this instead of silence, so a user who
@@ -112,13 +107,9 @@ interface Update {
   message?: { text?: string; chat?: { id?: number } };
 }
 
-let raw: DatabaseSync | null = null;
-const db: Db = PG
-  ? (await import("../lib/db.ts")).getDb()
-  : sqliteDb(() => raw as DatabaseSync);
-if (!PG) raw = new DatabaseSync(DB_PATH);
+const db: Db = (await import("../lib/db.ts")).getDb();
 let offset = readOffset();
-console.log(`[telegram] worker up, db=${PG ? "PostgreSQL" : DB_PATH}, offset=${offset}`);
+console.log(`[telegram] worker up, db=PostgreSQL, offset=${offset}`);
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
