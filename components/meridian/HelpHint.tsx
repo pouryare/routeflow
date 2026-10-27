@@ -50,4 +50,3 @@ export function HelpRow({ children }: { children: ReactNode }) {
   return <div className="helprow">{children}</div>;
 }
 
-export default HelpHint;
