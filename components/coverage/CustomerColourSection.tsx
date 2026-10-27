@@ -14,7 +14,7 @@ export default function CustomerColourSection({ colorMode, setColorMode, colourO
   shapedMarkers: boolean;
 }) {
   return (
-        <CollapsibleSection title="رنگ‌بندی مشتریان" icon="palette" storageKey="colour" keywords="وضعیت بدهی فروشنده رکود فاصله">
+        <CollapsibleSection help="card.map-colour" title="رنگ‌بندی مشتریان" icon="palette" storageKey="colour" keywords="وضعیت بدهی فروشنده رکود فاصله">
             {/* Five modes no longer fit a single row at sidebar width on a phone, so this
                 is a grid rather than a flex row -- the fifth would otherwise squeeze the
                 other four into unreadable slivers. */}

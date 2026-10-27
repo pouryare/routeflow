@@ -1,3 +1,4 @@
+import { CardHelp } from "@/components/meridian/CardHelp";
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
@@ -118,6 +119,7 @@ function ListView({
             </Link>
           )}
         </div>
+        <CardHelp id="card.orders-recent" />
       </div>
 
       {orders.length === 0 ? (
@@ -204,6 +206,7 @@ function BoardView({ orders, onARun }: { orders: OrderSummary[]; onARun: Set<num
             کارت را بکشید تا مرحله‌اش عوض شود · روی کارت بزنید تا پردازش شود
           </div>
         </div>
+        <CardHelp id="card.order-pipeline" />
       </div>
       <div className="hint">
         <b>روی موبایل:</b> انگشت را روی کارت نگه دارید و بکشید — همان کار را می‌کند.
@@ -271,6 +274,7 @@ async function JourneyView({
             </Link>
           ) : null}
         </div>
+        <CardHelp id="card.orders-all" />
       </div>
 
       {mode === "all" && funnel ? (

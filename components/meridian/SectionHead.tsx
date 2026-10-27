@@ -1,3 +1,5 @@
+import { CardHelp } from "@/components/meridian/CardHelp";
+
 /** A section's heading: title, an optional line beneath it, optional actions at the end.
  *
  *  Item 15 was «سفارش‌های بدون مسیر» and «مسیرهای باز» side by side with different
@@ -16,6 +18,7 @@ export default function SectionHead({
   actions,
   as: Tag = "h2",
   id,
+  help,
   className = "",
 }: {
   title: React.ReactNode;
@@ -23,6 +26,8 @@ export default function SectionHead({
   actions?: React.ReactNode;
   as?: "h2" | "h3";
   id?: string;
+  /** An id in lib/help (`card.…`): a (?) beside the actions. */
+  help?: string;
   className?: string;
 }) {
   return (
@@ -33,7 +38,12 @@ export default function SectionHead({
         </Tag>
         {sub ? <p className="sechead__sub">{sub}</p> : null}
       </div>
-      {actions ? <div className="sechead__actions">{actions}</div> : null}
+      {actions || help ? (
+        <div className="sechead__actions">
+          {actions}
+          {help ? <CardHelp id={help} /> : null}
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -16,7 +16,7 @@ export default function NearbyCustomersSection({ myPosition, nearbyCustomers, ne
 }) {
   if (!(myPosition)) return null;
   return (
-        <CollapsibleSection
+        <CollapsibleSection help="card.map-nearby"
           title="مشتریان نزدیک" icon="map-pin"
           count={nearbyCustomers.length}
           defaultOpen

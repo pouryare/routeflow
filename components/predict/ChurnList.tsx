@@ -1,3 +1,4 @@
+import { CardHelp } from "@/components/meridian/CardHelp";
 import Link from "next/link";
 import { customerHref } from "@/lib/deepLink";
 
@@ -26,6 +27,7 @@ export default function ChurnList({ rows }: { rows: ChurnRow[] }) {
           بالا {rows.filter((r) => r.band === "high").length.toLocaleString("fa-IR")} · مراقبت{" "}
           {rows.filter((r) => r.band === "watch").length.toLocaleString("fa-IR")}
         </div>
+        <CardHelp id="card.churn" />
       </div>
       <div className="kblock__body">
       {shown.length === 0 ? (

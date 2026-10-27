@@ -25,7 +25,7 @@ export default async function MoneySection({ session, debt }: { session: Session
     managerCommission.reduce((sum, c) => sum + c.owed_toman, 0);
 
   return (
-      <CollapsibleSection title="بدهی و پورسانت" icon="wallet" storageKey="dash-money">
+      <CollapsibleSection help="card.dash-money" title="بدهی و پورسانت" icon="wallet" storageKey="dash-money">
         <p className="m-0 mb-[var(--space-3)] text-[length:var(--text-xs)] text-[var(--text-muted)]">
           مانده کل پورسانت -- فروشنده، راننده و مدیر گروه با هم -- {faToman(owedTotal)}.
         </p>

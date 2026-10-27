@@ -20,7 +20,7 @@ export default function DueRemindersSection({ dueReminders, openReminderEntity, 
 }) {
   if (!(dueReminders.length > 0)) return null;
   return (
-        <CollapsibleSection
+        <CollapsibleSection help="card.map-reminders"
           title="یادآوری‌های امروز" icon="bell"
           count={dueReminders.length}
           defaultOpen

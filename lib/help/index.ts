@@ -1,5 +1,6 @@
 import type { HelpEntry } from "./types";
 import { PAGE_HELP } from "./pages";
+import { CARD_HELP } from "./cards";
 export { isTodo } from "./types";
 export type { HelpEntry };
 
@@ -14,6 +15,7 @@ export const HELP: Record<string, Extract<HelpEntry, { title: string }>> = {
    * inside the dashboard. These explain what the page IS, and they are what a card's (i)
    * trigger opens when a page declares `help` in lib/pageMeta.ts. */
   ...PAGE_HELP,
+  ...CARD_HELP,
   "page.dashboard": {
     id: "page.dashboard",
     title: "این صفحه چه چیزی را نشان می‌دهد",

@@ -1,3 +1,4 @@
+import { CardHelp } from "@/components/meridian/CardHelp";
 import { Icon } from "@/components/meridian/Icon";
 export interface CapacityRow {
   condition_code: string;
@@ -28,6 +29,7 @@ export default function LearnedCapacity({ rows }: { rows: CapacityRow[] }) {
     <div className="kblock" dir="rtl">
       <div className="bhead">
         <h2>ظرفیت آموخته‌شده از مسیرها</h2>
+        <CardHelp id="card.capacity" />
       </div>
       <div className="kblock__body">
         <div className="overflow-x-auto">

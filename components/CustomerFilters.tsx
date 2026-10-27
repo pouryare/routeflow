@@ -19,7 +19,7 @@ export default function CustomerFilters({
   filteredCount: number;
 }) {
   return (
-    <CollapsibleSection
+    <CollapsibleSection help="card.map-filters"
       title="فیلتر مشتری‌ها"
       icon="search"
       /* The count belongs in the chip, not spliced into the title -- and "N of M" is

@@ -1098,7 +1098,7 @@ export default function CoverageMap({
             cannot be distinguished from a section that is broken, and "no dormant
             customers" is itself worth knowing. The count in the heading answers it
             without opening. */}
-        <CollapsibleSection
+        <CollapsibleSection help="card.map-dormant"
           title="مشتریان راکد" icon="moon"
           count={hasPurchaseHistory ? dormantCustomers.length : undefined}
           storageKey="dormant"
@@ -1135,7 +1135,7 @@ export default function CoverageMap({
           )}
         </CollapsibleSection>
 
-        <CollapsibleSection
+        <CollapsibleSection help="card.map-nocoord"
           title="بدون مختصات" icon="help"
           count={noCoordCustomers.length}
           storageKey="nocoord"
@@ -1171,7 +1171,7 @@ export default function CoverageMap({
 <MapLegendSection groups={groups} districtColorMode={districtColorMode} setDistrictColorMode={setDistrictColorMode} shapedMarkers={shapedMarkers} bulkMode={bulkMode} />
         {/* Switching it on lives in the layers panel with every other layer; how it is
             weighted is a property of the layer, and belongs next to the data it weights. */}
-        <CollapsibleSection title="نقشه حرارتی" icon="flame" storageKey="heatmap" keywords="تراکم بدهی heatmap لایه">
+        <CollapsibleSection help="card.map-heat" title="نقشه حرارتی" icon="flame" storageKey="heatmap" keywords="تراکم بدهی heatmap لایه">
             {heatmapOn ? (
               <CheckField checked={heatmapByDebt} onChange={setHeatmapByDebt} className="text-[length:var(--text-sm)] text-text-muted">
                 وزن‌دهی بر اساس شدت بدهی

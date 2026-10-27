@@ -1,3 +1,4 @@
+import { CardHelp } from "@/components/meridian/CardHelp";
 import type { Session } from "@/lib/session";
 import { yieldToEventLoop } from "@/lib/yieldToEventLoop";
 import { REP_HEALTH_BAND_FA } from "@/lib/repo/repHealth";
@@ -77,6 +78,7 @@ export default async function DeepAnalysisSection({ session }: { session: Sessio
               خوب {faNum(bandCounts.good ?? 0)} · مراقبت {faNum(bandCounts.watch ?? 0)} · پرخطر{" "}
               {faNum(bandCounts.risk ?? 0)}
             </div>
+            <CardHelp id="card.customer-health" />
           </div>
           <div className="kblock__body">
             {risky.length === 0 ? (

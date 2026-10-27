@@ -1,5 +1,6 @@
 "use client";
 
+import { CardHelp } from "@/components/meridian/CardHelp";
 import { useMemo, useState } from "react";
 import { faNum } from "@/lib/format";
 import { faJalaliDate, jalaliToIsoDate, JALALI_MONTHS } from "@/lib/jalali";
@@ -83,6 +84,7 @@ export default function ScheduleBoard({
             </h2>
             <div className="n">نقطه‌ها یعنی آن روز مسیری ثبت شده</div>
           </div>
+          <CardHelp id="card.schedule-month" />
         </div>
         <div className="cal">
           <div className="calgrid">
@@ -154,6 +156,7 @@ export default function ScheduleBoard({
               {faNum(visitsForDay.length)} بازدید · {faNum(runsForDay.length)} سفر تحویل
             </div>
           </div>
+          <CardHelp id="card.schedule-day" />
         </div>
         <div className="rail">
           {visitsForDay.length === 0 && runsForDay.length === 0 ? (

@@ -15,7 +15,7 @@ export default function MapLegendSection({ groups, districtColorMode, setDistric
   bulkMode: boolean;
 }) {
   return (
-        <CollapsibleSection title="راهنمای رنگ مناطق" icon="map" storageKey="legend" keywords="وضعیت پوشش رنگ گروه محدوده legend">
+        <CollapsibleSection help="card.map-legend" title="راهنمای رنگ مناطق" icon="map" storageKey="legend" keywords="وضعیت پوشش رنگ گروه محدوده legend">
             {/* One meaning at a time. The fill cannot say both "needs coverage" and
                 "belongs to گروه غرب" at once without an amber district being ambiguous,
                 so the mode switches and the legend below switches with it. Hidden

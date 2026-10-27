@@ -111,7 +111,7 @@ export default async function BalanceSheetPage({
       </div>
 
       {/* The identity, in full, in the open. */}
-      <SectionHead title="بررسی تراز" as="h3" className="mt-6" />
+      <SectionHead help="card.balance-check" title="بررسی تراز" as="h3" className="mt-6" />
       <AcctTable
             compact
         head={["شرح", "مبلغ"]}

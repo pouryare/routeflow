@@ -4,6 +4,7 @@ import { createContext, useContext, useState, useSyncExternalStore } from "react
 import { Disclosure } from "@heroui/react";
 import { faNum } from "@/lib/format";
 import { matchesQuery } from "@/lib/persian";
+import { CardHelp } from "@/components/meridian/CardHelp";
 import { Icon, type IconName } from "@/components/meridian/Icon";
 
 // Progressive disclosure for the map sidebar. Originally written for the two customer
@@ -56,6 +57,7 @@ export default function CollapsibleSection({
   forceOpen,
   keywords,
   right,
+  help,
   children,
 }: {
   title: string;
@@ -85,6 +87,8 @@ export default function CollapsibleSection({
   /** Small always-visible control shown in the header, for a section whose main
    *  affordance is a single switch that shouldn't need opening to reach. */
   right?: React.ReactNode;
+  /** An id in lib/help (`card.…`): shows the (?) beside the title, outside the fold button. */
+  help?: string;
   children: React.ReactNode;
 }) {
   // Initial state is `defaultOpen` (server-safe); a remembered choice, once the client can
@@ -139,6 +143,7 @@ export default function CollapsibleSection({
             </span>
           </Disclosure.Trigger>
         </Disclosure.Heading>
+        {help ? <CardHelp id={help} /> : null}
         {right}
       </div>
       <Disclosure.Content>{expanded && <div className="sect__body">{children}</div>}</Disclosure.Content>

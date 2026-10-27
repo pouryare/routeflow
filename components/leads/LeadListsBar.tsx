@@ -97,7 +97,7 @@ export default function LeadListsBar({
        where pins are filed away; it is the decision.
        Copy only: the «تبدیل به مشتری» button keeps its place, because the page's
        structure is spec 1's business. */
-    <CollapsibleSection
+    <CollapsibleSection help="card.map-lists"
       title="فهرست‌ها — با افزودن پین به فهرست، سرنخ می‌شود"
       icon="list"
       storageKey="leads_lists"
