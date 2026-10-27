@@ -76,6 +76,7 @@ export default async function SalesHomePage() {
         <GradientStat
           tone="peach"
           label="فروش امروز"
+          help="fig.sales-today"
           value={<CountUp value={today} />}
           unit="تومان"
           chip={
@@ -89,6 +90,7 @@ export default async function SalesHomePage() {
           small
           icon="clock"
           label="در انتظار تحویل"
+          help="fig.awaiting"
           value={<><CountUp value={awaiting} suffix=" سفارش" /></>}
           chip={`${faNum(Math.round(d.kg))} کیلو · نرخ تحویل ${faNum(Math.round(d.fill_rate * 100))}٪`}
           chipTone="sky"
@@ -98,6 +100,7 @@ export default async function SalesHomePage() {
           small
           icon="banknote"
           label="مانده حساب مشتریان"
+          help="fig.debt"
           value={<CountUp value={Math.round((d.debt.total / M) * 10) / 10} />}
           unit="میلیون"
           chip={

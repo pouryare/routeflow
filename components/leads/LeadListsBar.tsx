@@ -3,6 +3,7 @@
 import { FieldInput } from "@/components/FieldInput";
 import { useState } from "react";
 import CollapsibleSection from "@/components/CollapsibleSection";
+import { Button } from "@heroui/react";
 import { Icon } from "@/components/meridian/Icon";
 import { faNum } from "@/lib/format";
 
@@ -132,47 +133,50 @@ export default function LeadListsBar({
                     <div className="flex items-center gap-2">
                       {/* The row is the load action on every screen, so a window resize never
                           changes what tapping a list does. */}
-                      <button type="button" onClick={() => run(list.id, list.location_ids, list.name, "load")} className="flex min-w-0 flex-1 items-center gap-2 text-right">
+                      <Button variant="ghost" onPress={() => run(list.id, list.location_ids, list.name, "load")} className="leadlist__row">
                         <Icon name="map-pin" size="md" />
                         <span className="truncate text-[length:var(--text-sm)] text-text">{list.name}</span>
                         <span className="shrink-0 font-mono text-[length:var(--text-xs)] text-text-faint">{faNum(count)} مکان</span>
                         {isActive ? (
                           <span className="shrink-0 rounded bg-accent/15 px-1.5 py-0.5 text-[length:var(--text-xs)] text-accent">فعال</span>
                         ) : null}
-                      </button>
+                      </Button>
 
                       {/* Mobile: one button, and the menu carries all six so it stands on
                           its own even though the row already loads. */}
-                      <button
-                        type="button"
-                        onClick={() => setMenuFor(menuFor === list.id ? null : list.id)}
+                      <Button
+                        isIconOnly
+                        variant="ghost"
+                        size="sm"
+                        onPress={() => setMenuFor(menuFor === list.id ? null : list.id)}
                         aria-label={`کارهای ${list.name}`}
                         aria-expanded={menuFor === list.id}
-                        className="shrink-0 rounded p-1.5 text-text-faint transition-colors hover:text-text md:hidden"
+                        className="md:hidden"
                       >
                         <Icon name="more" size="sm" />
-                      </button>
+                      </Button>
                     </div>
 
                     {isOpen ? (
                       <p className="mt-1.5 flex flex-wrap items-center gap-2 text-[length:var(--text-xs)] text-text-muted">
                         <span>{confirming?.kind === "delete" ? "این فهرست حذف شود؟" : "مسیر فعلی جایگزین شود؟"}</span>
-                        <button
-                          type="button"
-                          onClick={() => {
+                        <Button
+                          variant="danger-soft"
+                          size="sm"
+                          onPress={() => {
                             const kind = confirming?.kind;
                             setConfirming(null);
                             if (kind === "delete") onDelete(list.id);
                             else onOpen(list.id);
                           }}
-                          className="rounded bg-crit/15 px-1.5 py-0.5 touch text-crit"
                         >
                           <Icon name="x" size="md" />
                           {confirming?.kind === "delete" ? "حذف فهرست" : "جایگزینی مسیر"}
-                        </button>
-                        <button type="button" onClick={() => setConfirming(null)} className="rounded px-1.5 py-0.5 touch text-text-faint">
-                        <Icon name="x" size="md" />
-                        {confirming?.kind === "delete" ? "انصراف از حذف" : "انصراف از جایگزینی"}</button>
+                        </Button>
+                        <Button variant="tertiary" size="sm" onPress={() => setConfirming(null)}>
+                          <Icon name="x" size="md" />
+                          {confirming?.kind === "delete" ? "انصراف از حذف" : "انصراف از جایگزینی"}
+                        </Button>
                       </p>
                     ) : null}
 
@@ -180,37 +184,33 @@ export default function LeadListsBar({
                         route's own action row. */}
                     <div className="mt-1.5 hidden flex-wrap items-center gap-1.5 md:flex">
                       {ACTIONS.map((a) => (
-                        <button
+                        <Button
                           key={a.id}
-                          type="button"
-                          onClick={() => run(list.id, list.location_ids, list.name, a.id)}
-                          disabled={busy || (a.id === "send" && count === 0) || (a.id === "split" && count === 0)}
-                          title={a.id === "append" && openListName ? `به «${openListName}» افزوده می‌شود` : undefined}
-                          className={`inline-flex items-center gap-1 rounded-[var(--radius-sm)] border px-1.5 py-0.5 touch text-[length:var(--text-xs)] transition-colors disabled:opacity-40 ${
-                            a.destructive
-                              ? "border-border text-text-faint hover:border-crit hover:text-crit"
-                              : "border-border text-text-muted hover:border-accent hover:text-accent"
-                          }`}
+                          variant={a.destructive ? "danger-soft" : "secondary"}
+                          size="sm"
+                          onPress={() => run(list.id, list.location_ids, list.name, a.id)}
+                          isDisabled={busy || (a.id === "send" && count === 0) || (a.id === "split" && count === 0)}
+                          aria-description={a.id === "append" && openListName ? `به «${openListName}» افزوده می‌شود` : undefined}
                         >
                           <Icon name={a.icon} size="sm" />
                           {a.label}
-                        </button>
+                        </Button>
                       ))}
                     </div>
 
                     {menuFor === list.id ? (
                       <div className="mt-1.5 flex flex-col gap-0.5 md:hidden">
                         {ACTIONS.map((a) => (
-                          <button
+                          <Button
                             key={a.id}
-                            type="button"
-                            onClick={() => run(list.id, list.location_ids, list.name, a.id)}
-                            disabled={busy || ((a.id === "send" || a.id === "split") && count === 0)}
-                            className={`flex items-center gap-2 rounded-[var(--radius-sm)] px-2 py-1.5 text-right text-[length:var(--text-xs)] disabled:opacity-40 ${a.destructive ? "text-crit" : "text-text-muted"}`}
+                            variant={a.destructive ? "danger-soft" : "ghost"}
+                            className="leadlist__act"
+                            onPress={() => run(list.id, list.location_ids, list.name, a.id)}
+                            isDisabled={busy || ((a.id === "send" || a.id === "split") && count === 0)}
                           >
                             <Icon name={a.icon} size="sm" />
                             {a.label}
-                          </button>
+                          </Button>
                         ))}
                       </div>
                     ) : null}
@@ -232,15 +232,10 @@ export default function LeadListsBar({
           aria-label="نام فهرست تازه"
           className="flex-1 text-[length:var(--text-xs)] text-text"
         />
-        <button
-          type="button"
-          onClick={() => onCreate(newName)}
-          disabled={busy || !newName.trim()}
-          className="shrink-0 rounded-[var(--radius-sm)] border border-accent px-2 py-1.5 text-[length:var(--text-xs)] text-accent transition-colors hover:bg-accent hover:text-accent-ink disabled:opacity-50"
-        >
+        <Button variant="outline" size="sm" onPress={() => onCreate(newName)} isDisabled={busy || !newName.trim()}>
           <Icon name="plus" size="sm" />
           ساختن از مسیر فعلی
-        </button>
+        </Button>
       </div>
     </CollapsibleSection>
   );
