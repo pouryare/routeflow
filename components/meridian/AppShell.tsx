@@ -5,6 +5,7 @@ import RevealRoute from "@/components/meridian/RevealRoute";
 import RouteFade from "@/components/meridian/RouteFade";
 import SquircleFallback from "@/components/meridian/SquircleFallback";
 import SyncIsland from "@/components/meridian/SyncIsland";
+import WidgetBoundary from "@/components/WidgetBoundary";
 
 /** Everything every themed route wears: the header, the entrance choreography, and the
  *  sync indicator.
@@ -36,9 +37,11 @@ export default function AppShell({ children }: { children: ReactNode }) {
       <RouteFade>{children}</RouteFade>
 
       {/* Nothing at all for a role with no sync client — see SyncIsland. */}
-      <Suspense fallback={null}>
-        <SyncIsland />
-      </Suspense>
+      <WidgetBoundary label="همگام‌سازی" compact>
+        <Suspense fallback={null}>
+          <SyncIsland />
+        </Suspense>
+      </WidgetBoundary>
 
       {/* Renders null and costs nothing wherever the browser draws the corner itself. */}
       <SquircleFallback />

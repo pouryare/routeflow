@@ -550,6 +550,16 @@ Lower priority: the hand-written service worker (`public/sw.js`, manual cache ve
 
 `@testcontainers/postgresql` (a real Postgres with PostGIS per test run), `fast-check` (property tests for money, ledger and commission), `@faker-js/faker` with the Persian locale (the demo seeding fetches portraits from `randomuser.me` today), `@axe-core/playwright` (accessibility checks in CI). Only if the need appears: `jose` (signed one-time links, wallboard display keys), `ical-generator` (F87). Not needed: client-side search libraries (`pg_trgm` does it), `node-cron` and BullMQ (pg-boss), date libraries (`Intl` and `lib/jalali.ts`).
 
+**Shortlist audit (2026-10-27).** The owner short-listed about 60 libraries from a chat with Gemini; the audit and its reasons are in the project file `audits/shortlist-audit-2026-10-27.md`. Decisions:
+
+- **Added now:** `react-error-boundary` 6.1.6 (exact), behind one `components/WidgetBoundary.tsx`. It sits in `ChartFrame` (every chart), `BottomSheet` (every sheet body), the header's search and bell, the sync island, and every map.
+- **Adopt when the feature starts:** `pino`, `web-vitals`, `lru-cache`, Valibot, `nuqs`, `@tanstack/react-virtual`. TanStack Query only on the chat screen and live panels.
+- **Later:** `rate-limiter-flexible` (with more than one app server), `jose`, `nanoid` (short public codes only), `microdiff`, `canvas-confetti`, TanStack Table (desk order entry), React Hook Form.
+- **Owner decision, stay on one server as long as possible:** no Centrifugo for now. Chat runs on PostgreSQL plus server-sent events and an `events` table with an increasing id, so a phone that lost signal catches up from `Last-Event-ID`. Revisit with a second app server or presence.
+- **Owner decision, quizzes are written by managers:** no AI-generated quizzes for now (a hosted foreign model is unlikely from Iran, 10.2). They belong with the academy and F133.
+- **Not used, already covered:** Fuse, MiniSearch, FlexSearch (`pg_trgm`); Graphile Worker, `node-cron` (pg-boss); `p-limit` (`p-queue`); ULID, cuid2 (UUIDv7); `date-fns` (Intl and `lib/jalali.ts`); AutoAnimate (framer-motion); tinykeys (`lib/hotkeys.ts`); clipboard-copy (`lib/clipboard.ts`); `localforage` (`lib/offline/idbStore.ts`); `@xstate/fsm` (`lib/orderStateMachine.ts`).
+- **Rejected:** `solve-tsp` and `javascript-tsp` (not on npm), `glpk.js` (GPL-3.0), `link-preview-js` (the server would fetch any URL).
+
 ### 10.7 Live updates: where they would be used
 
 Added 2026-10-23 from a review of the code and these docs. The candidates in the last group are inferred, not stated in the entries.

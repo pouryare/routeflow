@@ -12,6 +12,7 @@ import { faNum } from "@/lib/format";
 import { formatEta } from "@/lib/leadImport/eta";
 import { EASE, DUR, withReducedMotion } from "@/lib/motion";
 import { usePrefersReducedMotion } from "@/lib/usePrefersReducedMotion";
+import WidgetBoundary from "@/components/WidgetBoundary";
 
 /** How long the undo stays offered. Long enough to notice and reach for, short enough
  *  that it is not a permanent fixture on a panel nobody is reading. */
@@ -137,7 +138,7 @@ export default function DecodeConsole({
           >
             <div className="pt-2">
               <div className="mb-2">
-                <ImportMap items={items} />
+                <WidgetBoundary label="نقشهٔ مکان‌های واردشده"><ImportMap items={items} /></WidgetBoundary>
                 <p className="mt-1 text-[length:var(--text-xs)] text-text-faint">
                   {faNum(settled)} مکان روی نقشه — {faNum(snapshot.total - settled)} مورد در انتظار
                 </p>
