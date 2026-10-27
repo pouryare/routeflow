@@ -1,9 +1,21 @@
 name: CI
 
+# Minutes are billed per job (private repo, 2,000 free a month), and `check` and `postgres` run in
+# parallel, so one full run costs about 25 minutes. To keep that down:
+#  - draft pull requests are not tested; mark the PR ready once and CI runs on that head
+#  - after a merge, `main` runs only `check` (the PR already ran `postgres` on the same code)
+#  - changes that touch only docs or notes do not run CI
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - "**/*.md"
+      - "docs/**"
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths-ignore:
+      - "**/*.md"
+      - "docs/**"
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -11,8 +23,9 @@ concurrency:
 
 jobs:
   check:
+    if: github.event_name == 'push' || !github.event.pull_request.draft
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 15
     env:
       PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1"
       NEXT_TELEMETRY_DISABLED: "1"
@@ -61,8 +74,9 @@ jobs:
   # SQLite schema, migrations pass Squawk, and the unit suite runs against PostgreSQL with no
   # failure beyond tests/pg-known-failures.txt (which may only shrink).
   postgres:
+    if: github.event_name == 'pull_request' && !github.event.pull_request.draft
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 22
     env:
       PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1"
       NEXT_TELEMETRY_DISABLED: "1"

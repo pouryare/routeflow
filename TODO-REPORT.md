@@ -3,6 +3,7 @@
 _Condensed 2026-10-23. Each finished piece of work is one line here; the full earlier text is in git history (`git log -p TODO-REPORT.md`)._
 
 ## Done
+- [x] Actions minutes cut (`claude/project-thread-lb9196`): draft PRs skip CI, `main` runs only `check` after a merge, docs-only changes skip CI, shorter timeouts; secret scan for going public and `docs/make-repo-public.md`; `LICENSE` (all rights reserved)
 - [x] Shortlist audit of the Gemini technology list (decisions and one table row per adopted or later library in `docs/roadmap.md` 10.6; one server, manager-written quizzes) and `react-error-boundary` 6.1.6 added: one `WidgetBoundary` around every chart, sheet body, map, and the header search, bell and sync island, so one failing widget no longer replaces the page
 - [x] Full-app audit, 41 findings (`docs/archive/AUDIT-2026-10-20.md`), all fixed or decided across PR #24 and the steps that followed
 - [x] Performance pass (PR #17), mobile-first TapFlow rollout (PRs #26, #27), architecture audit steps 1–7 (PRs #43–#46 and later)
@@ -127,6 +128,7 @@ _Condensed 2026-10-23. Each finished piece of work is one line here; the full ea
 - [x] (?) help everywhere it is needed: 38 pages that had none (`lib/help/pages.ts`) and about 40 cards and sections (`lib/help/cards.ts`): dashboard, map sidebar, orders, pocket, predictions, analysis, accounting checks; `CollapsibleSection` and `SectionHead` take a `help` id; `tests/card-help.test.ts` keeps ids and copy in step
 
 ## Not done / gaps
+- [ ] Owner to set a $0 Actions budget (Settings, Billing, Budgets) and decide whether the PostgreSQL job may run less often (docs-only or label); the history rewrite in `docs/make-repo-public.md` is not done; if branch protection requires CI, docs-only PRs (skipped) will need it relaxed
 - [ ] `WidgetBoundary` logs to the browser console only; it should feed the structured logging and error tracker (F108) when those exist
 - [ ] Not guarded yet: the order form, pipeline and board panels (they sit inside the page-level error screen); add a boundary where a widget has failed on its own in practice
 - [ ] A desktop-only Modal and a Dropdown were not added: the sheet select with search (`SmartPicker`, `SearchableGroup`) covers select, combo box and dropdown on phones, and no screen needs a desktop yes/no modal yet; add one when a screen asks
