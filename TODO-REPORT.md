@@ -3,7 +3,7 @@
 _Condensed 2026-10-23. Each finished piece of work is one line here; the full earlier text is in git history (`git log -p TODO-REPORT.md`)._
 
 ## Done
-- [x] Shortlist audit of the Gemini technology list (decisions in `docs/roadmap.md` 10.6; one server, manager-written quizzes) and `react-error-boundary` 6.1.6 added: one `WidgetBoundary` around every chart, sheet body, map, and the header search, bell and sync island, so one failing widget no longer replaces the page
+- [x] Shortlist audit of the Gemini technology list (decisions and one table row per adopted or later library in `docs/roadmap.md` 10.6; one server, manager-written quizzes) and `react-error-boundary` 6.1.6 added: one `WidgetBoundary` around every chart, sheet body, map, and the header search, bell and sync island, so one failing widget no longer replaces the page
 - [x] Full-app audit, 41 findings (`docs/archive/AUDIT-2026-10-20.md`), all fixed or decided across PR #24 and the steps that followed
 - [x] Performance pass (PR #17), mobile-first TapFlow rollout (PRs #26, #27), architecture audit steps 1–7 (PRs #43–#46 and later)
 - [x] Sync pull same-millisecond tie fixed (PR #54); parked features F4–F148 written up; roadmap themes and waves; platform decisions in `docs/roadmap.md` section 10
