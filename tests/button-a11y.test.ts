@@ -456,7 +456,7 @@ describe("every button carries an icon", () => {
         if (!body) continue;
         const content = elementContent(src, i, src.indexOf(">", i) + 1 + body.length);
         // a button that IS its own picture, or renders one, is not iconless
-        if (/<Icon\b/.test(content) || /<svg\b/.test(content)) continue;
+        if (/<(?:Icon|BusyIcon)\b/.test(content) || /<svg\b/.test(content)) continue; // BusyIcon renders an Icon, or a spinner while busy
         if (/<img\b/.test(content)) continue;
         // …and a button that says out loud why it needs no picture is not unconsidered.
         if (RECORDED_REASON.test(content)) continue;
