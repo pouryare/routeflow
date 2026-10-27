@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { CardHelp } from "@/components/meridian/CardHelp";
 import { Icon, type IconName } from "@/components/meridian/Icon";
 
 export type WashTone = "peach" | "mint" | "sand";
@@ -23,6 +24,7 @@ export default function GradientStat({
   chipTone = "sage",
   icon,
   small = false,
+  help,
 }: {
   tone: WashTone;
   label: string;
@@ -40,6 +42,8 @@ export default function GradientStat({
    *  node accepts a mistake that looks exactly like a success at the call site. */
   icon?: IconName;
   small?: boolean;
+  /** A `fig.*` id from lib/help/figures.ts: puts the (?) beside the label. */
+  help?: string;
 }) {
   return (
     <div className={`gcard ${tone}${small ? " small" : ""}`}>
@@ -48,7 +52,10 @@ export default function GradientStat({
           <Icon name={icon} />
         </div>
       ) : null}
-      <div className="k">{label}</div>
+      <div className="k">
+        {label}
+        {help ? <CardHelp id={help} /> : null}
+      </div>
       <div className="v mono">
         {value}
         {unit ? <small>{unit}</small> : null}

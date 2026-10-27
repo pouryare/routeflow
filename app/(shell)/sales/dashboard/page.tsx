@@ -84,6 +84,7 @@ export default async function DashboardPage() {
         <GradientStat
           tone="peach"
           label="فروش (تحویل‌شده)"
+          help="fig.revenue-delivered"
           value={<CountUp value={d.revenue_toman} />}
           unit="تومان"
           chip={`${faNum(d.order_count)} سفارش · میانگین ${faToman(d.average_order_toman)}`}
@@ -93,6 +94,7 @@ export default async function DashboardPage() {
           small
           icon="truck"
           label="نرخ تحویل"
+          help="fig.fill-rate"
           value={<CountUp value={d.fill_rate} mode="pct" />}
           chip={
             d.fill_rate > 0 && d.fill_rate < 0.9
@@ -106,6 +108,7 @@ export default async function DashboardPage() {
           small
           icon="banknote"
           label="مانده حساب مشتریان"
+          help="fig.debt"
           value={<CountUp value={d.debt.total} />}
           unit="تومان"
           chip={
@@ -129,6 +132,7 @@ export default async function DashboardPage() {
             small
             icon="target"
             label="سود ناخالص (تحویل‌شده)"
+          help="fig.gross-profit"
             value={<CountUp value={d.margin_toman} />}
             unit="تومان"
             chip={`حاشیهٔ سود ${pct(d.revenue_toman > 0 ? d.margin_toman / d.revenue_toman : 0)} از فروش`}
@@ -146,6 +150,7 @@ export default async function DashboardPage() {
           small
           icon="clock"
           label="میانگین زمان تحویل"
+          help="fig.lead-days"
           value={d.avg_lead_days === null ? "—" : `${faNum(Math.round(d.avg_lead_days * 10) / 10)}`}
           unit={d.avg_lead_days === null ? undefined : "روز"}
           chip={d.avg_lead_days === null ? "هنوز سفارش تحویل‌شده‌ای با تاریخ تحویل ثبت نشده" : "از ثبت سفارش تا تحویل"}
@@ -155,6 +160,7 @@ export default async function DashboardPage() {
           small
           icon="sparkle"
           label="مشتریان جدید این ماه"
+          help="fig.new-customers"
           value={<CountUp value={newThisMonth} suffix=" مشتری" />}
           chip="اولین سفارش عمر مشتری در این ماه بوده"
         />
