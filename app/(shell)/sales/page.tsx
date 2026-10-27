@@ -1,3 +1,4 @@
+import { CardHelp } from "@/components/meridian/CardHelp";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { COOKIE_NAME } from "@/lib/auth";
@@ -118,6 +119,7 @@ export default async function SalesHomePage() {
             <div className="acts">
               <span className="btn ghost">هفت روز</span>
             </div>
+            <CardHelp id="card.sales-trend" />
           </div>
           {spark.length > 1 ? (
             <>

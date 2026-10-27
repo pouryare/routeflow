@@ -1,5 +1,6 @@
 "use client";
 
+import { CardHelp } from "@/components/meridian/CardHelp";
 import { TASK_KIND_TONE } from "@/lib/tasks/labels";
 import { useCallback, useState } from "react";
 import Link from "next/link";
@@ -289,6 +290,7 @@ export default function Pocket({
               {faNum(data.today.length + data.week.length)} کار باز
             </div>
           </div>
+          <CardHelp id="card.pocket" />
         </div>
         <div className="kblock__body">
           {group("امروز", data.today)}

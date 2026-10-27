@@ -12,7 +12,7 @@ export default function PinnedCustomersSection({ pinnedCustomers, flyToCustomer,
 }) {
   if (!(pinnedCustomers.length > 0)) return null;
   return (
-        <CollapsibleSection title="سنجاق‌شده" icon="star" count={pinnedCustomers.length} storageKey="pinned" defaultOpen>
+        <CollapsibleSection help="card.map-pinned" title="سنجاق‌شده" icon="star" count={pinnedCustomers.length} storageKey="pinned" defaultOpen>
           <div className="flex flex-col gap-1.5">
             {pinnedCustomers.map((c) => (
               <div

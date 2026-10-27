@@ -156,7 +156,7 @@ export default function RouteSection({
     <>
       {/* ---- automatic day split (manager only) -------------------------------- */}
       {isManager && (
-          <CollapsibleSection
+          <CollapsibleSection help="card.map-split"
             title="تقسیم خودکار بین روزها" icon="folders"
             storageKey="leads_split"
             keywords="خوشه‌بندی روز مسیر تقسیم"

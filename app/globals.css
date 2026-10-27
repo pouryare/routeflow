@@ -2105,6 +2105,9 @@ body {
   gap: 14px; padding: 20px 24px 14px; flex-wrap: wrap;
 }
 .meridian .bhead h2 { margin: 0; }
+/* A card with a (?) keeps it on the title row: the title block gives way instead of pushing it to a new line. */
+.meridian .bhead:has(> .mhelp) > :first-child { flex: 1 1 0; min-width: 0; }
+.meridian .bhead > .mhelp { flex: none; }
 /* One heading for a section, inside a card (.bhead) or outside one (SectionHead.tsx), so
    no two sections can disagree again (item 15). Typography only: unlayered rules beat
    Tailwind's layered utilities, so a margin set here would erase every heading's own

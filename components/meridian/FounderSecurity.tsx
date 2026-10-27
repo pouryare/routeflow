@@ -64,7 +64,7 @@ export default function FounderSecurity() {
 
   return (
     <section className="mt-[var(--space-4)]" aria-label="ورود دومرحله‌ای">
-      <SectionHead title="ورود دومرحله‌ای" />
+      <SectionHead help="card.two-factor" title="ورود دومرحله‌ای" />
       <p className="m-0 mt-[var(--space-1)] mb-[var(--space-2)] text-[length:var(--text-sm)] text-[var(--text-muted)]">
         {status.enabled
           ? `فعال است. هر ورود علاوه بر رمز، کد برنامهٔ احراز هویت می‌خواهد. کدهای بازیابی باقی‌مانده: ${status.recoveryLeft}`

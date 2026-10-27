@@ -1,5 +1,6 @@
 "use client";
 
+import { CardHelp } from "@/components/meridian/CardHelp";
 import { useEffect, useState } from "react";
 import { Table, type SortDescriptor } from "@heroui/react";
 import { friendlyError } from "@/lib/userMessage";
@@ -97,6 +98,7 @@ export default function MarginTable({ period }: { period: string }) {
             </button>
           ))}
         </div>
+        <CardHelp id="card.margin" />
       </div>
 
       {err && <p className="text-[length:var(--text-sm)] text-[var(--crit)]">{err}</p>}

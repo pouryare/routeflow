@@ -136,7 +136,7 @@ export default function RepDefinitions() {
   return (
     <div className="flex flex-col gap-[var(--space-5)]">
       <section className="card p-4">
-        <SectionHead title="تعریف نماینده" sub="یک مشتری عمده‌فروش را با یک کد به نماینده تبدیل کنید." />
+        <SectionHead help="card.rep-define" title="تعریف نماینده" sub="یک مشتری عمده‌فروش را با یک کد به نماینده تبدیل کنید." />
         <form onSubmit={create} className="flex flex-wrap items-end gap-3">
           <label className="flex flex-col gap-1 text-[length:var(--text-xs)] text-text-muted">
             مشتری عمده‌فروش
@@ -165,7 +165,7 @@ export default function RepDefinitions() {
       </section>
 
       <section className="card p-4">
-        <SectionHead title="نمایندگان تعریف‌شده" sub="مرحله و پذیرش هر نماینده را از اینجا جلو ببرید." />
+        <SectionHead help="card.rep-list" title="نمایندگان تعریف‌شده" sub="مرحله و پذیرش هر نماینده را از اینجا جلو ببرید." />
         <div className="overflow-x-auto">
           <table className="w-full border-collapse text-[length:var(--text-sm)]">
             <thead>

@@ -164,7 +164,7 @@ export default async function DashboardPage() {
         <DeepAnalysisSection session={session} />
       </Suspense>
 
-      <CollapsibleSection title="روند فروش و مشتریان" icon="trend" storageKey="dash-trends">
+      <CollapsibleSection help="card.dash-trend" title="روند فروش و مشتریان" icon="trend" storageKey="dash-trends">
         <div className="grid gap-[var(--space-4)] md:grid-cols-2">
           <BarChart
             title="فروش به تفکیک روز هفته"
@@ -226,7 +226,7 @@ export default async function DashboardPage() {
         />
       </div>
 
-      <CollapsibleSection title="فروش به تفکیک" icon="chart" storageKey="dash-breakdown" defaultOpen>
+      <CollapsibleSection help="card.dash-breakdown" title="فروش به تفکیک" icon="chart" storageKey="dash-breakdown" defaultOpen>
         <div className="grid gap-[var(--space-4)] md:grid-cols-2">
           <BarChart
             title="فروش هر کالا"
@@ -277,14 +277,14 @@ export default async function DashboardPage() {
       )}
 
       {coverage && (
-        <CollapsibleSection title="پوشش و میدان" icon="compass" storageKey="dash-coverage">
+        <CollapsibleSection help="card.dash-coverage" title="پوشش و میدان" icon="compass" storageKey="dash-coverage">
           <CoveragePanels data={coverage} now={coverageNow} />
         </CollapsibleSection>
       )}
 
       {/* The pinned leads: /api/locations admits PIN_POOL_ROLES, so only they get the panel. */}
       {PIN_POOL_ROLES.includes(session.role) && (
-        <CollapsibleSection title="سرنخ‌ها" icon="target" storageKey="dash-leads">
+        <CollapsibleSection help="card.dash-leads" title="سرنخ‌ها" icon="target" storageKey="dash-leads">
           <LeadPanels />
         </CollapsibleSection>
       )}

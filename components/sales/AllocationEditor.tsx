@@ -26,7 +26,7 @@ editing !== null ? (
           aria-label="ویرایش تخصیص"
           className="flex flex-col gap-2 rounded border border-border bg-surface p-3 text-sm"
         >
-          <SectionHead title="تخصیص این دریافت" as="h3" />
+          <SectionHead help="card.allocation" title="تخصیص این دریافت" as="h3" />
           <p className="text-xs text-text-muted">
             پیش‌فرض روی قدیمی‌ترین سفارش‌ها می‌نشیند و باقی‌مانده به حساب مشتری. اینجا می‌توانید
             دستی عوضش کنید؛ پول جابه‌جا نمی‌شود، فقط نسبتش با سفارش‌ها.

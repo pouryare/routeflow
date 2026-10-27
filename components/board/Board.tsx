@@ -1,5 +1,6 @@
 "use client";
 
+import { CardHelp } from "@/components/meridian/CardHelp";
 import { Icon } from "@/components/meridian/Icon";
 import { TASK_KIND_TONE, taskKindLabel } from "@/lib/tasks/labels";
 import { useCallback, useRef, useState } from "react";
@@ -159,6 +160,7 @@ export default function Board({
               : ""}
           </div>
         </div>
+        <CardHelp id="card.board" />
       </div>
       {toolbar}
 
