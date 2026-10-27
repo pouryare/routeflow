@@ -616,6 +616,13 @@ part's sheet in the same change that first uses it. What we use, and where it li
 | Report table, pager | HeroUI's `table` / `pagination` classes | `AcctTable`, `Pager`: server pages with real links, so only the classes |
 | Pocket card face and papers | `Card` (transparent and secondary) | `PocketCard`; our `.card` rule skips `.face` and `.doc`; the fan and the frosted face are ours |
 | Checkbox, switch, alert, popover | as named | |
+| (?) help beside a component | `Popover` | `components/meridian/HelpHint.tsx` (a Popover, not a Tooltip: tooltips never open on touch); `HelpRow` puts it on its own row |
+| Saving button | `Spinner` | `BusyIcon` swaps the button's icon while it works |
+| Progress | `ProgressBar` | `FlowProgress` (tap flows), `leadImport/ProgressBar` |
+| Applied filter | `TagGroup` / `Tag` | `ActiveTags`: removable tags under the filter chips |
+| Keyboard key | `Kbd` | shortcut help, search slot |
+| Long list of answers | `ListBox` | `AnswerList` (in `Answer.tsx`); `SmartPicker` is the sheet select / combo box with search |
+| Sortable client table | `Table` | `MarginTable` (reports stay server pages) |
 
 Still ours, styled with the HeroUI token names: `Keypad`, `SwipeRow`, the phone bottom bar,
 `FilterChips`, the signature cards below, the charts, and the map markers.
@@ -625,7 +632,7 @@ Still ours, styled with the HeroUI token names: `Keypad`, `SwipeRow`, the phone 
   warehouse a filled hexagon (26×29, center-anchored, crate knocked out); home base a
   hollow house (24×26, base-anchored). Both static — the ping belongs to live readings,
   and a building is not one. Drawn above the cluster layer.
-- **Skeleton** — matches the shape of what is loading. Never a spinner.
+- **Skeleton** — matches the shape of what is loading. A page never shows a spinner; the HeroUI `Spinner` appears only inside a button the person just tapped (`BusyIcon`).
 
 ## CRM / ERP patterns `SHIPPED`
 

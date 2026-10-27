@@ -1,6 +1,6 @@
 "use client";
 
-import { Icon } from "@/components/meridian/Icon";
+import BusyIcon from "@/components/meridian/BusyIcon";
 import { useRouter } from "next/navigation";
 import { useUndoableAction } from "@/components/tapflow/useUndoableAction";
 
@@ -40,7 +40,7 @@ export default function ConfirmOrderButton({ orderId }: { orderId: number }) {
         disabled={pending}
         className="inline-flex min-h-[44px] items-center justify-center gap-[var(--space-2)] rounded-[var(--radius-md)] border border-[var(--accent)] bg-[var(--accent)] px-[var(--space-5)] text-[length:var(--text-sm)] font-medium text-accent-ink transition-[filter] duration-[var(--dur-base)] hover:brightness-110 disabled:opacity-50"
       >
-        <Icon name="check" size="sm" />
+        <BusyIcon busy={pending} name="check" size="sm" />
         {pending ? "در حال تأیید سفارش…" : "تأیید سفارش"}
       </button>
       <span className="text-[length:var(--text-xs)] text-[var(--text-muted)]">

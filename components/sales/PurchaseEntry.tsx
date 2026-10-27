@@ -9,6 +9,7 @@ import { useRouter } from "next/navigation";
 import JalaliDatePicker from "@/components/JalaliDatePicker";
 import { toToman } from "@/lib/money";
 import { faToman, faNum } from "@/lib/format";
+import BusyIcon from "@/components/meridian/BusyIcon";
 import { Icon } from "@/components/meridian/Icon";
 
 interface Product {
@@ -224,7 +225,7 @@ export default function PurchaseEntry({ products }: { products: Product[] }) {
           disabled={busy || lines.length === 0}
           className="inline-flex items-center justify-center gap-[var(--space-2)] rounded-[var(--radius-md)] border border-[var(--accent)] bg-[var(--accent)] px-[var(--space-5)] py-[var(--space-2)] text-[length:var(--text-sm)] font-medium text-accent-ink transition-[filter] duration-[var(--dur-base)] hover:brightness-110 disabled:opacity-40"
         >
-          <Icon name="package" size="sm" />
+          <BusyIcon busy={busy} name="package" size="sm" />
           {busy ? "در حال ثبت…" : "ثبت خرید"}
         </button>
       </div>

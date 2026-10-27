@@ -1,9 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { HelpHint, HelpRow } from "@/components/meridian/HelpHint";
 import { Icon } from "@/components/meridian/Icon";
 import BottomSheet from "@/components/mobile/BottomSheet";
-import { AnswerButton, AnswerSearch, SkipButton } from "@/components/tapflow/Answer";
+import { AnswerButton, AnswerList, AnswerSearch, SkipButton } from "@/components/tapflow/Answer";
 import { getRecentsUser } from "@/lib/recentsUser";
 import { loadHistory, rank, record, saveHistory, usual, type History } from "@/lib/recents";
 
@@ -78,6 +79,12 @@ export default function SmartPicker({
       </button>
       <BottomSheet open={open} title={label} onClose={() => setOpen(false)} closeLabel="بستن فهرست">
         <div className="smartpicker">
+          <HelpRow>
+            <HelpHint title={`انتخاب ${label}`} label={`راهنمای انتخاب ${label}`}>
+              <p className="mhelp__what">موردهایی که بیشتر انتخاب کرده‌اید بالای فهرست می‌آیند و با یک لمس انتخاب می‌شوند.</p>
+              <p className="mhelp__how">برای پیدا کردن بقیه، نام را در کادر جستجو بنویسید.</p>
+            </HelpHint>
+          </HelpRow>
           {first.length > 0 && pinned && (
             <>
               <div className="tf-group">{pinned.label}</div>
@@ -103,14 +110,7 @@ export default function SmartPicker({
             </>
           )}
           <AnswerSearch value={q} onChange={setQ} label={`جستجوی ${label}`} autoFocus={frequent.length === 0 && first.length === 0} />
-          <div className="tf-grid one">
-            {ranked.map((i) => (
-              <AnswerButton key={i.id} icon="check" selected={i.id === value} onPress={() => pick(i.id)}>
-                {i.label}
-              </AnswerButton>
-            ))}
-            {ranked.length === 0 && <p className="tf-note">چیزی پیدا نشد</p>}
-          </div>
+          <AnswerList label={`فهرست ${label}`} items={ranked} selected={value} onPick={pick} />
           {more > 0 && <p className="tf-note">برای دیدن بقیه نام را جستجو کنید</p>}
           {clearLabel && value !== "" && (
             <SkipButton

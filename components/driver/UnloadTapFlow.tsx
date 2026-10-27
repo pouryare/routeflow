@@ -14,6 +14,7 @@
 //
 // More than one line is the NORMAL case — «خراب ۵ کیلو» beside «تاریخ مصرف گذشته ۲ کارتن».
 
+import BusyIcon from "@/components/meridian/BusyIcon";
 import { Icon } from "@/components/meridian/Icon";
 import { useMemo, useState } from "react";
 import { DISPOSITIONS, DISPOSITION_LABEL, type Disposition } from "@/lib/unloadDispositions";
@@ -150,7 +151,7 @@ export default function UnloadTapFlow({
           onClick={() => onSubmit(lines)}
           className="flex-1 rounded-[var(--radius-md)] border border-accent bg-accent px-3 py-2 text-[length:var(--text-sm)] text-accent-ink disabled:opacity-60"
         >
-          <Icon name="check" size="sm" /> {busy ? "در حال ثبت…" : "ثبت تخلیه"}
+          <BusyIcon busy={busy} name="check" size="sm" /> {busy ? "در حال ثبت…" : "ثبت تخلیه"}
         </button>
         <button
           type="button"

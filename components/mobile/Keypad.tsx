@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { HelpHint, HelpRow } from "@/components/meridian/HelpHint";
 import { Icon } from "@/components/meridian/Icon";
 import { faNum } from "@/lib/format";
 import { display, keyFromEvent, press, quickAmounts, type Key } from "@/lib/keypad";
@@ -53,6 +54,12 @@ export default function Keypad({
         else tap(k);
       }}
     >
+      <HelpRow>
+        <HelpHint title="وارد کردن عدد" label="راهنمای وارد کردن عدد">
+          <p className="mhelp__what">عدد را با کلیدها بنویسید. «۰۰۰» سه صفر اضافه می‌کند و پیکان آخرین رقم را پاک می‌کند.</p>
+          <p className="mhelp__how">اگر عددی پیشنهاد شده بود، با یک لمس جای عدد می‌نشیند.</p>
+        </HelpHint>
+      </HelpRow>
       <div className="keypad__readout" role="status" aria-live="polite">
         <strong>{display(value)}</strong>
         {unit ? <span>{unit}</span> : null}

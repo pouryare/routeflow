@@ -1,6 +1,7 @@
 "use client";
 
 import CollapsibleSection from "./CollapsibleSection";
+import ActiveTags from "@/components/mobile/ActiveTags";
 import FilterChips from "@/components/mobile/FilterChips";
 import { faNum } from "@/lib/format";
 
@@ -46,6 +47,11 @@ export default function CustomerFilters({
           ]}
         />
       )}
+      <ActiveTags
+        label="فروشنده‌های انتخاب‌شده"
+        items={[...salespersonFilter].map((x) => ({ id: x, label: x }))}
+        onRemove={(id) => onSalespersonFilterChange(new Set([...salespersonFilter].filter((x) => x !== id)))}
+      />
     </CollapsibleSection>
   );
 }
