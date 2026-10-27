@@ -6,6 +6,7 @@
  *  per repo convention (tests/ has no React-render tests).
  */
 
+import { Button } from "@heroui/react";
 import { useRunAfterMount } from "@/lib/useRunAfterMount";
 import { Icon } from "@/components/meridian/Icon";
 import { useCallback, useState } from "react";
@@ -91,21 +92,21 @@ export default function NotificationCenter({ onUnread }: { onUnread: (n: number)
     <div className="flex max-h-[60vh] w-[min(92vw,22rem)] flex-col">
       <div className="flex items-center justify-between border-b border-[var(--border)] px-[var(--space-3)] py-[var(--space-2)]">
         <span className="text-[length:var(--text-sm)] font-medium text-[var(--text)]">اعلان‌ها</span>
-        <button type="button" onClick={markAll} className="inline-flex items-center justify-center gap-[var(--space-2)] text-[length:var(--text-xs)] text-[var(--accent)]">
+        <Button variant="ghost" size="sm" onPress={markAll} className="notifrow__all">
           <Icon name="check" size="sm" />
           خواندنِ همه
-        </button>
+        </Button>
       </div>
       <ul className="m-0 list-none overflow-y-auto p-0">
         {groups.map((g) => (
           <li key={g.group_key} className="border-b border-[var(--border)] last:border-0">
-            <button
-              type="button"
-              onClick={() => {
+            <Button
+              variant="ghost"
+              className="notifrow"
+              onPress={() => {
                 setOpen(open === g.group_key ? null : g.group_key);
                 if (g.unread_count) void markGroup(g.group_key);
               }}
-              className="flex w-full items-start gap-[var(--space-2)] px-[var(--space-3)] py-[var(--space-2)] text-start"
             >
               <Icon name="bell" size="md" />
               <span
@@ -124,7 +125,7 @@ export default function NotificationCenter({ onUnread }: { onUnread: (n: number)
                   </span>
                 )}
               </span>
-            </button>
+            </Button>
             {open === g.group_key && g.count > 1 && (
               <ul className="m-0 list-none bg-[var(--surface-raised)] p-0">
                 {g.items.map((it) => (

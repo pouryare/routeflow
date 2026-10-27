@@ -1,5 +1,6 @@
 "use client";
 
+import { Button } from "@heroui/react";
 import { Icon } from "@/components/meridian/Icon";
 import { faDigits, faNum } from "@/lib/format";
 import type { Worklist, WorkReminder } from "@/lib/mapWorklist";
@@ -45,13 +46,13 @@ export default function MapWorklist({
               <ul className="mwork__list">
                 {reminders.map((r) => (
                   <li key={`r${r.id}`}>
-                    <button type="button" className="mwork__row" onClick={() => onReminder(r)}>
+                    <Button variant="ghost" className="mwork__row" onPress={() => onReminder(r)}>
                       <Icon name="bell" size="sm" />
                       <span className="mwork__text">
                         <span className="mwork__title">{r.label}</span>
                         {r.message ? <span className="mwork__sub">{r.message}</span> : null}
                       </span>
-                    </button>
+                    </Button>
                   </li>
                 ))}
               </ul>
@@ -66,7 +67,7 @@ export default function MapWorklist({
               <ul className="mwork__list">
                 {quiet.map(({ customer, days }) => (
                   <li key={`c${customer.id}`}>
-                    <button type="button" className="mwork__row" onClick={() => onCustomer(customer)}>
+                    <Button variant="ghost" className="mwork__row" onPress={() => onCustomer(customer)}>
                       <Icon name="building" size="sm" />
                       <span className="mwork__text">
                         <span className="mwork__title">{customer.business_name}</span>
@@ -74,7 +75,7 @@ export default function MapWorklist({
                           {days === null ? "غیرفعال علامت خورده" : `${faNum(days)} روز بدون خرید`}
                         </span>
                       </span>
-                    </button>
+                    </Button>
                   </li>
                 ))}
               </ul>
@@ -89,7 +90,7 @@ export default function MapWorklist({
               <ul className="mwork__list">
                 {uncovered.map((d) => (
                   <li key={`d${d.id}`}>
-                    <button type="button" className="mwork__row" onClick={() => onDistrict(d)}>
+                    <Button variant="ghost" className="mwork__row" onPress={() => onDistrict(d)}>
                       <Icon name="map" size="sm" />
                       <span className="mwork__text">
                         <span className="mwork__title">{d.name}</span>
@@ -100,7 +101,7 @@ export default function MapWorklist({
                         {d.code ? <span className="mwork__sub">{faDigits(d.code)}</span> : null}
                         {d.parent_name ? <span className="mwork__sub">{d.parent_name}</span> : null}
                       </span>
-                    </button>
+                    </Button>
                   </li>
                 ))}
               </ul>

@@ -82,6 +82,7 @@ import { faNum } from "@/lib/format";
 import { MapView, buildMapLink, absoluteMapLink, parseMapLink, replaceUrlQuery } from "@/lib/deepLink";
 import { copyText } from "@/lib/clipboard";
 import { PINNED_KEY, RECENT_KEY, addRecent, pruneIds, readIds, toggleId, writeIds } from "@/lib/customerLists";
+import { Button } from "@heroui/react";
 import { Icon } from "@/components/meridian/Icon";
 import MapWorklist from "./MapWorklist";
 import { buildWorklist, type Bounds } from "@/lib/mapWorklist";
@@ -1116,11 +1117,7 @@ export default function CoverageMap({
           ) : (
             <div className="flex max-h-72 flex-col gap-1.5 overflow-y-auto">
               {dormantCustomers.map(({ customer, days }) => (
-                <button
-                  key={customer.id}
-                  onClick={() => flyToCustomer(customer)}
-                  className="flex w-full items-center justify-between gap-2 rounded-[var(--radius-md)] border border-border bg-surface px-3 py-2 text-right transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:border-accent"
-                >
+                <Button key={customer.id} variant="secondary" className="covrow" onPress={() => flyToCustomer(customer)}>
                   <Icon name="calendar" size="md" />
                   <span className="truncate text-[length:var(--text-sm)] text-text">{customer.business_name}</span>
                   <span
@@ -1129,7 +1126,7 @@ export default function CoverageMap({
                   >
                     {faNum(days)} روز
                   </span>
-                </button>
+                </Button>
               ))}
             </div>
           )}
@@ -1146,17 +1143,13 @@ export default function CoverageMap({
           ) : (
             <div className="flex max-h-72 flex-col gap-1.5 overflow-y-auto">
               {noCoordCustomers.map((customer) => (
-                <button
-                  key={customer.id}
-                  onClick={() => flyToCustomer(customer)}
-                  className="flex w-full items-center justify-between gap-2 rounded-[var(--radius-md)] border border-border bg-surface px-3 py-2 text-right transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:border-accent"
-                >
+                <Button key={customer.id} variant="secondary" className="covrow" onPress={() => flyToCustomer(customer)}>
                   <Icon name="map-pin" size="md" />
                   <span className="truncate text-[length:var(--text-sm)] text-text">{customer.business_name}</span>
                   <span className="shrink-0 text-[length:var(--text-xs)] text-text-faint">
                     {customer.phone ?? "—"}
                   </span>
-                </button>
+                </Button>
               ))}
               <p className="mt-1.5 text-[length:var(--text-xs)] leading-5 text-text-faint">
                 روی نام کلیک کنید تا جزئیات مشتری باز شود و بتوانید مختصات را بررسی کنید.
