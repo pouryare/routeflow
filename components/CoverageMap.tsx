@@ -1005,7 +1005,7 @@ export default function CoverageMap({
               سریع» section held: the current view as a link. */}
           <div className="mapside__bar">
             <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] mapbtn mapbtn--sm" onClick={shareView} aria-label="کپی لینک این نما" title="کپی لینک این نما">
-              <Icon name="link" size="sm" />
+              <Icon name="copy" size="sm" />
             </button>
           </div>
 
@@ -1022,7 +1022,7 @@ export default function CoverageMap({
                 onClick={retryPosition}
                 className="inline-flex items-center justify-center gap-[var(--space-2)] rounded-[var(--radius-sm)] border border-border px-2 py-0.5 touch text-text-muted transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:border-accent hover:text-accent"
               >
-                <Icon name="undo" size="md" />
+                <Icon name="refresh" size="md" />
                 تلاش دوباره
               </button>
             </p>
@@ -1481,7 +1481,7 @@ export default function CoverageMap({
               disabled={bulkSaving || (!bulkStatusChoice && !bulkGroupChoice)}
               className="inline-flex items-center justify-center gap-[var(--space-2)] rounded-[var(--radius-sm)] border border-accent bg-accent px-3 py-1.5 text-[length:var(--text-sm)] font-medium text-accent-ink transition-[filter,transform] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:enabled:brightness-110 active:enabled:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
             >
-              <Icon name="map-pin" size="sm" />
+              <Icon name="check" size="sm" />
               {bulkSaving ? "در حال اعمال…" : "اعمال روی همه"}
             </button>
           </div>

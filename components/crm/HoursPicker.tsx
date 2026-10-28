@@ -90,7 +90,7 @@ export default function HoursPicker({ api }: { api: CustomStepApi }) {
             {chip("again", "بازهٔ دیگر در همین روزها", false, () => setPhase("from"))}
             {chip("other", "روزهای دیگر، ساعت دیگر", false, () => setPhase("days"))}
           </div>
-          <GoButton icon="palette" onPress={() => api.submit("ok", JSON.stringify(ranges))}>تمام</GoButton>
+          <GoButton icon="check" onPress={() => api.submit("ok", JSON.stringify(ranges))}>تمام</GoButton>
         </>
       )}
     </div>

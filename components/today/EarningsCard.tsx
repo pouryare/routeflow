@@ -1,3 +1,4 @@
+import { Icon } from "@/components/meridian/Icon";
 import Link from "next/link";
 import type { EarningsSoFar } from "@/lib/repo/earningsSoFar";
 import { faNum, faToman } from "@/lib/format";
@@ -18,7 +19,8 @@ export default function EarningsCard({ e }: { e: EarningsSoFar }) {
       <p className="m-0 mt-[var(--space-1)] text-[length:var(--text-xs)] text-[var(--text-muted)]">
         پرداخت‌شده در این ماه {faToman(e.paid_toman)} · مانده تا امروز {faToman(e.owed_toman)}
       </p>
-      <Link href="/sales/commission" className="btn mt-[var(--space-2)] inline-flex min-h-[44px] items-center">
+      <Link href="/sales/commission" className="btn mt-[var(--space-2)] inline-flex min-h-[44px] items-center gap-[var(--space-2)]">
+        <Icon name="receipt" size="sm" />
         دیدن سفارش‌های این پورسانت
       </Link>
     </section>

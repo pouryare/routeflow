@@ -93,7 +93,7 @@ export default function NotificationCenter({ onUnread }: { onUnread: (n: number)
       <div className="flex items-center justify-between border-b border-[var(--border)] px-[var(--space-3)] py-[var(--space-2)]">
         <span className="text-[length:var(--text-sm)] font-medium text-[var(--text)]">اعلان‌ها</span>
         <Button variant="ghost" size="sm" onPress={markAll} className="notifrow__all">
-          <Icon name="check" size="sm" />
+          <Icon name="check-check" size="sm" />
           خواندنِ همه
         </Button>
       </div>

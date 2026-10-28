@@ -43,7 +43,7 @@ export default function BusinessCard({ row, mode, highlight, onCall, onOpen, onN
           </button>
         ) : (
           <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn solid" onClick={() => onNavigate(row)} disabled={row.lat === null}>
-            <Icon name="route" size="sm" /> مسیریابی
+            <Icon name="navigation" size="sm" /> مسیریابی
           </button>
         )}
         <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn ghost" onClick={() => onOpen(row)}>

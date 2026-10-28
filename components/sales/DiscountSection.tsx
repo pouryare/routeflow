@@ -64,7 +64,7 @@ export default function DiscountSection({
           onClick={() => onChange(emptyDraft())}
           className="inline-flex min-h-[44px] items-center gap-[var(--space-1)] px-[var(--space-2)] text-[length:var(--text-sm)] text-[var(--text-muted)]"
         >
-          <Icon name="x" size="sm" />
+          <Icon name="trash" size="sm" />
           حذف تخفیف
         </button>
       </div>

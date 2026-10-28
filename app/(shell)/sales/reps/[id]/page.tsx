@@ -26,6 +26,7 @@ export default async function RepDetail({ params }: { params: Promise<{ id: stri
 
   return (
     <div className="kblock flex flex-col gap-[var(--space-4)] p-[var(--space-4)]" dir="rtl">
+      <Icon name="arrow-right" size="sm" />
       <div>
         <Link href="/sales/reps" className="text-[length:var(--text-sm)] text-[var(--text-muted)] no-underline">
           ← همه نمایندگان

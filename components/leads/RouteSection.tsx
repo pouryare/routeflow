@@ -124,7 +124,7 @@ export default function RouteSection({
         isDisabled={busy || day.stops.length === 0}
         aria-description={day.stops.length === 0 ? "این روز مکانی ندارد" : undefined}
       >
-        <Icon name="edit" size="sm" />
+        <Icon name="save" size="sm" />
         ذخیره به‌عنوان فهرست
       </Button>
     </div>
@@ -234,7 +234,7 @@ export default function RouteSection({
                       onPress={() => removeFromDayGroup(i, stop.id)}
                       aria-label={`حذف ${stop.name} از روز ${i + 1}`}
                     >
-                      <Icon name="x" size="sm" />
+                      <Icon name="minus" size="sm" />
                     </Button>
                   </div>
                 ))}

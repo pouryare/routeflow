@@ -141,7 +141,7 @@ export default function DeliveryFlow({
           chips={deliveryChips(ctx, state)}
           actions={
             <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn solid" onClick={() => void print(state)}>
-              <Icon name="receipt" size="md" />
+              <Icon name="print" size="md" />
               چاپ رسید
             </button>
           }

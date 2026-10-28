@@ -1,3 +1,4 @@
+import { Icon } from "@/components/meridian/Icon";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import PageHeader from "@/components/meridian/PageHeader";
@@ -69,8 +70,9 @@ export default async function AccountLedgerPage({
         actions={
           <Link
             href="/accounting/trial-balance"
-            className="rounded-[var(--radius-sm)] border border-border px-2 py-1 text-[length:var(--text-sm)]"
+            className="inline-flex items-center gap-2 rounded-[var(--radius-sm)] border border-border px-2 py-1 text-[length:var(--text-sm)]"
           >
+            <Icon name="arrow-right" size="sm" />
             بازگشت به تراز آزمایشی
           </Link>
         }

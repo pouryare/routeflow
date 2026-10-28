@@ -28,10 +28,11 @@ export default function ShellError({
       actions={
         <>
           <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn solid" onClick={() => retry()}>
-            <Icon name="undo" size="md" />
+            <Icon name="refresh" size="md" />
             تلاش دوباره
           </button>
           <Link className="btn ghost" href="/sales">
+            <Icon name="chart" size="md" />
             رفتن به خلاصهٔ فروش
           </Link>
         </>

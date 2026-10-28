@@ -182,7 +182,7 @@ export default function PurchaseEntry({ products }: { products: Product[] }) {
                   onClick={() => setLines((cur) => cur.filter((l) => l.key !== line.key))}
                   className="rounded-[var(--radius-sm)] px-[var(--space-2)] py-[var(--space-1)] text-[var(--text-muted)] hover:bg-white/5 hover:text-[var(--crit)]"
                 >
-                  <Icon name="x" size="sm" />
+                  <Icon name="trash" size="sm" />
                 </button>
               </div>
             </li>
@@ -226,7 +226,7 @@ export default function PurchaseEntry({ products }: { products: Product[] }) {
           disabled={busy || lines.length === 0}
           className="inline-flex items-center justify-center gap-[var(--space-2)] rounded-[var(--radius-md)] border border-[var(--accent)] bg-[var(--accent)] px-[var(--space-5)] py-[var(--space-2)] text-[length:var(--text-sm)] font-medium text-accent-ink transition-[filter] duration-[var(--dur-base)] hover:brightness-110 disabled:opacity-40"
         >
-          <BusyIcon busy={busy} name="package" size="sm" />
+          <BusyIcon busy={busy} name="check" size="sm" />
           {busy ? "در حال ثبت…" : "ثبت خرید"}
         </button>
       </div>

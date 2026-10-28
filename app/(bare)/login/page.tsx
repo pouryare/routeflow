@@ -140,7 +140,7 @@ function LoginForm() {
                 onClick={() => { setUseRecovery((v) => !v); setCode(""); setError(null); }}
                 className="mb-[var(--space-4)] inline-flex min-h-11 w-full items-center justify-center gap-[var(--space-2)] text-[length:var(--text-sm)] text-[var(--accent)]"
               >
-                <Icon name="repeat" size="sm" />
+                <Icon name={useRecovery ? "arrow-right" : "key"} size="sm" />
                 {useRecovery ? "برگشت به کد برنامه" : "کد بازیابی دارم"}
               </button>
             )}
@@ -150,7 +150,7 @@ function LoginForm() {
               disabled={loading || (challenge ? code.trim().length < (useRecovery ? 8 : 6) : !username.trim() || !password)}
               className="inline-flex items-center justify-center gap-[var(--space-2)] w-full cursor-pointer rounded-[var(--radius-md)] border border-[var(--accent)] bg-[var(--accent)] py-[var(--space-2)] font-medium text-[var(--accent-ink)] transition-[filter,transform,opacity] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:enabled:scale-[1.03] hover:enabled:brightness-110 active:enabled:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
             >
-              <Icon name="logout" size="md" />
+              <Icon name="login" size="md" />
               {loading ? "در حال ورود…" : challenge ? "تأیید و ورود" : "ورود به برنامه"}
             </button>
           </form>

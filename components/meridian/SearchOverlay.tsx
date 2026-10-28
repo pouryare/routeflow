@@ -207,7 +207,7 @@ function Panel({ onClose, tabs }: { onClose: () => void; tabs: AppTab[] }) {
               برنامه را به‌جای «{asking.label}» ببینید؟ تا وقتی «بازگشت به حساب خودم» را نزنید، هر کاری که انجام دهید به نام او ثبت می‌شود.
             </p>
             <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn solid" onClick={() => startViewingAs(asking)}>
-              <Icon name="check" size="md" />
+              <Icon name="eye" size="md" />
               دیدن برنامه به‌جای «{asking.label}»
             </button>
             <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn ghost" onClick={() => setAsking(null)}>

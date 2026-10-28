@@ -108,8 +108,9 @@ export default function PoolViewPocket({
                     target="_blank"
                     rel="noopener noreferrer"
                     onClick={(e) => e.stopPropagation()}
-                    className="rounded-[var(--radius-sm)] border border-border px-2 py-1 text-[length:var(--text-xs)] text-accent transition-colors hover:border-accent"
+                    className="inline-flex items-center gap-2 rounded-[var(--radius-sm)] border border-border px-2 py-1 text-[length:var(--text-xs)] text-accent transition-colors hover:border-accent"
                   >
+                    <Icon name="navigation" size="sm" />
                     مسیریابی
                   </a>
                 )}

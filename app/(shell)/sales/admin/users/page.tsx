@@ -163,7 +163,7 @@ function AvatarCell({
               onClick={() => fileRef.current?.click()}
               className="cursor-pointer rounded-md border border-border px-2 py-1 text-xs text-text transition-colors hover:border-accent disabled:opacity-50"
             >
-              <Icon name="image" size="md" />
+              <Icon name="upload" size="md" />
               {busy ? "در حال بارگذاری…" : "بارگذاری عکس"}
             </button>
             {user.avatar_url ? (
@@ -480,7 +480,7 @@ export default function AdminUsersPage() {
                               onClick={() => void resetPassword(resetting, resetting.pw)}
                               className="cursor-pointer text-accent transition-colors hover:underline"
                             >
-                              <Icon name="check" size="md" />
+                              <Icon name="save" size="md" />
                               ذخیرهٔ رمز تازه
                             </button>
                             <button
@@ -498,7 +498,7 @@ export default function AdminUsersPage() {
                             onClick={() => { setNotice(null); setResetting({ id: u.id, name: u.display_name, pw: "" }); }}
                             className="cursor-pointer text-text-muted transition-colors hover:text-accent"
                           >
-                            <Icon name="undo" size="md" />
+                            <Icon name="key" size="md" />
                             تعیین رمز تازه
                           </button>
                         )}

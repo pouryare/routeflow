@@ -101,7 +101,7 @@ export default function CrmBoard({ initialRows, initialCounts, initialView }: {
         </div>
         <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn solid" onClick={() => setLead({ kind: "lead", open: true, prefillPhone: null })}>
         <Icon name="plus" size="md" />
-        + سرنخ</button>
+        سرنخ تازه</button>
       </div>
       <div className="crm-views" role="toolbar" aria-label="نمای فهرست">
         {VIEW_ORDER.map((v) => (

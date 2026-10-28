@@ -1,5 +1,6 @@
 "use client";
 
+import { Icon } from "@/components/meridian/Icon";
 import { useState } from "react";
 import SectionHead from "@/components/meridian/SectionHead";
 import EmptyState from "@/components/EmptyState";
@@ -137,7 +138,7 @@ export default function ShareholdersPanel({ legalForm, shareholders, groups, use
       )}
       {shareholders.length > 0 && (
         <button type="button" className="touch picker-trigger" onClick={() => { startEditing("company"); setSharesOpen(true); }}>
-          {/* Text-only sheet opener, same as the other picker-trigger buttons: the label says what it does. */}
+          <Icon name="settings" size="md" />
           تنظیم درصد سهم‌ها
         </button>
       )}
@@ -178,7 +179,7 @@ export default function ShareholdersPanel({ legalForm, shareholders, groups, use
           جمع: {percentOf(total)}٪{exact ? " (کامل)" : " (باید ۱۰۰٪ باشد)"}
         </p>
         {shares.message && <p role="status" className={shares.message.kind === "error" ? "text-danger" : "text-muted"}>{shares.message.text}</p>}
-        <GoButton isDisabled={shares.busy || !exact} onPress={save}>
+        <GoButton icon="save" isDisabled={shares.busy || !exact} onPress={save}>
           {shares.busy ? "در حال ثبت…" : "ذخیره از این تاریخ"}
         </GoButton>
       </BottomSheet>

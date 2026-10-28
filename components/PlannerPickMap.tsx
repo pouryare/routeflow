@@ -120,7 +120,7 @@ export default function PlannerPickMap({
           onClick={() => void add()}
           className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-[var(--radius-md)] border border-accent bg-accent px-4 text-[length:var(--text-sm)] font-medium text-accent-ink disabled:opacity-40"
         >
-          <Icon name="plus" size="md" />
+          <Icon name="calendar-plus" size="md" />
           {picked.length > 0 ? `افزودن ${faNum(picked.length)} مکان به برنامه` : "افزودن به برنامه"}
         </button>
         {picked.length > 0 && (

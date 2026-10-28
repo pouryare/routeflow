@@ -73,7 +73,7 @@ function WidgetFallback({
         onClick={resetErrorBoundary}
         aria-label={`تلاش دوباره برای ${label}`}
       >
-        <Icon name="undo" size="md" />
+        <Icon name="refresh" size="md" />
         تلاش دوباره
       </button>
     </div>

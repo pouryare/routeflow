@@ -112,7 +112,7 @@ export default function AcademyPath({ cards, modules, done }: { cards: Card[]; m
                   <span className="acad__muted">تمام شد</span>
                 ) : (
                   <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn ghost" disabled={busy === m.slug} onClick={() => void mark(m.slug)}>
-                    <Icon name="palette" size="md" />
+                    <Icon name="check" size="md" />
                     تمام کردم
                   </button>
                 )}

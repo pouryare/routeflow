@@ -103,7 +103,7 @@ export default function AddLeadFlow({
   const actions = (
     <>
       {phone ? <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn solid" onClick={() => void after((id) => onCallNow(id, phone))}>
-      <Icon name="palette" size="md" />
+      <Icon name="phone" size="md" />
       تماس همین حالا</button> : null}
       <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn ghost" onClick={() => void after(onOpenBusiness)}>
       <Icon name="external-link" size="md" />

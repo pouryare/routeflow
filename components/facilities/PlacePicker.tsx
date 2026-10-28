@@ -208,14 +208,7 @@ function Trigger({
           aria-label="پاک کردن موقعیت"
           className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-[var(--radius-sm)] px-1.5 text-text-faint transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:text-text"
         >
-          <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
-            <path
-              d="M3 3l6 6M9 3l-6 6"
-              stroke="currentColor"
-              strokeWidth="1.4"
-              strokeLinecap="round"
-            />
-          </svg>
+          <Icon name="x" size="sm" />
         </button>
       )}
     </span>

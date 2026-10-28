@@ -102,6 +102,7 @@ export default function ProcessingModal({
 
           <div className="mfoot">
             <Link className="btn ghost" href={`/sales/orders/${order.id}`}>
+              <Icon name="receipt" size="md" />
               صفحهٔ سفارش
             </Link>
             {onConfirm && (

@@ -12,7 +12,7 @@ export default function PinnedCustomersSection({ pinnedCustomers, flyToCustomer,
 }) {
   if (!(pinnedCustomers.length > 0)) return null;
   return (
-        <CollapsibleSection help="card.map-pinned" title="سنجاق‌شده" icon="star" count={pinnedCustomers.length} storageKey="pinned" defaultOpen>
+        <CollapsibleSection help="card.map-pinned" title="سنجاق‌شده" icon="pin" count={pinnedCustomers.length} storageKey="pinned" defaultOpen>
           <div className="flex flex-col gap-1.5">
             {pinnedCustomers.map((c) => (
               <div
@@ -32,7 +32,7 @@ export default function PinnedCustomersSection({ pinnedCustomers, flyToCustomer,
                   title="برداشتن سنجاق"
                   className="shrink-0 text-accent transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:text-crit"
                 >
-                  <Icon name="star" size="sm" />
+                  <Icon name="pin-off" size="sm" />
                 </button>
               </div>
             ))}

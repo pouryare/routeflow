@@ -216,7 +216,7 @@ export default function CustomerDetailPanel({
               pinned ? "text-accent hover:text-crit" : "text-text-faint hover:text-accent"
             }`}
           >
-            <Icon name="star" size="sm" filled={pinned} />
+            <Icon name="pin" size="sm" filled={pinned} />
           </button>
         )}
         <button
@@ -273,7 +273,7 @@ export default function CustomerDetailPanel({
               "..."
             ) : (
               <>
-                <Icon name="plus" size="sm" /> برنامه امروز
+                <Icon name="calendar-plus" size="sm" /> برنامه امروز
               </>
             )}
           </button>
@@ -336,7 +336,7 @@ export default function CustomerDetailPanel({
                 aria-label="مسیریابی به این مشتری"
                 className="rounded-[var(--radius-sm)] border border-border px-1.5 py-0.5 touch text-accent transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:border-accent"
               >
-                <Icon name="external-link" size="sm" />
+                <Icon name="navigation" size="sm" />
               </a>
             </dd>
           </div>
@@ -368,8 +368,9 @@ export default function CustomerDetailPanel({
 
       <a
         href={`/sales/payments?customer_id=${customer.id}`}
-        className="mt-3 block rounded-[var(--radius-md)] border border-border px-3 py-2 text-center text-[length:var(--text-sm)] text-text-muted transition-colors hover:border-accent hover:text-accent"
+        className="mt-3 flex items-center justify-center gap-2 rounded-[var(--radius-md)] border border-border px-3 py-2 text-center text-[length:var(--text-sm)] text-text-muted transition-colors hover:border-accent hover:text-accent"
       >
+        <Icon name="banknote" size="sm" />
         دریافت وجه
       </a>
       <a

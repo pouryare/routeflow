@@ -169,6 +169,7 @@ export default function NextStopBar({
             aria-label="مسیریابی به این توقف"
             className="shrink-0 whitespace-nowrap inline-flex items-center justify-center gap-2 rounded-[var(--radius-sm)] border border-accent px-5 py-2 text-[length:var(--text-sm)] font-medium text-accent transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:bg-accent hover:text-accent-ink"
           >
+            <Icon name="navigation" size="sm" />
             مسیریابی توقف
           </a>
         )}

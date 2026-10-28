@@ -97,7 +97,7 @@ export default function Keypad({
           ۰
         </button>
         <button type="button" className="keypad__key" aria-label="پاک کردن یک رقم" onClick={() => tap("⌫")}>
-          <Icon name="arrow-right" size="md" />
+          <Icon name="backspace" size="md" />
         </button>
       </div>
     </div>

@@ -154,8 +154,7 @@ export default function LocationCard({
                 : "border-border text-text-muted hover:border-accent hover:text-accent"
               }`}
           >
-            <Icon name="map-pin" size="sm" />
-            {runIdx != null ? faNum(runIdx) : "+"}
+            {runIdx != null ? faNum(runIdx) : <Icon name="plus" size="sm" />}
           </button>
         )}
 
@@ -166,7 +165,7 @@ export default function LocationCard({
             rel="noopener noreferrer"
             className="min-h-11 rounded-[var(--radius-sm)] border border-border px-2.5 py-1.5 text-[length:var(--text-xs)] text-accent transition-colors hover:border-accent hover:text-accent inline-flex items-center gap-1.5"
           >
-            <Icon name="route" size="sm" /> مسیریابی
+            <Icon name="navigation" size="sm" /> مسیریابی
           </a>
         )}
 
@@ -178,7 +177,7 @@ export default function LocationCard({
           onClick={onPin}
           className="inline-flex items-center justify-center gap-[var(--space-2)] min-h-11 rounded-[var(--radius-sm)] border border-border px-2.5 py-1.5 text-[length:var(--text-xs)] text-text-faint hover:border-accent hover:text-accent transition-colors inline-flex items-center gap-1.5"
         >
-          <Icon name="map-pin" size="sm" /> ویرایش مکان
+          <Icon name="edit" size="sm" /> ویرایش مکان
         </button>
 
         {onTogglePriority && (
@@ -191,8 +190,8 @@ export default function LocationCard({
                 : "border-border text-text-faint hover:border-accent hover:text-accent"
               }`}
           >
-            <Icon name={location.priority ? "star" : "star-off"} size="sm" />
-            {location.priority ? "اولیوت بالا" : "اولیوت بالا نیست"}
+            <Icon name="flag" size="sm" filled={location.priority} />
+            {location.priority ? "اولویت بالا" : "اولویت بالا نیست"}
           </button>
         )}
 
@@ -202,7 +201,7 @@ export default function LocationCard({
             onClick={onAddToPlan}
             className="inline-flex items-center justify-center gap-[var(--space-2)] min-h-11 rounded-[var(--radius-sm)] border border-accent bg-accent/10 px-2 py-1.5 text-[length:var(--text-xs)] text-accent transition-colors hover:bg-accent hover:text-accent-ink inline-flex items-center gap-1.5"
           >
-            <Icon name="calendar" size="sm" /> افزودن به برنامه
+            <Icon name="calendar-plus" size="sm" /> افزودن به برنامه
           </button>
         )}
       </div>
