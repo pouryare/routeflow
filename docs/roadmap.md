@@ -13,6 +13,7 @@ Totals: 46 small, 73 medium, 27 large first slices; 123 entries note existing co
 ## Contents
 
 1. [Build these first: small first slices on existing code](#1-build-these-first)
+    - [1b. UI pattern batches (2026-10-28)](#1b-ui-pattern-batches-2026-10-28)
 2. [Foundations: build once, many entries depend on them](#2-foundations)
 3. [Overlaps: entries that should be designed together](#3-overlaps)
 4. [Suggested order](#4-suggested-order)
@@ -65,6 +66,32 @@ Small first slices that need no new infrastructure and no outside decision, orde
 ### 1a. Small after a prerequisite: left for later
 
 The small-difficulty batch built the easy entries and the two "small after a prerequisite" entries whose prerequisite it built in the same batch (F62 on F58, F112 on F84). These stay parked because their prerequisite is still missing or needs a decision: F104 (customer snapshot sheet; can be built next, it only needs the call list), F74, F77, F85, F86, F91, F114, F69, F31, F42, F34, F95, F140, F2, F5, F117 and F38. Their entries name the prerequisite.
+
+### 1b. UI pattern batches (2026-10-28)
+
+The owner picked 53 favourite UI patterns from a Gemini chat and added two ideas (discount approval, a code for sensitive actions). The plan was split into batches; the owner's answers are in the memory note `ui-pattern-plan-2026-10-28`.
+
+**Batch A: built (2026-10-28, PR #2).**
+- Discount approval on orders: the group manager of the order's group or the owner decides, first answer wins, never your own; a group manager's own discount goes to the owner; the owner sets the percent that passes without approval and how much of a discount comes out of commission; the discount is split between chosen people (equal, editable) and charged to their commission, with what a person cannot cover carried to the next period.
+- Authenticator code (Google Authenticator) before 15 sensitive actions: managers always, other roles only when editing or voiding a payment; the person's own code, single use, 10-minute trusted device; the owner switches it on per company (off by default); six-box code input and a hold-to-confirm button.
+
+**Batch A leftovers (not built):**
+- SMS backup for the code through Farazsms (needs an account and an approved template); until then someone without an authenticator is told to enrol first. Includes a resend countdown.
+- The code guard on creating an owner or manager, customer export, changing your own mobile number, hard deletes, cancelling or editing a delivered order, authenticator reset and overwrite imports (the rules and the guard exist; each route needs one line).
+- Credit approval is closed to group managers by `proxy.ts` (its API is under `/api/admin`); move it the way the discount decision was moved to `/api/sales`.
+- Discount is ignored by customer lifetime value, the driver stop list, dashboard revenue, the commission «value» metric and offline sync; the tap-flow quick order has no discount; no push or notification for a new request.
+
+**Batch B: quick wins.** Haptics on tap and on errors, one button-state rule (idle, busy, done, failed), validation that waits for the person to leave a field.
+
+**Batch C: forms that keep your work.** Drafts that survive a closed tab, an unsaved-changes bar, keyboard handling on phones, optimistic updates (`useOptimistic`) with a rollback.
+
+**Batch D: find and act faster.** Ctrl-K gets actions and not only search, pinned pages, one shared selection bar for lists, a setup checklist for a new company, a first-use tour. The map's saved-list search still has English labels.
+
+**Batch E: desk and dashboards.** Denser desk layouts and dashboard patterns from the list, after the phone patterns are done.
+
+**Batch F: parked.** The rest of the 53 that need a decision or a library first; passkeys as a later way to sign in.
+
+Each batch is built as one draft PR with one commit per task, merged once at the end (the batch rule in `CLAUDE.md`). Any new dependency is asked first.
 
 ## 2. Foundations
 
