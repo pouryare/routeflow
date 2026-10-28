@@ -44,6 +44,22 @@ function tx<T>(
   });
 }
 
+/** Many writes in ONE transaction: resolves when it commits, rejects if it aborts. */
+function txBatch(db: IDBDatabase, store: string, fn: (s: IDBObjectStore) => void): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const t = db.transaction(store, "readwrite");
+    t.oncomplete = () => resolve();
+    t.onerror = () => reject(t.error);
+    t.onabort = () => reject(t.error);
+    fn(t.objectStore(store));
+  });
+}
+
+/** Rows per transaction, and a pause between transactions so a tap during a big sync is answered.
+ *  A transaction per row cost an owner's phone a ~1 s freeze for 900 rows on a slow CPU. */
+const WRITE_GROUP = 200;
+const breathe = () => new Promise<void>((r) => setTimeout(r, 0));
+
 export class IdbOutboxStore implements OutboxStore {
   private dbP: Promise<IDBDatabase> | null = null;
   private mem = new MemoryOutboxStore();
@@ -110,9 +126,13 @@ export class IdbOutboxStore implements OutboxStore {
     const db = await this.db();
     if (!db) return;
     try {
-      for (const { table, row } of rows) {
-        if (row.id === undefined) continue;
-        await tx(db, SNAPSHOT, "readwrite", (s) => s.put({ table, id: row.id, row }));
+      const usable = rows.filter((r) => r.row.id !== undefined);
+      for (let i = 0; i < usable.length; i += WRITE_GROUP) {
+        const group = usable.slice(i, i + WRITE_GROUP);
+        await txBatch(db, SNAPSHOT, (s) => {
+          for (const { table, row } of group) s.put({ table, id: row.id, row });
+        });
+        if (i + WRITE_GROUP < usable.length) await breathe();
       }
     } catch {
       this.memoryOnly = true;
@@ -125,8 +145,12 @@ export class IdbOutboxStore implements OutboxStore {
     const db = await this.db();
     if (!db) return;
     try {
-      for (const [table, id] of keys) {
-        await tx(db, SNAPSHOT, "readwrite", (s) => s.delete([table, id]));
+      for (let i = 0; i < keys.length; i += WRITE_GROUP) {
+        const group = keys.slice(i, i + WRITE_GROUP);
+        await txBatch(db, SNAPSHOT, (s) => {
+          for (const [table, id] of group) s.delete([table, id]);
+        });
+        if (i + WRITE_GROUP < keys.length) await breathe();
       }
     } catch {
       this.memoryOnly = true;
