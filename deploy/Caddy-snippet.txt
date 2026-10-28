@@ -5,5 +5,7 @@ block — do not remove that one, it serves the unrelated Light Lines site), the
 Replace YOUR-SUBDOMAIN with whatever you choose, e.g. map.pouryarezaee.com:
 
 YOUR-SUBDOMAIN.pouryarezaee.com {
+	# next start leaves signed-in API JSON uncompressed; this covers every route (the sync pull also gzips itself).
+	encode zstd gzip
 	reverse_proxy 127.0.0.1:3003
 }
