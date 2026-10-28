@@ -12,6 +12,20 @@ import WordReveal from "@/components/meridian/WordReveal";
 import BusyIcon from "@/components/meridian/BusyIcon";
 import { useDoneFlash } from "@/lib/useDoneFlash";
 
+/** The sign-in button: its icon is a spinner while the request runs and a check once it passed. */
+function SubmitButton({ loading, done, disabled, label }: { loading: boolean; done: boolean; disabled: boolean; label: string }) {
+  return (
+    <button
+      type="submit"
+      disabled={disabled}
+      className="inline-flex items-center justify-center gap-[var(--space-2)] w-full cursor-pointer rounded-[var(--radius-md)] border border-[var(--accent)] bg-[var(--accent)] py-[var(--space-2)] font-medium text-[var(--accent-ink)] transition-[filter,transform,opacity] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:enabled:scale-[1.03] hover:enabled:brightness-110 active:enabled:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
+    >
+      <BusyIcon busy={loading && !done} done={done} name="login" />
+      {done ? "وارد شدید" : loading ? "در حال ورود…" : label}
+    </button>
+  );
+}
+
 function LoginForm() {
   const router = useRouter();
   const params = useSearchParams();
@@ -150,14 +164,12 @@ function LoginForm() {
               </button>
             )}
             {error && <p className="mb-[var(--space-4)] text-[length:var(--text-sm)] text-[var(--crit)]">{error}</p>}
-            <button
-              type="submit"
+            <SubmitButton
+              loading={loading}
+              done={done}
               disabled={loading || (challenge ? code.trim().length < (useRecovery ? 8 : 6) : !username.trim() || !password)}
-              className="inline-flex items-center justify-center gap-[var(--space-2)] w-full cursor-pointer rounded-[var(--radius-md)] border border-[var(--accent)] bg-[var(--accent)] py-[var(--space-2)] font-medium text-[var(--accent-ink)] transition-[filter,transform,opacity] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:enabled:scale-[1.03] hover:enabled:brightness-110 active:enabled:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              <BusyIcon busy={loading && !done} done={done} name="login" />
-              {done ? "وارد شدید" : loading ? "در حال ورود…" : challenge ? "تأیید و ورود" : "ورود به برنامه"}
-            </button>
+              label={challenge ? "تأیید و ورود" : "ورود به برنامه"}
+            />
           </form>
         </div>
       </main>
