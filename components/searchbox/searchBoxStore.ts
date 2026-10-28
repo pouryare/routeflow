@@ -1,6 +1,3 @@
-// leaflet-geosearch's own SearchResult type lives at a package-internal path that
-// isn't reliably resolvable through its published exports map -- only the fields
-// actually used here are declared locally instead of depending on that path.
 export interface GeoResult {
   x: number; // lng
   y: number; // lat
@@ -31,21 +28,21 @@ export function detectInputType(q: string): "coord" | "address" | "name" {
   return "name";
 }
 
-// leaflet-geosearch is only needed once a user actually falls through to an address
-// search (no local match found) -- deferred to a dynamic import so its chunk never
-// loads for the common case of finding a customer/district locally, and instantiated
-// once, on first real use, rather than eagerly for every SearchBox mount.
-export let geoProviderPromise: Promise<GeoProvider> | null = null;
+/** Address search through Nominatim, for when nothing local matches. Iran-biased so a
+ *  plain place name (a neighbourhood) resolves locally instead of matching a same-named
+ *  place elsewhere in the world. */
+const nominatim: GeoProvider = {
+  async search({ query }) {
+    const url = new URL("https://nominatim.openstreetmap.org/search");
+    url.search = new URLSearchParams({ format: "json", q: query, countrycodes: "ir", "accept-language": "fa" }).toString();
+    const res = await fetch(url);
+    if (!res.ok) return [];
+    const rows = (await res.json()) as { lat: string; lon: string; display_name: string }[];
+    return rows.map((r) => ({ x: Number(r.lon), y: Number(r.lat), label: r.display_name }));
+  },
+};
 export function getGeoProvider(): Promise<GeoProvider> {
-  if (!geoProviderPromise) {
-    geoProviderPromise = import("leaflet-geosearch").then(
-      ({ OpenStreetMapProvider }) =>
-        // Iran-biased so a plain place name (e.g. a neighborhood) resolves locally
-        // instead of matching a same-named place elsewhere in the world.
-        new OpenStreetMapProvider({ params: { countrycodes: "ir", "accept-language": "fa" } }) as GeoProvider
-    );
-  }
-  return geoProviderPromise;
+  return Promise.resolve(nominatim);
 }
 
 // ---- recent searches (localStorage) ----

@@ -20,7 +20,7 @@ const UNDO_WINDOW_MS = 10_000;
 
 /* The map is the third layer: pins land on Tehran as each link decodes, so the shape of
    the remaining work is visible -- a rush while the cheap tier clears, then a trickle, then
-   a few stragglers. Lazy with ssr:false because leaflet reads `window` on import; the same
+   a few stragglers. Lazy with ssr:false because MapLibre reads `window` on import; the same
    reason the analytics map is loaded, and the shape components/MapLoader.tsx established. */
 const ImportMap = dynamic(() => import("./ImportMap"), {
   ssr: false,

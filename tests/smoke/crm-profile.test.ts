@@ -10,7 +10,7 @@ beforeAll(async () => {
   /* startDevServer repoints DATABASE_URL at a fresh copy; open the DB only after that,
    * or the writes land in the source while the server reads the copy. */
   stop = await startDevServer();
-  browser = await chromium.launch();
+  browser = await chromium.launch({ args: ["--enable-unsafe-swiftshader"] }); // WebGL for the map on a GPU-less runner
 });
 afterAll(async () => { await browser?.close(); await stop?.(); });
 it("edits tags, Instagram and pre-visit intel on a snapshot, persisting across reload", async () => {
@@ -49,7 +49,7 @@ it("edits tags, Instagram and pre-visit intel on a snapshot, persisting across r
   const text = await page.locator("main").innerText();
   for (const value of ["smoke.intel", "ویژه", "سراغ مدیر", "بعدازظهر · ۱۵ تا ۱۸"]) expect(text).toContain(value);
   /* The saved pin renders as a real Leaflet map, expandable into the large dialog. */
-  await page.locator(".customer-map .leaflet-marker-icon").waitFor({ timeout: 20000 });
+  await page.locator(".customer-map .maplibregl-marker").waitFor({ timeout: 20000 });
   await page.getByRole("button", { name: "بزرگ‌نمایی نقشه" }).click();
   await page.getByRole("button", { name: "بستن نقشهٔ بزرگ", exact: true }).click();
   await page.screenshot({ path: "/tmp/rf-crm-profile-desktop.png", fullPage: true });

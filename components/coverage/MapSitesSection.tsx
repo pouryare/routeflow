@@ -5,7 +5,7 @@ import { distanceKm, formatDistanceKm } from "@/lib/geo";
 import { useCorridor } from "@/components/coverage/useCorridor";
 import { LayerHint } from "@/components/LayersPanel";
 import { isPlaced, FacilityRow } from "@/lib/facilityTypes";
-import { facilityMarkerHtml } from "@/components/facilityIcon";
+import { facilityMarkerHtml } from "@/components/facilityArt";
 import { faNum } from "@/lib/format";
 import { Icon } from "@/components/meridian/Icon";
 

@@ -41,6 +41,7 @@ const PUBLIC_BY_DESIGN: Record<string, string> = {
   "POST login/route.ts": "the sign-in form posts here before any session exists",
   "POST login/second-factor/route.ts": "second sign-in step: public like /api/login, it answers only with a valid password-step challenge",
   "POST logout/route.ts": "clearing a cookie needs no session; idempotent",
+  "GET map/tiles/[z]/[x]/[y]/route.ts": "basemap tiles: public map data, served cookie-free so the CDN can cache each tile",
   "DELETE admin/impersonate/route.ts": "ends a Login-As; with no saved owner session it only clears both cookies",
 };
 

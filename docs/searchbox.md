@@ -153,7 +153,7 @@ Calls `onLocationFound(Number(coordMatch[1]), Number(coordMatch[2]), "مختصا
 Fetches `/api/geo/decode-link?url=...`, calls `onLocationFound(data.lat, data.lng, "لینک نقشه")` on success, shows error on failure.
 
 ### `runGeosearch()`
-Dynamically imports `leaflet-geosearch`, creates `OpenStreetMapProvider` with Iran bias, searches for `trimmed`, stores top 5 results.
+Asks Nominatim (`format=json`, `countrycodes=ir`, `accept-language=fa`) for `trimmed` with a plain `fetch`, stores top 5 results.
 
 ### `selectGeoResult(r: GeoResult)`
 Calls `onLocationFound(r.y, r.x, r.label)`, then resets.
@@ -245,7 +245,6 @@ Key points for leads page:
 
 ## Dependencies
 
-- `leaflet-geosearch` — dynamically imported only when address search is needed (lazy loaded)
 - `@/lib/persian` — `matchesQuery()` for Persian/fuzzy matching
 - `@/lib/types` — `CustomerRow`, `DistrictFeature` types
 - `@/components/meridian/Icon` — icon component

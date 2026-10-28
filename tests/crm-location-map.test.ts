@@ -3,25 +3,22 @@ import * as React from "react";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { expect, it, vi } from "vitest";
-import { basemapDef, BASEMAPS_KEY } from "@/lib/mapLayers";
+import { BASEMAPS_KEY } from "@/lib/mapLayers";
 import CustomerLocationMap from "@/components/crm/CustomerLocationMap";
 
 const state = vi.hoisted(() => ({ skin: "light" }));
 vi.mock("@/components/ThemeToggle", () => ({ useTheme: () => [state.skin] }));
-const map = vi.hoisted(() => ({ invalidateSize: vi.fn(), getContainer: () => document.createElement("div"), setView: vi.fn(), getZoom: () => 16 }));
-vi.mock("react-leaflet", () => ({
-  useMap: () => map,
-  useMapEvents: vi.fn(),
-  MapContainer: ({ children }: { children: React.ReactNode }) => React.createElement("div", null, children),
-  TileLayer: ({ url, className }: { url: string; className: string }) => React.createElement("div", { "data-tiles": url, className }),
+/* The style MapLibre is handed is what decides the ground; the sprite path names its set. */
+vi.mock("@vis.gl/react-maplibre", () => ({
+  default: ({ mapStyle, onError, children }: { mapStyle: { sprite: string; layers: { id: string; layout?: { visibility?: string } }[] }; onError: (e: { target: null }) => void; children: React.ReactNode }) =>
+    React.createElement("div", { "data-sprite": mapStyle.sprite, "data-labels": String(mapStyle.layers.some((l) => l.id === "address_label" && l.layout?.visibility !== "none")) },
+      React.createElement("button", { onClick: () => onError({ target: null }) }, "no webgl"), children),
+  NavigationControl: () => null,
   Marker: () => null,
+  useMap: () => ({ current: null }),
 }));
-vi.mock("next/dynamic", () => ({ default: () => function Vector({ styleUrl, onError }: { styleUrl: string; onError: () => void }) {
-  return React.createElement("button", { "data-vector": styleUrl, onClick: onError }, "fail renderer");
-} }));
 
-it("uses /map defaults, follows theme, and honors saved vector basemaps with fallback", async () => {
-  vi.stubGlobal("React", React);
+it("follows the skin and the basemap saved on /map, and says so when the map cannot run", async () => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   const storage = new Map<string, string>();
   vi.stubGlobal("localStorage", {
@@ -29,25 +26,22 @@ it("uses /map defaults, follows theme, and honors saved vector basemaps with fal
     setItem: (key: string, value: string) => storage.set(key, value),
     clear: () => storage.clear(),
   });
-  localStorage.clear();
   const host = document.createElement("div");
   const root = createRoot(host);
   const render = () => act(async () => root.render(React.createElement(CustomerLocationMap, { lat: 35.7, lng: 51.4, name: "نمونه" })));
   try {
     await render();
-    expect(host.querySelector("[data-tiles]")?.className).toBe(basemapDef("apple").toneClass ?? "");
+    expect(host.querySelector("[data-sprite]")?.getAttribute("data-sprite")).toMatch(/\/map\/sprites\/light$/);
     state.skin = "dark";
     await render();
-    expect(host.querySelector("[data-tiles]")?.className).toBe(basemapDef("dark").toneClass ?? "");
-    localStorage.setItem(BASEMAPS_KEY, JSON.stringify({ dark: "radar", light: "apple" }));
+    expect(host.querySelector("[data-sprite]")?.getAttribute("data-sprite")).toMatch(/\/map\/sprites\/dark$/);
+    localStorage.setItem(BASEMAPS_KEY, JSON.stringify({ dark: "black-plain", light: "light" }));
     await act(async () => window.dispatchEvent(new StorageEvent("storage", { key: BASEMAPS_KEY })));
-    expect(host.querySelector("[data-vector]")?.getAttribute("data-vector")).toBe(basemapDef("radar").styleUrl);
+    expect(host.querySelector("[data-sprite]")?.getAttribute("data-labels")).toBe("false");
     await act(async () => host.querySelector("button")!.click());
-    expect(host.querySelector("[data-vector]")).toBeNull();
-    expect(host.querySelector("[data-tiles]")?.getAttribute("data-tiles")).toBe(basemapDef("radar").rasterFallback?.url);
+    expect(host.querySelector("[role=status]")?.textContent).toMatch(/WebGL/);
   } finally {
     await act(async () => root.unmount());
-    localStorage.clear();
     state.skin = "light";
     vi.unstubAllGlobals();
   }

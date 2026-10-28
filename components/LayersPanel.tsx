@@ -1,9 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
-import { useMap } from "react-leaflet";
-import L from "leaflet";
+import MapButton from "@/components/map/MapButton";
 import {
   BASEMAPS,
   OVERLAYS,
@@ -20,79 +17,16 @@ import type { IconName } from "@/components/meridian/icon-map";
 import { Icon } from "@/components/meridian/Icon";
 import CheckField from "@/components/CheckField";
 
-/** The layers button, sitting with Leaflet's own controls.
- *
- *  The button is a Leaflet control so it keeps its place in the top-left stack whatever
- *  else the map does; the panel it opens is ordinary React rendered outside the map, so
- *  it can be a bottom sheet on a phone like every other panel in this app.
- */
-function LayersButton({ open, count, onClick }: { open: boolean; count: number; onClick: () => void }) {
-  const map = useMap();
-  const buttonRef = useRef<HTMLAnchorElement | null>(null);
-  /* Made once, in the browser (the map never renders on the server), so there is an
-     element to portal the icon into from the first render. Leaflet only places it. */
-  const [button] = useState(() => {
-    const a = document.createElement("a");
-    a.href = "#";
-    a.setAttribute("role", "button");
-    return a;
-  });
-  // Written in an effect rather than during render: the control is created once and its
-  // click handler closes over this ref, so it needs the latest callback without the
-  // control being torn down and rebuilt every time the parent re-renders.
-  const onClickRef = useRef(onClick);
-  useEffect(() => {
-    onClickRef.current = onClick;
-  }, [onClick]);
-
-  useEffect(() => {
-    const handleClick = (e: Event) => {
-      L.DomEvent.preventDefault(e);
-      onClickRef.current();
-    };
-    const Button = L.Control.extend({
-      onAdd() {
-        const container = L.DomUtil.create("div", "leaflet-bar leaflet-control layers-toggle-control");
-        container.appendChild(button);
-        L.DomEvent.disableClickPropagation(container);
-        L.DomEvent.on(button, "click", handleClick);
-        buttonRef.current = button;
-        return container;
-      },
-      onRemove() {
-        // The portal button survives effect replay; don't retain its old handler
-        // and toggle the panel twice on the next click.
-        L.DomEvent.off(button, "click", handleClick);
-        buttonRef.current = null;
-      },
-    });
-    const control = new Button({ position: "topleft" });
-    control.addTo(map);
-    return () => {
-      control.remove();
-    };
-  }, [map, button]);
-
-  useEffect(() => {
-    const button = buttonRef.current;
-    if (!button) return;
-    const label = open ? "بستن لایه‌ها" : "لایه‌های نقشه";
-    button.title = label;
-    button.setAttribute("aria-label", label);
-    button.setAttribute("aria-expanded", open ? "true" : "false");
-    /* No count badge. It reported "how many layers differ from their defaults", which is
-       a number nobody was keeping in their head — and on a control that already says what
-       it opens, a numeral just asks a question the panel answers. */
-    button.classList.toggle("is-open", open);
-  }, [open, count]);
-
-  /* The icon is rendered into the control's own element rather than typed into it as a
-     text glyph («▤»). */
-  return createPortal(<Icon name="layers" size="md" />, button);
-}
-
-export function LayersControl(props: { open: boolean; count: number; onClick: () => void }) {
-  return <LayersButton {...props} />;
+/** The layers button, sitting with the map's own controls. The panel it opens is
+ *  ordinary React rendered outside the map, so it can be a bottom sheet on a phone like
+ *  every other panel in this app. No count badge: the number of layers that differ from
+ *  their defaults is not something anyone keeps in their head. */
+export function LayersControl({ open, onClick }: { open: boolean; count: number; onClick: () => void }) {
+  return (
+    <MapButton label={open ? "بستن لایه‌ها" : "لایه‌های نقشه"} expanded={open} className={`layers-toggle${open ? " is-open" : ""}`} onClick={onClick}>
+      <Icon name="layers" size="md" />
+    </MapButton>
+  );
 }
 
 function Row({
@@ -225,7 +159,6 @@ export default function LayersPanel({
                   }`}
                 >
                   {/* Pre-rendered in public/basemap-thumbs by scripts/gen-basemap-thumbs.mjs.
-                      The tone is already baked into the PNG, so no filter class here.
                       Wrapped in <picture> to match the codebase's other raster thumbs and
                       keep next/lint's no-img-element rule quiet. */}
                   <picture>
@@ -262,27 +195,17 @@ export default function LayersPanel({
                 {group.label}
               </h3>
               {rows.map((o) => {
-                // The street basemap draws its own names, so the overlay would print a
-                // second set on top of the first. Say why it is off rather than hiding it
-                // and leaving the switch to look broken.
-                const redundant = o.id === "labels" && base.hasLabels;
                 const missing = o.id === "corridor" && !hasCorridor;
                 const status = zoneStatus?.[o.id === "traffic_zone" ? "limited_traffic" : "low_emission"];
                 return (
                   <Row
                     key={o.id}
-                    checked={layers[o.id] && !redundant}
+                    checked={layers[o.id]}
                     onChange={(next) => onLayer(o.id, next)}
                     icon={o.icon}
                     label={o.label}
-                    disabled={redundant || missing}
-                    hint={
-                      redundant
-                        ? "نقشه خیابانی خودش نام‌ها را دارد."
-                        : missing
-                          ? "برای این لایه باید دست‌کم دو انبار ثبت شده باشد."
-                          : o.hint
-                    }
+                    disabled={missing}
+                    hint={missing ? "برای این لایه باید دست‌کم دو انبار ثبت شده باشد." : o.hint}
                     suffix={
                       (o.id === "traffic_zone" || o.id === "low_emission") && status ? (
                         <ZoneNow status={status} kind={o.id === "traffic_zone" ? "permit" : "quota"} />

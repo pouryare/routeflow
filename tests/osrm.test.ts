@@ -31,6 +31,10 @@ describe("parseRoute", () => {
     expect(parseRoute(ok)?.km).toBeCloseTo(12.3456, 6);
   });
 
+  it("reports the driving time in whole minutes", () => {
+    expect(parseRoute({ ...ok, routes: [{ ...ok.routes[0], duration: 1530 }] })?.minutes).toBe(26);
+  });
+
   it("refuses a refusal delivered as a 200", () => {
     // OSRM answers NoRoute/InvalidQuery with an HTTP 200 and a code in the body, so
     // res.ok is not enough on its own.

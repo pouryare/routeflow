@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useRef } from "react";
-import { MapContainer, CircleMarker, useMap } from "react-leaflet";
+import { Marker, useMap } from "@vis.gl/react-maplibre";
 import { usePrefersReducedMotion } from "@/lib/usePrefersReducedMotion";
 import type { LiveItem } from "./LiveItemList";
-import QuietTileLayer from "@/components/map/QuietTileLayer";
+import AppMap from "@/components/map/AppMap";
 
 /** Tehran, used until a pin lands to give the frame something to centre on. */
 const TEHRAN: [number, number] = [35.6892, 51.389];
@@ -26,32 +26,27 @@ export interface ImportPin {
  *  honest picture of the job, and it is the reason this is a real map rather than a
  *  decorative graphic.
  *
- *  Loaded through next/dynamic with ssr:false by the console, because leaflet reads
- *  `window` on import -- see components/MapLoader.tsx for the established shape. */
+ *  Loaded through next/dynamic with ssr:false by the console, because MapLibre reads
+ *  `window` on import. */
 export default function ImportMap({ items }: { items: LiveItem[] }) {
   const pins = usePins(items);
 
   return (
     <div className="h-56 overflow-hidden rounded-[var(--radius-md)] border border-border">
-      <MapContainer
-        center={pins.length > 0 ? [pins[0].lat, pins[0].lng] : TEHRAN}
-        zoom={pins.length > 0 ? 11 : 10}
-        style={{ height: "100%", width: "100%" }}
-        scrollWheelZoom={false}
-        zoomControl={false}
+      <AppMap
+        initialViewState={{
+          latitude: pins.length > 0 ? pins[0].lat : TEHRAN[0],
+          longitude: pins.length > 0 ? pins[0].lng : TEHRAN[1],
+          zoom: pins.length > 0 ? 11 : 10,
+        }}
+        scrollZoom={false}
+        zoomButtons={false}
       >
-        {/* Fields named, never spread. QUIET_TILES carries `subdomains: undefined`, and
-            Leaflet's _getSubdomain reads `.length` off whatever it is handed -- spreading
-            the object passes that undefined straight through and throws
-            "Cannot read properties of undefined (reading 'length')" on the first tile
-            request, which unmounts the whole page. LeadsMap names these same four fields
-            for the same reason. */}
-        <QuietTileLayer />
         <FitToPins pins={pins} />
         {pins.map((pin) => (
           <DroppingPin key={pin.id} pin={pin} />
         ))}
-      </MapContainer>
+      </AppMap>
     </div>
   );
 }
@@ -76,41 +71,38 @@ export function usePins(items: LiveItem[]): ImportPin[] {
 
 /** Keeps the whole batch in view as it arrives, without yanking the map on every pin. */
 function FitToPins({ pins }: { pins: ImportPin[] }) {
-  const map = useMap();
+  const { current: map } = useMap();
   const fitted = useRef(false);
 
   useEffect(() => {
     // Once only. Re-fitting on every poll would move the map under the user's cursor
     // while they are watching the import, which is worse than a slightly loose frame.
-    if (fitted.current || pins.length === 0) return;
+    if (!map || fitted.current || pins.length === 0) return;
     if (pins.length === 1) {
-      map.setView([pins[0].lat, pins[0].lng], 12);
+      map.jumpTo({ center: [pins[0].lng, pins[0].lat], zoom: 12 });
       fitted.current = true;
       return;
     }
-    map.fitBounds(pins.map((p) => [p.lat, p.lng] as [number, number]), { padding: [24, 24] });
+    map.fitBounds(pinBounds(pins), { padding: 24, duration: 0 });
     fitted.current = true;
   }, [map, pins]);
 
   return null;
 }
 
+/** [[west, south], [east, north]] around the pins. */
+function pinBounds(pins: { lat: number; lng: number }[]): [[number, number], [number, number]] {
+  const lngs = pins.map((p) => p.lng), lats = pins.map((p) => p.lat);
+  return [[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]];
+}
+
 function DroppingPin({ pin }: { pin: ImportPin }) {
   const reduced = usePrefersReducedMotion();
+  // The pulse is the drop: a short ring expanding from the pin on arrival. Under reduced
+  // motion it is simply absent, and the pin is still there.
   return (
-    <CircleMarker
-      center={[pin.lat, pin.lng]}
-      radius={reduced ? 5 : 6}
-      pathOptions={{
-        color: "var(--accent)",
-        fillColor: "var(--accent)",
-        fillOpacity: reduced ? 0.9 : 0.35,
-        weight: 2,
-        opacity: 0.95,
-        // The pulse is the drop: a short ring expanding from the pin on arrival. Under
-        // reduced motion it is simply absent, and the pin is still there.
-        className: reduced ? undefined : "leadimport-pin-drop",
-      }}
-    />
+    <Marker longitude={pin.lng} latitude={pin.lat}>
+      <div className={`leadimport-pin${reduced ? "" : " leadimport-pin-drop"}`} title={pin.name} />
+    </Marker>
   );
 }
