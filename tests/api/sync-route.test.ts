@@ -69,7 +69,7 @@ async function readyDelivery(): Promise<number> {
     lines: [{ product_id: product, packaging_id: packaging, packs: 2 }],
   });
   await confirmOrder(db, o.id);
-  const run = await createRun(db, { driver_user_id: driver, run_date: "2026-01-02", created_by: owner, organization_id: 1 });
+  const run = await createRun(db, { driver_user_id: driver, run_date: new Date().toISOString().slice(0, 10), created_by: owner, organization_id: 1 });
   const stop = await addStop(db, run, o.id);
   return (await deliveryForStop(1, stop))!.id;
 }
