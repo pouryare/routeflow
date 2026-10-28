@@ -12,7 +12,8 @@ import SalesSpark, { type SparkPoint } from "@/components/meridian/SalesSpark";
 import CarvedCard from "@/components/meridian/CarvedCard";
 import Avatar from "@/components/meridian/Avatar";
 import PageHeader from "@/components/meridian/PageHeader";
-import { isVanRole } from "@/lib/roles";
+import { isVanRole, MANAGE_ROLES } from "@/lib/roles";
+import SalePings from "@/components/sales/SalePings";
 
 export const dynamic = "force-dynamic";
 
@@ -71,6 +72,7 @@ export default async function SalesHomePage() {
   return (
     <>
     <PageHeader route="/sales" />
+    {MANAGE_ROLES.includes(session.role) && <SalePings />}
     <>
       <div className="statrow">
         <GradientStat
