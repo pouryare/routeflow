@@ -20,7 +20,6 @@ function LoginForm() {
   // Set when the password passed but the founder's account also needs a code from the authenticator app.
   const [challenge, setChallenge] = useState<string | null>(null);
   const [code, setCode] = useState("");
-  // A recovery code (abcde-12345) is not six digits, so it keeps a plain field behind a link.
   const [useRecovery, setUseRecovery] = useState(false);
   const nextPathRef = useRef<string | null>(null);
   const clearedRef = useRef(false);

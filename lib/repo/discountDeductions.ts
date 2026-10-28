@@ -37,7 +37,7 @@ export async function deductionsFor(
     .all(userId, ledger, period.from.slice(0, 10), period.to.slice(0, 10)) as unknown as DeductionItem[];
 }
 
-export const sumDeductions = (items: readonly DeductionItem[]) => items.reduce((t, i) => t + i.amount_toman, 0);
+const sumDeductions = (items: readonly DeductionItem[]) => items.reduce((t, i) => t + i.amount_toman, 0);
 
 /** The statement fields every ledger adds: the period's deductions, the part the period's earnings
  *  cover, the part that carries forward, and what is left of the earnings. */

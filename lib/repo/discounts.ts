@@ -204,7 +204,7 @@ async function settle(db: Db, organizationId: number, id: number, verdict: "appr
   await refreshOrderFigures(db, d.order_id);
 }
 
-export async function readDiscount(db: Db, organizationId: number, id: number): Promise<DiscountRow> {
+async function readDiscount(db: Db, organizationId: number, id: number): Promise<DiscountRow> {
   const row = await db
     .prepare("SELECT * FROM order_discounts WHERE id = ? AND organization_id = ?")
     .get(id, organizationId) as DiscountRow | undefined;
@@ -251,7 +251,7 @@ export async function decideDiscount(
   return await readDiscount(db, organizationId, id);
 }
 
-export interface DiscountShareView {
+interface DiscountShareView {
   user_id: number;
   ledger: string;
   display_name: string;
