@@ -2,14 +2,13 @@ import { describe, it, expect, afterAll } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
-import { sqliteOnly, tableExists, tableInfo } from "./helpers/schema";
+import { tableExists, tableInfo } from "./helpers/schema";
 
 const testDbPath = path.join(os.tmpdir(), `rf-notif-p2-schema-${Date.now()}-${Math.random().toString(36).slice(2)}.db`);
 process.env.ROUTEFLOW_DB_PATH = testDbPath;
 process.env.SESSION_SECRET = "test-secret";
 
 const { getDb } = await import("@/lib/db");
-const { loudByDefault } = await import("@/lib/db");
 
 afterAll(() => {
   for (const s of ["", "-wal", "-shm"]) fs.rmSync(`${testDbPath}${s}`, { force: true });
@@ -97,30 +96,5 @@ describe("Phase 2 notification schema", () => {
         .get(code) as { trigger_kind: string; cooldown_min: number };
       expect(row, code).toEqual(expected);
     }
-  });
-
-  it("loudByDefault matches the spec rule", () => {
-    expect(loudByDefault("directed", "NORMAL")).toBe(1);
-    expect(loudByDefault("directed", "HIGH")).toBe(1);
-    expect(loudByDefault("directed", "LOW")).toBe(0);
-    expect(loudByDefault("ambient", "CRITICAL")).toBe(1);
-    expect(loudByDefault("ambient", "HIGH")).toBe(0);
-  });
-
-  it.skipIf(sqliteOnly)("re-running getDb() migrations is a no-op", async () => {
-    const before = await getDb().prepare("SELECT COUNT(*) c FROM notification_types").get() as { c: number };
-    const rulesBefore = await getDb()
-      .prepare("SELECT COUNT(*) c FROM rules WHERE organization_id IS NULL")
-      .get() as { c: number };
-    // getDb() is a singleton; call the seeders again directly to prove idempotency
-    const dbMod = await import("@/lib/db");
-    dbMod.seedNotificationTypes(await dbMod.rawSqlite());
-    dbMod.seedRules(await dbMod.rawSqlite());
-    const after = await getDb().prepare("SELECT COUNT(*) c FROM notification_types").get() as { c: number };
-    const rulesAfter = await getDb()
-      .prepare("SELECT COUNT(*) c FROM rules WHERE organization_id IS NULL")
-      .get() as { c: number };
-    expect(after.c).toBe(before.c);
-    expect(rulesAfter.c).toBe(rulesBefore.c);
   });
 });

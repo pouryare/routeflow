@@ -1,11 +1,11 @@
 # PostgreSQL (Wave P)
 
-RouteFlow still runs on SQLite by default. This folder is the PostgreSQL side that runs next to it until the cut-over (plan: `docs/roadmap.md` 10.1 and 10.2).
+RouteFlow runs on PostgreSQL only (the SQLite code was removed in Wave P, phase 5; plan and history: `docs/roadmap.md` 10.1 and 10.2). This folder is the database: image, migrations, server setup. Running it on a real server is `docs/postgres-server.md`.
 
 | Path | What it is |
 |---|---|
 | `Dockerfile`, `init-extensions.sql`, `compose.yml` | The Postgres 18 image the server, CI and local development use: PostGIS, `pg_trgm`, `btree_gist`, `pg_stat_statements`, `pg_duckdb`, `wal_level = logical`. |
-| `migrations/` | node-pg-migrate SQL files. `1761300000000_baseline.sql` is **generated** from the SQLite schema by `npm run db:pg:generate`; never edit it by hand. |
+| `migrations/` | node-pg-migrate SQL files. `1761300000000_baseline.sql` is the schema as it stood when SQLite went; it is now owned by hand like any other migration. Change the schema with a new migration (`npx node-pg-migrate create -m db/migrations --migration-file-language sql <name>`), never by editing an applied one. |
 
 ## Commands
 
@@ -13,24 +13,23 @@ RouteFlow still runs on SQLite by default. This folder is the PostgreSQL side th
 docker compose -f db/compose.yml up -d                  # local Postgres on 127.0.0.1:5432
 export DATABASE_URL=postgres://routeflow:routeflow@localhost:5432/routeflow
 npm run db:pg:migrate                                   # apply db/migrations
-DB_DIALECT=postgres npm run dev                         # the app on Postgres
-npm run db:pg:generate                                  # after changing lib/database/: regenerate the baseline
+npm run dev                                             # the app, on DATABASE_URL
 npm run db:pg:lint                                      # Squawk on the migrations
 npm run db:pg:types                                     # Kysely types into lib/database/pg-schema.d.ts
-DATABASE_URL=postgres://routeflow:routeflow@localhost:5432/postgres npm run test:pg
+DATABASE_URL=postgres://routeflow:routeflow@localhost:5432/postgres npm test
 ```
 
-`test:pg` builds a template database from the migrations, gives each test file its own copy, and compares the failing files with `tests/pg-known-failures.txt`. CI fails if a file not on that list fails, or if a listed file passes (delete its line). The list is empty since phase 3 and should stay that way. A file that only makes sense on SQLite (it reads `PRAGMA`s or SQLite's file) goes in `tests/pg-sqlite-only.txt` with a reason; a single such test uses `it.skipIf(sqliteOnly)` from `tests/helpers/schema.ts`.
+`npm test` builds a template database from the migrations and gives each test file its own copy, so files run in parallel without sharing rows. Pass vitest arguments after `--` (`npm test -- tests/orders.test.ts`). Running bare `vitest` stops with a message saying so (`tests/setup-pg.ts`). The browser suite (`npm run test:smoke`) needs a disposable database in `DATABASE_URL` that nobody is connected to: it copies it with `CREATE DATABASE ... TEMPLATE`, serves the copy and drops it afterwards.
 
-## How app code stays portable
+## How app code reaches the database
 
-- Every call goes through the `Db` interface (`lib/database/client.ts`); `lib/database/pg.ts` is the PostgreSQL side of it.
-- SQL that the two engines spell differently goes through `lib/database/dialect.ts`; `tests/sql-dialect-guard.test.ts` refuses the SQLite-only spellings.
+- Every call goes through the `Db` interface (`lib/database/client.ts`); `lib/database/pg.ts` implements it. SQL is written with `?` placeholders.
+- SQL that is awkward to spell (string aggregation, date differences, rounding) goes through `lib/database/dialect.ts`; `tests/sql-dialect-guard.test.ts` refuses the SQLite spellings left over from before.
 - To tell which constraint a failed statement broke, use `isUniqueViolation` / `isCheckViolation` from `lib/database/errors.ts`, not the error text.
 
 ## Demo data
 
-`DB_DIALECT=postgres npm run seed:demo` builds the demo company in its own database (`routeflow_demo` by default, or `--db <name>`) on the server `DATABASE_URL` points at. It refuses `DATABASE_URL`'s own database, and an existing database unless `--force` is given.
+`npm run seed:demo` builds the demo company in its own database (`routeflow_demo` by default, or `--db <name>`) on the server `DATABASE_URL` points at. It refuses `DATABASE_URL`'s own database, and an existing database unless `--force` is given.
 
 ## Sync watermark
 

@@ -1,0 +1,17 @@
+# One backup of the given type: routeflow-backup@full, routeflow-backup@diff or routeflow-backup@incr.
+# Runs scripts/pg/backup.mjs, which also writes backup-status.json for the owner's status page.
+[Unit]
+Description=RouteFlow PostgreSQL backup (%i)
+After=postgresql.service
+Requires=postgresql.service
+
+[Service]
+Type=oneshot
+User=postgres
+EnvironmentFile=/etc/routeflow/env
+WorkingDirectory=/opt/routeflow
+ExecStart=/usr/bin/node scripts/pg/backup.mjs %i
+# A backup that hangs is worse than one that fails loudly.
+TimeoutStartSec=4h
+Nice=10
+IOSchedulingClass=idle

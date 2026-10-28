@@ -2,15 +2,13 @@ import { describe, it, expect, afterAll } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
-import { sqliteOnly, tableInfo } from "./helpers/schema";
 
 const dbPath = path.join(os.tmpdir(), `rf-product-log-${Date.now()}-${Math.random().toString(36).slice(2)}.db`);
 process.env.ROUTEFLOW_DB_PATH = dbPath;
 process.env.SESSION_SECRET = "test-secret";
-const { getDb, rawSqlite } = await import("@/lib/db");
+const { getDb } = await import("@/lib/db");
 const { createProduct } = await import("@/lib/catalogue");
 const { logProductChange, recentProductChanges, thresholdText } = await import("@/lib/repo/productLog");
-const { applyQuickWins } = await import("@/lib/database/migrations/09-quick-wins");
 
 afterAll(() => {
   for (const s of ["", "-wal", "-shm"]) fs.rmSync(`${dbPath}${s}`, { force: true });
@@ -19,12 +17,6 @@ afterAll(() => {
 const session = (org: number) => ({ organizationId: org, role: "owner", user: { id: 1 } }) as never;
 
 describe("product change log", () => {
-  it.skipIf(sqliteOnly)("the widened activity log keeps its columns and is rebuilt only once", async () => {
-    const cols = (await tableInfo("activity_log") as { name: string }[]).map((c) => c.name);
-    expect(cols).toContain("changed_by_user_id");
-    expect(cols).toContain("impersonated_by");
-    applyQuickWins(await rawSqlite()); // a second run is a no-op
-  });
 
   it("records a change and reads it back for the product's organisation only", async () => {
     const db = getDb();

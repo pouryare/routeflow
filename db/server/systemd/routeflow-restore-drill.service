@@ -1,0 +1,15 @@
+# Restores the newest backup into a scratch directory and starts a throw-away server on it, then
+# compares its row counts with the live database. A backup nobody has restored is a hope.
+[Unit]
+Description=RouteFlow restore drill
+After=postgresql.service
+
+[Service]
+Type=oneshot
+User=postgres
+EnvironmentFile=/etc/routeflow/env
+WorkingDirectory=/opt/routeflow
+ExecStart=/usr/bin/node scripts/pg/restore-drill.mjs
+TimeoutStartSec=4h
+Nice=15
+IOSchedulingClass=idle

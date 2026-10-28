@@ -8,13 +8,10 @@
 // Usage:
 //   node scripts/create-user.mjs <username> <password> "<Display Name>" <owner|group_manager|salesperson|driver> [group_id]
 
-import { DatabaseSync } from "node:sqlite";
 import crypto from "node:crypto";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { openScriptDb } from "./_db.mjs";
 
-const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const DB_PATH = process.env.ROUTEFLOW_DB_PATH || path.join(ROOT, "data", "routeflow.db");
+// The database is the one DATABASE_URL points at (set -a; . /etc/routeflow/env; set +a).
 // Kept in step with lib/roles.ts by a test -- this script is plain ESM run straight by
 // node with no build step, so it cannot import the TypeScript definition.
 const ROLES = ["platform_owner", "owner", "group_manager", "rep_manager", "phone_sales", "field_rep", "delivery_driver"];
@@ -36,11 +33,9 @@ if (!ROLES.includes(role)) {
 // check left — two platform owners would each be able to act as anyone in any tenant.
 // The admin user API refuses it too; this is the one path that legitimately CREATES one.
 if (role === "platform_owner") {
-  const db0 = new DatabaseSync(DB_PATH, { readOnly: true });
-  const existing = db0
-    .prepare("SELECT COUNT(*) n FROM users WHERE role = 'platform_owner'")
-    .get().n;
-  db0.close();
+  const db0 = await openScriptDb();
+  const existing = Number((await db0.get("SELECT COUNT(*) n FROM users WHERE role = 'platform_owner'")).n);
+  await db0.close();
   if (existing > 0) {
     console.error("[create-user] a platform_owner already exists — there can be only one.");
     process.exit(1);
@@ -64,7 +59,7 @@ function hashPassword(pw) {
   return `${salt.toString("hex")}:${hash.toString("hex")}`;
 }
 
-const db = new DatabaseSync(DB_PATH);
+const db = await openScriptDb();
 
 // No CREATE TABLE here any more. This script used to create a five-column users table of
 // its own, which no longer matches the schema lib/db.ts migrates to -- run against a fresh
@@ -72,28 +67,28 @@ const db = new DatabaseSync(DB_PATH);
 // and then the app would have layered its migration on top of a table it did not build.
 // Requiring an already-migrated database and failing loudly is the honest behaviour: start
 // the app once, then run this.
-const columns = db.prepare("PRAGMA table_info(users)").all().map((c) => c.name);
+const columns = await db.columns("users");
 if (columns.length === 0) {
-  console.error(`[create-user] no users table in ${DB_PATH}. Start the app once so it can create the schema, then re-run.`);
+  console.error(`[create-user] no users table in ${db.where}. Start the app once (SQLite) or run the migrations (PostgreSQL), then re-run.`);
   process.exit(1);
 }
 for (const required of ["role", "group_id", "active", "token_version"]) {
   if (!columns.includes(required)) {
-    console.error(`[create-user] ${DB_PATH} is missing users.${required}. Start the app once so it can migrate, then re-run.`);
+    console.error(`[create-user] ${db.where} is missing users.${required}. Migrate it, then re-run.`);
     process.exit(1);
   }
 }
 
-if (groupId !== null && !db.prepare("SELECT 1 FROM groups WHERE id = ?").get(groupId)) {
+if (groupId !== null && !(await db.get("SELECT 1 FROM groups WHERE id = ?", groupId))) {
   console.error(`[create-user] no group with id ${groupId}. Existing groups:`);
-  for (const g of db.prepare("SELECT id, name FROM groups ORDER BY id").all()) {
+  for (const g of await db.all("SELECT id, name FROM groups ORDER BY id")) {
     console.error(`  ${g.id}  ${g.name}`);
   }
   process.exit(1);
 }
 
 const now = new Date().toISOString();
-db.prepare(
+await db.run(
   `INSERT INTO users (username, password_hash, display_name, role, group_id, active, token_version, created_at)
    VALUES (?, ?, ?, ?, ?, 1, 0, ?)
    ON CONFLICT(username) DO UPDATE SET
@@ -104,8 +99,14 @@ db.prepare(
      active        = 1,
      -- Same rule the admin route follows: any change here has to invalidate sessions
      -- already issued, or a password reset leaves the old one working for 30 days.
-     token_version = users.token_version + 1`
-).run(username, hashPassword(password), displayName, role, groupId, now);
+     token_version = users.token_version + 1`,
+  username,
+  hashPassword(password),
+  displayName,
+  role,
+  groupId,
+  now
+);
 
 console.log(`[create-user] account ready: ${username} (${displayName}) — ${role}${groupId === null ? "" : `, group ${groupId}`}`);
-db.close();
+await db.close();

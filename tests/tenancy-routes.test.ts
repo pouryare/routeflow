@@ -2,12 +2,10 @@ import { describe, it, expect, beforeAll, afterAll, vi } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
-import { createHash } from "node:crypto";
 import { pathToFileURL } from "node:url";
 
 import { filterSeq, mapSeq } from "@/lib/seq";
 import { foreignKeys, tableInfo, tableNames } from "./helpers/schema";
-import { dialect } from "@/lib/database/dialect";
 /* Cross-tenant guardrail over EVERY api route (architecture audit, step 1).
  *
  * The data layer enforces tenancy by convention: each query has to remember its own
@@ -132,25 +130,16 @@ async function fingerprintOrgB(): Promise<string> {
       from: `"${c.t}" x WHERE x."${c.from}" IN (SELECT id FROM "${c.parent}" WHERE organization_id = 2)`,
     })),
   ];
-  /* PostgreSQL: one statement for the lot. The write probe takes a fingerprint after every
-     call, thousands of them, and a round trip per table made that run past its timeout. */
-  if (dialect() === "postgres") {
-    const row = await db
-      .prepare(
-        `SELECT md5(string_agg(h, '|' ORDER BY k)) AS f FROM (${parts
-          .map((p) => `SELECT '${p.key}' AS k, md5(COALESCE(string_agg(CAST(x AS text), ',' ORDER BY CAST(x AS text)), '')) AS h FROM ${p.from}`)
-          .join(" UNION ALL ")}) t`
-      )
-      .get() as { f: string };
-    return row.f;
-  }
-  const h = createHash("sha256");
-  for (const p of parts) {
-    // Sorted here rather than by rowid, which PostgreSQL has no counterpart for.
-    const rows = (await db.prepare(`SELECT x.* FROM ${p.from}`).all()).map((r) => JSON.stringify(r)).sort();
-    h.update(p.key).update(rows.join("\n"));
-  }
-  return h.digest("hex");
+  /* One statement for the lot. The write probe takes a fingerprint after every call, thousands
+     of them, and a round trip per table made that run past its timeout. */
+  const row = await db
+    .prepare(
+      `SELECT md5(string_agg(h, '|' ORDER BY k)) AS f FROM (${parts
+        .map((p) => `SELECT '${p.key}' AS k, md5(COALESCE(string_agg(CAST(x AS text), ',' ORDER BY CAST(x AS text)), '')) AS h FROM ${p.from}`)
+        .join(" UNION ALL ")}) t`
+    )
+    .get() as { f: string };
+  return row.f;
 }
 
 async function markB(db: ReturnType<typeof getDb>) {

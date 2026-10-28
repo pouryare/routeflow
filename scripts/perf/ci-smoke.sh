@@ -5,16 +5,18 @@ set -euo pipefail
 cd "$(dirname "$0")/../.."
 
 WORK="$(mktemp -d)"
-export ROUTEFLOW_DB_PATH="$WORK/ci.db"
+# DATABASE_URL names the server (CI: the postgres service); the demo goes to its own database.
+: "${DATABASE_URL:?DATABASE_URL is required}"
+DEMO_DB="rf_perf_smoke"
 export SESSION_SECRET="${SESSION_SECRET:-ci-secret-not-for-production-0123456789}"
 export NEXT_TELEMETRY_DISABLED=1
 PORT="${PORT:-3100}"
 BUDGET="${PERF_BUDGET_MS:-1500}"
 
-npm run seed:demo -- --scale=smoke --db="$ROUTEFLOW_DB_PATH" --force > "$WORK/seed.log" 2>&1 || { cat "$WORK/seed.log"; exit 1; }
+npm run seed:demo -- --scale=smoke --db="$DEMO_DB" --force > "$WORK/seed.log" 2>&1 || { cat "$WORK/seed.log"; exit 1; }
 npm run build > "$WORK/build.log" 2>&1 || { tail -40 "$WORK/build.log"; exit 1; }
 
-npx next start -p "$PORT" > "$WORK/server.log" 2>&1 &
+DATABASE_URL="$(node -e 'const u=new URL(process.env.DATABASE_URL);u.pathname="/"+process.argv[1];console.log(u.toString())' "$DEMO_DB")" npx next start -p "$PORT" > "$WORK/server.log" 2>&1 &
 SERVER=$!
 trap 'kill $SERVER 2>/dev/null || true' EXIT
 

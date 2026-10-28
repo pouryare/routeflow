@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
-import { sqliteOnly, tableInfo } from "./helpers/schema";
+import { tableInfo } from "./helpers/schema";
 
 const testDbPath = path.join(
   os.tmpdir(),
@@ -34,13 +34,6 @@ const cols = async (table: string) =>
     (c) => c.name
   );
 
-const tableSql = async (table: string) =>
-  (
-    await getDb()
-      .prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name = ?")
-      .get(table) as { sql: string }
-  ).sql;
-
 describe("commission_rates", () => {
   it("has the columns the module needs", async () => {
     expect((await cols("commission_rates")).sort()).toEqual(
@@ -58,10 +51,6 @@ describe("commission_rates", () => {
     );
   });
 
-  it.skipIf(sqliteOnly)("holds both rates as whole Toman", async () => {
-    expect(await tableSql("commission_rates")).toMatch(/rate_per_kg_toman\s+INTEGER/);
-    expect(await tableSql("commission_rates")).toMatch(/urgent_rate_per_kg_toman\s+INTEGER/);
-  });
 
   it("allows a company-wide rate with nobody named", async () => {
     await (async () =>
@@ -105,9 +94,6 @@ describe("commission_payments", () => {
     );
   });
 
-  it.skipIf(sqliteOnly)("holds the amount as whole Toman", async () => {
-    expect(await tableSql("commission_payments")).toMatch(/amount_toman\s+INTEGER/);
-  });
 
   it("requires a person to pay", async () => {
     // A payment with nobody attached is money leaving with no statement to reconcile

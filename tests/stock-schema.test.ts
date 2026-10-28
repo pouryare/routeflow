@@ -2,7 +2,7 @@ import { describe, it, expect, afterAll } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
-import { sqliteOnly, tableInfo } from "./helpers/schema";
+import { tableInfo } from "./helpers/schema";
 
 const testDbPath = path.join(
   os.tmpdir(),
@@ -28,12 +28,6 @@ describe("stock & batches schema", () => {
     expect(cols).toContain("shelf_life_days");
   });
 
-  it.skipIf(sqliteOnly)("batches are unique per (organization_id, product_id, batch_code)", async () => {
-    const sql = (
-      await getDb().prepare("SELECT sql FROM sqlite_master WHERE name='batches'").get() as { sql: string }
-    ).sql;
-    expect(sql).toContain("UNIQUE (organization_id, product_id, batch_code)");
-  });
 
   it("stock_movements.kind rejects an unknown kind", async () => {
     await expect((async () =>

@@ -2,29 +2,20 @@ import type { Db } from "./database/client";
 import { getDb } from "./database/connection";
 
 // Re-exported so server modules that already import from db.ts keep one import site. The code
-// itself lives in lib/database/: types, seeds, backfills, rebuilds, the base schema and the
-// ordered migrations (see ./database/migrate.ts).
+// itself lives in lib/database/: the connection, the Db interface, the types.
 import type { ActivityEntry, LeadListRow, LeadListWithItems } from "./database/types";
 export * from "./database/types";
 export type { Db, Statement, Row } from "./database/client";
-export { DB_PATH, getDb, dbReady, rawSqlite } from "./database/connection";
-export * from "./database/seeds";
-export * from "./database/backfills";
+export { DB_PATH, getDb, dbReady } from "./database/connection";
 export { TENANT_TABLES } from "./database/tenantTables";
 export type { FacilityKind, FacilityRow } from "./facilityTypes";
 export { FACILITY_KINDS, FACILITY_ICONS, defaultIconFor } from "./facilityTypes";
 
-/** Rows from node:sqlite, made safe to hand to a client component.
+/** Rows copied into plain objects, for a result that crosses into a `"use client"` component.
  *
- *  `DatabaseSync.prepare().all()` returns objects with a **null prototype**. React
- *  refuses to serialise those across the server/client boundary -- "Only plain objects,
- *  and a few built-ins, can be passed to Client Components" -- and the page 500s at
- *  render time. Nothing in the types sees it: a null-prototype object satisfies every
- *  interface it structurally matches, so tsc, eslint and every unit test pass while the
- *  page is broken. It only shows up in a browser.
- *
- *  So any query result that crosses into a `"use client"` component goes through here
- *  first. Results that only ever render on the server do not need it.
+ *  The pg driver already returns plain objects; this stays because React refuses anything else
+ *  across the server/client boundary ("Only plain objects, and a few built-ins, can be passed to
+ *  Client Components") and the page 500s at render time, which no type or unit test sees.
  */
 export function plain<T>(rows: T[]): T[] {
   return rows.map((row) => ({ ...row }));
@@ -53,8 +44,7 @@ export async function readLeadLists(
     else byList.set(it.list_id, [it.location_id]);
   }
 
-  // Rebuilt as object literals rather than passed through: node:sqlite hands back
-  // null-prototype rows, which cannot cross into a Client Component.
+  // Rebuilt as object literals rather than passed through.
   return lists.map((l) => ({
     id: l.id,
     name: l.name,

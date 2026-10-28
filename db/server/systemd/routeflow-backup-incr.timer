@@ -1,0 +1,10 @@
+[Unit]
+Description=RouteFlow incremental backup, every 4 hours
+
+[Timer]
+OnCalendar=*-*-* 05,09,13,17,21:30:00 Asia/Tehran
+Persistent=true
+Unit=routeflow-backup@incr.service
+
+[Install]
+WantedBy=timers.target

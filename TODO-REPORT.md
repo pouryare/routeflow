@@ -1,6 +1,6 @@
 # To-do report
 
-_Condensed 2026-10-23. Each finished piece of work is one line here; the full earlier text is in git history (`git log -p TODO-REPORT.md`)._
+_Condensed 2026-10-23, updated 2026-10-27. Each finished piece of work is one line here; the full earlier text is in git history (`git log -p TODO-REPORT.md`)._
 
 ## Done
 - [x] Actions minutes cut (`claude/project-thread-lb9196`): draft PRs skip CI, `main` runs only `check` after a merge, docs-only changes skip CI, shorter timeouts; secret scan for going public and `docs/make-repo-public.md`; `LICENSE` (all rights reserved)
@@ -111,6 +111,17 @@ _Condensed 2026-10-23. Each finished piece of work is one line here; the full ea
   - [x] Demo seed builds on Postgres in its own `routeflow_demo` database and refuses the real one; all 24 invariants pass
   - [x] `xid8` sync watermark: a trigger stamps `sync_xid` on the 15 synced tables, the pull hands back `x:<snapshot xmin>`, so a row committed after a pull is no longer lost (`tests/sync-watermark-pg.test.ts`)
   - [x] Row-level security: the app connects as `routeflow_app`; every table with `organization_id` has a per-company policy keyed on `rf.scope`, which the adapter sets before each statement from the signed-in session; no session means no rows (`tests/row-level-security-pg.test.ts`); CI runs the whole Postgres suite as that role
+- [x] Wave P phase 4 (PR #72), the server:
+  - [x] `db/server/install.sh` sets up PostgreSQL 18 with every extension, roles, the app environment file and migrations on a Debian/Ubuntu machine; safe to rerun (`docs/postgres-server.md`)
+  - [x] pgBackRest to two encrypted repositories (this machine, a second machine over SFTP), WAL archiving, systemd timers (full, differential, incremental), `scripts/pg/backup.mjs` writing `backup-status.json` for the owner status page
+  - [x] Monthly restore drill (`scripts/pg/restore-drill.mjs`): restores each repository, starts a throw-away server, reads every table and compares row counts; the drill found and fixed the SFTP file-limit and recovery-capacity problems
+  - [x] `scripts/pg/doctor.mjs` checks the server the way RouteFlow expects it (extensions, migrations, row-level security, app role, sync triggers, backups)
+  - [x] The app was clicked through on Postgres by a browser crawler over every screen of every role (`scripts/pg/click-through.ts`); it found two real SQL errors (GROUP BY), fixed; `create-user` and `disable-second-factor` run on Postgres
+- [x] Wave P phase 5 (same PR #72), SQLite removed:
+  - [x] The SQLite client, boot schema, migrations, backfills, seeds, slow-SQL wrapper, `DB_DIALECT`, the sync timestamp watermark and `tombstonesSince` are deleted; the baseline migration is now hand-owned
+  - [x] `npm test` is the Postgres run (`scripts/pg/test-pg.mjs`); bare `vitest` stops with a message; SQLite-only tests deleted, the rest ported; the browser smoke suite copies a disposable database with `TEMPLATE`
+  - [x] CI is one job: types, lint, architecture ratchet, Squawk, Kysely types, unit tests on Postgres, doctor, production build with the page-time budget
+  - [x] Old SQLite scripts removed (backup, the three demo seeders, the district loaders, baseline generator); `preview.sh` and the perf smoke use Postgres
 
 - [x] HeroUI extras batch (owner asked for spinner, tag, table, kbd, progress bar, listbox, (?) help):
   - [x] (?) help is one `HelpHint` Popover (card help, day chips, keypad, pickers)
@@ -143,10 +154,7 @@ _Condensed 2026-10-23. Each finished piece of work is one line here; the full ea
 - [ ] Headless Chromium does not finish painting the 100-order list on `/sales/orders` (the page is 28,000 px tall); the same on the build before this batch, so check on a real phone and consider paging that list
 - [ ] The toast no longer shows the draining bar for the undo window; HeroUI's toast has none
 - [ ] HeroUI's Persian year picker looks off by about 21 years (`getGregorianYearOffset("persian")` is -600); not used yet, test before using it
-- [ ] `npm run seed:demo` fails when run with today as the as-of date («تاریخ سفارش خارج از بازهٔ مجاز است»); an earlier `--as-of` works
 - [ ] Cheque cards and the cheque deck still show the customer as plain text: the card itself is the tap target (select / decide), so a link inside it would fight it
-- [ ] Check the server's backup folder: before this batch the backup script never produced a database copy
-- [ ] Off-site backup copy (F138 part 2) waits on a destination and key holder
 - [ ] Nothing writes `deliveries.delay_reason_id`, so the reason report's delay section stays empty
 - [ ] No record of failed notification sends exists; the status page shows the last successful one
 - [ ] No product rename or deactivate route, so the product log covers create, packaging and thresholds only
@@ -156,15 +164,18 @@ _Condensed 2026-10-23. Each finished piece of work is one line here; the full ea
 - [ ] Founder's second login step off until turned on at `/switch`; confirm the live `SESSION_SECRET` is 32+ characters
 - [ ] Unverified claims in parked features: F51, F56, F57, F67, F69, F71, F73, F75, F97, F102, F113, F147 (`docs/roadmap.md` section 8)
 - [ ] Open decisions: Android distribution route and iPhone support; off-site backup machine (decided: a second owned machine over SSH; which one is open); charts library vs custom
-- [ ] PostgreSQL phases 4–5 (server, backups, cut-over by re-seeding, removing SQLite) not started
-- [ ] The app has not been clicked through on Postgres yet, only tested
+- [ ] The real server must run on Postgres before this is deployed: main no longer starts without `DATABASE_URL`, and going back means deploying the previous release (`docs/postgres-server.md`)
+- [ ] The setup and backups were proven in a container, not on the owner's server; the off-site machine, its SSH key and the encryption passphrase copy are the owner's to do (`docs/postgres-server.md` steps 3–5)
+- [ ] The district polygon loaders (`seed-districts`, `seed-bakhsh`, `seed-outer-towns`, `split-districts`, `assign-district-codes`, `backfill-districts`) were removed with SQLite; loading real geography into Postgres needs a new script (git history has the data logic)
+- [ ] `lib/repo/retiredWording.ts` no longer runs on boot (it ran from the old `getDb()`); wording is current in seeded data, and an old row would need it called from a migration
+- [ ] The slow-statement wrapper is gone; slow statements are logged by PostgreSQL itself (500 ms, `pg_stat_statements`)
+- [ ] The browser smoke suite is not part of `npm test` any more (it needs a disposable database and a browser); `npm run test:smoke` with `DATABASE_URL` set to a demo database that nobody is connected to
 - [ ] Row-level security covers tables with their own `organization_id`; child tables (order lines, allocations and similar) rely on their parent row and the app's filters
 - [ ] Under the app role each statement outside a transaction costs one extra round trip (setting `rf.scope`); measure on the server
 - [ ] Route tests call handlers directly, so they run as `system`; only `tests/row-level-security-pg.test.ts` checks the request scope
 - [ ] No index on `sync_xid` yet; add one per synced table if the pull gets slow
-- [ ] The demo seed is about five times slower on Postgres than on SQLite (about 2 minutes)
-- [ ] Inside a Postgres transaction each statement runs in a savepoint (SQLite's statement-level rollback); costs three round trips per statement, revisit once the code no longer relies on it
-- [ ] The old `scripts/seed-demo.mjs` (small demo, used by `seed-demo-guard`) still writes SQLite only
+- [ ] The demo seed takes about 2 minutes on Postgres
+- [ ] Inside a Postgres transaction each statement runs in a savepoint (the statement-level rollback SQLite gave); costs three round trips per statement, revisit now that SQLite is gone
 - [ ] Client screens (`app/(shell)` pages, `components`) are outside the forgotten-await lint; they start fetches on purpose without waiting
 - [ ] Nothing tested from Iran (weather, Telegram, push, map tiles, OSRM, registries)
 - [ ] The smoke suite is not in CI, which is how four of its tests went stale; in the cloud container it runs once Playwright's expected headless shell is pointed at the installed one, but map tiles (tile.openstreetmap.org) cannot load there, so `/map`, `/leads` and the CRM profile test fail on console errors
@@ -181,12 +192,11 @@ _Condensed 2026-10-23. Each finished piece of work is one line here; the full ea
 - [ ] Left for later: F104 (not reached; nothing blocks it), and, waiting on a missing prerequisite, F74, F77, F85, F86, F91, F114, F69, F31, F42, F34, F95, F140, F2, F5, F117, F38
 
 ## Next steps
-1. Adopt the audited small libraries as their features start: `pino`, `web-vitals`, `lru-cache`, Valibot, `nuqs`, `@tanstack/react-virtual` (roadmap 10.6); design the chat on server-sent events plus an `events` table
-2. Owner checks the pocket cards, the (?) help, the filter sheets and the text fields on a real phone
-3. Move the remaining `tf-opt` menu links and the filter chips onto HeroUI parts, and the raw text fields onto `TextInput`
-4. PostgreSQL phase 4: the server, backups and cut-over by re-seeding; click the app through on Postgres first
-5. Decide whether the smoke suite joins CI (needs Chromium on the runner; map tiles stubbed)
-6. Owner checks the backup folder and picks an off-site destination (F138 part 2)
-7. Record delay reasons on deliveries so the reason report's delay section fills
-8. Check the outside services from the Iranian server
-9. Decide the Android distribution route before F6 starts
+1. Owner puts the server on Postgres following `docs/postgres-server.md` (main is Postgres-only), picks the second machine for the off-site backups, authorizes the key and stores the passphrase; first full backup and restore drill on the real server
+2. Adopt the audited small libraries as their features start: `pino`, `web-vitals`, `lru-cache`, Valibot, `nuqs`, `@tanstack/react-virtual` (roadmap 10.6); design the chat on server-sent events plus an `events` table
+3. Owner checks the pocket cards, the (?) help, the filter sheets and the text fields on a real phone
+4. Move the remaining `tf-opt` menu links and the filter chips onto HeroUI parts, and the raw text fields onto `TextInput`
+5. Decide whether the smoke suite joins CI (needs Chromium on the runner and a demo database; map tiles stubbed)
+6. Record delay reasons on deliveries so the reason report's delay section fills
+7. Check the outside services from the Iranian server
+8. Decide the Android distribution route before F6 starts

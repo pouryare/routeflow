@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterAll } from "vitest";
+import { describe, it, expect, vi, afterAll } from "vitest";
 import fs from "node:fs";
 import http from "node:http";
 import type { AddressInfo } from "node:net";

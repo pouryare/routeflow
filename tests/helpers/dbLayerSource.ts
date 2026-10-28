@@ -11,15 +11,9 @@ function tsFiles(dir: string): string[] {
     });
 }
 
-/** The source of the database layer as ONE string: lib/db.ts (getDb), then the base schema, then
- *  everything else under lib/database/ (migration eras in order, backfills, rebuilds, seeds, types).
- *  That is the order the code ran in when it was one file, and a few guard tests depend on it (for
- *  example "the first CREATE TABLE users is the live CHECK"). They read the schema code as text,
- *  so splitting lib/db.ts must not blind them. */
+/** The source of the database layer as ONE string: lib/db.ts, then everything under lib/database/.
+ *  Guard tests read it as text. */
 export function dbLayerSource(root = process.cwd()): string {
   const dir = path.join(root, "lib", "database");
-  const schema = path.join(dir, "schema.ts");
-  return [path.join(root, "lib", "db.ts"), schema, ...tsFiles(dir).filter((f) => f !== schema)]
-    .map((f) => readFileSync(f, "utf8"))
-    .join("\n");
+  return [path.join(root, "lib", "db.ts"), ...tsFiles(dir)].map((f) => readFileSync(f, "utf8")).join("\n");
 }

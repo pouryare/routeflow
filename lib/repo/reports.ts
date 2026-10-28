@@ -459,7 +459,7 @@ export async function expensesByEnterer(organizationId: number) {
          JOIN accounts a ON a.id = e.account_id
          LEFT JOIN users u ON u.id = j.created_by
         WHERE e.organization_id = ? AND a.type = 'EXPENSE' AND a.code <> '5101'
-        GROUP BY j.created_by ORDER BY amountToman DESC`
+        GROUP BY j.created_by, u.id ORDER BY amountToman DESC`
     )
     .all(organizationId);
 }

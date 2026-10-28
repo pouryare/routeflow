@@ -2,7 +2,7 @@ import { describe, it, expect, afterAll } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
-import { sqliteOnly, tableInfo } from "./helpers/schema";
+import { tableInfo } from "./helpers/schema";
 
 const testDbPath = path.join(os.tmpdir(), `rf-pay-schema-${Date.now()}-${Math.random().toString(36).slice(2)}.db`);
 process.env.ROUTEFLOW_DB_PATH = testDbPath;
@@ -41,11 +41,4 @@ describe("payments schema", () => {
     expect(cols.find((c) => c.name === "amount_toman")?.notnull).toBe(1);
   });
 
-  it.skipIf(sqliteOnly)("lets photos.entity_type be 'payment'", async () => {
-    const db = getDb();
-    const sql = (
-      await db.prepare("SELECT sql FROM sqlite_master WHERE name='photos'").get() as { sql: string }
-    ).sql;
-    expect(sql).toContain("'payment'");
-  });
 });

@@ -12,7 +12,7 @@ Phone-first patterns and how to build them: [`docs/mobile-first-principles.md`](
 ## Stack
 
 - Next.js 16 (App Router, TypeScript, Turbopack)
-- SQLite via Node's built-in `node:sqlite` — no native build dependency
+- PostgreSQL (self-hosted; see `db/README.md` and `docs/postgres-server.md`)
 - Leaflet + react-leaflet + OpenStreetMap tiles (free, no API key, no sanctions-access risk)
 - `exceljs` to read the workbook server-side (not the unmaintained `xlsx` npm package —
   it has unpatched high-severity CVEs with no fix available via npm)
@@ -86,10 +86,9 @@ only the derived `data/mahalle.geojson` is kept):
 - `mehdimeskin/tehran-map` — 369 محله (neighborhood)-level polygons, converted from
   KML via `data/convert-kml.mjs`.
 
-To re-seed (safe — never overwrites a status you've already set):
-```bash
-node --experimental-strip-types scripts/seed-districts.ts
-```
+The loader scripts for these polygons wrote to the old SQLite file and were removed with it
+(Wave P, phase 5; they are in git history). The demo seed (`npm run seed:demo`) builds its own
+geography. Loading the real polygons into PostgreSQL needs a new script when it is wanted.
 
 Coverage isn't 100% complete or guaranteed accurate everywhere — use the polygon-draw
 tool on the map to add or fix any neighborhood that's missing or wrong.
@@ -156,7 +155,6 @@ systemctl restart routeflow
 
 ## Data safety
 
-`data/routeflow.db` (SQLite) is the only source of truth for district status and
-imported customer data — it is **not** committed to git (gitignored) and has no
-automatic backup yet. Worth copying it somewhere occasionally, same as the Excel
-workbook.
+The PostgreSQL database is the only source of truth for district status and imported
+customer data. It is backed up by pgBackRest to a second machine, with a monthly restore drill
+(`docs/postgres-server.md`).

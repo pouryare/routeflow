@@ -1,3 +1,0 @@
-# Test files that still fail on PostgreSQL (Wave P). Phase 3 emptied it: every file that runs on
-# PostgreSQL passes there. scripts/pg/test-pg.mjs fails CI when a file not listed here fails, so
-# a new failure is fixed, not added; the list may only shrink.

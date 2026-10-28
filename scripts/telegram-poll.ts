@@ -4,7 +4,12 @@
 // mirroring scripts/run-sweeps.mjs conventions: config comes from process.env the way
 // systemd's EnvironmentFile= injects it.
 //
-//   node --experimental-strip-types scripts/telegram-poll.ts
+//   node --experimental-strip-types scripts/telegram-poll.ts                                    (SQLite)
+//   node --experimental-strip-types --import ./scripts/_ts-register.mjs scripts/telegram-poll.ts   (PostgreSQL)
+//
+// It opens the app's own connection (DATABASE_URL), which needs the
+// module hook above for the `@/` imports; set TELEGRAM_OFFSET_PATH to a file the service user can
+// write (default data/telegram-offset).
 //
 // This is a WORKER, not a webhook: no inbound port, no TLS certificate, no public URL, so
 // it works unchanged behind the same NAT as the rest of the deployment.
@@ -19,8 +24,8 @@
 //   [Service]
 //   Type=simple
 //   WorkingDirectory=/root/pourya/RouteFlow
-//   EnvironmentFile=/root/pourya/RouteFlow/.env.local
-//   ExecStart=/usr/bin/node --experimental-strip-types scripts/telegram-poll.ts
+//   EnvironmentFile=/root/pourya/RouteFlow/.env.local        (PostgreSQL: /etc/routeflow/env as well)
+//   ExecStart=/usr/bin/node --experimental-strip-types --import ./scripts/_ts-register.mjs scripts/telegram-poll.ts
 //   Restart=always
 //   RestartSec=5
 //   [Install]
@@ -32,15 +37,12 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { DatabaseSync } from "node:sqlite";
 import { consumeTelegramStart } from "../lib/repo/telegramLink.ts";
-import { sqliteDb } from "../lib/database/client.ts";
+import type { Db } from "../lib/database/client.ts";
 
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 
-// Same resolution as lib/db.ts, so the worker and the app always open the same file.
-const DB_PATH = process.env.ROUTEFLOW_DB_PATH || path.join(process.cwd(), "data", "routeflow.db");
-const OFFSET_PATH = `${DB_PATH}.telegram-offset`;
+const OFFSET_PATH = process.env.TELEGRAM_OFFSET_PATH || path.join(process.cwd(), "data", "telegram-offset");
 
 const LINKED_REPLY = "حساب تلگرام شما به RouteFlow متصل شد.";
 // Anything that is not a valid deep link gets this instead of silence, so a user who
@@ -105,10 +107,9 @@ interface Update {
   message?: { text?: string; chat?: { id?: number } };
 }
 
-const db = sqliteDb(() => raw);
-const raw = new DatabaseSync(DB_PATH);
+const db: Db = (await import("../lib/db.ts")).getDb();
 let offset = readOffset();
-console.log(`[telegram] worker up, db=${DB_PATH}, offset=${offset}`);
+console.log(`[telegram] worker up, db=PostgreSQL, offset=${offset}`);
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 

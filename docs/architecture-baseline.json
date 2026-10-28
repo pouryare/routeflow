@@ -1,10 +1,10 @@
 {
   "importCycles": 1,
   "dbImportsOutsideLib": 0,
-  "dbModuleLines": 110,
-  "unscopedTenantSelects": 10,
+  "dbModuleLines": 100,
+  "unscopedTenantSelects": 9,
   "rawRoleChecks": 57,
-  "longFunctions": 73,
+  "longFunctions": 63,
   "unusedExports": 220,
   "agentLitterFiles": 0
 }

@@ -2,7 +2,7 @@ import { describe, it, expect, afterAll, beforeAll } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
-import { sqliteOnly, tableInfo } from "./helpers/schema";
+import { tableInfo } from "./helpers/schema";
 
 const testDbPath = path.join(
   os.tmpdir(),
@@ -10,7 +10,7 @@ const testDbPath = path.join(
 );
 process.env.ROUTEFLOW_DB_PATH = testDbPath;
 process.env.SESSION_SECRET = "test-secret";
-const { getDb, rawSqlite } = await import("@/lib/db");
+const { getDb } = await import("@/lib/db");
 
 /* A journal row to point the immutability tests at. The plan's first draft asserted
    `UPDATE ... WHERE id = 1` against an EMPTY table -- a BEFORE trigger fires per matched
@@ -224,11 +224,4 @@ describe("ledger schema", () => {
     expect(dupeFa).toEqual([]);
   });
 
-  it.skipIf(sqliteOnly)("seeding twice does not duplicate the chart", async () => {
-    const { seedAccounts } = await import("@/lib/db");
-    const before = (await getDb().prepare("SELECT COUNT(*) AS n FROM accounts").get() as { n: number }).n;
-    seedAccounts(await rawSqlite());
-    const after = (await getDb().prepare("SELECT COUNT(*) AS n FROM accounts").get() as { n: number }).n;
-    expect(after).toBe(before);
-  });
 });

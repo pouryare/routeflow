@@ -1,10 +1,9 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { chromium, type Browser } from "playwright";
-import { DatabaseSync } from "node:sqlite";
 import { startDevServer, BASE } from "./server";
 import { sessionCookie } from "./session";
 import { ensureWarehouse } from "../helpers/ensureWarehouse";
-import { sqliteDb } from "@/lib/database/client";
+import { getDb } from "@/lib/db";
 
 /** Geometric invariants that survive a redesign.
  *
@@ -383,28 +382,27 @@ describe("order pipeline drag", () => {
   it("a draft dragged to «تأییدشده» follows the grab point and is confirmed", async () => {
     // The snapshot, never production (startDevServer), so it may take a price and a warehouse
     // it lacks: confirming reserves stock, and a copy without either would fail for want of data.
-    const db = new DatabaseSync(process.env.ROUTEFLOW_DB_PATH!);
-    const org = (db.prepare("SELECT organization_id AS o FROM users WHERE role = 'owner' AND active = 1 ORDER BY id LIMIT 1").get() as { o: number }).o;
-    const pricedLine = () =>
-      db
+    const db = getDb();
+    const org = ((await db.prepare("SELECT organization_id AS o FROM users WHERE role = 'owner' AND active = 1 ORDER BY id LIMIT 1").get()) as { o: number }).o;
+    const pricedLine = async () =>
+      (await db
         .prepare(
           `SELECT pp.product_id, pk.id AS packaging_id FROM product_prices pp
              JOIN products p ON p.id = pp.product_id AND p.active = 1 AND p.organization_id = ?
              JOIN packagings pk ON pk.product_id = p.id
             LIMIT 1`,
         )
-        .get(org) as { product_id: number; packaging_id: number } | undefined;
-    if (!pricedLine()) {
-      const product = db
+        .get(org)) as { product_id: number; packaging_id: number } | undefined;
+    if (!(await pricedLine())) {
+      const product = (await db
         .prepare("SELECT p.id FROM products p JOIN packagings pk ON pk.product_id = p.id WHERE p.active = 1 AND p.organization_id = ? LIMIT 1")
-        .get(org) as { id: number } | undefined;
+        .get(org)) as { id: number } | undefined;
       const now = new Date().toISOString();
-      if (product) db.prepare("INSERT INTO product_prices (product_id, price_toman, valid_from, created_at) VALUES (?, 100000, ?, ?)").run(product.id, now.slice(0, 10), now);
+      if (product) await db.prepare("INSERT INTO product_prices (product_id, price_toman, valid_from, created_at) VALUES (?, 100000, ?, ?)").run(product.id, now.slice(0, 10), now);
     }
-    await ensureWarehouse(sqliteDb(() => db), org);
-    const line = pricedLine();
-    const customer = db.prepare("SELECT id FROM customers WHERE organization_id = ? ORDER BY id LIMIT 1").get(org) as { id: number } | undefined;
-    db.close();
+    await ensureWarehouse(db, org);
+    const line = await pricedLine();
+    const customer = (await db.prepare("SELECT id FROM customers WHERE organization_id = ? ORDER BY id LIMIT 1").get(org)) as { id: number } | undefined;
     expect(line, "the snapshot has no priced product to order").toBeTruthy();
     expect(customer, "the snapshot has no customer").toBeTruthy();
 
@@ -417,9 +415,7 @@ describe("order pipeline drag", () => {
       },
     });
     expect(created.status(), await created.text()).toBeLessThan(300);
-    const reader = new DatabaseSync(process.env.ROUTEFLOW_DB_PATH!, { readOnly: true });
-    const order = reader.prepare("SELECT id, order_no FROM orders ORDER BY id DESC LIMIT 1").get() as { id: number; order_no: string };
-    reader.close();
+    const order = (await getDb().prepare("SELECT id, order_no FROM orders ORDER BY id DESC LIMIT 1").get()) as { id: number; order_no: string };
 
     await page.goto(`${BASE}/sales/orders?view=board`, { waitUntil: "networkidle" });
     await page.locator(".searchslot[data-ready]").waitFor({ timeout: 30_000 });
@@ -493,11 +489,9 @@ describe("global services", () => {
 
   /* Login-As, end to end, on the database snapshot: start, see the banner, come back. */
   it("an owner can act as a salesperson and come back", async () => {
-    const db = new DatabaseSync(process.env.ROUTEFLOW_DB_PATH!, { readOnly: true });
-    const target = db
+    const target = (await getDb()
       .prepare("SELECT id, display_name FROM users WHERE role = 'phone_sales' AND active = 1 ORDER BY id LIMIT 1")
-      .get() as { id: number; display_name: string } | undefined;
-    db.close();
+      .get()) as { id: number; display_name: string } | undefined;
     expect(target, "the snapshot has no active salesperson").toBeTruthy();
 
     const { page, close } = await open("/sales/dashboard", { width: 1440, height: 900 });
@@ -515,9 +509,7 @@ describe("global services", () => {
     const after = await page.locator(".actas").count();
     await close();
 
-    const log = new DatabaseSync(process.env.ROUTEFLOW_DB_PATH!, { readOnly: true });
-    const kinds = (log.prepare("SELECT kind FROM events WHERE kind LIKE 'auth.impersonation_%' ORDER BY id").all() as { kind: string }[]).map((r) => r.kind);
-    log.close();
+    const kinds = ((await getDb().prepare("SELECT kind FROM events WHERE kind LIKE 'auth.impersonation_%' ORDER BY id").all()) as { kind: string }[]).map((r) => r.kind);
 
     expect(text).toContain(target!.display_name);
     expect(after, "the banner survived «بازگشت»").toBe(0);

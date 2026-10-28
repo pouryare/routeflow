@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
-import { indexesOn, sqliteOnly, tableInfo } from "./helpers/schema";
+import { indexesOn, tableInfo } from "./helpers/schema";
 
 const testDbPath = path.join(
   os.tmpdir(),
@@ -25,14 +25,6 @@ async function cols(table: string): Promise<string[]> {
   return (await tableInfo(table) as unknown as { name: string }[]).map(
     (c) => c.name
   );
-}
-
-async function tableSql(table: string): Promise<string> {
-  return (
-    await getDb()
-      .prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name = ?")
-      .get(table) as { sql: string }
-  ).sql;
 }
 
 async function seedProduct(name = "کره گیاهی مرحبا"): Promise<number> {
@@ -71,11 +63,6 @@ describe("products", () => {
     );
   });
 
-  it.skipIf(sqliteOnly)("holds cost as whole Toman, not REAL", async () => {
-    // The rule from lib/money.ts: the legacy REAL money columns stay as history, but
-    // nothing new is allowed to be a float. A cost that drifts is a margin that drifts.
-    expect(await tableSql("products")).toMatch(/avg_cost_toman\s+INTEGER/);
-  });
 
   it("is company-wide rather than per group", async () => {
     // Like facilities, the catalogue is shared: two groups selling different products
@@ -152,9 +139,6 @@ describe("product_prices", () => {
     );
   });
 
-  it.skipIf(sqliteOnly)("holds price as whole Toman, not REAL", async () => {
-    expect(await tableSql("product_prices")).toMatch(/price_toman\s+INTEGER/);
-  });
 
   it("accepts several prices for one product, which is the whole point", async () => {
     const p = await seedProduct("محصول قیمت‌دار");

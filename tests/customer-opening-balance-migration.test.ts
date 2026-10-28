@@ -2,7 +2,7 @@ import { describe, it, expect, afterAll } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
-import { sqliteOnly, tableInfo } from "./helpers/schema";
+import { tableInfo } from "./helpers/schema";
 
 const testDbPath = path.join(
   os.tmpdir(),
@@ -44,18 +44,4 @@ describe("opening balance migration", () => {
     expect(row.opening_balance_toman).toBe(0);
   });
 
-  it.skipIf(sqliteOnly)("keeps the per-tenant unique customer_code constraint", async () => {
-    const sql = (
-      await db_sql()
-    );
-    expect(sql).toContain("UNIQUE (organization_id, customer_code)");
-  });
 });
-
-async function db_sql(): Promise<string> {
-  return (
-    await getDb().prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='customers'").get() as {
-      sql: string;
-    }
-  ).sql;
-}

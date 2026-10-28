@@ -2,7 +2,6 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
-import { sqliteOnly } from "./helpers/schema";
 
 const testDbPath = path.join(
   os.tmpdir(),
@@ -54,19 +53,5 @@ describe("the salesperson role", () => {
     await (async () => await insertUser("c", "driver"))();
     await (async () => await insertUser("d", "field_rep"))();
     await (async () => await insertUser("e", "delivery_driver"))();
-  });
-});
-
-describe("migrating a database that predates the role", () => {
-  it.skipIf(sqliteOnly)("rebuilds the CHECK constraint rather than leaving the old one in place", async () => {
-    // SQLite cannot ALTER a CHECK, so the migration is a table rebuild. If it silently
-    // did nothing, the constraint below would still name only the original three roles
-    // and every salesperson account would fail to insert in production.
-    const sql = (
-      await getDb()
-        .prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='users'")
-        .get() as { sql: string }
-    ).sql;
-    expect(sql).toContain("phone_sales");
   });
 });

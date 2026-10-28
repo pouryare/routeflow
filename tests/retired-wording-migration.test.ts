@@ -1,5 +1,4 @@
 import { describe, it, expect, afterAll } from "vitest";
-import { dbLayerSource } from "./helpers/dbLayerSource";
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
@@ -84,10 +83,5 @@ describe("retired wording in stored rows", () => {
     await refreshRetiredWording(db);
     await refreshRetiredWording(db);
     expect((await db.prepare("SELECT title FROM alerts WHERE id = ?").get(own) as { title: string }).title).toBe("بچ‌های شمال را ببین");
-  });
-
-  it("runs on every open, right after the seeds", () => {
-    const src = dbLayerSource(); // getDb() and the migration eras it runs
-    expect(src).toMatch(/seedKpiDefinitions\(db\);[\s\S]{0,200}refreshRetiredWording\(adb\);/);
   });
 });

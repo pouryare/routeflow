@@ -2,7 +2,7 @@ import { describe, it, expect, afterAll } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
-import { sqliteOnly, tableInfo } from "./helpers/schema";
+import { tableInfo } from "./helpers/schema";
 
 const testDbPath = path.join(
   os.tmpdir(),
@@ -33,12 +33,6 @@ describe("cheques schema", () => {
         .run())()).rejects.toThrow();
   });
 
-  it.skipIf(sqliteOnly)("is unique per (organization_id, customer_id, cheque_no)", async () => {
-    const sql = (
-      await getDb().prepare("SELECT sql FROM sqlite_master WHERE name='cheques'").get() as { sql: string }
-    ).sql;
-    expect(sql).toContain("UNIQUE (organization_id, customer_id, cheque_no)");
-  });
 
   it("is a tenant table", () => {
     expect((TENANT_TABLES as readonly string[]).includes("cheques")).toBe(true);
