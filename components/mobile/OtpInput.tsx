@@ -1,7 +1,7 @@
 "use client";
 
 import { InputOTP } from "@heroui/react";
-import { normaliseCode } from "@/lib/stepUp";
+import { normaliseCode } from "@/lib/otpCode";
 
 const LENGTH = 6;
 

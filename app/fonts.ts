@@ -11,6 +11,10 @@
  *    display  -- the big display face             (Damavand, NOT switchable)
  *    yekan / sansx / iran (+ *Num) -- the other three picker choices
  *
+ *  `preload: false` on every face: next/font would otherwise <link rel=preload> all 25 files on every
+ *  page (1.1 MB, ahead of the scripts on a slow line). A @font-face is only fetched when text uses
+ *  it, so each screen now downloads just the weights it draws, and the picker faces only when picked.
+ *
  *  The picker only swaps the body + number family; Damavand stays the display voice for
  *  every choice. Peyda and Damavand ship as vendor web woff2; IRANYekanX / IRANSansX have
  *  no woff2 UI face in their kits, so their Regular is the .ttf (FaNum digits still woff2).
@@ -21,6 +25,7 @@ import localFont from "next/font/local";
 export const ui = localFont({
   variable: "--font-ui",
   display: "swap",
+  preload: false,
   fallback: ["system-ui", "sans-serif"],
   src: [
     { path: "../public/fonts/PeydaWeb-Thin.woff2", weight: "100", style: "normal" },
@@ -39,6 +44,7 @@ export const ui = localFont({
 export const uiNum = localFont({
   variable: "--font-num",
   display: "swap",
+  preload: false,
   fallback: ["system-ui", "sans-serif"],
   src: [
     { path: "../public/fonts/PeydaFaNumWeb-Regular.woff2", weight: "400", style: "normal" },
@@ -52,6 +58,7 @@ export const uiNum = localFont({
 export const display = localFont({
   variable: "--font-damavand",
   display: "swap",
+  preload: false,
   fallback: ["system-ui", "sans-serif"],
   src: [{ path: "../public/fonts/Damavand-ExtraBold.woff2", weight: "800", style: "normal" }],
 });
@@ -60,6 +67,7 @@ export const display = localFont({
 export const yekan = localFont({
   variable: "--font-yekan",
   display: "swap",
+  preload: false,
   fallback: ["system-ui", "sans-serif"],
   src: [{ path: "../public/fonts/IRANYekanX-Regular.ttf", weight: "400", style: "normal" }],
 });
@@ -67,6 +75,7 @@ export const yekan = localFont({
 export const yekanNum = localFont({
   variable: "--font-yekan-num",
   display: "swap",
+  preload: false,
   fallback: ["system-ui", "sans-serif"],
   src: [
     { path: "../public/fonts/IRANYekanXFaNum-Regular.woff2", weight: "400", style: "normal" },
@@ -78,6 +87,7 @@ export const yekanNum = localFont({
 export const sansx = localFont({
   variable: "--font-sansx",
   display: "swap",
+  preload: false,
   fallback: ["system-ui", "sans-serif"],
   src: [{ path: "../public/fonts/IRANSansX-Regular.ttf", weight: "400", style: "normal" }],
 });
@@ -85,6 +95,7 @@ export const sansx = localFont({
 export const sansxNum = localFont({
   variable: "--font-sansx-num",
   display: "swap",
+  preload: false,
   fallback: ["system-ui", "sans-serif"],
   src: [
     { path: "../public/fonts/IRANSansXFaNum-Regular.woff2", weight: "400", style: "normal" },
@@ -96,6 +107,7 @@ export const sansxNum = localFont({
 export const iran = localFont({
   variable: "--font-iran",
   display: "swap",
+  preload: false,
   fallback: ["system-ui", "sans-serif"],
   src: [
     { path: "../public/fonts/IRAN.woff2", weight: "400", style: "normal" },
@@ -107,6 +119,7 @@ export const iran = localFont({
 export const iranNum = localFont({
   variable: "--font-iran-num",
   display: "swap",
+  preload: false,
   fallback: ["system-ui", "sans-serif"],
   src: [{ path: "../public/fonts/IRAN-FaNum.woff", weight: "400", style: "normal" }],
 });

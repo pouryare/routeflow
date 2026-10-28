@@ -8,6 +8,7 @@
 
 import crypto from "node:crypto";
 import { MANAGE_ROLES } from "./roles";
+export { normaliseCode } from "./otpCode";
 
 export const TRUST_MINUTES = 10;
 
@@ -72,13 +73,4 @@ export function readTrust(key: Buffer, value: string | undefined | null, uid: nu
   } catch {
     return null;
   }
-}
-
-/** Western digits for whatever the person typed: Persian and Arabic-Indic digits, spaces and dashes
- *  are accepted, so a code typed on a Persian keyboard is not refused. */
-export function normaliseCode(raw: string): string {
-  return raw
-    .replace(/[۰-۹]/g, (d) => String(d.charCodeAt(0) - 0x06f0))
-    .replace(/[٠-٩]/g, (d) => String(d.charCodeAt(0) - 0x0660))
-    .replace(/[\s-]/g, "");
 }
