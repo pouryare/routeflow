@@ -261,7 +261,7 @@ export async function pullSince(session: Session, since: string | null): Promise
 }
 
 /** How far back a driver's finished runs travel to the phone. */
-export const DRIVER_WINDOW_DAYS = 14;
+const DRIVER_WINDOW_DAYS = 14;
 
 /** A watermark is `x:` and a transaction id; anything else starts from the beginning. */
 const XID_PREFIX = "x:";
