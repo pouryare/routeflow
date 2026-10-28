@@ -47,6 +47,7 @@ export const TENANT_TABLES = [
   "representative_profiles",
   "credit_approvals",
   "payments",
+  "parties",
   "cheques",
   "batches",
   "stock_movements",

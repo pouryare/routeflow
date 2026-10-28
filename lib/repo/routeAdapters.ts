@@ -23,6 +23,9 @@ import { deliveredOrdersForCustomer } from "@/lib/repo/payments";
 import { searchCustomers, searchDistricts, searchNotes, searchOrders, searchUsers } from "@/lib/repo/search";
 import { logPlatformAccess } from "@/lib/platformAccess";
 import type { Session } from "@/lib/session";
+import type { Db } from "@/lib/database/client";
+import { orgOfUser } from "@/lib/repo/userOrg";
+import { postCommissionPayment, syncOnePerson, type CommissionKind } from "@/lib/repo/ledgerCommission";
 
 type P<F extends (...a: never[]) => unknown> = Parameters<F>;
 
@@ -42,9 +45,35 @@ export const customerSummaryIn = async (...a: P<typeof readCustomerSummary> exte
 export const addSalesRate = async (input: P<typeof setRate>[1]) => await setRate(getDb(), input);
 export const addDriverRate = async (input: P<typeof setDriverRate>[1]) => await setDriverRate(getDb(), input);
 export const addManagerOverride = async (input: P<typeof setManagerOverride>[1]) => await setManagerOverride(getDb(), input);
-export const paySales = async (input: P<typeof recordPayment>[1]) => await recordPayment(getDb(), input);
-export const payDriver = async (input: P<typeof recordDriverPayment>[1]) => await recordDriverPayment(getDb(), input);
-export const payManager = async (input: P<typeof recordManagerPayment>[1]) => await recordManagerPayment(getDb(), input);
+/** Record a commission payment and put it in the books in one transaction: first bring the person's
+ *  accrual up to date (so 2103 never goes negative on a payment), then Dr 2103 / Cr cash. */
+async function payAndPost(
+  kind: CommissionKind,
+  personId: number,
+  input: { amount_toman: number; paid_on: string; created_by?: number | null },
+  record: (db: Db) => Promise<number>
+): Promise<number> {
+  const db = getDb();
+  return await db.tx(async () => {
+    const id = await record(db);
+    const organizationId = await orgOfUser(db, personId, input.created_by);
+    const createdBy = input.created_by ?? personId;
+    if (organizationId != null) {
+      await syncOnePerson(db, { organizationId, kind, personId, asOf: input.paid_on, createdBy });
+      await postCommissionPayment(db, {
+        organizationId, kind, personId, createdBy, paymentId: id,
+        amountToman: input.amount_toman, paidOn: input.paid_on,
+      });
+    }
+    return id;
+  });
+}
+export const paySales = async (input: P<typeof recordPayment>[1]) =>
+  await payAndPost("sales", input.salesperson_user_id, input, (db) => recordPayment(db, input));
+export const payDriver = async (input: P<typeof recordDriverPayment>[1]) =>
+  await payAndPost("driver", input.driver_user_id, input, (db) => recordDriverPayment(db, input));
+export const payManager = async (input: P<typeof recordManagerPayment>[1]) =>
+  await payAndPost("manager", input.manager_user_id, input, (db) => recordManagerPayment(db, input));
 export const setThresholds = async (productId: number, input: P<typeof setStockThresholds>[2]) => await setStockThresholds(getDb(), productId, input);
 
 export const stockPositionIn = async (organizationId: number | null) => await advancedStockPosition(getDb(), organizationId);

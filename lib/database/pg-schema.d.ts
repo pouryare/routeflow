@@ -675,10 +675,12 @@ export interface LedgerEntries {
   amount_toman: number;
   created_at: string;
   customer_id: number | null;
+  group_id: number | null;
   id: Generated<number>;
   journal_id: number;
   memo: string | null;
   organization_id: number;
+  party_id: number | null;
   side: string;
   supplier_id: number | null;
 }
@@ -884,6 +886,16 @@ export interface Packagings {
   product_id: number;
   qty_per_pack: number;
   sync_xid: string | null;
+}
+
+export interface Parties {
+  active: Generated<number>;
+  created_at: string;
+  id: Generated<number>;
+  kind: string;
+  name_fa: string;
+  organization_id: number;
+  user_id: number | null;
 }
 
 export interface PaymentAllocations {
@@ -1485,6 +1497,7 @@ export interface DB {
   orders: Orders;
   organizations: Organizations;
   packagings: Packagings;
+  parties: Parties;
   payment_allocations: PaymentAllocations;
   payments: Payments;
   photos: Photos;

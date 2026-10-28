@@ -24,7 +24,9 @@ export type LedgerSourceType =
   | "EXPENSE"
   | "OPENING"
   | "MANUAL"
-  | "REVERSAL";
+  | "REVERSAL"
+  | "COMMISSION"
+  | "COMMISSION_PAYMENT";
 
 export interface LedgerLeg {
   accountId: number;
@@ -32,6 +34,10 @@ export interface LedgerLeg {
   amountToman: number;
   customerId?: number | null;
   supplierId?: number | null;
+  /** Who the line is about (lib/repo/parties.ts). No party means the company carries it. */
+  partyId?: number | null;
+  /** The sales group the line belongs to, for per-group profit. */
+  groupId?: number | null;
   memo?: string | null;
 }
 
@@ -146,8 +152,9 @@ export async function postJournal(db: Db, input: PostInput): Promise<number> {
 
   const insLeg = db.prepare(
     `INSERT INTO ledger_entries
-       (organization_id, journal_id, account_id, side, amount_toman, customer_id, supplier_id, memo, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+       (organization_id, journal_id, account_id, side, amount_toman, customer_id, supplier_id,
+        party_id, group_id, memo, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   );
   for (const leg of input.legs) {
     await insLeg.run(
@@ -158,6 +165,8 @@ export async function postJournal(db: Db, input: PostInput): Promise<number> {
       leg.amountToman,
       leg.customerId ?? null,
       leg.supplierId ?? null,
+      leg.partyId ?? null,
+      leg.groupId ?? null,
       leg.memo ?? null,
       now
     );

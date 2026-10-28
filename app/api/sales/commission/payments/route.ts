@@ -4,6 +4,7 @@ import { userWithRoleInOrg } from "@/lib/repo/orgRefs";
 import { payDriver, payManager, paySales } from "@/lib/repo/routeAdapters";
 import { isToman } from "@/lib/money";
 import { OWNER_ROLES } from "@/lib/roles";
+import { LedgerError } from "@/lib/repo/ledgerCore";
 
 const ROLE_FOR_KIND = { sales: "phone_sales", driver: "delivery_driver", manager: "group_manager" } as const;
 const NOT_THIS_KIND = { sales: "فروشنده", driver: "راننده", manager: "مدیر گروه" } as const;
@@ -67,12 +68,19 @@ export async function POST(req: NextRequest) {
     created_by: guard.session.user.id,
   };
 
-  const id =
-    kind === "driver"
-      ? await payDriver({ driver_user_id: personId, ...shared })
-      : kind === "manager"
-        ? await payManager({ manager_user_id: personId, ...shared })
-        : await paySales({ salesperson_user_id: personId, ...shared });
+  let id: number;
+  try {
+    id =
+      kind === "driver"
+        ? await payDriver({ driver_user_id: personId, ...shared })
+        : kind === "manager"
+          ? await payManager({ manager_user_id: personId, ...shared })
+          : await paySales({ salesperson_user_id: personId, ...shared });
+  } catch (e) {
+    // A closed period refuses the posting; the payment row rolls back with it.
+    if (e instanceof LedgerError) return NextResponse.json({ ok: false, error: e.message }, { status: 409 });
+    throw e;
+  }
 
   return NextResponse.json({ ok: true, id }, { status: 201 });
 }

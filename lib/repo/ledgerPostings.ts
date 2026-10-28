@@ -105,6 +105,8 @@ export async function postReceiptReversal(
 
 /** COGS is posted by delivery recognition, never by hand. */
 const COGS_CODE = "5101";
+/** Commission is posted by lib/repo/ledgerCommission.ts from the commission ledgers, never by hand. */
+const SYSTEM_EXPENSE_CODES = [COGS_CODE, "5107", "5108", "5109"];
 
 export interface ExpenseCategory {
   id: number;
@@ -127,12 +129,12 @@ export async function expenseCategories(): Promise<ExpenseCategory[]> {
     .prepare(
       `SELECT id, code, name_fa AS nameFa, name_en AS nameEn
          FROM accounts
-        WHERE type = 'EXPENSE' AND is_postable = 1 AND active = 1 AND code <> ?
+        WHERE type = 'EXPENSE' AND is_postable = 1 AND active = 1 AND code NOT IN (${SYSTEM_EXPENSE_CODES.map(() => "?").join(", ")})
         ORDER BY code`
     )
     // `as unknown as` is the house idiom off node:sqlite's Record<string, SQLOutputValue>
     // -- see listSuppliers. A direct cast is TS2352.
-    .all(COGS_CODE) as unknown as ExpenseCategory[];
+    .all(...SYSTEM_EXPENSE_CODES) as unknown as ExpenseCategory[];
 }
 
 /** An expense: Dr the category / Cr cash.
@@ -163,6 +165,9 @@ export async function postExpense(
 
   if (!acct || acct.type !== "EXPENSE" || !acct.is_postable || !acct.active) {
     throw new LedgerError("این حساب، حساب هزینه نیست");
+  }
+  if (acct.code !== COGS_CODE && SYSTEM_EXPENSE_CODES.includes(acct.code)) {
+    throw new LedgerError("پورسانت از دفتر پورسانت ثبت می‌شود و دستی ثبت نمی‌شود");
   }
   if (acct.code === COGS_CODE) {
     throw new LedgerError("بهای تمام‌شده با تحویل کالا ثبت می‌شود و دستی ثبت نمی‌شود");
