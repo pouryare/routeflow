@@ -11,6 +11,8 @@ export interface DrivingRoute {
   /** Road distance in kilometres. Always longer than the straight line, and the honest
    *  figure to show beside a corridor drawn along real roads. */
   km: number;
+  /** Driving time in minutes, as OSRM estimates it. */
+  minutes: number;
 }
 
 /** The driving route between two points, or null if it cannot be had.
@@ -25,8 +27,19 @@ export interface DrivingRoute {
  *  that every district then has to be measured against.
  */
 export async function fetchDrivingRoute(a: LatLng, b: LatLng, signal?: AbortSignal): Promise<DrivingRoute | null> {
-  const coords = `${a.lng},${a.lat};${b.lng},${b.lat}`;
-  const url = `${ROUTE_URL}/${coords}?overview=simplified&geometries=geojson`;
+  return fetchRouteThrough([a, b], "simplified", signal);
+}
+
+/** The road route through every stop in order, for the maps that draw a day's run
+ *  (planner, leads). `full` keeps the line on the streets at street zoom. */
+export async function fetchRouteThrough(
+  stops: LatLng[],
+  overview: "full" | "simplified" = "full",
+  signal?: AbortSignal,
+): Promise<DrivingRoute | null> {
+  if (stops.length < 2) return null;
+  const coords = stops.map((s) => `${s.lng},${s.lat}`).join(";");
+  const url = `${ROUTE_URL}/${coords}?overview=${overview}&geometries=geojson`;
 
   // The band has a usable fallback -- the straight line it always drew -- so a slow answer
   // is worth less than a fast "no"; the shared fetch gives up rather than leave it spinning.
@@ -57,6 +70,6 @@ export function parseRoute(data: unknown): DrivingRoute | null {
 
   const metres = route.distance;
   if (typeof metres !== "number" || !Number.isFinite(metres)) return null;
-
-  return { path, km: metres / 1000 };
+  const seconds = (route as { duration?: unknown }).duration;
+  return { path, km: metres / 1000, minutes: typeof seconds === "number" && Number.isFinite(seconds) ? Math.round(seconds / 60) : 0 };
 }

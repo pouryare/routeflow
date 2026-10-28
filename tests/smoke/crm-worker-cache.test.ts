@@ -4,7 +4,7 @@ import { sessionCookie } from "./session";
 
 it.skipIf(!process.env.CRM_READONLY_SMOKE_URL)("replaces an obsolete cached map chunk with the active service worker", async () => {
   const base = process.env.CRM_READONLY_SMOKE_URL!;
-  const browser = await chromium.launch();
+  const browser = await chromium.launch({ args: ["--enable-unsafe-swiftshader"] }); // WebGL for the map on a GPU-less runner
   try {
     const context = await browser.newContext({ serviceWorkers: "allow" });
     await context.addCookies([{ ...await sessionCookie(), url: base }]);
@@ -21,7 +21,7 @@ it.skipIf(!process.env.CRM_READONLY_SMOKE_URL)("replaces an obsolete cached map 
       if (r.url().includes("CustomerLocationMap") && r.url().endsWith(".js")) chunks.add(r.url());
     });
     await page.goto(`${base}/crm/5`);
-    await page.locator(".mini-map > .map-frame .leaflet-marker-icon").waitFor();
+    await page.locator(".mini-map > .map-frame .maplibregl-marker").waitFor();
     await page.evaluate(async () => {
       const registration = await navigator.serviceWorker.register("/sw.js", { updateViaCache: "none" });
       await registration.update();
@@ -38,9 +38,9 @@ it.skipIf(!process.env.CRM_READONLY_SMOKE_URL)("replaces an obsolete cached map 
       }));
     }, chunk);
     await page.reload();
-    await page.locator(".mini-map > .map-frame .leaflet-marker-icon").waitFor();
+    await page.locator(".mini-map > .map-frame .maplibregl-marker").waitFor();
     await page.getByRole("button", { name: "بزرگ‌نمایی نقشه" }).click();
-    await page.getByRole("dialog").locator(".leaflet-marker-icon").waitFor();
+    await page.getByRole("dialog").locator(".maplibregl-marker").waitFor();
     await page.getByRole("button", { name: "بستن نقشهٔ بزرگ", exact: true }).click();
     expect(await page.evaluate(async url => !!(await (await caches.open("shell-v3")).match(url)), chunk)).toBe(false);
     expect(missing).toEqual([]);

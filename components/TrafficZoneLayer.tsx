@@ -1,15 +1,13 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Polygon, Tooltip } from "react-leaflet";
+import { Layer, Source } from "@vis.gl/react-maplibre";
 import {
-  QUOTA_DAYS,
   TRAFFIC_ZONES_URL,
   zoneStatusNow,
   type TrafficZoneProperties,
   type ZoneStatus,
 } from "@/lib/trafficZones";
-import { faDigits } from "@/lib/format";
 
 export interface ZoneFeature {
   properties: TrafficZoneProperties;
@@ -111,6 +109,7 @@ export default function TrafficZoneLayer({
   status,
   show,
   ground,
+  beforeId,
 }: {
   zones: ZoneFeature[] | null;
   status: Record<string, ZoneStatus> | null;
@@ -119,58 +118,44 @@ export default function TrafficZoneLayer({
   /** What the chosen basemap's ground looks like. These rings are drawn on the basemap,
    *  not on the page, so they follow it rather than the skin -- see MAP_INK. */
   ground: "light" | "dark";
+  /** The basemap layer to draw beneath, so street names stay on top. */
+  beforeId?: string;
 }) {
-  /* Leaflet writes these onto a canvas path, so the colour has to be resolved in JS --
-     var() does not reach the canvas renderer. Same reason MAP_INK exists. */
+  /* Resolved in JS: a map paint property cannot read a CSS var(). Same reason MAP_INK
+     exists. */
   const palette = ZONE_COLOR[ground];
-
-  if (!zones) return null;
-
-  return (
-    <>
-      {zones
+  const data = useMemo<GeoJSON.FeatureCollection | null>(() => {
+    if (!zones) return null;
+    return {
+      type: "FeatureCollection",
+      features: zones
         .filter((z) => show.has(z.properties.id))
         .map((z) => {
-          const state = status?.[z.properties.id]?.state ?? "unknown";
-          const color = palette[z.properties.id] ?? palette.low_emission;
-          const until = status?.[z.properties.id]?.until;
-          const biting = state === "restricted";
-          return (
-            <Polygon
-              key={z.properties.id}
-              // Leaflet wants [lat, lng]; GeoJSON stores [lng, lat].
-              positions={z.geometry.coordinates[0].map(([lng, lat]) => [lat, lng] as [number, number])}
-              interactive
-              pathOptions={{
-                color,
-                weight: biting ? 3 : 2,
-                opacity: biting ? 0.95 : INACTIVE_OPACITY[ground],
-                fill: false,
-                // Solid while it is enforced, dashed while it is not -- the same grammar
-                // the rest of this map uses for "definite" against "provisional".
-                dashArray: biting ? undefined : "7 6",
-              }}
-            >
-              <Tooltip sticky direction="top">
-                <span dir="rtl">
-                  <span className="font-medium">{z.properties.name}</span>
-                  {biting && z.properties.kind === "permit" && (
-                    <span> — الان محدود{until ? ` تا ${faDigits(until)}` : ""}؛ بدون مجوز وارد نشوید</span>
-                  )}
-                  {biting && z.properties.kind === "quota" && (
-                    <span>
-                      {" "}
-                      — الان طرح است{until ? ` تا ${faDigits(until)}` : ""}؛ ورود یک روز از سهمیه فصلی
-                      ({faDigits(String(QUOTA_DAYS.tehran))} روز با پلاک تهران) کم می‌کند
-                    </span>
-                  )}
-                  {state === "free" && <span> — الان آزاد{until ? ` تا ${faDigits(until)}` : ""}</span>}
-                  {state === "unknown" && <span> — ساعت‌هایش ثبت نشده</span>}
-                </span>
-              </Tooltip>
-            </Polygon>
-          );
-        })}
-    </>
+          const biting = status?.[z.properties.id]?.state === "restricted";
+          return {
+            type: "Feature",
+            properties: {
+              id: z.properties.id,
+              color: palette[z.properties.id] ?? palette.low_emission,
+              width: biting ? 3 : 2,
+              opacity: biting ? 0.95 : INACTIVE_OPACITY[ground],
+              biting,
+            },
+            geometry: { type: "Polygon", coordinates: z.geometry.coordinates },
+          };
+        }),
+    };
+  }, [zones, show, status, palette, ground]);
+
+  if (!data) return null;
+  /* Outline only, no fill. Solid while it is enforced, dashed while it is not -- the
+     same grammar the rest of this map uses for "definite" against "provisional". */
+  const paint = { "line-color": ["get", "color"], "line-width": ["get", "width"], "line-opacity": ["get", "opacity"] } as const;
+  return (
+    <Source id="traffic-zones" type="geojson" data={data}>
+      <Layer id="traffic-zones-on" type="line" beforeId={beforeId} filter={["==", ["get", "biting"], true]} paint={paint as never} />
+      <Layer id="traffic-zones-off" type="line" beforeId={beforeId} filter={["!=", ["get", "biting"], true]}
+        paint={{ ...(paint as object), "line-dasharray": [3.5, 3] } as never} />
+    </Source>
   );
 }

@@ -1,7 +1,6 @@
-// Leaflet-free half of the facility marker: the SVG silhouettes and a plain-DOM
-// renderer for them. Kept apart from facilityIcon.ts because that module imports
-// leaflet at top level, which touches `window` -- any page importing it cannot be
-// prerendered. The sites editor needs the silhouettes but no map, so it imports here.
+// The facility marker's SVG silhouettes and a plain-DOM renderer for them, shared by the
+// map (FacilityMarker.tsx), the legend and the sites editor. No map library here, so any
+// page can import it and still be prerendered.
 import { defaultIconFor, type FacilityKind } from "@/lib/facilityTypes";
 
 // Our own sites are drawn as inline SVG silhouettes rather than emoji (MASTER.md's
@@ -205,7 +204,7 @@ export function artFor(iconKey: string | null | undefined, kind: FacilityKind) {
   return FACILITY_ART[iconKey ?? ""] ?? FACILITY_ART[defaultIconFor(kind)] ?? FACILITY_ART["pin-glyph"];
 }
 
-/** The marker's outer element, without Leaflet. The map sidebar's legend and the sites
+/** The marker's outer element, as plain HTML. The map sidebar's legend and the sites
  *  editor both need the same silhouette at the same size in plain DOM -- teaching the
  *  reader a shape they will then look for on the map only works if it is the identical
  *  shape, so both render from this one function rather than re-describing it.

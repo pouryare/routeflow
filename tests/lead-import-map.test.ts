@@ -54,7 +54,7 @@ describe("the map is loaded so it cannot break a prerender", () => {
   );
 
   it("is imported through next/dynamic with ssr disabled", () => {
-    // leaflet reads `window` when it is evaluated, so a static import here would fail
+    // MapLibre reads `window` when it is evaluated, so a static import here would fail
     // the build exactly as /analytics did before it was fixed.
     expect(console).toMatch(/dynamic\(\s*\(\)\s*=>\s*import\("\.\/ImportMap"\)/);
     expect(console).toMatch(/ssr:\s*false/);
@@ -70,34 +70,5 @@ describe("the pin drop respects reduced motion", () => {
 
   it("has a reduced-motion rule that stops the pin animation", () => {
     expect(css).toMatch(/\.leadimport-pin-drop\s*\{\s*animation:\s*none;\s*\}/);
-  });
-});
-
-describe("the tile layer is configured the way Leaflet can survive", () => {
-  const map = readFileSync(
-    path.resolve(process.cwd(), "components/leadImport/ImportMap.tsx"),
-    "utf8"
-  );
-
-  // Regression: `<TileLayer {...QUIET_TILES} />` passes subdomains: undefined straight
-  // through, and Leaflet's _getSubdomain reads `.length` off it. The throw happened on
-  // the first tile request and unmounted the entire /leads page, so the import panel
-  // vanished the moment a job started. LeadsMap names its four fields individually for
-  // the same reason; this test keeps that from being undone by a tidy refactor.
-  it("does not spread QUIET_TILES into TileLayer", () => {
-    expect(map).not.toMatch(/<TileLayer\s+\{\.\.\.QUIET_TILES\}/);
-  });
-
-  it("uses the shared quiet layer, which passes url, attribution and maxZoom explicitly", () => {
-    expect(map).toMatch(/<QuietTileLayer \/>/);
-    const layer = readFileSync(path.resolve(process.cwd(), "components/map/QuietTileLayer.tsx"), "utf8");
-    expect(layer).toMatch(/url=\{QUIET_TILES\.url\}/);
-    expect(layer).toMatch(/attribution=\{QUIET_TILES\.attribution\}/);
-    expect(layer).toMatch(/maxZoom=\{QUIET_TILES\.maxZoom\}/);
-    expect(layer).not.toMatch(/subdomains=/);
-  });
-
-  it("does not pass subdomains at all", () => {
-    expect(map).not.toMatch(/subdomains=/);
   });
 });
