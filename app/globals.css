@@ -46,6 +46,8 @@
 @import "@heroui/styles/components/pagination.css" layer(components);
 @import "@heroui/styles/components/toggle-button.css" layer(components);
 @import "@heroui/styles/components/search-field.css" layer(components);
+@import "@heroui/styles/components/input-otp.css" layer(components);
+@import "@heroui/styles/components/progress-circle.css" layer(components);
 @import "@heroui/styles/utilities";
 @import "@heroui/styles/variants";
 

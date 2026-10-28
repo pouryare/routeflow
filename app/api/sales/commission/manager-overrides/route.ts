@@ -3,6 +3,7 @@ import { orgScopeId, requireRole } from "@/lib/session";
 import { groupManagerInOrg } from "@/lib/repo/orgRefs";
 import { addManagerOverride } from "@/lib/repo/routeAdapters";
 import { OWNER_ROLES } from "@/lib/roles";
+import { guardStepUp } from "@/lib/repo/stepUp";
 
 /** Owner only. A مدیر گروه's incentive is set by the owner, the same "payroll is not
  *  territory" rule /api/sales/commission/rates already enforces -- running a group is
@@ -10,6 +11,8 @@ import { OWNER_ROLES } from "@/lib/roles";
 export async function POST(req: NextRequest) {
   const guard = await requireRole(req, OWNER_ROLES);
   if (!guard.ok) return guard.response;
+  const stepUp = await guardStepUp(req, guard.session, "commission_change");
+  if (stepUp) return stepUp;
 
   const body = (await req.json().catch(() => null)) as {
     manager_user_id?: unknown;

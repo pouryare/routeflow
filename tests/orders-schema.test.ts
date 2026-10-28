@@ -109,6 +109,8 @@ describe("orders", () => {
         "kg_total",
         "total_toman",
         "cost_toman",
+        // Approved discount on the whole order (order_discounts holds the request and who pays).
+        "discount_toman",
         "notes",
         "created_by",
         "created_at",

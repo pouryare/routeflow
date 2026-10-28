@@ -46,6 +46,8 @@ export const TENANT_TABLES = [
   "manager_commission_payments",
   "representative_profiles",
   "credit_approvals",
+  "order_discounts",
+  "discount_commission_shares",
   "payments",
   "parties",
   "shareholdings",

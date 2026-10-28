@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import AppShell from "@/components/meridian/AppShell";
 import { MyPositionProvider } from "@/components/MyPositionProvider";
 import HotkeyProvider from "@/components/HotkeyProvider";
+import StepUpProvider from "@/components/StepUpProvider";
 
 /** The shell group: /sales, /map, /facilities, /gallery, /planner, /report, /leads,
  *  /settings. One header, one theme, one entrance, for all of them.
@@ -29,6 +30,8 @@ export default function ShellLayout({ children }: { children: ReactNode }) {
           per page would put back the duplicate-listener problem the registry exists to
           remove — and this layout renders once for every route in the group. */}
       <HotkeyProvider />
+      {/* Asks for an authenticator code when a sensitive action says it needs one, then repeats it. */}
+      <StepUpProvider />
       <MyPositionProvider>
         <AppShell>{children}</AppShell>
       </MyPositionProvider>

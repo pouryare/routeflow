@@ -23,6 +23,8 @@ export default function EarnerCard({
   owedToman,
   lines,
   lineNoun,
+  deductions = [],
+  carriedToman = 0,
 }: {
   id: number;
   displayName: string;
@@ -36,7 +38,12 @@ export default function EarnerCard({
   lines: EarnerLine[];
   /** «سفارش» or «تحویل» -- what one row of `lines` actually is. */
   lineNoun: string;
+  /** Discounts charged to this person's commission in the period (lib/discounts.ts). */
+  deductions?: { order_id: number; customer_name: string; amount_toman: number }[];
+  /** The part of those the period's earnings could not cover; it stays owed against later earnings. */
+  carriedToman?: number;
 }) {
+  const deducted = deductions.reduce((t, d) => t + d.amount_toman, 0);
   // How much of what has accrued is still owed. The bar is the point of the card: two
   // people can accrue the same and be settled very differently.
   const settled =
@@ -77,6 +84,23 @@ export default function EarnerCard({
           <dd className="mono">{faNum(lines.length)}</dd>
         </div>
       </dl>
+
+      {deductions.length > 0 && (
+        <details className="pcard__more">
+          <summary>
+            کسر تخفیف {faToman(deducted)}
+            {carriedToman > 0 && ` · ${faToman(carriedToman)} به دورهٔ بعد می‌رود`}
+          </summary>
+          <div className="pcard__rows">
+            {deductions.map((d) => (
+              <div className="pcard__row" key={d.order_id}>
+                <span className="pcard__who">{d.customer_name}</span>
+                <span className="mono pcard__amt">−{faToman(d.amount_toman)}</span>
+              </div>
+            ))}
+          </div>
+        </details>
+      )}
 
       {lines.length > 0 && (
         <details className="pcard__more">

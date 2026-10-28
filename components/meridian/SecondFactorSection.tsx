@@ -15,10 +15,10 @@ const GHOST =
 const INPUT =
   "min-h-[44px] w-full rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] px-[var(--space-3)] text-center font-mono text-[length:var(--text-base)] tracking-[0.2em] text-[var(--text)]";
 
-/** The founder's second login step (an authenticator-app code on top of the password). The account sees
- *  every company, so this is the main protection to add to it. Turning it off needs a current code, so a
- *  hijacked session cannot quietly remove it. Server-side rules live in lib/repo/secondFactor.ts. */
-export default function FounderSecurity() {
+/** Your second sign-in step (an authenticator-app code on top of the password), also the code asked
+ *  before sensitive actions (lib/stepUp.ts). Turning it off needs a current code, so a hijacked session
+ *  cannot quietly remove it. Server-side rules live in lib/repo/secondFactor.ts. */
+export default function SecondFactorSection() {
   const router = useRouter();
   const [status, setStatus] = useState<Status | null>(null);
   const [setup, setSetup] = useState<{ secret: string; uri: string } | null>(null);
@@ -28,7 +28,7 @@ export default function FounderSecurity() {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    fetch("/api/admin/second-factor")
+    fetch("/api/me/second-factor")
       .then((r) => r.json())
       .then((d: Status & { ok?: boolean }) => d.ok && setStatus({ enabled: d.enabled, pending: d.pending, recoveryLeft: d.recoveryLeft }))
       .catch(() => setStatus(null));
@@ -38,7 +38,7 @@ export default function FounderSecurity() {
     if (busy) return;
     setBusy(true);
     setError(null);
-    const res = await fetch("/api/admin/second-factor", {
+    const res = await fetch("/api/me/second-factor", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action, code }),
@@ -68,7 +68,7 @@ export default function FounderSecurity() {
       <p className="m-0 mt-[var(--space-1)] mb-[var(--space-2)] text-[length:var(--text-sm)] text-[var(--text-muted)]">
         {status.enabled
           ? `فعال است. هر ورود علاوه بر رمز، کد برنامهٔ احراز هویت می‌خواهد. کدهای بازیابی باقی‌مانده: ${status.recoveryLeft}`
-          : "غیرفعال است. این حساب همهٔ سازمان‌ها را می‌بیند؛ رمز تنها کافی نیست. فعال‌سازی را توصیه می‌کنیم."}
+          : "غیرفعال است. با فعال‌سازی، ورود و کارهای حساس (مثل تأیید تخفیف یا تغییر قیمت) کد برنامهٔ احراز هویت می‌خواهند."}
       </p>
 
       {recovery ? (

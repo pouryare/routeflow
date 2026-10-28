@@ -7,6 +7,7 @@ import { friendlyError } from "@/lib/userMessage";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Icon } from "@/components/meridian/Icon";
 import { PasswordInput, TextInput } from "@/components/TextInput";
+import OtpInput from "@/components/mobile/OtpInput";
 
 function LoginForm() {
   const router = useRouter();
@@ -19,6 +20,7 @@ function LoginForm() {
   // Set when the password passed but the founder's account also needs a code from the authenticator app.
   const [challenge, setChallenge] = useState<string | null>(null);
   const [code, setCode] = useState("");
+  const [useRecovery, setUseRecovery] = useState(false);
   const nextPathRef = useRef<string | null>(null);
   const clearedRef = useRef(false);
 
@@ -42,6 +44,12 @@ function LoginForm() {
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
+    await submit();
+  }
+
+  /** `typed` is the code the six boxes just completed, which state has not caught up with yet. */
+  async function submit(typed?: string) {
+    if (loading) return;
     setError(null);
     setLoading(true);
     try {
@@ -49,7 +57,7 @@ function LoginForm() {
         ? await fetch("/api/login/second-factor", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ challenge, code: code.trim() }),
+            body: JSON.stringify({ challenge, code: (typed ?? code).trim() }),
           })
         : await fetch("/api/login", {
             method: "POST",
@@ -59,6 +67,7 @@ function LoginForm() {
       const data = await res.json();
       if (!res.ok || !data.ok) {
         setError(friendlyError(data.error, "ورود انجام نشد؛ دوباره تلاش کنید"));
+        if (challenge) setCode("");
         setLoading(false);
         return;
       }
@@ -103,26 +112,42 @@ function LoginForm() {
 
           <form onSubmit={onSubmit}>
             {challenge ? (
-              <label className="flex flex-col gap-1 text-xs text-text-muted">کد برنامهٔ احراز هویت (یا کد بازیابی)<FieldInput
-                type="text"
-                autoFocus
-                inputMode="numeric"
-                autoComplete="one-time-code"
-                value={code}
-                onChange={(e) => setCode(e.target.value)}
-                dir="ltr"
-                className="mb-[var(--space-4)] w-full text-center font-mono text-[length:var(--text-lg)] tracking-[0.3em] text-[var(--text)]"
-              /></label>
+              useRecovery ? (
+                <label className="flex flex-col gap-1 text-xs text-text-muted">کد بازیابی<FieldInput
+                  type="text"
+                  autoFocus
+                  autoComplete="one-time-code"
+                  value={code}
+                  onChange={(e) => setCode(e.target.value)}
+                  dir="ltr"
+                  className="mb-[var(--space-4)] w-full text-center font-mono text-[length:var(--text-lg)] tracking-[0.3em] text-[var(--text)]"
+                /></label>
+              ) : (
+                <div className="mb-[var(--space-4)] flex flex-col gap-[var(--space-3)]">
+                  <p className="m-0 text-center text-[length:var(--text-sm)] text-[var(--text-muted)]">کد ۶ رقمی برنامهٔ احراز هویت را وارد کنید.</p>
+                  <OtpInput value={code} onChange={setCode} onComplete={(v) => void submit(v)} isInvalid={error !== null} disabled={loading} />
+                </div>
+              )
             ) : (
             <>
             <TextInput label="نام کاربری" autoFocus autoComplete="username" value={username} onChange={setUsername} />
             <PasswordInput label="رمز عبور" autoComplete="current-password" value={password} onChange={setPassword} className="mb-[var(--space-4)]" />
             </>
             )}
+            {challenge && (
+              <button
+                type="button"
+                onClick={() => { setUseRecovery((v) => !v); setCode(""); setError(null); }}
+                className="mb-[var(--space-4)] inline-flex min-h-11 w-full items-center justify-center gap-[var(--space-2)] text-[length:var(--text-sm)] text-[var(--accent)]"
+              >
+                <Icon name="repeat" size="sm" />
+                {useRecovery ? "برگشت به کد برنامه" : "کد بازیابی دارم"}
+              </button>
+            )}
             {error && <p className="mb-[var(--space-4)] text-[length:var(--text-sm)] text-[var(--crit)]">{error}</p>}
             <button
               type="submit"
-              disabled={loading || (challenge ? !code.trim() : !username.trim() || !password)}
+              disabled={loading || (challenge ? code.trim().length < (useRecovery ? 8 : 6) : !username.trim() || !password)}
               className="inline-flex items-center justify-center gap-[var(--space-2)] w-full cursor-pointer rounded-[var(--radius-md)] border border-[var(--accent)] bg-[var(--accent)] py-[var(--space-2)] font-medium text-[var(--accent-ink)] transition-[filter,transform,opacity] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:enabled:scale-[1.03] hover:enabled:brightness-110 active:enabled:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
             >
               <Icon name="logout" size="md" />

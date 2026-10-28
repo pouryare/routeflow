@@ -4,6 +4,7 @@ import { userWithRoleInOrg } from "@/lib/repo/orgRefs";
 import { addDriverRate, addSalesRate } from "@/lib/repo/routeAdapters";
 import { isToman } from "@/lib/money";
 import { OWNER_ROLES } from "@/lib/roles";
+import { guardStepUp } from "@/lib/repo/stepUp";
 
 /** Owner only, including against a manager.
  *
@@ -20,6 +21,8 @@ import { OWNER_ROLES } from "@/lib/roles";
 export async function POST(req: NextRequest) {
   const guard = await requireRole(req, OWNER_ROLES);
   if (!guard.ok) return guard.response;
+  const stepUp = await guardStepUp(req, guard.session, "commission_change");
+  if (stepUp) return stepUp;
 
   const body = (await req.json().catch(() => null)) as {
     kind?: unknown;

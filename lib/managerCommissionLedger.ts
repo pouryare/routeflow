@@ -8,6 +8,7 @@
  *  that sum a second way.
  */
 
+import { deductionFields, deductionsFor, lifetimeDeductions, type DeductionItem } from "./repo/discountDeductions";
 import { insertCommissionPayment, insertDatedRate } from "./repo/commissionPayments";
 import type { Db } from "@/lib/database/client";
 import { effectiveAt } from "./pricing";
@@ -51,6 +52,10 @@ export interface ManagerStatement {
   accrued_toman: number;
   paid_toman: number;
   owed_toman: number;
+  deductions: DeductionItem[];
+  deduction_toman: number;
+  carried_toman: number;
+  net_toman: number;
 }
 
 export async function setManagerOverride(
@@ -171,7 +176,9 @@ export async function managerStatementFor(
     override_pct: pct,
     accrued_toman: accrued,
     paid_toman: paidInPeriod.total,
-    owed_toman: lifetimeAccrued - lifetimePaid.total,
+    owed_toman: lifetimeAccrued - (await lifetimeDeductions(db, managerId, "manager")) - lifetimePaid.total,
+    // The override stays on the group's gross accruals; a discount charged to the manager comes off here.
+    ...deductionFields(accrued, await deductionsFor(db, managerId, "manager", period)),
   };
 }
 

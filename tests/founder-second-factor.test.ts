@@ -13,7 +13,7 @@ const { totpAt, stepAt } = await import("@/lib/totp");
 const { NextRequest } = await import("next/server");
 const { POST: login } = await import("@/app/api/login/route");
 const { POST: secondStep } = await import("@/app/api/login/second-factor/route");
-const { POST: manage } = await import("@/app/api/admin/second-factor/route");
+const { POST: manage } = await import("@/app/api/me/second-factor/route");
 const { checkSecondFactor, beginEnrollment, confirmEnrollment } = await import("@/lib/repo/secondFactor");
 
 afterAll(() => {
@@ -24,7 +24,7 @@ let founderId = 0;
 let ownerId = 0;
 
 const json = (body: unknown, cookie?: string) =>
-  new NextRequest("http://localhost/api/admin/second-factor", {
+  new NextRequest("http://localhost/api/me/second-factor", {
     method: "POST",
     body: JSON.stringify(body),
     headers: { "Content-Type": "application/json", ...(cookie ? { cookie } : {}), "x-forwarded-for": `10.0.0.${Math.floor(Math.random() * 250)}` },
@@ -113,9 +113,9 @@ describe("the founder's second login step", () => {
     expect((await res.json()).secondFactor).toBeUndefined();
   });
 
-  it("is only for the founder's own session", async () => {
-    expect((await manage(json({ action: "begin" }, cookieFor(ownerId, "owner")))).status).toBe(403);
-    expect(await beginEnrollment(ownerId, "plainowner")).not.toBeNull(); // the repo itself is role-blind; the route is the gate
+  it("is open to any signed-in person for their own account", async () => {
+    expect((await manage(json({ action: "begin" }, cookieFor(ownerId, "owner")))).status).toBe(200);
+    expect(await beginEnrollment(ownerId, "plainowner")).not.toBeNull();
     expect(await confirmEnrollment(ownerId, "000000")).toBeNull();
   });
 });

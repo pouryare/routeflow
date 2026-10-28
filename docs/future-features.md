@@ -3109,6 +3109,28 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 ---
 
+## F146. Code for sensitive actions: SMS backup and the remaining guards
+
+**What:** finish the code-before-sensitive-actions feature: an SMS code through Farazsms for people without an authenticator (with a resend countdown), and the guard on the actions not yet covered (creating an owner or manager, customer export, own mobile number, hard deletes, delivered-order edits, authenticator reset, overwrite imports).
+
+**Already in the app:** the authenticator code, the trusted device, the company switch and the guard on 14 routes (batch A, 2026-10-28). See roadmap 1b.
+
+**Why parked:** the SMS half needs a Farazsms account and an approved template; the guards are one line per route.
+
+**Suggested first slice:** the guards on the routes above; SMS after the account exists.
+
+---
+
+## F147. Discount in every total
+
+**What:** make customer lifetime value, the driver stop list, dashboard revenue, the commission «value» metric and offline sync subtract an approved discount; add a discount to the tap-flow quick order; notify the approver of a new request.
+
+**Already in the app:** the order's cached total, payments, delivery and the order page use the net amount.
+
+**Suggested first slice:** the dashboard revenue and the customer lifetime value, with a test that every reader of order totals agrees.
+
+---
+
 ## How to promote an item
 
 1. Write `docs/superpowers/specs/YYYY-MM-DD-<item>-design.md` (answer the open questions, pick the first slice).
