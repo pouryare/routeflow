@@ -204,15 +204,14 @@ export async function previewSplit(db: Db, organizationId: number, year: number)
   const rules = await costRules(db, organizationId);
   const direct = new Map<number, number>(); // group -> profit before shared costs
   const sales = new Map<number, number>();
-  let companyLevel = 0; // untagged revenue and company-rule costs
   let sharedPool = 0; // untagged costs to divide by sales (negative)
   let total = 0;
   for (const r of rows) {
     const net = Number(r.net);
     total += net;
     if (r.gid == null) {
+      // Untagged revenue and company-rule costs stay in the company pool, which is whatever `total` leaves.
       if (r.type === "EXPENSE" && (rules.get(Number(r.account_id)) ?? "sales_share") === "sales_share") sharedPool += net;
-      else companyLevel += net;
       continue;
     }
     const g = Number(r.gid);
@@ -222,8 +221,7 @@ export async function previewSplit(db: Db, organizationId: number, year: number)
   // Overhead is divided between groups that sold something; with none, it stays with the company.
   const salesBase = new Map([...sales].filter(([, v]) => v > 0));
   let allocated = new Map<number, number>();
-  if (salesBase.size > 0) allocated = shareOverhead(sharedPool, salesBase);
-  else companyLevel += sharedPool;
+  if (salesBase.size > 0) allocated = shareOverhead(sharedPool, salesBase); // with no group selling, it stays with the company
 
   const names = new Map<number, string>();
   for (const g of await db.prepare("SELECT id, name FROM groups WHERE organization_id = ?").all(organizationId) as unknown as { id: number; name: string }[]) {

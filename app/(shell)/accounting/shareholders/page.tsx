@@ -1,7 +1,10 @@
 import PageHeader from "@/components/meridian/PageHeader";
 import ShareholdersPanel from "@/components/accounting/ShareholdersPanel";
+import ProfitSplitPanel from "@/components/accounting/ProfitSplitPanel";
 import { requireAccounting } from "@/lib/accountingGate";
-import { legalFormIn, shareholdersOf, sharesInForce } from "@/lib/repo/routeAdapters";
+import { costRulesOf, legalFormIn, partnerBalancesOf, shareholdersOf, sharesInForce } from "@/lib/repo/routeAdapters";
+import { expenseCategories } from "@/lib/repo/ledgerPostings";
+import { tehranTodayIso, todayJalali } from "@/lib/jalali";
 import { listGroups } from "@/lib/repo/groupsAdmin";
 import { listUsers } from "@/lib/repo/usersAdmin";
 
@@ -11,7 +14,7 @@ export const dynamic = "force-dynamic";
  *  each group, and the company's legal form. Owner only (the accounting gate). */
 export default async function ShareholdersPage() {
   const organizationId = await requireAccounting("/accounting/shareholders");
-  const today = new Date().toISOString().slice(0, 10);
+  const today = tehranTodayIso();
   const shareholders = await shareholdersOf(organizationId);
   const groups = (await listGroups(organizationId)).map((g) => ({ id: Number(g.id), name: String(g.name) }));
   const taken = new Set(shareholders.map((s) => s.userId));
@@ -24,16 +27,28 @@ export default async function ShareholdersPage() {
   };
   for (const g of groups) scopes[String(g.id)] = await sharesInForce(organizationId, g.id, today);
 
+  const legalForm = await legalFormIn(organizationId);
+  const rules = await costRulesOf(organizationId);
+  const jy = todayJalali().jy;
+
   return (
     <>
       <PageHeader route="/accounting/shareholders" />
       <ShareholdersPanel
-        legalForm={await legalFormIn(organizationId)}
+        legalForm={legalForm}
         shareholders={shareholders}
         groups={groups}
         users={users}
         scopes={scopes}
         today={today}
+      />
+      <ProfitSplitPanel
+        legalForm={legalForm}
+        balances={await partnerBalancesOf(organizationId)}
+        years={[jy, jy - 1]}
+        costAccounts={(await expenseCategories()).map((c) => ({ id: c.id, name: c.nameFa, mode: rules.get(c.id) ?? "sales_share" }))}
+        today={today}
+        hasShareholders={shareholders.length > 0}
       />
     </>
   );

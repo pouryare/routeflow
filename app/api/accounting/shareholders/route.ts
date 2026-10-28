@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireRole } from "@/lib/session";
+import { tehranTodayIso } from "@/lib/jalali";
 import { OWNER_ROLES } from "@/lib/roles";
 import { LedgerError } from "@/lib/repo/ledgerCore";
 import { addShareholderIn, shareholdersOf, sharesInForce } from "@/lib/repo/routeAdapters";
@@ -10,7 +11,7 @@ export async function GET(req: NextRequest) {
   const guard = await requireRole(req, OWNER_ROLES);
   if (!guard.ok) return guard.response;
   const org = guard.session.organizationId;
-  const today = new Date().toISOString().slice(0, 10);
+  const today = tehranTodayIso();
   return NextResponse.json({ ok: true, shareholders: await shareholdersOf(org), shares: await sharesInForce(org, null, today) });
 }
 
