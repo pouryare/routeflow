@@ -15,7 +15,7 @@ import { faJalaliLong } from "@/lib/jalali";
  *
  *  Three rules this component exists to hold:
  *
- *  1. **One headline number.** Not four. `CountUp` sweeps it on arrival, which is exactly
+ *  1. **One headline number.** Not four. `CountUp` rolls its digits when it changes, which is exactly
  *     what MASTER.md's Tier 3 motion is for, and the only place on this screen where a
  *     number animates — a card grid of moving figures is noise.
  *  2. **The photo is `aria-hidden`.** The name beside it is the accessible content. A screen

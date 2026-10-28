@@ -12,6 +12,7 @@ import { MAX_PACKS_PER_LINE, parsePacks } from "@/lib/orderLimits";
 import { Icon } from "@/components/meridian/Icon";
 import BusyIcon from "@/components/meridian/BusyIcon";
 import { useDoneFlash } from "@/lib/useDoneFlash";
+import { celebrate } from "@/lib/celebrate";
 import SmartPicker from "@/components/mobile/SmartPicker";
 import KeypadField from "@/components/mobile/KeypadField";
 import DayChips from "@/components/mobile/DayChips";
@@ -254,6 +255,7 @@ export default function OrderForm({
         return;
       }
       flash();
+      if (json.first_today) void celebrate();
       router.push(`/sales/orders/${json.id}`);
     } finally {
       setBusy(false);

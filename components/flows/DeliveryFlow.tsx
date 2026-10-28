@@ -60,6 +60,7 @@ export default function DeliveryFlow({
   onPrint,
   onClose,
   onReopen,
+  lastStop,
 }: {
   open: boolean;
   stop: RunStop;
@@ -70,6 +71,8 @@ export default function DeliveryFlow({
   onPrint: (data: ReceiptData) => void;
   onClose: () => void;
   onReopen?: () => void;
+  /** Every other stop of the run is already done, so finishing this one finishes the run. */
+  lastStop?: boolean;
 }) {
   const ctx = useMemo(() => contextFor(stop), [stop]);
 
@@ -138,6 +141,7 @@ export default function DeliveryFlow({
       done={
         <FlowDone
           key={state.answers.length}
+          milestone={lastStop}
           chips={deliveryChips(ctx, state)}
           actions={
             <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn solid" onClick={() => void print(state)}>
