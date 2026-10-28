@@ -15,15 +15,15 @@ export default function RealizedProfitCard({ realized, unrealized }: { realized:
       </p>
       <div className="mt-[var(--space-3)] flex items-start justify-between gap-[var(--space-3)]">
         <div>
-          <div className="text-[length:var(--text-xs)] text-[var(--text-muted)]">تحقق‌یافته (دریافت‌شده)</div>
-          <div className="text-[length:var(--text-lg)] font-semibold tabular-nums text-[var(--text)]">
-            <CountUp value={realized} /> <small className="text-[length:var(--text-xs)] font-normal">تومان</small>
+          <div className="text-[length:var(--text-xs)] text-[var(--text-muted)]">تحقق‌یافته (دریافت‌شده) · تومان</div>
+          <div className="text-[length:var(--text-md)] font-semibold tabular-nums text-[var(--text)]">
+            <CountUp value={realized} />
           </div>
         </div>
         <div className="text-end">
-          <div className="text-[length:var(--text-xs)] text-[var(--text-muted)]">در انتظار پرداخت</div>
-          <div className="text-[length:var(--text-lg)] font-semibold tabular-nums text-[var(--text)]">
-            <CountUp value={unrealized} /> <small className="text-[length:var(--text-xs)] font-normal">تومان</small>
+          <div className="text-[length:var(--text-xs)] text-[var(--text-muted)]">در انتظار پرداخت · تومان</div>
+          <div className="text-[length:var(--text-md)] font-semibold tabular-nums text-[var(--text)]">
+            <CountUp value={unrealized} />
           </div>
         </div>
       </div>
