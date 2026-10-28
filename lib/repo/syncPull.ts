@@ -80,10 +80,17 @@ export async function pullSince(session: Session, since: string | null): Promise
   const isDriver = isVanRole(session.role);
 
   if (isDriver) {
+    /* shortcut: a driver's phone gets open runs and the last DRIVER_WINDOW_DAYS of finished ones, not
+       every run they ever drove (a year of history was 2 MB, 95% of it finished orders nobody opens
+       in a van). Older runs already on the phone stay; upgrade to an on-demand fetch if a driver
+       needs to look a delivery up from further back while offline. */
+    const since = new Date(Date.now() - DRIVER_WINDOW_DAYS * 86_400_000).toISOString().slice(0, 10);
     const runIds = (
       await db
-        .prepare("SELECT id FROM delivery_runs WHERE driver_user_id = ? AND organization_id = ?")
-        .all(session.user.id, org) as { id: number }[]
+        .prepare(
+          "SELECT id FROM delivery_runs WHERE driver_user_id = ? AND organization_id = ? AND (status <> 'done' OR run_date >= ?)"
+        )
+        .all(session.user.id, org, since) as { id: number }[]
     ).map((r) => r.id);
     const runList = runIds.length ? runIds.join(",") : "NULL";
 
@@ -252,6 +259,9 @@ export async function pullSince(session: Session, since: string | null): Promise
 
   return { watermark: `${XID_PREFIX}${xmin}`, rows, tombstones };
 }
+
+/** How far back a driver's finished runs travel to the phone. */
+export const DRIVER_WINDOW_DAYS = 14;
 
 /** A watermark is `x:` and a transaction id; anything else starts from the beginning. */
 const XID_PREFIX = "x:";
