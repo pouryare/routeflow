@@ -34,10 +34,11 @@ describe("tombstones", () => {
 
   it("excludes tombstones written before the watermark", async () => {
     await tombstone(1, "order_line", 1);
-    // The watermark pullSince hands out: every transaction below it has finished.
-    const { x } = (await getDb().prepare("SELECT CAST(pg_snapshot_xmin(pg_current_snapshot()) AS text) AS x").get()) as { x: string };
+    // One past the first tombstone's own transaction: a fixed bound, unlike the xmin pullSince
+    // hands out, which other files' open transactions hold back.
+    const { x } = (await getDb().prepare("SELECT CAST(CAST(sync_xid AS text) AS bigint) + 1 AS x FROM deleted_rows WHERE entity_id = 1").get()) as { x: number };
     await tombstone(1, "order_line", 2);
-    const after = await tombstonesSinceXid(1, x);
+    const after = await tombstonesSinceXid(1, String(x));
     expect(after.map((t) => t.entity_id)).toEqual([2]);
   });
 
