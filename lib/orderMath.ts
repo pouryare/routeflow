@@ -67,6 +67,12 @@ export function orderTotalToman(lines: LineSnapshot[]): number {
   return sumToman(lines.map(lineTotalToman));
 }
 
+/** What the customer owes for an order: its lines' total less the approved discount, never below
+ *  zero. The one place the subtraction is written (lib/discounts.ts has the rules for the discount). */
+export function netOfDiscount(gross: number, discountToman: number): number {
+  return Math.max(0, gross - Math.max(0, discountToman));
+}
+
 /** The order's weight -- what commission is accrued on. */
 export function orderKg(lines: LineSnapshot[]): number {
   return lines.reduce((total, line) => total + lineKg(line), 0);

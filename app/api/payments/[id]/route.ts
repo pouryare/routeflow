@@ -9,6 +9,7 @@ import {
 } from "@/lib/repo/payments";
 import { MANAGE_ROLES } from "@/lib/roles";
 import { openOrdersOf } from "@/lib/repo/routeAdapters";
+import { guardStepUp } from "@/lib/repo/stepUp";
 
 export async function GET(req: NextRequest, ctx: RouteContext<"/api/payments/[id]">) {
   const guard = await requireRole(req, [...MANAGE_ROLES, "phone_sales"]);
@@ -35,6 +36,8 @@ export async function GET(req: NextRequest, ctx: RouteContext<"/api/payments/[id
 export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/payments/[id]">) {
   const guard = await requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
+  const stepUp = await guardStepUp(req, guard.session, "payment_edit");
+  if (stepUp) return stepUp;
 
   const { id } = await ctx.params;
   const paymentId = Number(id);
@@ -68,6 +71,8 @@ export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/payments/[
 export async function POST(req: NextRequest, ctx: RouteContext<"/api/payments/[id]">) {
   const guard = await requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
+  const stepUp = await guardStepUp(req, guard.session, "payment_edit");
+  if (stepUp) return stepUp;
 
   const { id } = await ctx.params;
   if (req.nextUrl.searchParams.get("action") !== "void") {

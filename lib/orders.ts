@@ -14,6 +14,8 @@ import { toJalali } from "./jalali";
 import type { RequestedKind } from "./requestedDay";
 import { customerDebt } from "./repo/payments";
 import { requestApproval } from "./repo/creditApprovals";
+import { requestDiscount, type DiscountRequest } from "./repo/discounts";
+import type { Asker } from "./discounts";
 import { PRICED_ORDER_STATUSES, sqlStatusList } from "./orderStateMachine";
 import type { OrderRole, OrderStatus } from "./orderStateMachine";
 import {
@@ -28,6 +30,7 @@ import {
   orderTotalToman,
   orderKg,
   orderMarginToman,
+  netOfDiscount,
   lineTotalToman,
   lineKg,
   effectivePacks,
@@ -69,6 +72,9 @@ export interface CreateOrderInput {
   /** Loading history (the demo seed): the order date may be older than the window a person
    *  typing a slip is held to. Never set from a request. */
   historical?: boolean;
+  /** A discount asked for with the order (lib/discounts.ts). It waits for approval unless the owner
+   *  asked or it is under the company's limit, and holds the order at review until answered. */
+  discount?: { request: DiscountRequest; asker: Asker };
   lines: LineInput[];
 }
 
@@ -99,6 +105,8 @@ export interface OrderDetail {
   payment_status: string;
   paid_toman: number;
   credit_override_by: number | null;
+  /** The approved discount in force, already taken off `total_toman`. */
+  discount_toman: number;
   notes: string | null;
   created_at: string;
   lines: OrderLine[];
@@ -300,6 +308,9 @@ export async function createOrder(
     for (const line of input.lines) {
       await insertLine(db, orderId, input.order_date, line, now);
     }
+    if (input.discount) {
+      await requestDiscount(input.organization_id, orderId, input.discount.asker, input.discount.request, db);
+    }
 
     // Phase 3: an order is born a DRAFT. Credit control moved to submitOrder -- it is a
     // property of *submitting* for review, not of typing the slip. Record the birth so
@@ -401,7 +412,11 @@ export async function submitOrder(
     .prepare("SELECT 1 FROM representative_profiles WHERE customer_id = ? AND organization_id = ?")
     .get(order.customer_id, organizationId);
 
-  if (isRepresentative || order.order_type === "SAMPLE") {
+  /* A discount nobody has approved holds the order at review, representative or not: approving it
+     is what lets a representative's order go on (lib/repo/discounts.ts decideDiscount). */
+  const discountWaiting = !!await db.prepare("SELECT 1 FROM order_discounts WHERE order_id = ? AND status = 'pending' LIMIT 1").get(orderId);
+
+  if ((isRepresentative || order.order_type === "SAMPLE") && !discountWaiting) {
     return await advanceOrder(organizationId, orderId, "passReview", { id: actor.id, role: "system" });
   }
 
@@ -518,9 +533,9 @@ export async function readOrder(db: Db, orderId: number): Promise<OrderDetail | 
   return {
     ...order,
     lines,
-    total_toman: orderTotalToman(lines),
+    total_toman: netOfDiscount(orderTotalToman(lines), Number(order.discount_toman ?? 0)),
     kg: orderKg(lines),
-    margin_toman: orderMarginToman(lines),
+    margin_toman: orderMarginToman(lines) - Math.min(Number(order.discount_toman ?? 0), orderTotalToman(lines)),
   };
 }
 
@@ -546,7 +561,10 @@ export interface OrderSummary {
   requested_kind: RequestedKind | null;
   payment_status: string;
   paid_toman: number;
+  /** What the customer owes for it: the lines less the approved discount. */
   total_toman: number;
+  /** The approved discount already taken off `total_toman`; 0 when none. */
+  discount_toman: number;
   kg: number;
   line_count: number;
 }
@@ -575,7 +593,7 @@ export async function readOrders(
   const orders = await db
     .prepare(
       `SELECT o.id, o.order_no, o.status, o.priority, o.order_date, o.payment_status, o.paid_toman,
-              o.requested_day, o.requested_kind,
+              o.requested_day, o.requested_kind, o.discount_toman,
               o.group_id, o.customer_id, c.business_name AS customer_name, u.display_name AS salesperson_name
          FROM orders o
          JOIN customers c ON c.id = o.customer_id
@@ -595,7 +613,7 @@ export async function readOrders(
     const lines = await linesOf(db, order.id);
     return {
       ...order,
-      total_toman: orderTotalToman(lines),
+      total_toman: netOfDiscount(orderTotalToman(lines), Number(order.discount_toman ?? 0)),
       kg: orderKg(lines),
       line_count: lines.length,
     };

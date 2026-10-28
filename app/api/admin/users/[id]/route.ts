@@ -4,6 +4,7 @@ import { deactivateUser, findUserInOrg, otherActiveOwners, updateUser } from "@/
 import { planUserPatch } from "@/lib/userPatchPlan";
 import { requireRole } from "@/lib/session";
 import { OWNER_ROLES } from "@/lib/roles";
+import { guardStepUp } from "@/lib/repo/stepUp";
 
 /** Would this change leave this organisation with no active owner? (Another company's owners do not count.)
  *
@@ -17,6 +18,8 @@ async function wouldStrandTheApp(target: UserRow, becomingNonOwner: boolean): Pr
 export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/admin/users/[id]">) {
   const guard = await requireRole(req, OWNER_ROLES);
   if (!guard.ok) return guard.response;
+  const stepUp = await guardStepUp(req, guard.session, "user_change");
+  if (stepUp) return stepUp;
 
   const { id } = await ctx.params;
   const userId = Number(id);
@@ -47,6 +50,8 @@ export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/admin/user
 export async function DELETE(req: NextRequest, ctx: RouteContext<"/api/admin/users/[id]">) {
   const guard = await requireRole(req, OWNER_ROLES);
   if (!guard.ok) return guard.response;
+  const stepUp = await guardStepUp(req, guard.session, "user_change");
+  if (stepUp) return stepUp;
 
   const { id } = await ctx.params;
   const userId = Number(id);

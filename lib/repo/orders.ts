@@ -219,6 +219,15 @@ export async function advanceOrder(
       throw new OrderRoleError("نقش شما اجازهٔ این تغییر وضعیت را ندارد");
     }
 
+    /* A discount nobody has approved yet holds the order at review: confirming would lock a price the
+       company has not agreed to (lib/discounts.ts). Whoever answers the discount lets it through. */
+    if (action === "passReview") {
+      const waiting = await conn
+        .prepare("SELECT 1 FROM order_discounts WHERE order_id = ? AND status = 'pending' LIMIT 1")
+        .get(orderId);
+      if (waiting) throw new OrderError("تخفیف این سفارش هنوز تأیید نشده است");
+    }
+
     for (const effect of t.effects ?? []) {
       await runEffect(effect, conn, organizationId, orderId, actor.id);
     }

@@ -2,7 +2,7 @@ import { cache } from "react";
 import { isToman } from "@/lib/money";
 import type { Db } from "@/lib/database/client";
 import { makeRepo } from "./base";
-import { lineTotalToman, type LineSnapshot } from "@/lib/orderMath";
+import { lineTotalToman, netOfDiscount, type LineSnapshot } from "@/lib/orderMath";
 import type { CustomerDebt } from "@/lib/types";
 import { FULFILLED_ORDER_STATUSES, sqlStatusList } from "@/lib/orderStateMachine";
 import { tryEmitEvent } from "./events";
@@ -94,13 +94,13 @@ export async function deliveredOrdersForCustomer(
 ): Promise<OutstandingOrder[]> {
   const orders = await db
     .prepare(
-      `SELECT o.id, o.order_date, o.delivered_at, o.paid_toman
+      `SELECT o.id, o.order_date, o.delivered_at, o.paid_toman, o.discount_toman
          FROM orders o
          JOIN customers c ON c.id = o.customer_id
         WHERE o.customer_id = ? AND c.organization_id = ? AND o.status IN (${sqlStatusList(FULFILLED_ORDER_STATUSES)})
         ORDER BY o.order_date, o.id`
     )
-    .all(customerId, organizationId) as unknown as Omit<OutstandingOrder, "total_toman">[];
+    .all(customerId, organizationId) as unknown as (Omit<OutstandingOrder, "total_toman"> & { discount_toman: number })[];
 
   const lineStmt = db.prepare(
     `SELECT packs_ordered, packs_delivered, unit_price_toman, unit_cost_toman,
@@ -110,8 +110,11 @@ export async function deliveredOrdersForCustomer(
 
   return await mapSeq(orders, async (o) => {
     const lines = await lineStmt.all(o.id) as unknown as LineSnapshot[];
-    const total_toman = lines.reduce((sum, l) => sum + lineTotalToman(l), 0);
-    return { ...o, total_toman };
+    /* What the customer owes is the lines less the approved discount (lib/discounts.ts). */
+    const total_toman = netOfDiscount(lines.reduce((sum, l) => sum + lineTotalToman(l), 0), Number(o.discount_toman ?? 0));
+    const { discount_toman: _discount, ...rest } = o;
+    void _discount;
+    return { ...rest, total_toman };
   });
 }
 
@@ -173,7 +176,8 @@ export async function recomputeOrderPaymentTxn(
          FROM order_lines WHERE order_id = ?`
     )
     .all(orderId) as unknown as LineSnapshot[];
-  const total = lines.reduce((sum, l) => sum + lineTotalToman(l), 0);
+  const discount = await db.prepare("SELECT discount_toman FROM orders WHERE id = ?").get(orderId) as { discount_toman: number } | undefined;
+  const total = netOfDiscount(lines.reduce((sum, l) => sum + lineTotalToman(l), 0), Number(discount?.discount_toman ?? 0));
 
   const status = paid >= total && total > 0 ? "paid" : paid > 0 ? "partial" : "unpaid";
   await db.prepare(

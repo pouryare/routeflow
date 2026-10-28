@@ -69,6 +69,8 @@ export default async function CommissionPage() {
               accruedToman={s.accrued_toman}
               paidToman={s.paid_toman}
               owedToman={s.owed_toman}
+              deductions={s.deductions}
+              carriedToman={s.carried_toman}
               lineNoun="سفارش"
               lines={s.orders.map((o) => ({ key: o.order_id, who: o.customer_name, kg: o.kg, amount_toman: o.accrual_toman }))}
             />
@@ -90,6 +92,8 @@ export default async function CommissionPage() {
                 accruedToman={s.accrued_toman}
                 paidToman={s.paid_toman}
                 owedToman={s.owed_toman}
+                deductions={s.deductions}
+                carriedToman={s.carried_toman}
                 lineNoun="تحویل"
                 lines={s.stops.map((st) => ({ key: st.order_id, who: st.customer_name, kg: st.kg, amount_toman: st.accrual_toman }))}
               />
@@ -126,6 +130,13 @@ export default async function CommissionPage() {
                   گروه در این دوره {faToman(m.group_accrued_toman)} پورسانت فروشنده انباشته — سهم شما
                   {" "}{faNum(m.override_pct)}٪ آن است.
                 </p>
+
+                {m.deduction_toman > 0 && (
+                  <p className="m-0 text-[length:var(--text-xs)] text-[var(--text-muted)]">
+                    کسر تخفیف از سهم شما {faToman(m.deduction_toman)}
+                    {m.carried_toman > 0 && ` · ${faToman(m.carried_toman)} به دورهٔ بعد می‌رود`}
+                  </p>
+                )}
 
                 <dl className="pcard__grid">
                   <div>

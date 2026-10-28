@@ -3,6 +3,7 @@ import { orgScopeId, requireRole } from "@/lib/session";
 import { addPrice, packagingOfProduct, productInOrg } from "@/lib/repo/catalogueAdmin";
 import { isToman } from "@/lib/money";
 import { OWNER_ROLES } from "@/lib/roles";
+import { guardStepUp } from "@/lib/repo/stepUp";
 
 /** Setting a price is an INSERT, never an update. There is no PATCH or DELETE on this
  *  route, and that absence is the feature: a price row that could be edited would take
@@ -10,6 +11,8 @@ import { OWNER_ROLES } from "@/lib/roles";
 export async function POST(req: NextRequest) {
   const guard = await requireRole(req, OWNER_ROLES);
   if (!guard.ok) return guard.response;
+  const stepUp = await guardStepUp(req, guard.session, "price_change");
+  if (stepUp) return stepUp;
 
   const body = (await req.json().catch(() => null)) as {
     product_id?: unknown;

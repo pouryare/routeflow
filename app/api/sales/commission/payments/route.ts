@@ -4,6 +4,7 @@ import { userWithRoleInOrg } from "@/lib/repo/orgRefs";
 import { payDriver, payManager, paySales } from "@/lib/repo/routeAdapters";
 import { isToman } from "@/lib/money";
 import { OWNER_ROLES } from "@/lib/roles";
+import { guardStepUp } from "@/lib/repo/stepUp";
 
 const ROLE_FOR_KIND = { sales: "phone_sales", driver: "delivery_driver", manager: "group_manager" } as const;
 const NOT_THIS_KIND = { sales: "فروشنده", driver: "راننده", manager: "مدیر گروه" } as const;
@@ -19,6 +20,8 @@ const NOT_THIS_KIND = { sales: "فروشنده", driver: "راننده", manager
 export async function POST(req: NextRequest) {
   const guard = await requireRole(req, OWNER_ROLES);
   if (!guard.ok) return guard.response;
+  const stepUp = await guardStepUp(req, guard.session, "commission_change");
+  if (stepUp) return stepUp;
 
   const body = (await req.json().catch(() => null)) as {
     kind?: unknown;
