@@ -3,6 +3,7 @@
 _Condensed 2026-10-23, updated 2026-10-27. Each finished piece of work is one line here; the full earlier text is in git history (`git log -p TODO-REPORT.md`)._
 
 ## Done
+- [x] «The smallest complete change» rule added to `CLAUDE.md`, adapted from the ponytail ruleset (MIT): scope first, reuse before writing, no unasked-for code, fix bugs at the root, one test for new logic, `shortcut:` comments, a never-cut list, and a skipped/risk line at the end of replies
 - [x] Actions minutes cut (`claude/project-thread-lb9196`): draft PRs skip CI, `main` runs only `check` after a merge, docs-only changes skip CI, shorter timeouts; secret scan for going public and `docs/make-repo-public.md`; `LICENSE` (all rights reserved)
 - [x] «Not done» batch: (?) on single figures (`GradientStat help`, 11 stat cards on the sales summary, dashboard and stock pages; copy in `lib/help/figures.ts`); notification feed rows, the receipt-photo picker (`FileTrigger`) and the map's saved-list, route, day-plan and customer-list buttons are HeroUI `Button`s now
 - [x] Shortlist audit of the Gemini technology list (decisions and one table row per adopted or later library in `docs/roadmap.md` 10.6; one server, manager-written quizzes) and `react-error-boundary` 6.1.6 added: one `WidgetBoundary` around every chart, sheet body, map, and the header search, bell and sync island, so one failing widget no longer replaces the page
