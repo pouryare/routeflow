@@ -25,7 +25,7 @@ function AddShareholderSheet({ open, users, onClose }: { open: boolean; users: {
   const [name, setName] = useState("");
   const [userId, setUserId] = useState("");
   return (
-    <BottomSheet open={open} title="افزودن شریک" onClose={onClose} closeLabel="بستن افزودن شریک">
+    <BottomSheet open={open} title="افزودن شریک" onClose={onClose} closeLabel="بستن افزودن شریک" dirty={name.trim() !== ""}>
       <label htmlFor="shareholder-name">نام شریک</label>
       <input id="shareholder-name" className="touch" value={name} onChange={(e) => setName(e.target.value)} autoComplete="off" />
       {users.length > 0 && (

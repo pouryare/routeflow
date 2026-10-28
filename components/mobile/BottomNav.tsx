@@ -43,7 +43,7 @@ export default function BottomNav({ primary, more, account }: BottomTabs) {
           </button>
         )}
       </nav>
-      <BottomSheet open={moreOpen} title="همهٔ بخش‌ها" onClose={() => setMoreOpen(false)} closeLabel="بستن فهرست بخش‌ها">
+      <BottomSheet expandable open={moreOpen} title="همهٔ بخش‌ها" onClose={() => setMoreOpen(false)} closeLabel="بستن فهرست بخش‌ها">
         {more.map((g) => (
           <section key={g.id} className="mobilemore__group">
             <div className="tf-group">{g.label}</div>

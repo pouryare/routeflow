@@ -608,6 +608,13 @@ Lower priority: the hand-written service worker (`public/sw.js`, manual cache ve
 - **Not used, already covered:** Fuse, MiniSearch, FlexSearch (`pg_trgm`); Graphile Worker, `node-cron` (pg-boss); `p-limit` (`p-queue`); ULID, cuid2 (UUIDv7); `date-fns` (Intl and `lib/jalali.ts`); AutoAnimate (framer-motion); tinykeys (`lib/hotkeys.ts`); clipboard-copy (`lib/clipboard.ts`); `localforage` (`lib/offline/idbStore.ts`); `@xstate/fsm` (`lib/orderStateMachine.ts`).
 - **Rejected:** `solve-tsp` and `javascript-tsp` (not on npm), `glpk.js` (GPL-3.0), `link-preview-js` (the server would fetch any URL).
 
+**Sheets and overlays (decided by the owner 2026-10-28).** Every sheet, the search overlay and the photo viewer blur the page by 8px; sheets slide on `--ease-glide`. Asked and decided:
+
+- **Snap points:** built on our HeroUI sheet (`BottomSheet expandable`: half height, full on pull-up, tap or scroll), not Vaul (unmaintained since Dec 2024, would replace the drawer under every sheet).
+- **Haptics:** `web-haptics` 0.0.6 (exact, MIT, 6 KB, no dependencies) behind `lib/haptics.ts`. Android uses the vibration API; iPhone ticks through a hidden switch control, a hack Apple could break. Swap the one function for `@capacitor/haptics` when the app is wrapped.
+- **Photo viewer:** `yet-another-react-lightbox` 3.32.2 (exact, MIT) with its Zoom plugin, loaded on the first photo opened (`components/PhotoLightbox.tsx`), over PhotoSwipe (last release May 2024) or a hand-made swipe without zoom.
+- Built without a library: the back button closes the open sheet or viewer (`lib/useBackToClose.ts`), a sheet with unsaved input asks before closing (`dirty`), the main save sticks to the foot of a sheet, and sheets cap their height by the space above the keyboard.
+
 ### 10.7 Live updates: where they would be used
 
 Added 2026-10-23 from a review of the code and these docs. The candidates in the last group are inferred, not stated in the entries.

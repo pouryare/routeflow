@@ -36,6 +36,7 @@ export default function CustomerSheet({
 
   return (
     <BottomSheet
+      expandable
       open={open}
       title={data?.business_name ?? fallbackName ?? "مشتری"}
       subtitle={

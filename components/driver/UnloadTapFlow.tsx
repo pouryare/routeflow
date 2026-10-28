@@ -14,6 +14,7 @@
 //
 // More than one line is the NORMAL case — «خراب ۵ کیلو» beside «تاریخ مصرف گذشته ۲ کارتن».
 
+import BottomSheet from "@/components/mobile/BottomSheet";
 import { FieldInput } from "@/components/FieldInput";
 import BusyIcon from "@/components/meridian/BusyIcon";
 import { Icon } from "@/components/meridian/Icon";
@@ -79,10 +80,15 @@ export default function UnloadTapFlow({
     [presets, picked, qty]
   );
 
-  if (!open) return null;
-
   return (
-    <Sheet onClose={onClose}>
+    <BottomSheet
+      open={open}
+      title="تخلیهٔ وانت"
+      onClose={onClose}
+      closeLabel="بستن تخلیه"
+      bodyClassName="unload-sheet"
+      dirty={Object.keys(picked).length > 0 || Object.keys(qty).length > 0}
+    >
       <p className="mb-3 text-[length:var(--text-xs)] text-text-muted">
         مقدارها از روی وانت پر شده‌اند. اگر چیزی فرق دارد، همان‌جا اصلاح کنید.
       </p>
@@ -145,7 +151,7 @@ export default function UnloadTapFlow({
         </p>
       )}
 
-      <div className="flex gap-2">
+      <div className="sheet-save flex gap-2">
         <button
           type="button"
           disabled={busy || presets.length === 0}
@@ -162,16 +168,6 @@ export default function UnloadTapFlow({
           <Icon name="x" size="sm" /> انصراف از تخلیه
         </button>
       </div>
-    </Sheet>
-  );
-}
-
-function Sheet({ children }: { children: React.ReactNode; onClose: () => void }) {
-  return (
-    <div className="scrim fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-3" dir="rtl">
-      <div className="scrim__rise w-full max-w-md rounded-[var(--radius-lg)] border border-border bg-surface p-4">
-        {children}
-      </div>
-    </div>
+    </BottomSheet>
   );
 }

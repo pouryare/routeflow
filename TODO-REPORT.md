@@ -3,7 +3,8 @@
 _Condensed 2026-10-23, updated 2026-10-28. Each finished piece of work is one line here; the full earlier text is in git history (`git log -p TODO-REPORT.md`)._
 
 ## Done
-- [x] Overlay backdrops: one 8px blur for every layer that covers the page (sheets, search overlay, photo lightbox, driver unload sheet) and a smooth no-bounce slide for sheets (`--ease-glide` over `--dur-panel` in, 260 ms out, backdrop on the same clock); checked at 390×844 in light and dark
+- [x] Overlay backdrops: one 8px blur for every layer that covers the page (sheets, search overlay, photo viewer) and a smooth no-bounce slide for sheets (`--ease-glide` over `--dur-panel` in, 260 ms out, backdrop on the same clock); checked at 390×844 in light and dark
+- [x] Sheet follow-ups (owner picked all but page shrink): back button closes a sheet or the photo viewer (`lib/useBackToClose.ts`, tested); sheets capped by the space above the keyboard; main save sticks to the sheet's foot (`.tf-go`, `.sheet-save`); `dirty` sheets ask before dropping input (district, business profile, add shareholder, shareholder payment, unload); `expandable` half/full sheets («بیشتر», customer sheet); haptic ticks via `web-haptics` (sheet open, success and error toasts); photo viewer on `yet-another-react-lightbox` with zoom and swipe-down; driver unload popup moved onto `BottomSheet`
 - [x] Company and shareholders, step 5: read-only «شریک» role whose only page is «سهم من» (`app/(shell)/my-share`): their share, capital, advances taken, dividends owed and an estimate for the open year; `proxy.ts` refuses every other page and API for that role, and the header hides search, bell and quick actions from it. Owner creates the login in the users admin (role «شریک») and links it in «شرکا». Looked at at 390×844 in light and dark, no sideways scroll
 - [x] Company and shareholders, step 4: advances and capital from the owner screen, yearly profit split with preview (legal reserve for a registered company, netting advances), per-group profit with shared-cost rules (by share of sales or kept at company level), group loss absorbed by the company and repaid first from that group's later profit (`lib/profitSplit.ts`, `lib/repo/profitSplit.ts`, `/api/accounting/profit-split`, `/api/accounting/cost-rules`)
 - [x] Company and shareholders, step 3: shareholders, fixed shares with start dates (whole company or one group, must total 100%), company legal form, owner-only «شرکا» page in the accounting tab (`components/accounting/ShareholdersPanel.tsx`, `/api/accounting/shareholders*`, `/api/accounting/legal-form`); looked at at 390×844 in light and dark
@@ -206,7 +207,7 @@ _Condensed 2026-10-23, updated 2026-10-28. Each finished piece of work is one li
 - Step-up gaps: SMS backup (Farazsms) is not wired, so someone without an authenticator is told to enrol first; guards not yet on creating an owner or manager, exporting customers, changing your own mobile, hard deletes, cancelling or editing a delivered order, authenticator reset and overwrite imports (the rules and the guard exist, each route needs one line); no resend countdown until SMS exists
 - Found, not fixed: the credit-approval deck posts to `/api/admin/credit-approvals/…`, which the proxy closes to group managers (a group manager gets «دسترسی لازم را ندارید»); the discount decision lives under `/api/sales/discounts` for that reason
 
-- [ ] Sheet follow-ups proposed to the owner (waiting on a choice): phone back button closes a sheet, sheets stay above the keyboard, save button pinned in the sheet, guard against swiping away half-typed input, snap points, haptics; the driver unload popup and the photo lightbox are still hand-rolled rather than on `BottomSheet`
+- [ ] Sheets, not checked on a real phone: the keyboard cap (iPhone Safari moves the visual viewport differently), iPhone haptics (web-haptics' hidden-switch hack), and swipe direction in the photo viewer (the library swipes left-to-right for next, not mirrored for RTL). Not done: page-shrink behind sheets (owner skipped); other forms in sheets are not marked `dirty` yet
 
 ## Next steps
 1. Company and shareholders follow-ups: commission sweep button, share history and deactivate a shareholder, create the shareholder login from «شرکا» (`docs/company-and-shareholders.md`)
@@ -218,4 +219,4 @@ _Condensed 2026-10-23, updated 2026-10-28. Each finished piece of work is one li
 7. Record delay reasons on deliveries so the reason report's delay section fills
 8. Check the outside services from the Iranian server
 9. Decide the Android distribution route before F6 starts
-10. Sheet follow-ups once the owner picks which (see gaps)
+10. Owner tries the sheets on a real Android and iPhone: back button, keyboard, haptics, photo swipe

@@ -50,7 +50,8 @@ export default function DistrictEditor({
   }
 
   return (
-    <BottomSheet open title={district.properties.name} subtitle={district.properties.parent_name ? `منطقه: ${district.properties.parent_name}` : undefined} onClose={onClose} closeLabel="بستن ویرایش" bodyClassName="district-sheet">
+    <BottomSheet open title={district.properties.name} subtitle={district.properties.parent_name ? `منطقه: ${district.properties.parent_name}` : undefined} onClose={onClose} closeLabel="بستن ویرایش" bodyClassName="district-sheet"
+      dirty={status !== district.properties.coverage_status || notes !== (district.properties.notes ?? "")}>
       <label className="mb-1.5 block text-[length:var(--text-sm)] font-medium text-text">وضعیت پوشش</label>
       <ChipGroup
         wrap
@@ -76,7 +77,7 @@ export default function DistrictEditor({
       <button
         onClick={save}
         disabled={saving}
-        className="inline-flex items-center justify-center gap-[var(--space-2)] w-full cursor-pointer rounded-[var(--radius-md)] border border-accent bg-accent py-2 font-medium text-accent-ink transition-[filter,transform,opacity] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:enabled:scale-[1.03] hover:enabled:brightness-110 active:enabled:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
+        className="sheet-save inline-flex items-center justify-center gap-[var(--space-2)] w-full cursor-pointer rounded-[var(--radius-md)] border border-accent bg-accent py-2 font-medium text-accent-ink transition-[filter,transform,opacity] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:enabled:scale-[1.03] hover:enabled:brightness-110 active:enabled:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
       >
         <Icon name="map" size="md" />
         {saving ? "در حال ذخیرهٔ منطقه…" : "ذخیرهٔ منطقه"}

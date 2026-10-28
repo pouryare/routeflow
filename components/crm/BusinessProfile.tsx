@@ -196,7 +196,11 @@ function ProfileEditor({ edit, busy, onClose, onSave, profile }: { edit: Edit; b
   const currentPhone = edit.kind === "contact" ? phone : value;
   const bad = isPhone && !!currentPhone.trim() && !normPhone(currentPhone);
   const title = edit.kind === "verify" ? "نام و راه تماس این کسب‌وکار را بررسی کردید؟" : edit.kind === "tags" ? "برچسب‌ها (با ویرگول جدا کنید)" : edit.kind === "contact" ? "اطلاعات مخاطب" : FIELDS.find(f => f.key === edit.field)?.label;
-  return <BottomSheet open title={title} onClose={() => { if (!busy) onClose(); }} closeLabel="بستن ویرایش" bodyClassName="profile-edit-sheet">
+  const dirty = edit.kind === "business" ? value !== edit.value
+    : edit.kind === "tags" ? tags !== profile.tags.join("، ")
+    : edit.kind === "contact" ? name !== (c?.name ?? "") || phone !== (c?.phone_norm ? `0${c.phone_norm}` : "") || role !== (c?.role ?? "OTHER") || primary !== !!c?.is_primary
+    : false;
+  return <BottomSheet open title={title} onClose={() => { if (!busy) onClose(); }} closeLabel="بستن ویرایش" bodyClassName="profile-edit-sheet" dirty={dirty}>
     <form onSubmit={e => { e.preventDefault(); if (bad || busy) return;
       if (edit.kind === "verify") void onSave("/verify", "POST", { confirmed: true });
       else if (edit.kind === "tags") void onSave("/tags", "PUT", { tags: tags.split(/[,،]/).map(t => t.trim()).filter(Boolean) });
@@ -207,7 +211,7 @@ function ProfileEditor({ edit, busy, onClose, onSave, profile }: { edit: Edit; b
       {edit.kind === "business" && (edit.field === "business_type" ? <ChipGroup wrap group={{ id: "business_type", label: "نوع کسب‌وکار", mode: "single", value, onChange: v => setValue(v as string), options: BUSINESS_TYPES.map(t => ({ id: t, label: BUSINESS_TYPE_LABEL[t] })) }} /> : <FieldInput autoFocus  aria-label={title} value={value} required={edit.field === "business_name"} inputMode={isPhone ? "tel" : "text"} dir={isPhone ? "ltr" : "rtl"} aria-invalid={touched && bad} onBlur={() => setTouched(true)} onChange={e => setValue(isPhone ? sanitizePhoneInput(e.target.value) : e.target.value)} />)}
       {edit.kind === "contact" && <><label>نام<FieldInput  value={name} onChange={e => setName(e.target.value)} /></label><label>تلفن<FieldInput  dir="ltr" inputMode="tel" value={phone} aria-invalid={touched && bad} onBlur={() => setTouched(true)} onChange={e => setPhone(sanitizePhoneInput(e.target.value))} /></label><div><span>سمت</span><ChipGroup wrap group={{ id: "contact_role", label: "سمت", mode: "single", neutral: "__none", value: role, onChange: v => { if (v && v !== "__none") setRole(v as string); }, options: CONTACT_ROLES.map(r => ({ id: r, label: CONTACT_ROLE_LABEL[r] })) }} /></div><CheckField checked={primary} onChange={setPrimary}>مخاطب اصلی</CheckField></>}
       {touched && bad && <p role="alert">شماره تلفن معتبر نیست</p>}
-      <button type="submit" className="inline-flex items-center justify-center gap-[var(--space-2)] btn solid" style={TOUCH} disabled={busy || bad}>
+      <button type="submit" className="sheet-save inline-flex items-center justify-center gap-[var(--space-2)] btn solid" style={TOUCH} disabled={busy || bad}>
       <Icon name="edit" size="md" />
       {busy ? "در حال ثبت…" : edit.kind === "verify" ? "بله، اطلاعات درست است" : "ذخیرهٔ تغییر"}</button>
       <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn ghost" style={TOUCH} disabled={busy} onClick={onClose}>
