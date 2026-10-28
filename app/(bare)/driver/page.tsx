@@ -7,6 +7,7 @@ import { plain } from "@/lib/db";
 import { driverHomeData } from "@/lib/repo/driverHome";
 import { driverDaySections } from "@/lib/driverDay";
 import { faToman, faNum } from "@/lib/format";
+import CountUp from "@/components/meridian/CountUp";
 import DriverRun from "@/components/driver/DriverRun";
 import DriverDaySection from "@/components/driver/DriverDaySection";
 import SyncStatus from "@/components/SyncStatus";
@@ -144,9 +145,12 @@ export default async function DriverPage() {
                 <div className="mt-[var(--space-1)] text-[length:var(--text-xs)] text-[var(--text-faint)]">
                   {faNum(commission.kg)} کیلو تحویل‌شده
                 </div>
+                <div className="mt-[var(--space-1)] text-[length:var(--text-xs)] text-[var(--text-faint)]">
+                  پرداخت‌شده {faToman(commission.paid_toman)} · مانده {faToman(commission.owed_toman)}
+                </div>
               </div>
               <div className="tabular-nums text-[length:var(--text-md)] font-medium text-[var(--text)]">
-                {faToman(commission.accrued_toman)}
+                <CountUp value={commission.accrued_toman} /> تومان
               </div>
             </div>
           )}

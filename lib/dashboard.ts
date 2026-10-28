@@ -38,6 +38,9 @@ export interface SalesDashboard {
   kg: number;
   /** Delivered packs over ordered packs. Zero when nothing has been ordered. */
   fill_rate: number;
+  /** Margin on delivered orders split by how much of each order the customer has paid: an
+   *  order paid 40% has realized 40% of its margin. `realized + unrealized = margin_toman`. */
+  profit: { realized_toman: number; unrealized_toman: number };
   debt: { total: number; d0_7: number; d8_30: number; over_30: number };
   customer_count: number;
   revenue_by_day: Series[];
@@ -111,6 +114,7 @@ export async function salesDashboard(db: Db, session: Session): Promise<SalesDas
          SELECT o.id AS oid, o.order_date AS od, o.customer_id AS cid, o.salesperson_user_id AS sid,
                 COALESCE(o.total_toman, (SELECT SUM(${LINE_TOTAL}) FROM order_lines ol JOIN products p ON p.id = ol.product_id WHERE ol.order_id = o.id)) AS t,
                 COALESCE(o.cost_toman, (SELECT SUM(${LINE_COST}) FROM order_lines ol JOIN products p ON p.id = ol.product_id WHERE ol.order_id = o.id)) AS cst,
+                o.paid_toman AS pd,
                 COALESCE(o.kg_total, (SELECT SUM(${LINE_KG}) FROM order_lines ol JOIN products p ON p.id = ol.product_id WHERE ol.order_id = o.id)) AS kg
            FROM orders o
            JOIN customers c ON c.id = o.customer_id
@@ -118,6 +122,9 @@ export async function salesDashboard(db: Db, session: Session): Promise<SalesDas
             AND EXISTS (SELECT 1 FROM order_lines ol WHERE ol.order_id = o.id)
        )
        SELECT 'tot' AS kind, NULL AS label, SUM(t) AS a, SUM(cst) AS b, SUM(kg) AS c, COUNT(*) AS n FROM ot
+       UNION ALL
+       SELECT 'real', NULL,
+              SUM(CASE WHEN t > 0 THEN ${round("(t - cst) * LEAST(GREATEST(pd, 0), t) / t")} ELSE 0 END), NULL, NULL, NULL FROM ot
        UNION ALL
        SELECT 'date', od, SUM(t), NULL, NULL, NULL FROM ot GROUP BY od
        UNION ALL
@@ -129,7 +136,7 @@ export async function salesDashboard(db: Db, session: Session): Promise<SalesDas
         WHERE u.display_name IS NOT NULL AND u.display_name <> '' GROUP BY u.display_name`
     )
     .all(...scope.params) as unknown as {
-    kind: "tot" | "date" | "cust" | "rep";
+    kind: "tot" | "real" | "date" | "cust" | "rep";
     label: string | null;
     a: number | null;
     b: number | null;
@@ -184,8 +191,10 @@ export async function salesDashboard(db: Db, session: Session): Promise<SalesDas
   let cost = 0;
   let kg = 0;
   let orderCount = 0;
+  let realized = 0;
 
   for (const row of agg) {
+    if (row.kind === "real") realized = Number(row.a ?? 0);
     if (row.kind === "tot") {
       revenue = row.a ?? 0;
       cost = row.b ?? 0;
@@ -274,6 +283,7 @@ export async function salesDashboard(db: Db, session: Session): Promise<SalesDas
   return {
     revenue_toman: revenue,
     margin_toman: revenue - cost,
+    profit: { realized_toman: realized, unrealized_toman: revenue - cost - realized },
     order_count: orderCount,
     // Guarded: an empty dashboard is the normal state for months, and a NaN in an SVG
     // path attribute makes the entire chart vanish with no error anywhere.
