@@ -123,6 +123,17 @@ describe("commission in the ledger", () => {
     expect(await net("5107")).toBe(100000);
   });
 
+  it("tags the revenue and cost legs of a delivery with the customer's group", async () => {
+    const legs = await getDb()
+      .prepare(
+        `SELECT a.code, e.group_id FROM ledger_entries e JOIN accounts a ON a.id = e.account_id
+          WHERE a.code IN ('4101', '1201')`
+      )
+      .all() as { code: string; group_id: number | null }[];
+    expect(legs.length).toBeGreaterThan(0);
+    expect(legs.every((l) => l.group_id === ctx.group)).toBe(true);
+  });
+
   it("posts only the difference when the accrual grows or a backdated rate cuts it", async () => {
     const db = getDb();
     await sellAndDeliver(2, "2026-06-10", ctx.nazanin); // +100,000

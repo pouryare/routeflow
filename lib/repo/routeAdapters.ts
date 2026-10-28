@@ -25,7 +25,10 @@ import { logPlatformAccess } from "@/lib/platformAccess";
 import type { Session } from "@/lib/session";
 import type { Db } from "@/lib/database/client";
 import { orgOfUser } from "@/lib/repo/userOrg";
-import { postCommissionPayment, syncOnePerson, type CommissionKind } from "@/lib/repo/ledgerCommission";
+import { postCommissionPayment, syncCommissionAccrual, syncOnePerson, type CommissionKind } from "@/lib/repo/ledgerCommission";
+import { LedgerError } from "@/lib/repo/ledgerCore";
+import { tehranTodayIso } from "@/lib/jalali";
+import { costRules, partnerBalances, postDividendPayment, postPartnerAdvance, postSplit, previewSplit, setCostRule } from "@/lib/repo/profitSplit";
 import { addShareholder, legalFormOf, listShareholders, setLegalForm, setShares, sharesAt, type LegalForm } from "@/lib/repo/shareholders";
 
 type P<F extends (...a: never[]) => unknown> = Parameters<F>;
@@ -106,3 +109,35 @@ export const setSharesIn = async (input: P<typeof setShares>[1]) => await setSha
 export const sharesInForce = async (organizationId: number, groupId: number | null, onDate: string) => await sharesAt(getDb(), organizationId, groupId, onDate);
 export const legalFormIn = async (organizationId: number) => await legalFormOf(getDb(), organizationId);
 export const setLegalFormIn = async (organizationId: number, form: LegalForm) => await setLegalForm(getDb(), organizationId, form);
+
+/** The yearly split, with commission brought up to date first so profit is after commission. A closed
+ *  current period cannot take the catch-up journals; the preview then says so instead of failing. */
+export const previewSplitIn = async (organizationId: number, year: number, userId: number) => {
+  const db = getDb();
+  return await db.tx(async () => {
+    let note: string | null = null;
+    try {
+      await syncCommissionAccrual(db, { organizationId, asOf: tehranTodayIso(), createdBy: userId });
+    } catch (e) {
+      if (!(e instanceof LedgerError)) throw e;
+      note = `پورسانت تا امروز در دفتر به‌روز نشد: ${e.message}`;
+    }
+    const preview = await previewSplit(db, organizationId, year);
+    if (note) preview.warnings.push(note);
+    return preview;
+  });
+};
+export const postSplitIn = async (input: { organizationId: number; year: number; approvedOn?: string | null; createdBy: number }) => {
+  const db = getDb();
+  return await db.tx(async () => {
+    await syncCommissionAccrual(db, { organizationId: input.organizationId, asOf: tehranTodayIso(), createdBy: input.createdBy });
+    return await postSplit(db, input);
+  });
+};
+export const partnerBalancesOf = async (organizationId: number) => await partnerBalances(getDb(), organizationId);
+export const payPartner = async (kind: "advance" | "dividend", input: P<typeof postPartnerAdvance>[1]) =>
+  await getDb().tx(async () => (kind === "advance" ? await postPartnerAdvance(getDb(), input) : await postDividendPayment(getDb(), input)));
+export const costRulesOf = async (organizationId: number) => await costRules(getDb(), organizationId);
+export const setCostRuleIn = async (input: P<typeof setCostRule>[1]) => await setCostRule(getDb(), input);
+export const syncCommissionIn = async (organizationId: number, userId: number) =>
+  await getDb().tx(async () => await syncCommissionAccrual(getDb(), { organizationId, asOf: tehranTodayIso(), createdBy: userId }));

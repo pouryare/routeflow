@@ -328,7 +328,9 @@ export function proxy(req: NextRequest) {
     pathname.startsWith("/api/accounting/periods") ||
     pathname.startsWith("/api/accounting/journals") ||
     pathname.startsWith("/api/accounting/shareholders") ||
-    pathname.startsWith("/api/accounting/legal-form");
+    pathname.startsWith("/api/accounting/legal-form") ||
+    pathname.startsWith("/api/accounting/profit-split") ||
+    pathname.startsWith("/api/accounting/cost-rules");
   if (isAccountingWrite && !OWNER_ROLES.includes(claims.role)) {
     return deny("/sales");
   }

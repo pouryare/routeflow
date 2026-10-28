@@ -26,7 +26,10 @@ export type LedgerSourceType =
   | "MANUAL"
   | "REVERSAL"
   | "COMMISSION"
-  | "COMMISSION_PAYMENT";
+  | "COMMISSION_PAYMENT"
+  | "PARTNER_ADVANCE"
+  | "DIVIDEND_PAYMENT"
+  | "PROFIT_SPLIT";
 
 export interface LedgerLeg {
   accountId: number;
