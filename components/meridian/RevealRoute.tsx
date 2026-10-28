@@ -31,27 +31,31 @@ const REVEAL: Record<string, string[]> = {
   "/sales/admin/groups": [".card", ".kblock"],
 };
 
+/** Every shell page outside /sales: the cards its screens already use. A page with none of
+ *  them simply has nothing to stagger. */
+const DEFAULT_SELECTORS = [".card", ".kblock", ".gcard", ".sect", ".tile", ".pocket"];
+
 /** Milliseconds between one card and the next. */
-const STAGGER = 38;
+const STAGGER = 55;
 /** Above this many cards the lift is dropped for a plain fade.
  *
  *  The spring overshoots by design — each card passes its resting place and settles back.
  *  On three headline cards that is liveliness; on a grid of twelve order pockets it is
  *  twelve things wobbling at once. Six is where it stops reading as one gesture. */
-const LIFT_MAX = 6;
+const LIFT_MAX = 8;
 /** Past this many the stagger stops reading as rhythm and starts reading as lag, so the
  *  delay stops growing rather than the cards stopping. */
-const CAP = 8;
+const CAP = 10;
 /** `--ease` and `--spring` from app/globals.css. The Web Animations API takes an easing
  *  string, not a custom property, so they are repeated here. */
 const EASE = "cubic-bezier(.16,1,.3,1)";
 const SPRING = "cubic-bezier(.34,1.32,.5,1)";
 
-function selectorsFor(pathname: string): string[] {
+export function selectorsFor(pathname: string): string[] {
   const key = Object.keys(REVEAL)
     .filter((k) => pathname === k || pathname.startsWith(`${k}/`))
     .sort((a, b) => b.length - a.length)[0];
-  return REVEAL[key ?? "/sales"] ?? [];
+  return key ? REVEAL[key] : DEFAULT_SELECTORS;
 }
 
 /** The entrance, for every sales screen, from one place.
@@ -91,7 +95,7 @@ export default function RevealRoute() {
       const delay = Math.min(i, CAP) * STAGGER;
       running.push(
         el.animate([{ opacity: 0 }, { opacity: 1 }], {
-          duration: lift ? 460 : 300,
+          duration: lift ? 560 : 340,
           easing: EASE,
           delay,
           fill: "backwards",
@@ -99,8 +103,8 @@ export default function RevealRoute() {
       );
       if (lift) {
         running.push(
-          el.animate([{ transform: "translateY(16px)" }, { transform: "none" }], {
-            duration: 620,
+          el.animate([{ transform: "translateY(28px)" }, { transform: "none" }], {
+            duration: 760,
             easing: SPRING,
             delay,
             fill: "backwards",
