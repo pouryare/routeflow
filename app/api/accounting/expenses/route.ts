@@ -54,6 +54,8 @@ export async function POST(req: NextRequest) {
       incurredAt: body.incurred_at,
       incurredBy: guard.session.user.id,
       memo: body.memo ?? null,
+      // A manager's costs are their group's; an owner's are shared and divided by the company's rule.
+      groupId: guard.session.role === "group_manager" ? guard.session.groupId : null,
     });
     return NextResponse.json({ ok: true, id }, { status: 201 });
   } catch (e) {

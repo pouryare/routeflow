@@ -105,6 +105,8 @@ export async function postReceiptReversal(
 
 /** COGS is posted by delivery recognition, never by hand. */
 const COGS_CODE = "5101";
+/** Commission is posted by lib/repo/ledgerCommission.ts from the commission ledgers, never by hand. */
+const SYSTEM_EXPENSE_CODES = [COGS_CODE, "5107", "5108", "5109"];
 
 export interface ExpenseCategory {
   id: number;
@@ -127,12 +129,12 @@ export async function expenseCategories(): Promise<ExpenseCategory[]> {
     .prepare(
       `SELECT id, code, name_fa AS nameFa, name_en AS nameEn
          FROM accounts
-        WHERE type = 'EXPENSE' AND is_postable = 1 AND active = 1 AND code <> ?
+        WHERE type = 'EXPENSE' AND is_postable = 1 AND active = 1 AND code NOT IN (${SYSTEM_EXPENSE_CODES.map(() => "?").join(", ")})
         ORDER BY code`
     )
     // `as unknown as` is the house idiom off node:sqlite's Record<string, SQLOutputValue>
     // -- see listSuppliers. A direct cast is TS2352.
-    .all(COGS_CODE) as unknown as ExpenseCategory[];
+    .all(...SYSTEM_EXPENSE_CODES) as unknown as ExpenseCategory[];
 }
 
 /** An expense: Dr the category / Cr cash.
@@ -153,6 +155,8 @@ export async function postExpense(
     incurredAt: string;
     incurredBy: number;
     memo?: string | null;
+    /** The group that carries this cost; none means it is shared and divided by the company's rule. */
+    groupId?: number | null;
   }
 ): Promise<number> {
   const acct = await db
@@ -163,6 +167,9 @@ export async function postExpense(
 
   if (!acct || acct.type !== "EXPENSE" || !acct.is_postable || !acct.active) {
     throw new LedgerError("این حساب، حساب هزینه نیست");
+  }
+  if (acct.code !== COGS_CODE && SYSTEM_EXPENSE_CODES.includes(acct.code)) {
+    throw new LedgerError("پورسانت از دفتر پورسانت ثبت می‌شود و دستی ثبت نمی‌شود");
   }
   if (acct.code === COGS_CODE) {
     throw new LedgerError("بهای تمام‌شده با تحویل کالا ثبت می‌شود و دستی ثبت نمی‌شود");
@@ -175,7 +182,7 @@ export async function postExpense(
     createdBy: input.incurredBy,
     memo: input.memo ?? null,
     legs: [
-      { accountId: input.accountId, side: "D", amountToman: input.amountToman },
+      { accountId: input.accountId, side: "D", amountToman: input.amountToman, groupId: input.groupId ?? null },
       { accountId: await cashAccountFor(input.method), side: "C", amountToman: input.amountToman },
     ],
   });
@@ -219,21 +226,29 @@ export async function postDeliveryRecognition(
     .get(input.organizationId, input.deliveryStopId);
   if (already) return null;
 
+  /* The customer's group at the time of the sale, on every leg, so a group's profit is read straight
+     off the lines (the yearly split). A customer with no group leaves the lines untagged. */
+  const owner = await db.prepare("SELECT group_id FROM customers WHERE id = ?").get(input.customerId) as
+    | { group_id: number | null }
+    | undefined;
+  const groupId = owner?.group_id ?? null;
+
   const legs: LedgerLeg[] = [
     {
       accountId: await accountOrThrow("1201"),
       side: "D",
       amountToman: input.revenueToman,
       customerId: input.customerId,
+      groupId,
     },
-    { accountId: await accountOrThrow("4101"), side: "C", amountToman: input.revenueToman },
+    { accountId: await accountOrThrow("4101"), side: "C", amountToman: input.revenueToman, groupId },
   ];
 
   // Only when the cost is actually known AND positive.
   if (input.costToman !== null && input.costToman > 0) {
     legs.push(
-      { accountId: await accountOrThrow("5101"), side: "D", amountToman: input.costToman },
-      { accountId: await accountOrThrow("1203"), side: "C", amountToman: input.costToman }
+      { accountId: await accountOrThrow("5101"), side: "D", amountToman: input.costToman, groupId },
+      { accountId: await accountOrThrow("1203"), side: "C", amountToman: input.costToman, groupId }
     );
   }
 

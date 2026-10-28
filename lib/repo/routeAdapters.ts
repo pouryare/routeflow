@@ -23,6 +23,13 @@ import { deliveredOrdersForCustomer } from "@/lib/repo/payments";
 import { searchCustomers, searchDistricts, searchNotes, searchOrders, searchUsers } from "@/lib/repo/search";
 import { logPlatformAccess } from "@/lib/platformAccess";
 import type { Session } from "@/lib/session";
+import type { Db } from "@/lib/database/client";
+import { orgOfUser } from "@/lib/repo/userOrg";
+import { postCommissionPayment, syncCommissionAccrual, syncOnePerson, type CommissionKind } from "@/lib/repo/ledgerCommission";
+import { LedgerError } from "@/lib/repo/ledgerCore";
+import { tehranTodayIso } from "@/lib/jalali";
+import { costRules, myShare, partnerBalances, postCapitalContribution, postDividendPayment, postPartnerAdvance, postSplit, previewSplit, setCostRule } from "@/lib/repo/profitSplit";
+import { addShareholder, legalFormOf, listShareholders, setLegalForm, setShares, sharesAt, shareholderOfUser, type LegalForm } from "@/lib/repo/shareholders";
 
 type P<F extends (...a: never[]) => unknown> = Parameters<F>;
 
@@ -42,9 +49,35 @@ export const customerSummaryIn = async (...a: P<typeof readCustomerSummary> exte
 export const addSalesRate = async (input: P<typeof setRate>[1]) => await setRate(getDb(), input);
 export const addDriverRate = async (input: P<typeof setDriverRate>[1]) => await setDriverRate(getDb(), input);
 export const addManagerOverride = async (input: P<typeof setManagerOverride>[1]) => await setManagerOverride(getDb(), input);
-export const paySales = async (input: P<typeof recordPayment>[1]) => await recordPayment(getDb(), input);
-export const payDriver = async (input: P<typeof recordDriverPayment>[1]) => await recordDriverPayment(getDb(), input);
-export const payManager = async (input: P<typeof recordManagerPayment>[1]) => await recordManagerPayment(getDb(), input);
+/** Record a commission payment and put it in the books in one transaction: first bring the person's
+ *  accrual up to date (so 2103 never goes negative on a payment), then Dr 2103 / Cr cash. */
+async function payAndPost(
+  kind: CommissionKind,
+  personId: number,
+  input: { amount_toman: number; paid_on: string; created_by?: number | null },
+  record: (db: Db) => Promise<number>
+): Promise<number> {
+  const db = getDb();
+  return await db.tx(async () => {
+    const id = await record(db);
+    const organizationId = await orgOfUser(db, personId, input.created_by);
+    const createdBy = input.created_by ?? personId;
+    if (organizationId != null) {
+      await syncOnePerson(db, { organizationId, kind, personId, asOf: input.paid_on, createdBy });
+      await postCommissionPayment(db, {
+        organizationId, kind, personId, createdBy, paymentId: id,
+        amountToman: input.amount_toman, paidOn: input.paid_on,
+      });
+    }
+    return id;
+  });
+}
+export const paySales = async (input: P<typeof recordPayment>[1]) =>
+  await payAndPost("sales", input.salesperson_user_id, input, (db) => recordPayment(db, input));
+export const payDriver = async (input: P<typeof recordDriverPayment>[1]) =>
+  await payAndPost("driver", input.driver_user_id, input, (db) => recordDriverPayment(db, input));
+export const payManager = async (input: P<typeof recordManagerPayment>[1]) =>
+  await payAndPost("manager", input.manager_user_id, input, (db) => recordManagerPayment(db, input));
 export const setThresholds = async (productId: number, input: P<typeof setStockThresholds>[2]) => await setStockThresholds(getDb(), productId, input);
 
 export const stockPositionIn = async (organizationId: number | null) => await advancedStockPosition(getDb(), organizationId);
@@ -69,3 +102,45 @@ export const searchIn = async (session: Session, q: string) => ({
   users: await searchUsers(getDb(), session, q),
   notes: await searchNotes(getDb(), session, q),
 });
+
+export const shareholdersOf = async (organizationId: number) => await listShareholders(getDb(), organizationId);
+export const addShareholderIn = async (input: P<typeof addShareholder>[1]) => await addShareholder(getDb(), input);
+export const setSharesIn = async (input: P<typeof setShares>[1]) => await setShares(getDb(), input);
+export const sharesInForce = async (organizationId: number, groupId: number | null, onDate: string) => await sharesAt(getDb(), organizationId, groupId, onDate);
+export const legalFormIn = async (organizationId: number) => await legalFormOf(getDb(), organizationId);
+export const setLegalFormIn = async (organizationId: number, form: LegalForm) => await setLegalForm(getDb(), organizationId, form);
+
+/** The yearly split, with commission brought up to date first so profit is after commission. A closed
+ *  current period cannot take the catch-up journals; the preview then says so instead of failing. */
+export const previewSplitIn = async (organizationId: number, year: number, userId: number) => {
+  const db = getDb();
+  return await db.tx(async () => {
+    let note: string | null = null;
+    try {
+      await syncCommissionAccrual(db, { organizationId, asOf: tehranTodayIso(), createdBy: userId });
+    } catch (e) {
+      if (!(e instanceof LedgerError)) throw e;
+      note = `پورسانت تا امروز در دفتر به‌روز نشد: ${e.message}`;
+    }
+    const preview = await previewSplit(db, organizationId, year);
+    if (note) preview.warnings.push(note);
+    return preview;
+  });
+};
+export const postSplitIn = async (input: { organizationId: number; year: number; approvedOn?: string | null; createdBy: number }) => {
+  const db = getDb();
+  return await db.tx(async () => {
+    await syncCommissionAccrual(db, { organizationId: input.organizationId, asOf: tehranTodayIso(), createdBy: input.createdBy });
+    return await postSplit(db, input);
+  });
+};
+export const partnerBalancesOf = async (organizationId: number) => await partnerBalances(getDb(), organizationId);
+export const payPartner = async (kind: "advance" | "dividend" | "capital", input: P<typeof postPartnerAdvance>[1]) =>
+  await getDb().tx(async () =>
+    kind === "advance" ? await postPartnerAdvance(getDb(), input)
+    : kind === "capital" ? await postCapitalContribution(getDb(), input)
+    : await postDividendPayment(getDb(), input));
+export const myShareOf = async (organizationId: number, partyId: number, year: number) => await myShare(getDb(), organizationId, partyId, year);
+export const shareholderOfUserIn = async (organizationId: number, userId: number) => await shareholderOfUser(getDb(), organizationId, userId);
+export const costRulesOf = async (organizationId: number) => await costRules(getDb(), organizationId);
+export const setCostRuleIn = async (input: P<typeof setCostRule>[1]) => await setCostRule(getDb(), input);

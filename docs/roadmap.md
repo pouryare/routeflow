@@ -487,6 +487,10 @@ The PostgreSQL rows here are now decided (10.1). The plan is phased: P1 an async
 | OCR, speech and language models on the device or a self-hosted server, behind an interface | F1, F2, F3, F5, F14 | wave 4 |
 | A read replica and materialised views for reports | F14, F123, F32, F134 | when reports get heavy |
 
+### 10.2a Company and shareholders in the books (decided 2026-10-28)
+
+Decisions and the design are in `docs/company-and-shareholders.md`: commission posted into the ledger, a person (party) and a group on every ledger line, shareholders with fixed percentages that carry a start date, a legal-form setting per company, advances anytime with one yearly split, per-group profit with shared costs divided by share of sales, and a read-only page for each shareholder. No outside library: the work is the app's own double-entry ledger, so there was nothing to adopt.
+
 ### 10.3 Not adding yet, and what would change that
 
 | Not now | Why | Revisit when |

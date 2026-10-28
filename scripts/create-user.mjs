@@ -14,9 +14,9 @@ import { openScriptDb } from "./_db.mjs";
 // The database is the one DATABASE_URL points at (set -a; . /etc/routeflow/env; set +a).
 // Kept in step with lib/roles.ts by a test -- this script is plain ESM run straight by
 // node with no build step, so it cannot import the TypeScript definition.
-const ROLES = ["platform_owner", "owner", "group_manager", "rep_manager", "phone_sales", "field_rep", "delivery_driver"];
+const ROLES = ["platform_owner", "owner", "group_manager", "rep_manager", "phone_sales", "field_rep", "delivery_driver", "shareholder"];
 const USAGE =
-  'Usage: node scripts/create-user.mjs <username> <password> "<Display Name>" <owner|group_manager|rep_manager|phone_sales|field_rep|delivery_driver> [group_id]';
+  'Usage: node scripts/create-user.mjs <username> <password> "<Display Name>" <owner|group_manager|rep_manager|phone_sales|field_rep|delivery_driver|shareholder> [group_id]';
 
 const [username, password, displayName, role, groupArg] = process.argv.slice(2);
 if (!username || !password || !displayName || !role) {

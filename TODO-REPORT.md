@@ -3,6 +3,10 @@
 _Condensed 2026-10-23, updated 2026-10-27. Each finished piece of work is one line here; the full earlier text is in git history (`git log -p TODO-REPORT.md`)._
 
 ## Done
+- [x] Company and shareholders, step 5: read-only «شریک» role whose only page is «سهم من» (`app/(shell)/my-share`): their share, capital, advances taken, dividends owed and an estimate for the open year; `proxy.ts` refuses every other page and API for that role, and the header hides search, bell and quick actions from it. Owner creates the login in the users admin (role «شریک») and links it in «شرکا». Looked at at 390×844 in light and dark, no sideways scroll
+- [x] Company and shareholders, step 4: advances and capital from the owner screen, yearly profit split with preview (legal reserve for a registered company, netting advances), per-group profit with shared-cost rules (by share of sales or kept at company level), group loss absorbed by the company and repaid first from that group's later profit (`lib/profitSplit.ts`, `lib/repo/profitSplit.ts`, `/api/accounting/profit-split`, `/api/accounting/cost-rules`)
+- [x] Company and shareholders, step 3: shareholders, fixed shares with start dates (whole company or one group, must total 100%), company legal form, owner-only «شرکا» page in the accounting tab (`components/accounting/ShareholdersPanel.tsx`, `/api/accounting/shareholders*`, `/api/accounting/legal-form`); looked at at 390×844 in light and dark
+- [x] Company and shareholders, steps 1 and 2 (`claude/project-thread-byvhbz`): commission accruals and payments post to the ledger (`lib/repo/ledgerCommission.ts`, accounts 5107–5109 against 2103), a person (`parties`) and a group on every ledger line, commission accounts kept out of the manual expense list; design in `docs/company-and-shareholders.md`
 - [x] «The smallest complete change» rule added to `CLAUDE.md`, adapted from the ponytail ruleset (MIT): scope first, reuse before writing, no unasked-for code, fix bugs at the root, one test for new logic, `shortcut:` comments, a never-cut list, and a skipped/risk line at the end of replies
 - [x] Actions minutes cut (`claude/project-thread-lb9196`): draft PRs skip CI, `main` runs only `check` after a merge, docs-only changes skip CI, shorter timeouts; secret scan for going public and `docs/make-repo-public.md`; `LICENSE` (all rights reserved)
 - [x] «Not done» batch: (?) on single figures (`GradientStat help`, 11 stat cards on the sales summary, dashboard and stock pages; copy in `lib/help/figures.ts`); notification feed rows, the receipt-photo picker (`FileTrigger`) and the map's saved-list, route, day-plan and customer-list buttons are HeroUI `Button`s now
@@ -145,6 +149,8 @@ _Condensed 2026-10-23, updated 2026-10-27. Each finished piece of work is one li
 - [x] Roadmap 1b: UI pattern batches B to F and the batch A leftovers (new F146 and F147 in `docs/future-features.md`)
 
 ## Not done / gaps
+- [ ] Commission accrual is brought up to date when a commission payment is recorded; nothing runs it on a schedule or from a screen yet, so the income statement is after commission only for people who have been paid. Needs a sweep or an owner button (follow-up 1)
+- [ ] Company and shareholders: the «شرکا» page has no screen for shares that were set earlier (history) and cannot remove or deactivate a shareholder; the shareholder's login is made by hand in the users admin; income tax on profit is not modeled
 - [ ] Owner to set a $0 Actions budget (Settings, Billing, Budgets) and decide whether the PostgreSQL job may run less often (docs-only or label); the history rewrite in `docs/make-repo-public.md` is not done; if branch protection requires CI, docs-only PRs (skipped) will need it relaxed
 - [ ] `WidgetBoundary` logs to the browser console only; it should feed the structured logging and error tracker (F108) when those exist
 - [ ] Not guarded yet: the order form, pipeline and board panels (they sit inside the page-level error screen); add a boundary where a widget has failed on its own in practice
@@ -200,11 +206,12 @@ _Condensed 2026-10-23, updated 2026-10-27. Each finished piece of work is one li
 - Found, not fixed: the credit-approval deck posts to `/api/admin/credit-approvals/…`, which the proxy closes to group managers (a group manager gets «دسترسی لازم را ندارید»); the discount decision lives under `/api/sales/discounts` for that reason
 
 ## Next steps
-1. Owner puts the server on Postgres following `docs/postgres-server.md` (main is Postgres-only), picks the second machine for the off-site backups, authorizes the key and stores the passphrase; first full backup and restore drill on the real server
-2. Adopt the audited small libraries as their features start: `pino`, `web-vitals`, `lru-cache`, Valibot, `nuqs`, `@tanstack/react-virtual` (roadmap 10.6); design the chat on server-sent events plus an `events` table
-3. Owner checks the pocket cards, the (?) help, the filter sheets and the text fields on a real phone
-4. Move the remaining `tf-opt` menu links and the filter chips onto HeroUI parts, and the raw text fields onto `TextInput`
-5. Decide whether the smoke suite joins CI (needs Chromium on the runner and a demo database; map tiles stubbed)
-6. Record delay reasons on deliveries so the reason report's delay section fills
-7. Check the outside services from the Iranian server
-8. Decide the Android distribution route before F6 starts
+1. Company and shareholders follow-ups: commission sweep button, share history and deactivate a shareholder, create the shareholder login from «شرکا» (`docs/company-and-shareholders.md`)
+2. Owner puts the server on Postgres following `docs/postgres-server.md` (main is Postgres-only), picks the second machine for the off-site backups, authorizes the key and stores the passphrase; first full backup and restore drill on the real server
+3. Adopt the audited small libraries as their features start: `pino`, `web-vitals`, `lru-cache`, Valibot, `nuqs`, `@tanstack/react-virtual` (roadmap 10.6); design the chat on server-sent events plus an `events` table
+4. Owner checks the pocket cards, the (?) help, the filter sheets and the text fields on a real phone
+5. Move the remaining `tf-opt` menu links and the filter chips onto HeroUI parts, and the raw text fields onto `TextInput`
+6. Decide whether the smoke suite joins CI (needs Chromium on the runner and a demo database; map tiles stubbed)
+7. Record delay reasons on deliveries so the reason report's delay section fills
+8. Check the outside services from the Iranian server
+9. Decide the Android distribution route before F6 starts

@@ -686,10 +686,12 @@ export interface LedgerEntries {
   amount_toman: number;
   created_at: string;
   customer_id: number | null;
+  group_id: number | null;
   id: Generated<number>;
   journal_id: number;
   memo: string | null;
   organization_id: number;
+  party_id: number | null;
   side: string;
   supplier_id: number | null;
 }
@@ -902,6 +904,7 @@ export interface Organizations {
   discount_auto_pass_pct: Generated<number>;
   discount_commission_pct: Generated<number>;
   id: Generated<number>;
+  legal_form: Generated<string>;
   name: string;
   plan: Generated<string>;
   slug: string;
@@ -917,6 +920,16 @@ export interface Packagings {
   product_id: number;
   qty_per_pack: number;
   sync_xid: string | null;
+}
+
+export interface Parties {
+  active: Generated<number>;
+  created_at: string;
+  id: Generated<number>;
+  kind: string;
+  name_fa: string;
+  organization_id: number;
+  user_id: number | null;
 }
 
 export interface PaymentAllocations {
@@ -1004,6 +1017,39 @@ export interface Products {
   target_stock: number | null;
   updated_at: string;
   volume_m3_per_base_unit: number | null;
+}
+
+export interface ProfitSplitGroups {
+  distributable_toman: number;
+  group_id: number;
+  id: Generated<number>;
+  loss_after_toman: number;
+  organization_id: number;
+  profit_toman: number;
+  repaid_toman: number;
+  split_id: number;
+}
+
+export interface ProfitSplitLines {
+  amount_toman: number;
+  group_id: number | null;
+  id: Generated<number>;
+  organization_id: number;
+  party_id: number;
+  split_id: number;
+}
+
+export interface ProfitSplits {
+  approved_on: string | null;
+  created_at: string;
+  created_by: number | null;
+  distributed_toman: number;
+  fiscal_year: number;
+  id: Generated<number>;
+  journal_id: number;
+  organization_id: number;
+  reserve_toman: number;
+  total_profit_toman: number;
 }
 
 export interface PurchaseLines {
@@ -1263,6 +1309,23 @@ export interface SeasonalFactors {
   updated_at: string;
 }
 
+export interface SharedCostRules {
+  account_id: number;
+  mode: string;
+  organization_id: number;
+}
+
+export interface Shareholdings {
+  created_at: string;
+  created_by: number | null;
+  group_id: number | null;
+  id: Generated<number>;
+  organization_id: number;
+  party_id: number;
+  percent_bp: number;
+  valid_from: string;
+}
+
 export interface StockMovements {
   base_qty: number;
   batch_id: number | null;
@@ -1520,6 +1583,7 @@ export interface DB {
   orders: Orders;
   organizations: Organizations;
   packagings: Packagings;
+  parties: Parties;
   payment_allocations: PaymentAllocations;
   payments: Payments;
   photos: Photos;
@@ -1527,6 +1591,9 @@ export interface DB {
   product_costs: ProductCosts;
   product_prices: ProductPrices;
   products: Products;
+  profit_split_groups: ProfitSplitGroups;
+  profit_split_lines: ProfitSplitLines;
+  profit_splits: ProfitSplits;
   purchase_lines: PurchaseLines;
   purchases: Purchases;
   push_subscriptions: PushSubscriptions;
@@ -1546,6 +1613,8 @@ export interface DB {
   sales: Sales;
   saved_locations: SavedLocations;
   seasonal_factors: SeasonalFactors;
+  shared_cost_rules: SharedCostRules;
+  shareholdings: Shareholdings;
   stock_movements: StockMovements;
   stock_reservations: StockReservations;
   suppliers: Suppliers;

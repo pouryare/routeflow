@@ -2,7 +2,7 @@ import { describe, expect, test } from "vitest";
 import { ROLES, ROLE_LABEL, homePathFor, VAN_ROLES, isVanRole, type Role } from "@/lib/roles";
 
 describe("the role list", () => {
-  test("is the seven roles the app has, widest access first", () => {
+  test("is the eight roles the app has, widest access first", () => {
     // platform_owner is the vendor account: RouteFlow is sold to other distributors, so
     // somebody has to be able to read across tenants to support them. Every other role
     // stops at the edge of its own organisation. rep_manager runs the representative
@@ -15,6 +15,7 @@ describe("the role list", () => {
       "phone_sales",
       "field_rep",
       "delivery_driver",
+      "shareholder",
     ]);
   });
 
@@ -68,7 +69,8 @@ describe("homePathFor", () => {
     // vendor login landed on a 404. /sales/today already scopes itself to "all" for them.
     expect(homePathFor("field_rep")).toBe("/driver");
     expect(homePathFor("delivery_driver")).toBe("/driver");
-    for (const role of ROLES.filter((r) => !isVanRole(r))) {
+    expect(homePathFor("shareholder")).toBe("/my-share");
+    for (const role of ROLES.filter((r) => !isVanRole(r) && r !== "shareholder")) {
       expect(homePathFor(role), role).toBe("/sales/today");
     }
   });
