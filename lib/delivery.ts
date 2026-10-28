@@ -12,6 +12,7 @@ import type { Db } from "@/lib/database/client";
 import { getDb } from "./db";
 import {
   orderTotalToman,
+  netOfDiscount,
   lineTotalToman,
   lineCostToman,
   lineKg,
@@ -334,7 +335,7 @@ export async function readRun(db: Db, runId: number): Promise<RunDetail | null> 
   const stopRows = await db
     .prepare(
       `SELECT ds.id, ds.order_id, ds.status, ds.collected_toman, ds.sort_order, ds.notes,
-              o.order_no, o.priority, o.customer_id,
+              o.order_no, o.priority, o.customer_id, o.discount_toman,
               c.business_name AS customer_name, c.address, c.phone, c.lat, c.lng
          FROM delivery_stops ds
          JOIN orders o ON o.id = ds.order_id
@@ -342,11 +343,13 @@ export async function readRun(db: Db, runId: number): Promise<RunDetail | null> 
         WHERE ds.run_id = ?
         ORDER BY ds.sort_order, ds.id`
     )
-    .all(runId) as unknown as Omit<RunStop, "lines" | "total_toman">[];
+    .all(runId) as unknown as (Omit<RunStop, "lines" | "total_toman"> & { discount_toman: number })[];
 
   const stops: RunStop[] = await mapSeq(stopRows, async (stop) => {
     const lines = await stopLines(db, stop.order_id);
-    return { ...stop, lines, total_toman: orderTotalToman(lines) };
+    // The driver collects what the customer owes, so the approved discount is already off.
+    const { discount_toman, ...rest } = stop;
+    return { ...rest, lines, total_toman: netOfDiscount(orderTotalToman(lines), Number(discount_toman ?? 0)) };
   });
 
   return {
@@ -635,13 +638,15 @@ async function recogniseRevenue(c: DoorContext): Promise<void> {
       if (line.unit_cost_toman > 0) costToman += lineCostToman(line);
       else costKnown = false;
     }
+    // Revenue and the receivable are what the customer owes, so the approved discount is off both.
+    const discountRow = await db.prepare("SELECT discount_toman FROM orders WHERE id = ?").get(stop.order_id) as { discount_toman: number } | undefined;
     await postDeliveryRecognition(db, {
       organizationId: stockOrgId,
       deliveryStopId: stopId,
       customerId: stop.customer_id,
       deliveredAt: now,
       deliveredBy: input.by,
-      revenueToman: sumToman([revenueToman]),
+      revenueToman: sumToman([netOfDiscount(revenueToman, Number(discountRow?.discount_toman ?? 0))]),
       costToman: costKnown && costToman > 0 ? sumToman([costToman]) : null,
     });
   }
@@ -757,7 +762,8 @@ export async function recordDelivery(db: Db, stopId: number, input: DeliveryInpu
 
     // Re-read after writing, so the total is the delivered one rather than the ordered.
     const lines = await stopLines(db, stop.order_id);
-    const total = orderTotalToman(lines);
+    const discountRow = await db.prepare("SELECT discount_toman FROM orders WHERE id = ?").get(stop.order_id) as { discount_toman: number } | undefined;
+    const total = netOfDiscount(orderTotalToman(lines), Number(discountRow?.discount_toman ?? 0));
     const nothingTaken = lines.every((l) => (l.packs_delivered ?? l.packs_ordered) === 0);
     const someShort =
       !nothingTaken && lines.some((l) => (l.packs_delivered ?? 0) < l.packs_ordered);

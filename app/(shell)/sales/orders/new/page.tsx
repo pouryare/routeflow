@@ -6,7 +6,7 @@ import { orderEntryFor } from "@/lib/repo/ordersView";
 import OrderForm from "@/components/sales/OrderForm";
 import OrderQuickEntry from "@/components/flows/OrderQuickEntry";
 import PageHeader from "@/components/meridian/PageHeader";
-import { canSell, isVanRole } from "@/lib/roles";
+import { canSell, isOwner, isVanRole } from "@/lib/roles";
 import Link from "next/link";
 import StatePage from "@/components/meridian/StatePage";
 import { Icon } from "@/components/meridian/Icon";
@@ -52,7 +52,7 @@ export default async function NewOrderPage({
     );
   }
 
-  const { customers, products, sellers } = await orderEntryFor(session);
+  const { customers, products, sellers, payers } = await orderEntryFor(session);
 
   // Validated against the customers this caller can already see, rather than passed
   // through. A link is user input: an id from another group must not preselect anything,
@@ -75,6 +75,8 @@ export default async function NewOrderPage({
       customers={customers}
       products={products}
       sellers={sellers}
+      payers={payers}
+      canDiscountFreely={isOwner(session.role)}
       initialCustomerId={initialCustomerId}
     />    </>
   );

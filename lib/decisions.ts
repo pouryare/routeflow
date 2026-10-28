@@ -48,6 +48,20 @@ export const CREDIT_CONSEQUENCE: Record<string, string> = {
   rejected: "سفارش متوقف می‌ماند تا لغو شود یا بدهی مشتری زیر سقف برگردد.",
 };
 
+/** Discount approvals: the group manager's or owner's verdict on a discount asked for on an order.
+ *  Rejecting is the destructive answer (tinted); the order goes on at its full price. */
+export const DISCOUNT_CHOICES: DeckChoice[] = [
+  { id: "approved", label: "تأیید تخفیف", tone: "good" },
+  { id: "rejected", label: "رد تخفیف", tone: "bad" },
+];
+
+export const discountRequest = (verdict: string) => ({ verdict });
+
+export const DISCOUNT_CONSEQUENCE: Record<string, string> = {
+  approved: "تخفیف روی سفارش اعمال می‌شود و سهم افراد از کمیسیونشان کم می‌شود.",
+  rejected: "سفارش بدون تخفیف و با قیمت کامل ادامه می‌دهد.",
+};
+
 /** Duplicate customers: merge folds one record into the other (its orders, payments and history move
  *  across), «not the same» remembers that the pair was looked at and is not offered again. The
  *  merge is the destructive answer, so its consequence is printed on the card. */

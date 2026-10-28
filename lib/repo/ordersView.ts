@@ -105,6 +105,9 @@ export interface OrderEntryData {
   }[];
   /** Whom an order can be credited to; empty for a seller, whose orders are always their own. */
   sellers: { id: number; display_name: string }[];
+  /** The people whose commission a discount can be charged to: sellers, drivers and group managers
+   *  the caller can reach, one entry per person per kind of work (lib/discounts.ts ShareLedger). */
+  payers: { user_id: number; ledger: "sales" | "driver" | "manager"; name: string }[];
 }
 
 /** The inputs of the order entry forms: the customers the caller may reach (with debt), their
@@ -152,5 +155,33 @@ export async function orderEntryFor(session: Session): Promise<OrderEntryData> {
             .all(...scope.params)
         ) as unknown as { id: number; display_name: string }[]);
 
-  return { customers, products, sellers };
+  /* One chip per person per kind of work: a seller who also drives is two chips, because their sales
+     commission and their delivery commission are two different statements. Scoped like the customers,
+     so a group manager sees their own group's people and the owner sees the company's. */
+  const ledgerOf: Record<string, "sales" | "driver" | "manager"> = {
+    phone_sales: "sales",
+    field_rep: "driver",
+    delivery_driver: "driver",
+    group_manager: "manager",
+  };
+  const peopleScope = await groupFilter(session, "u.group_id");
+  const people = (await db
+    .prepare(
+      `SELECT u.id, u.display_name, r.role
+         FROM users u JOIN user_roles r ON r.user_id = u.id
+        WHERE u.active = 1 AND r.role IN ('phone_sales', 'field_rep', 'delivery_driver', 'group_manager')${peopleScope.sql}
+        ORDER BY u.display_name`
+    )
+    .all(...peopleScope.params)) as unknown as { id: number; display_name: string; role: string }[];
+  const seen = new Set<string>();
+  const payers: OrderEntryData["payers"] = [];
+  for (const p of people) {
+    const ledger = ledgerOf[p.role];
+    const key = `${ledger}:${p.id}`;
+    if (!ledger || seen.has(key)) continue;
+    seen.add(key);
+    payers.push({ user_id: Number(p.id), ledger, name: p.display_name });
+  }
+
+  return { customers, products, sellers, payers };
 }

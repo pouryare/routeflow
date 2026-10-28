@@ -5,6 +5,8 @@ import { productInOrg } from "@/lib/repo/catalogueAdmin";
 import { OrderError } from "@/lib/orders";
 import { orderMixIn, ordersIn, placeOrder } from "@/lib/repo/routeAdapters";
 import { parseOrderRequest } from "@/lib/orderRequest";
+import { parseDiscountBody } from "@/lib/discounts";
+import { DiscountError } from "@/lib/repo/discounts";
 import { customerPriceHistory } from "@/lib/repo/customerPrices";
 import { SELL_ROLES } from "@/lib/roles";
 import { customerUsualBasket } from "@/lib/repo/usualBasket";
@@ -83,11 +85,14 @@ export async function POST(req: NextRequest) {
     salesperson_user_id?: unknown;
     notes?: unknown;
     credit_override?: unknown;
+    discount?: unknown;
     lines?: unknown;
   } | null;
 
   const parsed = parseOrderRequest(body);
   if (!parsed.ok) return NextResponse.json({ ok: false, error: parsed.error }, { status: 400 });
+  const discountBody = parseDiscountBody(body?.discount);
+  if (!discountBody.ok) return NextResponse.json({ ok: false, error: discountBody.error }, { status: 400 });
   const { orderDate, requestedDay, kind, lines } = parsed;
 
   // Rule 1: a lead becomes a customer when it buys. Until this existed, a pin could not
@@ -163,6 +168,10 @@ export async function POST(req: NextRequest) {
       salesperson_user_id: salespersonId,
       credit_override_by: body?.credit_override ? session.user.id : null,
       notes: typeof body?.notes === "string" ? body.notes : null,
+      // Asked for with the order; it waits for the manager or owner unless the rules let it through.
+      discount: discountBody.discount
+        ? { request: discountBody.discount, asker: { id: session.user.id, role: session.role } }
+        : undefined,
       lines: lines.map((line) => ({
         product_id: Number(line.product_id),
         packaging_id: Number(line.packaging_id),
@@ -180,7 +189,7 @@ export async function POST(req: NextRequest) {
     // The promotion outlived the order, which would leave a customer who never bought --
     // exactly what rule 1 forbids. Put it back before reporting the failure.
     if (promotion) await unpromoteLead(session.organizationId, promotion);
-    if (e instanceof OrderError) {
+    if (e instanceof OrderError || e instanceof DiscountError) {
       return NextResponse.json({ ok: false, error: e.message }, { status: 400 });
     }
     throw e;

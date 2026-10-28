@@ -318,6 +318,13 @@ export const PAGE_META: Record<string, PageMeta> = {
     overview:
       "سلامت خود برنامه در یک صفحه: آخرین پشتیبان، کارهای شبانه، همگام‌سازی گوشی‌ها، تازگی داده و ورودهای ناموفق. هر خط قرمز یعنی چیزی بی‌صدا از کار افتاده است.",
   },
+  "/sales/admin/discounts": {
+    title: "تخفیف‌ها",
+    titleEn: "Discounts",
+    help: "page.discounts",
+    overview:
+      "دو تنظیم شرکت برای تخفیف سفارش‌ها: تا چند درصد بدون تأیید رد شود و چه سهمی از تخفیف از کمیسیون افراد کم شود. زیر آن، آخرین تخفیف‌ها و وضعیتشان.",
+  },
   "/sales/admin/groups": {
     title: "گروه‌ها",
     titleEn: "Groups",

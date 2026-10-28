@@ -24,6 +24,8 @@ import { tehranTodayIso } from "@/lib/jalali";
 import { customerProductIds } from "@/lib/customerProducts";
 import { duplicateOf, type OpenOrderBrief } from "@/lib/duplicateOrder";
 import { ONBOARDING_LABEL, type Onboarding } from "@/lib/onboarding";
+import DiscountSection from "@/components/sales/DiscountSection";
+import { emptyDraft, summarize, toRequestBody, type DiscountDraft, type Payer } from "@/lib/discountDraft";
 
 interface Customer {
   id: number;
@@ -74,11 +76,17 @@ export default function OrderForm({
   customers,
   products,
   sellers,
+  payers = [],
+  canDiscountFreely = false,
   initialCustomerId = null,
 }: {
   customers: Customer[];
   products: Product[];
   sellers: { id: number; display_name: string }[];
+  /** Whose commission a discount can be charged to (lib/discountDraft.ts). */
+  payers?: Payer[];
+  /** The owner's own discount applies at once; everyone else's waits for approval. */
+  canDiscountFreely?: boolean;
   /** Arrives from the map's customer panel. Already validated against this caller's
    *  own customer list by the page, so it is safe to select without re-checking. */
   initialCustomerId?: number | null;
@@ -102,6 +110,7 @@ export default function OrderForm({
   const requestedWeeks = "1";
   const [sellerId, setSellerId] = useState("");
   const [notes, setNotes] = useState("");
+  const [discount, setDiscount] = useState<DiscountDraft>(emptyDraft);
 
   const [lines, setLines] = useState<Draft[]>([]);
   const [pickProduct, setPickProduct] = useState("");
@@ -203,6 +212,10 @@ export default function OrderForm({
 
   async function submit(allowDuplicate = false) {
     if (!customer || lines.length === 0) return;
+    if (discount.open && summarize(discount, total, payers).problem) {
+      setError(summarize(discount, total, payers).problem);
+      return;
+    }
     const recent = theirs && theirs.for === customer.id ? theirs.recent : [];
     const twin = allowDuplicate ? null : duplicateOf(recent, lines.map((l) => l.product_id));
     setDupe(twin);
@@ -225,6 +238,7 @@ export default function OrderForm({
           salesperson_user_id: sellerId === "" ? null : Number(sellerId),
           notes: notes || null,
           credit_override: overLimit,
+          discount: toRequestBody(discount, payers),
           lines: lines.map((l) => ({
             product_id: l.product_id,
             packaging_id: l.packaging_id,
@@ -438,6 +452,10 @@ export default function OrderForm({
           </button>
         </div>
       </section>
+
+      {lines.length > 0 && (
+        <DiscountSection draft={discount} onChange={setDiscount} total={total} payers={payers} needsApproval={!canDiscountFreely} />
+      )}
 
       {onboardingGaps.length > 0 && customer && (
         <p className="m-0 rounded-[var(--radius-md)] border border-[var(--warn)] p-[var(--space-3)] text-[length:var(--text-sm)] leading-6 text-[var(--warn)]">

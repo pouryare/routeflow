@@ -138,6 +138,7 @@ _Condensed 2026-10-23, updated 2026-10-27. Each finished piece of work is one li
   - [x] Filter groups with 9 or more options become one chip that opens a sheet with search and a ListBox (`SearchableGroup`)
 
 - [x] (?) help everywhere it is needed: 38 pages that had none (`lib/help/pages.ts`) and about 40 cards and sections (`lib/help/cards.ts`): dashboard, map sidebar, orders, pocket, predictions, analysis, accounting checks; `CollapsibleSection` and `SectionHead` take a `help` id; `tests/card-help.test.ts` keeps ids and copy in step
+- [x] Batch A, discount approval (`claude/project-thread-kmfmp7`, draft PR): a discount on an order (percent or amount, reason, people it is charged to, equal split editable) waits for the group manager or the owner (first answer wins, never your own, a group manager's own goes to the owner, the owner's applies at once); the owner sets the percent that passes without approval and how much of the discount comes out of commission (`/sales/admin/discounts`); approval deck on «امروز»; discount panel on the order page; totals, payments and delivery use the net amount
 
 ## Not done / gaps
 - [ ] Owner to set a $0 Actions budget (Settings, Billing, Budgets) and decide whether the PostgreSQL job may run less often (docs-only or label); the history rewrite in `docs/make-repo-public.md` is not done; if branch protection requires CI, docs-only PRs (skipped) will need it relaxed
@@ -190,6 +191,7 @@ _Condensed 2026-10-23, updated 2026-10-27. Each finished piece of work is one li
 - [ ] F112 card is on the sales briefing only, not the drivers' `/today`
 - [ ] F101 lists reversal lines one by one, while the total is net
 - [ ] Left for later: F104 (not reached; nothing blocks it), and, waiting on a missing prerequisite, F74, F77, F85, F86, F91, F114, F69, F31, F42, F34, F95, F140, F2, F5, F117, F38
+- Discount gaps: customer lifetime value, driver stop list, dashboard revenue, commission «value» metric and offline sync still add lines without the discount; the tap-flow quick order has no discount; no push or notification for a new request; commission statements do not yet show the per-person deduction and carry-over (next commit)
 
 ## Next steps
 1. Owner puts the server on Postgres following `docs/postgres-server.md` (main is Postgres-only), picks the second machine for the off-site backups, authorizes the key and stores the passphrase; first full backup and restore drill on the real server

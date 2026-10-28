@@ -1,5 +1,5 @@
 import type { Db } from "@/lib/database/client";
-import { lineKg, lineTotalToman, lineCostToman, type LineSnapshot } from "../orderMath";
+import { lineKg, lineTotalToman, lineCostToman, netOfDiscount, type LineSnapshot } from "../orderMath";
 
 /** An order's weight in kilograms: its lines' kilograms added in line order, starting from zero.
  *
@@ -20,10 +20,10 @@ export interface OrderFigures {
   cost_toman: number;
 }
 
-export function orderFiguresOf(lines: LineSnapshot[]): OrderFigures {
+export function orderFiguresOf(lines: LineSnapshot[], discountToman = 0): OrderFigures {
   return {
     kg_total: orderKgOf(lines),
-    total_toman: lines.reduce((total, line) => total + lineTotalToman(line), 0),
+    total_toman: netOfDiscount(lines.reduce((total, line) => total + lineTotalToman(line), 0), discountToman),
     cost_toman: lines.reduce((total, line) => total + lineCostToman(line), 0),
   };
 }
@@ -39,7 +39,11 @@ export async function refreshOrderFigures(db: Db, orderId: number): Promise<void
   const lines = await db
     .prepare(`SELECT ${LINE_COLUMNS} FROM order_lines WHERE order_id = ? ORDER BY id`)
     .all(orderId) as unknown as LineSnapshot[];
-  const f = orderFiguresOf(lines);
+  /* The approved discount is part of what the order is worth to the customer, so the cached total is
+     net of it (lib/discounts.ts). Read here rather than passed in: every writer that refreshes the
+     figures would otherwise have to remember it. */
+  const order = await db.prepare("SELECT discount_toman FROM orders WHERE id = ?").get(orderId) as { discount_toman: number } | undefined;
+  const f = orderFiguresOf(lines, Number(order?.discount_toman ?? 0));
   await db.prepare("UPDATE orders SET kg_total = ?, total_toman = ?, cost_toman = ? WHERE id = ?").run(
     f.kg_total,
     f.total_toman,
@@ -58,15 +62,17 @@ export async function backfillOrderFigures(db: Db): Promise<number> {
   return await db.tx(async () => {
     const rows = await db
       .prepare(
-        `SELECT ol.order_id AS order_id, ${LINE_COLUMNS.split(", ").map((c) => `ol.${c}`).join(", ")}
+        `SELECT ol.order_id AS order_id, o.discount_toman AS discount_toman, ${LINE_COLUMNS.split(", ").map((c) => `ol.${c}`).join(", ")}
            FROM order_lines ol JOIN orders o ON o.id = ol.order_id
           WHERE o.kg_total IS NULL OR o.total_toman IS NULL OR o.cost_toman IS NULL
           ORDER BY ol.order_id, ol.id`
       )
-      .all() as unknown as (LineSnapshot & { order_id: number })[];
+      .all() as unknown as (LineSnapshot & { order_id: number; discount_toman: number })[];
 
     const byOrder = new Map<number, LineSnapshot[]>();
-    for (const { order_id, ...line } of rows) {
+    const discountOf = new Map<number, number>();
+    for (const { order_id, discount_toman, ...line } of rows) {
+      discountOf.set(order_id, Number(discount_toman ?? 0));
       const list = byOrder.get(order_id);
       if (list) list.push(line);
       else byOrder.set(order_id, [line]);
@@ -74,7 +80,7 @@ export async function backfillOrderFigures(db: Db): Promise<number> {
 
     const set = db.prepare("UPDATE orders SET kg_total = ?, total_toman = ?, cost_toman = ? WHERE id = ?");
     for (const [orderId, lines] of byOrder) {
-      const f = orderFiguresOf(lines);
+      const f = orderFiguresOf(lines, discountOf.get(orderId) ?? 0);
       await set.run(f.kg_total, f.total_toman, f.cost_toman, orderId);
     }
     // What is still empty has no lines.

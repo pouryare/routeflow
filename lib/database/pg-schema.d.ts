@@ -410,6 +410,17 @@ export interface DeliveryStops {
   sync_xid: string | null;
 }
 
+export interface DiscountCommissionShares {
+  amount_toman: Generated<number>;
+  discount_id: number;
+  id: Generated<number>;
+  ledger: string;
+  order_id: number;
+  organization_id: number;
+  share_pct: number;
+  user_id: number;
+}
+
 export interface Districts {
   assigned_to: string | null;
   boundary_geojson: string;
@@ -801,6 +812,24 @@ export interface ObjectionCards {
   updated_at: string;
 }
 
+export interface OrderDiscounts {
+  amount_toman: Generated<number>;
+  commission_base_toman: Generated<number>;
+  decided_at: string | null;
+  decided_by: number | null;
+  decision_note: string | null;
+  id: Generated<number>;
+  kind: string;
+  note: string | null;
+  order_id: number;
+  organization_id: number;
+  reason: string;
+  requested_at: string;
+  requested_by: number;
+  status: Generated<string>;
+  value: number;
+}
+
 export interface OrderEvents {
   action: string;
   actor_user_id: number | null;
@@ -843,6 +872,7 @@ export interface Orders {
   credit_override_by: number | null;
   customer_id: number;
   delivered_at: string | null;
+  discount_toman: Generated<number>;
   group_id: number | null;
   id: Generated<number>;
   kg_total: number | null;
@@ -869,6 +899,8 @@ export interface Organizations {
   contact_name: string | null;
   contact_phone: string | null;
   created_at: string;
+  discount_auto_pass_pct: Generated<number>;
+  discount_commission_pct: Generated<number>;
   id: Generated<number>;
   name: string;
   plan: Generated<string>;
@@ -1449,6 +1481,7 @@ export interface DB {
   delivery_lines: DeliveryLines;
   delivery_runs: DeliveryRuns;
   delivery_stops: DeliveryStops;
+  discount_commission_shares: DiscountCommissionShares;
   districts: Districts;
   driver_commission_payments: DriverCommissionPayments;
   driver_commission_rates: DriverCommissionRates;
@@ -1480,6 +1513,7 @@ export interface DB {
   notification_types: NotificationTypes;
   notifications: Notifications;
   objection_cards: ObjectionCards;
+  order_discounts: OrderDiscounts;
   order_events: OrderEvents;
   order_lines: OrderLines;
   orders: Orders;

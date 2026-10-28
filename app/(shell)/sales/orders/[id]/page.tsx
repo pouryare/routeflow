@@ -23,6 +23,8 @@ import PriorityTag from "@/components/sales/PriorityTag";
 import { canSetPriority } from "@/lib/orderPriority";
 import CustomerName from "@/components/CustomerName";
 import { Icon } from "@/components/meridian/Icon";
+import { discountOfOrder } from "@/lib/repo/discounts";
+import { DISCOUNT_REASONS, DISCOUNT_STATUS_LABEL } from "@/lib/discounts";
 
 export const dynamic = "force-dynamic";
 
@@ -54,6 +56,7 @@ export default async function OrderDetailPage({
   const page = await orderPageFor(session, id);
   if (!page) notFound();
   const { order, attempts } = page;
+  const discount = await discountOfOrder(session.organizationId, order.id);
 
   return (
     <div className="flex flex-col gap-[var(--space-4)]">
@@ -128,6 +131,30 @@ export default async function OrderDetailPage({
           }
         />
       </BentoStrip>
+
+      {discount && (
+        <section className="card flex flex-col gap-[var(--space-2)] p-[var(--space-4)]" dir="rtl" aria-label="تخفیف">
+          <div className="flex flex-wrap items-baseline justify-between gap-[var(--space-2)]">
+            <strong>تخفیف {faToman(discount.amount_toman)}</strong>
+            <span
+              className="text-[length:var(--text-sm)]"
+              style={{ color: discount.status === "approved" ? "var(--good)" : discount.status === "rejected" ? "var(--crit)" : "var(--warn)" }}
+            >
+              {DISCOUNT_STATUS_LABEL[discount.status]}
+            </span>
+          </div>
+          <p className="m-0 text-[length:var(--text-sm)] text-[var(--text-muted)]">
+            {DISCOUNT_REASONS.find((r) => r.id === discount.reason)?.label ?? discount.reason}
+            {discount.requested_by_name && ` · درخواست ${discount.requested_by_name}`}
+            {discount.decided_by_name && ` · پاسخ ${discount.decided_by_name}`}
+          </p>
+          <p className="m-0 text-[length:var(--text-sm)]">
+            {discount.shares.length === 0
+              ? "از کمیسیون کسی کم نمی‌شود؛ شرکت می‌پذیرد."
+              : `از کمیسیون: ${discount.shares.map((x) => `${x.display_name} ${faNum(x.share_pct)}٪ (${faToman(x.amount_toman)})`).join("، ")}`}
+          </p>
+        </section>
+      )}
 
       <OrderStatusPanel
         orderId={order.id}
