@@ -5055,3 +5055,68 @@ body {
 .meridian .leadlist__row.button { flex: 1 1 0; min-width: 0; height: auto; min-height: 44px; justify-content: flex-start; gap: var(--space-2); font-weight: 400; }
 .meridian .leadlist__act.button { width: 100%; justify-content: flex-start; min-height: 44px; }
 .meridian .covrow.button { width: 100%; height: auto; min-height: 44px; justify-content: space-between; gap: var(--space-2); padding: var(--space-2) var(--space-3); font-weight: 400; }
+
+/* Word-by-word heading reveal (components/meridian/WordReveal.tsx). Opacity and a short
+   rise only; the blur of the original effect is limited to fine pointers, because a blur
+   filter stutters on weak phones. */
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes wr-in {
+    from { opacity: 0; transform: translateY(0.5em); }
+    to   { opacity: 1; transform: none; }
+  }
+  @keyframes wr-in-blur {
+    from { opacity: 0; transform: translateY(0.5em); filter: blur(6px); }
+    to   { opacity: 1; transform: none; filter: blur(0); }
+  }
+  .meridian .wr {
+    display: inline-block;
+    animation: wr-in 520ms var(--ease) backwards;
+    animation-delay: calc(var(--wr-i, 0) * 90ms + 60ms);
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .meridian .wr { animation-name: wr-in-blur; }
+  }
+}
+
+/* The check that replaces a button's icon once its action succeeded (BusyIcon `done`). */
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes done-check-pop {
+    0%   { transform: scale(0.2) rotate(-25deg); opacity: 0; }
+    60%  { transform: scale(1.35) rotate(6deg); opacity: 1; }
+    100% { transform: none; }
+  }
+  .done-check { animation: done-check-pop 420ms var(--spring-pop, cubic-bezier(.34,1.56,.64,1)) both; }
+}
+
+/* CountUp (components/meridian/CountUp.tsx): each digit is a column showing one cell of a
+   0-9 strip; changing the figure slides the strip. */
+.odo { display: inline-block; unicode-bidi: isolate; white-space: nowrap; }
+.odo__col { display: inline-block; height: 1.25em; overflow: hidden; vertical-align: bottom; }
+.odo__strip { display: flex; flex-direction: column; transform: translateY(calc(var(--odo-d) * -1.25em)); }
+.odo__strip > span { display: block; height: 1.25em; line-height: 1.25em; text-align: center; }
+@media (prefers-reduced-motion: no-preference) {
+  .odo__strip { transition: transform 700ms var(--ease, cubic-bezier(.16,1,.3,1)); }
+}
+
+/* «سفارش تازه» pings on the sales summary (components/sales/SalePings.tsx): the newest card
+   drops in bright, older ones sit dimmer and smaller behind it. */
+.meridian .pings { list-style: none; margin: 0 0 var(--space-3); padding: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+.meridian .ping { opacity: .62; transform: scale(.97); transition: opacity 300ms var(--ease, ease), transform 300ms var(--ease, ease); }
+.meridian .ping:first-child { opacity: 1; transform: none; }
+.meridian .ping__link {
+  display: flex; align-items: center; gap: var(--space-3); min-height: 56px; padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface-raised);
+  color: var(--foreground); text-decoration: none; box-shadow: var(--sh-2);
+}
+.meridian .ping__text { display: flex; flex-direction: column; min-width: 0; flex: 1; font-size: var(--text-sm); }
+.meridian .ping__text > span { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.meridian .ping__amount { font-weight: 600; white-space: nowrap; }
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes ping-in { from { opacity: 0; transform: translateY(-24px) scale(.94); } }
+  .meridian .ping:first-child { animation: ping-in 520ms var(--spring-pop, cubic-bezier(.34,1.56,.64,1)); }
+}
+
+/* The paid share of a margin (components/sales/RealizedProfitCard.tsx). */
+.meridian .realized-bar { height: 8px; border-radius: 999px; background: var(--border); overflow: hidden; }
+.meridian .realized-bar > span { display: block; height: 100%; border-radius: inherit; background: var(--accent); transition: width 700ms var(--ease, ease); }
+@media (prefers-reduced-motion: reduce) { .meridian .realized-bar > span { transition: none; } }

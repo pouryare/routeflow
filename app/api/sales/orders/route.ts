@@ -19,6 +19,7 @@ import {
   type Promotion,
 } from "@/lib/repo/crm/conversion";
 import { everySeq } from "@/lib/seq";
+import { isFirstOrderToday } from "@/lib/repo/orderMilestones";
 
 /** Who may read and place an order.
  *
@@ -181,6 +182,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       ok: true,
       ...order,
+      // The order form fires its confetti on this.
+      first_today: await isFirstOrderToday(session.user.id, session.user.organization_id),
       // Echoed back so the caller can tell a fresh promotion from one that already existed,
       // and can refresh the pin instead of adding a second copy of it to the pool.
       ...(promotion ? { customerId: promotion.customerId, promotedFromLead: true, leadCreated: promotion.created } : {}),

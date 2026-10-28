@@ -211,6 +211,14 @@ describe("salesDashboard", () => {
     expect(d.revenue_by_salesperson.every((r) => r.label === "نازنین")).toBe(true);
   });
 
+  it("splits margin into realized and unrealized by what customers have paid", async () => {
+    // East: both delivered orders (13,000, no cost) are fully paid. Owner also sees west's 20,000, unpaid.
+    const east = await salesDashboard(getDb(), session("group_manager", ctx.eastManager, ctx.east));
+    expect(east.profit).toEqual({ realized_toman: 13000, unrealized_toman: 0 });
+    const owner = await salesDashboard(getDb(), session("owner", ctx.owner, null));
+    expect(owner.profit).toEqual({ realized_toman: 13000, unrealized_toman: 20000 });
+  });
+
   it("counts orders and averages them", async () => {
     const d = await salesDashboard(getDb(), session("group_manager", ctx.eastManager, ctx.east));
     expect(d.order_count).toBe(2);
@@ -329,5 +337,19 @@ describe("salesDashboard", () => {
   it("is null, not zero, when nothing has a lead time yet", async () => {
     const d = await salesDashboard(getDb(), session("group_manager", 999, null));
     expect(d.avg_lead_days).toBeNull();
+  });
+});
+
+/* Last in the file: it adds a third group, which the first-order and ranking tests above would count. */
+describe("salesDashboard profit", () => {
+  it("counts a partly paid order partly", async () => {
+    const db = getDb();
+    const now = new Date().toISOString();
+    const gid = Number((await db.prepare("INSERT INTO groups (name, slug, color, active, created_at) VALUES ('میانه', 'mid', '#0f0', 1, ?)").run(now)).lastInsertRowid);
+    const cid = Number((await db.prepare("INSERT INTO customers (customer_code, business_name, group_id, lifecycle, opening_balance_toman, synced_at, organization_id) VALUES ('C3', 'مشتری میانه', ?, 'active', 0, ?, 1)").run(gid, now)).lastInsertRowid);
+    await sell({ customer: cid, ordered: 10, delivered: 10, date: "2026-08-26" });
+    await recordPayment(1, { customer_id: cid, amount_toman: 4000, method: "CASH", received_at: "2026-08-26", received_by: ctx.owner });
+    const d = await salesDashboard(getDb(), session("group_manager", ctx.eastManager, gid));
+    expect(d.profit).toEqual({ realized_toman: 4000, unrealized_toman: 6000 });
   });
 });

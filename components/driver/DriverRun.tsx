@@ -135,6 +135,7 @@ export default function DriverRun({
             runDate={run.run_date}
             driverName={driverName}
             businessName={businessName}
+            lastStop={run.stops.every((s) => s.id === stop.id || s.status !== "pending")}
           />
         ))}
       </ul>
@@ -180,6 +181,7 @@ function StopCard({
   runDate,
   driverName,
   businessName,
+  lastStop,
 }: {
   stop: RunStop;
   /** Bumped by the arrival banner to open this stop's delivery flow. */
@@ -191,6 +193,7 @@ function StopCard({
   runDate: string;
   driverName: string;
   businessName: string;
+  lastStop: boolean;
 }) {
   /* The flow remounts per opening (the `key`), which is what gives each visit a fresh set of
    * questions; `flowOpen` only slides the sheet in and out. */
@@ -373,6 +376,7 @@ function StopCard({
           onPrint={onPrint}
           onClose={() => setFlowOpen(false)}
           onReopen={() => setFlowOpen(true)}
+          lastStop={lastStop}
         />
       )}
     </li>

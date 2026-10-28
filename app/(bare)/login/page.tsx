@@ -8,6 +8,23 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Icon } from "@/components/meridian/Icon";
 import { PasswordInput, TextInput } from "@/components/TextInput";
 import OtpInput from "@/components/mobile/OtpInput";
+import WordReveal from "@/components/meridian/WordReveal";
+import BusyIcon from "@/components/meridian/BusyIcon";
+import { useDoneFlash } from "@/lib/useDoneFlash";
+
+/** The sign-in button: its icon is a spinner while the request runs and a check once it passed. */
+function SubmitButton({ loading, done, disabled, label }: { loading: boolean; done: boolean; disabled: boolean; label: string }) {
+  return (
+    <button
+      type="submit"
+      disabled={disabled}
+      className="inline-flex items-center justify-center gap-[var(--space-2)] w-full cursor-pointer rounded-[var(--radius-md)] border border-[var(--accent)] bg-[var(--accent)] py-[var(--space-2)] font-medium text-[var(--accent-ink)] transition-[filter,transform,opacity] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:enabled:scale-[1.03] hover:enabled:brightness-110 active:enabled:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
+    >
+      <BusyIcon busy={loading && !done} done={done} name="login" />
+      {done ? "وارد شدید" : loading ? "در حال ورود…" : label}
+    </button>
+  );
+}
 
 function LoginForm() {
   const router = useRouter();
@@ -21,6 +38,7 @@ function LoginForm() {
   const [challenge, setChallenge] = useState<string | null>(null);
   const [code, setCode] = useState("");
   const [useRecovery, setUseRecovery] = useState(false);
+  const [done, flash] = useDoneFlash();
   const nextPathRef = useRef<string | null>(null);
   const clearedRef = useRef(false);
 
@@ -76,6 +94,7 @@ function LoginForm() {
         setLoading(false);
         return;
       }
+      flash();
       router.push(nextPathRef.current || "/");
       router.refresh();
     } catch {
@@ -95,7 +114,7 @@ function LoginForm() {
             </div>
           </div>
           <h1 className="mb-[var(--space-1)] text-center text-[length:var(--text-xl)] font-bold text-[var(--text)]">
-            نقشه پوشش مشتریان
+            <WordReveal text="نقشه پوشش مشتریان" />
           </h1>
           <p className="mb-[var(--space-5)] text-center text-[length:var(--text-sm)] text-[var(--text-muted)]">
             با نام کاربری و رمز عبور خودتان وارد شوید.
@@ -145,14 +164,12 @@ function LoginForm() {
               </button>
             )}
             {error && <p className="mb-[var(--space-4)] text-[length:var(--text-sm)] text-[var(--crit)]">{error}</p>}
-            <button
-              type="submit"
+            <SubmitButton
+              loading={loading}
+              done={done}
               disabled={loading || (challenge ? code.trim().length < (useRecovery ? 8 : 6) : !username.trim() || !password)}
-              className="inline-flex items-center justify-center gap-[var(--space-2)] w-full cursor-pointer rounded-[var(--radius-md)] border border-[var(--accent)] bg-[var(--accent)] py-[var(--space-2)] font-medium text-[var(--accent-ink)] transition-[filter,transform,opacity] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:enabled:scale-[1.03] hover:enabled:brightness-110 active:enabled:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              <Icon name="login" size="md" />
-              {loading ? "در حال ورود…" : challenge ? "تأیید و ورود" : "ورود به برنامه"}
-            </button>
+              label={challenge ? "تأیید و ورود" : "ورود به برنامه"}
+            />
           </form>
         </div>
       </main>

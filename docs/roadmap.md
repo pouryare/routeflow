@@ -675,3 +675,15 @@ Ideas that are interesting for this app but not chosen. None is decided; the own
 | Call detection on the phone (a small Capacitor plugin reading Android's phone state; `capacitor-call-detector` 0.0.5 is too young to rely on) | When a rep's phone rings, the app shows who the customer is | Customer snapshot on call pickup (F104) without VoIP; logging calls made from the rep's own phone (F4, F41) | Android only; reading the call log needs a permission Google Play restricts, so it may only suit a direct-file install. Not tested. Ties to the Android distribution decision in section 5 |
 | Straighten photos before OCR: find the paper's edges and flatten it (`jscanify` 1.4.3, Jul 2026, on OpenCV.js) | Turns a crooked phone photo of a receipt or cheque into a flat, square scan | Better text reading for camera capture (F1); clearer expense receipts (F26) and delivery proof photos (F17) | Runs on the phone, so no image leaves it. OpenCV.js is several megabytes; load it only on the capture screen. Test on real receipts |
 | Contact picker: the browser's Contact Picker API (Chrome on Android), or `@capacitor-community/contacts` (8.0.0, Sep 2026) in the Android shell | Fill a new customer's name and phone from the phone's address book instead of typing | Faster customer creation in the field (F40), with the duplicate check run straight after (F148) | The browser API reads only the contacts the user picks and needs no permission; the plugin needs a contacts permission. Not tested on the target phones |
+
+### 10.9 Motion effects (decided 2026-10-28)
+
+Four effects from a UI-motion showcase, built on the draft branch `claude/project-thread-eua087`. The owner chose the full showcase style on every section and card.
+
+| Effect | Decision | Notes |
+|---|---|---|
+| Hero reveal | Built by hand, CSS only (`WordReveal`) | Whole words, never letters (Persian letters join); blur only on fine pointers; off under reduced motion; plays on every mount, not once a day |
+| Click → success | Built by hand (`BusyIcon done`, `useDoneFlash`) plus `canvas-confetti` 1.9.4 (MIT, about 3 KB gzipped, loaded only when a burst fires) | Confetti only for milestones: the last stop of a run, the first order of the Tehran day |
+| Price roll | `@number-flow/react` 0.6.2 was tried first and dropped: it drew no Persian digits in Chromium. Hand-built odometer in `CountUp` | Rolls on change, not from zero on first view |
+| Sale pings | Own endpoint `/api/sales/pings`, checked every 15 s while the sales summary is visible; managers and owners only | Reps keep the 60 s bell check |
+| Realized / unrealized profit | `salesDashboard().profit`: margin on delivered orders times the paid share of each order | Owner and manager card on the sales summary; sellers and drivers see paid against owed commission |
