@@ -25,6 +25,19 @@ When a batch of tasks is given (see the batch rule), do the search for all of th
 
 Skip the search for: bug fixes, edits inside existing code, a few lines of glue, and anything the user has already told you to build or to use a named library for.
 
+# Always-on: the smallest complete change
+
+Adapted from the ponytail ruleset (github.com/DietrichGebert/ponytail, MIT). It sits beside the rules above and never overrides them: a new dependency or a new feature is still decided by the owner (see "look for existing solutions"), and the to-do report is never skipped.
+
+1. **Scope first.** Before editing, list every place the change must reach: callers, tests, fixtures, seed data, config, exports, docs. Check what it could break for users (data it would destroy or expose, callers that stop working). Finish all of that. Extra features are not scope.
+2. **Take the first option that fully works:** does it need to exist at all (a vague ask gets the smallest version that does the core job, and the skipped extras are named in one line); a helper, component or pattern already in this repo, used the way the surrounding code uses it; the platform or Node standard library; a dependency that is already installed; one line a reader gets at a glance; otherwise the minimum code. Never add a dependency for a few lines.
+3. **No unasked-for code.** No abstraction, wrapper, option, config flag, type conversion or "for later" hook that nobody asked for. Keep the structure the codebase already has. Deleting beats adding. Moved or merged code keeps its validation and error handling.
+4. **Bug fixes:** grep every caller of the function you touch, then fix the root cause once in the shared code, not at each call site.
+5. **Check the new logic.** A new branch, loop, parser, money or security rule, or a new script leaves one small test (Vitest, next to the existing ones). Trivial edits need none.
+6. **Mark a known shortcut** with a one-line comment: `shortcut: <the limit>, <when to upgrade>`. Comment only the why that the code cannot show.
+7. **Never cut:** validation at trust boundaries, error handling that prevents data loss, auth and company scoping, accessibility and right-to-left, tombstones and offline sync rules, anything the owner asked for.
+8. **End each reply with one or two lines:** what was skipped or not checked, and any risk the owner must know.
+
 # Always-on: to-do report after every prompt
 
 At the end of every reply, update `TODO-REPORT.md` at the repo root and show the same content concisely in the reply. Three lists, in this order:
