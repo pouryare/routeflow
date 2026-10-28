@@ -6,6 +6,7 @@ import { CustomerRow, DistrictProperties } from "@/lib/types";
 import type { FacilityRow } from "@/lib/facilityTypes";
 import type { Role } from "@/lib/db";
 import type { MapGroup } from "@/components/CoverageMap";
+import WidgetBoundary from "@/components/WidgetBoundary";
 
 const CoverageMap = dynamic(() => import("@/components/CoverageMap"), {
   ssr: false,
@@ -34,5 +35,9 @@ export default function MapLoader(props: {
   role: Role;
   geometryVersion: string;
 }) {
-  return <CoverageMap {...props} />;
+  return (
+    <WidgetBoundary label="نقشهٔ پوشش مشتریان">
+      <CoverageMap {...props} />
+    </WidgetBoundary>
+  );
 }

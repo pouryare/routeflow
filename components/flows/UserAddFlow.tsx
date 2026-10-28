@@ -1,10 +1,10 @@
 "use client";
 
+import { GoButton } from "@/components/tapflow/Answer";
 import { useMemo, useState } from "react";
 import TapFlow from "@/components/tapflow/TapFlow";
 import FlowDone from "@/components/tapflow/FlowDone";
 import { useFlowHost } from "@/components/tapflow/useFlowHost";
-import { Icon } from "@/components/meridian/Icon";
 import { useToast } from "@/components/ToastProvider";
 import { EMPTY_CONTEXT, type FlowContext } from "@/lib/crm/flows/types";
 import { generatePassword, generateUsername } from "@/lib/credentials";
@@ -102,10 +102,7 @@ export default function UserAddFlow({
               <p className="tf-sub" dir="ltr">
                 {creds.username} · {creds.password}
               </p>
-              <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] tf-go" onClick={() => void share()}>
-                <Icon name="external-link" size="md" />
-                ارسال مشخصات ورود
-              </button>
+              <GoButton icon="external-link" onPress={() => void share()}>ارسال مشخصات ورود</GoButton>
               <p className="tf-note">این رمز فقط یک بار نشان داده می‌شود؛ کاربر می‌تواند بعداً آن را عوض کند.</p>
             </>
           }

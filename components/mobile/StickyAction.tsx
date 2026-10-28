@@ -1,6 +1,7 @@
 "use client";
 
-import { Icon, type IconName } from "@/components/meridian/Icon";
+import { type IconName } from "@/components/meridian/Icon";
+import BusyIcon from "@/components/meridian/BusyIcon";
 
 /** The one dominant action of a page, pinned above the bottom bar on a phone so the thumb never
  *  has to scroll to it (the order form's «ثبت سفارش», the planner's confirm). From md up it is
@@ -16,7 +17,7 @@ export default function StickyAction({ label, icon = "check", onClick, disabled,
   return (
     <div className="sticky-action">
       <button type="button" className="sticky-action__btn" disabled={disabled} onClick={onClick}>
-        <Icon name={icon} size="md" />
+        <BusyIcon busy={!!busy} name={icon} />
         {busy ?? label}
       </button>
     </div>

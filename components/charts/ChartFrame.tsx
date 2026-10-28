@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { faNum } from "@/lib/format";
+import WidgetBoundary from "@/components/WidgetBoundary";
 
 export interface LegendEntry {
   label: string;
@@ -59,7 +60,9 @@ export default function ChartFrame({
         </p>
       ) : (
         <>
-          <div className="overflow-x-auto">{children}</div>
+          <div className="overflow-x-auto">
+            <WidgetBoundary label={`نمودار ${title}`}>{children}</WidgetBoundary>
+          </div>
 
           {legend && legend.length > 1 && (
             <ul className="mt-[var(--space-3)] flex list-none flex-wrap gap-x-[var(--space-4)] gap-y-[var(--space-1)] p-0 text-[length:var(--text-xs)]">

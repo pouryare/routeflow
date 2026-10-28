@@ -1,5 +1,6 @@
 "use client";
 
+import { FieldInput } from "@/components/FieldInput";
 import { ChipGroup } from "@/components/mobile/FilterChips";
 import SmartPicker from "@/components/mobile/SmartPicker";
 import { useCallback, useEffect, useState } from "react";
@@ -135,7 +136,7 @@ export default function RepDefinitions() {
   return (
     <div className="flex flex-col gap-[var(--space-5)]">
       <section className="card p-4">
-        <SectionHead title="تعریف نماینده" sub="یک مشتری عمده‌فروش را با یک کد به نماینده تبدیل کنید." />
+        <SectionHead help="card.rep-define" title="تعریف نماینده" sub="یک مشتری عمده‌فروش را با یک کد به نماینده تبدیل کنید." />
         <form onSubmit={create} className="flex flex-wrap items-end gap-3">
           <label className="flex flex-col gap-1 text-[length:var(--text-xs)] text-text-muted">
             مشتری عمده‌فروش
@@ -149,10 +150,10 @@ export default function RepDefinitions() {
           </label>
           <label className="flex flex-col gap-1 text-[length:var(--text-xs)] text-text-muted">
             کد نماینده
-            <input
+            <FieldInput
               value={repCode}
               onChange={(e) => setRepCode(e.target.value)}
-              className="rounded-[var(--radius-sm)] border border-border bg-surface px-2 py-1 font-mono text-text"
+              className="font-mono text-text"
             />
           </label>
           <button type="submit" disabled={busy || !customerId || !repCode.trim()} className="inline-flex items-center justify-center gap-[var(--space-2)] btn solid">
@@ -164,7 +165,7 @@ export default function RepDefinitions() {
       </section>
 
       <section className="card p-4">
-        <SectionHead title="نمایندگان تعریف‌شده" sub="مرحله و پذیرش هر نماینده را از اینجا جلو ببرید." />
+        <SectionHead help="card.rep-list" title="نمایندگان تعریف‌شده" sub="مرحله و پذیرش هر نماینده را از اینجا جلو ببرید." />
         <div className="overflow-x-auto">
           <table className="w-full border-collapse text-[length:var(--text-sm)]">
             <thead>

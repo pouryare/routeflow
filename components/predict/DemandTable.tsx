@@ -1,3 +1,4 @@
+import { CardHelp } from "@/components/meridian/CardHelp";
 import { JALALI_MONTHS } from "@/lib/jalali";
 
 interface Point {
@@ -51,6 +52,7 @@ export default function DemandTable({ entries }: { entries: DemandEntry[] }) {
       <div className="kblock" dir="rtl">
         <div className="bhead">
           <h2>پیش‌بینی تقاضا</h2>
+          <CardHelp id="card.demand" />
         </div>
         <p className="kblock__body text-[length:var(--text-sm)] text-[var(--text-muted)]">
           هنوز پیش‌بینی‌ای محاسبه نشده — دکمهٔ «به‌روزرسانی پیش‌بینی» را بزنید.
@@ -68,6 +70,7 @@ export default function DemandTable({ entries }: { entries: DemandEntry[] }) {
     <div className="kblock" dir="rtl">
       <div className="bhead">
         <h2>پیش‌بینی تقاضا (تومان)</h2>
+        <CardHelp id="card.demand" />
       </div>
       <div className="kblock__body overflow-x-auto">
         <table className="w-full border-collapse text-[length:var(--text-sm)]">

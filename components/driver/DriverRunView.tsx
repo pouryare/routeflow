@@ -16,6 +16,7 @@ import UnloadTapFlow from "@/components/driver/UnloadTapFlow";
 import type { RunFacilityStop } from "@/lib/delivery";
 import type { Disposition } from "@/lib/unloadDispositions";
 import { SkeletonRows } from "@/components/Skeleton";
+import WidgetBoundary from "@/components/WidgetBoundary";
 
 const LeadsMap = dynamic(() => import("@/components/LeadsMap"), { ssr: false });
 
@@ -232,18 +233,20 @@ export default function DriverRunView({
         ) : null}
       </section>
 
-      <LeadsMap
-        leads={mapLeads}
-        runPoints={mapLeads.map((l) => [l.lat, l.lng] as [number, number])}
-        navigateHref={(l) => navigateUrl(navAppId, { lat: l.lat, lng: l.lng }, l.name)}
-        selectedId={next?.location_id ?? null}
-        onSelect={() => {}}
-        /* A driver does not build a route on the map: the run is already decided, and the
-           two callbacks are required props. No-ops rather than nulls so the component keeps
-           its own contract instead of growing a "sometimes read-only" mode. */
-        onAddToRun={() => {}}
-        onRemoveFromRun={() => {}}
-      />
+      <WidgetBoundary label="نقشهٔ ایستگاه‌های امروز">
+        <LeadsMap
+          leads={mapLeads}
+          runPoints={mapLeads.map((l) => [l.lat, l.lng] as [number, number])}
+          navigateHref={(l) => navigateUrl(navAppId, { lat: l.lat, lng: l.lng }, l.name)}
+          selectedId={next?.location_id ?? null}
+          onSelect={() => {}}
+          /* A driver does not build a route on the map: the run is already decided, and the
+             two callbacks are required props. No-ops rather than nulls so the component keeps
+             its own contract instead of growing a "sometimes read-only" mode. */
+          onAddToRun={() => {}}
+          onRemoveFromRun={() => {}}
+        />
+      </WidgetBoundary>
     </div>
   );
 }

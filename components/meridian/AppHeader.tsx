@@ -10,6 +10,7 @@ import ProfileMenu from "@/components/meridian/ProfileMenu";
 import { accountLinks } from "@/lib/accountLinks";
 import NotificationBell from "@/components/NotificationBell";
 import SearchSlot from "@/components/meridian/SearchSlot";
+import WidgetBoundary from "@/components/WidgetBoundary";
 import HoverPill from "@/components/meridian/HoverPill";
 import Chrome from "@/components/meridian/Chrome";
 import HeaderSkeleton from "@/components/meridian/HeaderSkeleton";
@@ -70,8 +71,8 @@ export default async function AppHeader() {
       <div className="top">
         <HoverPill tabs={tabs} groups={APP_GROUPS} />
         <div className="topright">
-          <SearchSlot tabs={tabs} />
-          <NotificationBell placement="header" />
+          <WidgetBoundary label="جستجو" compact><SearchSlot tabs={tabs} /></WidgetBoundary>
+          <WidgetBoundary label="اعلان‌ها" compact><NotificationBell placement="header" /></WidgetBoundary>
           <ProfileMenu
             userId={session.user.id}
             name={session.user.display_name}

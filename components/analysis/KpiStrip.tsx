@@ -1,5 +1,6 @@
 "use client";
 
+import { CardHelp } from "@/components/meridian/CardHelp";
 import { useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import WhyDrilldown, { type Rung } from "./WhyDrilldown";
@@ -113,6 +114,7 @@ export default function KpiStrip({
           <h2>شاخص‌های کلیدی</h2>
           <div className="n">روی هر شاخص بزنید تا تعریفش، کار پیشنهادی و «چرا؟» باز شود.</div>
         </div>
+        <CardHelp id="card.kpi" />
       </div>
       <div className="kblock__body">
         {hero ? (

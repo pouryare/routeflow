@@ -1,5 +1,6 @@
 "use client";
 
+import { FieldInput } from "@/components/FieldInput";
 import FilterChips from "@/components/mobile/FilterChips";
 import dynamic from "next/dynamic";
 import Link from "next/link";
@@ -32,6 +33,7 @@ import CollapsibleSection from "@/components/CollapsibleSection";
 import NavAppSetting from "@/components/NavAppSetting";
 import { STATUS_META } from "./hooks/useLeads";
 import { removeHandedOver } from "@/lib/leadRunAssign";
+import WidgetBoundary from "@/components/WidgetBoundary";
 
 export { STATUS_META };
 // Re-exported from the hook rather than declared here: `SavedLocation` is defined in
@@ -182,12 +184,12 @@ export default function LeadsPage() {
                 همه مکان‌ها ({faNum(available.length)})
               </h2>
               <div className="relative shrink-0">
-                <input
+                <FieldInput
                   type="text"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="جستجوی نام مکان…"
-                  className="w-48 rounded-[var(--radius-sm)] border border-border bg-bg px-3 py-1.5 pl-7 text-[length:var(--text-xs)] text-text placeholder:text-text-faint outline-none transition-colors focus:border-accent"
+                  className="w-48 text-[length:var(--text-xs)] text-text"
                   aria-label="جستجوی مکان"
                 />
                 {/* One icon, one side, swapped by emptiness: a magnifier while the field is
@@ -337,9 +339,9 @@ export default function LeadsPage() {
             openListName={activeList?.name ?? null}
           />
 
-          <LeadsMap leads={mapLeads} runPoints={runPoints} onAddToRun={addToRun} onRemoveFromRun={removeFromRun} navigateHref={(l) => navigateUrl(navAppId, { lat: l.lat, lng: l.lng }, l.name)} selectedId={selectedMapId} onSelect={setSelectedMapId} onAddMany={appendToRun} onClear={clearRun} />
+          <WidgetBoundary label="نقشهٔ سرنخ‌ها"><LeadsMap leads={mapLeads} runPoints={runPoints} onAddToRun={addToRun} onRemoveFromRun={removeFromRun} navigateHref={(l) => navigateUrl(navAppId, { lat: l.lat, lng: l.lng }, l.name)} selectedId={selectedMapId} onSelect={setSelectedMapId} onAddMany={appendToRun} onClear={clearRun} /></WidgetBoundary>
 
-          <CollapsibleSection title="تنظیمات" icon="settings" storageKey="leads_settings" keywords="مسیریابی برنامه گوگل نشان بلد ویز"><NavAppSetting /></CollapsibleSection>
+          <CollapsibleSection help="card.leads-settings" title="تنظیمات" icon="settings" storageKey="leads_settings" keywords="مسیریابی برنامه گوگل نشان بلد ویز"><NavAppSetting /></CollapsibleSection>
         </div>
       </div>
 

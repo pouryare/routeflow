@@ -1,5 +1,6 @@
 "use client";
 
+import { FieldInput } from "@/components/FieldInput";
 import { safeNextPath } from "@/lib/safeNext";
 import { useEffect, useRef, useState, Suspense } from "react";
 import { friendlyError } from "@/lib/userMessage";
@@ -102,7 +103,7 @@ function LoginForm() {
 
           <form onSubmit={onSubmit}>
             {challenge ? (
-              <label className="flex flex-col gap-1 text-xs text-text-muted">کد برنامهٔ احراز هویت (یا کد بازیابی)<input
+              <label className="flex flex-col gap-1 text-xs text-text-muted">کد برنامهٔ احراز هویت (یا کد بازیابی)<FieldInput
                 type="text"
                 autoFocus
                 inputMode="numeric"
@@ -110,7 +111,7 @@ function LoginForm() {
                 value={code}
                 onChange={(e) => setCode(e.target.value)}
                 dir="ltr"
-                className="mb-[var(--space-4)] w-full rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] px-[var(--space-4)] py-[var(--space-2)] text-center font-mono text-[length:var(--text-lg)] tracking-[0.3em] text-[var(--text)] outline-none focus:border-[var(--accent)] focus:shadow-[0_0_0_2px_var(--accent)]"
+                className="mb-[var(--space-4)] w-full text-center font-mono text-[length:var(--text-lg)] tracking-[0.3em] text-[var(--text)]"
               /></label>
             ) : (
             <>

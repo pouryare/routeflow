@@ -49,6 +49,7 @@ export const PAGE_META: Record<string, PageMeta> = {
   "/leads": {
     title: "پین‌های نقشه",
     titleEn: "Map pins",
+    help: "page.leads",
     overview:
       /* The inbox, not a half-finished CRM. Every pin here is one nobody has DECIDED
        * about yet: the moment you add it to a list it becomes a سرنخ and stops being a
@@ -60,6 +61,7 @@ export const PAGE_META: Record<string, PageMeta> = {
   "/sales/data-quality": {
     title: "کیفیت اطلاعات",
     titleEn: "Data quality",
+    help: "page.data-quality",
     overview:
       "مشتریانی که مکان، تلفن یا منطقه‌شان ثبت نشده، با شمار هر گروه. روی هر ردیف بزنید تا پروندهٔ مشتری باز شود و همان‌جا کاملش کنید.",
   },
@@ -75,12 +77,14 @@ export const PAGE_META: Record<string, PageMeta> = {
   "/sales/pocket": {
     title: "کارهای من",
     titleEn: "My tasks",
+    help: "page.pocket",
     overview:
       "کارهای شما در سه دسته: امروز، این هفته و انجام‌شده. مدیرها نوار تیم را هم می‌بینند و با زدن روی هر نفر، کارهای او را باز می‌کنند.",
   },
   "/sales/schedule": {
     title: "برنامهٔ تحویل",
     titleEn: "Delivery schedule",
+    help: "page.schedule",
     overview:
       "تقویم ماه، از بازدیدها و سفرهای تحویل با هم. در نمای «سفرها» سفارش‌های تأییدشده را به راننده‌ها تخصیص دهید و برگهٔ مسیرها را ببینید.",
   },
@@ -89,6 +93,7 @@ export const PAGE_META: Record<string, PageMeta> = {
   "/sales": {
     title: "خلاصهٔ فروش",
     titleEn: "Sales overview",
+    help: "page.sales-home",
     overview:
       "نمای کلی فروش: ارقام سرصفحه، روند دوره، و میان‌برهایی به کارهایی که بیشتر از همه انجام می‌دهید.",
   },
@@ -109,36 +114,42 @@ export const PAGE_META: Record<string, PageMeta> = {
   "/sales/orders/new": {
     title: "سفارش تازه",
     titleEn: "New order",
+    help: "page.order-new",
     overview:
       "ثبت سفارش تازه: مشتری، اقلام و قیمت‌ها. پیش از تأیید، مانده و اعتبار مشتری کنار فرم نشان داده می‌شود.",
   },
   "/sales/forecast": {
     title: "پیش‌بینی",
     titleEn: "Forecast",
+    help: "page.forecast",
     overview:
       "برآورد فروش دوره‌های آینده بر پایهٔ روند گذشته و ظرفیت. برای برنامه‌ریزی خرید و انبار، نه برای تعهد به عدد.",
   },
   "/sales/reasons": {
     title: "دلیل‌های ناکامی",
     titleEn: "Failure reasons",
+    help: "page.reasons",
     overview:
       "چرا تحویل‌ها ناموفق شدند، سفارش‌ها لغو شدند، برگشتند یا دیر رسیدند، به تفکیک دلیل. برای پیدا کردن بزرگ‌ترین علت هر ماه، نه برای قضاوت دربارهٔ یک نفر.",
   },
   "/sales/lead-sources": {
     title: "منبع سرنخ‌ها",
     titleEn: "Lead sources",
+    help: "page.lead-sources",
     overview:
       "هر منبع سرنخ (گوگل مپ، اینستاگرام، معرفی و بقیه) چند سرنخ آورده، چندتایش مشتری شده و این مشتری‌ها در سه ماه اول چقدر خرید کرده‌اند. برای اینکه بدانید وقت و پول را کجا بگذارید.",
   },
   "/sales/products": {
     title: "کالاها و قیمت‌ها",
     titleEn: "Products and prices",
+    help: "page.products",
     overview:
       "فهرست کالاها با قیمت جاری و تاریخچهٔ تغییرات. قیمت را اینجا عوض کنید تا در سفارش‌های بعدی اعمال شود.",
   },
   "/sales/commission": {
     title: "پورسانت",
     titleEn: "Commission",
+    help: "page.commission",
     overview:
       "پورسانت هر نماینده بر پایهٔ فروش تأییدشده و نرخ‌های تعریف‌شده. ردیف‌ها تا سفارش‌های پشتشان قابل باز کردن‌اند.",
   },
@@ -147,12 +158,14 @@ export const PAGE_META: Record<string, PageMeta> = {
   "/sales/batches": {
     title: "سری‌های ساخت",
     titleEn: "Production batches",
+    help: "page.batches",
     overview:
       "سری‌های ساخت با وضعیت کیفی و موجودی هرکدام. برای ردیابی اینکه یک شکایت کیفی به کدام سری ساخت برمی‌گردد.",
   },
   "/sales/routing": {
     title: "مسیریابی",
     titleEn: "Routing",
+    help: "page.routing",
     overview:
       "ساخت و تنظیم مسیرهای تحویل: قالب‌های مسیر، خودروها و ظرفیت روزانه. خروجی این صفحه، «سفرهای تحویل» است.",
   },
@@ -161,42 +174,49 @@ export const PAGE_META: Record<string, PageMeta> = {
   "/accounting/trial-balance": {
     title: "تراز آزمایشی",
     titleEn: "Trial balance",
+    help: "page.trial-balance",
     overview:
       "جمع بدهکار و بستانکار هر حساب. دو ستون باید همیشه برابر باشند؛ همین برابری، تعریف دفتر سالم است.",
   },
   "/accounting/journal": {
     title: "دفتر روزنامه",
     titleEn: "Journal",
+    help: "page.journal",
     overview:
       "همهٔ اسناد به ترتیب، با فیلتر بر اساس دوره و نوع. سند باطل‌شده حذف نمی‌شود: خط‌خورده می‌ماند و به سند معکوسش وصل است.",
   },
   "/accounting/balance-sheet": {
     title: "ترازنامه",
     titleEn: "Balance sheet",
+    help: "page.balance-sheet",
     overview:
       "دارایی در برابر بدهی و سرمایه، در یک تاریخ مشخص — نه نتیجهٔ یک ماه. دورهٔ پیش از دفتر، ناقص از نظر بهای تمام‌شده علامت می‌خورد.",
   },
   "/accounting/income-statement": {
     title: "سود و زیان",
     titleEn: "Income statement",
+    help: "page.income-statement",
     overview:
       "درآمد منهای بهای تمام‌شده و هزینه‌ها، برای یک دوره. اگر بهای تمام‌شدهٔ بخشی از فروش‌ها معلوم نباشد، صفحه صریحاً اعلام می‌کند که سود نمایش‌داده‌شده بیش از واقع است.",
   },
   "/accounting/payables": {
     title: "بدهی تأمین‌کنندگان",
     titleEn: "Accounts payable",
+    help: "page.payables",
     overview:
       "آنچه به هر تأمین‌کننده بدهیم، مستقیماً از دفتر استخراج می‌شود و عدد جداگانه‌ای ذخیره نمی‌شود.",
   },
   "/accounting/expenses": {
     title: "هزینه‌ها",
     titleEn: "Expenses",
+    help: "page.expenses",
     overview:
       "هزینه‌ها بر اساس حساب و بر اساس ثبت‌کننده. هر ردیف یک سند است، پس با «ابطال» اصلاح می‌شود، نه با ویرایش.",
   },
   "/accounting/suppliers": {
     title: "تأمین‌کنندگان",
     titleEn: "Suppliers",
+    help: "page.suppliers",
     overview:
       "تأمین‌کنندگان و صورت‌حساب هرکدام از دفتر خوانده می‌شود؛ مانده همیشه با ترازنامه می‌خواند.",
   },
@@ -210,12 +230,14 @@ export const PAGE_META: Record<string, PageMeta> = {
   "/sales/cheques": {
     title: "چک‌ها",
     titleEn: "Cheques",
+    help: "page.cheques",
     overview:
       "چرخهٔ عمر چک‌ها از دریافت تا وصول یا برگشت. چک‌های نزدیک سررسید و برگشتی‌ها بالای فهرست می‌آیند.",
   },
   "/report": {
     title: "گزارش پوشش",
     titleEn: "Coverage report",
+    help: "page.report",
     overview:
       "گزارش کامل پوشش و مالی گروه، قابل چاپ و خروجی‌گیری. برای مرور دوره‌ای و بایگانی، نه برای کار روزانه.",
   },
@@ -227,6 +249,7 @@ export const PAGE_META: Record<string, PageMeta> = {
   "/sales/stock": {
     title: "انبار و خرید",
     titleEn: "Stock and purchasing",
+    help: "page.stock",
     overview:
       "موجودی جاری، نقطهٔ سفارش، و خریدهای در راه. اقلامی که زیر حد هشدار رفته‌اند بالای فهرست علامت خورده‌اند.",
   },
@@ -235,60 +258,70 @@ export const PAGE_META: Record<string, PageMeta> = {
   "/sales/tasks": {
     title: "کارتابل",
     titleEn: "Work queue",
+    help: "page.tasks",
     overview:
       "کارهای تعریف‌شده و تکرارشونده، با مسئول و سررسید. برای تنظیم اینکه چه کاری، هرچند وقت یک‌بار، برای چه کسی ساخته شود.",
   },
   "/sales/reps": {
     title: "نمایندگان فروش",
     titleEn: "Sales representatives",
+    help: "page.reps",
     overview:
       "کارنامهٔ نمایندگان: فروش، پوشش و کارهای باز هرکدام. برای دیدن اینکه چه کسی به کمک نیاز دارد.",
   },
   "/switch": {
     title: "ورود به‌عنوان یک حساب",
     titleEn: "Switch account",
+    help: "page.switch",
     overview:
       "دیدن برنامه از چشم هر کاربر، در هر سازمانی. هر کاری که اینجا انجام دهید به نام همان شخص ثبت می‌شود.",
   },
   "/sales/academy": {
     title: "آموزش",
     titleEn: "Academy",
+    help: "page.academy",
     overview:
       "کتابخانهٔ پاسخ به اعتراض‌های رایج و نکات فروش. کوتاه و قابل مرور پشت درٔ مشتری.",
   },
   "/sales/complaints": {
     title: "شکایات",
     titleEn: "Complaints",
+    help: "page.complaints",
     overview:
       "شکایت‌های ثبت‌شده و مسیر رسیدگی هرکدام. گراف رسیدگی نشان می‌دهد کار روی کدام گام ایستاده است.",
   },
   "/sales/admin/holidays": {
     title: "تعطیلات",
     titleEn: "Holidays",
+    help: "page.holidays",
     overview:
       "ثبت تعطیلات قمری که هر سال جابه‌جا می‌شوند. تاریخ اعلامی را اینجا وارد کنید؛ تعطیلات شمسی خودکارند.",
   },
   "/sales/admin/users": {
     title: "کاربران",
     titleEn: "Users",
+    help: "page.users",
     overview:
       "افزودن و ویرایش کاربران و نقش‌هایشان. تغییر نقش بلافاصله روی دسترسی‌ها اثر می‌گذارد.",
   },
   "/sales/admin/logins": {
     title: "گزارش ورودها",
     titleEn: "Login history",
+    help: "page.logins",
     overview:
       "۱۰۰ تلاش اخیر برای ورود به حساب‌های سازمان: موفق یا ناموفق، از چه دستگاهی و چه نشانی. اگر ورودی عجیب دیدید، از آن کاربر بخواهید رمزش را عوض کند و از همهٔ دستگاه‌ها خارج شود.",
   },
   "/sales/admin/status": {
     title: "وضعیت سامانه",
     titleEn: "System status",
+    help: "page.status",
     overview:
       "سلامت خود برنامه در یک صفحه: آخرین پشتیبان، کارهای شبانه، همگام‌سازی گوشی‌ها، تازگی داده و ورودهای ناموفق. هر خط قرمز یعنی چیزی بی‌صدا از کار افتاده است.",
   },
   "/sales/admin/groups": {
     title: "گروه‌ها",
     titleEn: "Groups",
+    help: "page.groups",
     overview:
       "تعریف گروه‌های فروش و قلمرو هرکدام. قلمرو تعیین می‌کند هر گروه کدام مشتریان را می‌بیند.",
   },
@@ -298,30 +331,35 @@ export const PAGE_META: Record<string, PageMeta> = {
   "/facilities": {
     title: "مکان‌های ما",
     titleEn: "Our locations",
+    help: "page.facilities",
     overview:
       "انبارها و پایگاه‌های خودمان روی نقشه و در فهرست. فاصلهٔ هر مشتری تا نزدیک‌ترین سایت از همین‌ها حساب می‌شود.",
   },
   "/gallery": {
     title: "گالری تصاویر",
     titleEn: "Image gallery",
+    help: "page.gallery",
     overview:
       "همهٔ عکس‌های ثبت‌شده روی پرونده‌ها و بازدیدها، یک‌جا. برای مرور سریع آنچه از میدان برگشته است.",
   },
   "/settings/notifications": {
     title: "تنظیمات اعلان‌ها",
     titleEn: "Notification settings",
+    help: "page.notification-settings",
     overview:
       "انتخاب اینکه چه رویدادی، از چه راهی، و در چه ساعت‌هایی به شما خبر بدهد. ساعات سکوت و اتصال تلگرام هم اینجاست.",
   },
   "/settings/security": {
     title: "امنیت و ورود",
     titleEn: "Account security",
+    help: "page.security",
     overview:
       "ورودهای اخیر حساب شما و خروج از دستگاه‌های دیگر. اگر ورودی را نمی‌شناسید، از همهٔ دستگاه‌ها خارج شوید و رمز را عوض کنید.",
   },
   "/settings/updates": {
     title: "تازه‌های برنامه",
     titleEn: "What's new",
+    help: "page.updates",
     overview: "تغییرهای برنامه که به کار شما مربوط است، تازه‌ترین بالا. هر بار که چیزی عوض شود، اینجا کوتاه نوشته می‌شود.",
   },
 };

@@ -1,5 +1,6 @@
 "use client";
 
+import { FieldInput } from "@/components/FieldInput";
 import { usePostAction } from "@/lib/usePostAction";
 import { tehranTodayIso } from "@/lib/jalali";
 import { useState } from "react";
@@ -101,7 +102,7 @@ export default function CatalogueEditor({
           <label className={LABEL} htmlFor="p-name">
             نام کالا
           </label>
-          <input
+          <FieldInput
             id="p-name"
             className={FIELD}
             value={pName}
@@ -114,7 +115,7 @@ export default function CatalogueEditor({
           <label className={LABEL} htmlFor="p-unit">
             واحد
           </label>
-          <input
+          <FieldInput
             id="p-unit"
             className={FIELD}
             value={pUnit}
@@ -125,7 +126,7 @@ export default function CatalogueEditor({
           <label className={LABEL} htmlFor="p-kg">
             کیلوگرم در هر واحد
           </label>
-          <input
+          <FieldInput
             id="p-kg"
             className={FIELD}
             value={pKg}
@@ -177,7 +178,7 @@ export default function CatalogueEditor({
           <label className={LABEL} htmlFor="k-name">
             نام بسته‌بندی
           </label>
-          <input
+          <FieldInput
             id="k-name"
             className={FIELD}
             value={kName}
@@ -190,7 +191,7 @@ export default function CatalogueEditor({
           <label className={LABEL} htmlFor="k-qty">
             تعداد در بسته
           </label>
-          <input
+          <FieldInput
             id="k-qty"
             className={FIELD}
             value={kQty}
@@ -258,7 +259,7 @@ export default function CatalogueEditor({
           <label className={LABEL} htmlFor="r-price">
             قیمت (تومان)
           </label>
-          <input
+          <FieldInput
             id="r-price"
             className={FIELD}
             value={rPrice}

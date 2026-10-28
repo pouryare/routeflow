@@ -56,7 +56,7 @@ export default function MapSettingsSection({
   precisionMode: PrecisionMode; setPrecisionMode: (m: PrecisionMode) => void; activeTier: string;
 }) {
   return (
-    <CollapsibleSection title="تنظیمات" icon="settings" storageKey="settings" keywords="GPS موقعیت ژئوفنس اعلان نوتیفیکیشن دقت مرز انتخاب گروهی توقف بعدی شکل کوررنگی رنگ نابینایی رانندگی بزرگ درشت مسیریابی گوگل نشان بلد ویز">
+    <CollapsibleSection help="card.map-settings" title="تنظیمات" icon="settings" storageKey="settings" keywords="GPS موقعیت ژئوفنس اعلان نوتیفیکیشن دقت مرز انتخاب گروهی توقف بعدی شکل کوررنگی رنگ نابینایی رانندگی بزرگ درشت مسیریابی گوگل نشان بلد ویز">
       <div className="flex flex-col gap-4">
         <ToggleRow
           title="ثبت خودکار بازدید (GPS)"

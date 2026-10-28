@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { AnswerButton, AnswerLink } from "@/components/tapflow/Answer";
 import { useState } from "react";
 import { Icon } from "@/components/meridian/Icon";
 import BottomSheet from "@/components/mobile/BottomSheet";
@@ -26,23 +26,18 @@ export default function QuickActions({ actions }: { actions: QuickAction[] }) {
         <div className="tf-grid one">
           {actions.map((a) =>
             a.href ? (
-              <Link key={a.id} href={a.href} className="inline-flex items-center justify-center gap-[var(--space-2)] tf-opt" onClick={() => setSheet(false)}>
-                <Icon name={a.icon} size="md" />
-                {a.label}
-              </Link>
+              <AnswerLink key={a.id} href={a.href} icon={a.icon} onPress={() => setSheet(false)}>{a.label}</AnswerLink>
             ) : (
-              <button
+              <AnswerButton
                 key={a.id}
-                type="button"
-                className="inline-flex items-center justify-center gap-[var(--space-2)] tf-opt"
-                onClick={() => {
+                icon={a.icon}
+                onPress={() => {
                   setSheet(false);
                   setFlow((f) => ({ key: (f?.key ?? 0) + 1, open: true, kind: a.id === "note" ? "note" : "reminder" }));
                 }}
               >
-                <Icon name={a.icon} size="md" />
                 {a.label}
-              </button>
+              </AnswerButton>
             ),
           )}
         </div>

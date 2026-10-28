@@ -1,5 +1,6 @@
 "use client";
 
+import { FieldInput } from "@/components/FieldInput";
 import SmartPicker from "@/components/mobile/SmartPicker";
 import { tehranTodayIso } from "@/lib/jalali";
 import { useRunAfterMount } from "@/lib/useRunAfterMount";
@@ -81,6 +82,7 @@ import { faNum } from "@/lib/format";
 import { MapView, buildMapLink, absoluteMapLink, parseMapLink, replaceUrlQuery } from "@/lib/deepLink";
 import { copyText } from "@/lib/clipboard";
 import { PINNED_KEY, RECENT_KEY, addRecent, pruneIds, readIds, toggleId, writeIds } from "@/lib/customerLists";
+import { Button } from "@heroui/react";
 import { Icon } from "@/components/meridian/Icon";
 import MapWorklist from "./MapWorklist";
 import { buildWorklist, type Bounds } from "@/lib/mapWorklist";
@@ -1032,13 +1034,13 @@ export default function CoverageMap({
               filter of sections, so it is not mistaken for the customer search that
               floats over the map. */}
           <div className="relative mt-3">
-            <input
+            <FieldInput
               ref={sectionFilterRef}
               value={sectionFilter}
               onChange={(e) => setSectionFilter(e.target.value)}
               placeholder="فیلتر بخش‌ها…"
               aria-label="فیلتر بخش‌های پنل"
-              className="w-full rounded-[var(--radius-md)] border border-border bg-surface py-1.5 pe-2 ps-7 text-[length:var(--text-xs)] text-text outline-none transition-[border-color] duration-[var(--dur-base)] ease-[var(--ease-out)] placeholder:text-text-faint focus:border-accent"
+              className="w-full pe-2 ps-7 text-[length:var(--text-xs)] text-text"
             />
             {sectionFilter && (
               <button
@@ -1097,7 +1099,7 @@ export default function CoverageMap({
             cannot be distinguished from a section that is broken, and "no dormant
             customers" is itself worth knowing. The count in the heading answers it
             without opening. */}
-        <CollapsibleSection
+        <CollapsibleSection help="card.map-dormant"
           title="مشتریان راکد" icon="moon"
           count={hasPurchaseHistory ? dormantCustomers.length : undefined}
           storageKey="dormant"
@@ -1115,11 +1117,7 @@ export default function CoverageMap({
           ) : (
             <div className="flex max-h-72 flex-col gap-1.5 overflow-y-auto">
               {dormantCustomers.map(({ customer, days }) => (
-                <button
-                  key={customer.id}
-                  onClick={() => flyToCustomer(customer)}
-                  className="flex w-full items-center justify-between gap-2 rounded-[var(--radius-md)] border border-border bg-surface px-3 py-2 text-right transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:border-accent"
-                >
+                <Button key={customer.id} variant="secondary" className="covrow" onPress={() => flyToCustomer(customer)}>
                   <Icon name="calendar" size="md" />
                   <span className="truncate text-[length:var(--text-sm)] text-text">{customer.business_name}</span>
                   <span
@@ -1128,13 +1126,13 @@ export default function CoverageMap({
                   >
                     {faNum(days)} روز
                   </span>
-                </button>
+                </Button>
               ))}
             </div>
           )}
         </CollapsibleSection>
 
-        <CollapsibleSection
+        <CollapsibleSection help="card.map-nocoord"
           title="بدون مختصات" icon="help"
           count={noCoordCustomers.length}
           storageKey="nocoord"
@@ -1145,17 +1143,13 @@ export default function CoverageMap({
           ) : (
             <div className="flex max-h-72 flex-col gap-1.5 overflow-y-auto">
               {noCoordCustomers.map((customer) => (
-                <button
-                  key={customer.id}
-                  onClick={() => flyToCustomer(customer)}
-                  className="flex w-full items-center justify-between gap-2 rounded-[var(--radius-md)] border border-border bg-surface px-3 py-2 text-right transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:border-accent"
-                >
+                <Button key={customer.id} variant="secondary" className="covrow" onPress={() => flyToCustomer(customer)}>
                   <Icon name="map-pin" size="md" />
                   <span className="truncate text-[length:var(--text-sm)] text-text">{customer.business_name}</span>
                   <span className="shrink-0 text-[length:var(--text-xs)] text-text-faint">
                     {customer.phone ?? "—"}
                   </span>
-                </button>
+                </Button>
               ))}
               <p className="mt-1.5 text-[length:var(--text-xs)] leading-5 text-text-faint">
                 روی نام کلیک کنید تا جزئیات مشتری باز شود و بتوانید مختصات را بررسی کنید.
@@ -1170,7 +1164,7 @@ export default function CoverageMap({
 <MapLegendSection groups={groups} districtColorMode={districtColorMode} setDistrictColorMode={setDistrictColorMode} shapedMarkers={shapedMarkers} bulkMode={bulkMode} />
         {/* Switching it on lives in the layers panel with every other layer; how it is
             weighted is a property of the layer, and belongs next to the data it weights. */}
-        <CollapsibleSection title="نقشه حرارتی" icon="flame" storageKey="heatmap" keywords="تراکم بدهی heatmap لایه">
+        <CollapsibleSection help="card.map-heat" title="نقشه حرارتی" icon="flame" storageKey="heatmap" keywords="تراکم بدهی heatmap لایه">
             {heatmapOn ? (
               <CheckField checked={heatmapByDebt} onChange={setHeatmapByDebt} className="text-[length:var(--text-sm)] text-text-muted">
                 وزن‌دهی بر اساس شدت بدهی

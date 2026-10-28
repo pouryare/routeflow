@@ -1,5 +1,6 @@
 "use client";
 
+import { FieldInput } from "@/components/FieldInput";
 import DecisionDeck from "@/components/mobile/DecisionDeck";
 import { useUndoableAction } from "@/components/tapflow/useUndoableAction";
 import { COMPLAINT_CHOICES, complaintRequest, complaintsToTriage } from "@/lib/decisions";
@@ -210,7 +211,7 @@ export default function ComplaintsPanel({
         <SmartPicker scope="products" label="کالا" items={products.map((p) => ({ id: String(p.id), label: String(p.name ?? p.business_name) }))} value={form.product_id} onChange={(id) => setForm((f) => ({ ...f, product_id: id }))} clearLabel="بدون کالا" />
         <ChipGroup wrap group={{ id: "category", label: "دستهٔ شکایت", mode: "single", neutral: "__none", value: form.category, onChange: (v) => { if (v !== "__none") setForm((f) => ({ ...f, category: v as string })); }, options: Object.entries(CATEGORY_TEXT).map(([k, v]) => ({ id: k, label: v })) }} />
         <ChipGroup wrap group={{ id: "severity", label: "شدت شکایت", mode: "single", neutral: "__none", value: form.severity, onChange: (v) => { if (v !== "__none") setForm((f) => ({ ...f, severity: v as string })); }, options: Object.entries(SEVERITY_TEXT).map(([k, v]) => ({ id: k, label: v })) }} />
-        <label className="flex flex-col gap-1 text-xs text-text-muted col-span-2 md:col-span-1">توضیح<input className="rounded border border-border bg-bg p-2 text-sm w-full" value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} /></label>
+        <label className="flex flex-col gap-1 text-xs text-text-muted col-span-2 md:col-span-1">توضیح<FieldInput className="w-full" value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} /></label>
         <button type="submit" className="inline-flex items-center justify-center gap-[var(--space-2)] rounded bg-accent px-4 py-2 text-sm text-white">
           <Icon name="check" size="md" />
           ثبت شکایت

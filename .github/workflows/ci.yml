@@ -1,9 +1,15 @@
 name: CI
 
+# Minutes are billed per job (private repo, 2,000 free a month). To keep that down:
+#  - one job, run on pull requests only; draft pull requests are not tested (mark the PR ready once
+#    and CI runs on that head), and nothing re-runs after the merge
+#  - changes that touch only docs or notes do not run CI
 on:
-  push:
-    branches: [main]
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths-ignore:
+      - "**/*.md"
+      - "docs/**"
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -14,8 +20,9 @@ jobs:
   # migrations pass Squawk, the unit suite runs against PostgreSQL, the production build meets its
   # page-time budget, and the server scripts check out.
   check:
+    if: github.event_name == 'pull_request' && !github.event.pull_request.draft
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 30
     env:
       PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1"
       NEXT_TELEMETRY_DISABLED: "1"

@@ -28,7 +28,7 @@ export default function MapSitesSection({ initialFacilities, placedFacilities, f
   setLayersOpen: (open: boolean) => void;
 }) {
   return (
-        <CollapsibleSection title="تأسیسات ما" icon="building" storageKey="sites" keywords="انبار مبدأ خانه کریدور depot">
+        <CollapsibleSection help="card.map-sites" title="تأسیسات ما" icon="building" storageKey="sites" keywords="انبار مبدأ خانه کریدور depot">
             <div className="flex flex-col gap-1">
               {initialFacilities.map((f) => (
                 <button

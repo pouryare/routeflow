@@ -8,6 +8,7 @@ import { faNum } from "@/lib/format";
 import { useToast } from "./ToastProvider";
 import { useNavApp } from "./NavAppSetting";
 import { navigateUrl } from "@/lib/navApps";
+import BusyIcon from "@/components/meridian/BusyIcon";
 import { Icon } from "@/components/meridian/Icon";
 
 interface PlanRow {
@@ -177,7 +178,7 @@ export default function NextStopBar({
           disabled={saving}
           className="inline-flex items-center justify-center gap-[var(--space-2)] shrink-0 whitespace-nowrap rounded-[var(--radius-sm)] border border-border px-3 py-1.5 text-[length:var(--text-xs)] text-good transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:border-good disabled:opacity-50"
         >
-          <Icon name="check" size="sm" />
+          <BusyIcon busy={saving} name="check" size="sm" />
           {saving ? "در حال ثبت…" : next.entity_type === "facility" ? "ثبت حضور" : "ثبت بازدید"}
         </button>
 

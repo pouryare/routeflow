@@ -3,6 +3,9 @@
 _Condensed 2026-10-23, updated 2026-10-27. Each finished piece of work is one line here; the full earlier text is in git history (`git log -p TODO-REPORT.md`)._
 
 ## Done
+- [x] Actions minutes cut (`claude/project-thread-lb9196`): draft PRs skip CI, `main` runs only `check` after a merge, docs-only changes skip CI, shorter timeouts; secret scan for going public and `docs/make-repo-public.md`; `LICENSE` (all rights reserved)
+- [x] «Not done» batch: (?) on single figures (`GradientStat help`, 11 stat cards on the sales summary, dashboard and stock pages; copy in `lib/help/figures.ts`); notification feed rows, the receipt-photo picker (`FileTrigger`) and the map's saved-list, route, day-plan and customer-list buttons are HeroUI `Button`s now
+- [x] Shortlist audit of the Gemini technology list (decisions and one table row per adopted or later library in `docs/roadmap.md` 10.6; one server, manager-written quizzes) and `react-error-boundary` 6.1.6 added: one `WidgetBoundary` around every chart, sheet body, map, and the header search, bell and sync island, so one failing widget no longer replaces the page
 - [x] Full-app audit, 41 findings (`docs/archive/AUDIT-2026-10-20.md`), all fixed or decided across PR #24 and the steps that followed
 - [x] Performance pass (PR #17), mobile-first TapFlow rollout (PRs #26, #27), architecture audit steps 1–7 (PRs #43–#46 and later)
 - [x] Sync pull same-millisecond tie fixed (PR #54); parked features F4–F148 written up; roadmap themes and waves; platform decisions in `docs/roadmap.md` section 10
@@ -96,6 +99,7 @@ _Condensed 2026-10-23, updated 2026-10-27. Each finished piece of work is one li
   - [x] HeroUI names hold the values (`--background`, `--foreground`, `--surface-secondary`, `--danger` …); the older names are aliases; the accent-theme generator and the contrast check use the HeroUI names (500 pairs pass)
   - [x] About 620 lines of dead CSS removed (island, old toast and modal animations, unused board, lanes, streaks and stat-tile rules)
   - [x] MASTER.md colour, elevation, radius and base-component sections and section 6 of `docs/mobile-first-principles.md` rewritten around HeroUI
+- [x] Pocket cards on HeroUI Card: the face is a transparent Card and the two papers behind it are secondary Cards, so shape, fill and shadow come from the same tokens as other HeroUI parts; the fan, the frosted face and the tap button stay ours (`PocketCard`)
 - [x] Wave P phase 2 (PostgreSQL next to SQLite):
   - [x] `db/Dockerfile` and `db/compose.yml`: Postgres 18 with PostGIS, `pg_trgm`, `btree_gist`, `pg_stat_statements`, `pg_duckdb`, `wal_level = logical`
   - [x] Baseline migration generated from the SQLite schema (`npm run db:pg:generate`; CI fails if it drifts), applied with node-pg-migrate; Squawk lints later migrations; Kysely types in `lib/database/pg-schema.d.ts`
@@ -119,8 +123,29 @@ _Condensed 2026-10-23, updated 2026-10-27. Each finished piece of work is one li
   - [x] CI is one job: types, lint, architecture ratchet, Squawk, Kysely types, unit tests on Postgres, doctor, production build with the page-time budget
   - [x] Old SQLite scripts removed (backup, the three demo seeders, the district loaders, baseline generator); `preview.sh` and the perf smoke use Postgres
 
+- [x] HeroUI extras batch (owner asked for spinner, tag, table, kbd, progress bar, listbox, (?) help):
+  - [x] (?) help is one `HelpHint` Popover (card help, day chips, keypad, pickers)
+  - [x] Spinner inside saving buttons (sticky action, order form, confirm, purchase, next stop, unload, sweep); skeletons stay for page content
+  - [x] ProgressBar on every tap flow and the lead import; Kbd in shortcut help; removable Tags for the customer filter on the map
+  - [x] Picker list is a HeroUI ListBox (`AnswerList`); the picker sheet already is the select / combo box with search
+  - [x] Margin report is a sortable HeroUI Table (sorted in the browser)
+
+- [x] HeroUI leftovers batch:
+  - [x] «بیشتر» and quick-action rows are `AnswerLink`s; CRM steps, filter sheet, keypad field and board move sheet use `GoButton`, `SkipButton`, `AnswerButton`; filter chips are HeroUI ToggleButtons
+  - [x] 81 raw text fields and textareas are HeroUI `Input` / `TextArea` (`FieldInput`, `FieldArea`); only file, checkbox, radio and range inputs stay native
+  - [x] Rules inside `.meridian` use the HeroUI colour names (288 uses renamed); the older names stay as aliases for the few rules outside it and for inline classes
+  - [x] Leaflet map buttons are 44 px; the (?) help is also on the filter sheet, item counter, decision deck and date sheet
+  - [x] Filter groups with 9 or more options become one chip that opens a sheet with search and a ListBox (`SearchableGroup`)
+
+- [x] (?) help everywhere it is needed: 38 pages that had none (`lib/help/pages.ts`) and about 40 cards and sections (`lib/help/cards.ts`): dashboard, map sidebar, orders, pocket, predictions, analysis, accounting checks; `CollapsibleSection` and `SectionHead` take a `help` id; `tests/card-help.test.ts` keeps ids and copy in step
+
 ## Not done / gaps
-- [ ] HeroUI move: the filter chips, the «بیشتر» menu links (`tf-opt` links in BottomNav, QuickActions, FilterSheet, CRM flows, OrderForm, ExpenseFlow, DriverPicker) and the notification feed's rows are not on HeroUI parts yet; 86 raw text fields remain (only login and passwords use `TextInput`); the inline reset-password field in the users table and the location card's checkbox (the card is the tap target) stay native; the search overlay and the map's side panels are still hand-built
+- [ ] Owner to set a $0 Actions budget (Settings, Billing, Budgets) and decide whether the PostgreSQL job may run less often (docs-only or label); the history rewrite in `docs/make-repo-public.md` is not done; if branch protection requires CI, docs-only PRs (skipped) will need it relaxed
+- [ ] `WidgetBoundary` logs to the browser console only; it should feed the structured logging and error tracker (F108) when those exist
+- [ ] Not guarded yet: the order form, pipeline and board panels (they sit inside the page-level error screen); add a boundary where a widget has failed on its own in practice
+- [ ] A desktop-only Modal and a Dropdown were not added: the sheet select with search (`SmartPicker`, `SearchableGroup`) covers select, combo box and dropdown on phones, and no screen needs a desktop yes/no modal yet; add one when a screen asks
+- [ ] The margin table could not be seen with real data in the demo database (checked with a mocked response); the (?) is on pages, shared sheets, pickers and the cards above; the driver and login pages sit outside `.meridian` and have none; figure-level help covers the 11 stat cards only, not figures inside charts or table rows
+- [ ] HeroUI move: the map's floating controls (`mapbtn` toggles, the search clear, the radius chips and the picker buttons in `LeadsMap` / `CoverageMap`) and the run panel's drag handle (pointer-drag, must stay native) are still hand-built; the location card's checkbox (the card is the tap target) stays native
 - [ ] Accounting tables and the pager use HeroUI's classes, not its Table and Pagination components (those are client React Aria grids and buttons; the reports are server pages with phone card rows and real page links)
 - [ ] The Leaflet zoom buttons are 36 px; the weather credit link on «برنامهٔ تحویل» is an inline link in a sentence (17 px)
 - [ ] HeroUI tab rows point `aria-controls` at a panel that is not there (the page under the row is the panel)
@@ -167,10 +192,11 @@ _Condensed 2026-10-23, updated 2026-10-27. Each finished piece of work is one li
 - [ ] Left for later: F104 (not reached; nothing blocks it), and, waiting on a missing prerequisite, F74, F77, F85, F86, F91, F114, F69, F31, F42, F34, F95, F140, F2, F5, F117, F38
 
 ## Next steps
-1. Merge PR #72 once CI is green (merge commit), then the owner puts the server on Postgres following `docs/postgres-server.md`
-2. Owner picks the second machine for the off-site backups, authorizes the key and stores the passphrase; first full backup and restore drill on the real server
-3. Move the remaining `tf-opt` menu links and the filter chips onto HeroUI parts, and the raw text fields onto `TextInput`
-4. Decide whether the smoke suite joins CI (needs Chromium on the runner and a demo database; map tiles stubbed)
-5. Record delay reasons on deliveries so the reason report's delay section fills
-6. Check the outside services from the Iranian server
-7. Decide the Android distribution route before F6 starts
+1. Owner puts the server on Postgres following `docs/postgres-server.md` (main is Postgres-only), picks the second machine for the off-site backups, authorizes the key and stores the passphrase; first full backup and restore drill on the real server
+2. Adopt the audited small libraries as their features start: `pino`, `web-vitals`, `lru-cache`, Valibot, `nuqs`, `@tanstack/react-virtual` (roadmap 10.6); design the chat on server-sent events plus an `events` table
+3. Owner checks the pocket cards, the (?) help, the filter sheets and the text fields on a real phone
+4. Move the remaining `tf-opt` menu links and the filter chips onto HeroUI parts, and the raw text fields onto `TextInput`
+5. Decide whether the smoke suite joins CI (needs Chromium on the runner and a demo database; map tiles stubbed)
+6. Record delay reasons on deliveries so the reason report's delay section fills
+7. Check the outside services from the Iranian server
+8. Decide the Android distribution route before F6 starts

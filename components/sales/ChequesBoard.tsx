@@ -1,5 +1,6 @@
 "use client";
 
+import { FieldInput } from "@/components/FieldInput";
 import { chequeBulk, toggleId } from "@/lib/selection";
 import DecisionDeck from "@/components/mobile/DecisionDeck";
 import { CHEQUE_CHOICES, chequeRequest, chequesDue } from "@/lib/decisions";
@@ -282,21 +283,21 @@ export default function ChequesBoard({ customers }: { customers: Customer[] }) {
           value={form.customer_id}
           onChange={(id) => setForm((f) => ({ ...f, customer_id: id }))}
         />
-        <label className="flex flex-col gap-1 text-xs text-text-muted">مبلغ (تومان)<input
-          className="rounded border border-border bg-bg p-2 text-left font-mono text-sm w-full"
+        <label className="flex flex-col gap-1 text-xs text-text-muted">مبلغ (تومان)<FieldInput
+          className="text-left font-mono w-full"
          
           inputMode="numeric"
           value={form.amount_toman}
           onChange={(e) => setForm((f) => ({ ...f, amount_toman: e.target.value }))}
         /></label>
-        <label className="flex flex-col gap-1 text-xs text-text-muted">شمارهٔ چک<input
-          className="rounded border border-border bg-bg p-2 text-sm w-full"
+        <label className="flex flex-col gap-1 text-xs text-text-muted">شمارهٔ چک<FieldInput
+          className="w-full"
          
           value={form.cheque_no}
           onChange={(e) => setForm((f) => ({ ...f, cheque_no: e.target.value }))}
         /></label>
-        <label className="flex flex-col gap-1 text-xs text-text-muted">بانک<input
-          className="rounded border border-border bg-bg p-2 text-sm w-full"
+        <label className="flex flex-col gap-1 text-xs text-text-muted">بانک<FieldInput
+          className="w-full"
          
           value={form.bank_name}
           onChange={(e) => setForm((f) => ({ ...f, bank_name: e.target.value }))}
@@ -359,8 +360,8 @@ export default function ChequesBoard({ customers }: { customers: Customer[] }) {
                   </SwipeRow>
                   {replacing?.id === c.id && (
                     <div className="m-2 flex flex-col gap-2 rounded border border-border p-2">
-                      <label className="flex flex-col gap-1 text-xs text-text-muted">شمارهٔ چک جایگزین<input
-                        className="rounded border border-border bg-bg p-2 text-left font-mono text-sm w-full"
+                      <label className="flex flex-col gap-1 text-xs text-text-muted">شمارهٔ چک جایگزین<FieldInput
+                        className="text-left font-mono w-full"
                        
                         value={replacing.cheque_no}
                         onChange={(e) => setReplacing({ ...replacing, cheque_no: e.target.value })}

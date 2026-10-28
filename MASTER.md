@@ -604,9 +604,9 @@ part's sheet in the same change that first uses it. What we use, and where it li
 | Need | HeroUI part | Our wrapper / note |
 |---|---|---|
 | Button, icon button | `Button` | 44 px floor, 52 px for `size="lg"` (rule in `globals.css`, held by `tests/heroui-setup.test.ts`) |
-| Answer in a flow, picker or deck | `Button` / `ToggleButton` | `components/tapflow/Answer.tsx` (`AnswerButton`, `SkipButton`, `AnswerSearch`) |
+| Answer in a flow, picker or deck | `Button` / `ToggleButton` / `Link` | `components/tapflow/Answer.tsx` (`AnswerButton`, `GoButton`, `SkipButton`, `AnswerLink`, `AnswerSearch`, `AnswerList`) |
 | Search above a list | `SearchField` | `AnswerSearch`; 52 px, 16 px type |
-| Text field | `TextField`, `Input`, `InputGroup` | |
+| Text field | `TextField`, `Input`, `InputGroup`, `TextArea` | `TextInput` / `PasswordInput` for a labelled field with its error; `FieldInput` / `FieldArea` (`components/FieldInput.tsx`) for a bare field that has its own label or layout |
 | Sheet / overlay | `Drawer` | `components/mobile/BottomSheet.tsx`; never a hand-rolled modal |
 | Toast with undo | `Toast` | |
 | Day / date | `Calendar` (Shamsi) | `PersianCalendar` in `components/PersianDateField.tsx`; day chips first (`DayChips`, `ToggleButton`s) |
@@ -614,17 +614,25 @@ part's sheet in the same change that first uses it. What we use, and where it li
 | Status word | `Chip` | `StatusPill` |
 | Avatar, skeleton, empty state, disclosure | `Avatar`, `Skeleton`, `EmptyState`, `Disclosure` | |
 | Report table, pager | HeroUI's `table` / `pagination` classes | `AcctTable`, `Pager`: server pages with real links, so only the classes |
+| Pocket card face and papers | `Card` (transparent and secondary) | `PocketCard`; our `.card` rule skips `.face` and `.doc`; the fan and the frosted face are ours |
 | Checkbox, switch, alert, popover | as named | |
+| (?) help beside a component, card or page | `Popover` | `components/meridian/HelpHint.tsx` (a Popover, not a Tooltip: tooltips never open on touch); `HelpRow` puts it on its own row |
+| Saving button | `Spinner` | `BusyIcon` swaps the button's icon while it works |
+| Progress | `ProgressBar` | `FlowProgress` (tap flows), `leadImport/ProgressBar` |
+| Applied filter | `TagGroup` / `Tag` | `ActiveTags`: removable tags under the filter chips |
+| Keyboard key | `Kbd` | shortcut help, search slot |
+| Long list of answers | `ListBox` | `AnswerList` (in `Answer.tsx`); `SmartPicker` is the sheet select / combo box with search; a filter group with 9 or more options is `SearchableGroup` (`ChipGroup.tsx`): one chip, a sheet with search and a multi-select ListBox |
+| Sortable client table | `Table` | `MarginTable` (reports stay server pages) |
 
 Still ours, styled with the HeroUI token names: `Keypad`, `SwipeRow`, the phone bottom bar,
-`FilterChips`, the signature cards below, the charts, and the map markers.
+the signature cards below, the charts, and the map markers.
 
 - **Map marker** — 14px diamond, status fill, 2px `--bg` ring, status glow, idle ping.
 - **Facility marker** — `--facility`, distinguished by silhouette before color:
   warehouse a filled hexagon (26×29, center-anchored, crate knocked out); home base a
   hollow house (24×26, base-anchored). Both static — the ping belongs to live readings,
   and a building is not one. Drawn above the cluster layer.
-- **Skeleton** — matches the shape of what is loading. Never a spinner.
+- **Skeleton** — matches the shape of what is loading. A page never shows a spinner; the HeroUI `Spinner` appears only inside a button the person just tapped (`BusyIcon`).
 
 ## CRM / ERP patterns `SHIPPED`
 

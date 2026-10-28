@@ -1,5 +1,6 @@
 "use client";
 
+import { FieldInput } from "@/components/FieldInput";
 import type { Dispatch, SetStateAction } from "react";
 import { Icon } from "@/components/meridian/Icon";
 import SectionHead from "@/components/meridian/SectionHead";
@@ -25,7 +26,7 @@ editing !== null ? (
           aria-label="ویرایش تخصیص"
           className="flex flex-col gap-2 rounded border border-border bg-surface p-3 text-sm"
         >
-          <SectionHead title="تخصیص این دریافت" as="h3" />
+          <SectionHead help="card.allocation" title="تخصیص این دریافت" as="h3" />
           <p className="text-xs text-text-muted">
             پیش‌فرض روی قدیمی‌ترین سفارش‌ها می‌نشیند و باقی‌مانده به حساب مشتری. اینجا می‌توانید
             دستی عوضش کنید؛ پول جابه‌جا نمی‌شود، فقط نسبتش با سفارش‌ها.
@@ -37,7 +38,7 @@ editing !== null ? (
                 <span className="tnum">
                   سفارش {o.id} — مانده {faToman(outstanding)}
                 </span>
-                <input
+                <FieldInput
                   type="number"
                   min={0}
                   step={1000}
@@ -51,7 +52,7 @@ editing !== null ? (
                       return [...rest, { order_id: o.id, amount_toman: v }];
                     });
                   }}
-                  className="w-28 rounded border border-border bg-bg p-1 text-left font-mono"
+                  className="w-28 text-left font-mono"
                 />
               </label>
             );
@@ -60,7 +61,7 @@ editing !== null ? (
               silent remainder, because "what is left" is a number someone will ask about. */}
           <label className="flex items-center justify-between gap-2 text-xs">
             <span>باقی‌مانده روی حساب مشتری</span>
-            <input
+            <FieldInput
               type="number"
               min={0}
               step={1000}
@@ -72,7 +73,7 @@ editing !== null ? (
                   { order_id: null, amount_toman: v },
                 ]);
               }}
-              className="w-28 rounded border border-border bg-bg p-1 text-left font-mono"
+              className="w-28 text-left font-mono"
             />
           </label>
           <p className="text-xs text-text-muted">

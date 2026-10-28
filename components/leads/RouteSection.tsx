@@ -1,8 +1,10 @@
 "use client";
 
+import { FieldInput } from "@/components/FieldInput";
 import SmartPicker from "@/components/mobile/SmartPicker";
 import { useCardDrag } from "@/components/board/useCardDrag";
 import RunPanel, { type RunStop } from "@/components/leads/RunPanel";
+import { Button } from "@heroui/react";
 import { Icon } from "@/components/meridian/Icon";
 import { faNum } from "@/lib/format";
 import CollapsibleSection from "@/components/CollapsibleSection";
@@ -111,22 +113,20 @@ export default function RouteSection({
    * rendered and are gone. */
   const dayActions = (i: number, day: DayGroup) => (
     <div className="flex flex-wrap gap-1.5">
-      <button
-        onClick={() => updateRun(day.stops.map((d) => d.id))}
-        className="rounded-[var(--radius-sm)] border border-accent px-2 py-1 text-[length:var(--text-xs)] text-accent hover:bg-accent hover:text-accent-ink"
-      >
+      <Button variant="outline" size="sm" onPress={() => updateRun(day.stops.map((d) => d.id))}>
         <Icon name="route" size="sm" />
         بردن به مسیر
-      </button>
-      <button
-        onClick={() => createList(`روز ${i + 1}`, day.stops.map((d) => d.id))}
-        disabled={busy || day.stops.length === 0}
-        title={day.stops.length === 0 ? "این روز مکانی ندارد" : undefined}
-        className="rounded-[var(--radius-sm)] border border-border px-2 py-1 text-[length:var(--text-xs)] text-text-muted hover:border-accent hover:text-accent disabled:opacity-50"
+      </Button>
+      <Button
+        variant="secondary"
+        size="sm"
+        onPress={() => createList(`روز ${i + 1}`, day.stops.map((d) => d.id))}
+        isDisabled={busy || day.stops.length === 0}
+        aria-description={day.stops.length === 0 ? "این روز مکانی ندارد" : undefined}
       >
         <Icon name="edit" size="sm" />
         ذخیره به‌عنوان فهرست
-      </button>
+      </Button>
     </div>
   );
 
@@ -155,7 +155,7 @@ export default function RouteSection({
     <>
       {/* ---- automatic day split (manager only) -------------------------------- */}
       {isManager && (
-          <CollapsibleSection
+          <CollapsibleSection help="card.map-split"
             title="تقسیم خودکار بین روزها" icon="folders"
             storageKey="leads_split"
             keywords="خوشه‌بندی روز مسیر تقسیم"
@@ -177,30 +177,24 @@ export default function RouteSection({
             <div className="mb-3 flex flex-wrap items-center gap-2">
               <label className="flex items-center gap-1.5 text-[length:var(--text-xs)] text-text-muted">
                 تعداد مقصد در هر روز:
-                <input
+                <FieldInput
                   type="number"
                   min={2}
                   max={50}
                   value={stopsPerDay}
                   onChange={(e) => setStopsPerDay(Math.max(2, Number(e.target.value) || 2))}
-                  className="w-16 rounded-[var(--radius-sm)] border border-border bg-bg px-1.5 py-1 text-center text-text outline-none focus:border-accent"
+                  className="w-16 text-center text-text"
                 />
               </label>
-              <button
-                onClick={() => proposeDays()}
-                className="rounded-[var(--radius-sm)] border border-accent px-2 py-1 text-[length:var(--text-xs)] text-accent hover:bg-accent hover:text-accent-ink"
-              >
+              <Button variant="outline" size="sm" onPress={() => proposeDays()}>
                 <Icon name="calendar" size="sm" />
                 پیشنهاد بده ({faNum(daysNeeded(routableLength, stopsPerDay))} روز)
-              </button>
+              </Button>
               {proposedDays && (
-                <button
-                  onClick={() => setProposedDays(null)}
-                  className="rounded-[var(--radius-sm)] border border-border px-2 py-1 text-[length:var(--text-xs)] text-text-muted hover:border-crit hover:text-crit"
-                >
+                <Button variant="tertiary" size="sm" onPress={() => setProposedDays(null)}>
                   <Icon name="x" size="sm" />
                   بستن پیشنهاد
-                </button>
+                </Button>
               )}
             </div>
 
@@ -233,17 +227,15 @@ export default function RouteSection({
                   >
                     <Icon name="grip-vertical" size="sm" className="text-text-faint shrink-0" />
                     <span className="flex-1 text-[length:var(--text-xs)] text-text">{stop.name}</span>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        removeFromDayGroup(i, stop.id);
-                      }}
-                      className="shrink-0 text-text-faint hover:text-crit text-[length:var(--text-xs)]"
+                    <Button
+                      isIconOnly
+                      variant="danger-soft"
+                      size="sm"
+                      onPress={() => removeFromDayGroup(i, stop.id)}
                       aria-label={`حذف ${stop.name} از روز ${i + 1}`}
                     >
                       <Icon name="x" size="sm" />
-                    </button>
+                    </Button>
                   </div>
                 ))}
                 {unassignedLocations.length > 0 && (

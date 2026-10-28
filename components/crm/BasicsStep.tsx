@@ -1,5 +1,7 @@
 "use client";
 
+import { FieldInput } from "@/components/FieldInput";
+import { GoButton } from "@/components/tapflow/Answer";
 import { useEffect, useState } from "react";
 import { Icon } from "@/components/meridian/Icon";
 import type { CustomStepApi } from "@/components/tapflow/TapFlow";
@@ -70,14 +72,14 @@ export default function BasicsStep({ api, prefillPhone, onOpenExisting, onReques
 
   return (
     <>
-      <input className="tf-input" value={name} onChange={(e) => setName(e.target.value)} placeholder="نام کسب‌وکار" aria-label="نام کسب‌وکار" autoFocus={!name} />
-      <input className="tf-input ltr" value={phone}
+      <FieldInput  value={name} onChange={(e) => setName(e.target.value)} placeholder="نام کسب‌وکار" aria-label="نام کسب‌وکار" autoFocus={!name} />
+      <FieldInput className="ltr" value={phone}
         onChange={(e) => { setPhone(sanitizePhoneInput(e.target.value)); setBranchOf(null); }}
         onBlur={() => setPhoneTouched(true)}
         placeholder={foodApp ? "تلفن (اگر دارید)" : "0912 ___ ____"} aria-label="تلفن" type="tel" inputMode="tel"
         aria-invalid={invalid} aria-describedby={invalid ? "lead-phone-error" : undefined} />
       {invalid ? <p id="lead-phone-error" role="alert" className="tf-error">شماره تلفن معتبر وارد کنید؛ فقط رقم و پیش‌شمارهٔ ایران مجاز است.</p> : null}
-      <input className="tf-input ltr" value={instagram} onChange={(e) => { setInstagram(e.target.value); setBranchOf(null); }} placeholder="اینستاگرام: ‎@page (اختیاری)" aria-label="صفحهٔ اینستاگرام" inputMode="url" autoCapitalize="none" />
+      <FieldInput className="ltr" value={instagram} onChange={(e) => { setInstagram(e.target.value); setBranchOf(null); }} placeholder="اینستاگرام: ‎@page (اختیاری)" aria-label="صفحهٔ اینستاگرام" inputMode="url" autoCapitalize="none" />
       {checkFailedShown ? (
         <div className="tf-card block">
           <b>بررسی تکراری‌بودن انجام نشد</b>
@@ -132,11 +134,7 @@ export default function BasicsStep({ api, prefillPhone, onOpenExisting, onReques
           باز کن</button></div> : null}
         </div>
       ))}
-      <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] tf-go" disabled={name.trim().length < 2 || blocked}
-        onClick={() => api.submit("ok", JSON.stringify({ name: name.trim(), phone: phone.trim() || null, instagram: instagram.trim() || null, branch_of: branchOk ? branchOf : null }))}>
-        <Icon name="arrow-left" size="md" />
-        ادامه به سؤال بعد
-      </button>
+      <GoButton icon="arrow-left" isDisabled={name.trim().length < 2 || blocked} onPress={() => api.submit("ok", JSON.stringify({ name: name.trim(), phone: phone.trim() || null, instagram: instagram.trim() || null, branch_of: branchOk ? branchOf : null }))}>ادامه به سؤال بعد</GoButton>
     </>
   );
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { FieldInput } from "@/components/FieldInput";
 import { useState, type ReactNode } from "react";
 import { Button } from "@heroui/react";
 import BottomSheet from "@/components/mobile/BottomSheet";
@@ -13,6 +14,7 @@ import { useChoiceFeedback } from "./useChoiceFeedback";
 import AmountStep from "./AmountStep";
 import { AnswerButton, SkipButton } from "./Answer";
 import PickStep from "./PickStep";
+import FlowProgress from "./FlowProgress";
 import StepperStep from "./StepperStep";
 import type { FlowItem } from "@/lib/flows/item";
 
@@ -74,15 +76,7 @@ export default function TapFlow(p: TapFlowProps) {
                     <Icon name="chevron-right" size="sm" /> سؤال قبلی
                   </Button>
                 ) : <span />}
-                <div className="tf-steps" aria-hidden>
-                  {/* One mark per step this flow can actually reach, not a fixed six.
-                      `budget.longest` is the declared maximum path length, and
-                      crm-flow-configs.test.ts asserts it bounds the real one -- so the
-                      count is honest for every flow instead of only the long ones. */}
-                  {Array.from({ length: totalSteps }, (_, i) => (
-                    <i key={i} className={i < p.state.stack.length ? "on" : ""} />
-                  ))}
-                </div>
+                <FlowProgress done={p.state.stack.length} total={totalSteps} />
               </div>
               <p className="tf-q">{view.q}</p>
               {view.sub ? <p className="tf-sub">{view.sub}</p> : null}
@@ -179,7 +173,7 @@ function StepBody({ view, submit, hours, onNavigate, navigateUrl, vars, items }:
   return (
     <>
       {view.input ? (
-        <input
+        <FieldInput
           className={`tf-input${view.input.ltr ? " ltr" : ""}`}
           value={text}
           onChange={(e) => setText(e.target.value)}

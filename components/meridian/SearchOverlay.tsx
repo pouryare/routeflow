@@ -1,5 +1,6 @@
 "use client";
 
+import { FieldInput } from "@/components/FieldInput";
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { usePathname, useRouter } from "next/navigation";
@@ -183,7 +184,7 @@ function Panel({ onClose, tabs }: { onClose: () => void; tabs: AppTab[] }) {
       >
         <div className="sov__field">
           <Icon name="search" size="md" />
-          <input
+          <FieldInput
             autoFocus
             className="sov__input"
             role="combobox"

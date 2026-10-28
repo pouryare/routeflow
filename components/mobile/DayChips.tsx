@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { Button, ToggleButton } from "@heroui/react";
+import { HelpHint, HelpRow } from "@/components/meridian/HelpHint";
 import { Icon } from "@/components/meridian/Icon";
 import { PersianCalendar } from "@/components/PersianDateField";
 import { dayChoices, solarHolidaysAround, weekDays } from "@/lib/dayChoices";
@@ -57,6 +58,12 @@ export default function DayChips({
 
   return (
     <div className="daychips" role="group" aria-label={ariaLabel}>
+      <HelpRow>
+        <HelpHint title="انتخاب روز" label="راهنمای انتخاب روز">
+          <p className="mhelp__what">امروز، فردا یا یکی از روزهای نزدیک را بزنید. برای روز دیگر «روز دیگر…» را بزنید و از تقویم انتخاب کنید.</p>
+          <p className="mhelp__how">روزهای تعطیل و جمعه‌ها خط‌چین‌اند.</p>
+        </HelpHint>
+      </HelpRow>
       {mode === "chips" && (
         <div className="daychips__row">
           {choices.map((c) =>

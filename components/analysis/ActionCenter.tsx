@@ -1,3 +1,4 @@
+import { CardHelp } from "@/components/meridian/CardHelp";
 import Link from "next/link";
 import { Icon } from "@/components/meridian/Icon";
 import { faNum } from "@/lib/format";
@@ -42,6 +43,7 @@ export default function ActionCenter({
           <h2>مرکز اقدام</h2>
           <div className="n">هر کارت یک تصمیم است، به ترتیب اهمیت. برای دلیل و محل اقدام، کارت را باز کنید.</div>
         </div>
+        <CardHelp id="card.action-center" />
       </div>
       {empty ? (
         <p className="kblock__body acenter__empty">چیزی نیاز به تصمیم ندارد — همه‌چیز در جریان است.</p>

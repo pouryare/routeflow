@@ -1,5 +1,8 @@
 "use client";
 
+import { Button } from "@heroui/react";
+import { FileTrigger } from "react-aria-components";
+import { SkipButton } from "@/components/tapflow/Answer";
 import { useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import TapFlow, { type CustomStepApi } from "@/components/tapflow/TapFlow";
@@ -79,27 +82,22 @@ export default function ExpenseFlow({
     api.step.kind === "photo" ? (
       <div className="tf-grid one">
         {/* The camera on a phone (capture), the file picker on a desk. The pick itself is the answer. */}
-        <label className="inline-flex items-center justify-center gap-[var(--space-2)] tf-opt rec">
-          <Icon name="camera" size="md" />
-          عکس رسید
-          <input
-            type="file"
-            accept="image/*"
-            capture="environment"
-            className="sr-only"
-            aria-label="عکس رسید"
-            onChange={(e) => {
-              const f = e.target.files?.[0];
-              if (!f) return;
-              receipt.current = f;
-              api.submit("take");
-            }}
-          />
-        </label>
-        <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] tf-skip" onClick={() => api.submit("none")}>
-          <Icon name="arrow-left" size="md" />
-          بدون عکس
-        </button>
+        <FileTrigger
+          acceptedFileTypes={["image/*"]}
+          defaultCamera="environment"
+          onSelect={(files) => {
+            const f = files?.[0];
+            if (!f) return;
+            receipt.current = f;
+            api.submit("take");
+          }}
+        >
+          <Button variant="secondary" className="tf-opt rec">
+            <Icon name="camera" size="md" />
+            عکس رسید
+          </Button>
+        </FileTrigger>
+        <SkipButton icon="arrow-left" onPress={() => api.submit("none")}>بدون عکس</SkipButton>
       </div>
     ) : null;
 

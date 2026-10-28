@@ -1,5 +1,6 @@
 "use client";
 
+import { FieldInput } from "@/components/FieldInput";
 import { useUndoableAction } from "@/components/tapflow/useUndoableAction";
 import { useCallback, useState } from "react";
 import { friendlyError } from "@/lib/userMessage";
@@ -127,11 +128,11 @@ export default function AdminHolidaysPage() {
             {/* Free text last: only for an occasion that is not in the chips above. */}
             <label className="flex flex-col gap-1 text-xs text-text-muted">
               مناسبت دیگر
-              <input
+              <FieldInput
                 value={isCommonOccasion(title) ? "" : title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="عنوان"
-                className="rounded-md border border-border bg-surface-raised px-2 py-2 text-sm text-text outline-none placeholder:text-text-faint focus:border-accent"
+                className="text-text"
               />
             </label>
             <button

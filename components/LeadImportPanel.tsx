@@ -1,5 +1,6 @@
 "use client";
 
+import { FieldArea } from "@/components/FieldInput";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { friendlyError } from "@/lib/userMessage";
 import { Icon } from "@/components/meridian/Icon";
@@ -162,11 +163,11 @@ export default function LeadImportPanel({ onAdded }: { onAdded: () => void }) {
         />
       ) : (
         <div>
-          <textarea
+          <FieldArea
             value={text}
             onChange={(e) => setText(e.target.value)}
             placeholder="لینک یا نتیجه جستجوی گوگل‌مپ، نشان، بلد یا ویز را اینجا پیست کنید…"
-            className="w-full h-24 rounded-[var(--radius-md)] border border-border bg-surface px-3 py-2 text-[length:var(--text-sm)] text-text outline-none transition-[border-color] duration-[var(--dur-base)] ease-[var(--ease-out)] placeholder:text-text-faint focus:border-accent focus:ring-1 focus:ring-accent resize-none"
+            className="w-full text-[length:var(--text-sm)] text-text resize-none"
           />
           <div className="mt-2 flex items-center justify-between">
             <p className="text-[length:var(--text-xs)] text-text-faint">

@@ -29,7 +29,7 @@ describe("page skeletons are silhouettes, not tile scatters", () => {
 describe("the shimmer is visible in the meridian theme", () => {
   const css = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
   it("the block sits on a sunk tone, not on the card colour it would vanish into", () => {
-    expect(css).toMatch(/\.meridian \.skeleton \{[^}]*background: var\(--sunk\)/);
+    expect(css).toMatch(/\.meridian \.skeleton \{[^}]*background: var\(--surface-tertiary\)/);
   });
   it("the sweep is a highlight mixed from a token, not a fixed near-transparent white", () => {
     expect(css).toMatch(/\.meridian \.skeleton::after \{[^}]*color-mix\(in srgb, var\(--surface\)/);

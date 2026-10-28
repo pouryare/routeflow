@@ -1,7 +1,7 @@
 "use client";
 
+import { AnswerButton, SkipButton } from "@/components/tapflow/Answer";
 import dynamic from "next/dynamic";
-import { Icon } from "@/components/meridian/Icon";
 import { useState } from "react";
 import type { CustomStepApi } from "@/components/tapflow/TapFlow";
 
@@ -22,16 +22,13 @@ export default function PinStep({ api, initial, allowApprox }: {
         onCancel={() => (others[0] ? api.submit(others[0].id) : undefined)}
       />
       {allowApprox ? (
-        <button type="button" aria-pressed={approx} className={`tf-opt${approx ? " on" : ""}`} onClick={() => setApprox((a) => !a)}>
-          <Icon name="map-pin" size="md" />
-          آدرس تقریبی است
+        <AnswerButton icon="map-pin" selected={approx} onPress={() => setApprox((a) => !a)}>
+آدرس تقریبی است
           <small>مثلاً از روی منوی اسنپ‌فود — راننده دقیقش می‌کند</small>
-        </button>
+</AnswerButton>
       ) : null}
       {others.map((o) => (
-        <button key={o.id} type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] tf-skip" onClick={() => api.submit(o.id)}>
-        <Icon name="map-pin" size="md" />
-        {o.label}</button>
+        <SkipButton key={o.id} icon="map-pin" onPress={() => api.submit(o.id)}>{o.label}</SkipButton>
       ))}
     </div>
   );

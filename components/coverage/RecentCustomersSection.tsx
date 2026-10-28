@@ -12,7 +12,7 @@ export default function RecentCustomersSection({ recentCustomers, flyToCustomer,
 }) {
   if (!(recentCustomers.length > 0)) return null;
   return (
-        <CollapsibleSection title="اخیراً دیده‌شده" icon="clock" count={recentCustomers.length} storageKey="recent">
+        <CollapsibleSection help="card.map-recent" title="اخیراً دیده‌شده" icon="clock" count={recentCustomers.length} storageKey="recent">
           <div className="flex flex-col gap-1.5">
             {recentCustomers.map((c) => (
               <div

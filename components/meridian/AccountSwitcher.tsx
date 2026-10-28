@@ -1,5 +1,6 @@
 "use client";
 
+import { FieldInput } from "@/components/FieldInput";
 import { useEffect, useMemo, useState } from "react";
 import { Icon } from "@/components/meridian/Icon";
 import { useRouter } from "next/navigation";
@@ -81,11 +82,11 @@ export default function AccountSwitcher({ variant = "page" }: { variant?: "menu"
 
   return (
     <div className={variant === "page" ? "p-[var(--space-4)]" : ""} dir="rtl">
-      <input
+      <FieldInput
         value={q}
         onChange={(e) => setQ(e.target.value)}
         placeholder="جستجوی نام یا سازمان…" aria-label="جستجوی نام یا سازمان"
-        className="mb-[var(--space-3)] w-full rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] px-[var(--space-3)] py-[var(--space-2)] text-[length:var(--text-sm)] text-[var(--text)] outline-none focus:border-[var(--accent)]"
+        className="mb-[var(--space-3)] w-full text-[length:var(--text-sm)] text-[var(--text)]"
       />
       {asking && (
         <div role="alertdialog" aria-label="ورود به‌جای کاربر" className="mb-[var(--space-3)] grid gap-[var(--space-2)] rounded-[var(--radius-md)] border border-[var(--border)] p-[var(--space-3)]">

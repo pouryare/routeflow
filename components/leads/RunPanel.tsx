@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { Button } from "@heroui/react";
 import { moveItem, slotAt } from "@/lib/reorder";
 import { faNum } from "@/lib/format";
 import { formatDistanceKm } from "@/lib/geo";
@@ -101,14 +102,10 @@ export default function RunPanel({
         )}
 
         {optimiseGain !== null && (
-          <button
-            onClick={onOptimise}
-            disabled={busy}
-            className="inline-flex items-center justify-center gap-[var(--space-2)] rounded-[var(--radius-sm)] border border-accent px-2 py-1.5 text-[length:var(--text-xs)] text-accent transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:bg-accent hover:text-accent-ink disabled:opacity-50"
-          >
+          <Button variant="outline" size="sm" onPress={onOptimise} isDisabled={busy}>
             <Icon name="sparkle" size="sm" />
             مرتب‌سازی خودکار — {faNum(optimiseGain)}٪ کوتاه‌تر
-          </button>
+          </Button>
         )}
 
         {onAssignRoute && (
@@ -119,14 +116,10 @@ export default function RunPanel({
           />
         )}
 
-        <button
-          onClick={onClear}
-          disabled={busy}
-          className="inline-flex items-center justify-center gap-[var(--space-2)] rounded-[var(--radius-sm)] border border-border px-2 py-1.5 text-[length:var(--text-xs)] text-text-muted transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:border-crit hover:text-crit disabled:opacity-50"
-        >
+        <Button variant="danger-soft" size="sm" onPress={onClear} isDisabled={busy}>
           <Icon name="trash" size="sm" />
           خالی کردن
-        </button>
+        </Button>
 
         {totalKm !== null && (
           <span className="ms-auto font-mono text-[length:var(--text-xs)] text-text-faint">
@@ -180,22 +173,12 @@ export default function RunPanel({
                 </button>
               )}
               <div className="flex shrink-0 flex-col gap-0.5">
-                <button
-                  onClick={() => onMove(s.id, -1)}
-                  disabled={i === 0 || busy}
-                  aria-label="بالا"
-                  className="touch text-text-faint hover:text-text disabled:opacity-30"
-                >
+                <Button isIconOnly variant="ghost" size="sm" onPress={() => onMove(s.id, -1)} isDisabled={i === 0 || busy} aria-label="بالا">
                   <Icon name="arrow-up" size="sm" />
-                </button>
-                <button
-                  onClick={() => onMove(s.id, 1)}
-                  disabled={i === stops.length - 1 || busy}
-                  aria-label="پایین"
-                  className="touch text-text-faint hover:text-text disabled:opacity-30"
-                >
+                </Button>
+                <Button isIconOnly variant="ghost" size="sm" onPress={() => onMove(s.id, 1)} isDisabled={i === stops.length - 1 || busy} aria-label="پایین">
                   <Icon name="arrow-down" size="sm" />
-                </button>
+                </Button>
               </div>
 
               <a
@@ -207,22 +190,13 @@ export default function RunPanel({
               >
                 <Icon name="external-link" size="sm" />
               </a>
-              <button
-                onClick={() => onRemove(s.id)}
-                disabled={busy}
-                aria-label={`حذف ${s.name} از مسیر`}
-                className="shrink-0 rounded-[var(--radius-sm)] px-1.5 py-1 text-crit transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:bg-white/5 disabled:opacity-50"
-              >
+              <Button isIconOnly variant="danger-soft" size="sm" onPress={() => onRemove(s.id)} isDisabled={busy} aria-label={`حذف ${s.name} از مسیر`}>
                 <Icon name="x" size="sm" />
-              </button>
+              </Button>
               {onTapFlow && (
-                <button
-                  type="button"
-                  onClick={() => onTapFlow(s.id)}
-                  className="shrink-0 rounded-[var(--radius-sm)] px-2 py-1 text-good transition-colors hover:bg-white/5 text-[length:var(--text-xs)] flex items-center gap-1.5"
-                >
+                <Button variant="secondary" size="sm" onPress={() => onTapFlow(s.id)}>
                   <Icon name="check" size="sm" /> ثبت بازدید
-                </button>
+                </Button>
               )}
             </div>
           </li>

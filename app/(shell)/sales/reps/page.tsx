@@ -1,3 +1,4 @@
+import { CardHelp } from "@/components/meridian/CardHelp";
 import RepDefinitions from "@/components/sales/RepDefinitions";
 import Link from "next/link";
 import { cookies } from "next/headers";
@@ -62,6 +63,7 @@ export default async function RepsPage({
           <h2>نمایندگان</h2>
           <div className="n">{reps.length === 0 ? "نماینده‌ای ثبت نشده" : `${faNum(reps.length)} نماینده`}</div>
         </div>
+        <CardHelp id="card.reps" />
       </div>
       <div className="kblock__body overflow-x-auto">
         <table className="w-full border-collapse text-[length:var(--text-sm)]">

@@ -42,7 +42,7 @@ describe("lead stats for the dashboard", () => {
 describe("where the panels live", () => {
   it("the dashboard shows them to the roles /api/locations admits", () => {
     const src = fs.readFileSync("app/(shell)/sales/dashboard/page.tsx", "utf8");
-    expect(src).toMatch(/PIN_POOL_ROLES\.includes\(session\.role\) && \(\s*<CollapsibleSection title="سرنخ‌ها"/);
+    expect(src).toMatch(/PIN_POOL_ROLES\.includes\(session\.role\) && \(\s*<CollapsibleSection help="card.dash-leads" title="سرنخ‌ها"/);
   });
 
   it("the retired /analytics page is gone", () => {

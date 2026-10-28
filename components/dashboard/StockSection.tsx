@@ -19,7 +19,7 @@ export default async function StockSection({ session }: { session: Session }) {
   const negatives = stock.filter((r) => r.negative);
 
   return (
-        <CollapsibleSection title="انبار و تحویل" icon="package" storageKey="dash-stock">
+        <CollapsibleSection help="card.dash-stock" title="انبار و تحویل" icon="package" storageKey="dash-stock">
           <div className="grid gap-[var(--space-4)] md:grid-cols-2">
             <BarChart
               title="موجودی انبار"

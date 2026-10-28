@@ -1,6 +1,7 @@
 "use client";
 
 import CollapsibleSection from "./CollapsibleSection";
+import ActiveTags from "@/components/mobile/ActiveTags";
 import FilterChips from "@/components/mobile/FilterChips";
 import { faNum } from "@/lib/format";
 
@@ -18,7 +19,7 @@ export default function CustomerFilters({
   filteredCount: number;
 }) {
   return (
-    <CollapsibleSection
+    <CollapsibleSection help="card.map-filters"
       title="فیلتر مشتری‌ها"
       icon="search"
       /* The count belongs in the chip, not spliced into the title -- and "N of M" is
@@ -46,6 +47,11 @@ export default function CustomerFilters({
           ]}
         />
       )}
+      <ActiveTags
+        label="فروشنده‌های انتخاب‌شده"
+        items={[...salespersonFilter].map((x) => ({ id: x, label: x }))}
+        onRemove={(id) => onSalespersonFilterChange(new Set([...salespersonFilter].filter((x) => x !== id)))}
+      />
     </CollapsibleSection>
   );
 }

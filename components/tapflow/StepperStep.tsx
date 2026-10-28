@@ -1,5 +1,6 @@
 "use client";
 
+import { HelpHint, HelpRow } from "@/components/meridian/HelpHint";
 import { useState } from "react";
 import { Button } from "@heroui/react";
 import { Icon } from "@/components/meridian/Icon";
@@ -20,6 +21,12 @@ export default function StepperStep({ items, option, submit }: {
   const bump = (i: FlowItem, d: number) => setN((s) => ({ ...s, [i.id]: clampCount(i.max ?? i.qty ?? 0, (s[i.id] ?? 0) + d) }));
   return (
     <div className="tf-stepper">
+      <HelpRow>
+        <HelpHint title="شمارش اقلام" label="راهنمای شمارش اقلام">
+          <p className="mhelp__what">هر ردیف با تعداد انتظار رفته پر شده است؛ اگر همه‌چیز درست بود فقط دکمهٔ پایین را بزنید.</p>
+          <p className="mhelp__how">برای کم و زیاد بودن یک قلم، روی «کم» یا «زیاد» همان ردیف بزنید.</p>
+        </HelpHint>
+      </HelpRow>
       {items.map((i) => (
         <div key={i.id} className="tf-row">
           <span>

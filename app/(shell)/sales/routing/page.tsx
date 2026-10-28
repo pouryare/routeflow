@@ -1,3 +1,4 @@
+import { CardHelp } from "@/components/meridian/CardHelp";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { COOKIE_NAME } from "@/lib/auth";
@@ -33,6 +34,7 @@ export default async function RoutingPage() {
               : `${vehicles.length} خودرو`}
           </div>
         </div>
+        <CardHelp id="card.routing" />
       </div>
       <div className="kblock__body">
         <RoutingPlanner vehicleNames={names} />

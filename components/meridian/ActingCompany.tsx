@@ -54,7 +54,7 @@ export default function ActingCompany() {
 
   return (
     <section className="mt-[var(--space-4)]" aria-label="سازمان فعال">
-      <SectionHead title="سازمان فعال" />
+      <SectionHead help="card.acting-company" title="سازمان فعال" />
       <p className="m-0 mt-[var(--space-1)] mb-[var(--space-2)] text-[length:var(--text-sm)] text-[var(--text-muted)]">
         «همهٔ سازمان‌ها» همه را با هم می‌بیند. با انتخاب یک سازمان، به‌عنوان مالک همان سازمان کار می‌کنید و هر تغییری در همان سازمان ثبت می‌شود.
       </p>

@@ -1,5 +1,6 @@
 "use client";
 
+import { FieldInput } from "@/components/FieldInput";
 import { friendlyError } from "@/lib/userMessage";
 import { tehranTodayIso } from "@/lib/jalali";
 import { useState } from "react";
@@ -250,7 +251,7 @@ export default function MarginHelperDrawer({
               <label className={LABEL} htmlFor="mh-fixed">
                 هزینه ثابت هر واحد (تومان)
               </label>
-              <input
+              <FieldInput
                 id="mh-fixed"
                 className={FIELD}
                 value={fixed}
@@ -263,7 +264,7 @@ export default function MarginHelperDrawer({
               <label className={LABEL} htmlFor="mh-percent">
                 درصدی از فروش (اگر اندازه‌گیری نشده، خالی)
               </label>
-              <input
+              <FieldInput
                 id="mh-percent"
                 name="percent"
                 className={FIELD}
@@ -277,7 +278,7 @@ export default function MarginHelperDrawer({
               <label className={LABEL} htmlFor="mh-tax">
                 مالیات (تومان)
               </label>
-              <input
+              <FieldInput
                 id="mh-tax"
                 className={FIELD}
                 value={tax}
@@ -290,7 +291,7 @@ export default function MarginHelperDrawer({
               <label className={LABEL} htmlFor="mh-rate">
                 نرخ پورسانت هر کیلوگرم (تومان)
               </label>
-              <input
+              <FieldInput
                 id="mh-rate"
                 className={FIELD}
                 value={effectiveRatePerKg ?? ""}
@@ -315,7 +316,7 @@ export default function MarginHelperDrawer({
             <label className={LABEL} htmlFor="mh-target">
               حاشیه هدف (٪)
             </label>
-            <input
+            <FieldInput
               id="mh-target"
               name="target"
               className={FIELD}
@@ -353,7 +354,7 @@ export default function MarginHelperDrawer({
               <label className={LABEL} htmlFor="mh-cost-save">
                 ثبت بهای تمام‌شده تازه (تومان)
               </label>
-              <input
+              <FieldInput
                 id="mh-cost-save"
                 className={FIELD}
                 value={costToSave}
