@@ -1,6 +1,6 @@
 # Company and shareholders in accounting (decisions and plan, 2026-10-28)
 
-Brainstorm with the owner, 2026-10-28. The decisions are in "Answers so far" and "Resulting design"; the build follows in steps (see `TODO-REPORT.md`). Step 1 and 2 are built: commission in the ledger and a person and group on every ledger line (`lib/repo/ledgerCommission.ts`, `lib/repo/parties.ts`, migration `1761600000000_commission-in-ledger.sql`).
+Brainstorm with the owner, 2026-10-28. The decisions are in "Answers so far" and "Resulting design"; the build follows in steps (see `TODO-REPORT.md`). Steps 1, 2 and 3 are built (3: `lib/repo/shareholders.ts`, the «شرکا» page, migration `1761700000000_shareholders.sql`). Step 1 and 2: commission in the ledger and a person and group on every ledger line (`lib/repo/ledgerCommission.ts`, `lib/repo/parties.ts`, migration `1761600000000_commission-in-ledger.sql`).
 
 ## What the code does today
 

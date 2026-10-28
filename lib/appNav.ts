@@ -152,6 +152,7 @@ export function appTabs(session: { role: Role }): AppTab[] {
     { href: "/accounting/payables", label: "بدهی تأمین‌کنندگان", group: "accounts", ready: isOwner(r) },
     { href: "/accounting/expenses", label: "هزینه‌ها", group: "accounts", ready: isOwner(r) || r === "group_manager" },
     { href: "/accounting/suppliers", label: "تأمین‌کنندگان", group: "accounts", ready: isOwner(r) },
+    { href: "/accounting/shareholders", label: "شرکا", group: "accounts", ready: isOwner(r) },
 
     // تیم
     { href: "/sales/tasks", label: "کارتابل", group: "team", ready: isRepLead(r) },

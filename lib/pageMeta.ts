@@ -213,6 +213,13 @@ export const PAGE_META: Record<string, PageMeta> = {
     overview:
       "هزینه‌ها بر اساس حساب و بر اساس ثبت‌کننده. هر ردیف یک سند است، پس با «ابطال» اصلاح می‌شود، نه با ویرایش.",
   },
+  "/accounting/shareholders": {
+    title: "شرکا",
+    titleEn: "Shareholders",
+    help: "page.shareholders",
+    overview:
+      "شرکا، درصد سهم هرکدام با تاریخ شروع، و نوع شرکت. سود هر شریک از دفتر و همین درصدها محاسبه می‌شود.",
+  },
   "/accounting/suppliers": {
     title: "تأمین‌کنندگان",
     titleEn: "Suppliers",

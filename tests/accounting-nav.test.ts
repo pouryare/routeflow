@@ -22,6 +22,7 @@ const ROUTES = [
   "/accounting/payables",
   "/accounting/expenses",
   "/accounting/suppliers",
+  "/accounting/shareholders",
 ];
 
 const page = (name: string) => readFileSync(`app/(shell)/accounting/${name}/page.tsx`, "utf8");
@@ -75,6 +76,7 @@ describe("the accounting shell", () => {
       "payables",
       "expenses",
       "suppliers",
+      "shareholders",
     ];
     for (const p of pages) {
       const file = `app/(shell)/accounting/${p}/page.tsx`;
