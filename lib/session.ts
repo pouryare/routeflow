@@ -163,7 +163,8 @@ export async function requireRole(req: NextRequest, roles: Role[]): Promise<Guar
  *  sign-in security, their own device and preferences. Everything else is company data. */
 const COMPANY_FREE_WRITES = [
   "/api/admin/acting-org",
-  "/api/admin/second-factor",
+  "/api/me/second-factor",
+  "/api/me/step-up",
   "/api/admin/impersonate",
   "/api/notifications",
   "/api/push",

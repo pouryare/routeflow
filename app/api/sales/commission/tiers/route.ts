@@ -15,6 +15,7 @@ import {
   type CommissionMetric,
 } from "@/lib/commission/tiers";
 import { OWNER_ROLES } from "@/lib/roles";
+import { guardStepUp } from "@/lib/repo/stepUp";
 
 /** Owner only, including against a manager — the same gate as
  *  `app/api/sales/commission/rates/route.ts`, deliberately.
@@ -75,6 +76,8 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const guard = await requireRole(req, OWNER_ROLES);
   if (!guard.ok) return guard.response;
+  const stepUp = await guardStepUp(req, guard.session, "commission_change");
+  if (stepUp) return stepUp;
 
   const body = (await req.json().catch(() => null)) as Record<string, unknown> | null;
   const validFrom = body?.valid_from;
@@ -119,6 +122,8 @@ export async function POST(req: NextRequest) {
 export async function DELETE(req: NextRequest) {
   const guard = await requireRole(req, OWNER_ROLES);
   if (!guard.ok) return guard.response;
+  const stepUp = await guardStepUp(req, guard.session, "commission_change");
+  if (stepUp) return stepUp;
 
   const q = new URL(req.url).searchParams;
   const from = q.get("from");

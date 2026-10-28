@@ -2,13 +2,16 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireRole } from "@/lib/session";
 import { decideDiscount, DiscountError } from "@/lib/repo/discounts";
 import { MANAGE_ROLES } from "@/lib/roles";
+import { guardStepUp } from "@/lib/repo/stepUp";
 
 /** The manager's or owner's answer to a discount. Who may answer which one (own group, never your
  *  own, a group manager's goes to the owner) is decided in lib/discounts.ts and enforced by the
  *  repo, so a card that is not theirs answers 409 here rather than doing anything. */
-export async function POST(req: NextRequest, ctx: RouteContext<"/api/admin/discounts/[id]/decide">) {
+export async function POST(req: NextRequest, ctx: RouteContext<"/api/sales/discounts/[id]/decide">) {
   const guard = await requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
+  const stepUp = await guardStepUp(req, guard.session, "discount_decide");
+  if (stepUp) return stepUp;
 
   const { id } = await ctx.params;
   const body = (await req.json().catch(() => null)) as { verdict?: unknown; note?: unknown } | null;

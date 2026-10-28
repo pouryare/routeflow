@@ -5,7 +5,6 @@ import { getSessionFromCookies } from "@/lib/session";
 import { OWNER_ROLES } from "@/lib/roles";
 import AccountSwitcher from "@/components/meridian/AccountSwitcher";
 import ActingCompany from "@/components/meridian/ActingCompany";
-import FounderSecurity from "@/components/meridian/FounderSecurity";
 import PageHeader from "@/components/meridian/PageHeader";
 
 export const dynamic = "force-dynamic";
@@ -31,7 +30,6 @@ export default async function SwitchPage() {
       </p>
       {/* The founder's account only: pick a company to act in (reads and writes), or all of them. */}
       {session.role === "platform_owner" && session.actorId === undefined ? <ActingCompany /> : null}
-      {session.role === "platform_owner" && session.actorId === undefined ? <FounderSecurity /> : null}
       <AccountSwitcher variant="page" />
     </div>
   );

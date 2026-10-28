@@ -7,6 +7,10 @@ import { Icon } from "@/components/meridian/Icon";
 import LoginEventList from "@/components/LoginEventList";
 import ChangePasswordSection from "@/components/ChangePasswordSection";
 import { myRecentLogins } from "@/lib/repo/loginEvents";
+import SecondFactorSection from "@/components/meridian/SecondFactorSection";
+import StepUpSwitch from "@/components/meridian/StepUpSwitch";
+import { stepUpRequiredFor } from "@/lib/repo/stepUp";
+import { isOwner } from "@/lib/roles";
 
 export const dynamic = "force-dynamic";
 
@@ -61,6 +65,8 @@ export default async function SecuritySettingsPage({
         )}
       </section>
       {!impersonating && <ChangePasswordSection />}
+      {!impersonating && <SecondFactorSection />}
+      {!impersonating && isOwner(session.role) && <StepUpSwitch initial={await stepUpRequiredFor(session.organizationId)} />}
       <section className="card mt-[var(--space-4)] flex flex-col gap-[var(--space-3)] p-[var(--space-4)]" dir="rtl">
         <h2 className="sechead__title">ورودهای اخیر شما</h2>
         <LoginEventList rows={logins} />

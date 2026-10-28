@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
 import { COOKIE_NAME, MAX_AGE_SECONDS, createSessionToken, parseSessionToken } from "@/lib/auth";
+import { TRUST_COOKIE } from "@/lib/stepUp";
 import { bumpTokenVersion } from "@/lib/repo/userSessions";
 
 /** Sign out everywhere (F107). A plain form post from /settings/security, so it works
@@ -23,6 +24,7 @@ export async function POST(req: NextRequest) {
   if (scope === "all") {
     const res = back("/login");
     res.cookies.set(COOKIE_NAME, "", { path: "/", maxAge: 0 });
+    res.cookies.set(TRUST_COOKIE, "", { path: "/", maxAge: 0 });
     return res;
   }
 

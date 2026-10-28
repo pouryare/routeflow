@@ -905,6 +905,7 @@ export interface Organizations {
   name: string;
   plan: Generated<string>;
   slug: string;
+  step_up_required: Generated<boolean>;
 }
 
 export interface Packagings {

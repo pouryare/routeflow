@@ -24,7 +24,7 @@ export default function DiscountDeckEntry({ approvals }: { approvals: PendingDis
     undoable.run({
       message: `سفارش ${a.order_no} · ${verdict === "approved" ? "تخفیف تأیید شد" : "تخفیف رد شد"}`,
       send: async () => {
-        const res = await fetch(`/api/admin/discounts/${a.id}/decide`, {
+        const res = await fetch(`/api/sales/discounts/${a.id}/decide`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(discountRequest(verdict)),

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireRole } from "@/lib/session";
 import { decide, CreditApprovalError } from "@/lib/repo/creditApprovals";
 import { MANAGE_ROLES } from "@/lib/roles";
+import { guardStepUp } from "@/lib/repo/stepUp";
 
 export async function POST(
   req: NextRequest,
@@ -9,6 +10,8 @@ export async function POST(
 ) {
   const guard = await requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
+  const stepUp = await guardStepUp(req, guard.session, "credit_limit");
+  if (stepUp) return stepUp;
 
   const { id } = await ctx.params;
   const body = (await req.json().catch(() => null)) as {

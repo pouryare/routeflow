@@ -7,6 +7,7 @@ import { emitEvent } from "@/lib/repo/events";
 import { ACTOR_COOKIE, IMPERSONATION_MAX_AGE_SECONDS, impersonationRefusal } from "@/lib/impersonation";
 import { OWNER_ROLES, type Role } from "@/lib/roles";
 import { rolesFor } from "@/lib/repo/userRoles";
+import { guardStepUp } from "@/lib/repo/stepUp";
 
 const cookieBase = { httpOnly: true, sameSite: "lax" as const, path: "/", secure: process.env.NODE_ENV === "production" };
 
@@ -21,6 +22,8 @@ const cookieBase = { httpOnly: true, sameSite: "lax" as const, path: "/", secure
 export async function POST(req: NextRequest) {
   const guard = await requireRole(req, OWNER_ROLES);
   if (!guard.ok) return guard.response;
+  const stepUp = await guardStepUp(req, guard.session, "login_as");
+  if (stepUp) return stepUp;
   const own = req.cookies.get(COOKIE_NAME)?.value;
   const body = (await req.json().catch(() => null)) as { user_id?: unknown } | null;
   const targetId = Number(body?.user_id);
