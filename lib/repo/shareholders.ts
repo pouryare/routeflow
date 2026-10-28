@@ -7,7 +7,7 @@
 import type { Db } from "@/lib/database/client";
 import { LedgerError } from "./ledgerCore";
 
-export const FULL_BP = 10000;
+const FULL_BP = 10000;
 
 export type LegalForm = "registered" | "unregistered";
 

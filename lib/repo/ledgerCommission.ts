@@ -54,7 +54,7 @@ async function postedAccrual(db: Db, organizationId: number, partyId: number, ex
 }
 
 /** Post the difference between what a person has accrued (lifetime) and what the books hold. Returns the journal id, or null when they agree. */
-export async function syncPersonAccrual(
+async function syncPersonAccrual(
   db: Db,
   input: { organizationId: number; kind: CommissionKind; personId: number; accruedToman: number; asOf: string; createdBy: number }
 ): Promise<number | null> {

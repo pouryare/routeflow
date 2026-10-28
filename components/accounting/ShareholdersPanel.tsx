@@ -19,6 +19,43 @@ interface Share { partyId: number; percentBp: number }
 const FORM_LABEL = { registered: "ثبت‌شده", unregistered: "ثبت‌نشده" } as const;
 const percentOf = (bp: number) => faNum(bp / 100, { maximumFractionDigits: 2 });
 
+/** The one typed field of the page: a name, and optionally which login this partner signs in with. */
+function AddShareholderSheet({ open, users, onClose }: { open: boolean; users: { id: number; name: string }[]; onClose: () => void }) {
+  const add = usePostAction();
+  const [name, setName] = useState("");
+  const [userId, setUserId] = useState("");
+  return (
+    <BottomSheet open={open} title="افزودن شریک" onClose={onClose} closeLabel="بستن افزودن شریک">
+      <label htmlFor="shareholder-name">نام شریک</label>
+      <input id="shareholder-name" className="touch" value={name} onChange={(e) => setName(e.target.value)} autoComplete="off" />
+      {users.length > 0 && (
+        <div className="filterchips"><div className="filterchips__row">
+          <ChipGroup
+            group={{
+              id: "shareholder-user",
+              label: "ورود به سامانه (اختیاری)",
+              mode: "single",
+              options: users.map((u) => ({ id: String(u.id), label: u.name })),
+              value: userId,
+              onChange: (v) => setUserId(v as string),
+            }}
+          />
+        </div></div>
+      )}
+      {add.message && <p role="status" className={add.message.kind === "error" ? "text-danger" : "text-muted"}>{add.message.text}</p>}
+      <GoButton
+        isDisabled={add.busy || !name.trim()}
+        onPress={async () => {
+          const ok = await add.send("/api/accounting/shareholders", { name, user_id: userId ? Number(userId) : null }, "شریک اضافه شد");
+          if (ok) { setName(""); setUserId(""); onClose(); }
+        }}
+      >
+        {add.busy ? "در حال ثبت…" : "ثبت شریک"}
+      </GoButton>
+    </BottomSheet>
+  );
+}
+
 /** Shareholders, shares and the legal form on one phone screen. Typing is only for a name; shares go
  *  in on the keypad, the start day and the legal form are taps. The «ذخیره» stays off until the shares
  *  total exactly 100%, because a set that does not add up would split more or less than the profit. */
@@ -31,12 +68,9 @@ export default function ShareholdersPanel({ legalForm, shareholders, groups, use
   today: string;
 }) {
   const form = usePostAction();
-  const add = usePostAction();
   const shares = usePostAction();
   const [addOpen, setAddOpen] = useState(false);
   const [sharesOpen, setSharesOpen] = useState(false);
-  const [name, setName] = useState("");
-  const [userId, setUserId] = useState("");
   const [scope, setScope] = useState("company");
   const [from, setFrom] = useState(today);
   const [draft, setDraft] = useState<Record<number, string>>({});
@@ -111,34 +145,7 @@ export default function ShareholdersPanel({ legalForm, shareholders, groups, use
       <div className="sticky-action-gap" />
       <StickyAction label="افزودن شریک" icon="plus" onClick={() => setAddOpen(true)} />
 
-      <BottomSheet open={addOpen} title="افزودن شریک" onClose={() => setAddOpen(false)} closeLabel="بستن افزودن شریک">
-        <label htmlFor="shareholder-name">نام شریک</label>
-        <input id="shareholder-name" className="touch" value={name} onChange={(e) => setName(e.target.value)} autoComplete="off" />
-        {users.length > 0 && (
-          <div className="filterchips"><div className="filterchips__row">
-          <ChipGroup
-            group={{
-              id: "shareholder-user",
-              label: "ورود به سامانه (اختیاری)",
-              mode: "single",
-              options: users.map((u) => ({ id: String(u.id), label: u.name })),
-              value: userId,
-              onChange: (v) => setUserId(v as string),
-            }}
-          />
-          </div></div>
-        )}
-        {add.message && <p role="status" className={add.message.kind === "error" ? "text-danger" : "text-muted"}>{add.message.text}</p>}
-        <GoButton
-          isDisabled={add.busy || !name.trim()}
-          onPress={async () => {
-            const ok = await add.send("/api/accounting/shareholders", { name, user_id: userId ? Number(userId) : null }, "شریک اضافه شد");
-            if (ok) { setName(""); setUserId(""); setAddOpen(false); }
-          }}
-        >
-          {add.busy ? "در حال ثبت…" : "ثبت شریک"}
-        </GoButton>
-      </BottomSheet>
+      <AddShareholderSheet open={addOpen} users={users} onClose={() => setAddOpen(false)} />
 
       <BottomSheet open={sharesOpen} title="درصد سهم‌ها" subtitle="جمع باید دقیقاً ۱۰۰٪ شود" onClose={() => setSharesOpen(false)} closeLabel="بستن درصد سهم‌ها">
         {groups.length > 0 && (

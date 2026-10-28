@@ -6,7 +6,7 @@ import EmptyState from "@/components/EmptyState";
 import AcctTable, { CELL, NUM } from "@/components/accounting/AcctTable";
 import { COOKIE_NAME } from "@/lib/auth";
 import { getSessionFromCookies } from "@/lib/session";
-import { homePathFor } from "@/lib/roles";
+import { homePathFor, isShareholder } from "@/lib/roles";
 import { myShareOf, shareholderOfUserIn } from "@/lib/repo/routeAdapters";
 import { faJalaliDate, todayJalali } from "@/lib/jalali";
 import { faNum, faToman } from "@/lib/format";
@@ -20,7 +20,7 @@ export default async function MySharePage() {
   const jar = await cookies();
   const session = await getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
   if (!session) redirect("/login");
-  if (session.role !== "shareholder") redirect(homePathFor(session.role));
+  if (!isShareholder(session.role)) redirect(homePathFor(session.role));
 
   const me = await shareholderOfUserIn(session.organizationId, session.user.id);
   const data = me ? await myShareOf(session.organizationId, me.id, todayJalali().jy) : null;

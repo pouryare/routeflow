@@ -152,7 +152,7 @@ export async function setCostRule(db: Db, input: { organizationId: number; accou
 
 /* ------------------------------------------------------------------ the split */
 
-export interface SplitGroupRow {
+interface SplitGroupRow {
   groupId: number;
   name: string;
   profitToman: number;
@@ -160,8 +160,8 @@ export interface SplitGroupRow {
   distributableToman: number;
   lossAfterToman: number;
 }
-export interface SplitLine { groupId: number | null; partyId: number; name: string; amountToman: number }
-export interface SplitPartyRow { partyId: number; name: string; grossToman: number; advanceNettedToman: number; netPayableToman: number }
+interface SplitLine { groupId: number | null; partyId: number; name: string; amountToman: number }
+interface SplitPartyRow { partyId: number; name: string; grossToman: number; advanceNettedToman: number; netPayableToman: number }
 
 export interface SplitPreview {
   year: number;

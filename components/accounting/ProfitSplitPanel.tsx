@@ -19,6 +19,38 @@ type Rule = "sales_share" | "company";
 const METHODS = [{ id: "CASH", label: "نقد" }, { id: "CARD_TO_CARD", label: "کارت به کارت" }, { id: "POS", label: "کارتخوان" }];
 const Row = ({ children }: { children: React.ReactNode }) => <div className="filterchips"><div className="filterchips__row">{children}</div></div>;
 
+function GroupRows({ rows }: { rows: SplitPreview["groups"] }) {
+  if (rows.length === 0) return null;
+  return (
+    <AcctTable head={["گروه", "سود", "بازپرداخت زیان", "به شرکای گروه"]}>
+      {rows.map((g) => (
+        <tr key={g.groupId} className="border-t border-border">
+          <td className={CELL}>{g.name}</td>
+          <td className={NUM}>{faNum(g.profitToman)}</td>
+          <td className={NUM}>{g.repaidToman ? faNum(g.repaidToman) : g.lossAfterToman ? `${faNum(g.lossAfterToman)} مانده` : "—"}</td>
+          <td className={NUM}>{faNum(g.distributableToman)}</td>
+        </tr>
+      ))}
+    </AcctTable>
+  );
+}
+
+function PartyRows({ rows }: { rows: SplitPreview["parties"] }) {
+  if (rows.length === 0) return null;
+  return (
+    <AcctTable head={["شریک", "سهم از سود", "علی‌الحساب کسر‌شده", "قابل پرداخت"]}>
+      {rows.map((p) => (
+        <tr key={p.partyId} className="border-t border-border">
+          <td className={CELL}>{p.name}</td>
+          <td className={NUM}>{faNum(p.grossToman)}</td>
+          <td className={NUM}>{p.advanceNettedToman ? faNum(p.advanceNettedToman) : "—"}</td>
+          <td className={NUM}>{faNum(p.netPayableToman)}</td>
+        </tr>
+      ))}
+    </AcctTable>
+  );
+}
+
 /** What a partner has taken and is owed, the yearly split (preview, then post) and the rule for shared costs.
  *  Nothing here edits a journal: the split and the payments each post their own, and a year can be split once. */
 export default function ProfitSplitPanel({ legalForm, balances, years, costAccounts, today, hasShareholders }: {
@@ -90,31 +122,9 @@ export default function ProfitSplitPanel({ legalForm, balances, years, costAccou
       {preview && (
         <div data-testid="split-preview">
           <p>سود سال: <b className="tnum">{faToman(preview.totalProfitToman)}</b></p>
-          {preview.groups.length > 0 && (
-            <AcctTable head={["گروه", "سود", "بازپرداخت زیان", "به شرکای گروه"]}>
-              {preview.groups.map((g) => (
-                <tr key={g.groupId} className="border-t border-border">
-                  <td className={CELL}>{g.name}</td>
-                  <td className={NUM}>{faNum(g.profitToman)}</td>
-                  <td className={NUM}>{g.repaidToman ? faNum(g.repaidToman) : g.lossAfterToman ? `${faNum(g.lossAfterToman)} مانده` : "—"}</td>
-                  <td className={NUM}>{faNum(g.distributableToman)}</td>
-                </tr>
-              ))}
-            </AcctTable>
-          )}
+          <GroupRows rows={preview.groups} />
           {preview.reserveToman > 0 && <p>اندوختهٔ قانونی: <b className="tnum">{faToman(preview.reserveToman)}</b></p>}
-          {preview.parties.length > 0 && (
-            <AcctTable head={["شریک", "سهم از سود", "علی‌الحساب کسر‌شده", "قابل پرداخت"]}>
-              {preview.parties.map((p) => (
-                <tr key={p.partyId} className="border-t border-border">
-                  <td className={CELL}>{p.name}</td>
-                  <td className={NUM}>{faNum(p.grossToman)}</td>
-                  <td className={NUM}>{p.advanceNettedToman ? faNum(p.advanceNettedToman) : "—"}</td>
-                  <td className={NUM}>{faNum(p.netPayableToman)}</td>
-                </tr>
-              ))}
-            </AcctTable>
-          )}
+          <PartyRows rows={preview.parties} />
           {preview.warnings.map((w) => <p key={w} role="status" className="text-muted">{w}</p>)}
           {preview.alreadyDone && <p role="status" className="text-muted">سود این سال قبلاً تقسیم شده است.</p>}
           {!preview.alreadyDone && !canPost && preview.totalProfitToman >= 0 && preview.warnings.length === 0 && (

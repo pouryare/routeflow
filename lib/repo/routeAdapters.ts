@@ -144,5 +144,3 @@ export const myShareOf = async (organizationId: number, partyId: number, year: n
 export const shareholderOfUserIn = async (organizationId: number, userId: number) => await shareholderOfUser(getDb(), organizationId, userId);
 export const costRulesOf = async (organizationId: number) => await costRules(getDb(), organizationId);
 export const setCostRuleIn = async (input: P<typeof setCostRule>[1]) => await setCostRule(getDb(), input);
-export const syncCommissionIn = async (organizationId: number, userId: number) =>
-  await getDb().tx(async () => await syncCommissionAccrual(getDb(), { organizationId, asOf: tehranTodayIso(), createdBy: userId }));

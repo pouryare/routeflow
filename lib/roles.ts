@@ -91,6 +91,8 @@ export const isOwner = (r: Role) => OWNER_ROLES.includes(r);
  *  The order API admits exactly this set, and every «ثبت سفارش تازه» button asks it first, so
  *  no one is offered a form whose save will be refused. */
 export const SELL_ROLES: Role[] = ["platform_owner", "owner", "group_manager", "phone_sales", "field_rep", "delivery_driver"];
+/** The read-only partner login: one page, no company data. */
+export const isShareholder = (r: Role | string | null | undefined): boolean => r === "shareholder";
 export const canSell = (r: Role | string | null | undefined): boolean => SELL_ROLES.includes(r as Role);
 
 export const ROLE_LABEL: Record<Role, string> = {
