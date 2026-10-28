@@ -1,5 +1,6 @@
 import Avatar from "@/components/meridian/Avatar";
 import CountUp from "@/components/meridian/CountUp";
+import WordReveal from "@/components/meridian/WordReveal";
 import type { Briefing as BriefingData } from "@/lib/repo/briefing";
 import type { BriefingCard } from "@/lib/repo/briefingCards";
 import { faJalaliLong } from "@/lib/jalali";
@@ -47,7 +48,7 @@ export default function BriefingHero({
           size={96}
         />
       </span>
-      <h1 className="hello__name">{data.hero.displayName}</h1>
+      <h1 className="hello__name"><WordReveal text={data.hero.displayName} /></h1>
       <p className="hello__meta">
         {roleLabel} · {faJalaliLong(dateIso)}
       </p>

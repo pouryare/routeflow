@@ -5055,3 +5055,25 @@ body {
 .meridian .leadlist__row.button { flex: 1 1 0; min-width: 0; height: auto; min-height: 44px; justify-content: flex-start; gap: var(--space-2); font-weight: 400; }
 .meridian .leadlist__act.button { width: 100%; justify-content: flex-start; min-height: 44px; }
 .meridian .covrow.button { width: 100%; height: auto; min-height: 44px; justify-content: space-between; gap: var(--space-2); padding: var(--space-2) var(--space-3); font-weight: 400; }
+
+/* Word-by-word heading reveal (components/meridian/WordReveal.tsx). Opacity and a short
+   rise only; the blur of the original effect is limited to fine pointers, because a blur
+   filter stutters on weak phones. */
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes wr-in {
+    from { opacity: 0; transform: translateY(0.5em); }
+    to   { opacity: 1; transform: none; }
+  }
+  @keyframes wr-in-blur {
+    from { opacity: 0; transform: translateY(0.5em); filter: blur(6px); }
+    to   { opacity: 1; transform: none; filter: blur(0); }
+  }
+  .meridian .wr {
+    display: inline-block;
+    animation: wr-in 520ms var(--ease) backwards;
+    animation-delay: calc(var(--wr-i, 0) * 90ms + 60ms);
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .meridian .wr { animation-name: wr-in-blur; }
+  }
+}

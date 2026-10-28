@@ -8,6 +8,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Icon } from "@/components/meridian/Icon";
 import { PasswordInput, TextInput } from "@/components/TextInput";
 import OtpInput from "@/components/mobile/OtpInput";
+import WordReveal from "@/components/meridian/WordReveal";
 
 function LoginForm() {
   const router = useRouter();
@@ -95,7 +96,7 @@ function LoginForm() {
             </div>
           </div>
           <h1 className="mb-[var(--space-1)] text-center text-[length:var(--text-xl)] font-bold text-[var(--text)]">
-            نقشه پوشش مشتریان
+            <WordReveal text="نقشه پوشش مشتریان" />
           </h1>
           <p className="mb-[var(--space-5)] text-center text-[length:var(--text-sm)] text-[var(--text-muted)]">
             با نام کاربری و رمز عبور خودتان وارد شوید.
