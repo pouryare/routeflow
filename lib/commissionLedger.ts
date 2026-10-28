@@ -29,6 +29,7 @@ import { planFor } from "./repo/commissionTiers";
 import { orgClause } from "./orgScope";
 
 import { mapSeq } from "@/lib/seq";
+import { deductionFields, deductionsFor, lifetimeDeductions, type DeductionItem } from "./repo/discountDeductions";
 export interface Period {
   from: string;
   to: string;
@@ -55,6 +56,14 @@ export interface Statement {
   paid_toman: number;
   /** Lifetime, not period: what is actually still owed to this person today. */
   owed_toman: number;
+  /** Discounts approved on this person's orders, charged to their commission (see lib/discounts.ts). */
+  deductions: DeductionItem[];
+  deduction_toman: number;
+  /** The part of the period's deductions that the period's earnings could not cover; it stays owed
+   *  against later earnings. */
+  carried_toman: number;
+  /** Accrued minus the deductions the period could cover. */
+  net_toman: number;
   /** Which rule produced `accrued_toman`. Null means the flat per-kilogram rate, unchanged. */
   plan_mode: PlanMode | null;
   orders: StatementOrder[];
@@ -284,7 +293,8 @@ export async function statementFor(
     kg: orders.reduce((total, o) => total + o.kg, 0),
     accrued_toman: accrued,
     paid_toman: paidInPeriod.total,
-    owed_toman: lifetimeAccrued - lifetimePaid.total,
+    owed_toman: lifetimeAccrued - (await lifetimeDeductions(db, salespersonId, "sales")) - lifetimePaid.total,
+    ...deductionFields(accrued, await deductionsFor(db, salespersonId, "sales", period)),
     // Read from the same lookup the accrual used, so the label cannot disagree with the
     // number it labels. Null means the flat rate path ran, unchanged.
     plan_mode: (await planFor(await orgOf(db, salespersonId), salespersonId, period.to, db))?.mode ?? null,

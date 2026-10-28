@@ -7,6 +7,7 @@
  *  the driver who ran it, rather than an order's own salesperson_user_id.
  */
 
+import { deductionFields, deductionsFor, lifetimeDeductions, type DeductionItem } from "./repo/discountDeductions";
 import { linesByOrder } from "./repo/orderLines";
 import { orderKgOf } from "./repo/orderFigures";
 import type { Db } from "@/lib/database/client";
@@ -35,6 +36,10 @@ export interface DriverStatement {
   accrued_toman: number;
   paid_toman: number;
   owed_toman: number;
+  deductions: DeductionItem[];
+  deduction_toman: number;
+  carried_toman: number;
+  net_toman: number;
   stops: DriverStop[];
 }
 
@@ -177,7 +182,8 @@ export async function driverStatementFor(
     kg: stops.reduce((total, s) => total + s.kg, 0),
     accrued_toman: accrued,
     paid_toman: paidInPeriod.total,
-    owed_toman: lifetimeAccrued - lifetimePaid.total,
+    owed_toman: lifetimeAccrued - (await lifetimeDeductions(db, driverId, "driver")) - lifetimePaid.total,
+    ...deductionFields(accrued, await deductionsFor(db, driverId, "driver", period)),
     stops,
   };
 }
