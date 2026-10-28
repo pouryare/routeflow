@@ -163,6 +163,29 @@ describe("pullSince", () => {
     expect([...orgs]).toEqual([1]);
   });
 
+  it("sends an owner open, unpaid and recent orders, not old finished paid ones", async () => {
+    const db = getDb();
+    const now = new Date().toISOString();
+    const insert = async (no: string, status: string, paid: string, date: string) =>
+      Number(
+        (await db
+          .prepare(
+            "INSERT INTO orders (order_no,customer_id,status,payment_status,order_date,created_by,created_at,updated_at,organization_id) VALUES (?,?,?,?,?,?,?,?,1)"
+          )
+          .run(no, custA, status, paid, date, ownerA, now, now)).lastInsertRowid
+      );
+    const today = now.slice(0, 10);
+    const oldClosedPaid = await insert("w1", "CLOSED", "paid", "2026-01-05");
+    const oldClosedUnpaid = await insert("w2", "CLOSED", "unpaid", "2026-01-05");
+    const oldOpen = await insert("w3", "CONFIRMED", "paid", "2026-01-05");
+    const recentClosedPaid = await insert("w4", "CLOSED", "paid", today);
+
+    const res = await pullSince(sess(ownerA, "owner", 1, null), null);
+    const ids = res.rows.filter((r) => r.table === "orders").map((r) => r.row.id);
+    expect(ids).not.toContain(oldClosedPaid);
+    expect(ids).toEqual(expect.arrayContaining([oldClosedUnpaid, oldOpen, recentClosedPaid]));
+  });
+
   it("carries the driver's VISITS, not just their deliveries — the gap that motivated the merge", async () => {
     // THE REGRESSION. pullSince read delivery_runs and delivery_stops and NOTHING else, so a
     // driver offline in the field saw their deliveries and zero visits. For a field rep or a van
