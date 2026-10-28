@@ -1019,6 +1019,39 @@ export interface Products {
   volume_m3_per_base_unit: number | null;
 }
 
+export interface ProfitSplitGroups {
+  distributable_toman: number;
+  group_id: number;
+  id: Generated<number>;
+  loss_after_toman: number;
+  organization_id: number;
+  profit_toman: number;
+  repaid_toman: number;
+  split_id: number;
+}
+
+export interface ProfitSplitLines {
+  amount_toman: number;
+  group_id: number | null;
+  id: Generated<number>;
+  organization_id: number;
+  party_id: number;
+  split_id: number;
+}
+
+export interface ProfitSplits {
+  approved_on: string | null;
+  created_at: string;
+  created_by: number | null;
+  distributed_toman: number;
+  fiscal_year: number;
+  id: Generated<number>;
+  journal_id: number;
+  organization_id: number;
+  reserve_toman: number;
+  total_profit_toman: number;
+}
+
 export interface PurchaseLines {
   base_qty: number;
   created_at: string;
@@ -1274,6 +1307,12 @@ export interface SeasonalFactors {
   note_fa: string | null;
   organization_id: number | null;
   updated_at: string;
+}
+
+export interface SharedCostRules {
+  account_id: number;
+  mode: string;
+  organization_id: number;
 }
 
 export interface Shareholdings {
@@ -1552,6 +1591,9 @@ export interface DB {
   product_costs: ProductCosts;
   product_prices: ProductPrices;
   products: Products;
+  profit_split_groups: ProfitSplitGroups;
+  profit_split_lines: ProfitSplitLines;
+  profit_splits: ProfitSplits;
   purchase_lines: PurchaseLines;
   purchases: Purchases;
   push_subscriptions: PushSubscriptions;
@@ -1571,6 +1613,7 @@ export interface DB {
   sales: Sales;
   saved_locations: SavedLocations;
   seasonal_factors: SeasonalFactors;
+  shared_cost_rules: SharedCostRules;
   shareholdings: Shareholdings;
   stock_movements: StockMovements;
   stock_reservations: StockReservations;
