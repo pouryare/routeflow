@@ -62,7 +62,15 @@ export class SyncEngine extends EventTarget {
     this.timer = window.setInterval(() => {
       if (navigator.onLine) kick();
     }, SYNC_INTERVAL_MS);
-    kick();
+    /* The first cycle waits for the page's own files and an idle moment: started at hydration it
+       competed with the first screen's lazy chunks and fonts on a slow line. Later cycles and the
+       online / visible kicks are unchanged. Safari has no requestIdleCallback, hence the timer. */
+    const first = () => {
+      if (typeof window.requestIdleCallback === "function") window.requestIdleCallback(kick, { timeout: 4000 });
+      else setTimeout(kick, 1500);
+    };
+    if (document.readyState === "complete") first();
+    else window.addEventListener("load", first, { once: true });
   }
 
   stop(): void {
