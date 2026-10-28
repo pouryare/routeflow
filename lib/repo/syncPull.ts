@@ -3,6 +3,7 @@ import { orderFilter, groupFilter } from "@/lib/session";
 import type { Session } from "@/lib/session";
 import { tombstonesSinceXid, type Tombstone } from "./tombstones";
 import { isVanRole } from "../roles";
+import { TERMINAL_ORDER_STATUSES, sqlStatusList } from "../orderStateMachine";
 
 export interface PullRow {
   table: string;
@@ -237,12 +238,20 @@ export async function pullSince(session: Session, since: string | null): Promise
     const of = orderFilter(session);
     const gf = await groupFilter(session, "c.group_id");
 
+    /* shortcut: a finished, fully paid order older than ORDER_WINDOW_DAYS is not sent (an owner's
+       phone held 600 KB of them). Open, unpaid and recent orders always are; the order page still
+       loads any old order online. Upgrade to an on-demand fetch if offline lookups of old paid
+       orders are needed. */
+    const orderSince = new Date(Date.now() - ORDER_WINDOW_DAYS * 86_400_000).toISOString().slice(0, 10);
     add(
       "orders",
       plain(
         await db
-          .prepare(`SELECT o.* FROM orders o WHERE ${changed("o.")}${of.sql}`)
-          .all(mark, ...of.params) as Record<string, unknown>[]
+          .prepare(
+            `SELECT o.* FROM orders o WHERE ${changed("o.")}${of.sql}
+               AND (o.order_date >= ? OR o.payment_status <> 'paid' OR o.status NOT IN (${sqlStatusList([...TERMINAL_ORDER_STATUSES])}))`
+          )
+          .all(mark, ...of.params, orderSince) as Record<string, unknown>[]
       )
     );
     add(
@@ -262,6 +271,9 @@ export async function pullSince(session: Session, since: string | null): Promise
 
 /** How far back a driver's finished runs travel to the phone. */
 const DRIVER_WINDOW_DAYS = 14;
+
+/** How far back a salesperson's, manager's or owner's finished, paid orders travel to the phone. */
+const ORDER_WINDOW_DAYS = 60;
 
 /** A watermark is `x:` and a transaction id; anything else starts from the beginning. */
 const XID_PREFIX = "x:";
