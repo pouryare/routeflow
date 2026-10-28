@@ -75,7 +75,10 @@ export default function ProfitSplitPanel({ legalForm, balances, years, costAccou
           </tr>
         ))}
       </AcctTable>
-      <button type="button" className="touch picker-trigger" onClick={() => setPayOpen(true)}>ثبت پرداخت به شریک</button>
+      <button type="button" className="touch picker-trigger" onClick={() => setPayOpen(true)}>
+        {/* Text-only sheet opener, same as the other picker-trigger buttons: the label says what it does. */}
+        ثبت پرداخت یا سرمایه
+      </button>
 
       <SectionHead title="تقسیم سود سال" sub={legalForm === "registered" ? "شرکت ثبت‌شده: اندوختهٔ قانونی کم می‌شود و تاریخ تأیید مجمع لازم است" : "طبق توافق شرکا"} />
       <Row>
@@ -154,9 +157,9 @@ export default function ProfitSplitPanel({ legalForm, balances, years, costAccou
         </>
       )}
 
-      <BottomSheet open={payOpen} title="پرداخت به شریک" onClose={() => setPayOpen(false)} closeLabel="بستن پرداخت به شریک">
+      <BottomSheet open={payOpen} title="پرداخت یا دریافت از شریک" onClose={() => setPayOpen(false)} closeLabel="بستن پرداخت به شریک">
         <Row>
-          <ChipGroup group={{ id: "pay-kind", label: "نوع", mode: "single", neutral: "__none__", value: kind, options: [{ id: "advance", label: "علی‌الحساب" }, { id: "dividend", label: "پرداخت سود" }], onChange: (v) => setKind((v as string) || "advance") }} />
+          <ChipGroup group={{ id: "pay-kind", label: "نوع", mode: "single", neutral: "__none__", value: kind, options: [{ id: "advance", label: "علی‌الحساب" }, { id: "dividend", label: "پرداخت سود" }, { id: "capital", label: "سرمایه" }], onChange: (v) => setKind((v as string) || "advance") }} />
         </Row>
         <Row>
           <ChipGroup group={{ id: "pay-party", label: "شریک", mode: "single", value: party, options: balances.map((b) => ({ id: String(b.partyId), label: b.name })), onChange: (v) => setParty(v as string) }} />

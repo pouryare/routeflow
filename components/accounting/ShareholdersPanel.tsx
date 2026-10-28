@@ -103,6 +103,7 @@ export default function ShareholdersPanel({ legalForm, shareholders, groups, use
       )}
       {shareholders.length > 0 && (
         <button type="button" className="touch picker-trigger" onClick={() => { startEditing("company"); setSharesOpen(true); }}>
+          {/* Text-only sheet opener, same as the other picker-trigger buttons: the label says what it does. */}
           تنظیم درصد سهم‌ها
         </button>
       )}
@@ -167,7 +168,7 @@ export default function ShareholdersPanel({ legalForm, shareholders, groups, use
           />
         ))}
         <p role="status" className={exact ? "text-muted" : "text-danger"}>
-          جمع: {percentOf(total)}٪{exact ? " ✓" : " — باید ۱۰۰٪ باشد"}
+          جمع: {percentOf(total)}٪{exact ? " (کامل)" : " (باید ۱۰۰٪ باشد)"}
         </p>
         {shares.message && <p role="status" className={shares.message.kind === "error" ? "text-danger" : "text-muted"}>{shares.message.text}</p>}
         <GoButton isDisabled={shares.busy || !exact} onPress={save}>

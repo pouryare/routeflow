@@ -7,8 +7,8 @@ import { quickActionsFor } from "@/lib/mobileNav";
  *  reads the orders list but cannot sell; before this, five buttons offered them a form whose
  *  save was refused at the last tap. */
 describe("who is offered a new order", () => {
-  it("everyone but the rep manager sells", () => {
-    expect(ROLES.filter((r) => !canSell(r))).toEqual(["rep_manager"]);
+  it("everyone but the rep manager and the shareholder sells", () => {
+    expect(ROLES.filter((r) => !canSell(r))).toEqual(["rep_manager", "shareholder"]);
   });
 
   it("the order API admits exactly SELL_ROLES", () => {

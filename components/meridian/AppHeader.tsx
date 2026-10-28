@@ -71,8 +71,13 @@ export default async function AppHeader() {
       <div className="top">
         <HoverPill tabs={tabs} groups={APP_GROUPS} />
         <div className="topright">
-          <WidgetBoundary label="جستجو" compact><SearchSlot tabs={tabs} /></WidgetBoundary>
-          <WidgetBoundary label="اعلان‌ها" compact><NotificationBell placement="header" /></WidgetBoundary>
+          {/* A shareholder has one page and no inbox: search finds nothing else and the bell's API refuses them. */}
+          {session.role !== "shareholder" && (
+            <>
+              <WidgetBoundary label="جستجو" compact><SearchSlot tabs={tabs} /></WidgetBoundary>
+              <WidgetBoundary label="اعلان‌ها" compact><NotificationBell placement="header" /></WidgetBoundary>
+            </>
+          )}
           <ProfileMenu
             userId={session.user.id}
             name={session.user.display_name}

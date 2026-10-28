@@ -5,14 +5,14 @@ import { LedgerError } from "@/lib/repo/ledgerCore";
 import { payPartner } from "@/lib/repo/routeAdapters";
 import { isToman } from "@/lib/money";
 
-/** Money to a partner: an advance against the year's share, or a payout of dividends already credited. */
+/** Money to a partner: an advance against the year's share, a payout of dividends already credited, or capital put in. */
 export async function POST(req: NextRequest) {
   const guard = await requireRole(req, OWNER_ROLES);
   if (!guard.ok) return guard.response;
   const body = (await req.json().catch(() => null)) as {
     party_id?: unknown; kind?: unknown; amount_toman?: unknown; method?: unknown; paid_on?: unknown;
   } | null;
-  const kind = body?.kind === "dividend" ? "dividend" : body?.kind === "advance" ? "advance" : null;
+  const kind = body?.kind === "dividend" ? "dividend" : body?.kind === "advance" ? "advance" : body?.kind === "capital" ? "capital" : null;
   const amount = Number(body?.amount_toman);
   if (!kind || !Number.isInteger(body?.party_id) || !isToman(amount) || amount <= 0 || typeof body?.method !== "string" || typeof body?.paid_on !== "string") {
     return NextResponse.json({ ok: false, error: "اطلاعات پرداخت ناقص است" }, { status: 400 });

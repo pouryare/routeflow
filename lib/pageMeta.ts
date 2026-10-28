@@ -220,6 +220,12 @@ export const PAGE_META: Record<string, PageMeta> = {
     overview:
       "شرکا، درصد سهم هرکدام با تاریخ شروع، و نوع شرکت. سود هر شریک از دفتر و همین درصدها محاسبه می‌شود.",
   },
+  "/my-share": {
+    title: "سهم من",
+    titleEn: "My share",
+    help: "page.myShare",
+    overview: "سهم شما در شرکت، سرمایه و علی‌الحساب شما و سودی که به شما رسیده است؛ فقط حساب خودتان دیده می‌شود.",
+  },
   "/accounting/suppliers": {
     title: "تأمین‌کنندگان",
     titleEn: "Suppliers",

@@ -28,8 +28,8 @@ import { orgOfUser } from "@/lib/repo/userOrg";
 import { postCommissionPayment, syncCommissionAccrual, syncOnePerson, type CommissionKind } from "@/lib/repo/ledgerCommission";
 import { LedgerError } from "@/lib/repo/ledgerCore";
 import { tehranTodayIso } from "@/lib/jalali";
-import { costRules, partnerBalances, postDividendPayment, postPartnerAdvance, postSplit, previewSplit, setCostRule } from "@/lib/repo/profitSplit";
-import { addShareholder, legalFormOf, listShareholders, setLegalForm, setShares, sharesAt, type LegalForm } from "@/lib/repo/shareholders";
+import { costRules, myShare, partnerBalances, postCapitalContribution, postDividendPayment, postPartnerAdvance, postSplit, previewSplit, setCostRule } from "@/lib/repo/profitSplit";
+import { addShareholder, legalFormOf, listShareholders, setLegalForm, setShares, sharesAt, shareholderOfUser, type LegalForm } from "@/lib/repo/shareholders";
 
 type P<F extends (...a: never[]) => unknown> = Parameters<F>;
 
@@ -135,8 +135,13 @@ export const postSplitIn = async (input: { organizationId: number; year: number;
   });
 };
 export const partnerBalancesOf = async (organizationId: number) => await partnerBalances(getDb(), organizationId);
-export const payPartner = async (kind: "advance" | "dividend", input: P<typeof postPartnerAdvance>[1]) =>
-  await getDb().tx(async () => (kind === "advance" ? await postPartnerAdvance(getDb(), input) : await postDividendPayment(getDb(), input)));
+export const payPartner = async (kind: "advance" | "dividend" | "capital", input: P<typeof postPartnerAdvance>[1]) =>
+  await getDb().tx(async () =>
+    kind === "advance" ? await postPartnerAdvance(getDb(), input)
+    : kind === "capital" ? await postCapitalContribution(getDb(), input)
+    : await postDividendPayment(getDb(), input));
+export const myShareOf = async (organizationId: number, partyId: number, year: number) => await myShare(getDb(), organizationId, partyId, year);
+export const shareholderOfUserIn = async (organizationId: number, userId: number) => await shareholderOfUser(getDb(), organizationId, userId);
 export const costRulesOf = async (organizationId: number) => await costRules(getDb(), organizationId);
 export const setCostRuleIn = async (input: P<typeof setCostRule>[1]) => await setCostRule(getDb(), input);
 export const syncCommissionIn = async (organizationId: number, userId: number) =>

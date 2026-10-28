@@ -88,6 +88,25 @@ export async function postPartnerAdvance(
   });
 }
 
+/** Capital a partner put in: Dr cash / Cr 3101 (their own). */
+export async function postCapitalContribution(
+  db: Db,
+  input: { organizationId: number; partyId: number; amountToman: number; method: string; paidOn: string; createdBy: number }
+): Promise<number> {
+  await requireShareholder(db, input.organizationId, input.partyId);
+  return await postJournal(db, {
+    organizationId: input.organizationId,
+    postedAt: input.paidOn,
+    sourceType: "MANUAL",
+    createdBy: input.createdBy,
+    memo: "سرمایهٔ شریک",
+    legs: [
+      { accountId: await cashAccountFor(input.method), side: "D", amountToman: input.amountToman },
+      { accountId: await account("3101"), side: "C", amountToman: input.amountToman, partyId: input.partyId },
+    ],
+  });
+}
+
 /** Paying out dividends already credited: Dr 2105 / Cr cash. Refused above what is owed. */
 export async function postDividendPayment(
   db: Db,
@@ -364,4 +383,70 @@ export async function postSplit(
     }
     return splitId;
   });
+}
+
+/* ------------------------------------------------------------------ a partner's own page */
+
+export interface MyShare {
+  name: string;
+  legalForm: LegalForm;
+  /** Their share today: the whole company, then each group they hold a share of. */
+  shares: { scope: string; percentBp: number }[];
+  capitalToman: number;
+  advancesToman: number;
+  dividendsOwedToman: number;
+  payouts: { paidOn: string; amountToman: number }[];
+  history: { year: number; amountToman: number }[];
+  /** What this year's split would give them on the books as they stand, not yet posted. */
+  estimate: { year: number; amountToman: number } | null;
+}
+
+/** Everything one partner may see about themselves, and nothing about anyone else: every query is keyed on their party. */
+export async function myShare(db: Db, organizationId: number, partyId: number, year: number): Promise<MyShare | null> {
+  const me = (await listShareholders(db, organizationId)).find((s) => s.id === partyId);
+  if (!me) return null;
+  const today = tehranTodayIso();
+
+  const shares: MyShare["shares"] = [];
+  const scopes: { scope: string; groupId: number | null }[] = [{ scope: "کل شرکت", groupId: null }];
+  for (const g of await db.prepare("SELECT id, name FROM groups WHERE organization_id = ? ORDER BY name").all(organizationId) as unknown as { id: number; name: string }[]) {
+    scopes.push({ scope: `گروه ${g.name}`, groupId: Number(g.id) });
+  }
+  for (const s of scopes) {
+    const sets = await shareSets(db, organizationId, s.groupId, today);
+    const inForce = sets.filter((x) => x.validFrom <= today).at(-1);
+    const bp = inForce?.shares.find((x) => x.partyId === partyId)?.percentBp ?? 0;
+    if (bp > 0) shares.push({ scope: s.scope, percentBp: bp });
+  }
+
+  const payouts = await db
+    .prepare(
+      `SELECT j.posted_at AS "paidOn", e.amount_toman AS "amountToman"
+         FROM ledger_entries e JOIN journals j ON j.id = e.journal_id
+        WHERE e.organization_id = ? AND e.party_id = ? AND j.source_type = 'DIVIDEND_PAYMENT' AND e.side = 'D'
+        ORDER BY j.posted_at DESC, j.id DESC LIMIT 20`
+    )
+    .all(organizationId, partyId) as unknown as { paidOn: string; amountToman: number }[];
+  const history = await db
+    .prepare(
+      `SELECT s.fiscal_year AS year, SUM(l.amount_toman) AS "amountToman"
+         FROM profit_split_lines l JOIN profit_splits s ON s.id = l.split_id
+        WHERE l.organization_id = ? AND l.party_id = ? GROUP BY s.fiscal_year ORDER BY s.fiscal_year DESC`
+    )
+    .all(organizationId, partyId) as unknown as { year: number; amountToman: number }[];
+
+  const preview = await previewSplit(db, organizationId, year);
+  const mine = preview.lines.filter((l) => l.partyId === partyId).reduce((t, l) => t + l.amountToman, 0);
+
+  return {
+    name: me.name,
+    legalForm: preview.legalForm,
+    shares,
+    capitalToman: await balanceOf(db, organizationId, "3101", partyId),
+    advancesToman: 0 - (await balanceOf(db, organizationId, "2106", partyId)),
+    dividendsOwedToman: await balanceOf(db, organizationId, "2105", partyId),
+    payouts: payouts.map((p) => ({ paidOn: p.paidOn, amountToman: Number(p.amountToman) })),
+    history: history.map((h) => ({ year: Number(h.year), amountToman: Number(h.amountToman) })),
+    estimate: preview.alreadyDone ? null : { year, amountToman: mine },
+  };
 }

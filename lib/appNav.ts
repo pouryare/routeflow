@@ -84,6 +84,9 @@ const isRepLead = (r: Role) => OWNER_ROLES.includes(r) || r === "group_manager" 
  *  The objection library is here because it is useful standing at the door, which is the
  *  same reason proxy.ts allowlists it.
  */
+/** A shareholder has one page. */
+const SHAREHOLDER_TABS: AppTab[] = [{ href: "/my-share", label: "سهم من", group: "day", ready: true }];
+
 const DRIVER_TABS: AppTab[] = [
   { href: "/driver", label: "مسیر امروز", group: "day", ready: true },
   { href: "/sales/academy", label: "آموزش", group: "day", ready: true },
@@ -100,6 +103,7 @@ export function appTabs(session: { role: Role }): AppTab[] {
   const r = session.role;
   // Copied, not returned by reference: a caller that sorts or edits the result must not
   // be rearranging the shared constant for the next caller.
+  if (r === "shareholder") return SHAREHOLDER_TABS.map((t) => ({ ...t }));
   if (isVanRole(r)) return DRIVER_TABS.map((t) => ({ ...t }));
   return [
     // روز من

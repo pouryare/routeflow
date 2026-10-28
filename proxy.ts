@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { COOKIE_NAME, parseSessionToken } from "./lib/auth";
-import { isVanRole, MANAGE_ROLES, OWNER_ROLES } from "@/lib/roles";
+import { isShareholderPath, isVanRole, MANAGE_ROLES, OWNER_ROLES } from "@/lib/roles";
 
 // /sw.js, the manifest, and the offline fallback stay unauthenticated on purpose:
 // a service worker script must return the same bytes regardless of session state, or
@@ -69,6 +69,15 @@ export function proxy(req: NextRequest) {
     // refused, and the holder has no way to tell a dead session from a broken app.
     res.cookies.set(COOKIE_NAME, "", { path: "/", maxAge: 0 });
     return res;
+  }
+
+  /* A shareholder reaches their own page, their settings and signing out; every other path, API included, is
+     answered with a way back to /my-share. This is an allowlist, not a list of what to refuse, because a role
+     added later is "everything but" until someone remembers it. The page does its own check as well. */
+  if (claims.role === "shareholder" && !isShareholderPath(pathname)) {
+    return isApi
+      ? NextResponse.json({ ok: false, error: "این بخش برای شما باز نیست" }, { status: 403 })
+      : NextResponse.redirect(new URL("/my-share", req.url));
   }
 
   /* F35: a password an owner chose is a one-time key. Until it is replaced, the only places open

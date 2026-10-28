@@ -17,7 +17,8 @@ export type Role =
   | "rep_manager"
   | "phone_sales"
   | "field_rep"
-  | "delivery_driver";
+  | "delivery_driver"
+  | "shareholder";
 
 /** Ordered widest access first, which is also the order they read best in a dropdown. */
 export const ROLES: Role[] = [
@@ -28,6 +29,7 @@ export const ROLES: Role[] = [
   "phone_sales",
   "field_rep",
   "delivery_driver",
+  "shareholder",
 ];
 
 /** The two roles that work a route in a vehicle.
@@ -99,6 +101,7 @@ export const ROLE_LABEL: Record<Role, string> = {
   phone_sales: "فروش تلفنی",
   field_rep: "بازدیدکننده میدانی",
   delivery_driver: "راننده تحویل",
+  shareholder: "شریک",
 };
 
 /** Names the `Role` union RETIRED but `users.role`'s CHECK still admits, on purpose.
@@ -144,6 +147,7 @@ export const ROLE_DESCRIPTION: Record<Role, string> = {
   phone_sales: "فقط سفارش‌هایی که خودش ثبت کرده، تماس‌هایش و پورسانت خودش",
   field_rep: "بازدیدها و مسیرهای میدانی خودش — مشتری‌های گروه خودش",
   delivery_driver: "فقط مسیر و تحویل‌های امروز خودش",
+  shareholder: "فقط صفحهٔ «سهم من»: سهم، سرمایه، علی‌الحساب و سود خودش؛ هیچ داده‌ای از شرکت یا شرکای دیگر دیده نمی‌شود",
 };
 
 /** Whether this role's browser runs the offline sync client at all.
@@ -164,12 +168,24 @@ export const ROLE_DESCRIPTION: Record<Role, string> = {
  * the authoritative, DB-backed check — this is a hint that spares the browser a request,
  * not the thing standing between a cross-tenant pull and the wrong account. */
 export function hasSyncClient(role: Role): boolean {
-  return role !== "platform_owner";
+  return role !== "platform_owner" && role !== "shareholder";
 }
 
 /** Where a signed-in person lands. A van role never enters the sales shell; everyone else,
  *  the vendor's platform_owner included, starts on the day's briefing, which already
  *  scopes itself to "all" for them. */
 export function homePathFor(role: Role): string {
+  if (role === "shareholder") return "/my-share";
   return isVanRole(role) ? "/driver" : "/sales/today";
 }
+
+/** A shareholder's login is a window onto their own share and nothing else. proxy.ts sends every path
+ *  outside this list back to /my-share, so a role the rest of the app has never heard of cannot be the
+ *  way into it: the sales shell, the APIs and the books are all out of reach, whatever their own gates say. */
+export const SHAREHOLDER_PATHS = ["/my-share", "/settings", "/password", "/api/logout", "/api/me", "/api/prefs", "/api/notifications", "/api/push/subscribe"];
+export const isShareholderPath = (pathname: string) => {
+  if (pathname.includes("..") || pathname.includes("\\") || pathname.includes("%")) return false;
+  if (SHAREHOLDER_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`))) return true;
+  // Icons and fonts are static files; an API path never is, whatever its last characters look like.
+  return !pathname.startsWith("/api") && /\.[a-z0-9]+$/i.test(pathname);
+};

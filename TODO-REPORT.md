@@ -3,6 +3,8 @@
 _Condensed 2026-10-23, updated 2026-10-27. Each finished piece of work is one line here; the full earlier text is in git history (`git log -p TODO-REPORT.md`)._
 
 ## Done
+- [x] Company and shareholders, step 5: read-only «شریک» role whose only page is «سهم من» (`app/(shell)/my-share`): their share, capital, advances taken, dividends owed and an estimate for the open year; `proxy.ts` refuses every other page and API for that role, and the header hides search, bell and quick actions from it. Owner creates the login in the users admin (role «شریک») and links it in «شرکا». Looked at at 390×844 in light and dark, no sideways scroll
+- [x] Company and shareholders, step 4: advances and capital from the owner screen, yearly profit split with preview (legal reserve for a registered company, netting advances), per-group profit with shared-cost rules (by share of sales or kept at company level), group loss absorbed by the company and repaid first from that group's later profit (`lib/profitSplit.ts`, `lib/repo/profitSplit.ts`, `/api/accounting/profit-split`, `/api/accounting/cost-rules`)
 - [x] Company and shareholders, step 3: shareholders, fixed shares with start dates (whole company or one group, must total 100%), company legal form, owner-only «شرکا» page in the accounting tab (`components/accounting/ShareholdersPanel.tsx`, `/api/accounting/shareholders*`, `/api/accounting/legal-form`); looked at at 390×844 in light and dark
 - [x] Company and shareholders, steps 1 and 2 (`claude/project-thread-byvhbz`): commission accruals and payments post to the ledger (`lib/repo/ledgerCommission.ts`, accounts 5107–5109 against 2103), a person (`parties`) and a group on every ledger line, commission accounts kept out of the manual expense list; design in `docs/company-and-shareholders.md`
 - [x] Actions minutes cut (`claude/project-thread-lb9196`): draft PRs skip CI, `main` runs only `check` after a merge, docs-only changes skip CI, shorter timeouts; secret scan for going public and `docs/make-repo-public.md`; `LICENSE` (all rights reserved)
@@ -142,8 +144,8 @@ _Condensed 2026-10-23, updated 2026-10-27. Each finished piece of work is one li
 - [x] (?) help everywhere it is needed: 38 pages that had none (`lib/help/pages.ts`) and about 40 cards and sections (`lib/help/cards.ts`): dashboard, map sidebar, orders, pocket, predictions, analysis, accounting checks; `CollapsibleSection` and `SectionHead` take a `help` id; `tests/card-help.test.ts` keeps ids and copy in step
 
 ## Not done / gaps
-- [ ] Commission accrual is brought up to date when a commission payment is recorded; nothing runs it on a schedule or from a screen yet, so the income statement is after commission only for people who have been paid. Needs a sweep or an owner button (step 4)
-- [ ] Company and shareholders steps 4–5 not built: advances, yearly split with preview, group loss recovery, shared-cost rule, the shareholder's «سهم من» page. The «شرکا» page has no screen for shares that were set earlier (history) and cannot yet remove or deactivate a shareholder
+- [ ] Commission accrual is brought up to date when a commission payment is recorded; nothing runs it on a schedule or from a screen yet, so the income statement is after commission only for people who have been paid. Needs a sweep or an owner button (follow-up 1)
+- [ ] Company and shareholders: the «شرکا» page has no screen for shares that were set earlier (history) and cannot remove or deactivate a shareholder; the shareholder's login is made by hand in the users admin; income tax on profit is not modeled
 - [ ] Owner to set a $0 Actions budget (Settings, Billing, Budgets) and decide whether the PostgreSQL job may run less often (docs-only or label); the history rewrite in `docs/make-repo-public.md` is not done; if branch protection requires CI, docs-only PRs (skipped) will need it relaxed
 - [ ] `WidgetBoundary` logs to the browser console only; it should feed the structured logging and error tracker (F108) when those exist
 - [ ] Not guarded yet: the order form, pipeline and board panels (they sit inside the page-level error screen); add a boundary where a widget has failed on its own in practice
@@ -196,7 +198,7 @@ _Condensed 2026-10-23, updated 2026-10-27. Each finished piece of work is one li
 - [ ] Left for later: F104 (not reached; nothing blocks it), and, waiting on a missing prerequisite, F74, F77, F85, F86, F91, F114, F69, F31, F42, F34, F95, F140, F2, F5, F117, F38
 
 ## Next steps
-1. Company and shareholders step 4: advances, yearly split with preview, group loss recovery, shared-cost rule (`docs/company-and-shareholders.md`)
+1. Company and shareholders follow-ups: commission sweep button, share history and deactivate a shareholder, create the shareholder login from «شرکا» (`docs/company-and-shareholders.md`)
 2. Owner puts the server on Postgres following `docs/postgres-server.md` (main is Postgres-only), picks the second machine for the off-site backups, authorizes the key and stores the passphrase; first full backup and restore drill on the real server
 3. Adopt the audited small libraries as their features start: `pino`, `web-vitals`, `lru-cache`, Valibot, `nuqs`, `@tanstack/react-virtual` (roadmap 10.6); design the chat on server-sent events plus an `events` table
 4. Owner checks the pocket cards, the (?) help, the filter sheets and the text fields on a real phone
