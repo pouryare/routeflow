@@ -9,6 +9,8 @@ import { Icon } from "@/components/meridian/Icon";
 import { PasswordInput, TextInput } from "@/components/TextInput";
 import OtpInput from "@/components/mobile/OtpInput";
 import WordReveal from "@/components/meridian/WordReveal";
+import BusyIcon from "@/components/meridian/BusyIcon";
+import { useDoneFlash } from "@/lib/useDoneFlash";
 
 function LoginForm() {
   const router = useRouter();
@@ -22,6 +24,7 @@ function LoginForm() {
   const [challenge, setChallenge] = useState<string | null>(null);
   const [code, setCode] = useState("");
   const [useRecovery, setUseRecovery] = useState(false);
+  const [done, flash] = useDoneFlash();
   const nextPathRef = useRef<string | null>(null);
   const clearedRef = useRef(false);
 
@@ -77,6 +80,7 @@ function LoginForm() {
         setLoading(false);
         return;
       }
+      flash();
       router.push(nextPathRef.current || "/");
       router.refresh();
     } catch {
@@ -151,8 +155,8 @@ function LoginForm() {
               disabled={loading || (challenge ? code.trim().length < (useRecovery ? 8 : 6) : !username.trim() || !password)}
               className="inline-flex items-center justify-center gap-[var(--space-2)] w-full cursor-pointer rounded-[var(--radius-md)] border border-[var(--accent)] bg-[var(--accent)] py-[var(--space-2)] font-medium text-[var(--accent-ink)] transition-[filter,transform,opacity] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:enabled:scale-[1.03] hover:enabled:brightness-110 active:enabled:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
             >
-              <Icon name="login" size="md" />
-              {loading ? "در حال ورود…" : challenge ? "تأیید و ورود" : "ورود به برنامه"}
+              <BusyIcon busy={loading && !done} done={done} name="login" />
+              {done ? "وارد شدید" : loading ? "در حال ورود…" : challenge ? "تأیید و ورود" : "ورود به برنامه"}
             </button>
           </form>
         </div>

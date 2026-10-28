@@ -5077,3 +5077,13 @@ body {
     .meridian .wr { animation-name: wr-in-blur; }
   }
 }
+
+/* The check that replaces a button's icon once its action succeeded (BusyIcon `done`). */
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes done-check-pop {
+    0%   { transform: scale(0.2) rotate(-25deg); opacity: 0; }
+    60%  { transform: scale(1.35) rotate(6deg); opacity: 1; }
+    100% { transform: none; }
+  }
+  .done-check { animation: done-check-pop 420ms var(--spring-pop, cubic-bezier(.34,1.56,.64,1)) both; }
+}
