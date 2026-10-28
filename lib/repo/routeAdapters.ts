@@ -26,6 +26,7 @@ import type { Session } from "@/lib/session";
 import type { Db } from "@/lib/database/client";
 import { orgOfUser } from "@/lib/repo/userOrg";
 import { postCommissionPayment, syncOnePerson, type CommissionKind } from "@/lib/repo/ledgerCommission";
+import { addShareholder, legalFormOf, listShareholders, setLegalForm, setShares, sharesAt, type LegalForm } from "@/lib/repo/shareholders";
 
 type P<F extends (...a: never[]) => unknown> = Parameters<F>;
 
@@ -98,3 +99,10 @@ export const searchIn = async (session: Session, q: string) => ({
   users: await searchUsers(getDb(), session, q),
   notes: await searchNotes(getDb(), session, q),
 });
+
+export const shareholdersOf = async (organizationId: number) => await listShareholders(getDb(), organizationId);
+export const addShareholderIn = async (input: P<typeof addShareholder>[1]) => await addShareholder(getDb(), input);
+export const setSharesIn = async (input: P<typeof setShares>[1]) => await setShares(getDb(), input);
+export const sharesInForce = async (organizationId: number, groupId: number | null, onDate: string) => await sharesAt(getDb(), organizationId, groupId, onDate);
+export const legalFormIn = async (organizationId: number) => await legalFormOf(getDb(), organizationId);
+export const setLegalFormIn = async (organizationId: number, form: LegalForm) => await setLegalForm(getDb(), organizationId, form);

@@ -326,7 +326,9 @@ export function proxy(req: NextRequest) {
   // manager keeps read access to the reports above.
   const isAccountingWrite =
     pathname.startsWith("/api/accounting/periods") ||
-    pathname.startsWith("/api/accounting/journals");
+    pathname.startsWith("/api/accounting/journals") ||
+    pathname.startsWith("/api/accounting/shareholders") ||
+    pathname.startsWith("/api/accounting/legal-form");
   if (isAccountingWrite && !OWNER_ROLES.includes(claims.role)) {
     return deny("/sales");
   }

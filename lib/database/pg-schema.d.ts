@@ -872,6 +872,7 @@ export interface Organizations {
   contact_phone: string | null;
   created_at: string;
   id: Generated<number>;
+  legal_form: Generated<string>;
   name: string;
   plan: Generated<string>;
   slug: string;
@@ -1242,6 +1243,17 @@ export interface SeasonalFactors {
   updated_at: string;
 }
 
+export interface Shareholdings {
+  created_at: string;
+  created_by: number | null;
+  group_id: number | null;
+  id: Generated<number>;
+  organization_id: number;
+  party_id: number;
+  percent_bp: number;
+  valid_from: string;
+}
+
 export interface StockMovements {
   base_qty: number;
   batch_id: number | null;
@@ -1524,6 +1536,7 @@ export interface DB {
   sales: Sales;
   saved_locations: SavedLocations;
   seasonal_factors: SeasonalFactors;
+  shareholdings: Shareholdings;
   stock_movements: StockMovements;
   stock_reservations: StockReservations;
   suppliers: Suppliers;

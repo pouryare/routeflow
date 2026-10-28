@@ -48,6 +48,7 @@ export const TENANT_TABLES = [
   "credit_approvals",
   "payments",
   "parties",
+  "shareholdings",
   "cheques",
   "batches",
   "stock_movements",
