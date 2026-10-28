@@ -1871,7 +1871,6 @@ body {
   display: flex; justify-content: center; align-items: flex-start;
   padding: min(12vh, 96px) 16px 16px;
   background: color-mix(in srgb, var(--background) 82%, transparent);
-  backdrop-filter: blur(8px);
 }
 .meridian .sov__panel {
   width: min(40rem, 100%); max-height: min(70vh, 36rem);
@@ -4411,6 +4410,42 @@ body {
   --map-unknown: #646974;
 }
 /* ACCENT-THEMES:END */
+/* ---- Overlay backdrops: one blur for every layer that covers the page ----------------
+   The sheets (HeroUI Drawer, variant="blur"), the search overlay, the photo lightbox and the
+   unload sheet all blur what they cover by the same amount, so a covered page reads as "behind"
+   the same way everywhere. 8px rather than HeroUI's 12px: blur cost grows with the radius and
+   8px still hides the text behind on a low-end phone. Colour stays each overlay's own.
+   Prefixed first, standard last (see .face: the other order loses the standard one). */
+.scrim, .meridian .drawer__backdrop--blur, .meridian .sov {
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+/* The slide. A sheet travels the whole screen height, so it takes the long-travel pair the chrome
+   uses (--ease-glide over --dur-panel): quick off the mark, then a long settle with no overshoot
+   (a spring would rebound by tens of pixels at this distance, and MASTER.md keeps springs to
+   direct manipulation). Leaving is shorter and eases in, so a dismissed sheet gets out of the way.
+   The backdrop fades on the same clock so blur and panel arrive together. Only translate and
+   opacity move, both on the compositor. HeroUI's own reduced-motion rules still switch it off. */
+.meridian .flow-drawer__dialog {
+  --drawer-enter-duration: var(--dur-panel);
+  --drawer-enter-ease: var(--ease-glide);
+  --drawer-exit-duration: 260ms;
+  --drawer-exit-ease: cubic-bezier(0.4, 0, 0.9, 0.6);
+}
+.meridian .drawer__backdrop { transition: opacity var(--dur-panel) var(--ease-glide); }
+.meridian .drawer__backdrop[data-exiting="true"] { transition: opacity 260ms cubic-bezier(0.4, 0, 0.9, 0.6); }
+/* The hand-rolled overlays (lightbox, unload sheet) fade in the same way; a panel inside one
+   that sits at the bottom rises with .scrim__rise. */
+@keyframes scrim-rise {
+  from { transform: translateY(calc(100% + 16px)); }
+  to { transform: translateY(0); }
+}
+.scrim { animation: modal-backdrop-in var(--dur-panel) var(--ease-glide) backwards; }
+.scrim__rise { animation: scrim-rise var(--dur-panel) var(--ease-glide) backwards; }
+@media (prefers-reduced-motion: reduce) {
+  .meridian .drawer__backdrop, .meridian .drawer__backdrop[data-exiting="true"] { transition: none; }
+  .scrim, .scrim__rise { animation: none; }
+}
 /* ---- 8b · tap flows (docs/tap-flow-principles.md) — lives inside .sheet ---------- */
 .meridian .tapflow { display: grid; gap: 12px; padding: 4px 20px 24px; }
 /* Every bottom sheet is a HeroUI Drawer now (mobile/BottomSheet.tsx). HeroUI draws the panel, the

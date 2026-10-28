@@ -168,8 +168,8 @@ export default function UnloadTapFlow({
 
 function Sheet({ children }: { children: React.ReactNode; onClose: () => void }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-3" dir="rtl">
-      <div className="w-full max-w-md rounded-[var(--radius-lg)] border border-border bg-surface p-4">
+    <div className="scrim fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-3" dir="rtl">
+      <div className="scrim__rise w-full max-w-md rounded-[var(--radius-lg)] border border-border bg-surface p-4">
         {children}
       </div>
     </div>

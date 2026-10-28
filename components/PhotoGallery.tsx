@@ -132,7 +132,7 @@ export default function PhotoGallery({
 
       {lightbox && (
         <div
-          className="fixed inset-0 z-[var(--z-lightbox)] flex items-center justify-center bg-black/80 p-4"
+          className="scrim fixed inset-0 z-[var(--z-lightbox)] flex items-center justify-center bg-black/80 p-4"
           onClick={() => setLightbox(null)}
         >
           <div className="relative max-h-full max-w-full" onClick={(e) => e.stopPropagation()}>
