@@ -7,7 +7,7 @@ import { listBusinesses } from "@/lib/repo/crm/businesses";
 // Opt-in read-only check against the already running dev server. Never submits a form.
 it.skipIf(!process.env.CRM_READONLY_SMOKE_URL)("renders the real profile, inline editor and saved map without writes", async () => {
   const base = process.env.CRM_READONLY_SMOKE_URL!;
-  const browser = await chromium.launch();
+  const browser = await chromium.launch({ args: ["--enable-unsafe-swiftshader"] }); // WebGL for the map on a GPU-less runner
   try {
     const context = await browser.newContext({ serviceWorkers: "block" });
     const cookie = await sessionCookie();
@@ -32,12 +32,13 @@ it.skipIf(!process.env.CRM_READONLY_SMOKE_URL)("renders the real profile, inline
     await page.getByRole("textbox", { name: "نام کسب‌وکار", exact: true }).waitFor();
     await page.getByRole("button", { name: "انصراف از ویرایش", exact: true }).click();
     if (await page.getByRole("button", { name: "بزرگ‌نمایی نقشه" }).count()) {
-      await page.locator(".mini-map > .map-frame .leaflet-marker-icon").waitFor();
+      await page.locator(".mini-map > .map-frame .maplibregl-marker").waitFor();
       await page.getByRole("button", { name: "بزرگ‌نمایی نقشه" }).click();
       await page.getByRole("dialog").waitFor();
-      const enlarged = page.locator(".map-sheet .leaflet-container");
+      const enlarged = page.locator(".map-sheet .maplibregl-map");
       await enlarged.waitFor();
-      const pane = enlarged.locator(".leaflet-map-pane");
+      // A pan moves the pin across the screen, which shows in its transform.
+      const pane = enlarged.locator(".maplibregl-marker");
       const beforePan = await pane.getAttribute("style");
       const box = (await enlarged.boundingBox())!;
       await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
@@ -52,7 +53,7 @@ it.skipIf(!process.env.CRM_READONLY_SMOKE_URL)("renders the real profile, inline
     if (await editLocation.count()) {
       await editLocation.click();
       const editor = page.locator(".location-edit");
-      const map = editor.locator(".leaflet-container");
+      const map = editor.locator(".maplibregl-map");
       await map.waitFor();
       await map.click({ position: { x: 180, y: 90 } });
       await editor.getByRole("textbox", { name: "لینک موقعیت" }).fill("https://maps.google.com/?q=35.72,51.42");
@@ -67,7 +68,7 @@ it.skipIf(!process.env.CRM_READONLY_SMOKE_URL)("renders the real profile, inline
       expect(await map.getAttribute("data-preserved-map")).toBe("yes");
       expect(await editor.getByRole("textbox", { name: "لینک موقعیت" }).inputValue()).toContain("35.72,51.42");
       await editor.getByRole("button", { name: "انصراف از ثبت موقعیت", exact: true }).click();
-      await page.locator(".mini-map > .map-frame .leaflet-marker-icon").waitFor();
+      await page.locator(".mini-map > .map-frame .maplibregl-marker").waitFor();
     }
     for (const width of [360, 390, 768, 1280]) {
       await page.setViewportSize({ width, height: 900 });

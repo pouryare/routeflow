@@ -33,9 +33,9 @@ const isExempt = (file: string) => EXEMPT.has(file) || file.startsWith("lib/data
 
 /** The HTML/ARIA role attribute values this repo uses. */
 const ARIA_ROLES = new Set([
-  "alert", "alertdialog", "columnheader", "combobox", "dialog", "grid", "gridcell", "group", "img",
+  "alert", "alertdialog", "button", "columnheader", "combobox", "dialog", "grid", "gridcell", "group", "img",
   "listbox", "menu", "menuitem", "meter", "option", "progressbar", "radio",
-  "radiogroup", "status", "switch", "tab", "tablist", "toolbar", "tooltip",
+  "radiogroup", "region", "status", "switch", "tab", "tablist", "toolbar", "tooltip",
 ]);
 
 function filesUnder(rel: string): string[] {

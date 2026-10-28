@@ -13,7 +13,7 @@
 // Cache names bumped to v3 for the Phase 4 shell change; activate() below deletes any
 // cache not named here.
 const SHELL_CACHE = "shell-v3";
-const TILE_CACHE = "map-tiles-v3";
+const TILE_CACHE = "map-tiles-v4";
 const DATA_CACHE = "map-data-v3";
 const GEOMETRY_CACHE = "map-geometry-v3";
 const OFFLINE_URL = "/offline";
@@ -197,19 +197,9 @@ self.addEventListener("fetch", (event) => {
   if (request.method !== "GET") return;
   const url = new URL(request.url);
 
-  // OSM's own tile server asks that clients cache heavily rather than re-request, so this
-  // is politeness as much as offline support. The list mirrors the basemap providers in
-  // lib/mapLayers.ts -- every host a chosen style can pull tiles from.
-  if (
-    url.hostname === "server.arcgisonline.com" ||
-    url.hostname === "tile.openstreetmap.org" ||
-    url.hostname.endsWith(".tile.openstreetmap.fr") ||
-    url.hostname === "tiles.stadiamaps.com" ||
-    url.hostname === "api.maptiler.com" ||
-    // CARTO's vector styles: the style JSON, the .mvt tiles off tiles-{a..d}, and the
-    // glyph/sprite files the renderer needs before it can draw any text.
-    url.hostname.endsWith("basemaps.cartocdn.com")
-  ) {
+  // The self-hosted basemap (lib/mapTiles.ts) and its sprites. Cached first so a street
+  // seen once draws again with no signal; the tile file changes only every few months.
+  if (url.pathname.startsWith("/api/map/tiles/") || url.pathname.startsWith("/map/sprites/")) {
     event.respondWith(cacheFirst(request, TILE_CACHE));
     return;
   }

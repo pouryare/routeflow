@@ -76,6 +76,9 @@ const EXEMPT: { file: string; match: string; reason: string }[] = [
   { file: "app/(shell)/sales/reasons/page.tsx", match: "/sales/reasons?days=", reason: "a date-range chip; the range is the content" },
   { file: "app/(shell)/sales/data-quality/page.tsx", match: "/crm/${r.id}", reason: "a customer row; the whole card is the tap target" },
   { file: "components/mobile/HoldButton.tsx", match: "", reason: "the hold progress ring is the icon" },
+  { file: "components/LeadsMap.tsx", match: "lead-marker", reason: "the button is the map pin itself, a dot or its stop number" },
+  { file: "components/PlannerPickMap.tsx", match: "lead-marker", reason: "the button is the map pin itself, a dot or its stop number" },
+  { file: "components/coverage/CustomerLayer.tsx", match: "min-h-[44px] w-full", reason: "a customer row; its coloured diamond is the pin in miniature" },
   { file: "components/tapflow/Answer.tsx", match: "", reason: "AnswerButton's icon is a prop; answers are content, so it is optional" },
 ];
 

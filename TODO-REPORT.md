@@ -4,6 +4,7 @@ _Condensed 2026-10-23, updated 2026-10-28. Each finished piece of work is one li
 
 ## Done
 - [x] Sync snapshot saved in groups of 200 rows per IndexedDB transaction with a pause between groups (`lib/offline/idbStore.ts`; it was one transaction per row). Slow-phone trace (4x CPU), owner `/sales/orders`, 920 rows: the biggest main-thread freeze fell from 1.0–1.2 s to 0.55–0.67 s and total long-task time from 1.4–2.4 s to about 0.9 s. A rep's freeze (0.3 s, 363 rows) did not change, so it is not the store
+- [x] Map tiles from our own server (owner: no foreign host, 2026-10-28): every map (coverage, leads, driver run, planner pick and route, customer pin and editor, lead import) moved from Leaflet to MapLibre with `@vis.gl/react-maplibre`; Leaflet and its 8 plugins removed. Tiles cut from one Protomaps file of Tehran province and served per tile at `/api/map/tiles/{z}/{x}/{y}` (public, gzip, 7-day cache, CDN-friendly); Persian street names in Peyda via MapLibre's `font-faces`, no glyph server, no RTL plugin; sprites self-hosted; seven looks (روشن, تیره, سپید, خاکستری, رادار and two without names); customer pins and clusters drawn on the GPU; foreign tile hosts dropped from the CSP and the service worker. How to build and deploy the file: `docs/map-tiles.md`. Looked at at 390×844 in light and dark, no sideways scroll
 - [x] Load-time follow-ups (owner chose all three): the first sync cycle now starts after the page has loaded and the browser is idle (`lib/offline/syncEngine.ts`), and an owner's, manager's or rep's pull skips finished, fully paid orders older than 60 days (`ORDER_WINDOW_DAYS` in `lib/repo/syncPull.ts`; open, unpaid and recent orders always sync). Measured effect is small: the owner's first pull went 50 KB to 39 KB gzipped (720 KB to about 500 KB raw), page timings moved by under 0.2 s. Font subsetting was tested (about 25% smaller) but not done: the fontiran licence note may forbid modified files (owner asked)
 - [x] Load-time batch from the slow-phone trace (PR #8, slow 4G + 4x CPU, first visit): taps work at 2.3–4.0 s instead of 8–9 s, bytes downloaded down 55–77%, driver home fully loaded at 6 s instead of 21 s. Fonts no longer preloaded (25 files, 1.1 MB, every page); `node:crypto` polyfill out of the browser bundle (`lib/otpCode.ts`); sync pull gzips itself and the Caddy snippet gains `encode zstd gzip`; a driver's pull sends open runs plus the last 14 days (`DRIVER_WINDOW_DAYS`); the customer list no longer re-fetches what the server rendered
 - [x] Button icons: every action button and button-styled link has an icon, and one action wears one icon app-wide (save = floppy, copy, print, send, refresh, navigation, pin, flag for priority, minus for "remove from route", `arrow-right` for back in RTL). 20 new glyphs from the installed lucide set in `icon-map.ts`; typed `+`, `＋` and `←` in labels replaced by icons; labels kept next to icons everywhere. `tests/button-icons.test.ts` fails on a button with no icon (content tiles listed with a reason) and on a known verb wearing the wrong icon; the dictionary lives in that test. Looked at at 390×844 in light and dark, no sideways scroll
@@ -154,7 +155,7 @@ _Condensed 2026-10-23, updated 2026-10-28. Each finished piece of work is one li
 
 ## Not done / gaps
 - [ ] The owner's remaining ~0.6 s freeze after load is JavaScript evaluation of lazily loaded chunks (profile: top-level chunk code and parse, not the sync); a page runs about a third of the 1.4 MB of JavaScript it loads, and the animation library (129 KB raw, 14% used) is pulled in by `HoverPill` and `SearchOverlay` on every page. Splitting those two is the next load-time idea (not decided)
-- [ ] Load time, left over from the trace: the global stylesheet is one 400 KB file (58 KB gzipped) that gates first paint (a purge is risky with the 5,000-line `globals.css`, about 0.3 s gain); the driver home map tiles come from tile.openstreetmap.org, a foreign host, and were not measured from Iran; bottom-bar link prefetches (6–14 requests of 1–5 KB after hydration) left alone because they make tab switches instant; the driver's first sync is still one response (a failed first pull starts over), now small enough that it hardly matters; the Caddy `encode` line needs the server's Caddyfile updated by hand
+- [ ] Load time, left over from the trace: the global stylesheet is one 400 KB file (58 KB gzipped) that gates first paint (a purge is risky with the 5,000-line `globals.css`, about 0.3 s gain); bottom-bar link prefetches (6–14 requests of 1–5 KB after hydration) left alone because they make tab switches instant; the driver's first sync is still one response (a failed first pull starts over), now small enough that it hardly matters; the Caddy `encode` line needs the server's Caddyfile updated by hand
 - [ ] Button icons: the verb check reads a label's first Persian words, so a button whose label comes only from a variable is not checked; `searchbox/SearchFavorites.tsx` and `SearchRecent.tsx` still have English labels («Clear all», «remove favorite»); the leads page eyebrow says «Prospect Locations»
 - [ ] Commission accrual is brought up to date when a commission payment is recorded; nothing runs it on a schedule or from a screen yet, so the income statement is after commission only for people who have been paid. Needs a sweep or an owner button (follow-up 1)
 - [ ] Company and shareholders: the «شرکا» page has no screen for shares that were set earlier (history) and cannot remove or deactivate a shareholder; the shareholder's login is made by hand in the users admin; income tax on profit is not modeled
@@ -165,7 +166,7 @@ _Condensed 2026-10-23, updated 2026-10-28. Each finished piece of work is one li
 - [ ] The margin table could not be seen with real data in the demo database (checked with a mocked response); the (?) is on pages, shared sheets, pickers and the cards above; the driver and login pages sit outside `.meridian` and have none; figure-level help covers the 11 stat cards only, not figures inside charts or table rows
 - [ ] HeroUI move: the map's floating controls (`mapbtn` toggles, the search clear, the radius chips and the picker buttons in `LeadsMap` / `CoverageMap`) and the run panel's drag handle (pointer-drag, must stay native) are still hand-built; the location card's checkbox (the card is the tap target) stays native
 - [ ] Accounting tables and the pager use HeroUI's classes, not its Table and Pagination components (those are client React Aria grids and buttons; the reports are server pages with phone card rows and real page links)
-- [ ] The Leaflet zoom buttons are 36 px; the weather credit link on «برنامهٔ تحویل» is an inline link in a sentence (17 px)
+- [ ] The weather credit link on «برنامهٔ تحویل» is an inline link in a sentence (17 px)
 - [ ] HeroUI tab rows point `aria-controls` at a panel that is not there (the page under the row is the panel)
 - [ ] Headless Chromium sometimes leaves parts of a long page's open sheet unpainted until the next repaint; the layout is right (measured) and a repaint draws it, but check on a real phone
 - [ ] Old token names (`--card`, `--line`, `--text` …) are still read by about 2,000 older rules; they are aliases now, and go as those rules are touched
@@ -196,7 +197,7 @@ _Condensed 2026-10-23, updated 2026-10-28. Each finished piece of work is one li
 - [ ] Inside a Postgres transaction each statement runs in a savepoint (the statement-level rollback SQLite gave); costs three round trips per statement, revisit now that SQLite is gone
 - [ ] Client screens (`app/(shell)` pages, `components`) are outside the forgotten-await lint; they start fetches on purpose without waiting
 - [ ] Nothing tested from Iran (weather, Telegram, push, map tiles, OSRM, registries)
-- [ ] The smoke suite is not in CI, which is how four of its tests went stale; in the cloud container it runs once Playwright's expected headless shell is pointed at the installed one, but map tiles (tile.openstreetmap.org) cannot load there, so `/map`, `/leads` and the CRM profile test fail on console errors
+- [ ] The smoke suite is not in CI, which is how four of its tests went stale; its map selectors were moved to MapLibre but the suite was not run (the container's Chromium does not match the project's Playwright)
 - [ ] Other actions that need a warehouse (stock movements, purchases, route planning, delivery) still answer 500 when there is none
 - [ ] Ratchets (long functions 74, unused exports 220, raw role checks 57) only fall as files are touched
 - [ ] Offline covers delivery, receipts, cheques, complaints, order drafts and new customers only
@@ -212,14 +213,21 @@ _Condensed 2026-10-23, updated 2026-10-28. Each finished piece of work is one li
 - Step-up gaps: SMS backup (Farazsms) is not wired, so someone without an authenticator is told to enrol first; guards not yet on creating an owner or manager, exporting customers, changing your own mobile, hard deletes, cancelling or editing a delivered order, authenticator reset and overwrite imports (the rules and the guard exist, each route needs one line); no resend countdown until SMS exists
 - Found, not fixed: the credit-approval deck posts to `/api/admin/credit-approvals/…`, which the proxy closes to group managers (a group manager gets «دسترسی لازم را ندارید»); the discount decision lives under `/api/sales/discounts` for that reason
 
+- [ ] Map tiles: the real Tehran-province file is not made yet (the tile route answers 503 until it is on the server); its size is unmeasured; the picker thumbnails were drawn from a test file and need redrawing from the real one (`docs/map-tiles.md`); Arvan cache rules for `/api/map/tiles/*` not set
+- [ ] Map, still foreign: routes (OSRM, `router.project-osrm.org`) and address search (Nominatim) still call public foreign servers
+- [ ] Map, dropped with Leaflet: satellite and topographic looks (no self-hostable source); the traffic-zone hover card; the district hover card shows only where there is a mouse; a device without WebGL sees a short message instead of a map; on the leads map, choosing a lead in the list now also opens its card on the map
+- [ ] Map: not looked at on a real phone; the lead import map was not screenshotted
+
 ## Next steps
-0. Decide what to do with the three left-over load-time items (see the gap above), then merge PR #8
-1. Company and shareholders follow-ups: commission sweep button, share history and deactivate a shareholder, create the shareholder login from «شرکا» (`docs/company-and-shareholders.md`)
-2. Owner puts the server on Postgres following `docs/postgres-server.md` (main is Postgres-only), picks the second machine for the off-site backups, authorizes the key and stores the passphrase; first full backup and restore drill on the real server
-3. Adopt the audited small libraries as their features start: `pino`, `web-vitals`, `lru-cache`, Valibot, `nuqs`, `@tanstack/react-virtual` (roadmap 10.6); design the chat on server-sent events plus an `events` table
-4. Owner checks the pocket cards, the (?) help, the filter sheets and the text fields on a real phone
-5. Move the remaining `tf-opt` menu links and the filter chips onto HeroUI parts, and the raw text fields onto `TextInput`
-6. Decide whether the smoke suite joins CI (needs Chromium on the runner and a demo database; map tiles stubbed)
-7. Record delay reasons on deliveries so the reason report's delay section fills
-8. Check the outside services from the Iranian server
-9. Decide the Android distribution route before F6 starts
+0. Owner cuts the Tehran-province tile file and puts it on the server, sets the Arvan cache rule, then redraw the picker thumbnails (`docs/map-tiles.md`)
+1. Self-host OSRM and Nominatim on the same Tehran extract, so no map request leaves the country
+2. Decide what to do with the left-over load-time items (see the gap above), then merge PR #8
+3. Company and shareholders follow-ups: commission sweep button, share history and deactivate a shareholder, create the shareholder login from «شرکا» (`docs/company-and-shareholders.md`)
+4. Owner puts the server on Postgres following `docs/postgres-server.md` (main is Postgres-only), picks the second machine for the off-site backups, authorizes the key and stores the passphrase; first full backup and restore drill on the real server
+5. Adopt the audited small libraries as their features start: `pino`, `web-vitals`, `lru-cache`, Valibot, `nuqs`, `@tanstack/react-virtual` (roadmap 10.6); design the chat on server-sent events plus an `events` table
+6. Owner checks the pocket cards, the (?) help, the filter sheets and the text fields on a real phone
+7. Move the remaining `tf-opt` menu links and the filter chips onto HeroUI parts, and the raw text fields onto `TextInput`
+8. Decide whether the smoke suite joins CI (needs Chromium on the runner and a demo database; map tiles stubbed)
+9. Record delay reasons on deliveries so the reason report's delay section fills
+10. Check the outside services from the Iranian server
+11. Decide the Android distribution route before F6 starts

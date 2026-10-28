@@ -8,12 +8,9 @@ import { PHASE_DEVELOPMENT_SERVER } from "next/constants";
 // blocking arbitrary *external* script/resource injection, which is the actual risk
 // for an app that renders user-entered notes/captions.
 //
-// connect-src repeats the tile/satellite hosts already listed under img-src: the
-// service worker (public/sw.js) caches map tiles via its own fetch(), a "connect"
-// request from CSP's point of view, not an "image" one -- img-src alone is enough
-// for a plain <img src>, but not for the SW's cache-then-fetch path, which silently
-// fails under a mismatched CSP with no violation reported on the page itself (the
-// failure happens inside the worker's scope) and just shows up as tiles never loading.
+// Map tiles, sprites and label fonts all come from this server (lib/mapTiles.ts), so no
+// map host is listed. connect-src still names the two foreign services the app calls:
+// OSRM for road routes and Nominatim for address search.
 /* React's development build rebuilds server call stacks with eval(); without it every dev
    page logs an error. Keyed on Next's own phase, not on NODE_ENV: a dev server spawned by
    the test runner inherits NODE_ENV=test, which silently dropped the flag. Production
@@ -22,14 +19,14 @@ const csp = (dev: boolean) => [
   "default-src 'self'",
   `script-src 'self' 'unsafe-inline'${dev ? " 'unsafe-eval'" : ""}`,
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob: https://server.arcgisonline.com https://tile.openstreetmap.org https://*.tile.openstreetmap.fr https://tiles.stadiamaps.com https://api.maptiler.com https://*.basemaps.cartocdn.com https://basemaps.cartocdn.com",
+  "img-src 'self' data: blob:",
   "font-src 'self' data:",
   /* MapLibre compiles its shaders in a web worker created from a blob: URL, so worker-src
-     has to allow blob: or every vector basemap fails to initialise. It is not a general
+     has to allow blob: or the map fails to initialise. It is not a general
      script-src loosening -- worker-src is its own directive and does not fall back to
      script-src once stated. */
   "worker-src 'self' blob:",
-  "connect-src 'self' https://server.arcgisonline.com https://tile.openstreetmap.org https://*.tile.openstreetmap.fr https://tiles.stadiamaps.com https://api.maptiler.com https://*.basemaps.cartocdn.com https://basemaps.cartocdn.com https://router.project-osrm.org https://nominatim.openstreetmap.org",
+  "connect-src 'self' https://router.project-osrm.org https://nominatim.openstreetmap.org",
   "frame-ancestors 'none'",
   "base-uri 'self'",
   "form-action 'self'",

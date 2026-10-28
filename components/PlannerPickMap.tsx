@@ -1,15 +1,13 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { MapContainer, Marker } from "react-leaflet";
-import L from "leaflet";
-import "leaflet/dist/leaflet.css";
+import { Marker } from "@vis.gl/react-maplibre";
 import { Icon } from "@/components/meridian/Icon";
 import LocateControl from "./LocateControl";
 import MyLocationMarker from "./MyLocationMarker";
 import { faNum } from "@/lib/format";
 import { NEAREST_COUNTS, nearestN, toggle } from "@/lib/mapSelect";
-import QuietTileLayer from "@/components/map/QuietTileLayer";
+import AppMap from "@/components/map/AppMap";
 
 export interface PickCandidate {
   /** "c12" for a customer, "l5" for a saved lead place (the same keys VisitPlanFlow uses). */
@@ -17,22 +15,6 @@ export interface PickCandidate {
   name: string;
   lat: number;
   lng: number;
-}
-
-const iconCache = new Map<string, L.DivIcon>();
-function pin(order: number | null): L.DivIcon {
-  const k = String(order);
-  let i = iconCache.get(k);
-  if (!i) {
-    i = L.divIcon({
-      className: "",
-      html: `<div class="lead-marker${order !== null ? " lead-marker--in-run" : ""}">${order ?? ""}</div>`,
-      iconSize: order !== null ? [24, 24] : [14, 14],
-      iconAnchor: order !== null ? [12, 12] : [7, 7],
-    });
-    iconCache.set(k, i);
-  }
-  return i;
 }
 
 /** Choose the day's visits on a map: every place not yet planned is a pin, a tap picks or drops it
@@ -78,17 +60,23 @@ export default function PlannerPickMap({
   return (
     <div className="overflow-hidden rounded-[var(--radius-lg)] border border-border">
       <div className="h-72 w-full">
-        <MapContainer center={centre} zoom={12} className="h-full w-full">
-          <QuietTileLayer />
+        <AppMap initialViewState={{ latitude: centre[0], longitude: centre[1], zoom: 12 }}>
           {candidates.map((c) => {
             const order = pickedSet.has(c.key) ? picked.indexOf(c.key) + 1 : null;
             return (
-              <Marker key={c.key} position={[c.lat, c.lng]} title={c.name} icon={pin(order)} zIndexOffset={order ? 700 : 500} eventHandlers={{ click: () => flip(c.key) }} />
+              <Marker key={c.key} longitude={c.lng} latitude={c.lat} style={{ zIndex: order ? 2 : 1 }}
+                onClick={(e) => { e.originalEvent.stopPropagation(); flip(c.key); }}>
+                <button type="button" className={`lead-marker${order !== null ? " lead-marker--in-run" : ""}`}
+                  aria-label={order !== null ? `${c.name}، شمارهٔ ${faNum(order)} — برداشتن` : `${c.name} — انتخاب`} title={c.name}>
+                  {/* No icon: this button is the map pin itself, a dot or its stop number. */}
+                  {order !== null ? faNum(order) : ""}
+                </button>
+              </Marker>
             );
           })}
           <MyLocationMarker />
           <LocateControl />
-        </MapContainer>
+        </AppMap>
       </div>
       <div className="flex flex-col gap-2 border-t border-border bg-surface px-3 py-2">
         <p className="m-0 text-[length:var(--text-xs)] text-text-muted">

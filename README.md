@@ -13,7 +13,7 @@ Phone-first patterns and how to build them: [`docs/mobile-first-principles.md`](
 
 - Next.js 16 (App Router, TypeScript, Turbopack)
 - PostgreSQL (self-hosted; see `db/README.md` and `docs/postgres-server.md`)
-- Leaflet + react-leaflet + OpenStreetMap tiles (free, no API key, no sanctions-access risk)
+- MapLibre GL (`@vis.gl/react-maplibre`) over our own Protomaps tiles of Tehran province, served by the app; no foreign tile host (see `docs/map-tiles.md`)
 - `exceljs` to read the workbook server-side (not the unmaintained `xlsx` npm package —
   it has unpatched high-severity CVEs with no fix available via npm)
 

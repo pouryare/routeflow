@@ -495,8 +495,8 @@ body {
    pulse plays once when the marker is created -- which is exactly when a decoded link
    lands. The stroke collapses from wide to thin and the fill settles: a drop landing. */
 @keyframes leadimport-pin-drop {
-  0%   { stroke-width: 10; stroke-opacity: 0.9; fill-opacity: 0.95; }
-  100% { stroke-width: 2;  stroke-opacity: 0.95; fill-opacity: 0.35; }
+  0%   { box-shadow: 0 0 0 8px color-mix(in srgb, var(--accent) 60%, transparent); }
+  100% { box-shadow: 0 0 0 0 transparent; }
 }
 .leadimport-pin-drop {
   animation: leadimport-pin-drop 320ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
@@ -724,7 +724,7 @@ body {
   box-shadow: none;
   filter: drop-shadow(0 0 0 2px var(--accent)) drop-shadow(0 0 6px var(--marker-color));
 }
-.leaflet-marker-icon:hover .customer-marker__diamond {
+.maplibregl-marker:hover .customer-marker__diamond {
   transform: rotate(var(--marker-rotate)) scale(1.15);
 }
 
@@ -765,7 +765,7 @@ body {
 .facility-marker svg {
   display: block;
 }
-.leaflet-marker-icon:hover .facility-marker {
+.maplibregl-marker:hover .facility-marker {
   transform: scale(1.03);
   filter: drop-shadow(0 0 12px color-mix(in srgb, var(--facility) 85%, transparent));
 }
@@ -792,165 +792,80 @@ body {
   fill: var(--facility);
 }
 
-.locate-control a {
-  display: flex !important;
+/* ---- Map buttons (components/map/MapButton.tsx): the app's own icons in MapLibre's
+   control stack, 44px so a thumb finds them. State is signalled on the border only: the
+   icon keeps the shared ink and the surface stays opaque. ---- */
+.map-button {
+  display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 15px;
-  line-height: 1;
-  text-decoration: none;
+  width: 44px;
+  height: 44px;
+  color: var(--text);
+  border: 2px solid transparent;
+  border-radius: inherit;
 }
-/* State is signalled on the border only: the icon keeps the shared ink and the
-   surface stays opaque, same as every other map button. */
-.locate-control a.locate-control--active {
-  border-color: var(--accent) !important;
+.map-button.locate-control--active {
+  border-color: var(--accent);
 }
-.locate-control a.locate-control--denied {
-  border-color: var(--crit) !important;
+.map-button.locate-control--denied {
+  border-color: var(--crit);
 }
-/* All map buttons share the same opaque surface and currentColor icons. */
-.leaflet-control-zoom-fullscreen,
-.leaflet-control-zoom-fullscreen > span {
-  display: flex !important;
-  align-items: center;
-  justify-content: center;
+.map-button.layers-toggle.is-open {
+  color: var(--accent);
 }
-.leaflet-control-zoom-fullscreen .fullscreen-exit,
-.leaflet-control-zoom-fullscreen.leaflet-fullscreen-on .fullscreen-enter {
-  display: none;
-}
-.leaflet-control-zoom-fullscreen.leaflet-fullscreen-on .fullscreen-exit {
-  display: block;
+/* Fullscreen where the browser has no Fullscreen API (iPhone Safari): pin the box over
+   the page. */
+.map-pseudo-fullscreen {
+  position: fixed !important;
+  inset: 0;
+  z-index: 10000;
+  width: 100vw !important;
+  height: 100dvh !important;
 }
 /* Holds a line-drawn map-pin (MAP_PIN_SVG), not an emoji: the glyph takes the accent
    from `color` and the halo keeps it findable over a busy basemap. */
 .found-location-marker {
   display: grid;
   place-items: center;
+  width: 26px;
+  height: 26px;
   line-height: 1;
   color: var(--accent);
   filter: drop-shadow(0 0 6px var(--accent));
+  cursor: pointer;
 }
-.layers-toggle-control a {
-  display: flex !important;
-  align-items: center;
-  justify-content: center;
-  font-size: 15px;
-  line-height: 1;
-  text-decoration: none;
+/* A saved prospect on the coverage map. */
+.prospect-marker {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #2de0e6;
+  border: 2px solid rgb(255 255 255 / 0.6);
+  box-shadow: 0 0 6px rgb(45 224 230 / 0.5);
+  cursor: pointer;
 }
-
-/* ---- The layers button, and the count of layers you have moved off their defaults. ---- */
-.layers-toggle-control a {
-  position: relative;
-}
-.layers-toggle-control a.is-open {
-  color: var(--accent);
-}
-
-/* ---- Toning the quiet basemap.
-
-   The quiet basemap is OpenStreetMap, which is full-colour: left alone it competes with
-   the customer pins and district fills that are the entire point of this map. Filtering
-   it down is what makes it a backdrop.
-
-   Two tones, because the app has two skins:
-   - light: desaturated and warmed slightly, so it sits in the مریدین palette instead of
-     arriving as a second, cooler one.
-   - dark:  inverted and hue-rotated back, the standard way to darken raster tiles. The
-     hue-rotate is what stops inversion turning every green park magenta.
-
-   Applied only when the tiles actually need it -- with a CARTO key set, the tiles are
-   already a quiet dark set and filtering them again would wash them out. ---- */
-.tiles-quiet {
-  filter: saturate(0.32) sepia(0.16) brightness(1.03) contrast(0.94);
-}
-:root:not([data-theme="light"]) .tiles-quiet {
-  /* brightness well under 1, and it is load-bearing rather than taste: inverting a raster
-     map turns the densest streets into the BRIGHTEST area, so a city centre becomes a
-     glowing slab exactly where the most data is drawn. The sepia pulls the result toward
-     the warm black this scope sits on instead of the blue-grey inversion leaves behind. */
-  filter: invert(1) hue-rotate(180deg) saturate(0.3) brightness(0.62) contrast(1.05)
-          sepia(0.22);
-}
-
-/* ---- رادار: the pre-redesign reading of the city ------------------------
-   Cold rather than warm, and harder. hue-rotate past 180° is what pushes the inverted
-   greens and greys toward the blue-black the old map used, instead of the neutral grey a
-   plain inversion leaves. Independent of the skin: someone picking «رادار» has asked for
-   the dark look, and flipping it to cream in light mode would be answering a different
-   question. */
-.tiles-radar {
-  filter: invert(1) hue-rotate(198deg) saturate(0.55) brightness(0.52) contrast(1.2);
-}
-
-/* ---- روشن: an Apple-Maps-like reading of OpenStreetMap, for when no tile key is set.
-   Apple's basemap is warm, soft and low-contrast: parks and roads present but never
-   loud. This desaturates and warms OSM toward that, dropping contrast so nothing on the
-   basemap competes with the pins and district fills. Skin-independent, like رادار --
-   someone choosing «روشن» has asked for the light look regardless of theme. ---- */
-.tiles-apple {
-  filter: saturate(0.6) brightness(1.05) contrast(0.9) sepia(0.1) hue-rotate(-8deg);
-}
-
-/* Esri's reference labels are drawn light for a dark ground, which is right over
-   satellite imagery. Over a pale basemap they need turning dark again.
-
-   Keyed on the basemap's ground rather than the page skin: the labels sit on the map, and
-   the catalogue now has cream basemaps that can be chosen on a dark skin and vice versa.
-   Same reason MAP_INK moved -- see lib/mapLayers.ts. */
-[data-ground="light"] .tiles-labels {
-  filter: invert(1) brightness(0.85);
-}
-
-/* ---- Overlays follow the basemap's ground -----------------------------------------
-   The app's own drawing sits on the basemap, not on the page, so a cream basemap has to
-   lighten what is drawn over it however dark the surrounding UI is.
-
-   Only lightness and opacity move here. The status hues -- good/warn/crit -- are
-   deliberately untouched, because they mean the same thing on /report and /analytics and
-   a colour that shifts per basemap would stop being a shared language. ---- */
-
-/* Cluster bubbles: the accent-tinted surface is nearly invisible over a pale basemap, so
-   over one it becomes an opaque light chip with a darker accent rim. */
-[data-ground="light"] .cluster-marker {
-  /* The solid accent already reads on cream, so this now only darkens the rim to give the
-     bubble an edge against a pale basemap. The fill and its ink stay the verified pair. */
-  border-color: color-mix(in srgb, var(--accent) 78%, #000);
-  /* The dark ground's glow reads as smudge on cream; a contact shadow reads as a chip. */
-  box-shadow: 0 1px 3px rgb(0 0 0 / 0.28);
-}
-
-/* ---- Marker cluster bubble: identity-neutral (accent hue), matches the me-marker/
-   locate-control cyan rather than any reserved status color, since a cluster always
-   mixes multiple statuses underneath it. ---- */
-.cluster-marker {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 999px;
-  /* Solid, not a tint of itself.
-     The count used to be var(--accent) on a 22% tint of var(--accent): two values that
-     move together, so the pair never reached 4.5 for ANY accent -- 3.45 for the shipping
-     terracotta, and no better for the ten themes. Lowering the tint to 10% would pass but
-     leaves a chip too pale to find over satellite imagery, which is where a cluster most
-     needs finding. A solid fill with --accent-ink is the pair the tokens are solved for,
-     so it passes for every theme by construction. */
+/* The pin on a customer's own map (CRM card and location editor). */
+.customer-pin {
+  width: 22px;
+  height: 22px;
+  border-radius: 50% 50% 50% 0;
+  transform: translateY(-4px) rotate(-45deg);
   background: var(--accent);
+  border: 2px solid var(--accent-ink);
+  box-shadow: 0 2px 6px rgb(0 0 0 / 0.4);
+}
+/* A pin dropped by a running lead import. The ring is the drop; under reduced motion it
+   is simply absent (see the keyframes above). */
+.leadimport-pin {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--accent) 35%, transparent);
   border: 2px solid var(--accent);
-  color: var(--accent-ink);
-  font-family: var(--font-jetbrains-mono), monospace;
-  font-weight: 700;
-  font-size: 12px;
-  box-shadow: 0 0 12px -2px var(--accent);
 }
 
-/* ---- Route planner map (Leaflet Routing Machine): numbered stop markers, and the
-   plugin's default turn-by-turn itinerary panel suppressed -- the app renders its own
-   compact distance/time summary bar below the map instead. ---- */
-.leaflet-routing-container {
-  display: none !important;
-}
+/* ---- Route maps (components/map/RouteLine.tsx): numbered stop markers. ---- */
 .route-stop-marker {
   display: flex;
   align-items: center;
@@ -1142,75 +1057,79 @@ body {
   }
 }
 
-/* ---- Leaflet overrides: popups/tooltips must carry the site's own type system,
-   not the browser default Leaflet ships with.
-
-   Every selector here is prefixed with `.leaflet-container` purely to out-specify
-   Leaflet's own single-class rules. leaflet.css arrives in the chunk that
-   CoverageMap's `ssr: false` dynamic import pulls in, which the browser applies
-   *after* globals.css -- so at equal specificity Leaflet's `background: white` won
-   the cascade and every popup rendered as an unreadable white card with this app's
-   near-white text on it. Same class of problem the .leaflet-fullscreen-icon block
-   above solves with !important; the descendant prefix does it without one, since
-   every themed element genuinely lives inside the map container. ---- */
-.leaflet-container {
+/* ---- MapLibre in the app's own clothes: popups, buttons and the credit line carry the
+   site's type and surfaces, not the library's white defaults. Prefixed with
+   `.maplibregl-map` to out-specify maplibre-gl.css, which arrives in the map's chunk
+   after globals.css. ---- */
+.maplibregl-map {
   background: var(--bg);
   font-family: var(--font-vazirmatn), sans-serif;
 }
-.leaflet-container .leaflet-popup-content-wrapper,
-.leaflet-container .leaflet-tooltip {
+.maplibregl-map .maplibregl-popup-content {
   background: var(--surface-raised);
   color: var(--text);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   font-family: var(--font-vazirmatn), sans-serif;
   font-size: var(--text-sm);
+  padding: 10px 12px;
   box-shadow: 0 0 0 1px var(--border), 0 8px 24px -8px rgba(0, 0, 0, 0.6);
 }
-.leaflet-container .leaflet-popup-tip {
-  background: var(--surface-raised);
+.maplibregl-map .maplibregl-popup-tip {
+  border-top-color: var(--surface-raised);
+  border-bottom-color: var(--surface-raised);
+}
+.maplibregl-map .maplibregl-popup-close-button {
+  color: var(--text-muted);
+  font-size: var(--text-lg);
+  min-width: 44px;
+  min-height: 44px;
+  inset-inline-start: 0;
+  inset-inline-end: auto;
+}
+.maplibregl-map .maplibregl-popup-close-button:hover {
+  color: var(--text);
+  background: transparent;
+}
+/* The district hover card: no tip, no padding to spare. */
+.maplibregl-map .map-tooltip .maplibregl-popup-content {
+  padding: 4px 8px;
+  pointer-events: none;
+}
+/* Item 29: the map's buttons in the app's button shape — one rounded group, the app's
+   surface and ink, 44px for a thumb. */
+.maplibregl-map .maplibregl-ctrl-group {
+  background: var(--surface);
   border: 1px solid var(--border);
-  box-shadow: none;
-}
-.leaflet-container .leaflet-tooltip-top:before,
-.leaflet-container .leaflet-tooltip-bottom:before {
-  border-top-color: var(--border);
-  border-bottom-color: var(--border);
-}
-.leaflet-popup-close-button {
-  color: var(--text-muted) !important;
-  font-size: var(--text-lg) !important;
-}
-.leaflet-popup-close-button:hover {
-  color: var(--text) !important;
-}
-/* Item 29: Leaflet's own buttons in the app's button shape — one rounded group, the
-   app's surface and ink, not the library's square grey default. */
-.leaflet-bar {
-  border: 1px solid var(--border) !important;
-  border-radius: var(--radius-md) !important;
+  border-radius: var(--radius-md);
   overflow: hidden;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, .18) !important;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, .18);
 }
-.leaflet-bar a {
-  width: 44px !important; height: 44px !important; line-height: 44px !important;
-  /* background-color, not the background shorthand: the shorthand resets
-     background-image, wiping the fullscreen button's SVG icon (both the plugin's
-     and the recoloured override in globals.css) and leaving a blank square. */
-  background-color: var(--surface) !important;
-  color: var(--text) !important;
-  border-color: var(--border) !important;
+.maplibregl-map .maplibregl-ctrl-group button {
+  width: 44px;
+  height: 44px;
+  color: var(--text);
 }
-.leaflet-bar a:hover {
-  color: var(--accent) !important;
-  border-color: var(--accent) !important;
+.maplibregl-map .maplibregl-ctrl-group button + button {
+  border-top: 1px solid var(--border);
 }
-.leaflet-control-attribution {
-  background: color-mix(in srgb, var(--surface) 85%, transparent) !important;
-  color: var(--text-faint) !important;
+.maplibregl-map .maplibregl-ctrl-group button:hover {
+  color: var(--accent);
+  background: var(--surface-2);
 }
-.leaflet-control-attribution a {
-  color: var(--text-muted) !important;
+:root:not([data-theme="light"]) .maplibregl-map .maplibregl-ctrl-group .maplibregl-ctrl-icon {
+  filter: invert(1);
+}
+/* .maplibregl-ctrl repeated to outrank MapLibre's white compact pill. */
+.maplibregl-map .maplibregl-ctrl.maplibregl-ctrl-attrib {
+  background: color-mix(in srgb, var(--surface) 85%, transparent);
+  color: var(--text-faint);
+}
+:root:not([data-theme="light"]) .maplibregl-map .maplibregl-ctrl-attrib-button {
+  filter: invert(1);
+}
+.maplibregl-map .maplibregl-ctrl-attrib a {
+  color: var(--text-muted);
 }
 
 /* ---- Lead markers on the leads map. A prospect not in the route is a small quiet dot;
@@ -1218,11 +1137,14 @@ body {
    same thing in the same order. Distinct from the customer diamond and the facility
    silhouette, because these are places nobody has been yet. ---- */
 .lead-marker {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 100%;
-  height: 100%;
+  width: 14px;
+  height: 14px;
+  padding: 0;
+  cursor: pointer;
   border-radius: 999px;
   background: var(--neutral);
   border: 2px solid var(--bg);
@@ -1233,7 +1155,15 @@ body {
   color: var(--bg);
   transition: transform var(--dur-base) var(--ease-out);
 }
+/* The dot is small; the tap is not. */
+.lead-marker::before {
+  content: "";
+  position: absolute;
+  inset: -15px;
+}
 .lead-marker--in-run {
+  width: 24px;
+  height: 24px;
   background: var(--accent);
   box-shadow: 0 0 10px -1px var(--accent);
   font-weight: 700;
@@ -1243,7 +1173,7 @@ body {
   box-shadow: 0 0 0 2px var(--accent), 0 0 10px -1px var(--accent);
   transform: scale(1.12);
 }
-.leaflet-marker-icon:hover .lead-marker {
+.maplibregl-marker:hover .lead-marker {
   transform: scale(1.12);
 }
 
@@ -4648,6 +4578,9 @@ body {
 .meridian .customer-map { height: 100%; width: 100%; }
 .meridian .map-loading { display: grid; place-items: center; height: 100%; color: var(--muted); background: var(--surface-tertiary); }
 .meridian .map-expand { position: absolute; z-index: 1000; bottom: 8px; inset-inline-start: 8px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; border: 1px solid var(--border-strong); border-radius: 999px; background: var(--surface); color: var(--foreground); font: inherit; font-size: 12px; padding: 7px 12px; cursor: pointer; box-shadow: var(--sh-1); }
+/* The expand button fills the bottom of this small preview, so the map credit moves to
+   the empty top edge (the preview has no zoom buttons). */
+.meridian .map-frame .maplibregl-ctrl-bottom-right { top: 0; bottom: auto; }
 .meridian .map-expand:hover { background: var(--surface-tertiary); color: var(--accent-text); }
 .meridian .map-expand:focus-visible { outline: 2px solid var(--accent-text); outline-offset: -3px; }
 .meridian .location-edit { display: grid; gap: 12px; padding: 12px; border: 1px solid var(--border); border-radius: var(--r-md); background: var(--surface); color: var(--foreground); min-width: 0; }

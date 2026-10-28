@@ -1,41 +1,41 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createPortal } from "react-dom";
+import { useMap } from "@vis.gl/react-maplibre";
 import { Icon } from "@/components/meridian/Icon";
-import { useMap } from "react-leaflet";
-import { FullScreen } from "leaflet.fullscreen";
-import "leaflet.fullscreen/dist/Control.FullScreen.css";
+import MapButton from "@/components/map/MapButton";
 
+/** Full screen for the map's own box. Where the browser has no Fullscreen API (iPhone
+ *  Safari), the box is pinned over the page instead, which reads the same. */
 export default function FullscreenControl() {
-  const map = useMap();
-  const [iconHost] = useState(() => document.createElement("span"));
+  const { current: map } = useMap();
+  const [on, setOn] = useState(false);
+  const box = map?.getContainer();
 
   useEffect(() => {
-    const control = new FullScreen({
-      position: "topleft",
-      title: "تمام صفحه",
-      titleCancel: "خروج از تمام صفحه",
-      /* The plugin reuses the zoom container without removing its old link.
-         Give it an owned container so Strict Mode cleanup removes the whole bar
-         without detaching zoom or retaining a duplicate fullscreen button. */
-      forceSeparateButton: true,
-      content: " ", // Suppress the plugin's fixed-color background image.
-    });
-    control.addTo(map);
-    control.getContainer()?.querySelector("a")?.replaceChildren(iconHost);
-    return () => {
-      // leaflet.fullscreen 5.3.3 leaves its map listener registered on removal.
-      // Its private callback is absent from the published TypeScript declaration.
-      const listener = (control as FullScreen & { _toggleState: () => void })._toggleState;
-      map.off("enterFullscreen exitFullscreen", listener, control);
-      control.remove();
-      if (map.fullscreenControl === control) delete map.fullscreenControl;
-    };
-  }, [map, iconHost]);
+    if (!box) return;
+    const sync = () => setOn(document.fullscreenElement === box || box.classList.contains("map-pseudo-fullscreen"));
+    document.addEventListener("fullscreenchange", sync);
+    return () => document.removeEventListener("fullscreenchange", sync);
+  }, [box]);
+  useEffect(() => {
+    // The canvas has to learn its new size after either kind of switch.
+    map?.resize();
+  }, [map, on]);
 
-  return createPortal(<>
-    <Icon name="maximize" size="md" className="fullscreen-enter" />
-    <Icon name="minimize" size="md" className="fullscreen-exit" />
-  </>, iconHost);
+  function toggle() {
+    if (!box) return;
+    if (document.fullscreenEnabled) {
+      if (document.fullscreenElement) void document.exitFullscreen();
+      else void box.requestFullscreen();
+      return;
+    }
+    setOn(box.classList.toggle("map-pseudo-fullscreen"));
+  }
+
+  return (
+    <MapButton label={on ? "خروج از تمام صفحه" : "تمام صفحه"} onClick={toggle}>
+      <Icon name={on ? "minimize" : "maximize"} size="md" />
+    </MapButton>
+  );
 }
