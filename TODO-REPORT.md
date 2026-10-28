@@ -1,8 +1,9 @@
 # To-do report
 
-_Condensed 2026-10-23, updated 2026-10-27. Each finished piece of work is one line here; the full earlier text is in git history (`git log -p TODO-REPORT.md`)._
+_Condensed 2026-10-23, updated 2026-10-28. Each finished piece of work is one line here; the full earlier text is in git history (`git log -p TODO-REPORT.md`)._
 
 ## Done
+- [x] Button icons: every action button and button-styled link has an icon, and one action wears one icon app-wide (save = floppy, copy, print, send, refresh, navigation, pin, flag for priority, minus for "remove from route", `arrow-right` for back in RTL). 20 new glyphs from the installed lucide set in `icon-map.ts`; typed `+`, `＋` and `←` in labels replaced by icons; labels kept next to icons everywhere. `tests/button-icons.test.ts` fails on a button with no icon (content tiles listed with a reason) and on a known verb wearing the wrong icon; the dictionary lives in that test. Looked at at 390×844 in light and dark, no sideways scroll
 - [x] Company and shareholders, step 5: read-only «شریک» role whose only page is «سهم من» (`app/(shell)/my-share`): their share, capital, advances taken, dividends owed and an estimate for the open year; `proxy.ts` refuses every other page and API for that role, and the header hides search, bell and quick actions from it. Owner creates the login in the users admin (role «شریک») and links it in «شرکا». Looked at at 390×844 in light and dark, no sideways scroll
 - [x] Company and shareholders, step 4: advances and capital from the owner screen, yearly profit split with preview (legal reserve for a registered company, netting advances), per-group profit with shared-cost rules (by share of sales or kept at company level), group loss absorbed by the company and repaid first from that group's later profit (`lib/profitSplit.ts`, `lib/repo/profitSplit.ts`, `/api/accounting/profit-split`, `/api/accounting/cost-rules`)
 - [x] Company and shareholders, step 3: shareholders, fixed shares with start dates (whole company or one group, must total 100%), company legal form, owner-only «شرکا» page in the accounting tab (`components/accounting/ShareholdersPanel.tsx`, `/api/accounting/shareholders*`, `/api/accounting/legal-form`); looked at at 390×844 in light and dark
@@ -149,6 +150,7 @@ _Condensed 2026-10-23, updated 2026-10-27. Each finished piece of work is one li
 - [x] Roadmap 1b: UI pattern batches B to F and the batch A leftovers (new F146 and F147 in `docs/future-features.md`)
 
 ## Not done / gaps
+- [ ] Button icons: the verb check reads a label's first Persian words, so a button whose label comes only from a variable is not checked; `searchbox/SearchFavorites.tsx` and `SearchRecent.tsx` still have English labels («Clear all», «remove favorite»); the leads page eyebrow says «Prospect Locations»
 - [ ] Commission accrual is brought up to date when a commission payment is recorded; nothing runs it on a schedule or from a screen yet, so the income statement is after commission only for people who have been paid. Needs a sweep or an owner button (follow-up 1)
 - [ ] Company and shareholders: the «شرکا» page has no screen for shares that were set earlier (history) and cannot remove or deactivate a shareholder; the shareholder's login is made by hand in the users admin; income tax on profit is not modeled
 - [ ] Owner to set a $0 Actions budget (Settings, Billing, Budgets) and decide whether the PostgreSQL job may run less often (docs-only or label); the history rewrite in `docs/make-repo-public.md` is not done; if branch protection requires CI, docs-only PRs (skipped) will need it relaxed

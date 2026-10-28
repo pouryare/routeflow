@@ -54,13 +54,13 @@ export default function FacilityMarkers({ placedFacilities, navAppId }: {
                         rel="noopener noreferrer"
                         className="text-[length:var(--text-xs)] text-accent hover:underline"
                       >
-                        مسیریابی <Icon name="external-link" size="sm" />
+                        <Icon name="navigation" size="sm" /> مسیریابی
                       </a>
                       <Link
                         href={`/facilities?f=${f.id}`}
                         className="text-[length:var(--text-xs)] text-accent hover:underline"
                       >
-                        ویرایش این مکان ←
+                        <Icon name="edit" size="sm" /> ویرایش این مکان
                       </Link>
                     </div>
                   </div>

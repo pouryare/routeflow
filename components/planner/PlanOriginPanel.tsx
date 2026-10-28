@@ -87,7 +87,7 @@ export default function PlanOriginPanel({ origin, originPickerOpen, setOriginPic
                     }}
                     className="rounded-[var(--radius-sm)] border border-border px-2 py-1 text-[length:var(--text-xs)] text-text-faint hover:border-crit hover:text-crit"
                   >
-                    <Icon name="external-link" size="sm" />
+                    <Icon name="arrow-right" size="sm" />
                     بازگشت به مبدأ پیش‌فرض
                   </button>
                 )}
@@ -133,7 +133,7 @@ export default function PlanOriginPanel({ origin, originPickerOpen, setOriginPic
                 disabled={optimising}
                 className="inline-flex items-center justify-center gap-[var(--space-2)] w-fit rounded-[var(--radius-sm)] border border-accent px-2 py-1 text-[length:var(--text-xs)] text-accent transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:bg-accent hover:text-accent-ink disabled:opacity-50"
               >
-                <Icon name="undo" size="sm" />
+                <Icon name="sparkle" size="sm" />
                 {optimising
                   ? "در حال اعمال…"
                   : `مرتب‌سازی خودکار — ${faFixed(optimisation.savedPct, 0)}٪ کوتاه‌تر (${formatDistanceKm(optimisation.savedKm)})`}

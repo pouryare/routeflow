@@ -85,9 +85,10 @@ export default async function OrderDetailPage({
         </div>
         <Link
           href="/sales/orders"
-          className="text-[length:var(--text-sm)] text-[var(--text-muted)] no-underline hover:text-[var(--text)]"
+          className="inline-flex items-center gap-2 text-[length:var(--text-sm)] text-[var(--text-muted)] no-underline hover:text-[var(--text)]"
         >
-          ← همه سفارش‌ها
+          <Icon name="arrow-right" size="sm" />
+          همه سفارش‌ها
         </Link>
       </div>
 

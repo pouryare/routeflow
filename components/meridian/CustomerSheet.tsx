@@ -1,5 +1,6 @@
 "use client";
 
+import { Icon } from "@/components/meridian/Icon";
 import Link from "next/link";
 import CustomerBento, { useCustomerSummary } from "./CustomerBento";
 import BottomSheet from "@/components/mobile/BottomSheet";
@@ -60,16 +61,18 @@ export default function CustomerSheet({
     >
       <CustomerBento data={data} />
       {customerId !== null && <div style={{ padding: "16px 24px", display: "flex", flexWrap: "wrap", gap: 9 }}>
-        <Link className="btn ghost" style={{ minHeight: 44 }} href={`/crm/${customerId}`}>اطلاعات و مخاطبان</Link>
-        {canSell(role) && <Link className="btn solid" style={{ minHeight: 44 }} href={`/sales/orders/new?customer=${customerId}`}>ثبت سفارش تازه</Link>}
+        <Link className="btn ghost" style={{ minHeight: 44 }} href={`/crm/${customerId}`}><Icon name="user" size="md" />اطلاعات و مخاطبان</Link>
+        {canSell(role) && <Link className="btn solid" style={{ minHeight: 44 }} href={`/sales/orders/new?customer=${customerId}`}><Icon name="plus" size="md" />ثبت سفارش تازه</Link>}
       </div>}
 
       {data && (
         <div style={{ padding: "0 24px 26px", display: "flex", gap: 9, justifyContent: "flex-end" }}>
           <Link className="btn ghost" style={{ minHeight: 44 }} href={`/map?c=${data.customer_id}`}>
+            <Icon name="map" size="md" />
             روی نقشه
           </Link>
           <Link className="btn solid" style={{ minHeight: 44 }} href={`/sales/orders?customer=${data.customer_id}`}>
+            <Icon name="receipt" size="md" />
             همهٔ سفارش‌ها
           </Link>
         </div>

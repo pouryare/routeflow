@@ -352,7 +352,7 @@ export default function CommissionEditor({
                       setTierRows(e.rows);
                     }}
                   >
-                    <Icon name="layers" size="md" />
+                    <Icon name="copy" size="md" />
                     {`کپی از ${src.label}`}
                   </button>
                 ))}

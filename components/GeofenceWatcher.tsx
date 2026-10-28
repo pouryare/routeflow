@@ -237,7 +237,7 @@ export default function GeofenceWatcher({
             {saving ? (prompt.kind === "facility_arrive" ? "در حال ثبت حضور…" : "در حال ثبت بازدید…") : prompt.kind === "facility_arrive" ? "ثبت حضور" : "ثبت بازدید"}
           </Button>
           <Button size="sm" variant="tertiary" onPress={dismiss} isDisabled={saving}>
-            <Icon name="arrow-left" size="sm" />
+            <Icon name="x" size="sm" />
             فعلاً نه
           </Button>
         </div>

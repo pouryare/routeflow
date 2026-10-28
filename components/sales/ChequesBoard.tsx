@@ -269,7 +269,7 @@ export default function ChequesBoard({ customers }: { customers: Customer[] }) {
             برگشت خورد
           </button>
           <button type="button" onClick={() => setPicked(null)} className="touch rounded px-3 text-sm text-text-muted">
-            <Icon name="arrow-right" size="sm" />
+            <Icon name="x" size="sm" />
             پایان انتخاب
           </button>
         </div>

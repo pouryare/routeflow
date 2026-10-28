@@ -74,7 +74,7 @@ export default function VerifyVisits() {
               ثبت بازدید</button>
               <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn ghost" disabled={v.lat === null || v.lng === null}
                 onClick={() => v.lat !== null && v.lng !== null && window.open(navigateUrl(navApp, { lat: v.lat, lng: v.lng }, v.business_name), "_blank", "noopener")}>
-                <Icon name="route" size="md" />
+                <Icon name="navigation" size="md" />
                 مسیریابی
               </button>
             </div>

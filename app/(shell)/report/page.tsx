@@ -1,3 +1,4 @@
+import { Icon } from "@/components/meridian/Icon";
 import Link from "next/link";
 import type { CoverageStatus } from "@/lib/db";
 import { reportFacilities, reportRows } from "@/lib/repo/reportView";
@@ -113,9 +114,10 @@ export default async function ReportPage({
         <div className="no-print flex items-center justify-between">
           <Link
             href="/map"
-            className="rounded-[var(--radius-md)] border border-border bg-surface px-3 py-2 text-[length:var(--text-sm)] text-text-muted transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:border-accent hover:text-accent"
+            className="inline-flex items-center gap-2 whitespace-nowrap shrink-0 rounded-[var(--radius-md)] border border-border bg-surface px-3 py-2 text-[length:var(--text-sm)] text-text-muted transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:border-accent hover:text-accent"
           >
-            بازگشت به نقشه ←
+            <Icon name="arrow-right" size="sm" />
+            بازگشت به نقشه
           </Link>
           <div className="flex gap-2">
             <CsvExportButton

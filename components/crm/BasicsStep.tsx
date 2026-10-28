@@ -85,7 +85,7 @@ export default function BasicsStep({ api, prefillPhone, onOpenExisting, onReques
           <b>بررسی تکراری‌بودن انجام نشد</b>
           <span>اتصال برقرار نشد؛ پیش از ذخیره دوباره بررسی کنید.</span>
           <div className="acts"><button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn ghost" onClick={() => setCheckFailed(false)}>
-          <Icon name="undo" size="md" />
+          <Icon name="refresh" size="md" />
           بررسی دوباره</button></div>
         </div>
       ) : null}
@@ -119,7 +119,7 @@ export default function BasicsStep({ api, prefillPhone, onOpenExisting, onReques
               <Icon name="handshake" size="md" />
               درخواست واگذاری</button>}
               <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn ghost" onClick={() => { if (m.kind === "phone") setPhone(""); else setInstagram(""); setBranchOf(null); }}>
-              <Icon name="arrow-left" size="md" />
+              <Icon name="edit" size="md" />
               {m.kind === "phone" ? "شماره را اصلاح کنم" : "صفحه را اصلاح کنم"}</button>
             </div>
           </div>

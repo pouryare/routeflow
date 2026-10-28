@@ -56,7 +56,7 @@ export default function DiscountSettingsForm({ initial }: { initial: DiscountSet
         )}
       </section>
       <div className="sticky-action-gap" aria-hidden />
-      <StickyAction label="ذخیرهٔ تنظیمات" busy={busy ? "در حال ذخیره…" : undefined} onClick={save} disabled={busy || !dirty} />
+      <StickyAction icon="save" label="ذخیرهٔ تنظیمات" busy={busy ? "در حال ذخیره…" : undefined} onClick={save} disabled={busy || !dirty} />
     </>
   );
 }

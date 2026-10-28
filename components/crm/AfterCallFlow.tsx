@@ -111,7 +111,7 @@ export default function AfterCallFlow({
   ].filter((x): x is string => !!x);
   const actions = acc.open_order ? (
     <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn solid" onClick={async () => { await flush(); router.push(`/sales/orders?customer=${customerId}`); }}>
-    <Icon name="check" size="md" />
+    <Icon name="receipt" size="md" />
     ثبت سفارش</button>
   ) : acc.spawn_lead ? (
     <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn solid" onClick={async () => { await flush(); onSpawnLead?.(data.business.phone_norm); }}>

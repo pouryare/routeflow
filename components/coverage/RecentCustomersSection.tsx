@@ -32,7 +32,7 @@ export default function RecentCustomersSection({ recentCustomers, flyToCustomer,
                   title="سنجاق کردن"
                   className="shrink-0 text-text-faint transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:text-accent"
                 >
-                  <Icon name="star" size="sm" />
+                  <Icon name="pin" size="sm" />
                 </button>
               </div>
             ))}

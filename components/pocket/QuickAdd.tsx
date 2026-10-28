@@ -93,7 +93,7 @@ export default function QuickAdd({
           disabled={saving || !text.trim() || (kind === "reminder" && !due)}
           onClick={() => void submit()}
         >
-          <Icon name="edit" size="md" />
+          <Icon name="save" size="md" />
           {saving ? "در حال ذخیره…" : kind === "reminder" ? "ذخیرهٔ یادآوری" : "ذخیرهٔ یادداشت"}
         </button>
         <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn ghost" onClick={onClose}>

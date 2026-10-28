@@ -298,7 +298,8 @@ export default function OrderPipeline({ orders }: { orders: PipelineOrder[] }) {
                   href="/sales/orders"
                   style={{ fontSize: 12, color: "var(--accent)", textDecoration: "none", display: "inline-flex", alignItems: "center", minHeight: 44 }}
                 >
-                  {faNum(rows.length - LANE_CAP)} سفارش دیگر در این مرحله ←
+                  {faNum(rows.length - LANE_CAP)} سفارش دیگر در این مرحله
+                  <Icon name="chevron-left" size="sm" />
                 </Link>
               )}
 

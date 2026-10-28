@@ -102,7 +102,7 @@ export default function UserAddFlow({
               <p className="tf-sub" dir="ltr">
                 {creds.username} · {creds.password}
               </p>
-              <GoButton icon="external-link" onPress={() => void share()}>ارسال مشخصات ورود</GoButton>
+              <GoButton icon="send" onPress={() => void share()}>ارسال مشخصات ورود</GoButton>
               <p className="tf-note">این رمز فقط یک بار نشان داده می‌شود؛ کاربر می‌تواند بعداً آن را عوض کند.</p>
             </>
           }

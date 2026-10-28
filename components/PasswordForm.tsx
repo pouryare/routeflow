@@ -82,7 +82,7 @@ export default function PasswordForm({
         disabled={blocked}
         className="inline-flex min-h-11 w-full items-center justify-center gap-[var(--space-2)] rounded-[var(--radius-md)] border border-[var(--accent)] bg-[var(--accent)] py-[var(--space-2)] font-medium text-[var(--accent-ink)] disabled:cursor-not-allowed disabled:opacity-40"
       >
-        <Icon name="check" size="md" />
+        <Icon name="save" size="md" />
         {saving ? "در حال ذخیره…" : submitLabel}
       </button>
     </form>

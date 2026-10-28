@@ -1,3 +1,4 @@
+import { Icon } from "@/components/meridian/Icon";
 import { CardHelp } from "@/components/meridian/CardHelp";
 import RepDefinitions from "@/components/sales/RepDefinitions";
 import Link from "next/link";
@@ -47,9 +48,11 @@ export default async function RepsPage({
     {canDefine ? (
       <nav className="jmode" aria-label="نمای نمایندگان">
         <Link className={`btn ${mode === "perform" ? "solid" : "ghost"}`} aria-current={mode === "perform" ? "page" : undefined} href="/sales/reps">
+          <Icon name="chart" size="md" />
           عملکرد
         </Link>
         <Link className={`btn ${mode === "define" ? "solid" : "ghost"}`} aria-current={mode === "define" ? "page" : undefined} href="/sales/reps?view=define">
+          <Icon name="settings" size="md" />
           تعریف و راه‌اندازی
         </Link>
       </nav>

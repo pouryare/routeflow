@@ -9,6 +9,9 @@ import {
   RotateCcw, Layers, Camera, FileText, Waypoints, ClipboardList,
   Radar, Sun, Contrast, Square, Banknote, Flag, Ellipsis, LocateFixed,
   List, LayoutGrid, Repeat, PanelBottom, PanelRight, Phone, Maximize, Minimize, Eye, EyeOff,
+  Save, Copy, ClipboardPaste, Send, Upload, RefreshCw, LogIn, Navigation, Pin, PinOff,
+  AlarmClock, StickyNote, CalendarPlus, CheckCheck, Archive, KeyRound, Unlink, CircleStop,
+  House, Delete,
   type LucideIcon,
 } from "lucide-react";
 
@@ -119,6 +122,30 @@ export const ICONS = {
   repeat: Repeat,
   "panel-bottom": PanelBottom,
   "panel-side": PanelRight,
+
+  /* Actions. One glyph per action across the app: a button that saves wears `save`, one
+   * that copies wears `copy`, wherever it is. tests/button-icons.test.ts holds the
+   * label-to-icon dictionary. */
+  save: Save,
+  copy: Copy,
+  paste: ClipboardPaste,
+  send: Send,
+  upload: Upload,
+  refresh: RefreshCw,
+  login: LogIn,
+  navigation: Navigation,
+  pin: Pin,
+  "pin-off": PinOff,
+  alarm: AlarmClock,
+  note: StickyNote,
+  "calendar-plus": CalendarPlus,
+  "check-check": CheckCheck,
+  archive: Archive,
+  key: KeyRound,
+  unlink: Unlink,
+  stop: CircleStop,
+  home: House,
+  backspace: Delete,
 } as const satisfies Record<string, LucideIcon>;
 
 export type IconName = keyof typeof ICONS;

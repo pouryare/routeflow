@@ -286,6 +286,7 @@ export default function LeadsMap({
                       rel="noopener noreferrer"
                       className="shrink-0 whitespace-nowrap inline-flex items-center justify-center gap-2 rounded-[var(--radius-sm)] border border-accent px-5 py-1.5 text-[length:var(--text-sm)] font-medium text-accent"
                     >
+                      <Icon name="navigation" size="sm" />
                       مسیریابی به مکان
                     </a>
                     {l.runIndex === null ? (
@@ -294,14 +295,14 @@ export default function LeadsMap({
                         className="rounded-[var(--radius-sm)] border border-border px-2 py-1 text-[length:var(--text-xs)] text-text-muted"
                       >
                         <Icon name="plus" size="sm" />
-                        + افزودن به مسیر
+                        افزودن به مسیر
                       </button>
                     ) : (
                       <button
                         onClick={() => onRemoveFromRun(l.id)}
                         className="rounded-[var(--radius-sm)] border border-border px-2 py-1 text-[length:var(--text-xs)] text-crit"
                       >
-                        <Icon name="trash" size="sm" />
+                        <Icon name="minus" size="sm" />
                         حذف از مسیر (مقصد {faNum(l.runIndex)})
                       </button>
                     )}
@@ -390,7 +391,7 @@ export default function LeadsMap({
                   }}
                   className="inline-flex min-h-[44px] items-center gap-2 rounded-full border border-border px-4 text-[length:var(--text-sm)] text-crit"
                 >
-                  <Icon name="trash" size="sm" />
+                  <Icon name="x" size="sm" />
                   پاک کردن انتخاب
                 </button>
               )}

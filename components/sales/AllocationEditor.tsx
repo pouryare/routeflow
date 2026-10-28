@@ -95,7 +95,7 @@ editing !== null ? (
               onClick={saveAllocation}
               className="rounded bg-accent px-3 py-1 text-xs text-white"
             >
-              <Icon name="check" size="sm" />
+              <Icon name="save" size="sm" />
               ذخیرهٔ تخصیص
             </button>
             <button

@@ -97,12 +97,12 @@ export default function BusinessProfile({ initial, initialTimeline, canOrder }: 
   }
   return <main dir="rtl" style={{ padding: "24px 16px 96px", display: "grid", gap: 18, maxWidth: 900, margin: "auto" }}>
     <div className="profile-topbar">
-      <Link href="/crm" className="btn ghost" style={TOUCH}>بازگشت به فهرست</Link>
-      {canOrder && <Link className="btn solid" style={TOUCH} href={`/sales/orders/new?customer=${profile.business.id}`}>ثبت سفارش تازه</Link>}
+      <Link href="/crm" className="btn ghost" style={TOUCH}><Icon name="arrow-right" size="md" />بازگشت به فهرست</Link>
+      {canOrder && <Link className="btn solid" style={TOUCH} href={`/sales/orders/new?customer=${profile.business.id}`}><Icon name="plus" size="md" />ثبت سفارش تازه</Link>}
     </div>
     <h1>{profile.business.business_name}</h1>
     {error && <div role="alert">{error} <button className="inline-flex items-center justify-center gap-[var(--space-2)] btn ghost" style={TOUCH} disabled={busy} onClick={() => { setError(null); void reload().catch(e => setError(e.message)); }}>
-    <Icon name="undo" size="md" />
+    <Icon name="refresh" size="md" />
     بارگذاری دوباره</button></div>}
     {(profile.business.verification ?? "unverified") === "unverified" && <section className="tile"><strong>اطلاعات تأییدنشده</strong><p>نام و راه تماس را در تماس یا بازدید بررسی کنید.</p>{profile.canWrite && <button className="inline-flex items-center justify-center gap-[var(--space-2)] btn solid" style={TOUCH} onClick={() => setEdit({ kind: "verify" })}>
     <Icon name="check" size="md" />
@@ -149,7 +149,7 @@ export default function BusinessProfile({ initial, initialTimeline, canOrder }: 
     </section><CustomerBento data={profile.summary} />
     {profile.open && <CustomerOpenItems data={profile.open} />}
     <CustomerPriceHistory customerId={profile.business.id} />
-    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}><Link className="btn ghost" style={TOUCH} href={`/sales/orders?customer=${profile.business.id}`}>همهٔ سفارش‌ها</Link></div>
+    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}><Link className="btn ghost" style={TOUCH} href={`/sales/orders?customer=${profile.business.id}`}><Icon name="receipt" size="md" />همهٔ سفارش‌ها</Link></div>
     <section className="tile"><h2>تاریخچه</h2>{!history.items.length && <p>رویدادی ثبت نشده است.</p>}
       {history.items.map(i => <article key={`${i.kind}-${i.id}`} style={{ padding: "12px 0", borderBottom: "1px solid var(--border)" }}>{i.href ? <Link href={i.href}>{i.title}</Link> : <strong>{i.title}</strong>}<p>{i.sub}</p><small><time dateTime={i.at} dir="ltr">{faJalaliDateTime(i.at)}</time> {i.who}</small></article>)}
       {history.nextBefore && <button className="inline-flex items-center justify-center gap-[var(--space-2)] btn ghost" style={TOUCH} disabled={busy} onClick={() => void more()}>
@@ -208,13 +208,13 @@ function ProfileEditor({ edit, busy, onClose, onSave, profile }: { edit: Edit; b
       {edit.kind === "contact" && <><label>نام<FieldInput  value={name} onChange={e => setName(e.target.value)} /></label><label>تلفن<FieldInput  dir="ltr" inputMode="tel" value={phone} aria-invalid={touched && bad} onBlur={() => setTouched(true)} onChange={e => setPhone(sanitizePhoneInput(e.target.value))} /></label><div><span>سمت</span><ChipGroup wrap group={{ id: "contact_role", label: "سمت", mode: "single", neutral: "__none", value: role, onChange: v => { if (v && v !== "__none") setRole(v as string); }, options: CONTACT_ROLES.map(r => ({ id: r, label: CONTACT_ROLE_LABEL[r] })) }} /></div><CheckField checked={primary} onChange={setPrimary}>مخاطب اصلی</CheckField></>}
       {touched && bad && <p role="alert">شماره تلفن معتبر نیست</p>}
       <button type="submit" className="inline-flex items-center justify-center gap-[var(--space-2)] btn solid" style={TOUCH} disabled={busy || bad}>
-      <Icon name="edit" size="md" />
+      <Icon name={edit.kind === "verify" ? "check" : "save"} size="md" />
       {busy ? "در حال ثبت…" : edit.kind === "verify" ? "بله، اطلاعات درست است" : "ذخیرهٔ تغییر"}</button>
       <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn ghost" style={TOUCH} disabled={busy} onClick={onClose}>
       <Icon name="x" size="md" />
       انصراف از ویرایش</button>
       {c && <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn ghost" style={TOUCH} disabled={busy} onClick={() => archive ? void onSave(`/contacts/${c.id}`, "DELETE") : setArchive(true)}>
-      <Icon name="edit" size="md" />
+      <Icon name="archive" size="md" />
       {archive ? "بله، مخاطب بایگانی شود" : "بایگانی مخاطب"}</button>}
     </form></BottomSheet>;
 }

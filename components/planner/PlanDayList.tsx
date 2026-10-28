@@ -127,7 +127,7 @@ loading ? (
                   onClick={() => removePlan(p.id)}
                   className="rounded-[var(--radius-sm)] px-1.5 py-1 text-crit transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:bg-white/5"
                 >
-                  <Icon name="trash" size="sm" />
+                  <Icon name="minus" size="sm" />
                   <span className="ms-1 text-[length:var(--text-xs)]">حذف از برنامه</span>
                 </button>
               </div>

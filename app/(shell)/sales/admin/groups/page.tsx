@@ -207,7 +207,7 @@ export default function AdminGroupsPage() {
                       onClick={() => void rename(g, renaming.name)}
                       className="cursor-pointer text-accent transition-colors hover:underline"
                     >
-                      <Icon name="check" size="md" />
+                      <Icon name="save" size="md" />
                       ذخیرهٔ نام گروه
                     </button>
                     <button

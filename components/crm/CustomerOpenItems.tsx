@@ -1,3 +1,4 @@
+import { Icon } from "@/components/meridian/Icon";
 import Link from "next/link";
 import { faToman } from "@/lib/format";
 import { faJalaliDate } from "@/lib/jalali";
@@ -31,6 +32,7 @@ export default function CustomerOpenItems({ data }: { data: Customer360 }) {
                 ))}
               </ul>
               <Link href="/sales/cheques" className="btn ghost" style={TOUCH}>
+                <Icon name="banknote" size="md" />
                 صفحهٔ چک‌ها
               </Link>
             </>

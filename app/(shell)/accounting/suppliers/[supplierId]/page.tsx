@@ -1,3 +1,4 @@
+import { Icon } from "@/components/meridian/Icon";
 import { withRunningBalance } from "@/lib/runningBalance";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -47,8 +48,9 @@ export default async function SupplierStatementPage({
         actions={
           <Link
             href="/accounting/suppliers"
-            className="rounded-[var(--radius-sm)] border border-border px-2 py-1 text-[length:var(--text-sm)]"
+            className="inline-flex items-center gap-2 rounded-[var(--radius-sm)] border border-border px-2 py-1 text-[length:var(--text-sm)]"
           >
+            <Icon name="arrow-right" size="sm" />
             بازگشت به تأمین‌کنندگان
           </Link>
         }
