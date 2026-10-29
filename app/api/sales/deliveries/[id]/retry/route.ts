@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { isId } from "@/lib/inputChecks";
 import { requireRole } from "@/lib/session";
 import { retryDelivery, readDelivery, DeliveryEntityError } from "@/lib/repo/deliveries";
 import { MANAGE_ROLES, isOwner } from "@/lib/roles";
@@ -9,6 +10,7 @@ export async function POST(req: NextRequest, ctx: RouteContext<"/api/sales/deliv
   if (!guard.ok) return guard.response;
 
   const { id } = await ctx.params;
+  if (!isId(id)) return NextResponse.json({ ok: false, error: "شناسه نامعتبر است" }, { status: 400 });
   if (!await readDelivery(guard.session.organizationId, Number(id))) {
     return NextResponse.json({ ok: false, error: "یافت نشد" }, { status: 404 });
   }

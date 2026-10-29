@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { isId } from "@/lib/inputChecks";
 import { requireRole } from "@/lib/session";
 import { decide, CreditApprovalError } from "@/lib/repo/creditApprovals";
 import { MANAGE_ROLES } from "@/lib/roles";
@@ -14,6 +15,7 @@ export async function POST(
   if (stepUp) return stepUp;
 
   const { id } = await ctx.params;
+  if (!isId(id)) return NextResponse.json({ ok: false, error: "شناسه نامعتبر است" }, { status: 400 });
   const body = (await req.json().catch(() => null)) as {
     verdict?: "approved" | "rejected";
     reason?: string;

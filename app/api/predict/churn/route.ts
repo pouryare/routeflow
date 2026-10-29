@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { isId } from "@/lib/inputChecks";
 import { requireRole } from "@/lib/session";
 import { churnBoard, scoreChurn } from "@/lib/repo/churn";
 import { MANAGE_ROLES } from "@/lib/roles";
@@ -16,6 +17,7 @@ export async function GET(req: NextRequest) {
   const sp = req.nextUrl.searchParams;
   const id = sp.get("id");
   if (id) {
+    if (!isId(id)) return NextResponse.json({ ok: false, error: "شناسه نامعتبر است" }, { status: 400 });
     return NextResponse.json({
       ok: true,
       id: Number(id),

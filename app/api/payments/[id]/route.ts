@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { isId } from "@/lib/inputChecks";
 import { requireRole } from "@/lib/session";
 import {
   getPayment,
@@ -16,6 +17,7 @@ export async function GET(req: NextRequest, ctx: RouteContext<"/api/payments/[id
   if (!guard.ok) return guard.response;
 
   const { id } = await ctx.params;
+  if (!isId(id)) return NextResponse.json({ ok: false, error: "شناسه نامعتبر است" }, { status: 400 });
   const payment = await getPayment(guard.session.organizationId, Number(id));
   if (!payment) return NextResponse.json({ ok: false, error: "یافت نشد" }, { status: 404 });
 
@@ -40,6 +42,7 @@ export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/payments/[
   if (stepUp) return stepUp;
 
   const { id } = await ctx.params;
+  if (!isId(id)) return NextResponse.json({ ok: false, error: "شناسه نامعتبر است" }, { status: 400 });
   const paymentId = Number(id);
   if (!await getPayment(guard.session.organizationId, paymentId)) {
     return NextResponse.json({ ok: false, error: "یافت نشد" }, { status: 404 });
@@ -75,6 +78,7 @@ export async function POST(req: NextRequest, ctx: RouteContext<"/api/payments/[i
   if (stepUp) return stepUp;
 
   const { id } = await ctx.params;
+  if (!isId(id)) return NextResponse.json({ ok: false, error: "شناسه نامعتبر است" }, { status: 400 });
   if (req.nextUrl.searchParams.get("action") !== "void") {
     return NextResponse.json({ ok: false, error: "کنش نامعتبر است" }, { status: 400 });
   }

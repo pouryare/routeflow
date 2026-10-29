@@ -7,5 +7,9 @@ Replace YOUR-SUBDOMAIN with whatever you choose, e.g. map.example.com:
 YOUR-SUBDOMAIN.example.com {
 	# next start leaves signed-in API JSON uncompressed; this covers every route (the sync pull also gzips itself).
 	encode zstd gzip
+	# JSON bodies are small; photos (up to 20 MB) are the largest legitimate request.
+	request_body {
+		max_size 25MB
+	}
 	reverse_proxy 127.0.0.1:3003
 }

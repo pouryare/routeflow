@@ -99,4 +99,15 @@ describe("task_recurrences repo", () => {
     await expect(patchRecurrence(1, r.id, { priority: "x" } as never)).rejects.toThrow();
     await expect(patchRecurrence(1, r.id, { group_id: "1; DROP TABLE users" } as never)).rejects.toThrow();
   });
+
+  it("refuses an assignee that belongs to another company", async () => {
+    const u2 = Number(
+      (await getDb()
+        .prepare("INSERT INTO users (username,password_hash,display_name,role,created_at,organization_id) VALUES (?,?,?,?,?,2)")
+        .run(`x2${Date.now()}`, "x", "م", "group_manager", new Date().toISOString())).lastInsertRowid
+    );
+    await expect(
+      createRecurrence(1, { title: "t", kind: "admin", rrule: "daily", assignee_user_id: u2 }, user)
+    ).rejects.toThrow();
+  });
 });

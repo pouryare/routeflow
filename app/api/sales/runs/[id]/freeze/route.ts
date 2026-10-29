@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { isId } from "@/lib/inputChecks";
 import { requireRole } from "@/lib/session";
 import { freezeRun, RoutingError } from "@/lib/repo/routing";
 import { MANAGE_ROLES, isOwner } from "@/lib/roles";
@@ -8,6 +9,7 @@ export async function POST(req: NextRequest, ctx: RouteContext<"/api/sales/runs/
   const guard = await requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
   const { id } = await ctx.params;
+  if (!isId(id)) return NextResponse.json({ ok: false, error: "شناسه نامعتبر است" }, { status: 400 });
   try {
     await freezeRun(guard.session.organizationId, Number(id), {
       id: guard.session.user.id,
