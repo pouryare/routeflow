@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { isId } from "@/lib/inputChecks";
 import { requireRole } from "@/lib/session";
 import { isToman } from "@/lib/money";
 import { customerDebtsForOrg } from "@/lib/repo/payments";
@@ -15,7 +16,9 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   const guard = await requireRole(req, ["field_rep", "delivery_driver"]);
   if (!guard.ok) return guard.response;
 
-  const stopId = Number((await ctx.params).id);
+  const stopIdRaw = (await ctx.params).id;
+  if (!isId(stopIdRaw)) return NextResponse.json({ ok: false, error: "شناسه نامعتبر است" }, { status: 400 });
+  const stopId = Number(stopIdRaw);
 
   // The stop must be on a run belonging to this driver (and company). Checked here rather than
   // trusting the id in the URL, and answered as 404 so another driver's stop is
@@ -90,7 +93,9 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
 export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   const guard = await requireRole(req, ["field_rep", "delivery_driver"]);
   if (!guard.ok) return guard.response;
-  const stopId = Number((await ctx.params).id);
+  const stopIdRaw = (await ctx.params).id;
+  if (!isId(stopIdRaw)) return NextResponse.json({ ok: false, error: "شناسه نامعتبر است" }, { status: 400 });
+  const stopId = Number(stopIdRaw);
   // Same ownership rule as recording: another driver's stop answers 404.
   const owned = await findOwnedStop(stopId, guard.session.user.id, guard.session.organizationId);
   if (!owned) return NextResponse.json({ ok: false, error: "توقف پیدا نشد" }, { status: 404 });

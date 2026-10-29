@@ -6,7 +6,7 @@ import {
   salespersonScoreFor,
   driverScoreFor,
 } from "@/lib/repo/health";
-import { currentPeriod } from "@/lib/analysis/period";
+import { currentPeriod, isPeriod } from "@/lib/analysis/period";
 import { MANAGE_ROLES } from "@/lib/roles";
 
 export const dynamic = "force-dynamic";
@@ -25,6 +25,9 @@ export async function GET(req: NextRequest) {
   const id = idParam ? Number(idParam) : null;
   const org = guard.session.organizationId;
   const period = sp.get("period") ?? currentPeriod();
+  if (!isPeriod(period)) {
+    return NextResponse.json({ ok: false, error: "دورهٔ نامعتبر است" }, { status: 400 });
+  }
 
   if (scope === "customer") {
     if (id) return NextResponse.json({ ok: true, scope, id, health: await customerHealthFor(org, id) });

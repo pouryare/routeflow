@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { isId } from "@/lib/inputChecks";
 import { requireRole, orderFilter, orgScopeId } from "@/lib/session";
 import { orderVisible } from "@/lib/repo/ordersAccess";
 import { packagingOfProduct, productInOrg } from "@/lib/repo/catalogueAdmin";
@@ -32,7 +33,9 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
   const guard = await requireRole(req, [...CAN_SELL]);
   if (!guard.ok) return guard.response;
 
-  const id = Number((await ctx.params).id);
+  const idRaw = (await ctx.params).id;
+  if (!isId(idRaw)) return NextResponse.json({ ok: false, error: "شناسه نامعتبر است" }, { status: 400 });
+  const id = Number(idRaw);
   if (!await visible(guard.session, id)) return notFound();
 
   const order = await orderById(id);
@@ -44,7 +47,9 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
   const guard = await requireRole(req, [...CAN_SELL]);
   if (!guard.ok) return guard.response;
 
-  const id = Number((await ctx.params).id);
+  const idRaw = (await ctx.params).id;
+  if (!isId(idRaw)) return NextResponse.json({ ok: false, error: "شناسه نامعتبر است" }, { status: 400 });
+  const id = Number(idRaw);
   // Checked before anything is read or written, so an order in another group is
   // indistinguishable from one that does not exist -- including on a failed confirm,
   // where a 400 would otherwise confirm it is real.

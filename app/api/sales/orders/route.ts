@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { isId } from "@/lib/inputChecks";
 import { requireRole, orderFilter, canReachGroup, orgScopeId } from "@/lib/session";
 import { activeUserWithRoleInOrg, findCustomerInOrg } from "@/lib/repo/orgRefs";
 import { productInOrg } from "@/lib/repo/catalogueAdmin";
@@ -43,11 +44,16 @@ export async function GET(req: NextRequest) {
   const customerId = url.searchParams.get("customer");
   const status = url.searchParams.get("status");
 
+  const limit = Number(url.searchParams.get("limit") ?? 200);
+  if ((customerId && !isId(customerId)) || !Number.isInteger(limit) || limit < 1 || limit > 1000) {
+    return NextResponse.json({ ok: false, error: "پارامتر نامعتبر است" }, { status: 400 });
+  }
+
   const scope = orderFilter(guard.session);
   const orders = await ordersIn(scope, {
     customerId: customerId ? Number(customerId) : undefined,
     status: status ?? undefined,
-    limit: Number(url.searchParams.get("limit") ?? 200),
+    limit,
   });
 
   // Additive, and only when a customer is named: what that shop habitually buys is the
