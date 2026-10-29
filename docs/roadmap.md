@@ -687,3 +687,9 @@ Four effects from a UI-motion showcase, built on the draft branch `claude/projec
 | Price roll | `@number-flow/react` 0.6.2 was tried first and dropped: it drew no Persian digits in Chromium. Hand-built odometer in `CountUp` | Rolls on change, not from zero on first view |
 | Sale pings | Own endpoint `/api/sales/pings`, checked every 15 s while the sales summary is visible; managers and owners only | Reps keep the 60 s bell check |
 | Realized / unrealized profit | `salesDashboard().profit`: margin on delivered orders times the paid share of each order | Owner and manager card on the sales summary; sellers and drivers see paid against owed commission |
+
+### 10.10 Sensitive data lives in `routeflow-private` (2026-10-29, owner decision)
+
+The public `routeflow` repo holds code, fake seed data and placeholders only. Everything sensitive, now and in future, goes in the private repo `pouryare/routeflow-private`, which only the owner can access: real env files, the demo password, the real Caddyfile block, backup passphrases and offsite details, and any future key, export, dump or personal file. Plain files, no encryption (owner's choice). Never in the public repo, in CI secrets or in chat.
+
+The public repo reads these from the environment (`.env.example` lists them): `DEMO_PASSWORD` (random and printed by the seed when unset), `CONTACT_EMAIL`, `SESSION_SECRET`, Telegram and VAPID keys. The server pulls `routeflow-private` at deploy time and writes `/etc/routeflow/env`; CI uses throwaway values. Audit of 2026-10-29: no real keys, tokens, `.env` files or dumps in any public branch or `refs/pull/*`; the old demo password stays in public history, so it is treated as burned.

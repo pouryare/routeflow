@@ -10,7 +10,7 @@
 
 set -uo pipefail
 
-REPO="/root/pourya/RouteFlow"
+REPO="${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel)}"
 cd "$REPO" 2>/dev/null || exit 0
 git rev-parse --is-inside-work-tree >/dev/null 2>&1 || exit 0
 

@@ -12,7 +12,7 @@
 
 ## Global Constraints
 
-- **Building is allowed; leaving the service down is not.** (Revised 2026-09-10: the user confirmed the app is not yet in real production and may be stopped.) The `routeflow` systemd service has `WorkingDirectory=/root/pourya/RouteFlow` and serves `next start` from `.next/`, so a build still overwrites the artifacts a *running* process holds a manifest for — it will serve 500s for chunk files while `systemctl is-active` still reports `active`. Therefore: `systemctl stop routeflow` **before** building, and `systemctl start routeflow` after. Never build under a live process.
+- **Building is allowed; leaving the service down is not.** (Revised 2026-09-10: the user confirmed the app is not yet in real production and may be stopped.) The `routeflow` systemd service has `WorkingDirectory=/srv/routeflow` and serves `next start` from `.next/`, so a build still overwrites the artifacts a *running* process holds a manifest for — it will serve 500s for chunk files while `systemctl is-active` still reports `active`. Therefore: `systemctl stop routeflow` **before** building, and `systemctl start routeflow` after. Never build under a live process.
 - Production runs on `127.0.0.1:3003`. **Port 3000 is a different application** (`/root/Lightlinesllc/lightlinesllc`) — never probe it to judge RouteFlow.
 - No hardcoded colours. Tokens only, or `npm run check:contrast` (500 pairs × 10 accent themes × 2 skins) stops meaning anything.
 - Dates shown to a user are **Jalali**. Column naming decides which helper: `*_date` → `faJalaliDate`, `*_at` → `faJalaliDateTime`.

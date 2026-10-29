@@ -29,7 +29,11 @@ if (!/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(BASE)) {
 
 const ONLY_ROLES = arg("roles")?.split(",") ?? null;
 const ONLY_PATHS = arg("paths")?.split(",") ?? null;
-const PASSWORD = "demo1234";
+const PASSWORD = process.env.DEMO_PASSWORD;
+if (!PASSWORD) {
+  console.error("Set DEMO_PASSWORD to the password the demo database was seeded with.");
+  process.exit(2);
+}
 const LOGINS: { username: string; role: Role }[] = [
   { username: "demo.platform", role: "platform_owner" },
   { username: "demo.owner", role: "owner" },

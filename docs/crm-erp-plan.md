@@ -1,6 +1,6 @@
 # RouteFlow — CRM+ERP Development Plan (v2)
 
-**Revised:** 2026-09-01 · **Codebase:** `/root/pourya/RouteFlow` → `github.com/pouryare/routeflow`
+**Revised:** 2026-09-01 · **Codebase:** `/srv/routeflow` → `github.com/pouryare/routeflow`
 **Companion:** [`crm-erp-source-extract.md`](./crm-erp-source-extract.md)
 
 > **v2 supersedes v1.** v1 was written believing this was a ~45-order-per-day business.
@@ -45,7 +45,7 @@ still stands:
 | Thing | Status |
 |---|---|
 | systemd units | ✅ `coverage-map*` → `routeflow*`, descriptions included. Old units removed; the dead `coverage-map-reminders` pair was deleted rather than renamed — Phase 2 deleted the script it ran. |
-| Directory | ✅ `/root/pourya/coverage-map` → `/root/pourya/RouteFlow`, with the unit paths, the auto-commit hook, and `scripts/build-traffic-zones.mjs` repointed. Caddy needed nothing: it proxies `127.0.0.1:3003` by port. |
+| Directory | ✅ `/root/pourya/coverage-map` → `/srv/routeflow`, with the unit paths, the auto-commit hook, and `scripts/build-traffic-zones.mjs` repointed. Caddy needed nothing: it proxies `127.0.0.1:3003` by port. |
 | `ROUTEFLOW_DB_PATH`, `data/routeflow.db` | ✅ Done too. WAL checkpointed to empty and the app stopped before the file moved, so nothing was mid-write; 186 files updated. `scripts/backup.mjs` writes `routeflow-<ts>.db` and its retention regex still matches the old prefix, so an archive restored from before the rename is rotated rather than kept forever. Two hand-made snapshots that sat on the rotation prefix were moved to the exempt `pre-` convention — the very next run would have deleted them. |
 | `docs/superpowers/plans/*` | Path and unit-name references were updated so copy-pasted commands still work; the dated narrative is otherwise untouched. |
 

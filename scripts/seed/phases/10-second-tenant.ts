@@ -108,7 +108,7 @@ export async function run(ctx: SeedContext): Promise<void> {
 
     /* Printed in the summary. Without this the tenant switcher offers an org nobody can log
        into, which looks like a broken build rather than an unreported one. */
-    ctx.logins.push({ username, role: "owner (tenant 2)", password: "demo1234" });
+    ctx.logins.push({ username, role: "owner (tenant 2)", password: ctx.logins.find((l) => l.username === "demo.owner")!.password });
 
     for (let c = 0; c < 6; c++) {
       await insCustomer.run(

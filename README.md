@@ -130,7 +130,7 @@ this import.
 
 ## Deployment (already set up on this server)
 
-> Fully renamed on 2026-09-08. The working directory is `/root/pourya/RouteFlow`, the
+> Fully renamed on 2026-09-08. The working directory is `/srv/routeflow`, the
 > systemd units are `routeflow*`, the database is `data/routeflow.db`, and the env var
 > is `ROUTEFLOW_DB_PATH`. Nightly backups are written as `routeflow-<ts>.db`; existing
 > ones were renamed to match. Nothing is called `coverage-map` any more.
