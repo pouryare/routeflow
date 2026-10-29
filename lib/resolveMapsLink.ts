@@ -59,7 +59,7 @@ async function nominatimSearch(query: string): Promise<NominatimResult | null> {
       url.searchParams.set("limit", "1");
       const res = await fetch(url, {
         signal: controller.signal,
-        headers: { "User-Agent": "routeflow-lead-import/1.0 (contact: lightlines.dev@gmail.com)" },
+        headers: { "User-Agent": `routeflow-lead-import/1.0 (contact: ${process.env.CONTACT_EMAIL ?? "unset"})` },
       });
       if (!res.ok) return null;
       const results = (await res.json()) as NominatimResult[];

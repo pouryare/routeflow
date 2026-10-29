@@ -1049,7 +1049,7 @@ Run: `npm run build` **on a machine with ≥2 GB free** — the dev sandbox OOMs
   - every pre-existing `push_subscriptions` row still present, all with `user_id IS NULL` (`SELECT COUNT(*) FROM push_subscriptions WHERE user_id IS NOT NULL` = 0).
   - snapshot counts unchanged; `PRAGMA foreign_key_check` = `[]`.
 
-- [ ] **Step 2: Prove it.** WAL-aware-copy `/root/pourya/RouteFlow/backups/pre-crm-erp-deploy-20260902-155938.db` to tmp, run with `NOTIF_P2_MIGRATION_CHECK_DB` pointed at it → the `it` executes and PASSES. Then run with the var unset → SKIPs cleanly. Report both.
+- [ ] **Step 2: Prove it.** WAL-aware-copy `/srv/routeflow/backups/pre-crm-erp-deploy-20260902-155938.db` to tmp, run with `NOTIF_P2_MIGRATION_CHECK_DB` pointed at it → the `it` executes and PASSES. Then run with the var unset → SKIPs cleanly. Report both.
 
 - [ ] **Step 3: Full suite.** `rm -rf node_modules/.vite node_modules/.vitest && npx vitest run` → 0 failed.
 

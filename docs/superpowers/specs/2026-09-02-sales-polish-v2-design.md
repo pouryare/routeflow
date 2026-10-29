@@ -254,7 +254,7 @@ All layers landed on branch `sales-polish` (10 commits off `main`):
 logged-in screenshot walk (light + dark, terracotta/teal/purple) of `/sales`, `/sales/orders`,
 `/sales/board`, `/sales/dashboard`.
 
-**Not merged to `main`.** `map.pouryarezaee.com` updates only after `sales-polish` → `main` + deploy.
+**Not merged to `main`.** `map.example.com` updates only after `sales-polish` → `main` + deploy.
 
 **Follow-ups (not blocking):** spread `<Pocketed>` to cheques / batches / پاکت / receipts / task
 board; migrate the remaining ad-hoc initial circles to `<Avatar>`; real avatar uploads (DB

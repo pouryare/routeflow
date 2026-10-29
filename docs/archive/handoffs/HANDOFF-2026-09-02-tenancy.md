@@ -2,7 +2,7 @@
 
 Read this first in a fresh conversation. It replaces the need to re-derive
 anything from chat history. Repo: `github.com/pouryare/routeflow` (renamed
-from RouteFlow on 2026-09-01). Working dir: `/root/pourya/RouteFlow`.
+from RouteFlow on 2026-09-01). Working dir: `/srv/routeflow`.
 Branch: `phase-0-tenancy` (not merged to `main`).
 
 ## ✅ RESOLVED 2026-09-02: the "lost" planning docs were never lost
@@ -368,7 +368,7 @@ after Phase 10 (user decision, 2026-09-02).
 
 ## How to resume
 
-1. In a new conversation, in `/root/pourya/RouteFlow`, confirm you're on
+1. In a new conversation, in `/srv/routeflow`, confirm you're on
    `phase-0-tenancy` and pull this file up
    (`docs/HANDOFF-2026-09-02-tenancy.md`).
 2. Run `npx vitest run` once to confirm still green before touching

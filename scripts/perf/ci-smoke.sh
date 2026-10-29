@@ -10,6 +10,7 @@ WORK="$(mktemp -d)"
 DEMO_DB="rf_perf_smoke"
 export SESSION_SECRET="${SESSION_SECRET:-ci-secret-not-for-production-0123456789}"
 export NEXT_TELEMETRY_DISABLED=1
+export DEMO_PASSWORD="${DEMO_PASSWORD:-$(head -c 12 /dev/urandom | base64 | tr -d "+/=")}"
 PORT="${PORT:-3100}"
 BUDGET="${PERF_BUDGET_MS:-1500}"
 
@@ -26,7 +27,7 @@ for _ in $(seq 1 60); do
 done
 
 COOKIE="$(curl -s -i -X POST "http://localhost:$PORT/api/login" -H 'content-type: application/json' \
-  -d '{"username":"demo.owner","password":"demo1234"}' | grep -i '^set-cookie' | sed 's/^[^:]*: //; s/;.*//')"
+  -d '{"username":"demo.owner","password":"'"$DEMO_PASSWORD"'"}' | grep -i '^set-cookie' | sed 's/^[^:]*: //; s/;.*//')"
 [ -n "$COOKIE" ] || { echo "login failed"; cat "$WORK/server.log"; exit 1; }
 
 SESSION_COOKIE="$COOKIE" PERF_BUDGET_MS="$BUDGET" node scripts/perf/timing.mjs "http://localhost:$PORT"

@@ -63,7 +63,7 @@
 
 ## Task 0: Branch
 
-- [ ] **Step 1:** `cd /root/pourya/RouteFlow && git checkout main && git pull -q && git checkout -b crm-core-field-flows`
+- [ ] **Step 1:** `cd /srv/routeflow && git checkout main && git pull -q && git checkout -b crm-core-field-flows`
 - [ ] **Step 2:** `npx vitest run 2>&1 | tail -5` — record the baseline pass count in the first commit message of Task 1.
 
 ---
@@ -5604,9 +5604,9 @@ Expected: PASS (not skipped), with every one of the ~142 businesses' stored stat
 
 ```bash
 git worktree add /tmp/rf-crm-smoke crm-core-field-flows
-ln -s /root/pourya/RouteFlow/node_modules /tmp/rf-crm-smoke/node_modules
-cp /root/pourya/RouteFlow/.env* /tmp/rf-crm-smoke/ 2>/dev/null || true
-node -e 'const s=require("node:sqlite");const db=new s.DatabaseSync("/root/pourya/RouteFlow/data/routeflow.db",{readOnly:true});s.backup(db,"/tmp/rf-crm-smoke.db").then(()=>console.log("ok"))'
+ln -s /srv/routeflow/node_modules /tmp/rf-crm-smoke/node_modules
+cp /srv/routeflow/.env* /tmp/rf-crm-smoke/ 2>/dev/null || true
+node -e 'const s=require("node:sqlite");const db=new s.DatabaseSync("/srv/routeflow/data/routeflow.db",{readOnly:true});s.backup(db,"/tmp/rf-crm-smoke.db").then(()=>console.log("ok"))'
 cd /tmp/rf-crm-smoke && ROUTEFLOW_DB_PATH=/tmp/rf-crm-smoke.db npx next dev -p 3999
 ```
 
@@ -5623,7 +5623,7 @@ On a phone-sized window, in both skins:
 Stop the server by port (a name-based `pkill` misses it) and remove the worktree:
 
 ```bash
-kill $(lsof -t -i:3999); git -C /root/pourya/RouteFlow worktree remove /tmp/rf-crm-smoke --force
+kill $(lsof -t -i:3999); git -C /srv/routeflow worktree remove /tmp/rf-crm-smoke --force
 ```
 
 - [ ] **Step 5: Push the branch, do not merge or deploy.** `git push -u origin crm-core-field-flows`. Merging to `main`, `npm run build` and `systemctl restart routeflow` happen with the user, after a fresh backup-API copy.

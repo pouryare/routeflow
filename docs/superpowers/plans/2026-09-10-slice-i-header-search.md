@@ -45,7 +45,7 @@
 
 ### Task 0: Branch
 
-- [ ] **Step 1:** `cd /root/pourya/RouteFlow && git checkout main && git pull && git checkout -b remediation-header-search`
+- [ ] **Step 1:** `cd /srv/routeflow && git checkout main && git pull && git checkout -b remediation-header-search`
 - [ ] **Step 2:** Record the lint baseline: `npx eslint 2>&1 | tail -3` — expect `2 errors, 3 warnings`.
 
 ---
