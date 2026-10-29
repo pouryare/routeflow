@@ -1,7 +1,7 @@
 import type { Db } from "@/lib/database/client";
 import { readCustomers } from "@/lib/customers";
 import { crmFilter, orderFilter, scopeGroupIds, type Session } from "@/lib/session";
-import { matchesQuery, normalisePersian } from "@/lib/persian";
+import { escapeLike, matchesQuery, normalisePersian } from "@/lib/persian";
 import { faDigits } from "@/lib/format";
 import { faJalaliDate } from "@/lib/jalali";
 import { buildMapLink } from "@/lib/deepLink";
@@ -193,6 +193,3 @@ export async function searchDistricts(db: Db, session: Session, q: string, limit
 
 /** LIKE treats % and _ as wildcards, so a query of "5%" would return every code ending in
  *  5 -- a search box producing nonsense rather than an error. */
-function escapeLike(s: string): string {
-  return s.replace(/[\\%_]/g, (c) => `\\${c}`);
-}

@@ -34,3 +34,14 @@ export function round(expr: string, digits = 0): string {
   const d = digits ? `, ${digits}` : "";
   return `ROUND(CAST(${expr} AS numeric)${d})`;
 }
+
+/** Ids for an `IN (...)` list written into the statement text, for lists too long or too dynamic for
+ *  `?` placeholders. Every id must be a safe whole number (anything else throws), so nothing but
+ *  digits can reach the SQL. An empty list gives `NULL`, which matches no row. */
+export function idList(ids: Iterable<number>): string {
+  const out = [...ids].map((n) => {
+    if (!Number.isSafeInteger(n)) throw new TypeError(`Not an id: ${String(n)}`);
+    return String(n);
+  });
+  return out.length ? out.join(",") : "NULL";
+}

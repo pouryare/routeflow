@@ -20,3 +20,18 @@ describe("toNumber", () => {
     expect(toToman("۱٬۲۰۰")).toBe(1200);
   });
 });
+
+import { idList } from "@/lib/database/dialect";
+import { escapeLike } from "@/lib/persian";
+
+describe("idList and escapeLike", () => {
+  it("writes only digits into an IN list", () => {
+    expect(idList([1, 2, 3])).toBe("1,2,3");
+    expect(idList([])).toBe("NULL");
+    expect(() => idList([1, "2) OR 1=1 --" as never])).toThrow();
+    expect(() => idList([1.5])).toThrow();
+  });
+  it("escapes LIKE wildcards", () => {
+    expect(escapeLike("50%_off\\")).toBe("50\\%\\_off\\\\");
+  });
+});

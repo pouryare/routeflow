@@ -17,6 +17,7 @@
 
 import { getDb } from "@/lib/db";
 import type { Db } from "@/lib/database/client";
+import { idList } from "@/lib/database/dialect";
 
 export interface RunDraft {
   id: number;
@@ -78,7 +79,7 @@ export async function readRunDrafts(
   const stops = await db
     .prepare(
       `SELECT draft_id, order_id, seq FROM run_draft_stops
-        WHERE draft_id IN (${ids.join(",")}) ORDER BY draft_id, seq, id`
+        WHERE draft_id IN (${idList(ids)}) ORDER BY draft_id, seq, id`
     )
     .all() as unknown as DraftStop[];
 

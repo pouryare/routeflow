@@ -42,7 +42,7 @@ export async function GET(req: NextRequest) {
     { header: "شماره سفارش", key: "order_no", width: 16 },
     { header: "تاریخ", key: "order_date", width: 14 },
     { header: "مشتری", key: "customer", width: 32 },
-    { header: "فروشنده", key: "phone_sales", width: 16 },
+    { header: "فروشنده", key: "salesperson", width: 16 },
     { header: "وضعیت", key: "status", width: 14 },
     { header: "پرداخت", key: "payment", width: 14 },
     { header: "تعداد اقلام", key: "lines", width: 12 },
