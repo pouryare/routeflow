@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import JalaliDatePicker from "@/components/JalaliDatePicker";
 import { faToman, faNum } from "@/lib/format";
-import { roundToman } from "@/lib/money";
+import { roundToman, toNumber } from "@/lib/money";
 import { MAX_PACKS_PER_LINE, parsePacks } from "@/lib/orderLimits";
 import { Icon } from "@/components/meridian/Icon";
 import BusyIcon from "@/components/meridian/BusyIcon";
@@ -204,7 +204,7 @@ export default function OrderForm({
   const resolvedRequestedDay = useMemo(() => {
     if (requestedMode === "soonest") return null;
     if (requestedMode === "exact_date") return requestedDate || null;
-    const weeks = Number(requestedWeeks);
+    const weeks = toNumber(requestedWeeks) ?? NaN;
     if (!Number.isInteger(weeks) || weeks < 0) return null;
     try {
       return resolveRequestedDay("week_offset", weeks, tehranTodayIso());

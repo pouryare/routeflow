@@ -1,5 +1,6 @@
 "use client";
 
+import { toNumber } from "@/lib/money";
 import { FieldInput } from "@/components/FieldInput";
 import FilterChips from "@/components/mobile/FilterChips";
 import KeypadField from "@/components/mobile/KeypadField";
@@ -291,8 +292,8 @@ function ThresholdField({
   const dirty = value !== (initial === null ? "" : String(initial));
 
   async function save() {
-    const n = value.trim() === "" ? null : Number(value);
-    if (n !== null && (!Number.isFinite(n) || n < 0)) return;
+    const n = value.trim() === "" ? null : toNumber(value);
+    if (value.trim() !== "" && (n === null || n < 0)) return;
     setBusy(true);
     try {
       const res = await fetch(`/api/sales/products/${productId}/stock-thresholds`, {
