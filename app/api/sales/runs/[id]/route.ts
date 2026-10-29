@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { isId } from "@/lib/inputChecks";
 import { requireRole, canReachGroup } from "@/lib/session";
 import { DeliveryError } from "@/lib/delivery";
 import { findDeletableRun, removeRun } from "@/lib/repo/salesWrites";
@@ -19,7 +20,9 @@ export async function DELETE(req: NextRequest, ctx: { params: Promise<{ id: stri
   const guard = await requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
 
-  const runId = Number((await ctx.params).id);
+  const runIdRaw = (await ctx.params).id;
+  if (!isId(runIdRaw)) return NextResponse.json({ ok: false, error: "شناسه نامعتبر است" }, { status: 400 });
+  const runId = Number(runIdRaw);
 
   /* 404 for a row outside the caller's territory, exactly as everywhere else — a 403 would
      confirm the run exists. Scoping BEFORE the delete is what stops one group's manager from

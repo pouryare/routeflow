@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { isId } from "@/lib/inputChecks";
 import { requireRole, canReachGroup, orgScopeId } from "@/lib/session";
 import { DeliveryError } from "@/lib/delivery";
 import { addOrderToRun, orderForRun, runGroup } from "@/lib/repo/deliveryRunsAdmin";
@@ -13,7 +14,9 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   const guard = await requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
 
-  const runId = Number((await ctx.params).id);
+  const runIdRaw = (await ctx.params).id;
+  if (!isId(runIdRaw)) return NextResponse.json({ ok: false, error: "شناسه نامعتبر است" }, { status: 400 });
+  const runId = Number(runIdRaw);
   // The run and the order must both be this company's: one with no group is reachable by group alone.
   const organizationId = orgScopeId(guard.session);
   const run = await runGroup(runId, organizationId);

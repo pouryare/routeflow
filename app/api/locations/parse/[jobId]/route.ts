@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { isId } from "@/lib/inputChecks";
 import { requireRole } from "@/lib/session";
 import * as importRepo from "@/lib/repo/leadImport";
 import { plain } from "@/lib/db";
@@ -21,7 +22,9 @@ export async function GET(req: NextRequest, ctx: RouteContext<"/api/locations/pa
   const guard = await requireRole(req, PIN_POOL_ROLES);
   if (!guard.ok) return guard.response;
 
-  const id = Number((await ctx.params).jobId);
+  const idRaw = (await ctx.params).jobId;
+  if (!isId(idRaw)) return NextResponse.json({ ok: false, error: "شناسه نامعتبر است" }, { status: 400 });
+  const id = Number(idRaw);
   if (!Number.isInteger(id)) {
     return NextResponse.json({ ok: false, error: "شناسه نامعتبر است" }, { status: 400 });
   }

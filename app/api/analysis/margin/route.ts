@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireRole } from "@/lib/session";
 import { marginBy, MarginError, type MarginDimension } from "@/lib/repo/margin";
-import { currentPeriod } from "@/lib/analysis/period";
+import { currentPeriod, isPeriod } from "@/lib/analysis/period";
 import { MANAGE_ROLES } from "@/lib/roles";
 
 export const dynamic = "force-dynamic";
@@ -23,6 +23,9 @@ export async function GET(req: NextRequest) {
     );
   }
   const period = sp.get("period") ?? currentPeriod();
+  if (!isPeriod(period)) {
+    return NextResponse.json({ ok: false, error: "دورهٔ نامعتبر است" }, { status: 400 });
+  }
 
   try {
     return NextResponse.json({

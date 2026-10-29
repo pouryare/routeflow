@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { isId } from "@/lib/inputChecks";
 import { canReachGroup, requireRole } from "@/lib/session";
 import {
   recordPayment,
@@ -19,6 +20,9 @@ export async function GET(req: NextRequest) {
 
   const customerId = req.nextUrl.searchParams.get("customer_id");
   const session = guard.session;
+  if (customerId && !isId(customerId)) {
+    return NextResponse.json({ ok: false, error: "شناسه نامعتبر است" }, { status: 400 });
+  }
   const customer_id = customerId ? Number(customerId) : undefined;
   // Owners and the platform key see the organisation's receipts; a group manager their group's;
   // a salesperson the ones they took or whose customer they sold to.

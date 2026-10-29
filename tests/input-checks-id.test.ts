@@ -35,3 +35,12 @@ describe("idList and escapeLike", () => {
     expect(escapeLike("50%_off\\")).toBe("50\\%\\_off\\\\");
   });
 });
+
+import { isPeriod } from "@/lib/analysis/period";
+
+describe("isPeriod", () => {
+  it("accepts YYYY-MM only", () => {
+    expect(isPeriod("1405-08")).toBe(true);
+    for (const bad of ["1405-13", "1405-00", "abc", "1;SELECT", "1405-8", "", "NaN-NaN"]) expect(isPeriod(bad)).toBe(false);
+  });
+});

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { isId } from "@/lib/inputChecks";
 import { requireRole } from "@/lib/session";
 import { LeadRunError, type LeadRunStatus } from "@/lib/repo/leadRuns";
 import { runById, updateRunFor } from "@/lib/repo/leadRunsApi";
@@ -16,7 +17,9 @@ const STATUSES: LeadRunStatus[] = ["planned", "in_progress", "done"];
 export async function GET(req: NextRequest, ctx: RouteContext<"/api/lead-runs/[id]">) {
   const guard = await requireRole(req, [...PIN_POOL_ROLES, "field_rep", "delivery_driver"]);
   if (!guard.ok) return guard.response;
-  const id = Number((await ctx.params).id);
+  const idRaw = (await ctx.params).id;
+  if (!isId(idRaw)) return NextResponse.json({ ok: false, error: "شناسه نامعتبر است" }, { status: 400 });
+  const id = Number(idRaw);
   if (!Number.isInteger(id)) return NextResponse.json({ ok: false, error: "شناسه نامعتبر است" }, { status: 400 });
 
   const run = await runById(id, guard.session.organizationId);
@@ -31,7 +34,9 @@ export async function GET(req: NextRequest, ctx: RouteContext<"/api/lead-runs/[i
 export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/lead-runs/[id]">) {
   const guard = await requireRole(req, [...PIN_POOL_ROLES, "field_rep", "delivery_driver"]);
   if (!guard.ok) return guard.response;
-  const id = Number((await ctx.params).id);
+  const idRaw = (await ctx.params).id;
+  if (!isId(idRaw)) return NextResponse.json({ ok: false, error: "شناسه نامعتبر است" }, { status: 400 });
+  const id = Number(idRaw);
   if (!Number.isInteger(id)) return NextResponse.json({ ok: false, error: "شناسه نامعتبر است" }, { status: 400 });
 
   const session = guard.session;

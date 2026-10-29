@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { isId } from "@/lib/inputChecks";
 import { canReachGroup, orgScopeId, requireRole } from "@/lib/session";
 import { leadVisitFlow } from "@/lib/crm/flows/leadVisit";
 import { applyLeadVisit } from "@/lib/repo/crm/write";
@@ -13,7 +14,9 @@ import { isVanRole, PIN_POOL_ROLES } from "@/lib/roles";
 export async function GET(req: NextRequest, ctx: RouteContext<"/api/leads/locations/[id]/visit">) {
   const guard = await requireRole(req, [...PIN_POOL_ROLES, "field_rep", "delivery_driver"]);
   if (!guard.ok) return guard.response;
-  const id = Number((await ctx.params).id);
+  const idRaw = (await ctx.params).id;
+  if (!isId(idRaw)) return NextResponse.json({ ok: false, error: "شناسه نامعتبر است" }, { status: 400 });
+  const id = Number(idRaw);
   if (!Number.isInteger(id)) return NextResponse.json({ ok: false, error: "شناسه نامعتبر است" }, { status: 400 });
 
   const loc = await readLeadLocation(id, orgScopeId(guard.session));
@@ -40,7 +43,9 @@ export async function GET(req: NextRequest, ctx: RouteContext<"/api/leads/locati
 export async function POST(req: NextRequest, ctx: RouteContext<"/api/leads/locations/[id]/visit">) {
   const guard = await requireRole(req, [...PIN_POOL_ROLES, "field_rep", "delivery_driver"]);
   if (!guard.ok) return guard.response;
-  const id = Number((await ctx.params).id);
+  const idRaw = (await ctx.params).id;
+  if (!isId(idRaw)) return NextResponse.json({ ok: false, error: "شناسه نامعتبر است" }, { status: 400 });
+  const id = Number(idRaw);
   if (!Number.isInteger(id)) return NextResponse.json({ ok: false, error: "شناسه نامعتبر است" }, { status: 400 });
 
   const loc = await readLeadLocation(id, orgScopeId(guard.session));
