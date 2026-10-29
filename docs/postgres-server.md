@@ -19,19 +19,21 @@ One machine is assumed: PostgreSQL and the app together, a second machine you ow
 
 ## How the app connects
 
-The app connects over the local socket as the operating-system user that runs it (`routeflow`), which PostgreSQL maps to the database role of the same name. There is no database password to store or leak. After connecting, each connection does `SET ROLE routeflow_app` (`PG_APP_ROLE`), the role that row-level security applies to: every statement then sees only the signed-in company's rows. The migrations run as `routeflow`, the owner, which the policies do not apply to.
+The app logs in over the local socket as a database role that does **not** own the tables, `routeflow_web` (password in `/etc/routeflow/web-role-pass` and in the env file, one scram line for it in `pg_hba.conf`). It is a member of `routeflow_app`, the role that row-level security applies to, so every statement sees only the signed-in company's rows. `PG_SCOPED=1` makes the adapter set the company before each statement without any `SET ROLE`. The migrations and backups run as `routeflow`, the owner, over the passwordless socket login; the policies do not apply to it.
+
+Why not log in as the owner and `SET ROLE`: a query that reached the database by mistake (the injection fixed in the 2026-10-29 audit was one) could run `RESET ROLE` or `set_config('role', ...)` and be the owner again, with row-level security off. As `routeflow_web` there is no higher role to step up to. What it does not stop: the company is a plain session setting (`rf.scope`), so SQL injected into the app can still set it. The defence for that is the code (no SQL from request data), not the database.
 
 `/etc/routeflow/env`, written by `install.sh` and read by the app's service and by the timers:
 
 ```
-DATABASE_URL=postgres:///routeflow?host=/var/run/postgresql
-PG_APP_ROLE=routeflow_app
+DATABASE_URL=postgres://routeflow_web:<generated>@/routeflow?host=/var/run/postgresql
+PG_SCOPED=1
 SESSION_SECRET=<generated>
 COVERAGE_BACKUP_DIR=/var/lib/routeflow/backups
 ROUTEFLOW_PHOTOS_DIR=/opt/routeflow/data/photos
 ```
 
-Add `EnvironmentFile=/etc/routeflow/env` to the app's own unit. If you set `PG_APP_ROLE` empty, the app runs as the owner and row-level security does not apply: do not.
+Add `EnvironmentFile=/etc/routeflow/env` to the app's own unit. Do not run the app with an owner `DATABASE_URL` and no `PG_SCOPED` or `PG_APP_ROLE`: row-level security would not apply. A server set up with the older env file (`PG_APP_ROLE=routeflow_app`, owner login) still works, and `doctor.mjs` warns until it is moved: delete `/etc/routeflow/env` and run `install.sh` again (it keeps the session secret only if you copy it over first), or edit the two lines by hand after the script has created the role.
 
 ## Setting up
 

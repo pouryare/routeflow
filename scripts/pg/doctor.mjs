@@ -83,6 +83,9 @@ try {
 
   // The app role: not a superuser, does not bypass row-level security, and sees only what its scope allows.
   const appRole = process.env.PG_APP_ROLE;
+  if (process.env.PG_SCOPED !== "1") {
+    warn("PG_SCOPED", "not set; the app connects as the table owner and only switches role, so a query that reaches the database could switch back (docs/postgres-server.md)");
+  }
   if (!appRole) {
     warn("PG_APP_ROLE", "not set; the app would run as the table owner and row-level security would not apply to it");
   } else {
