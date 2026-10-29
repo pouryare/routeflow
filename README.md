@@ -1,160 +1,135 @@
-# RouteFlow — سامانه فروش، پخش و مدیریت مسیر
+# RouteFlow
 
-A private, password-gated web app showing customers and Tehran-province delivery
-territory (visited / needs coverage / not allowed) on an interactive OpenStreetMap
-map. Customer data flows one-way from the `سیستم فروش و انبار.xlsx` workbook;
-district coverage status is tracked here, not in Excel.
+RouteFlow is a field sales, delivery and route management web app for a distribution company. It covers the work from finding a customer to collecting the money: leads and customers on a map, orders, stock, delivery runs for drivers, payments and cheques, commission, and the company's books. The interface is in Persian, right to left, and built for phones first; desk screens follow.
 
-## UI rules
+The app is in development. All data in it is dummy, and there are no real users yet.
 
-Phone-first patterns and how to build them: [`docs/mobile-first-principles.md`](docs/mobile-first-principles.md) (flows that record what happened: [`docs/tap-flow-principles.md`](docs/tap-flow-principles.md)). Run `npm run check:mobile` before committing UI changes.
+## What it does today
 
-## Stack
+| Area | What is built |
+|---|---|
+| Customers and leads | Customer list and customer page (timeline, prices paid, owner history), leads and map pins, lead import, coverage map of districts (visited, needs coverage, not allowed), photo gallery, data quality list, complaints |
+| Sales | Orders with discount approval, products and prices with a change log, payments and cheques, commission statements, a "today" screen and personal task pocket for reps, order priority flag |
+| Delivery and stock | Route planner and routing (OSRM and VROOM), delivery schedule, a driver screen for today's run with receipts and proof, stock and purchasing, production batches |
+| Reports | Sales summary and analysis, forecast, failure and cancellation reasons, lead sources, coverage report, realized and unrealized profit |
+| Accounting | Double-entry ledger, journal, trial balance, balance sheet, income statement, expenses, payables, suppliers, shareholders and yearly profit split |
+| Platform | Multiple companies in one database with row-level security, offline sync for sales and driver roles, push notifications, authenticator codes before sensitive actions, sign-in log, sign out everywhere, owner status page, in-app help and a training academy |
 
-- Next.js 16 (App Router, TypeScript, Turbopack)
-- PostgreSQL (self-hosted; see `db/README.md` and `docs/postgres-server.md`)
-- MapLibre GL (`@vis.gl/react-maplibre`) over our own Protomaps tiles of Tehran province, served by the app; no foreign tile host (see `docs/map-tiles.md`)
-- `exceljs` to read the workbook server-side (not the unmaintained `xlsx` npm package —
-  it has unpatched high-severity CVEs with no fix available via npm)
+Maps use MapLibre over our own vector tiles of Tehran province, served by the app itself. No map request goes to a foreign host.
 
-## Local development
+## Roles
 
-```bash
-npm install
-npm run dev       # http://localhost:3000
-```
-
-Sessions are signed cookies (`SESSION_SECRET`), 30-day expiry. Who you are is in the
-cookie; what you may see is decided per request against the database — see below.
-
-## Accounts and groups
-
-Everyone signs in as themselves. There are three roles:
+Everyone signs in with their own account. There is no shared password.
 
 | Role | Sees |
 |---|---|
-| `owner` | Everything, every group. Only role that can reach `/admin/*`, run an import, or read the sales ledger and analytics. |
-| `group_manager` | Only their own group's customers, districts, pins, lists, photos, reminders and plans. Plus the company-wide sites (the warehouse), which every group routes out of. |
-| `driver` | Only `/driver`. Any other page sends them back there. |
+| `platform_owner` | Every company |
+| `owner` | Everything in their company, including admin, accounting and analytics |
+| `group_manager` | Their own group's customers, territory, orders and plans |
+| `rep_manager` | Leads the sales reps: customers, map pins and the lead pool, without payments or complaints |
+| `phone_sales` | Takes orders by phone for their own customers |
+| `field_rep`, `delivery_driver` | The van roles: today's run on the driver screen, selling and collecting on the route, and training |
+| `shareholder` | Only their own share page |
 
-A row belonging to another group answers **404, not 403** — a 403 would confirm it exists,
-which by itself says how the province is carved up.
+A row that belongs to another company or group answers 404, not 403, so the app never confirms that it exists. Roles are defined in `lib/roles.ts` and the navigation for each role in `lib/appNav.ts`.
 
-Manage accounts at **`/admin/users`** and groups and territory at **`/admin/groups`**, both
-owner-only.
+## Stack
 
-### The first owner
+- Next.js 16 (App Router, TypeScript, Turbopack) on Node 22
+- PostgreSQL 18, self-hosted, with PostGIS, `pg_trgm`, `btree_gist`, `pg_stat_statements` and `pg_duckdb`; queries through `pg` and Kysely; migrations with node-pg-migrate, linted by Squawk
+- HeroUI v3 on React Aria for the interface (migration in progress), `lucide-react` icons
+- MapLibre GL (`@vis.gl/react-maplibre`) with Protomaps tiles
+- Vitest against a real PostgreSQL, Playwright for the browser smoke suite
 
-That one account cannot be made through `/admin/users`, because that screen needs you to
-already be signed in as an owner. Start the app once so it can create and migrate the
-database, then:
+The production server is in Iran, so everything is self-hosted and the app uses no paid foreign API or key.
+
+## Running it locally
+
+You need Node 22 and Docker (or your own PostgreSQL 18 with the same extensions).
+
+```bash
+npm install
+cp .env.example .env.local                  # fill in SESSION_SECRET at least
+docker compose -f db/compose.yml up -d      # PostgreSQL on 127.0.0.1:5432
+export DATABASE_URL=postgres://routeflow:routeflow@localhost:5432/routeflow
+npm run db:pg:migrate                       # apply the migrations
+npm run dev                                 # http://localhost:3000
+```
+
+### Demo data
+
+```bash
+npm run seed:demo      # builds a demo company in its own database (routeflow_demo)
+npm run dev:demo       # runs the app against it
+```
+
+Every demo login gets the password in `DEMO_PASSWORD`. If it is empty, the seed makes a random one and prints it.
+
+### The first owner account
+
+Accounts are managed in the app by an owner, so the very first owner is made from the command line:
 
 ```bash
 node scripts/create-user.mjs <username> <password> "<Display Name>" owner
 ```
 
-A `group_manager` or `driver` additionally needs a group id as the fifth argument — an
-account with a role but no group can reach nothing at all, so the script refuses to make one.
+Other roles that belong to a group take the group id as a fifth argument. The same script is the way back in if every owner password is lost.
 
-### `staff_code`
+## Checks
 
-Free text, and it must match the شناسه column in the `همکاران` sheet of the workbook
-**exactly** (`DRV1`, `SP2`, …). It is the join key for commission; a typo there does not
-error, it just silently pays nobody.
+| Command | What it checks |
+|---|---|
+| `npm test` | Unit and database tests, each test file on its own copy of a template database (needs `DATABASE_URL`) |
+| `npm run test:smoke` | Browser smoke suite on a disposable database |
+| `npm run typecheck`, `npm run lint` | Types and lint |
+| `npm run check:mobile` | Mobile-first rules: no native `<select>` or date input, tap targets of at least 44 px, a test for every mobile component |
+| `npm run check:architecture` | Architecture rules against `docs/architecture-baseline.json` |
+| `npm run db:pg:lint` | Squawk on the migrations |
 
-### There is no shared password
+CI runs these on pull requests that are ready for review. Draft pull requests and changes to docs only do not run CI.
 
-`APP_PASSWORD` is gone. It used to open the app on its own, as an owner, so that adding
-accounts could not lock the team out mid-migration — that job is done, and a password
-several people know is not one anybody can be held to. Nothing reads the variable any more;
-you can delete the line from `.env.local`.
+## Configuration
 
-The consequence worth knowing: **a named account is now the only way in.** If every owner
-password is lost, the way back is SSH to the server and `scripts/create-user.mjs`, which
-writes straight to the database and does not need anyone to be logged in.
+`.env.example` lists every variable the app reads. Real values never go in this repository; they are kept in a separate private repository and written to the server's environment at deploy time. The main ones are `DATABASE_URL`, `SESSION_SECRET`, `PG_APP_ROLE` (the database role that row-level security applies to), `DEMO_PASSWORD`, `CONTACT_EMAIL`, and the Telegram and web push (VAPID) keys.
 
-Session cookies minted by the old shared login carry `uid: 0`, match no account, and are
-rejected at the proxy — their holders are sent to the login form rather than into an app
-where every page loads and nothing on it works.
+## Deployment
 
-## District data (one-time setup, already done)
+The app runs on one server with PostgreSQL on the same machine, behind Caddy (a CDN can sit in front; map tiles are cacheable). Backups are taken by pgBackRest to the local disk and to a second machine, with a monthly restore drill.
 
-`districts` is pre-seeded from two open datasets (cloned into `data/`, gitignored —
-only the derived `data/mahalle.geojson` is kept):
+- Server setup, backups and restore: [`docs/postgres-server.md`](docs/postgres-server.md)
+- Database development notes, row-level security and sync: [`db/README.md`](db/README.md)
+- Building and serving the map tiles: [`docs/map-tiles.md`](docs/map-tiles.md)
+- Caddy block template: [`deploy/Caddy-snippet.txt`](deploy/Caddy-snippet.txt)
 
-- `rferdosi/tehran-districts` — the 22 official منطقه (municipal district) polygons.
-- `mehdimeskin/tehran-map` — 369 محله (neighborhood)-level polygons, converted from
-  KML via `data/convert-kml.mjs`.
+## Roadmap and future features
 
-The loader scripts for these polygons wrote to the old SQLite file and were removed with it
-(Wave P, phase 5; they are in git history). The demo seed (`npm run seed:demo`) builds its own
-geography. Loading the real polygons into PostgreSQL needs a new script when it is wanted.
+What comes next is planned in two documents:
 
-Coverage isn't 100% complete or guaranteed accurate everywhere — use the polygon-draw
-tool on the map to add or fix any neighborhood that's missing or wrong.
+- [`docs/future-features.md`](docs/future-features.md) holds about 150 parked feature ideas (F1 to F148). Each is parked until it gets its own spec; nothing there is promised.
+- [`docs/roadmap.md`](docs/roadmap.md) groups those ideas by theme, estimates the size of each first slice, lists the decisions that block them, and records the platform decisions.
 
-## The source workbook — where it actually lives
+The current direction, in order:
 
-**`سیستم فروش و انبار.xlsx` lives on OneDrive.** That copy is the source of truth; any
-copy sitting on this machine is a stale snapshot and must not be trusted. (One found in
-`/root/` in August 2026 was missing seven columns of the `فروش` sheet, including every
-commission column, which is exactly the kind of wrong answer a local copy gives you.)
+1. **UI pattern batches.** Batch A (discount approval and authenticator codes) is built. Next are quick wins (haptics, one button-state rule, validation on leaving a field), forms that keep your work (drafts, unsaved-changes bar, optimistic updates), faster find-and-act (actions in Ctrl-K, pinned pages, a shared selection bar, a first-use tour), then denser desk layouts.
+2. **Foundations.** A shared audit record (F27), one approval request shape (F48), session security and two-step login (F107, F106), purchase orders (F66), and the customer message channel, starting with SMS through Farazsms.
+3. **Money and orders.** Payment terms, payment promises, customer statements, credit-risk scoring and a cash-flow forecast; order templates and standing orders; one pricing rule for price lists, minimums and promotions; backorders and credit holds.
+4. **Delivery and stock.** Delivery time windows, proof of delivery and confirmation codes, returns, van loading and bin locations, supplier deliveries, a capacity warning.
+5. **Heavier or external work.** An Android app as a Capacitor shell (for background GPS, barcode scanning and Bluetooth printing), live driver tracking, telephony, bank statement import, reading cheques and invoices with the camera, more offline coverage, a Telegram bot with approvals, and report builders.
 
-The share link is configured server-side as `ONEDRIVE_SALES_FILE_URL` in `.env.local`.
-It is an "anyone with the link" share — effectively a credential for the entire customer,
-sales and debt dataset — so it stays out of git like every other secret here. Rotating the
-link means changing that one variable and nothing else.
+Platform work planned alongside: a background job worker (pg-boss), photos in object storage, and an off-site backup copy. Several features wait on an owner decision first, such as customer consent for messages, how staff positions are kept, and the Android distribution route; these are listed in section 5 of the roadmap.
 
-- `lib/oneDriveFetch.ts` fetches it (anonymous share-link redeem + manual redirect
-  following with a cookie jar — see the comment there for why the obvious API routes
-  don't work).
-- `app/api/import/onedrive/route.ts` runs the import. It reads the URL from server config
-  rather than the request body on purpose: accepting a client-supplied fetch target would
-  make it an SSRF and data-injection vector.
+## Documentation
 
-To read the live workbook from a one-off script:
+| Document | About |
+|---|---|
+| [`docs/mobile-first-principles.md`](docs/mobile-first-principles.md) | How phone screens are built; read before any UI work |
+| [`docs/tap-flow-principles.md`](docs/tap-flow-principles.md) | Flows that record what just happened in a few taps |
+| [`MASTER.md`](MASTER.md) | The design system |
+| [`docs/crm-erp-plan.md`](docs/crm-erp-plan.md) | The original CRM and ERP plan |
+| [`docs/company-and-shareholders.md`](docs/company-and-shareholders.md) | Company, shareholders and profit split in the books |
+| [`TODO-REPORT.md`](TODO-REPORT.md) | What is done, known gaps and next steps |
+| [`CLAUDE.md`](CLAUDE.md), [`AGENTS.md`](AGENTS.md) | Rules for contributors and coding agents |
 
-```bash
-set -a && . ./.env.local && set +a
-node --experimental-strip-types your-script.ts
-# inside: import { fetchOneDriveFile } from "./lib/oneDriveFetch.ts";
-```
+## Licence
 
-## Updating customer data
-
-Use the "به‌روزرسانی از اکسل" panel in the app to upload the current
-`سیستم فروش و انبار.xlsx`, or trigger the OneDrive import above to pull it directly.
-It reads the `مخاطبین` sheet and upserts by `کد مشتری` — safe to re-run any time the
-workbook changes. District/coverage data is a separate table and is never touched by
-this import.
-
-## Deployment (already set up on this server)
-
-> Fully renamed on 2026-09-08. The working directory is `/srv/routeflow`, the
-> systemd units are `routeflow*`, the database is `data/routeflow.db`, and the env var
-> is `ROUTEFLOW_DB_PATH`. Nightly backups are written as `routeflow-<ts>.db`; existing
-> ones were renamed to match. Nothing is called `coverage-map` any more.
-
-Runs as systemd service `routeflow` on port **3003**, bound to `127.0.0.1` only
-(not reachable from outside the machine directly — only through Caddy):
-
-```bash
-systemctl status routeflow
-journalctl -u routeflow -f
-```
-
-To expose it publicly, add a subdomain block to Caddy — see
-`deploy/Caddy-snippet.txt` for the exact block to add (not applied automatically;
-add it yourself and run `systemctl reload caddy`).
-
-To deploy a code change:
-```bash
-npm run build
-systemctl restart routeflow
-```
-
-## Data safety
-
-The PostgreSQL database is the only source of truth for district status and imported
-customer data. It is backed up by pgBackRest to a second machine, with a monthly restore drill
-(`docs/postgres-server.md`).
+All rights reserved. The source is published for viewing only; see [`LICENSE`](LICENSE).
