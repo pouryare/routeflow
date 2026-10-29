@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { isId } from "@/lib/inputChecks";
 import { requireRole, orderFilter, canReachGroup } from "@/lib/session";
 import { ordersIn } from "@/lib/repo/routeAdapters";
 import { listPayments, customerDebt } from "@/lib/repo/payments";
@@ -13,6 +14,7 @@ export async function GET(req: NextRequest, ctx: RouteContext<"/api/customers/[i
   if (!guard.ok) return guard.response;
 
   const { id } = await ctx.params;
+  if (!isId(id)) return NextResponse.json({ ok: false, error: "شناسه نامعتبر است" }, { status: 400 });
   const customerId = Number(id);
 
   const customer = await getScopedCustomer(guard.session.organizationId, customerId);

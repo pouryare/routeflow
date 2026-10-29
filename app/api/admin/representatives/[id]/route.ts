@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { isId } from "@/lib/inputChecks";
 import { requireRole } from "@/lib/session";
 import {
   repsRepo,
@@ -14,6 +15,7 @@ export async function GET(req: NextRequest, ctx: RouteContext<"/api/admin/repres
   if (!guard.ok) return guard.response;
 
   const { id } = await ctx.params;
+  if (!isId(id)) return NextResponse.json({ ok: false, error: "شناسه نامعتبر است" }, { status: 400 });
   const rep = await repsRepo.get(guard.session.organizationId, Number(id));
   if (!rep) return NextResponse.json({ ok: false, error: "نماینده پیدا نشد" }, { status: 404 });
   return NextResponse.json({
@@ -28,6 +30,7 @@ export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/admin/repr
   if (!guard.ok) return guard.response;
 
   const { id } = await ctx.params;
+  if (!isId(id)) return NextResponse.json({ ok: false, error: "شناسه نامعتبر است" }, { status: 400 });
   const body = (await req.json().catch(() => null)) as
     | { action: "advance"; stage: RepStage }
     | { action: "complete_step"; step_code: string }

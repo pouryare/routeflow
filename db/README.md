@@ -42,7 +42,7 @@ Each table the device pull reads has a `sync_xid` column (xid8) that a trigger s
 - `rf_company`: a row is visible and writable only when `rf_scope_allows(organization_id)`;
 - `rf_shared`: rows with no company (`organization_id IS NULL`) can be read by everyone and changed only by `system` and `all`.
 
-Set `PG_APP_ROLE=routeflow_app` and the adapter runs `SET ROLE` on each new connection, then sets `rf.scope` before each statement (once, as a local setting, inside a transaction). The scope comes from `lib/database/scope.ts`:
+On a server set `PG_SCOPED=1` and log in as a non-owner role (`routeflow_web`, see `docs/postgres-server.md`); the adapter sets the company before each statement. For tests and local use, `PG_APP_ROLE=routeflow_app` makes the adapter run `SET ROLE` on each new connection, then sets `rf.scope` before each statement (once, as a local setting, inside a transaction). The scope comes from `lib/database/scope.ts`:
 
 | Scope | Who |
 |---|---|

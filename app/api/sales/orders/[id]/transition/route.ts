@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { isId } from "@/lib/inputChecks";
 import { requireRole } from "@/lib/session";
 import {
   advanceOrder,
@@ -26,6 +27,7 @@ export async function POST(req: NextRequest, ctx: RouteContext<"/api/sales/order
   if (!guard.ok) return guard.response;
 
   const { id } = await ctx.params;
+  if (!isId(id)) return NextResponse.json({ ok: false, error: "شناسه نامعتبر است" }, { status: 400 });
   const body = (await req.json().catch(() => null)) as {
     action?: string;
     reason_code_id?: number | null;

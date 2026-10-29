@@ -18,9 +18,9 @@ export async function PUT(req: NextRequest) {
   const stepUp = await guardStepUp(req, guard.session, "owner_settings");
   if (stepUp) return stepUp;
   const body = (await req.json().catch(() => null)) as { auto_pass_pct?: unknown; commission_pct?: unknown } | null;
-  const auto = Number(body?.auto_pass_pct);
-  const commission = Number(body?.commission_pct);
-  if (!Number.isFinite(auto) || !Number.isFinite(commission)) {
+  const auto = body?.auto_pass_pct;
+  const commission = body?.commission_pct;
+  if (typeof auto !== "number" || typeof commission !== "number" || !Number.isFinite(auto) || !Number.isFinite(commission)) {
     return NextResponse.json({ ok: false, error: "مقدار نامعتبر است" }, { status: 400 });
   }
   try {

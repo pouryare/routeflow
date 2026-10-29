@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { isId } from "@/lib/inputChecks";
 import { requireRole } from "@/lib/session";
 import {
   complaintsRepo,
@@ -18,6 +19,7 @@ export async function GET(req: NextRequest, ctx: RouteContext<"/api/sales/compla
   if (!guard.ok) return guard.response;
 
   const { id } = await ctx.params;
+  if (!isId(id)) return NextResponse.json({ ok: false, error: "شناسه نامعتبر است" }, { status: 400 });
   const trace = await backwardTrace(guard.session.organizationId, Number(id));
   if (!trace) return NextResponse.json({ ok: false, error: "یافت نشد" }, { status: 404 });
   return NextResponse.json({ ok: true, ...trace });
@@ -28,6 +30,7 @@ export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/sales/comp
   if (!guard.ok) return guard.response;
 
   const { id } = await ctx.params;
+  if (!isId(id)) return NextResponse.json({ ok: false, error: "شناسه نامعتبر است" }, { status: 400 });
   const body = (await req.json().catch(() => null)) as {
     status?: string;
     severity?: string;

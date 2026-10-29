@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { isId } from "@/lib/inputChecks";
 import crypto from "node:crypto";
 import fs from "node:fs/promises";
 import sharp from "sharp";
@@ -14,6 +15,7 @@ export async function GET(req: NextRequest, ctx: RouteContext<"/api/payments/[id
   if (!guard.ok) return guard.response;
 
   const { id } = await ctx.params;
+  if (!isId(id)) return NextResponse.json({ ok: false, error: "شناسه نامعتبر است" }, { status: 400 });
   const payment = await getPayment(guard.session.organizationId, Number(id));
   if (!payment || !payment.receipt_photo_stem) {
     return NextResponse.json({ ok: false, error: "رسیدی ثبت نشده است" }, { status: 404 });
@@ -33,6 +35,7 @@ export async function POST(req: NextRequest, ctx: RouteContext<"/api/payments/[i
   if (!guard.ok) return guard.response;
 
   const { id } = await ctx.params;
+  if (!isId(id)) return NextResponse.json({ ok: false, error: "شناسه نامعتبر است" }, { status: 400 });
   if (!await getPayment(guard.session.organizationId, Number(id))) {
     return NextResponse.json({ ok: false, error: "یافت نشد" }, { status: 404 });
   }

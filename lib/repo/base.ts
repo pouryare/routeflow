@@ -17,6 +17,16 @@ export interface Repo<Row extends { id: number }> {
   db(): Db;
 }
 
+/** Column names are written into the SQL text, so a key must be a plain identifier. A key that
+ *  came from a request body ("title = (SELECT ...), kind") would otherwise be executed. */
+const COLUMN = /^[a-z_][a-z0-9_]*$/;
+function checkedColumns(keys: string[], forbidden: string[] = []): string[] {
+  for (const k of keys) {
+    if (!COLUMN.test(k) || forbidden.includes(k)) throw new TypeError(`Invalid column name: ${k}`);
+  }
+  return keys;
+}
+
 export function makeRepo<Row extends { id: number }>(
   table: string,
   opts: { tenant: boolean }
@@ -34,7 +44,7 @@ export function makeRepo<Row extends { id: number }>(
     },
 
     async list(organizationId, where = {}) {
-      const keys = Object.keys(where);
+      const keys = checkedColumns(Object.keys(where));
       const conds = keys.map((k) => `${k} = ?`).join(" AND ");
       const sql =
         `SELECT * FROM ${table} WHERE 1 = 1` + (conds ? ` AND ${conds}` : "") + tenantClause;
@@ -49,7 +59,7 @@ export function makeRepo<Row extends { id: number }>(
     async insert(organizationId, row) {
       const data: Record<string, unknown> = { ...row };
       if (opts.tenant) data.organization_id = organizationId;
-      const cols = Object.keys(data);
+      const cols = checkedColumns(Object.keys(data));
       const sql = `INSERT INTO ${table} (${cols.join(", ")}) VALUES (${cols.map(() => "?").join(", ")})`;
       return Number(
         (await getDb()
@@ -59,7 +69,8 @@ export function makeRepo<Row extends { id: number }>(
     },
 
     async patch(organizationId, id, fields) {
-      const cols = Object.keys(fields);
+      // id and organization_id are never changed through a patch (no moving a row to another company).
+      const cols = checkedColumns(Object.keys(fields), ["id", "organization_id"]);
       if (cols.length === 0) return;
       const sql =
         `UPDATE ${table} SET ${cols.map((c) => `${c} = ?`).join(", ")} ` +

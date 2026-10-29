@@ -1,4 +1,5 @@
 import { getDb, plain } from "@/lib/db";
+import { idList } from "@/lib/database/dialect";
 import { orderFilter, groupFilter } from "@/lib/session";
 import type { Session } from "@/lib/session";
 import { tombstonesSinceXid, type Tombstone } from "./tombstones";
@@ -93,7 +94,7 @@ export async function pullSince(session: Session, since: string | null): Promise
         )
         .all(session.user.id, org, since) as { id: number }[]
     ).map((r) => r.id);
-    const runList = runIds.length ? runIds.join(",") : "NULL";
+    const runList = idList(runIds);
 
     add(
       "delivery_runs",
@@ -150,7 +151,7 @@ export async function pullSince(session: Session, since: string | null): Promise
       for (const s of runFacilityStops) {
         facilityIds.add(Number((s as { facility_id: number }).facility_id));
       }
-      const list = [...facilityIds].join(",");
+      const list = idList(facilityIds);
       const facilities = plain(
         await db
           .prepare(
@@ -180,7 +181,7 @@ export async function pullSince(session: Session, since: string | null): Promise
       .all() as { location_id: number }[]) {
       locationIds.add(s.location_id);
     }
-    const locList = locationIds.size ? [...locationIds].join(",") : "NULL";
+    const locList = idList(locationIds);
     add(
       "saved_locations",
       plain(

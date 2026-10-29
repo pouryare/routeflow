@@ -8,7 +8,7 @@ import { useMemo, useState } from "react";
 import { friendlyError } from "@/lib/userMessage";
 import { useRouter } from "next/navigation";
 import JalaliDatePicker from "@/components/JalaliDatePicker";
-import { toToman } from "@/lib/money";
+import { toNumber, toToman } from "@/lib/money";
 import { faToman, faNum } from "@/lib/format";
 import BusyIcon from "@/components/meridian/BusyIcon";
 import { Icon } from "@/components/meridian/Icon";
@@ -51,7 +51,7 @@ export default function PurchaseEntry({ products }: { products: Product[] }) {
   const [cost, setCost] = useState("");
 
   const parsedCost = toToman(cost);
-  const parsedQty = Number(qty);
+  const parsedQty = toNumber(qty) ?? NaN;
   const product = products.find((p) => String(p.id) === pickProduct) ?? null;
 
   const resolved = useMemo(

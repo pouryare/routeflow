@@ -1,6 +1,8 @@
 import type { Db } from "@/lib/database/client";
 import { getDb } from "@/lib/db";
 import { makeRepo } from "./base";
+import { inOrg } from "./orgRefs";
+import { boundedText, isQuantity } from "@/lib/inputChecks";
 import { defaultFacilityId } from "./stock";
 import { addStop } from "@/lib/delivery";
 import { markReady } from "./deliveries";
@@ -80,7 +82,15 @@ export async function createVehicle(
     cost_per_km_toman?: number;
   }
 ): Promise<number> {
-  if (!input.name?.trim()) throw new RoutingError("نام خودرو لازم است");
+  if (typeof input.name !== "string" || !input.name.trim()) throw new RoutingError("نام خودرو لازم است");
+  if (boundedText(input.name, 100) === null) throw new RoutingError("نام خودرو خیلی بلند است");
+  if (input.plate != null && boundedText(input.plate, 30) === null) throw new RoutingError("پلاک نامعتبر است");
+  for (const n of [input.max_weight_kg, input.max_volume_m3, input.max_stops, input.cost_per_km_toman]) {
+    if (n != null && (!isQuantity(n, 1e9) || n < 0)) throw new RoutingError("مقدار عددی خودرو نامعتبر است");
+  }
+  if (input.driver_default_id != null && !await inOrg("users", input.driver_default_id, organizationId)) {
+    throw new RoutingError("راننده پیدا نشد");
+  }
   const now = new Date().toISOString();
   try {
     return await vehiclesRepo.insert(organizationId, {

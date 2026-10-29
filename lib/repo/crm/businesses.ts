@@ -1,4 +1,5 @@
 import { getDb } from "@/lib/db";
+import { escapeLike } from "@/lib/persian";
 import { isOwner } from "@/lib/roles";
 import { canSeeBusiness, crmFilter, isCrmManager, type Session } from "@/lib/session";
 import { resolveDue } from "@/lib/crm/due";
@@ -121,8 +122,8 @@ function searchSql(q: string | undefined): { sql: string; params: string[] } {
   const text = normalisePersian(q ?? "").trim();
   if (!text) return { sql: "", params: [] };
   const digits = text.replace(/\D/g, "");
-  if (digits.length >= 4) return { sql: " AND (c.phone_norm LIKE ? OR c.business_name LIKE ?)", params: [`%${digits}%`, `%${text}%`] };
-  return { sql: " AND (c.business_name LIKE ? OR c.area_label LIKE ? OR c.address LIKE ?)", params: [`%${text}%`, `%${text}%`, `%${text}%`] };
+  if (digits.length >= 4) return { sql: " AND (c.phone_norm LIKE ? ESCAPE '\\' OR c.business_name LIKE ? ESCAPE '\\')", params: [`%${escapeLike(digits)}%`, `%${escapeLike(text)}%`] };
+  return { sql: " AND (c.business_name LIKE ? ESCAPE '\\' OR c.area_label LIKE ? ESCAPE '\\' OR c.address LIKE ? ESCAPE '\\')", params: [`%${escapeLike(text)}%`, `%${escapeLike(text)}%`, `%${escapeLike(text)}%`] };
 }
 
 const asRole = (r: string | null): ContactRole => (isOneOf(CONTACT_ROLES, r) ? r : "OTHER");
