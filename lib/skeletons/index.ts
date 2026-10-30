@@ -54,6 +54,7 @@ import c_sales_today from "./sales-today.json";
 import c_sales from "./sales.json";
 import c_settings_notifications from "./settings-notifications.json";
 import c_settings_security from "./settings-security.json";
+import c_settings_sound from "./settings-sound.json";
 import c_settings_updates from "./settings-updates.json";
 import c_switch from "./switch.json";
 
@@ -108,6 +109,7 @@ export const CAPTURES: Record<string, Capture> = {
   "/sales": c_sales as Capture,
   "/settings/notifications": c_settings_notifications as Capture,
   "/settings/security": c_settings_security as Capture,
+  "/settings/sound": c_settings_sound as Capture,
   "/settings/updates": c_settings_updates as Capture,
   "/switch": c_switch as Capture,
 };
