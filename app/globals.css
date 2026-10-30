@@ -3015,6 +3015,11 @@ body {
 /* TextInput / PasswordInput: a 44 px field with its label above, room under it before the next. */
 .textinput { margin-bottom: var(--space-3); gap: 4px; }
 .textinput .label { font-size: var(--text-xs); color: var(--text-muted); }
+.textinput--float { position: relative; }
+.textinput--float .label { position: absolute; z-index: 1; inset-inline-start: 12px; top: 12px; margin: 0; pointer-events: none; font-size: var(--text-base); transition: top 160ms var(--ease-out, ease-out), font-size 160ms var(--ease-out, ease-out); }
+.textinput--float:focus-within .label, .textinput--float:has(input:not(:placeholder-shown)) .label { top: 3px; font-size: 11px; color: var(--accent); }
+.textinput--float .input, .textinput--float .input-group__input { padding-top: 14px; }
+@media (prefers-reduced-motion: reduce) { .textinput--float .label { transition: none; } }
 .textinput .input, .textinput .input-group { min-height: 44px; font-size: var(--text-base); }
 /* The bare HeroUI Input and TextArea (components/FieldInput.tsx): 44 px, 16 px type so a phone does not zoom in. */
 .meridian .fieldinput { min-height: 44px; font-size: var(--text-base); }
