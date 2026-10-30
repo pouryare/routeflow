@@ -5,8 +5,8 @@ import { friendlyError } from "@/lib/userMessage";
 import { Icon } from "@/components/meridian/Icon";
 import { PasswordInput } from "@/components/TextInput";
 import { useShakeOn } from "@/lib/useShake";
+import { MIN_PASSWORD, passwordRules } from "@/lib/passwordStrength";
 
-const MIN_PASSWORD = 8;
 
 /** Choosing a new password, in the two places it happens: the forced change after an owner
  *  set one (/password, F35) and a change by choice (/settings/security). One form so the two
@@ -14,6 +14,24 @@ const MIN_PASSWORD = 8;
  *
  *  `askCurrent` adds the current password, which /api/me/password requires for a change by
  *  choice; the forced change has no current password worth asking for. */
+/** A four-step bar and the rules, ticked as you type. */
+function PasswordMeter({ password }: { password: string }) {
+  const { rules, score } = passwordRules(password);
+  return (
+    <div className="pwmeter" data-score={score} aria-live="polite">
+      <div className="pwmeter__bar" aria-hidden="true">{[1, 2, 3, 4].map((n) => <i key={n} className={n <= score ? "on" : ""} />)}</div>
+      <ul className="pwmeter__rules">
+        {rules.map((r) => (
+          <li key={r.id} className={r.met ? "met" : ""}>
+            <Icon name={r.met ? "check" : "x"} size="sm" />
+            {r.label}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 export default function PasswordForm({
   askCurrent,
   submitLabel,
@@ -76,6 +94,7 @@ export default function PasswordForm({
         value={password}
         onChange={setPassword}
       />
+      {password && <PasswordMeter password={password} />}
       <PasswordInput label="تکرار رمز" autoComplete="new-password" value={repeat} onChange={setRepeat} />
       {mismatch && <p className="mb-[var(--space-3)] text-[length:var(--text-sm)] text-[var(--warn)]">دو رمز یکی نیستند.</p>}
       {error && <p role="alert" className="mb-[var(--space-3)] text-[length:var(--text-sm)] text-[var(--crit)]">{error}</p>}
