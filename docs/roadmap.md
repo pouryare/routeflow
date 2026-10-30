@@ -14,6 +14,7 @@ Totals: 46 small, 73 medium, 27 large first slices; 123 entries note existing co
 
 1. [Build these first: small first slices on existing code](#1-build-these-first)
     - [1b. UI pattern batches (2026-10-28)](#1b-ui-pattern-batches-2026-10-28)
+    - [1c. Fleetbase study: UI/UX batches (2026-10-30)](#1c-fleetbase-study-uiux-batches-decided-2026-10-30)
 2. [Foundations: build once, many entries depend on them](#2-foundations)
 3. [Overlaps: entries that should be designed together](#3-overlaps)
 4. [Suggested order](#4-suggested-order)
@@ -92,6 +93,34 @@ The owner picked 53 favourite UI patterns from a Gemini chat and added two ideas
 **Batch F: parked.** The rest of the 53 that need a decision or a library first; passkeys as a later way to sign in.
 
 Each batch is built as one draft PR with one commit per task, merged once at the end (the batch rule in `CLAUDE.md`). Any new dependency is asked first.
+
+### 1c. Fleetbase study: UI/UX batches (decided 2026-10-30)
+
+The owner had Fleetbase (open source fleet platform, AGPL-3.0) studied for screen and flow ideas, then answered 16 items one by one. **Ideas only: no Fleetbase code is used, because AGPL would force RouteFlow's source open.** Reports: features https://claude.ai/artifact/WQs5FvBKURvuUZotd3ruW7 and screens https://claude.ai/artifact/M4CQjmRZMo2nE32SmwLiMN. Nothing below is built yet. Each batch is one draft PR with one commit per item, merged once at the end (batch rule in `CLAUDE.md`).
+
+**Batch 1: lists and trust.**
+- **Orders list you can search and filter.** `/sales/orders` reads at most 100 orders and takes no filter inputs. Add `FilterChips` for status, payment, rep and day, a count, «load more» past 100, and one paste-many search (paste order numbers or phones, get just those).
+- **Undo on the planner.** Commit, freeze and day-lane moves get the 5-second undo toast (`useUndoableAction`); `RoutingPlanner` calls `/routing/commit` and `/runs/{id}/freeze` directly today.
+- **Edit rules by order stage, with reasons.** Ready: lines may only be removed, the day only moved earlier. Out for delivery: lines and day locked. Delivered or cancelled: everything locked. Each locked field shows a one-line Persian reason; one shared rule used by the page, the API and offline sync (relates to F73).
+- **Empty states name what is hidden.** Action centre, tasks and filtered lists say «۳ مورد به تعویق افتاده، فردا ۰۹:۰۰» and offer «پاک کردن فیلتر» when a filter is the cause.
+- **Detail sheets: bottom by default, movable to the side.** Every detail sheet opens at the bottom (phone and desk); the user can move it to the side. Reuse the toggle in `CustomerDetailPanel` (`orient`, saved in `coverage_panel_orient`, icons `panel-bottom` / `panel-side`), flip its default to bottom, apply it to order details, and keep one shared saved choice.
+
+**Batch 2: desk speed.**
+- **Saved views.** Per person, named filter sets on the orders and customers lists, stored on the server.
+- **Keyboard triage on desk.** Action centre, tasks and orders list: J/K move, X select, E acknowledge, S snooze, open, with a one-line hint strip; desk only, phones keep swipe. `BINDINGS` in `lib/hotkeys.ts` is empty and `eventMatchesChord` matches `event.key`, so the new keys must match the physical key (`event.code`) or they fail under the Persian keyboard layout; it also needs a list-cursor model on top of `lib/selection`.
+- **Category strip and daily score on the action centre.** One chip per area (credit, stock, delivery, cheques) with its count that filters the queue, plus a 0 to 100 score with the change since yesterday, stored daily in `kpi_snapshots`. The formula and weights come back to the owner for approval when built (Fleetbase uses critical 10, warning 4, info 1, cap 40 per rule).
+- **Internal chat, first slice: threads on orders and customers.** See the decision below.
+
+**Internal chat system (decided 2026-10-30).** A native chat, no outside chat server; the existing-solutions search was skipped on the owner's say-so. Phases: (1) a thread on every order and customer, (2) 1:1 and group chats on the same tables (one conversation table with a subject: customer, order, direct or group), (3) photos, search and read receipts. Rules to settle when it is designed: a thread is visible only to people who may see the record, and adding someone grants no access to the record; whether the owner may read other people's 1:1 chats; mentions go through the existing notification preferences and quiet hours; online-only at first, saying so on a failed send; live delivery by server-sent events or polling over Postgres, no Redis.
+
+**Planned with other work.**
+- **Freshness labels (rule now, built with F6).** Every live position shows its age; an arrival time says live, planned or estimated; low confidence is visible. All text in Persian (Fleetbase hard-codes English «Stale GPS» and «Fallback ETA»).
+- **Receipt layout live preview.** A preview card that updates as you type; only this setting for now.
+- **Setup checklist details (UI batch D).** Minutes per step, a % bar, the next step highlighted, steps ticking themselves from real data, the card hidden when done.
+- **Run replay (with F6).** Scrub a driver's day on a map with time and speed per point, for disputes and mileage; it informs how long positions are kept.
+- **Attempts list on the owner's status page.** Per message: tries, outcome, time and a retry button, built with the batch A delivery log.
+
+**Parked or skipped.** The customer tracking page waits for F6 and F79 (reference design: coarse three-step status before an SMS code, blurred locked sections, masked contact choices, a call button when there is no contact). The van check sheet, odometer and expiry dates were skipped.
 
 ## 2. Foundations
 
