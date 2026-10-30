@@ -9,7 +9,8 @@ const NONE = "__none";
 
 export type RouteTab = { href: string; label: string };
 
-/** Where each row's pill was last drawn, by the row's label. Every page draws its own row,
+/** Where each row's pill was last drawn, by the row's tabs (not its label, which names the
+ *  page it sits on and so differs on every page of the same row). Every page draws its own row,
  *  so React Aria's own slide never runs between pages; this lets the new page's pill come
  *  in from the tab you just left. Only a fresh memory counts: coming back to the row later,
  *  from somewhere else, starts still. */
@@ -41,6 +42,7 @@ export default function RouteTabs({
   /* On a phone the row is wider than the screen; bring the lit tab into view so the page
      you are on is never the one scrolled off the end. */
   const placed = useRef(false);
+  const row = tabs.map((t) => t.href).join("|");
   useEffect(() => {
     // A frame later: React Aria builds the tab collection in a second render pass.
     const id = requestAnimationFrame(() => {
@@ -50,14 +52,14 @@ export default function RouteTabs({
       const pill = box.current?.querySelector(".tabs__indicator");
       if (!pill) return;
       const now = boxOf(pill);
-      const prev = lastPill.get(label);
+      const prev = lastPill.get(row);
       // After the first placement React Aria slides the pill itself.
       if (!placed.current && prev && Date.now() - prev.at < FRESH_MS) slidePill(pill, prev.box, now);
       placed.current = true;
-      lastPill.set(label, { box: now, at: Date.now() });
+      lastPill.set(row, { box: now, at: Date.now() });
     });
     return () => cancelAnimationFrame(id);
-  }, [lit, label]);
+  }, [lit, row]);
   return (
     <div ref={box} className="contents">
       <Tabs
