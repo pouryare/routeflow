@@ -77,7 +77,7 @@ Names are exactly as on bencho.dev. The job is a first guess from the name, to b
 
 ### Core feedback (the family of 14 meanings in three skins)
 
-Bencho gives the same 14 meanings in three skins: `mech*` (mechanical), `bubble*` (soft), `press*` (pressed key). The unprefixed ones (`type`, `select`, `open`, `close`, `navigate`, `warning`, `loading`, `ready`, `count`, `click`, `chime`) are the plain skin. **Pick one skin as the app default; the other two become a per-person «صدای رابط» choice.** Recommended default: `bubble*` (soft, least tiring in a shop).
+Bencho gives the same 14 meanings in three skins: `mech*` (mechanical), `bubble*` (soft), `press*` (pressed key). The unprefixed ones (`type`, `select`, `open`, `close`, `navigate`, `warning`, `loading`, `ready`, `count`, `click`, `chime`) are the plain skin. **All three skins are kept (owner decision, 2026-10-30). The company owner sets the company's skin** in company settings; every person in that company then hears that skin. Each person still has their own sounds on/off switch (rule 3). The skin is a company setting, so it needs a column or settings key on the company record, not the per-person preferences blob. Until the owner picks, use `bubble*`.
 
 | Meaning | Plain | mech | bubble | press | Used for |
 |---|---|---|---|---|---|
