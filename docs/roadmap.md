@@ -162,6 +162,12 @@ A second pass through the Fleetbase code (report https://claude.ai/artifact/DUP4
 - **Delivery window capacity (with F57).** The owner sets a maximum number of orders per window; order entry shows the places left and warns when it is full.
 - **Saved smart segments (with F28/F21).** A customer filter saved by name (for example «بدون سفارش در ۳۰ روز») that promotions and reminders can target. When F21 is built, a rejected promotion states its reason in Persian (Fleetbase's promotion engine does this).
 
+**Fourth pass (driver app, ledger and pallet code, decided 2026-10-30):**
+
+- **Driver «گزارش مشکل» sheet (small version).** The driver picks a type (vehicle, road, customer, goods) and a priority, adds an optional photo and note; the report is stamped with the phone position and the current stop and shows on the action centre.
+- **Invoice sent stamp, now.** Record when an invoice was sent (printed or shared) and show it on the customer page. A first-viewed time waits for the tracking page, because it needs a customer-facing link.
+- **Note for F6:** sort incoming position pings by their time before use, so a late ping cannot move the dot backwards.
+
 ## 2. Foundations
 
 Entries that other entries list as a prerequisite or a close relation. Doing the first slice of one of these early removes a blocker for several others. The count is how many entries name it in their Prerequisites line (taken from the file); the table is sorted by it.
