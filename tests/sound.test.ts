@@ -30,7 +30,8 @@ describe("sound recipes", () => {
       for (const l of layers) {
         expect(l.ms, name).toBeGreaterThan(0);
         expect(l.vol, name).toBeGreaterThan(0);
-        expect(l.vol, name).toBeLessThanOrEqual(0.45);
+        // Filtered noise keeps a small part of its energy, so it may be set higher than a tone.
+        expect(l.vol, name).toBeLessThanOrEqual(l.src === "noise" ? 0.6 : 0.15);
         expect(l.hz, name).toBeGreaterThanOrEqual(40);
         expect(l.hz, name).toBeLessThanOrEqual(12000);
         if (l.to !== undefined) expect(l.to, name).toBeGreaterThan(0);
