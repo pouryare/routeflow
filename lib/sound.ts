@@ -144,7 +144,7 @@ export type SoundSwitch = "on" | "off" | null;
 
 /** Two sounds closer than this keep only the first: a toast and a check mark for one save are
  *  one sound, and a held key or a fast scroll cannot rattle. */
-export const GAP_MS = 60;
+const GAP_MS = 60;
 
 /** Which recipe an event plays for this skin; null for an event that is switched off.
  *  `skin` null means no company is known (signed out): the plain skin. */
@@ -191,7 +191,7 @@ export function configureSound(next: Partial<typeof settings>): void {
   }
 }
 
-export function soundSettings(): { choice: SoundSwitch; skin: Skin | null } {
+function soundSettings(): { choice: SoundSwitch; skin: Skin | null } {
   load();
   return settings;
 }
@@ -246,8 +246,8 @@ function noiseBuffer(c: BaseAudioContext): AudioBuffer {
   return buf;
 }
 
-/** Schedules `layers` on `c` from time `t0` (seconds). Exported for the offline render test. */
-export function schedule(c: BaseAudioContext, dest: AudioNode, layers: Layer[], t0: number): void {
+/** Schedules `layers` on `c` from time `t0` (seconds). */
+function schedule(c: BaseAudioContext, dest: AudioNode, layers: Layer[], t0: number): void {
   for (const l of layers) {
     const start = t0 + (l.at ?? 0) / 1000;
     const end = start + l.ms / 1000;

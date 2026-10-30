@@ -7,7 +7,7 @@
  *  only the idea (layers of tones and filtered noise, three "skins" of the same 14 meanings)
  *  is borrowed. Change a sound here; change which sound an action plays in lib/sound.ts. */
 
-export type Wave = "sine" | "triangle" | "square" | "sawtooth";
+type Wave = "sine" | "triangle" | "square" | "sawtooth";
 
 export interface Layer {
   /** An oscillator wave, or "noise" for a burst of filtered hiss. */
