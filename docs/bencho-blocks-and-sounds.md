@@ -366,4 +366,5 @@ Asked one at a time; each answer is logged here as it comes.
 | 1 | Use the MIT source of the 45 free blocks, or rebuild from the idea? | **Use the MIT code and restyle it.** Keep the MIT notice («Copyright (c) 2026 Lorenzo Cabra» and the MIT text) in one `THIRD-PARTY-NOTICES.md`, then move each block onto HeroUI, our tokens, right to left and Persian digits. |
 | 2 | Buy Bencho Pro for the other 105, or rebuild them from the idea? | **Rebuild from the idea.** No Pro purchase. Write each Pro block ourselves from its live preview and description; the public "How it works" note may guide the approach but is not pasted in. |
 | 3 | Drop the 8 proposed drops? | **Drop all 8** (eye-tracker, escape, piano, fold-dropdown, sweep-button, slingshot, drag-ball, voice-chat). |
-| 4 | Where may the decoration blocks (Text and moments group) appear? | pending |
+| 4 | Where may the decoration blocks (Text and moments group) appear? | **Anywhere they fit, work screens included.** Turned off automatically on weak phones (low memory or CPU cores, battery saver, reduced motion), and the company owner has an on/off switch for the whole company in company settings (a company setting, like the sound skin). |
+| 5 | Which group is built first? | pending |
