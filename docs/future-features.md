@@ -602,6 +602,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 **Prerequisites:** `activity_log`, the briefing exceptions panel.
 
+**EspoCRM study (2026-10-30, E6):** for permissions, the answer to question 1 is a who/when/old/new log of role, group, active state, password resets and company settings, shown on the owner status page. See `docs/roadmap.md` 1h.
+
 ---
 
 ## F28. Customer segmentation and loyalty
@@ -761,6 +763,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 **Suggested first slice:** show/hide and reorder of the existing panels stored in `prefs_json`, with a pinned set that cannot be hidden. No new panels.
 
 **Prerequisites:** none; builds on `briefing.ts` and `prefs.ts`.
+
+**EspoCRM study (2026-10-30, E11):** the owner sets a default per role; each person may hide or reorder, except pinned cards and people the owner locks (question 3). See `docs/roadmap.md` 1h.
 
 ---
 
@@ -934,6 +938,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 **Suggested first slice:** @-mention in customer notes only, restricted to people who can already see that customer, creating a notification (not a task).
 
 **Prerequisites:** the notifications fan-out; role and scope checks.
+
+**EspoCRM study (2026-10-30, E8, E9):** a person who cannot see the record cannot be mentioned on it (question 2); up to 3 pinned messages per thread; own messages editable for 24 hours. See `docs/roadmap.md` 1h.
 
 ---
 
@@ -2614,6 +2620,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 **Suggested first slice:** owner-defined text and choice fields (up to ten), stored as values in a separate table keyed by customer and field, editable on the customer page and shown as columns in the customer list. No flow integration.
 
 **Prerequisites:** none; F148 duplicates and F98 search could later include them.
+
+**EspoCRM study (2026-10-30, E16):** each custom field may have one «show and require when…» condition, in the shared filter format (T1). See `docs/roadmap.md` 1h.
 
 ---
 
