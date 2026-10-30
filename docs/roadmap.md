@@ -15,6 +15,7 @@ Totals: 46 small, 73 medium, 27 large first slices; 123 entries note existing co
 1. [Build these first: small first slices on existing code](#1-build-these-first)
     - [1b. UI pattern batches (2026-10-28)](#1b-ui-pattern-batches-2026-10-28)
     - [1c. Fleetbase study: UI/UX batches (2026-10-30)](#1c-fleetbase-study-uiux-batches-decided-2026-10-30)
+    - [1d. Fleetbase code deep dive (2026-10-30)](#1d-fleetbase-code-deep-dive-decided-2026-10-30)
 2. [Foundations: build once, many entries depend on them](#2-foundations)
 3. [Overlaps: entries that should be designed together](#3-overlaps)
 4. [Suggested order](#4-suggested-order)
@@ -138,6 +139,20 @@ The owner had Fleetbase (open source fleet platform, AGPL-3.0) studied for scree
 | Internal chat phases 2 and 3 | Chat phase 1 (threads on orders and customers) | 1:1 and group chats on the same tables, then photos, search and read receipts |
 
 **Parked or skipped.** The customer tracking page waits for F6 and F79 (reference design: coarse three-step status before an SMS code, blurred locked sections, masked contact choices, a call button when there is no contact). The van check sheet, odometer and expiry dates were skipped. A store-reviewer sign-in for the Android app is not needed. QR scan proof and a required-proof setting wait for the F17 design. Late-start, off-route and long-stop manager alerts are decided at F6; the position retention setting, a route simulator for testing and arrival counted after a short stay in the circle are noted on F6 in `docs/future-features.md`.
+
+### 1d. Fleetbase code deep dive (decided 2026-10-30)
+
+A second pass through the Fleetbase code (report https://claude.ai/artifact/DUP4Msm4XZaUuPBGgYJcTc). Ideas only, AGPL-3.0, no code copied. The owner's answers:
+
+- **SMS guard, in batch A with Farazsms (built small).** Iranian mobile numbers only (09…); a per-number cooldown; a per-company daily budget in toman; an alert when many distinct numbers are texted in a short time; one ledger row per attempt (reserved, then sent, failed or blocked, with purpose, source, hashed number, IP and block reason), which is the delivery log already decided for batch A; monitor mode first (log what it would block), then enforce; an owner «pause SMS» switch. Public sends fail closed if the counter store is down; staff sends (sign-in codes) fail open. Fleetbase also pauses automatically on spikes, a new destination country and a low sent-to-verified ratio; only the spike alert is in the first version.
+- **Change summaries on edited orders.** When an order is edited after confirmation, the driver gets a one-line Persian push («اقلام تغییر کرد»، «موعد به … منتقل شد»، «مبلغ دریافتی تغییر کرد») and the warehouse sees a «تغییر کرده» badge. Extends the stage-based edit rules in 1c.
+- **ETA stage rules (recorded for F6 and F79).** No driver assigned: no ETA. Dispatched but not started: an estimated start only. Started: a live ETA per remaining stop, so each customer sees their own stop's time. Finished: none. Every ETA carries a confidence and warnings (stale position, off route, fallback estimate).
+- **Planner blockers and warnings.** Every planner check returns a result with a severity: a blocker stops, a warning tells; each has a Persian reason. A new owner setting, maximum working hours per driver per day, shows as a warning. No legal hours rules are built in.
+- **Live commission preview (first slice of F19).** The commission editor shows the result for sample sales values as the rule changes, using the same calculation as payroll so the preview cannot drift from the real engine.
+- **Message templates (F136).** Placeholders such as `{customer.name}` with a picker so staff never type a variable name; an unknown placeholder becomes empty text; a literal brace can be escaped; chained filters are allowed.
+- **Authenticator nudge.** A banner with a «فعال‌سازی اکنون» button for managers and anyone required to use the authenticator, shown until they enrol; no lock-out after a grace period.
+- **Company data purge and export with a dry run: parked** until a second company is signed (F126, F127). `TENANT_TABLES` in `lib/database/tenantTables.ts` already lists what it would cover.
+- **Noted as references, not decided:** the report-builder safety rules (allowed tables, columns and joins, complexity score, row limit, a log of each run) for F14; broadcasting an urgent order to nearby drivers for F7; the warehouse, section, aisle, rack and bin hierarchy with bin size and maximum weight for F93.
 
 ## 2. Foundations
 
