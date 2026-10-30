@@ -78,7 +78,7 @@ All 150 block pages were opened on 2026-10-30 (description, live preview, and th
 | swipe-deck | Pro | Built | Our `DecisionDeck` gets the throw gesture (it has buttons only today). |
 | card-swap | MIT | Merge | Same deck, auto mode: today's briefing cards cycling on the home screen. |
 | activity-stack | Pro | New | Notifications stacked by depth: swipe the front one away, the next rises. |
-| pull | MIT | New | Pull to refresh on every list (customers, orders, today). Not built yet. |
+| pull | MIT | Built | Pull to refresh on every list (customers, orders, today). Not built yet. |
 | roster | Pro | New | Pick people (reps, drivers) and a button grows out once someone is picked. |
 | selection-actions | Pro | New | The shared selection bar: pick rows and a pill of actions appears. |
 | picker | MIT | New | Assignees: pick reps for a task and their faces stack up in the pill. |
@@ -112,7 +112,7 @@ All 150 block pages were opened on 2026-10-30 (description, live preview, and th
 | one-time-code | MIT | Have it | Our `OtpInput` (paste, autofill, backspace); borrow what ours lacks. |
 | label-input | MIT | Built | `TextInput` label lifts into the top edge on focus. |
 | form-error | Pro | Built | Field shakes once and unfolds the reason (we have `useShake`). |
-| password-strength | Pro | New | Password change and new user: a bar and rules ticked as you type. |
+| password-strength | Pro | Built | Password change and new user: a bar and rules ticked as you type. |
 | copy-field | Pro | Built | Our `CopyButton` gets the drawn check and sheen (IBAN, phone, codes). |
 | upload-dropzone | MIT | New | Photos and documents, with too-big refused clearly. |
 | voice-note | MIT | New | Driver or rep voice note: hold to record, slide to bin. Needs object storage first. |
