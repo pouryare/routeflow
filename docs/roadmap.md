@@ -154,6 +154,14 @@ A second pass through the Fleetbase code (report https://claude.ai/artifact/DUP4
 - **Company data purge and export with a dry run: parked** until a second company is signed (F126, F127). `TENANT_TABLES` in `lib/database/tenantTables.ts` already lists what it would cover.
 - **Noted as references, not decided:** the report-builder safety rules (allowed tables, columns and joins, complexity score, row limit, a log of each run) for F14; broadcasting an urgent order to nearby drivers for F7; the warehouse, section, aisle, rack and bin hierarchy with bin size and maximum weight for F93.
 
+**Third pass (more ideas from the storefront, promotions and access code, decided 2026-10-30):**
+
+- **Merged order timeline: built with chat phase 1.** One feed per order with status changes, notes, edits (who and the one-line summary), payment adjustments and chat messages.
+- **Internal versus customer-visible notes: wait for the tracking page** (F6/F79). Until then every note is internal.
+- **Owner access review card on the owner status page.** Users per role, never signed in, no authenticator, no sign-in for 30+ days, recent impersonations; each line opens the list. Reads the existing sign-in log.
+- **Delivery window capacity (with F57).** The owner sets a maximum number of orders per window; order entry shows the places left and warns when it is full.
+- **Saved smart segments (with F28/F21).** A customer filter saved by name (for example «بدون سفارش در ۳۰ روز») that promotions and reminders can target. When F21 is built, a rejected promotion states its reason in Persian (Fleetbase's promotion engine does this).
+
 ## 2. Foundations
 
 Entries that other entries list as a prerequisite or a close relation. Doing the first slice of one of these early removes a blocker for several others. The count is how many entries name it in their Prerequisites line (taken from the file); the table is sorted by it.
