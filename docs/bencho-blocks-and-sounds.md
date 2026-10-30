@@ -41,7 +41,7 @@ All 150 block pages were opened on 2026-10-30 (description, live preview, and th
 | coin | Pro | New | Cash in hand («پول در دست») card: a coin that spins when cash is added. Light version only (see the cost question). |
 | private-balance | Pro | New | The hide-money eye (decided in the ezBookkeeping study): tap to hide amounts digit by digit, hold to peek. |
 | price-flow | Pro | New | Price change on a product or order total: new digits pop in, green up, red down. |
-| rolling-counter | MIT | Later | Quantity on an order line (tap, hold to speed up, drag to fling) and totals; joins our `CountUp`. |
+| rolling-counter | MIT | Built | Quantity on an order line (tap, hold to speed up, drag to fling) and totals; joins our `CountUp`. |
 | stepper | Pro | Merge | Same job as rolling-counter: tap for one, hold and drag to sweep. Build as one quantity control. |
 | budget-slider | Pro | New | Discount percent against the floor price: green under it, amber a little over, red well over. |
 | range | Pro | New | Price range filter on products and orders, picked over the real prices. |
@@ -68,8 +68,8 @@ All 150 block pages were opened on 2026-10-30 (description, live preview, and th
 | blast-radius | Pro | New | Was "not useful". A customer's network: referrals ring by ring (who brought whom). |
 | dot-swarm | Pro | New | Orders by hour as dots: the busy hours of the day for the planner. |
 | standing-calendar | Pro | New | Half a year of visits per rep as a calendar that stands up into bars. Jalali months. |
-| stacked-bars | MIT | Later | Visits and orders per day, Day/Week switch; borrow the ringed day and gliding tooltip into our charts. |
-| price-chart | Pro | Later | Product price history (`PriceHistoryList` becomes a chart you scrub). |
+| stacked-bars | MIT | Built | Visits and orders per day, Day/Week switch; borrow the ringed day and gliding tooltip into our charts. |
+| price-chart | Pro | Built | Product price history (`PriceHistoryList` becomes a chart you scrub). |
 
 ### Lists, cards and gestures
 
@@ -92,7 +92,7 @@ All 150 block pages were opened on 2026-10-30 (description, live preview, and th
 | faq-accordion | Pro | New | Help page and the (?) texts. |
 | pill-accordion | Pro | New | Settings groups: open one and it grows into a card. |
 | image-accordion | MIT | New | Customer shop photos: tap one and it opens while the others give way. |
-| carousel | MIT | Later | Our `KpiCarousel` gets the lean and swipe feel. |
+| carousel | MIT | Built | Our `KpiCarousel` gets the lean and swipe feel. |
 | card-fan | Pro | New | Product photos fanned on the product card. |
 | orbit-cards | Pro | Merge | Same photo set, shown as a turning band on wide screens. |
 | album-shelf | Pro | Merge | Same photo set on wide screens (covers turn to face you). |
@@ -101,30 +101,30 @@ All 150 block pages were opened on 2026-10-30 (description, live preview, and th
 | image-compare | MIT | New | Shop photo before and after (shelf before and after delivery). |
 | progressive-blur | Pro | New | Caption over a shop photo, readable on any picture. |
 | image-shimmer | Pro | Have it | Photo placeholder while it loads (our `Skeleton`). |
-| load-cards | Pro | Later | Skeletons that develop into the real cards one by one. |
-| skeleton-morph | Pro | Later | Same: grey bars stretch into the real content. |
-| blueprint-loader | Pro | Later | Same family: a skeleton measured off the real card. |
+| load-cards | Pro | Built | Skeletons that develop into the real cards one by one. |
+| skeleton-morph | Pro | Built | Same: grey bars stretch into the real content. |
+| blueprint-loader | Pro | Built | Same family: a skeleton measured off the real card. |
 
 ### Inputs and forms
 
 | Block | Code | Verdict | Where in RouteFlow |
 |---|---|---|---|
 | one-time-code | MIT | Have it | Our `OtpInput` (paste, autofill, backspace); borrow what ours lacks. |
-| label-input | MIT | Later | `TextInput` label lifts into the top edge on focus. |
+| label-input | MIT | Built | `TextInput` label lifts into the top edge on focus. |
 | form-error | Pro | Built | Field shakes once and unfolds the reason (we have `useShake`). |
 | password-strength | Pro | New | Password change and new user: a bar and rules ticked as you type. |
 | copy-field | Pro | Built | Our `CopyButton` gets the drawn check and sheen (IBAN, phone, codes). |
 | upload-dropzone | MIT | New | Photos and documents, with too-big refused clearly. |
 | voice-note | MIT | New | Driver or rep voice note: hold to record, slide to bin. Needs object storage first. |
-| seek | MIT | Later | Our `SearchBox`: the icon opens into the field. |
+| seek | MIT | Have it | Our `SearchBox`: the icon opens into the field. |
 | command | Pro | New | Ctrl-K command bar on desktop (planned). |
 | ai-chat-input | Pro | New | Was "not useful". The message box of the native chat (no AI: the model menu becomes «پیوست» and «فوری»). |
 | ai-autocomplete | Pro | New | Was "not useful". No AI: suggest the rest of a note from the rep's own past notes, kept on the server. Tab or tap to take it. |
 | emoji-reactions | MIT | New | React to a note or chat message. |
 | like | MIT | New | Favourites (customer, product). |
-| peek-rating | Pro | Later | Our `StarRating`: stars rise and a tip names the score before you give it. |
+| peek-rating | Pro | Built | Our `StarRating`: stars rise and a tip names the score before you give it. |
 | feedback-bar | Pro | New | "Was this helpful?" under help pages. |
-| date-reel | Pro | Later | Time and Jalali date drums in `JalaliDatePicker`. |
+| date-reel | Pro | Built | Time and Jalali date drums in `JalaliDatePicker`. |
 | picker-wheel | Pro | Merge | Same drum, for long lists (product units, reasons). |
 | option-wheel | Pro | Merge | Same drum, words only. |
 | country-wheel | Pro | Merge | Same drum with icons: province or city picker. |
@@ -135,10 +135,10 @@ All 150 block pages were opened on 2026-10-30 (description, live preview, and th
 | slosh | MIT | Merge | Same settings slider, with weight. One slider control, not two. |
 | tape | Pro | Merge | Same slider, quarter steps: route replay speed. |
 | liq-toggle | MIT | Have it | Our `ToggleSwitch` gets the stretching droplet. |
-| magnet-select | MIT | Later | Our `ChipGroup` / `FilterChips`: the picked chip swells. |
+| magnet-select | MIT | Built | Our `ChipGroup` / `FilterChips`: the picked chip swells. |
 | aspect | MIT | New | Crop a shop or product photo (4:3, 1:1, 3:4) before upload. |
 | resize-frame | Pro | Merge | Same crop tool with live sizes. |
-| palette | MIT | Later | Our `AccentPicker`: press for a new matching palette. |
+| palette | MIT | Have it | Our `AccentPicker`: press for a new matching palette. |
 
 ### Navigation and app shell
 
@@ -178,13 +178,13 @@ All 150 block pages were opened on 2026-10-30 (description, live preview, and th
 | morph-loader | Pro | Merge | Same family. |
 | pixel-loader | Pro | Merge | Same family. |
 | blocks-loader | Pro | Merge | Same family. |
-| confetti | Pro | Later | `lib/celebrate.ts`: paper that drifts instead of particles. |
+| confetti | Pro | Built | `lib/celebrate.ts`: paper that drifts instead of particles. |
 
 ### Text and moments (login, empty states, done screens, what's new)
 
 | Block | Code | Verdict | Where in RouteFlow |
 |---|---|---|---|
-| text-rise | Pro | Later | Our `WordReveal`: line, word or letter at a time. |
+| text-rise | Pro | Have it | Our `WordReveal`: line, word or letter at a time. |
 | text-fade | Pro | Merge | Same component, fade mode. |
 | text-blur | Pro | Merge | Same component, blur mode. |
 | falling-text | Pro | New | Empty "all done" screen: the words tumble, tap to put them back. |
