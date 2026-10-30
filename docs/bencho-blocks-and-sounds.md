@@ -25,8 +25,8 @@ The site now has a licence page (`bencho.dev/licence`, dated 12 October 2026). R
 All 150 block pages were opened on 2026-10-30 (description, live preview, and the Code or "How it works" pane). Owner direction: take everything rated useful before, plus almost every block RouteFlow does not have yet; drop only the ones that truly cannot work.
 
 - **Code:** MIT = free block, source readable and allowed. Pro = idea only.
-- **Verdict:** New = RouteFlow has nothing like it. Upgrade = we have a version; borrow the idea into ours. Merge = same component as another row (built once). Drop? = proposed drop, waiting on the owner.
-- Count: 88 New, 27 Upgrade, 27 Merge, 8 Drop?. A script checks that all 150 slugs appear exactly once.
+- **Verdict:** New = RouteFlow has nothing like it. Upgrade = we have a version; borrow the idea into ours. Merge = same component as another row (built once). Dropped = not built (owner, 2026-10-30).
+- Count: 88 New, 27 Upgrade, 27 Merge, 8 Dropped. A script checks that all 150 slugs appear exactly once.
 
 ### Field day and money (drivers, reps, cash)
 
@@ -205,18 +205,18 @@ All 150 block pages were opened on 2026-10-30 (description, live preview, and th
 | tilt | MIT | New | Rep badge or achievement card that sinks under the finger. |
 | code-reveal | Pro | New | Developer and API key page: picture turns into code. |
 
-### Proposed drops (see the question)
+### Dropped (owner, 2026-10-30)
 
 | Block | Code | Verdict | Where in RouteFlow |
 |---|---|---|---|
-| eye-tracker | MIT | Drop? | Two eyes follow the cursor. No job, and no cursor on a phone. |
-| escape | MIT | Drop? | A button that runs away from you. In a work app it reads as a broken button. |
-| piano | Pro | Drop? | One octave you can play. No job. |
-| fold-dropdown | Pro | Drop? | A dropdown; breaks the no-dropdown rule in `docs/mobile-first-principles.md`. |
-| sweep-button | Pro | Drop? | Already built: our `SweepButton` is this. |
-| slingshot | MIT | Drop? | A ball you fling. Only as a hidden toy. |
-| drag-ball | MIT | Drop? | A ball you squeeze. Only as a hidden toy. |
-| voice-chat | Pro | Drop? | Voice room: needs a live audio server (WebRTC relay); none in Iran we can self-host cheaply yet. |
+| eye-tracker | MIT | Dropped | Two eyes follow the cursor. No job, and no cursor on a phone. |
+| escape | MIT | Dropped | A button that runs away from you. In a work app it reads as a broken button. |
+| piano | Pro | Dropped | One octave you can play. No job. |
+| fold-dropdown | Pro | Dropped | A dropdown; breaks the no-dropdown rule in `docs/mobile-first-principles.md`. |
+| sweep-button | Pro | Dropped | Already built: our `SweepButton` is this. |
+| slingshot | MIT | Dropped | A ball you fling. Only as a hidden toy. |
+| drag-ball | MIT | Dropped | A ball you squeeze. Only as a hidden toy. |
+| voice-chat | Pro | Dropped | Voice room: needs a live audio server (WebRTC relay); none in Iran we can self-host cheaply yet. |
 
 ## Sounds: all 151, each with a job
 
@@ -365,4 +365,5 @@ Asked one at a time; each answer is logged here as it comes.
 |---|---|---|
 | 1 | Use the MIT source of the 45 free blocks, or rebuild from the idea? | **Use the MIT code and restyle it.** Keep the MIT notice («Copyright (c) 2026 Lorenzo Cabra» and the MIT text) in one `THIRD-PARTY-NOTICES.md`, then move each block onto HeroUI, our tokens, right to left and Persian digits. |
 | 2 | Buy Bencho Pro for the other 105, or rebuild them from the idea? | **Rebuild from the idea.** No Pro purchase. Write each Pro block ourselves from its live preview and description; the public "How it works" note may guide the approach but is not pasted in. |
-| 3 | Drop the 8 proposed drops? | pending |
+| 3 | Drop the 8 proposed drops? | **Drop all 8** (eye-tracker, escape, piano, fold-dropdown, sweep-button, slingshot, drag-ball, voice-chat). |
+| 4 | Where may the decoration blocks (Text and moments group) appear? | pending |
