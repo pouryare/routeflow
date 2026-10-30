@@ -21,6 +21,7 @@ Totals: 46 small, 73 medium, 27 large first slices; 123 entries note existing co
     - [1h. EspoCRM study (2026-10-30)](#1h-espocrm-study-decided-2026-10-30)
     - [1i. Akaunting study (2026-10-30)](#1i-akaunting-study-decided-2026-10-30)
     - [1j. Bigcapital study (2026-10-30)](#1j-bigcapital-study-decided-2026-10-30)
+    - [1k. ezBookkeeping study (2026-10-30)](#1k-ezbookkeeping-study-decided-2026-10-30)
 2. [Foundations: build once, many entries depend on them](#2-foundations)
 3. [Overlaps: entries that should be designed together](#3-overlaps)
 4. [Suggested order](#4-suggested-order)
@@ -341,6 +342,34 @@ The owner had Bigcapital (open source accounting, `bigcapitalhq/bigcapital`) stu
 - **Bulk results (B7).** Every bulk action on the shared selection bar ends with «N انجام شد، M نشد» and a list of the skipped rows, each with a Persian reason.
 
 **Skipped:** VAT owed report after D7 (B8), profit on a cash basis (B9), sellable and buyable switches (B11), draft-then-publish money entries (B12). Custom role grids (D13 and E10 cover it) and many currencies (toman only) were not offered.
+
+### 1k. ezBookkeeping study (decided 2026-10-30)
+
+The owner had ezBookkeeping (a small self-hosted personal bookkeeping app, `mayswind/ezbookkeeping`; the path first given, `rookie-luochao/ezbookkeeping`, does not exist) studied in three passes; 20 ideas were answered one by one. Report: https://claude.ai/artifact/Hp2U9M3ZVYQFKFcTUkQ1zo. **Ideas only: it is MIT-licensed, but no ezBookkeeping code is used.** Skipped as already built or decided: scheduled entries (D23, A10), reconcile (A3), import rules (B4, F10), home widgets (F146), saved views (F123), drafts (batch C), receipt photo, AI receipt reading (a foreign paid API), tag groups.
+
+**Entering money**
+- **Sums in the keypad (Z1).** The shared keypad (`components/mobile/Keypad.tsx`, `lib/keypad.ts`) gets + and − only (no × ÷) and shows the running total.
+- **No double save (Z2).** Every money form (payments, expenses, cheques, transfers, purchases) sends a one-time key; a repeat returns the first result and saves nothing new. One shared helper. Offline sync already does this with `client_uuid`; the online forms and the journal table do not.
+- **Save and add next (Z18).** A «ثبت و بعدی» button on the expense, payment and customer forms; it keeps the date and the remembered method and account.
+- **Remember method and account (Z10).** Per person, only payment method and bank account are remembered; the category always starts empty.
+- **Type a sentence (Z12) and paste a bank SMS (Z15).** A plain rule parser, no AI, works offline. «بنزین ۴۵۰ هزار» opens the expense form with the amount and a category guessed from words used before. A pasted card-to-card bank SMS opens the payment form with amount, date and tracking number; start with the 3 or 4 biggest banks, fall back to an empty form.
+- **Share a photo into the app (Z13).** `app/manifest.ts` gets a share target; a shared photo opens a new expense with it as the receipt. Expense receipt only for now. **Icon shortcuts (Z14):** long-press the app icon for record payment, new order, record expense, by role.
+- **Expenses by paste (Z6):** waits for the F10 import (it must accept an expenses sheet).
+
+**Seeing money**
+- **Month calendar (Z5).** A tab on the A5 money in/out page: Jalali grid, collected, delivered and expenses per day, short cash days in red, tap a day for its list.
+- **Month so far (Z20).** A bar for the share of the month gone and a straight-line month-end guess for expenses, collected and sales, on the A7 tiles and the A5 page. Not checked: whether the forecast or targets pages already show pace.
+- **Total of the list (Z17).** A strip on the payments, expenses and orders lists that follows the filters and the selected rows. Not checked on every list.
+- **Needs attention (Z7).** A filter chip on expense and payment lists for entries with no photo, note or supplier; the month-close checklist (A2) shows the count and the owner accepts or fixes it.
+- **Hide money (Z3).** An eye in the top bar turns every money number into dots until tapped again; for everyone, remembered per person on that phone. **Owner-only amounts (Z11):** the owner marks an expense category private; others see the line with dots and owner totals still count it. It must also hide the amount in totals and exports for others.
+
+**Safety and upkeep**
+- **App lock (Z4).** After N minutes in the background the app asks for a 4-digit PIN or fingerprint; the owner sets N per company; forgot PIN means a normal login. Separate from the authenticator code for sensitive actions.
+- **Place on money entries (Z9).** The phone's GPS spot is saved with cash, cheque and expense entries and shown as a pin; no far-from-customer flag for now. Not checked: whether delivery stops already store a proof location.
+- **Merge duplicates (Z16).** «ادغام در…» moves all rows of a supplier, product or district to another and retires the old one: owner only, typed-name confirm, a log line. Expense and money categories wait until the ledger question is decided (re-point the label, or post a reversal pair).
+- **Safe refresh (Z19).** «به‌روزرسانی داده‌ها» in settings refuses while items are still waiting to sync, then clears the local copy and reloads.
+
+**Parked:** a read-only token for the accountant's sheet (Z8); the month pack (D26) covers the accountant for now.
 
 ## 2. Foundations
 
