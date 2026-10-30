@@ -4937,6 +4937,8 @@ body {
 .meridian .deck__progress { margin: 0; text-align: center; color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
 .meridian .deck__card { display: grid; gap: 6px; padding: 16px; border: 1px solid var(--border); border-radius: var(--r-lg); background: var(--surface); }
 .meridian .deck__card strong { font-size: 17px; }
+.meridian .deck__card--throw { touch-action: pan-y; cursor: grab; }
+.meridian .deck__hint { margin: 0; text-align: center; color: var(--muted); font-size: 12px; }
 .meridian .deck__choices { display: grid; gap: 8px; }
 .meridian .deck__done { display: grid; gap: 12px; justify-items: center; padding: 24px 0; text-align: center; }
 
