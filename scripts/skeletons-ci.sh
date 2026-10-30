@@ -3,7 +3,7 @@
 # and handy locally:  DATABASE_URL=postgres://… bash scripts/skeletons-ci.sh
 # Leaves the new files in lib/skeletons/; committing them is the workflow's job.
 set -euo pipefail
-cd "$(dirname "$0")/../.."
+cd "$(dirname "$0")/.."
 
 WORK="$(mktemp -d)"
 : "${DATABASE_URL:?DATABASE_URL is required (the server; the demo goes to its own database)}"
