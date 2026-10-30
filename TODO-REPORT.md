@@ -3,6 +3,7 @@
 _Condensed 2026-10-23, updated 2026-10-30. Each finished piece of work is one line here; the full earlier text is in git history (`git log -p TODO-REPORT.md`)._
 
 ## Done
+- [x] GitHub labels, milestones and project board rule (2026-10-30, owner chose «roadmap stays the plan»): `docs/github-workflow.md` (24 prefixed labels in type, area, priority and status groups with colours, one milestone per batch, a five-column board with built-in workflows, what every issue and PR carries), `scripts/github-labels.sh` (idempotent, REST only, folds in GitHub's starter labels), pointer in `CLAUDE.md`, decision in `docs/roadmap.md` 10.13
 - [x] Theme switch and six motion effects (PR #27, decisions in `docs/roadmap.md` 10.12, one commit each): light grows out of the sun/moon button and dark shrinks back into it (View Transitions, `switchTheme`); switches stretch and settle; pins, stars, favourites and the done check pop and burst (`lib/burst.ts`); menus and popovers grow from their button; wrong password, wrong code and refused password change shake the fields (`useShakeOn`); the bottom bar, page tabs and day chips slide their pill across (`lib/pillSlide.ts`); deleted and finished tasks fold away and leaving pipeline cards and suggestion cards close the gap (`.rowcollapse`, `LeavingRows`). Also fixed: the Today list keyed rows by position, so finishing or deleting a task hid the next one too
 - [x] ezBookkeeping study (2026-10-30, research and decisions only, no code): 20 ideas in three passes answered one by one and recorded in `docs/roadmap.md` 1k (sums in the keypad, no double save, hide-money eye, app lock, month calendar, needs-attention filter, share a photo in, bank SMS paste, merge duplicates, list totals, safe refresh). Nothing built yet.
 - [x] Bigcapital study (2026-10-30, research and decisions only, no code): 12 ideas in two passes answered one by one and recorded in `docs/roadmap.md` 1j (credit note, open a date range in a closed month, books behind a document, bank line rules after F10, sent/received transfers, product page with history, bulk results; cost fix parked with purchase edit). Nothing built.
@@ -170,6 +171,7 @@ _Condensed 2026-10-23, updated 2026-10-30. Each finished piece of work is one li
 - [x] Roadmap 1b: UI pattern batches B to F and the batch A leftovers (new F146 and F147 in `docs/future-features.md`)
 
 ## Not done / gaps
+- [ ] GitHub rule (2026-10-30): the labels are not applied on GitHub yet (run `scripts/github-labels.sh`); the project board must be made by hand on the website (cloud sessions cannot reach user-level projects); old PRs are not labelled; no PR template or auto-labelling Action was added
 - [ ] Motion batch (PR #27): telegram.org could not be opened from the cloud session (network policy), so the theme switch was matched to the effect, not to Telegram's code; compare the two on a phone. Rows that leave a list through a page refresh animate only where `LeavingRows` or `.rowcollapse` was added (Today tasks, pipeline lanes, suggestion cards); other lists still jump. The burst and the shake buzz only on Android (iOS Safari has no vibrate)
 - [ ] ezBookkeeping decisions (2026-10-30) are recorded only; none is built. Unchecked claims: whether online payment and expense forms already send a one-time key (Z2), whether delivery stops store a proof location (Z9), whether any list already shows a total (Z17), whether forecast or targets show month pace (Z20). Money-category merge (Z16) waits for the ledger reversal question; the accountant token (Z8) is parked.
 - [ ] Akaunting decisions (2026-10-30) are recorded only; none is built. A4 transfer form should come first (D1, D2, A3 reuse it); A6 needs a choice between a per-company table and a company column before a second company is added; A11 (no discount report exists) was checked by a code search only
@@ -247,6 +249,7 @@ _Condensed 2026-10-23, updated 2026-10-30. Each finished piece of work is one li
 - [ ] Map: not looked at on a real phone; the lead import map was not screenshotted
 
 ## Next steps
+0c. Apply the labels (`scripts/github-labels.sh`), make the RouteFlow project board from `docs/github-workflow.md` section 4, and open the first milestone with the next batch
 0b. Owner tries the theme switch and the six effects on a phone (PR #27) and says which lists should close their gap next
 0. Owner opens a few pages on a real phone on a slow line to see the captured skeletons; add representative profiles to the demo seed and capture `/sales/reps/[id]`
 0a. Owner reviews draft PR #12 on a phone; then mark it ready, wait for CI on the final head and merge it with a merge commit
