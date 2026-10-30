@@ -13,7 +13,7 @@ export default function Loading() {
   return (
     <>
       <PageHeaderCard {...pageMetaFor("/gallery")} />
-      <PageSkeleton shape="chart" />
+      <PageSkeleton route="/gallery" shape="chart" />
     </>
   );
 }

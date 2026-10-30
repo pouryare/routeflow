@@ -6,7 +6,7 @@ export default function Loading() {
   return (
     <>
       <PageHeaderCard {...pageMetaFor("/my-share")} />
-      <PageSkeleton shape="rows" />
+      <PageSkeleton route="/my-share" shape="rows" />
     </>
   );
 }

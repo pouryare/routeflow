@@ -16,7 +16,7 @@ export default function Loading() {
   return (
     <>
       <PageHeaderCard {...pageMetaFor("/accounting/trial-balance")} />
-      <PageSkeleton shape="rows" />
+      <PageSkeleton route="/accounting/ledger/[accountId]" shape="rows" />
     </>
   );
 }

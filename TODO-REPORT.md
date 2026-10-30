@@ -1,8 +1,9 @@
 # To-do report
 
-_Condensed 2026-10-23, updated 2026-10-28. Each finished piece of work is one line here; the full earlier text is in git history (`git log -p TODO-REPORT.md`)._
+_Condensed 2026-10-23, updated 2026-10-30. Each finished piece of work is one line here; the full earlier text is in git history (`git log -p TODO-REPORT.md`)._
 
 ## Done
+- [x] Page skeletons captured from the real pages (2026-10-30, decision in `docs/roadmap.md` 10.11): `npm run skeletons:capture` runs boneyard's snapshot on every shell page at 390 and 1280 px against the demo data and writes `lib/skeletons/`; `PageSkeleton` draws the capture on the server with HeroUI skeleton lines inside plain card surfaces, before any script loads; 52 of 53 loading screens captured, `/sales/reps/[id]` keeps its fallback shape; looked at at 390×844 in light and dark
 - [x] Local checks of the audit fixes (2026-10-29, dummy data only): the non-owner login role on a scratch Postgres (no `RESET ROLE`, no `set_config('role')`, no DROP, no `pg_shadow`; child-table policies work) and an injection probe of all 101 GET routes (29,092 requests, 8 payloads on every known parameter and path id): no SQL error text and no injected delay; 26 requests answered 500 for unreadable ids, `limit` or periods, now 400 (`/api/sales/orders`, `/api/sales/orders/[id]` and 10 more routes with the same id pattern, `/api/analysis/{kpis,margin,health}`, `/api/payments`)
 - [x] Security audit fixes (draft PR #15, audit 2026-10-29): SQL injection closed in `PATCH /api/task-recurrences/[id]` (body keys became column names; `patchRecurrence` now copies and checks each field, `makeRepo` refuses non-identifier columns and never patches `id`/`organization_id`); app can log in as non-owner `routeflow_web` (`PG_SCOPED=1`, `db/server/install.sh`, `docs/postgres-server.md`); path ids that are not whole numbers get 400 on 36 routes (`isId`); assignee, group and driver ids must belong to the company; vehicle input checks; Caddy body limit 25 MB; one Persian-digit parser `toNumber` for number fields (`lib/money.ts`); migration `1762000000000_input-checks` (86 CHECKs: money/quantity ranges, text length caps; row-level security on `user_roles`, `user_recovery_codes`, `order_lines`, `payment_allocations`); LIKE wildcards escaped in CRM and pin search; `idList` for IN lists; order export salesperson column filled
 - [x] README rewritten in English only (2026-10-29): what is built by area, the eight roles, stack, local run with Docker Postgres and demo seed, checks, configuration via `.env.example`, deployment pointers, and the roadmap direction from `docs/roadmap.md` and `docs/future-features.md`; the outdated SQLite, Excel/OneDrive import and old server-path sections removed
@@ -159,6 +160,7 @@ _Condensed 2026-10-23, updated 2026-10-28. Each finished piece of work is one li
 - [x] Roadmap 1b: UI pattern batches B to F and the batch A leftovers (new F146 and F147 in `docs/future-features.md`)
 
 ## Not done / gaps
+- [ ] Captured skeletons: `/sales/reps/[id]` has no capture (the demo seed makes no representative profiles); cards drawn by a pseudo-element (the gradient stat cards on the sales summary and dashboard) show their lines but not their card; captures were taken as the owner, so a page that looks different for another role shows the owner's layout; a capture goes stale when a page changes and nobody reruns `npm run skeletons:capture` (no check catches it); `/sales/orders` at 390 px squeezes «سفارش‌های اخیر» into a one-word column beside its buttons (seen while capturing, not fixed)
 - [ ] Security audit leftovers: the company is still a plain session setting (`rf.scope`), so SQL injected into the app could set it; the defence is code, not the database. `push_subscriptions`, `photos` and a few other child tables still have no row-level security. No schema library for request bodies (zod was not added; needs the owner's yes). `db/server/install.sh` and the new web role were not run on a real server. `scripts/pg/doctor.mjs` was not run against the new login. Login, sessions, CSRF, rate limits and dependency CVEs were not audited. The probe covered GET routes as one group manager; POST/PATCH/PUT/DELETE bodies and other roles were not fuzzed
 - [ ] The old demo password is in 18 public commits: owner changes it anywhere it was really used (the new one lives only in `routeflow-private`)
 - [ ] Server deploy script that pulls `routeflow-private` and writes `/etc/routeflow/env` is a doc only, not wired yet
@@ -228,6 +230,7 @@ _Condensed 2026-10-23, updated 2026-10-28. Each finished piece of work is one li
 - [ ] Map: not looked at on a real phone; the lead import map was not screenshotted
 
 ## Next steps
+0. Owner opens a few pages on a real phone on a slow line to see the captured skeletons; add representative profiles to the demo seed and capture `/sales/reps/[id]`
 0a. Owner reviews draft PR #12 on a phone; then mark it ready, wait for CI on the final head and merge it with a merge commit
 0. Owner cuts the Tehran-province tile file and puts it on the server, sets the Arvan cache rule, then redraw the picker thumbnails (`docs/map-tiles.md`)
 1. Self-host OSRM and Nominatim on the same Tehran extract, so no map request leaves the country

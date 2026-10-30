@@ -16,7 +16,7 @@ export default function Loading() {
   return (
     <>
       <PageHeaderCard {...pageMetaFor("/accounting/suppliers")} />
-      <PageSkeleton shape="rows" />
+      <PageSkeleton route="/accounting/suppliers/[supplierId]" shape="rows" />
     </>
   );
 }
