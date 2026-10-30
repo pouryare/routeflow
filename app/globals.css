@@ -443,6 +443,7 @@ body {
    positioned by a measured offset, so it stays centred on its point at any chart width
    without JavaScript having to measure the pill.                                        */
 .chart-pill {
+  transition: left 140ms var(--ease, ease-out), top 140ms var(--ease, ease-out);
   position: absolute;
   z-index: 2;
   transform: translate(-50%, -120%);
@@ -5276,3 +5277,10 @@ span.burst { display: inline-flex; }
 .meridian .realized-bar { height: 8px; border-radius: 999px; background: var(--border); overflow: hidden; }
 .meridian .realized-bar > span { display: block; height: 100%; border-radius: inherit; background: var(--accent); transition: width 700ms var(--ease, ease); }
 @media (prefers-reduced-motion: reduce) { .meridian .realized-bar > span { transition: none; } }
+
+/* Bar chart: pointing at one bar dims the rest, so the one you read stands out. */
+.bars rect { transition: opacity 160ms ease; }
+.bars:hover rect:not(:hover) { opacity: .55; }
+@media (prefers-reduced-motion: reduce) {
+  .chart-pill, .bars rect { transition: none; }
+}

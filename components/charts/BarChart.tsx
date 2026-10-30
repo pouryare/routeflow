@@ -85,7 +85,7 @@ export default function BarChart({
         height={height + 26 + headroom}
         role="img"
         aria-label={title}
-        className="max-w-full"
+        className="bars max-w-full"
       >
         {/* Grid first, so the bars sit over it. Recessive on purpose: it is a reading
             aid, not data. */}
