@@ -2971,6 +2971,23 @@ body {
    area around a bare switch, is the tap target; the 20 px box and track stay HeroUI's. */
 .checkfield__hit { display: flex; align-items: center; gap: 8px; min-height: 44px; cursor: pointer; }
 .toggle__hit { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; cursor: pointer; }
+/* The thumb behaves like a real switch: pressed, it stretches toward where it is about to
+   go; released, it travels there on a spring, overshoots a little and settles back to its
+   size. Width and margin are both logical, so the stretch points the right way in RTL.
+   The 1.75rem stretch keeps the 0.125rem end gap HeroUI leaves (100% - 1.5rem + 1.375rem). */
+.toggle .switch__thumb {
+  transition:
+    margin 420ms var(--spring-pop),
+    width 420ms var(--spring-snap),
+    background-color 200ms var(--ease-out);
+}
+.toggle:is(:active, :has([data-pressed="true"])) .switch__thumb {
+  width: 1.75rem;
+  transition-duration: var(--dur-fast);
+}
+.toggle[data-selected="true"]:is(:active, :has([data-pressed="true"])) .switch__thumb {
+  margin-inline-start: calc(100% - 1.875rem);
+}
 /* RouteTabs: HeroUI tabs whose tabs are pages. The list carries the pill HeroUI gives its
    list container (left out for its English scroll arrows); each tab is 44 px to tap. */
 .routetabs .tabs__list { background: var(--default); border-radius: calc(var(--radius) * 2.5); }
