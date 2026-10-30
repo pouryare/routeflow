@@ -140,10 +140,11 @@ export async function mergeBusinesses(session: Session, keepId: number, dropId: 
     if (rep.n > 1) throw new DuplicateError("هر دو پرونده نماینده هستند و ادغام نمی‌شوند");
     const branch = await db
       .prepare(
-        `SELECT 1 FROM customers a JOIN customers b ON b.id = ?
-          WHERE a.id = ? AND (a.parent_customer_id = b.id OR b.parent_customer_id = a.id OR a.parent_customer_id = b.parent_customer_id)`
+        `SELECT 1 FROM customers a JOIN customers b ON b.id = ? AND b.organization_id = a.organization_id
+          WHERE a.organization_id = ? AND a.id = ?
+            AND (a.parent_customer_id = b.id OR b.parent_customer_id = a.id OR a.parent_customer_id = b.parent_customer_id)`
       )
-      .get(dropId, keepId);
+      .get(dropId, session.organizationId, keepId);
     if (branch) throw new DuplicateError("این دو پرونده شعبه‌های یک کسب‌وکارند و ادغام نمی‌شوند");
     if (await ledgerLines(dropId) > 0) throw new DuplicateError("دفتر حسابداری این پرونده سند دارد؛ پروندهٔ دیگر را نگه دارید");
     const clash = await db
