@@ -646,7 +646,10 @@ body {
 /* ---- Theme switch: the new skin is seen through a circle from the button (lib/theme.ts
    switchTheme). Only while that switch runs: the browser's default cross-fade is turned
    off so the circle is the whole effect, and going dark the OLD (light) photo is put on
-   top, because that is the one that shrinks back into the button. */
+   top, because that is the one that shrinks back into the button. HeroUI's base sets
+   `view-transition-name: none` on :root, which leaves the browser nothing to photograph
+   and ends the transition at once; the root is named again for the switch only. */
+:root[data-theme-reveal] { view-transition-name: root; }
 :root[data-theme-reveal]::view-transition-old(root),
 :root[data-theme-reveal]::view-transition-new(root) {
   animation: none;
