@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import { faNum } from "@/lib/format";
 
 type CountMode = "int" | "pct";
@@ -29,11 +30,21 @@ export default function CountUp({
   /** Plain text appended after the figure, e.g. " مشتری". */
   suffix?: string;
 }) {
+  // Price flow: when the figure changes, it tints green (up) or red (down) for a moment.
+  const prev = useRef(value);
+  const [dir, setDir] = useState<"up" | "down" | null>(null);
+  useEffect(() => {
+    if (prev.current === value) return;
+    setDir(value > prev.current ? "up" : "down");
+    prev.current = value;
+    const t = setTimeout(() => setDir(null), 1400);
+    return () => clearTimeout(t);
+  }, [value]);
   const body = mode === "pct" ? `${faNum(Math.round(value * 100))}٪` : faNum(Math.round(value));
   const chars = [...body];
   return (
     <>
-      <span className="odo" dir="ltr" role="img" aria-label={body}>
+      <span className="odo" data-dir={dir ?? undefined} dir="ltr" role="img" aria-label={body}>
         {chars.map((c, i) => {
           // Keyed from the right, so a figure that gains a digit keeps its other columns.
           const key = chars.length - i;

@@ -5339,3 +5339,8 @@ span.burst { display: inline-flex; }
   @keyframes ptr-spin { to { transform: rotate(360deg); } }
 }
 @media (hover: hover) and (pointer: fine) { .ptr { display: none; } }
+
+/* Price flow (CountUp): a figure that just rose reads green, one that fell reads red, then settles. */
+.odo { transition: color 900ms ease; }
+.odo[data-dir="up"] { color: var(--good, #16a34a); transition-duration: 120ms; }
+.odo[data-dir="down"] { color: var(--crit, #dc2626); transition-duration: 120ms; }
