@@ -18,6 +18,7 @@ Totals: 46 small, 73 medium, 27 large first slices; 123 entries note existing co
     - [1d. Fleetbase code deep dive (2026-10-30)](#1d-fleetbase-code-deep-dive-decided-2026-10-30)
     - [1e. Twenty CRM study (2026-10-30)](#1e-twenty-crm-study-decided-2026-10-30)
     - [1g. Dolibarr study (2026-10-30)](#1g-dolibarr-study-decided-2026-10-30)
+    - [1h. EspoCRM study (2026-10-30)](#1h-espocrm-study-decided-2026-10-30)
 2. [Foundations: build once, many entries depend on them](#2-foundations)
 3. [Overlaps: entries that should be designed together](#3-overlaps)
 4. [Suggested order](#4-suggested-order)
@@ -258,6 +259,35 @@ The owner had Dolibarr (open source ERP/CRM, `Dolibarr/dolibarr`) studied in fou
 - **Forget a person (D20).** Owner-only and manual: name, phones, address, pin and notes are cleared; orders and ledger stay under «مشتری حذف‌شده»; the person is also removed from the trash copy (T3) and campaign lists; logged without the old values. No automatic job.
 
 **Skipped:** the customer page with SMS code (D10), depreciation of vans and equipment (D25, F140 stays without a money side), a calendar feed for the phone's own calendar (D28). Pay by link through an Iranian gateway (D11) is recorded for later: a link per order or per balance on the company's own merchant account, payments saved and matched to the oldest unpaid orders; building waits for a merchant account.
+
+### 1h. EspoCRM study (decided 2026-10-30)
+
+The owner had EspoCRM (open source CRM, `espocrm/espocrm`, version 10.0.11) studied; 17 ideas were answered one by one. Report: https://claude.ai/artifact/6fgN5gZh7yc3Gk8hSqA3wN. **Ideas only: EspoCRM is AGPL-3.0, so no EspoCRM code is used.** Nothing below is built yet. Not copied: the email inbox, email-to-case and mass email with open tracking, the customer portal and web lead form, many currencies, LDAP/OAuth/OIDC sign-in, API keys and webhooks, run-time tables and layouts, meeting invitations with free/busy, and deal money weighted by stage probability.
+
+**Knowing when something changes**
+- **Follow a customer or an order (E1).** A «دنبال کردن» bell on customer and order pages. You follow what you own or created automatically; anyone can follow or unfollow by hand. Followers get pushes for new orders, payments, complaints, status changes and notes, through the existing grouping, quiet hours and per-type switches. Today pushes go only to fixed people per notice type.
+- **«به شما سپرده شد» (E2), built with S6, T4 and F59.** One notice type for customers, leads and complaints given to someone by another person; many at once arrive as one push («۱۲ مشتری به شما سپرده شد»). Only `task.assigned` exists today, and a customer changes owner only when a rep claims it, so the notice comes with the features that hand records out.
+
+**Keeping data correct**
+- **Lock a checked customer (E3).** A manager locks name, phone, address and pin. While locked, a call or visit flow cannot change them: the change becomes a suggestion the manager accepts with one tap (the F78 path). Logged. Today `applyCustomerUpdates` in `lib/repo/crm/write.ts` overwrites phone, name and pin from any flow.
+- **One contact, several businesses (E4).** A contact can link to more than one business (an owner of two shops, a head office and its branches). The phone check allows the same number for the same person; a call from it asks which shop. Today `phoneFor` in `lib/repo/crm/contacts.ts` refuses a phone another business already has.
+- **Undo your own fresh mistake (E5).** Whoever entered a payment, note, task or photo can void it within N minutes (owner setting, default 15) with a reason; after that, manager only. Logged, and voided payments stay in the money log (D6). Today voiding a payment is for managers only.
+- **Access and settings change log (E6, answers F27 question 1 for permissions).** A who/when/old/new line for role, group, active state and password resets of users, and for company settings (discount auto-pass percent, code for sensitive actions, the D30 thresholds), shown on the owner status page beside the access review card (D3-3). Today `setRoles`, user edits and these settings write no log line.
+- **Sign out after idle time (E17).** The owner sets idle hours per role (for example 12 for owner, managers and accountant); drivers and reps stay signed in so offline work is not lost. Today a sign-in lives 30 days whether used or not.
+
+**Big jobs**
+- **Background exports and bulk edits (E7).** Exports over about 1,000 rows (T21) and bulk edits over about 100 records (T4) run on the job runner with a progress count and a push when ready; the file is kept 24 hours.
+
+**Selling**
+- **Track a cross-sell try (E14).** «پیگیری» on the action centre cross-sell hint (`crossSellCandidates`) makes a try: product, rep, next step date. It closes as won when the first order with that product arrives, or as lost with a reason after N days. A small report of tries and wins by rep.
+
+**Answers and notes on parked entries (nothing built)**
+- **Internal chat / F43:** up to 3 pinned messages per customer or order thread; a person edits their own message for 24 hours, then it is locked; edited messages show «ویرایش شد» and the owner can see the old text (E8). A person who cannot see the record cannot be mentioned on it (E9, answers F43 question 2).
+- **D13 per-person switches:** start with four: may see cost, may export, may bulk edit (T4), may give customers to others. Checked in the same gates as roles (E10).
+- **F146 home screen:** the owner sets a default per role; each person may hide or reorder cards, except cards the owner pins (exceptions, approvals) and people the owner locks (E11, answers F146 question 3).
+- **F122 custom fields:** each custom field may have one «show and require when…» condition on another field, written in the shared filter format (T1) (E16).
+
+**Skipped:** fixed rules for self-service password reset (E12; F109 stays parked, managers reset by hand), an SMS with the complaint number (E13), separate lead stage lists per group (E15).
 
 ## 2. Foundations
 
