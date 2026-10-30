@@ -17,6 +17,7 @@ Totals: 46 small, 73 medium, 27 large first slices; 123 entries note existing co
     - [1c. Fleetbase study: UI/UX batches (2026-10-30)](#1c-fleetbase-study-uiux-batches-decided-2026-10-30)
     - [1d. Fleetbase code deep dive (2026-10-30)](#1d-fleetbase-code-deep-dive-decided-2026-10-30)
     - [1e. Twenty CRM study (2026-10-30)](#1e-twenty-crm-study-decided-2026-10-30)
+    - [1g. Dolibarr study (2026-10-30)](#1g-dolibarr-study-decided-2026-10-30)
 2. [Foundations: build once, many entries depend on them](#2-foundations)
 3. [Overlaps: entries that should be designed together](#3-overlaps)
 4. [Suggested order](#4-suggested-order)
@@ -215,6 +216,48 @@ The owner had Twenty (open source CRM, `twentyhq/twenty`) studied in three passe
 - **F50 payment promises:** a follow-up closes itself when the payment arrives, otherwise wakes on the date; one stored wake-up row can also serve snooze (F142) and rule cooldowns (T23).
 
 **Skipped:** sharing saved views with a role or group (T2 option), a log of who opens sensitive pages (T19; F27 stays as is), short links with click counts (T16).
+
+### 1g. Dolibarr study (decided 2026-10-30)
+
+The owner had Dolibarr (open source ERP/CRM, `Dolibarr/dolibarr`) studied in four passes; 32 ideas were answered one by one. Report: https://claude.ai/artifact/SPy6MTQhrBmSNGfvtAFMs9. **Ideas only: Dolibarr is GPL-3.0, so no Dolibarr code is used.** Nothing below is built yet. Not copied: manufacturing (BOM, MRP), product variants and kits, multi-currency and Incoterms, projects and timesheets, tickets, email collector, public booking page, knowledge base, a rights tick-box per module.
+
+**Money in hand and the bank**
+- **Money in hand per driver and rep (D1).** Cash and cheques a person collects land in their own box, not straight in the office cash account (`1101`). At day end the office counts and confirms; a short or extra amount is saved with a reason and shows on the action centre. The owner sees one line per person: holding now, since when.
+- **Cheque deposit slips and more than one bank account (D2).** Tick cheques on the board, pick the bank account, get a numbered slip with count, total and a printable list. A bounce takes the cheque out and reopens the debt. Works with D1 (driver box, office box, bank).
+- **Close a small leftover (D3).** A manager closes a small remaining balance with a reason (rounding, bank fee, small discount) under an owner-set limit (default 50,000 toman); bigger amounts and bad debt need the owner. Ledger entry plus log line.
+- **Supplier pay list (D21).** Supplier terms (days) set a due date on each purchase; a list shows what is due, oldest first; ticked rows give a sheet (supplier, Sheba, amount) for the accountant; the payment is recorded with the bank tracking number. No bank file (formats differ, F10).
+- **Month pack for the accountant (D26).** After a month is closed, one spreadsheet with fixed columns: journal, trial balance, customer and supplier balances, cheques, expenses with receipt links, stock value (D9). Owner and the read-only auditor (F128) download it; each download is logged. No accounting-software format.
+- **Recurring costs (D23, answers F49 question 1).** A list of rent, salaries and subscriptions (category, amount, Jalali day of month, who pays). On the day a task asks «پرداخت شد؟» with the amount filled; one tap records the expense; the cash forecast reads the list.
+- **Bank loans (D24).** A loan card (bank, amount, instalments, first due date); the schedule is made once; each due date gives a reminder and a one-tap payment that splits principal and interest; the forecast (F49) and the balance sheet read it.
+- **Payment term kinds (D5, answers F83).** Cash on delivery, N days after delivery, or end of month plus N days. The due date is saved on the order at delivery, so later changes to the customer do not rewrite it.
+- **Tamper-evident money log (D6, answers F27).** One hash chain per company over money events only (order confirmed, payment, cheque status, journal posted, month closed, leftover closed); the owner has a «check the chain» button. Not every edit.
+
+**Prices and selling**
+- **Floor price (D4).** A line under cost (or a higher owner-set floor per product) needs approval even when the discount percent is under `discount_auto_pass_pct`; the rep sees «زیر حداقل قیمت این کالا».
+- **Prices that follow a base number (D14, with F56).** The owner keeps named numbers (dollar, raw material); a product price is number × factor, rounded to 1,000 toman. Changing a number shows a preview (products, customers, margin before and after) and creates new price rows from a date. A «raise selected by X%» button covers the simple case. Old orders never move.
+- **Quantity price steps (D22).** Up to four steps per product and pack size (starting quantity, price). Order entry applies the step and nudges toward the next one. A step price is a list price, so it needs no discount approval; the floor price (D4) still applies.
+- **Official invoice, some customers only (D7, answers F147 numbering).** A per-order choice: tax IDs on company and customer, VAT per product, an invoice number given at confirmation per Jalali year (drafts use no number), a Moadian export later. Other orders stay as today.
+- **Logo and stamp (D29).** The owner uploads a logo and a stamp/signature image once; PDF receipt, delivery note and statements print them; the thermal printer prints the logo in black and white; the stamp is on or off per document type.
+- **Reopen a cancelled order (D31).** A manager or owner reopens a cancelled order to draft within an owner-set time (default 7 days). It must be confirmed again, so stock and credit are re-checked; logged with who and why; not after delivery.
+- **Sell-off product state «تصفیه» (D32).** Still sellable, off the buy list, no reorder warnings; it turns inactive by itself when available stock reaches zero; reps see a chip.
+
+**Stock and buying**
+- **Warehouse count session (D8).** Start a count for a facility (a snapshot), several phones count, a «what is left» list, a review with the toman value of every gap, one confirm. Reuses the reason chips of `lib/flows/stockCount.ts`.
+- **Stock and value on a past date (D9).** A Jalali date chip on the stock page shows quantity and value per product and facility on that date, with a total and export.
+- **Supplier price rows (D16).** Per product and supplier: price, minimum quantity, delivery days, supplier code. Purchase entry pre-fills the price and warns under the minimum; feeds D17 and F31.
+- **Buy list grouped by supplier (D17, the F11 first slice).** «لیست خرید»: products under their reorder point, minus what is on order, rounded up to the supplier minimum, grouped by the cheapest or fastest supplier. Tick to make a purchase draft per supplier; a person confirms.
+- **«Arrives on…» (D27, after D17).** Confirmed purchase drafts carry an expected date; order entry shows «+300 expected Tuesday» beside a shortage and can offer a pre-order (F121). Nothing is promised automatically.
+- **Labels (D19).** At goods receipt, print one label per batch or pallet (product, batch, expiry, QR) on the Bluetooth printer, plus an A4 PDF of pack barcodes. The same QR serves F1 scanning later.
+
+**People, settings and data**
+- **Money rules for expenses (D15, answers F26 and F88).** The owner sets a limit per expense category and role (per entry and per day). Over it, the expense waits as «منتظر تأیید» for a manager or owner with the reason shown.
+- **Owner-set thresholds (D30).** One settings card for the numbers now fixed in code: stalled order days (`actionCenter.ts`, 2), quiet customer days (`mapWorklist.ts`, 45), data ageing days (`freshness.ts`, 7 and 14), duplicate order window (`duplicateOrder.ts`, 24 hours), alert snooze days (7). Current values are the defaults; reset button; changes logged.
+- **Switches per company (D12, with F126).** Cheques, batches and expiry, leads and CRM, commission, van stock. Off hides menus and buttons; the data stays. A step in the setup wizard.
+- **Per-person extra switches (D13).** A short list on top of roles (for example a rep may see cost), checked in the same gates as roles. The exact list is proposed at build time.
+- **Team week grid (D18).** Managers get people down the side and days across, each box counting visits, tasks and deliveries; tapping opens that person's day. Phone: one card per person with a week strip.
+- **Forget a person (D20).** Owner-only and manual: name, phones, address, pin and notes are cleared; orders and ledger stay under «مشتری حذف‌شده»; the person is also removed from the trash copy (T3) and campaign lists; logged without the old values. No automatic job.
+
+**Skipped:** the customer page with SMS code (D10), depreciation of vans and equipment (D25, F140 stays without a money side), a calendar feed for the phone's own calendar (D28). Pay by link through an Iranian gateway (D11) is recorded for later: a link per order or per balance on the company's own merchant account, payments saved and matched to the oldest unpaid orders; building waits for a merchant account.
 
 ## 2. Foundations
 
