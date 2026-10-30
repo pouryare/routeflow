@@ -58,7 +58,9 @@ export function pillModel(
   return { groups: shown, tabsByGroup, currentHref: hit?.href };
 }
 
-export type PopAnchor = { left: number; top: number };
+/** `originX`: the chip's centre, measured from the panel's left edge, so the menu grows
+ *  out of the chip that was tapped rather than out of its own corner. */
+export type PopAnchor = { left: number; top: number; originX?: number };
 
 /** Where the hover panel sits, as a style object.
  *
@@ -72,7 +74,12 @@ export type PopAnchor = { left: number; top: number };
  */
 export function popoverStyle(anchor: PopAnchor | null): React.CSSProperties | undefined {
   if (!anchor) return undefined;
-  return { position: "fixed", top: anchor.top, left: anchor.left };
+  return {
+    position: "fixed",
+    top: anchor.top,
+    left: anchor.left,
+    transformOrigin: `${anchor.originX ?? 0}px 0px`,
+  };
 }
 
 /** Slides the `.thumb` inside `root` to sit under whichever child matches `current`.
@@ -176,7 +183,7 @@ export default function HoverPill({
     const chip = el?.closest<HTMLElement>(".seg-item");
     if (chip) {
       const r = chip.getBoundingClientRect();
-      setAnchor({ left: r.left, top: r.bottom + 8 });
+      setAnchor({ left: r.left, top: r.bottom + 8, originX: r.width / 2 });
     }
     setOpen(id);
   };

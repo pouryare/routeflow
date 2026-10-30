@@ -23,6 +23,7 @@ export function accountLinks(session: { role: Role }): AccountLink[] {
   links.push(
     { href: "/settings/notifications", label: "تنظیمات اعلان‌ها", icon: "bell" },
     { href: "/settings/security", label: "امنیت و ورود", icon: "settings" },
+    { href: "/settings/sound", label: "صدا", icon: "volume" },
   );
   return links;
 }

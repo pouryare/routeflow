@@ -1,6 +1,7 @@
 "use client";
 
 import { useTheme } from "@/components/ThemeToggle";
+import { switchTheme } from "@/lib/theme";
 
 /** The artifact's sun/moon toggle: one disc, morphed.
  *
@@ -9,11 +10,13 @@ import { useTheme } from "@/components/ThemeToggle";
  *  transition. Which one shows is decided entirely in CSS from :root[data-skin], so the
  *  button itself has no idea which icon is visible.
  *
+ *  The page itself changes through a circle from this button (switchTheme).
+ *
  *  Drives the SAME stored preference as the map's own toggle (lib/theme.ts writes
  *  data-theme and data-skin together), so flipping it here flips the map too.
  */
 export default function SkinToggle() {
-  const [theme, setTheme] = useTheme();
+  const [theme] = useTheme();
 
   return (
     <button
@@ -21,7 +24,7 @@ export default function SkinToggle() {
       type="button"
       aria-label="تغییر پوستهٔ روشن و تاریک"
       aria-pressed={theme === "dark"}
-      onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+      onClick={(e) => switchTheme(theme === "dark" ? "light" : "dark", e.currentTarget)}
     >
       <svg className="sun" viewBox="0 0 24 24" aria-hidden="true">
         <circle cx="12" cy="12" r="4.2" />

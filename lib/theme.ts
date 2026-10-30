@@ -5,6 +5,8 @@
  *  in a vehicle at night. Light is a first-class equal with its own palette and its own
  *  elevation model (see MASTER.md), but it is opt-in.
  */
+import { playSound } from "./sound";
+
 export type Theme = "dark" | "light";
 
 export const THEME_KEY = "coverage-theme";
@@ -83,3 +85,65 @@ export function readTheme(): Theme {
     return DEFAULT_THEME;
   }
 }
+
+/** The circle the theme change is seen through: centred on the button that was pressed,
+ *  and big enough at full size to reach the farthest corner of the screen, wherever the
+ *  button sits (the header's right side in RTL, a menu row, anywhere). */
+export function revealCircle(
+  rect: { left: number; top: number; width: number; height: number },
+  viewWidth: number,
+  viewHeight: number,
+): { x: number; y: number; r: number } {
+  const x = rect.left + rect.width / 2;
+  const y = rect.top + rect.height / 2;
+  return { x, y, r: Math.hypot(Math.max(x, viewWidth - x), Math.max(y, viewHeight - y)) };
+}
+
+/** applyTheme, seen through a circle that starts at the button.
+ *
+ *  Going light, the light page grows out of the button like a lamp coming on; going dark,
+ *  the light page shrinks back into it like the lamp going off. The browser photographs
+ *  the page before and after (the View Transitions API) and we only animate the clip on
+ *  one of the two photos, so nothing in the app has to know a transition is running.
+ *
+ *  Phones without the API, and anyone who asked for reduced motion, get the instant switch
+ *  they had before -- the theme itself is never held back by the animation.
+ */
+export function switchTheme(theme: Theme, from?: Element | null) {
+  const root = document.documentElement;
+  playSound(theme === "light" ? "theme.light" : "theme.dark");
+  if (
+    !from ||
+    typeof document.startViewTransition !== "function" ||
+    matchMedia("(prefers-reduced-motion: reduce)").matches
+  ) {
+    applyTheme(theme);
+    return;
+  }
+
+  const { x, y, r } = revealCircle(from.getBoundingClientRect(), innerWidth, innerHeight);
+  const grow = theme === "light";
+  // Read by globals.css: which photo goes on top, and the default cross-fade switched off.
+  root.dataset.themeReveal = grow ? "grow" : "shrink";
+
+  const transition = document.startViewTransition(() => applyTheme(theme));
+  transition.ready
+    .then(() => {
+      const point = `circle(0px at ${x}px ${y}px)`;
+      const full = `circle(${r}px at ${x}px ${y}px)`;
+      root.animate(
+        { clipPath: grow ? [point, full] : [full, point] },
+        {
+          duration: 560,
+          // Growing lands softly (--ease-out); shrinking speeds up into the button.
+          easing: grow ? "cubic-bezier(0.16, 1, 0.3, 1)" : "cubic-bezier(0.7, 0, 0.84, 0)",
+          pseudoElement: grow ? "::view-transition-new(root)" : "::view-transition-old(root)",
+        },
+      );
+    })
+    // A transition skipped by the browser (tab hidden, another one started) still applied
+    // the theme; there is just nothing to animate.
+    .catch(() => {});
+  void transition.finished.finally(() => delete root.dataset.themeReveal);
+}
+

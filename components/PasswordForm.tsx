@@ -4,6 +4,7 @@ import { useState } from "react";
 import { friendlyError } from "@/lib/userMessage";
 import { Icon } from "@/components/meridian/Icon";
 import { PasswordInput } from "@/components/TextInput";
+import { useShakeOn } from "@/lib/useShake";
 
 const MIN_PASSWORD = 8;
 
@@ -29,6 +30,7 @@ export default function PasswordForm({
   const [repeat, setRepeat] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const shakeRef = useShakeOn<HTMLFormElement>(error !== null);
 
   const tooShort = password.length < MIN_PASSWORD;
   const mismatch = repeat.length > 0 && repeat !== password;
@@ -63,7 +65,7 @@ export default function PasswordForm({
   }
 
   return (
-    <form onSubmit={onSubmit}>
+    <form ref={shakeRef} onSubmit={onSubmit}>
       {askCurrent && (
         <PasswordInput label="رمز فعلی" autoFocus={autoFocus} autoComplete="current-password" value={current} onChange={setCurrent} />
       )}

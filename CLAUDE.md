@@ -12,6 +12,10 @@ Finish the whole list of tasks first, then merge. CI is slow, so do not stop and
 - If the branch has no open PR when the tasks are finished, open one (merging was asked for); if the task list was only a question, do not create one.
 - This replaces the earlier rule of merging after every commit and push.
 
+# GitHub labels, milestones and the board
+
+Follow `docs/github-workflow.md`. An issue is opened when work on a roadmap batch starts or a bug is found, never copied ahead from the roadmap. Every issue gets one `type:`, one or more `area:` and one `priority:` label, and the batch's milestone; every pull request gets its `type:` and `area:` labels, the same milestone, and `Closes #n` for each issue it finishes. A question for the owner also gets `status: needs decision`. Labels change only through `scripts/github-labels.sh`, updated in the same commit as that doc.
+
 # Always-on: look for existing solutions before building
 
 Before adding any new functionality (a feature, helper, integration, UI primitive, parser, algorithm or script), search for something that already exists. Do not start writing it first.
