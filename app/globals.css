@@ -5300,3 +5300,10 @@ span.burst { display: inline-flex; }
   .meridian .choicechip.on { animation: chip-swell 260ms var(--spring-pop, ease-out); }
   @keyframes chip-swell { 40% { transform: scale(1.07); } }
 }
+
+/* ScrollFade (components/mobile/ScrollFade.tsx): a dark fade on each edge that has more to scroll to. */
+.scrollfade { position: relative; min-width: 0; max-width: 100%; }
+.scrollfade__edge { position: absolute; top: 0; bottom: 6px; width: 28px; pointer-events: none; opacity: 0; transition: opacity 160ms ease; z-index: 1; }
+.scrollfade__edge--left { left: 0; background: linear-gradient(to right, color-mix(in srgb, var(--foreground, #000) 22%, transparent), transparent); }
+.scrollfade__edge--right { right: 0; background: linear-gradient(to left, color-mix(in srgb, var(--foreground, #000) 22%, transparent), transparent); }
+.scrollfade[data-more-left="true"] .scrollfade__edge--left, .scrollfade[data-more-right="true"] .scrollfade__edge--right { opacity: 1; }

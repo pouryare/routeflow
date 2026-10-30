@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Button } from "@heroui/react";
 import { Icon } from "@/components/meridian/Icon";
+import ScrollFade from "@/components/mobile/ScrollFade";
 import FilterSheet from "@/components/mobile/FilterSheet";
 import { ChipGroup, isActive, SearchableGroup, SEARCHABLE_FROM, type FilterGroup } from "@/components/mobile/ChipGroup";
 
@@ -20,7 +21,7 @@ export default function FilterChips({ groups }: { groups: FilterGroup[] }) {
   const count = tucked.filter(isActive).length;
   return (
     <div className="filterchips">
-      <div className="filterchips__row">
+      <ScrollFade className="filterchips__row">
         {row.map((g) => (
           g.options.length >= SEARCHABLE_FROM ? <SearchableGroup key={g.id} group={g} /> : <ChipGroup key={g.id} group={g} />
         ))}
@@ -31,7 +32,7 @@ export default function FilterChips({ groups }: { groups: FilterGroup[] }) {
             {count > 0 && <b className="filterchip__badge">{faNum(count)}</b>}
           </Button>
         )}
-      </div>
+      </ScrollFade>
       {tucked.length > 0 && <FilterSheet open={open} onClose={() => setOpen(false)} groups={tucked} />}
     </div>
   );
