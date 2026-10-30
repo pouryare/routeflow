@@ -9,6 +9,7 @@ import { friendlyError } from "@/lib/userMessage";
 import { Icon } from "@/components/meridian/Icon";
 import JalaliDateInput from "@/components/meridian/JalaliDateInput";
 import { Fragment, useCallback, useMemo, useState } from "react";
+import { labelCells } from "@/lib/tableCards";
 import { faNum } from "@/lib/format";
 import { BATCH_STATUS_LABEL, BATCH_TRANSITIONS, type BatchStatus } from "@/lib/batchStates";
 
@@ -36,6 +37,9 @@ interface TraceDelivery {
 }
 
 const MANUAL_MOVES: BatchStatus[] = ["active", "quarantined", "recalled"];
+
+/** The column titles, which a phone card repeats in front of each value (lib/tableCards). */
+const HEAD = ["کالا", "کد", "انقضا", "موجودی", "وضعیت", ""];
 
 export default function BatchesPanel({ products }: { products: Product[] }) {
   const [batches, setBatches] = useState<Batch[] | null>(null);
@@ -140,15 +144,15 @@ export default function BatchesPanel({ products }: { products: Product[] }) {
         <label className="flex flex-col gap-1 text-xs text-text-muted">کد سری ساخت<FieldInput className="w-full" placeholder="خودکار اگر خالی" value={form.batch_code} onChange={(e) => setForm((f) => ({ ...f, batch_code: e.target.value }))} /></label>
         <div className="flex flex-col gap-1 text-xs text-text-muted">مقدار دریافتی<KeypadField label="مقدار دریافتی" value={form.qty_received_base} onChange={(v) => setForm((f) => ({ ...f, qty_received_base: v }))} decimal /></div>
         <label className="flex flex-col gap-1 text-xs text-text-muted">مرجع سری ساخت تأمین‌کننده<FieldInput className="w-full" value={form.supplier_batch_ref} onChange={(e) => setForm((f) => ({ ...f, supplier_batch_ref: e.target.value }))} /></label>
-        <label className="flex items-center gap-1 text-xs text-text-muted">
+        <label className="col-span-2 flex flex-col gap-1 text-xs text-text-muted md:col-span-1">
           تولید
-          <JalaliDateInput value={form.produced_at} onChange={(iso) => setForm((f) => ({ ...f, produced_at: iso }))} aria-label="تاریخ تولید" />
+          <JalaliDateInput className="jdate--fill" value={form.produced_at} onChange={(iso) => setForm((f) => ({ ...f, produced_at: iso }))} aria-label="تاریخ تولید" />
         </label>
-        <label className="flex items-center gap-1 text-xs text-text-muted">
+        <label className="col-span-2 flex flex-col gap-1 text-xs text-text-muted md:col-span-1">
           انقضا
-          <JalaliDateInput value={form.expiry_date} onChange={(iso) => setForm((f) => ({ ...f, expiry_date: iso }))} aria-label="تاریخ انقضا" />
+          <JalaliDateInput className="jdate--fill" value={form.expiry_date} onChange={(iso) => setForm((f) => ({ ...f, expiry_date: iso }))} aria-label="تاریخ انقضا" />
         </label>
-        <button type="submit" className="inline-flex items-center justify-center gap-[var(--space-2)] rounded bg-accent px-4 py-2 text-sm text-white">
+        <button type="submit" className="touch gap-[var(--space-2)] rounded bg-accent px-4 py-2 text-sm text-white">
           <Icon name="plus" size="md" />
           ثبت سری ساخت
         </button>
@@ -158,7 +162,7 @@ export default function BatchesPanel({ products }: { products: Product[] }) {
       {batches === null ? (
         <p className="text-sm text-text-muted">در حال بارگذاری…</p>
       ) : (
-        <table className="w-full text-sm">
+        <table className="acct-cards acct-cards--tiles w-full text-sm">
           <thead className="text-text-faint">
             <tr>
               <th className="p-2 text-right">کالا</th>
@@ -170,7 +174,7 @@ export default function BatchesPanel({ products }: { products: Product[] }) {
             </tr>
           </thead>
           <tbody>
-            {batches.map((b) => {
+            {labelCells(batches.map((b) => {
               const overdue = b.expiry_date && b.expiry_date < today;
               return (
                 <Fragment key={b.id}>
@@ -183,7 +187,7 @@ export default function BatchesPanel({ products }: { products: Product[] }) {
                     <td className={`p-2 text-left font-mono ${b.on_hand < 0 ? "text-danger" : ""}`}>{faNum(b.on_hand)}</td>
                     <td className="p-2">{BATCH_STATUS_LABEL[b.status]}</td>
                     <td className="p-2 text-left">
-                      <div className="flex flex-wrap justify-end gap-1">
+                      <div className="flex flex-wrap justify-start gap-1 md:justify-end">
                         {(BATCH_TRANSITIONS[b.status] ?? [])
                           .filter((t) => MANUAL_MOVES.includes(t))
                           .map((t) => (
@@ -240,7 +244,7 @@ export default function BatchesPanel({ products }: { products: Product[] }) {
                   )}
                 </Fragment>
               );
-            })}
+            }), HEAD)}
           </tbody>
         </table>
       )}

@@ -2968,6 +2968,9 @@ body {
    unavailable (already booked) is struck rather than hidden: the gap would be a puzzle. */
 .meridian .jdate { display: inline-block; }
 .meridian .jdate__field.button { min-width: 10rem; justify-content: flex-start; font-variant-numeric: tabular-nums; }
+/* `jdate--fill`: the field takes the whole width of its column (a form on a phone). */
+.meridian .jdate--fill { display: block; }
+.meridian .jdate--fill .jdate__field.button { width: 100%; }
 .meridian .jdate__placeholder { color: var(--muted); }
 .meridian .calendar__cell[data-unavailable] { text-decoration: line-through; text-decoration-thickness: 1px; }
 /* HeroUI's checkbox and switch (CheckField.tsx, ToggleSwitch.tsx): the row, or the 44 px
@@ -5058,6 +5061,10 @@ body {
   .acct-cards td { display: flex; justify-content: space-between; gap: 12px; padding: 3px 0; text-align: start; }
   .acct-cards td:first-child { font-weight: 600; padding-bottom: 6px; }
   .acct-cards td[data-label]::before { content: attr(data-label); color: var(--muted); font-weight: 400; }
+  /* `--tiles`: each row is a card of its own (a rounded box with a gap), not a ruled row. */
+  .acct-cards--tiles tbody { display: grid; gap: 10px; }
+  .acct-cards--tiles tr { border: 1px solid var(--border); border-radius: var(--r-md); background: var(--surface); }
+  .acct-cards--tiles td:last-child:not([data-label]) { padding-top: 8px; }
 }
 
 /* ---- order pipeline: swipe through the stages on a phone ------------------------------------------
@@ -5159,6 +5166,12 @@ body {
     75% { transform: translateX(3px); }
   }
   [data-shake] { animation: shake-no 420ms var(--ease-out); }
+}
+
+/* A field's reason unfolds under it instead of appearing (TextInput, PasswordInput). */
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes field-error-in { from { opacity: 0; transform: translateY(-6px); } }
+  .textinput .field-error { animation: field-error-in 240ms var(--ease-out) both; }
 }
 
 /* The bell swings once from its top when a new notification arrives (NotificationBell). */
