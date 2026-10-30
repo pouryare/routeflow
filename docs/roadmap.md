@@ -19,6 +19,7 @@ Totals: 46 small, 73 medium, 27 large first slices; 123 entries note existing co
     - [1e. Twenty CRM study (2026-10-30)](#1e-twenty-crm-study-decided-2026-10-30)
     - [1g. Dolibarr study (2026-10-30)](#1g-dolibarr-study-decided-2026-10-30)
     - [1h. EspoCRM study (2026-10-30)](#1h-espocrm-study-decided-2026-10-30)
+    - [1i. Akaunting study (2026-10-30)](#1i-akaunting-study-decided-2026-10-30)
 2. [Foundations: build once, many entries depend on them](#2-foundations)
 3. [Overlaps: entries that should be designed together](#3-overlaps)
 4. [Suggested order](#4-suggested-order)
@@ -288,6 +289,37 @@ The owner had EspoCRM (open source CRM, `espocrm/espocrm`, version 10.0.11) stud
 - **F122 custom fields:** each custom field may have one «show and require when…» condition on another field, written in the shared filter format (T1) (E16).
 
 **Skipped:** fixed rules for self-service password reset (E12; F109 stays parked, managers reset by hand), an SMS with the complaint number (E13), separate lead stage lists per group (E15).
+
+### 1i. Akaunting study (decided 2026-10-30)
+
+The owner had Akaunting (free accounting app, `akaunting/akaunting`) studied in three passes; 17 ideas were answered one by one. Report: https://claude.ai/artifact/2YBqNTPRRh1rGrdjoEqVA7. **Ideas only: Akaunting uses the Business Source License (free only up to 2 users, 1 company and 1000 invoices, no accounting service for others), so no Akaunting code is used.** Nothing below is built yet. Not copied: many currencies, bank feeds, the paid module store, a rights matrix per action, the customer portal, "viewed" tracking of sent documents, firewall middleware.
+
+**The books: starting, closing, moving**
+- **Starting balances (A1, a step in F126).** The setup wizard asks once for cash, bank, what each customer owes, what the company owes each supplier and stock value. It makes one `OPENING` entry (the type exists in `ledgerCore.ts` but nothing writes it) and puts the difference into «سرمایه اولیه» (`3101`). Owner only, dated the day before the first real entry.
+- **Close a month (A2).** `fiscal_periods` and the closed-month refusal in `postJournal` exist, but nothing sets a month to closed (`lib/repo/reports.ts` only reads it). The owner closes a month after a short checklist (deliveries posted, drafts listed, cash counted); reopening needs a reason; both are logged (E6). A closed month refuses new entries; corrections go into the next open month. D26 (month pack) and E5 (own-mistake window) need this.
+- **Transfer between own accounts (A4).** One «انتقال وجه» form: from, to, amount, date, bank tracking number, optional fee; one balanced entry. D1 (driver box to office), D2 (cash deposit to bank) and A3 reuse it. Petty cash `1103` is in the chart but unused today.
+- **Hand reconcile of cash and bank (A3).** Pick an account and a date, type the counted or bank-paper balance, tick lines until the difference is zero, save. Ticked lines lock; a mistake after that is fixed by a reversal. No bank file; F10 may later pre-tick from one. D1's end-of-day count lands here.
+
+**Reading the money**
+- **Money in and out (A5).** A monthly page «ورودی و خروجی پول»: money in (receipts, cheques cashed), money out (suppliers, expenses by category, commission, loans), opening and closing cash and bank, read from the ledger legs of the money accounts. No new tables.
+- **Money tiles (A7).** One strip on the owner home: cash box, each bank, owed to us (with the overdue part), we owe (with what is due in 7 days), cheques due this week. Each tile opens its page. A default card for F146.
+- **Discounts given (A11).** A monthly report of toman given as discount by rep, customer and product, with approvals versus auto-passes. No page reads `order_discounts` for a report today.
+
+**Categories**
+- **Expense categories per company (A6).** The `accounts` table has no `organization_id`, so the chart is shared and `expenseCategories()` lists every active expense account for every company. A small per-company category table pointing at the shared accounts lets each company add, rename, retire and group categories and mark one «هزینه مستقیم» (printed above gross profit). History is untouched. Decide before a second company is added.
+
+**Documents and customers**
+- **Freeze customer details on the order (A12).** At confirm, copy name, phone and address (tax IDs once D7 exists) onto the order; `orders` keeps only `customer_id` today, so reprints show the customer's current data. Reprints use the copy. «Forget a person» (D20) clears these copies too.
+- **Receipt footer and order number prefix (A13).** A settings card: footer text per document (receipt, delivery note, statement; the receipt footer is fixed in `lib/deliveryReceipt.ts` today) and an order number prefix per company. The next number can only go up.
+- **Phone that does not work (A15, after Farazsms).** An invalid-number failure marks the phone «شماره نامعتبر», skips it in campaigns and makes a «شمارهٔ مشتری را اصلاح کن» task for the customer's owner. Feeds F54.
+- **Payment receipt SMS (A16, after Farazsms).** When a payment is saved the customer gets a short service message with the amount received and the remaining balance; it counts as a service message, not a promotion, in the opt-out rules (S15, T16); a per-company switch turns it off.
+
+**Reminders, entry, search**
+- **Reminder days around the due date (A8, first slice of F18).** The owner sets a day list (for example −3, 0, +3, +7, +14). Each day a task is made for the customer's rep; supplier bills give the owner a reminder to pay. SMS later. Uses the due date from D5.
+- **Repeat an expense (A10).** A «تکرار این» button on an expense row opens the form pre-filled (category, supplier, amount, new date). Expenses only, not customer payments.
+- **Typed filters on desk screens (A17, with T1).** Text such as `بدهی>۱۰۰۰۰۰۰ منطقه:۳` in the search box turns into the same filter chips; phones keep tapping chips.
+
+**Skipped:** three tax kinds for D7 (A9: added on top, already inside the price, withheld; D7 stays as decided) and a «بدون قیمت» print option for delivery notes (A14).
 
 ## 2. Foundations
 
