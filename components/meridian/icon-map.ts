@@ -11,7 +11,7 @@ import {
   List, LayoutGrid, Repeat, PanelBottom, PanelRight, Phone, Maximize, Minimize, Eye, EyeOff,
   Save, Copy, ClipboardPaste, Send, Upload, RefreshCw, LogIn, Navigation, Pin, PinOff,
   AlarmClock, StickyNote, CalendarPlus, CheckCheck, Archive, KeyRound, Unlink, CircleStop,
-  House, Delete,
+  House, Delete, Volume2, VolumeX, Play,
   type LucideIcon,
 } from "lucide-react";
 
@@ -146,6 +146,9 @@ export const ICONS = {
   stop: CircleStop,
   home: House,
   backspace: Delete,
+  volume: Volume2,
+  "volume-off": VolumeX,
+  play: Play,
 } as const satisfies Record<string, LucideIcon>;
 
 export type IconName = keyof typeof ICONS;

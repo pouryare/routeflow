@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { Icon } from "@/components/meridian/Icon";
 import { faDigits, faToman } from "@/lib/format";
 import { buzz } from "@/lib/haptic";
+import { playSound } from "@/lib/sound";
 import type { PingOrder } from "@/lib/salePings";
 
 /** How often the open page asks for new orders, while it is visible. */
@@ -43,6 +44,7 @@ export default function SalePings() {
         const added = json.fresh.map((o) => ({ ...o, key: ++seq.current }));
         setPings((p) => [...added, ...p].slice(0, 3));
         buzz(20);
+        playSound("order.ping");
         router.refresh();
         for (const a of added) setTimeout(() => setPings((p) => p.filter((x) => x.key !== a.key)), SHOW_MS);
       } catch {

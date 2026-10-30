@@ -127,6 +127,7 @@ Platform work planned alongside: a background job worker (pg-boss), photos in ob
 | [`MASTER.md`](MASTER.md) | The design system |
 | [`docs/crm-erp-plan.md`](docs/crm-erp-plan.md) | The original CRM and ERP plan |
 | [`docs/company-and-shareholders.md`](docs/company-and-shareholders.md) | Company, shareholders and profit split in the books |
+| [`docs/github-workflow.md`](docs/github-workflow.md) | Labels, milestones and the project board on GitHub |
 | [`TODO-REPORT.md`](TODO-REPORT.md) | What is done, known gaps and next steps |
 | [`CLAUDE.md`](CLAUDE.md), [`AGENTS.md`](AGENTS.md) | Rules for contributors and coding agents |
 

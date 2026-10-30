@@ -5,7 +5,7 @@ Source: https://bencho.dev (read 2026-10-30). A gallery of about 150 live React 
 ## Rules (owner decision, 2026-10-30)
 
 1. **Rebuild on HeroUI and our tokens.** Every block is restyled on HeroUI, our colour and spacing tokens, `lib/haptic.ts`, `BottomSheet`, `StickyAction`, `CountUp`, `WordReveal`. For MIT blocks the source may be used as a starting point (keep the notice); for Pro blocks, idea only. See Licence below.
-2. **Sounds: all 151 are to be used**, each given a job below. The site says they are "synthesised in the browser" (small Web Audio recipes, no audio files), so no files need hosting. The names below are from the site; the recipe code was not readable from our network, so each one still has to be written (or its recipe read by someone with access to the site) and listened to once.
+2. **Sounds: all 151 are to be used**, each given a job below. They are made in the browser (Web Audio: a few layers of tones and filtered noise per sound, no audio files), so nothing needs hosting. Built 2026-10-30 in `lib/soundRecipes.ts`: bencho.dev was read for how its sounds are made (layer shapes, the three skins), and every recipe was then written fresh for its job here. No code or numbers were copied, because the site states no licence.
 3. **Sounds are on by default** (owner decision, 2026-10-30; F117 in `docs/future-features.md` had proposed off), switchable per person in the preferences blob (`lib/repo/prefs.ts`) with a master switch. Respect the phone's silent mode and reduced motion. Never play on high-frequency events (scroll, map pan, typing in a list search).
 4. **One entry point.** All playback goes through one `lib/sound.ts` with an event map (`playSound("payment.saved")`), so a screen never names a raw sound. Replace a sound by editing the map only.
 5. **RTL and Persian check.** Any block with a drag or swipe direction (sliders, swipe deck, slide-to-confirm, pull) must be tested right to left. Numbers must draw Persian digits (the odometer experiment already failed once on this).
@@ -349,13 +349,22 @@ Bencho gives the same 14 meanings in three skins: `mech*` (mechanical), `bubble*
 | tone | the «try this sound» button in the sound settings |
 | thud | full-page error screen (nothing saved, try again) |
 
+## Built (2026-10-30)
+
+- `lib/soundRecipes.ts`: the 151 recipes, the 14 meanings and the skins. Plain is not a choice: it plays before sign-in, when no company is known.
+- `lib/sound.ts`: `playSound(event)`, the event map (every row above is an event there), the person's switch, and the rules (on by default, off by default under reduced motion until the person turns it on, iPhone silent switch respected, two sounds closer than 60 ms keep the first, nothing in a hidden tab, `map.panned` and `map.wandered` off).
+- Settings: «صدا» under settings and in the account menu (`/settings/sound`). Everyone has their own switch (`sound` in the preferences blob); the owner picks the company skin (`organizations.sound_skin`, bubble by default), and each pick plays its «ثبت شد».
+- Wired so far: done check (`useDoneFlash`), refusal shake (`useShakeOn`), toasts (success, error, info), pop and burst (`item.favourited`), bottom sheet open and close, bottom bar tab, switch flip, copy, theme switch (`theme.light`, `theme.dark`), new-order ping on /sales (`order.ping`), the settings page's sample (`sound.try`, `settings.saved`). Every other event is in the map with its sound but has no caller yet: wire it when its screen is touched, and add nothing to a screen just to make it sound.
+- `tests/sound.test.ts` holds this file and the code together: the 151 names here are exactly the recipes, and every recipe is reachable from an event.
+
 ## Gaps in this list
 
-- All 151 names appear exactly once in the sound tables (checked with a script on 2026-10-30). Keep that true when editing.
+- All 151 names appear exactly once in the sound tables, and `tests/sound.test.ts` fails if that stops being true.
 - Block verdicts now come from opening every page (2026-10-30). The Pro "How it works" notes were read but not copied.
-- All five owner questions on the blocks are answered (see the answers table). Build waits for the owner's go.
-- No sound has been heard by us. The pairing is by name.
-- Wiring: F117 in `docs/future-features.md` stays the feature; this file is its sound sheet.
+- All five owner questions on the blocks are answered (see the answers table). The upgrades are being built; the rest waits for the owner's go.
+- The sounds were measured (rendered offline in Chromium, loudness kept within about 10 dB of each other, nothing near clipping) but not judged by ear on a phone. Listen on a real phone and change a recipe in `lib/soundRecipes.ts` if it sounds wrong for its job.
+- Android has no web signal for its silent mode; there the phone's media volume decides.
+- F117 in `docs/future-features.md` stays the feature; this file is its sound sheet.
 
 ## Owner answers on the blocks (2026-10-30)
 

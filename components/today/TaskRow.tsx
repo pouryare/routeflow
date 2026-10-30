@@ -25,8 +25,9 @@ export default function TaskRow({ taskId, label, sub, customerId, snoozable = fa
   /* The outcome sheet for a task that is not about a customer's call. It remounts per opening
      (the key) so each recording starts on its question; `open` only slides it in and out. */
   const [outcome, setOutcome] = useState({ key: 0, open: false });
-  /* Deleting hides the row at once and sends after the 5 s undo window, so «بازگردانی ثبت»
-     is a local un-hide and there is no "are you sure?" tap in front of it. */
+  /* Deleting folds the row away at once (the rows under it close the gap smoothly, see
+     .rowcollapse) and sends after the 5 s undo window, so «بازگردانی ثبت» is a local unfold
+     and there is no "are you sure?" tap in front of it. */
   const [gone, setGone] = useState(false);
 
   async function patch(body: Record<string, unknown>) {
@@ -43,12 +44,17 @@ export default function TaskRow({ taskId, label, sub, customerId, snoozable = fa
   async function decide(code: string | null): Promise<{ ok: boolean; error?: string }> {
     const { res, j } = await patch(code ? { status: "done", outcome_code: code } : { status: "done" });
     if (!res.ok) return { ok: false, error: j.error };
+    // Folds the finished row away, then lets the refreshed list drop it.
+    const leave = () => {
+      setGone(true);
+      router.refresh();
+    };
     if (j.objection_card) {
       // Phase 8: show the coaching card in the call, then refresh the list.
       setCard(j.objection_card);
-      window.setTimeout(() => router.refresh(), 6000);
+      window.setTimeout(leave, 6000);
     } else {
-      router.refresh();
+      leave();
     }
     return { ok: true };
   }
@@ -73,12 +79,11 @@ export default function TaskRow({ taskId, label, sub, customerId, snoozable = fa
     });
   }
 
-  if (gone) return null;
-
   const openOutcome = () => (customerId ? setFlow({ open: true }) : setOutcome((o) => ({ key: o.key + 1, open: true })));
 
   return (
-    <li className="border-b border-[var(--border)]">
+    <li className="rowcollapse border-b border-[var(--border)]" data-gone={gone ? "" : undefined} inert={gone}>
+    <div className="rowcollapse__inner">
     <SwipeRow
       ownButtons={false}
       start={{ label: "ثبت نتیجه", icon: "check", run: openOutcome }}
@@ -123,6 +128,7 @@ export default function TaskRow({ taskId, label, sub, customerId, snoozable = fa
       )}
     </div>
     </SwipeRow>
+    </div>
     {/* The sheets sit outside the swipe face: events from a portal bubble through React's tree,
         and a drag inside a sheet must not move the row. */}
       {customerId && flow ? (

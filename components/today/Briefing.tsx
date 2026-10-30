@@ -22,6 +22,13 @@ const TONE_KARGAH: Record<string, string> = {
   info: "var(--serie-b)",
 };
 
+/** A task row keeps local state (hidden while its undo runs), so it is keyed by its task:
+ *  keyed by position, the row after a finished task would inherit the finished one's state
+ *  and disappear with it when the list refreshes. */
+function itemKey(it: BriefingItem, i: number): string {
+  return it.action?.kind === "task_outcome" ? `task-${it.action.task_id}` : `at-${i}`;
+}
+
 function Item({ item, variant }: { item: BriefingItem; variant: Variant }) {
   if (item.action?.kind === "task_outcome") {
     return <TaskRow taskId={item.action.task_id} customerId={item.action.customer_id} label={item.label} sub={item.sub} snoozable={item.action.snoozable} />;
@@ -162,7 +169,7 @@ export default function Briefing({
             </div>
             <ul className="kblock__body m-0 list-none">
               {p.items.map((it, i) => (
-                <Item key={i} item={it} variant="meridian" />
+                <Item key={itemKey(it, i)} item={it} variant="meridian" />
               ))}
             </ul>
           </div>
@@ -183,7 +190,7 @@ export default function Briefing({
           <Summary summary={p.summary} variant="plain" />
           <ul className="m-0 list-none p-0">
             {p.items.map((it, i) => (
-              <Item key={i} item={it} variant="plain" />
+              <Item key={itemKey(it, i)} item={it} variant="plain" />
             ))}
           </ul>
           {p.more ? (

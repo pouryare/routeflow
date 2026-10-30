@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
+import { boxOf, slidePill, type Box } from "@/lib/pillSlide";
 import { Button, ToggleButton } from "@heroui/react";
 import { HelpHint, HelpRow } from "@/components/meridian/HelpHint";
 import { Icon } from "@/components/meridian/Icon";
@@ -40,6 +41,17 @@ export default function DayChips({
   }, [today, holidays]);
   const [mode, setMode] = useState<"chips" | "strip" | "calendar">("chips");
 
+  /* The chosen chip's fill slides over from the one chosen before (lib/pillSlide). */
+  const root = useRef<HTMLDivElement | null>(null);
+  const lastPill = useRef<{ mode: string; box: Box } | null>(null);
+  useLayoutEffect(() => {
+    const on = root.current?.querySelector(".daychip--on");
+    if (!on) return;
+    const box = boxOf(on);
+    if (lastPill.current?.mode === mode) slidePill(on, lastPill.current.box, box, "::before");
+    lastPill.current = { mode, box };
+  }, [value, mode]);
+
   const choices = useMemo(() => dayChoices(today, { holidays: known, count, skipHolidays }), [today, known, count, skipHolidays]);
   const strip = useMemo(() => weekDays(today, 14, known), [today, known]);
 
@@ -57,7 +69,7 @@ export default function DayChips({
   );
 
   return (
-    <div className="daychips" role="group" aria-label={ariaLabel}>
+    <div ref={root} className="daychips" role="group" aria-label={ariaLabel}>
       <HelpRow>
         <HelpHint title="انتخاب روز" label="راهنمای انتخاب روز">
           <p className="mhelp__what">امروز، فردا یا یکی از روزهای نزدیک را بزنید. برای روز دیگر «روز دیگر…» را بزنید و از تقویم انتخاب کنید.</p>

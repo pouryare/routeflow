@@ -71,9 +71,11 @@ export function withReducedMotion<T extends object>(
  *  --ease-out, which peaks at exactly 100%.
  */
 export const popover = {
-  initial: { opacity: 0, y: -10 },
-  animate: { opacity: 1, y: 0, transition: { duration: DUR.panel, ease: EASE.pop } },
-  exit: { opacity: 0, y: -10, transition: { duration: 0.2, ease: EASE.out } },
+  /* Grows out of the chip that opened it (the caller sets transform-origin there), so the
+     eye sees where the menu came from. Scale shares the rise's curve and duration. */
+  initial: { opacity: 0, y: -10, scale: 0.6 },
+  animate: { opacity: 1, y: 0, scale: 1, transition: { duration: DUR.panel, ease: EASE.pop } },
+  exit: { opacity: 0, y: -10, scale: 0.6, transition: { duration: 0.2, ease: EASE.out } },
 } as const;
 
 /** The Tier-0 "rise 16px and fade" entrance, as a variants pair. */
