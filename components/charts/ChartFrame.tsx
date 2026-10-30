@@ -1,3 +1,4 @@
+import CardTable from "@/components/CardTable";
 import type { ReactNode } from "react";
 import { faNum } from "@/lib/format";
 import WidgetBoundary from "@/components/WidgetBoundary";
@@ -85,7 +86,7 @@ export default function ChartFrame({
               <summary className="cursor-pointer text-[length:var(--text-xs)] text-[var(--text-muted)] hover:text-[var(--text)]">
                 جدول داده‌ها
               </summary>
-              <table className="mt-[var(--space-2)] w-full border-collapse text-[length:var(--text-xs)]">
+              <CardTable className="mt-[var(--space-2)] w-full border-collapse text-[length:var(--text-xs)]">
                 <thead>
                   <tr className="text-[var(--text-muted)]">
                     <th className="border-b border-[var(--border)] py-[var(--space-1)] text-right font-medium">
@@ -108,7 +109,7 @@ export default function ChartFrame({
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </CardTable>
             </details>
           )}
         </>

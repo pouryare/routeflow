@@ -1,3 +1,4 @@
+import CardTable from "@/components/CardTable";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { COOKIE_NAME } from "@/lib/auth";
@@ -36,7 +37,7 @@ export default async function LeadSourcesPage() {
           ) : (
             <>
               <div style={{ overflowX: "auto" }}>
-                <table className="w-full border-collapse text-[length:var(--text-sm)]">
+                <CardTable className="w-full border-collapse text-[length:var(--text-sm)]">
                   <thead>
                     <tr className="border-b border-border text-right text-text-muted">
                       <th className="py-1 font-normal">منبع</th>
@@ -57,7 +58,7 @@ export default async function LeadSourcesPage() {
                       </tr>
                     ))}
                   </tbody>
-                </table>
+                </CardTable>
               </div>
               <p className="mt-2 text-[length:var(--text-xs)] text-text-faint">
                 «مشتری شد» یعنی دست‌کم یک سفارش تحویل‌شده دارد. هزینهٔ هر منبع هنوز ثبت نمی‌شود، پس بازده هزینه اینجا نیست.

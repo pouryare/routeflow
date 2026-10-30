@@ -1,5 +1,6 @@
 "use client";
 
+import CardTable from "@/components/CardTable";
 import { FieldInput } from "@/components/FieldInput";
 import { tehranTodayIso, faJalaliDateTime } from "@/lib/jalali";
 import { useRunAfterMount } from "@/lib/useRunAfterMount";
@@ -340,7 +341,7 @@ export default function PaymentsPanel({ customers }: { customers: Customer[] }) 
             {months.map(([key, rows]) => (
               <section key={key} className="flex flex-col gap-1">
                 <SectionHead title={key} as="h3" />
-                <table className="w-full text-sm">
+                <CardTable className="w-full text-sm">
                   <thead className="text-text-faint">
                     <tr>
                       <th className="p-2 text-right">مشتری</th>
@@ -372,7 +373,7 @@ export default function PaymentsPanel({ customers }: { customers: Customer[] }) 
                             <span className="flex items-center justify-end gap-2">
                               <button
                                 type="button"
-                                className="text-xs text-text-muted hover:text-accent"
+                                className="inline-flex items-center gap-1 text-xs text-text-muted hover:text-accent max-md:min-h-11 max-md:min-w-11 max-md:justify-center"
                                 onClick={() => setVoiding({ id: p.id, reason: "" })}
                               >
                                 <Icon name="undo" size="sm" />
@@ -380,7 +381,7 @@ export default function PaymentsPanel({ customers }: { customers: Customer[] }) 
                               </button>
                               <button
                                 type="button"
-                                className="text-xs text-text-muted hover:text-accent"
+                                className="inline-flex items-center gap-1 text-xs text-text-muted hover:text-accent max-md:min-h-11 max-md:min-w-11 max-md:justify-center"
                                 onClick={() => openAllocation(p.id)}
                               >
                                 <Icon name="link" size="sm" />
@@ -429,7 +430,7 @@ export default function PaymentsPanel({ customers }: { customers: Customer[] }) 
                       </Fragment>
                     ))}
                   </tbody>
-                </table>
+                </CardTable>
               </section>
             ))}
 

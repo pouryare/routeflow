@@ -1,5 +1,6 @@
 "use client";
 
+import CardTable from "@/components/CardTable";
 import { FieldInput } from "@/components/FieldInput";
 import { useMemo, useState } from "react";
 import { Icon } from "@/components/meridian/Icon";
@@ -214,7 +215,7 @@ export default function CostToServePanel({
           )}
 
           <div className="overflow-x-auto rounded-[var(--radius-md)] border border-border">
-            <table className="w-full border-collapse text-[length:var(--text-sm)]">
+            <CardTable className="w-full border-collapse text-[length:var(--text-sm)]">
               <thead>
                 <tr className="border-b border-border bg-surface text-right text-text-muted">
                   <th className="px-3 py-2 font-medium">مشتری</th>
@@ -246,7 +247,7 @@ export default function CostToServePanel({
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </CardTable>
           </div>
         </>
       )}

@@ -1,5 +1,6 @@
 "use client";
 
+import CardTable from "@/components/CardTable";
 import { FieldInput } from "@/components/FieldInput";
 import DecisionDeck from "@/components/mobile/DecisionDeck";
 import { useUndoableAction } from "@/components/tapflow/useUndoableAction";
@@ -224,7 +225,7 @@ export default function ComplaintsPanel({
       ) : complaints.length === 0 ? (
         <p className="text-sm text-text-muted">شکایتی ثبت نشده است.</p>
       ) : (
-        <table className="w-full text-sm">
+        <CardTable className="w-full text-sm">
           <thead className="text-text-faint">
             <tr>
               <th className="p-2 text-right">مشتری</th>
@@ -262,7 +263,7 @@ export default function ComplaintsPanel({
               </tr>
             ))}
           </tbody>
-        </table>
+        </CardTable>
       )}
       {flow.key > 0 && (
         <ComplaintFlow

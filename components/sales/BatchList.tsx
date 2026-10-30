@@ -1,3 +1,4 @@
+import CardTable from "@/components/CardTable";
 import Link from "next/link";
 import SectionHead from "@/components/meridian/SectionHead";
 import { Icon } from "@/components/meridian/Icon";
@@ -42,7 +43,7 @@ export default function BatchList({ rows, canManage }: { rows: BatchListRow[]; c
       />
       {rows.length > 0 ? (
         <div className="overflow-x-auto">
-          <table className="w-full border-collapse text-[length:var(--text-sm)]">
+          <CardTable className="w-full border-collapse text-[length:var(--text-sm)]">
             <thead>
               <tr className="text-[var(--text-muted)]">
                 <th className="border-b border-[var(--border)] py-2 text-right font-medium">سری ساخت</th>
@@ -71,7 +72,7 @@ export default function BatchList({ rows, canManage }: { rows: BatchListRow[]; c
                 </tr>
               ))}
             </tbody>
-          </table>
+          </CardTable>
         </div>
       ) : null}
     </section>

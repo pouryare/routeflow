@@ -1,3 +1,4 @@
+import CardTable from "@/components/CardTable";
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
@@ -36,7 +37,7 @@ export default async function DataQualityPage() {
             {groups.length === 0 ? (
               <p className="text-[length:var(--text-sm)] text-[var(--text-muted)]">هنوز مشتری فعالی ثبت نشده.</p>
             ) : (
-              <table className="w-full border-collapse text-[length:var(--text-sm)]">
+              <CardTable className="w-full border-collapse text-[length:var(--text-sm)]">
                 <thead>
                   <tr className="border-b border-border text-right text-text-muted">
                     <th className="py-1 font-normal">گروه</th>
@@ -59,7 +60,7 @@ export default async function DataQualityPage() {
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </CardTable>
             )}
           </div>
         </section>

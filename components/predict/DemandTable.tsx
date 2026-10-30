@@ -1,3 +1,4 @@
+import CardTable from "@/components/CardTable";
 import { CardHelp } from "@/components/meridian/CardHelp";
 import { JALALI_MONTHS } from "@/lib/jalali";
 
@@ -73,7 +74,7 @@ export default function DemandTable({ entries }: { entries: DemandEntry[] }) {
         <CardHelp id="card.demand" />
       </div>
       <div className="kblock__body overflow-x-auto">
-        <table className="w-full border-collapse text-[length:var(--text-sm)]">
+        <CardTable className="w-full border-collapse text-[length:var(--text-sm)]">
           <thead>
             <tr className="text-[var(--text-muted)]">
               <th className="border-b border-[var(--border)] py-1 text-right font-medium">مورد</th>
@@ -110,7 +111,7 @@ export default function DemandTable({ entries }: { entries: DemandEntry[] }) {
               </tr>
             ))}
           </tbody>
-        </table>
+        </CardTable>
       </div>
     </div>
   );
