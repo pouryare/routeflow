@@ -998,6 +998,10 @@ From a "which feels better" motion clip and telegram.org's dark/light switch. Wr
 | Sliding pill | Bottom bar, page tabs (`RouteTabs`, also between pages), day chips | `lib/pillSlide.ts`: the new pill plays in from the old one, stretching over both on the way |
 | Gap closes | Today task delete and finish, pipeline lanes, suggestion cards | `.rowcollapse` (grid 1fr to 0fr) for rows hidden while their undo runs; `LeavingRows` (framer-motion popLayout) for rows that leave the data |
 
-### 10.13 UI sounds (2026-10-30, owner decision)
+### 10.13 GitHub labels, milestones and project board (2026-10-30, owner decision)
+
+The owner chose to keep `docs/roadmap.md` as the plan: an issue is opened only when a batch is picked up or a bug is found, never copied ahead from the roadmap. Labels (type, area, priority, status), one milestone per batch and one user-level project board are described in [`docs/github-workflow.md`](github-workflow.md); `scripts/github-labels.sh` sets the labels (a few lines of `gh api`, so no label-sync tool or Action was added).
+
+### 10.14 UI sounds (2026-10-30, owner decision)
 
 From bencho.dev's 151 UI sounds (`docs/bencho-blocks-and-sounds.md`). No library and no audio files: our own Web Audio code in `lib/sound.ts` and our own recipes in `lib/soundRecipes.ts`, written after reading how the site builds its sounds (the site states no licence, so nothing was copied). Owner choices: every sound gets a job, three skins with the company owner choosing (bubble by default), sounds on by default with a switch per person, map panning silent. Settings page «صدا» (`/settings/sound`). F117.
