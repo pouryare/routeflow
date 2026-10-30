@@ -5,6 +5,8 @@
  *  in a vehicle at night. Light is a first-class equal with its own palette and its own
  *  elevation model (see MASTER.md), but it is opt-in.
  */
+import { playSound } from "./sound";
+
 export type Theme = "dark" | "light";
 
 export const THEME_KEY = "coverage-theme";
@@ -109,6 +111,7 @@ export function revealCircle(
  */
 export function switchTheme(theme: Theme, from?: Element | null) {
   const root = document.documentElement;
+  playSound(theme === "light" ? "theme.light" : "theme.dark");
   if (
     !from ||
     typeof document.startViewTransition !== "function" ||

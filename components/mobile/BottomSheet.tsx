@@ -1,9 +1,10 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { Button, Drawer } from "@heroui/react";
 import { Icon } from "@/components/meridian/Icon";
 import WidgetBoundary from "@/components/WidgetBoundary";
+import { playSound } from "@/lib/sound";
 
 /** Every bottom sheet in the app, on a HeroUI bottom Drawer (docs/roadmap.md §10): the «بیشتر»
  *  list, the quick actions, the filters, a card's breakdown, the customer sheet and the tap
@@ -36,6 +37,13 @@ export default function BottomSheet({
   wide?: boolean;
   children: ReactNode;
 }) {
+  // Sounds on a change only: a sheet that mounts already open (or closed) says nothing.
+  const was = useRef(open);
+  useEffect(() => {
+    if (was.current === open) return;
+    was.current = open;
+    playSound(open ? "sheet.open" : "sheet.close");
+  }, [open]);
   return (
     <Drawer isOpen={open} onOpenChange={(isOpen) => { if (!isOpen) onClose(); }}>
       <Drawer.Backdrop variant="blur">

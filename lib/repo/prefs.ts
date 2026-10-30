@@ -9,12 +9,15 @@ export interface BoardPrefs {
   board_default_view?: "status" | "time" | "workflow";
   /** F112: the newest what's-new version this person dismissed. */
   whats_new_seen?: string;
+  /** F117: this person's sound switch (lib/sound.ts). Unset is the default, on. */
+  sound?: "on" | "off";
 }
 
 const ALLOWED: Record<keyof BoardPrefs, readonly string[]> = {
   board_mobile_mode: ["pager", "stack"],
   board_default_view: ["status", "time", "workflow"],
   whats_new_seen: WHATS_NEW_VERSIONS,
+  sound: ["on", "off"],
 };
 
 export async function getPrefs(userId: number): Promise<BoardPrefs> {

@@ -376,6 +376,12 @@ export const PAGE_META: Record<string, PageMeta> = {
     overview:
       "ورودهای اخیر حساب شما و خروج از دستگاه‌های دیگر. اگر ورودی را نمی‌شناسید، از همهٔ دستگاه‌ها خارج شوید و رمز را عوض کنید.",
   },
+  "/settings/sound": {
+    title: "صدا",
+    titleEn: "Sound",
+    help: "page.sound-settings",
+    overview: "صدای کوتاه برنامه هنگام ثبت، خطا و زدن دکمه‌ها. هر کس صدای خودش را روشن یا خاموش می‌کند و مالک شرکت نوع صدا را برای همه انتخاب می‌کند.",
+  },
   "/settings/updates": {
     title: "تازه‌های برنامه",
     titleEn: "What's new",

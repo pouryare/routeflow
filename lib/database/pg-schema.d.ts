@@ -908,6 +908,7 @@ export interface Organizations {
   name: string;
   plan: Generated<string>;
   slug: string;
+  sound_skin: Generated<string>;
   step_up_required: Generated<boolean>;
 }
 
