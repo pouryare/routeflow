@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Icon } from "@/components/meridian/Icon";
 import { faDigits } from "@/lib/crm/vocab";
+import TumbleWords from "./TumbleWords";
 import { SkipButton } from "./Answer";
 import { celebrate } from "@/lib/celebrate";
 
@@ -27,7 +28,7 @@ export default function FlowDone({ chips, next, actions, seconds = 5, onReturn, 
   return (
     <div className="tf-done">
       <div className="tf-tick"><Icon name="check" /></div>
-      <p className="tf-q">ثبت شد</p>
+      <p className="tf-q"><TumbleWords text="ثبت شد" /></p>
       <div className="tf-chips">
         {chips.map((c) => <span key={c}>{c}</span>)}
         {next ? <span className="nx">{next}</span> : null}

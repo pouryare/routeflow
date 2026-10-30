@@ -8,6 +8,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Icon } from "@/components/meridian/Icon";
 import { PasswordInput, TextInput } from "@/components/TextInput";
 import OtpInput from "@/components/mobile/OtpInput";
+import LeanTitle from "@/components/meridian/LeanTitle";
 import WordReveal from "@/components/meridian/WordReveal";
 import BusyIcon from "@/components/meridian/BusyIcon";
 import { useDoneFlash } from "@/lib/useDoneFlash";
@@ -133,7 +134,7 @@ function LoginForm() {
             </div>
           </div>
           <h1 className="mb-[var(--space-1)] text-center text-[length:var(--text-xl)] font-bold text-[var(--text)]">
-            <WordReveal text="نقشه پوشش مشتریان" />
+            <LeanTitle><WordReveal text="نقشه پوشش مشتریان" /></LeanTitle>
           </h1>
           <p className="mb-[var(--space-5)] text-center text-[length:var(--text-sm)] text-[var(--text-muted)]">
             با نام کاربری و رمز عبور خودتان وارد شوید.

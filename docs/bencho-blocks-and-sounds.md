@@ -171,7 +171,7 @@ All 150 block pages were opened on 2026-10-30 (description, live preview, and th
 | thinking | Pro | Merge | Same: steps arrive and fold into one line (lead import decode). |
 | shimmer-text | Pro | Merge | Same: «در حال ذخیره…» with a sweep. |
 | generate | MIT | New | Was "not useful". No AI: a big photo or map tile resolving under glass while it loads. |
-| dot-loader | Pro | New | The one small loader for buttons and pills. |
+| dot-loader | Pro | Built | The one small loader for buttons and pills. |
 | trace-loader | Pro | Merge | Same family; pick one look. |
 | wave-loader | Pro | Merge | Same family. |
 | bounce-loader | Pro | Merge | Same family. |
@@ -187,8 +187,8 @@ All 150 block pages were opened on 2026-10-30 (description, live preview, and th
 | text-rise | Pro | Have it | Our `WordReveal`: line, word or letter at a time. |
 | text-fade | Pro | Merge | Same component, fade mode. |
 | text-blur | Pro | Merge | Same component, blur mode. |
-| falling-text | Pro | New | Empty "all done" screen: the words tumble, tap to put them back. |
-| magnetic-letters | Pro | New | Login title leans toward the finger. |
+| falling-text | Pro | Built | Empty "all done" screen: the words tumble, tap to put them back. |
+| magnetic-letters | Pro | Built | Login title leans toward the finger. |
 | foggy-word | Pro | New | Login or splash: wipe the fog off the logo. |
 | heat-word | MIT | New | Coverage page header: dots melt into a heat map (matches the heat layer). |
 | light | Pro | New | "What's new" card: the line appears under the finger's light. |
