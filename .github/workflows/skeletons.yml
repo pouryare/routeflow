@@ -1,0 +1,83 @@
+name: Skeletons
+
+# Keeps lib/skeletons/ (the loading screens, captured from the real pages) in step with the pages.
+# When a pull request changes page or style files, this recaptures every page on a throwaway demo
+# database and commits whatever moved to the pull request's branch. A page whose capture is within
+# a few pixels of the stored one is left alone (scripts/capture-skeletons.mjs), so most runs commit
+# nothing.
+#
+# Billed per minute like CI, so: ready pull requests only (drafts are skipped), same-repository
+# branches only (a fork's token cannot push), and only for the files that change a layout.
+# The commit is pushed with the built-in token, which GitHub does not run workflows on: CI is not
+# repeated for a commit that only changes generated JSON.
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - "app/(shell)/**"
+      - "components/**"
+      - "app/globals.css"
+      - "lib/pageMeta.ts"
+      - "scripts/capture-skeletons.mjs"
+
+concurrency:
+  group: skeletons-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  capture:
+    if: github.event.pull_request.draft == false && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
+      SESSION_SECRET: ci-secret-not-for-production-0123456789
+      DATABASE_URL: postgres://postgres:ci@localhost:5432/postgres
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+          check-latest: true
+          cache: npm
+
+      - run: npm ci
+
+      - name: Build the PostgreSQL image (db/Dockerfile)
+        run: docker build -t routeflow-postgres db
+
+      - name: Start PostgreSQL
+        run: |
+          docker run -d --name pg -e POSTGRES_PASSWORD=ci -p 5432:5432 --shm-size=1g routeflow-postgres \
+            postgres -c shared_preload_libraries=pg_stat_statements,pg_duckdb -c wal_level=logical \
+                     -c fsync=off -c synchronous_commit=off -c full_page_writes=off
+          for i in $(seq 1 120); do docker logs pg 2>&1 | grep -q "PostgreSQL init process complete" && break; sleep 1; done
+          for i in $(seq 1 60); do docker exec pg pg_isready -h localhost -U postgres -q && break; sleep 1; done
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Recapture every page
+        run: bash scripts/skeletons-ci.sh
+
+      - name: Commit what changed
+        env:
+          BRANCH: ${{ github.event.pull_request.head.ref }}
+        run: |
+          git add lib/skeletons
+          if git diff --cached --quiet; then
+            echo "Skeletons are up to date; nothing to commit."
+            exit 0
+          fi
+          git diff --cached --stat
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Recapture page skeletons" -m "Automatic: a page or style file in this pull request changed a layout (.github/workflows/skeletons.yml)."
+          git pull --rebase origin "$BRANCH"
+          git push origin "HEAD:$BRANCH"

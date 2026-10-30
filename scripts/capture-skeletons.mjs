@@ -3,7 +3,10 @@
 //   DATABASE_URL=postgres://… bash scripts/preview.sh      # in one terminal (demo data, never live)
 //   DEMO_PASSWORD=… npm run skeletons:capture              # in another; --only=/sales/orders for one page
 //
-// Rerun it whenever a page's layout changes and commit lib/skeletons/ with the change.
+// CI runs it for you: .github/workflows/skeletons.yml recaptures when a PR touches page or style
+// files and commits the result to the branch. By hand, rerun it after a layout change and commit
+// lib/skeletons/. A page whose new capture is within a few pixels of the stored one keeps the
+// stored file, so run-to-run jitter never makes a diff.
 //
 // For each route with a loading.tsx it logs in as the first demo role the page lets in, opens
 // the page right to left at phone and desktop width, waits for its data, and runs boneyard's
@@ -15,6 +18,7 @@ import { readFileSync, writeFileSync, readdirSync, statSync, mkdirSync } from "n
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { chromium } from "playwright";
+import { sameCapture } from "./skeleton-compare.mjs";
 
 const ROOT = path.resolve(import.meta.dirname, "..");
 const OUT = path.join(ROOT, "lib/skeletons");
@@ -164,6 +168,10 @@ async function login(role) {
 }
 
 mkdirSync(OUT, { recursive: true });
+function readStored(file) {
+  try { return JSON.parse(readFileSync(path.join(OUT, file), "utf8")); } catch { return null; }
+}
+
 const report = [];
 for (const route of routes()) {
   if (ONLY && route !== ONLY) continue;
@@ -188,8 +196,11 @@ for (const route of routes()) {
   }
   if (!done) { report.push(`  ✗ ${route}: no demo role reached it with content; keeps its fallback shape`); continue; }
   const file = `${fileFor(route)}.json`;
-  writeFileSync(path.join(OUT, file), JSON.stringify({ route, phone: done.phone, desktop: done.desktop }) + "\n");
-  report.push(`  ✓ ${route} as ${done.role} (${done.target}): ${done.phone.bones.length} phone / ${done.desktop?.bones.length ?? 0} desktop boxes`);
+  const next = { route, phone: done.phone, desktop: done.desktop };
+  const stored = readStored(file);
+  const kept = stored && sameCapture(stored, next);
+  if (!kept) writeFileSync(path.join(OUT, file), JSON.stringify(next) + "\n");
+  report.push(`  ${kept ? "=" : "✓"} ${route} as ${done.role} (${done.target}): ${done.phone.bones.length} phone / ${done.desktop?.bones.length ?? 0} desktop boxes${kept ? " (unchanged)" : ""}`);
 }
 await browser.close();
 
