@@ -39,7 +39,7 @@ All 150 block pages were opened on 2026-10-30 (description, live preview, and th
 | ticket | Pro | New | Delivery slip with a tear-off stub: the stub is the customer's copy (shared as an image). |
 | crumple | Pro | New | Discard a draft order or receipt: it scrunches and goes in the bin. The «حذف» moment, with undo. |
 | coin | Pro | New | Cash in hand («پول در دست») card: a coin that spins when cash is added. Light version only (see the cost question). |
-| private-balance | Pro | New | The hide-money eye (decided in the ezBookkeeping study): tap to hide amounts digit by digit, hold to peek. |
+| private-balance | Pro | Built | The hide-money eye (decided in the ezBookkeeping study): tap to hide amounts digit by digit, hold to peek. |
 | price-flow | Pro | Built | Price change on a product or order total: new digits pop in, green up, red down. |
 | rolling-counter | MIT | Built | Quantity on an order line (tap, hold to speed up, drag to fling) and totals; joins our `CountUp`. |
 | stepper | Pro | Merge | Same job as rolling-counter: tap for one, hold and drag to sweep. Build as one quantity control. |
