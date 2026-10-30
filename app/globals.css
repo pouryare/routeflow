@@ -1698,8 +1698,8 @@ body {
    bottom of the viewport) then sat at the bottom of the page instead, visibly open with
    a dead close button. tests/routeFade.test.ts guards it. */
 @keyframes meridian-route-in {
-  from { opacity: 0; transform: translateY(8px); }
-  to   { opacity: 1; transform: none; }
+  from { opacity: 0; transform: translateY(8px); filter: blur(5px); }
+  to   { opacity: 1; transform: none; filter: none; }
 }
 .meridian .route-fade { animation: meridian-route-in 240ms var(--ease) backwards; }
 @media (prefers-reduced-motion: reduce) { .meridian .route-fade { animation: none; } }
@@ -5028,6 +5028,8 @@ body {
   .meridian .kpibar, .meridian .kpibar__detail { display: none; }
 }
 .meridian ul.kpicarousel__row, .meridian ul.summarycards { list-style: none; margin: 0; padding-inline: 2px; }
+.meridian .kpicarousel__item { transition: opacity 200ms ease, transform 200ms ease; } .meridian .kpicarousel__item[data-on="false"] { opacity: .72; transform: scale(.97); }
+.meridian .kpicarousel__dots i { transition: width 200ms ease, background 200ms ease; } .meridian .kpicarousel__dots i.on { width: 18px; border-radius: 4px; }
 .meridian .kpicarousel__item { flex: 0 0 80%; scroll-snap-align: center; display: flex; }
 .meridian .kpicarousel__item .kpicarousel__card { flex: 1 1 auto; }
 .meridian ul.summarycards > li.summarycard { display: flex; }
