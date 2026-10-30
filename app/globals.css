@@ -5349,3 +5349,9 @@ span.burst { display: inline-flex; }
 .hidemoney { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; border: 0; background: transparent; color: var(--text-muted); }
 .odo { transition: color 900ms ease, filter 260ms ease; }
 html[data-hide-money="1"] .odo { filter: blur(7px); }
+
+/* Folding receipt (DriverRun): the preview folds away to nothing, like a bill tucked back in a pocket. */
+.foldbill { display: grid; grid-template-rows: 1fr; transition: grid-template-rows 320ms var(--ease, ease), opacity 240ms ease; }
+.foldbill__inner { overflow: hidden; min-height: 0; transform-origin: top; }
+.foldbill[data-folded="true"] { grid-template-rows: 0fr; opacity: 0; }
+@media (prefers-reduced-motion: reduce) { .foldbill { transition: none; } }

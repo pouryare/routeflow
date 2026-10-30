@@ -35,7 +35,7 @@ All 150 block pages were opened on 2026-10-30 (description, live preview, and th
 | slide-confirm | MIT | New | Driver «تحویل شد», large payment, closing a month. Replaces `confirmAction` (the browser dialog) for those three. |
 | signature | MIT | New | Proof of delivery: the customer signs on the driver's phone; saved as a photo beside the delivery. |
 | pay-button | Pro | New | «ثبت پرداخت»: pick cash, card or cheque on the line under the amount, pay, and it opens into the receipt. |
-| folding-bill | MIT | New | Receipt preview the driver can fold away after showing the customer. |
+| folding-bill | MIT | Built | Receipt preview the driver can fold away after showing the customer. |
 | ticket | Pro | New | Delivery slip with a tear-off stub: the stub is the customer's copy (shared as an image). |
 | crumple | Pro | New | Discard a draft order or receipt: it scrunches and goes in the bin. The «حذف» moment, with undo. |
 | coin | Pro | New | Cash in hand («پول در دست») card: a coin that spins when cash is added. Light version only (see the cost question). |
