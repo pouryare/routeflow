@@ -16,6 +16,7 @@ Totals: 46 small, 73 medium, 27 large first slices; 123 entries note existing co
     - [1b. UI pattern batches (2026-10-28)](#1b-ui-pattern-batches-2026-10-28)
     - [1c. Fleetbase study: UI/UX batches (2026-10-30)](#1c-fleetbase-study-uiux-batches-decided-2026-10-30)
     - [1d. Fleetbase code deep dive (2026-10-30)](#1d-fleetbase-code-deep-dive-decided-2026-10-30)
+    - [1e. Twenty CRM study (2026-10-30)](#1e-twenty-crm-study-decided-2026-10-30)
 2. [Foundations: build once, many entries depend on them](#2-foundations)
 3. [Overlaps: entries that should be designed together](#3-overlaps)
 4. [Suggested order](#4-suggested-order)
@@ -175,6 +176,45 @@ A second pass through the Fleetbase code (report https://claude.ai/artifact/DUP4
 - **Recurring driver unavailability: design note only**, on the parked shifts and leave entry (F-shifts): a recurring day off or a leave week with a reason, shown as a planner warning. Nothing is built.
 - **Stock hold for a quote with an expiry** (held, committed, released) is the Fleetbase answer to the open question under F51; no decision taken.
 - **Scheduled saved reports to Telegram: skipped.**
+
+### 1e. Twenty CRM study (decided 2026-10-30)
+
+The owner had Twenty (open source CRM, `twentyhq/twenty`) studied in three passes; 24 ideas were answered one by one. Report: https://claude.ai/artifact/L3pBQvp2bSQFZ9BzorFW13. **Ideas only: Twenty is AGPL-3.0 and files marked `@license Enterprise` are commercial, so no Twenty code is used.** Nothing below is built yet. Not copied: runtime custom objects and a schema per company, the workflow canvas with code/HTTP/AI steps, AI agents, Gmail/Outlook sync, a marketplace, a row-level permission designer.
+
+**Batch 1 (lists and trust), additions**
+- **Totals for the filtered list.** Orders, payments and cheques lists show a count and the toman sum for the current filter; the lead pool and task board show a count per column. Computed on the server with the same filter (T7).
+- **Export follows what you see.** `/api/sales/orders/export` takes no filter today. It writes the current filter and sort, or only ticked rows, up to a row cap, and says how many rows it wrote; customers and payments follow. Customer export stays behind the authenticator code (T21).
+- **Sales chart bug.** `revenue_by_day` in `lib/dashboard.ts` is built only from days that had orders and the sales page takes the first 7 as «this week» and the next 7 as «last week», so one empty day shifts every bar. Build calendar days filled with 0, show Fridays and holidays as closed, compare the same weekdays (T15). With it: sales by weekday, a cumulative month-to-date line against last month, and rankings showing top 10 plus “سایر” instead of silently dropping the rest (T20).
+
+**Batch 2 (desk speed), additions**
+- **One filter format.** Saved views, saved smart segments (D3-5), rule conditions (F130) and the report builder (F123) share one filter shape: field, operator, value, nested AND/OR, with «من» and relative Jalali dates («۳۰ روز گذشته»). Each list offers a fixed menu of fields and operators, turned into parameterised SQL through the scoped reads (T1).
+- **Unsaved-changes bar.** Changing a saved view's filters shows Save, Save as new view and Reset. Views stay personal; no sharing to roles (T2).
+- **New record pre-filled from the filter.** «مشتری جدید» from a list filtered to a group and rep opens with both set (T11).
+
+**Batch D (find and act faster), additions**
+- **Bulk edit on the shared selection bar.** Customers: rep, group, district, price tier, tags. Tasks: assignee, due date. An empty field is left alone; a count preview («۴۲ مشتری تغییر می‌کند»); one activity line per record; credit limit is not bulk-editable; owner changes also go to the F100 history (T4).
+- **One action list.** Each action is declared once (label, icon, role set, where it applies, pinned or under «بیشتر», hotkey) and feeds the record buttons, the selection bar and Ctrl-K, so the three never disagree on role gates (T14).
+
+**Records and history**
+- **Created by, and how.** Orders, customers, payments and tasks store a source next to the creator (form, quick order, offline sync, import, rule, system, Telegram), shown as one line and usable in filters. F85 stays the sales channel (T5).
+- **Readable timelines.** On the merged order timeline and the customer timeline: one person's edits within 10 minutes merge into one entry; cost, margin and credit changes are hidden from roles that cannot see them; position pings and counters are not logged (T6).
+- **Recycle bin (F111): a JSON copy in a trash table**, not a `deleted_at` column; first types reminders, tasks and photos, per-company keep-for-N-days in the log-retention setting. A link to a deleted item shows who deleted it and when, with a restore button for managers (T3, T18).
+- **Calendar view of cheques by due date.** Phone: an agenda grouped by day (`DayChips`); desk: a Jalali month grid with daily sums. Payment promises (F50) and tasks reuse it later (T8).
+
+**Platform and safety**
+- **Maintenance banner.** The owner sets a start and end; everyone sees a dismissible Persian banner; drivers and reps are also told to sync offline work before it starts (T17).
+- **Staff invitation by SMS link (after Farazsms).** Owner enters name, mobile and role; the person gets a 48-hour single-use link, sets their own password and can enrol the authenticator at once; a pending list with resend and revoke. Goes through the SMS guard (1d). The owner-typed first password stays as a fallback (T22).
+- **Rate limiter move to Postgres.** Give each rule a short and a long window, keyed by person and IP (for example 5 code tries a minute and 20 an hour) (T24).
+
+**Design notes on parked entries (nothing built)**
+- **F130 rule builder:** edit a draft then publish; «test on this customer» before turning a rule on; a firing log showing which condition passed or failed; a daily firing budget per rule and per company that pauses the rule and alerts the owner; firings kept 14 days (T9).
+- **F126 setup wizard / F10:** import steps upload, pick sheet, pick header row, match columns (remembered per company), fix bad cells in place, import with dedupe by mobile number (update or skip), on the lead import job runner (T10).
+- **F122 custom fields:** text, number, choice, date, yes/no; up to ten; choices ordered and coloured; archive instead of delete so old values survive; a per-role hidden or read-only switch; filterable through the shared filter (T12).
+- **F82 / F59:** a manager lends a rep's customers to a colleague for N days; access ends by itself, both are told, every grant is logged; ownership does not move (T13).
+- **F70 / F21 SMS campaigns:** an opt-out list with reason and source; two topics (promotions and service messages) so a customer who stops promotions still gets delivery notices; a test send to yourself; scheduling; sent, failed and skipped counts; no short links or click counting (T16).
+- **F50 payment promises:** a follow-up closes itself when the payment arrives, otherwise wakes on the date; one stored wake-up row can also serve snooze (F142) and rule cooldowns (T23).
+
+**Skipped:** sharing saved views with a role or group (T2 option), a log of who opens sensitive pages (T19; F27 stays as is), short links with click counts (T16).
 
 ## 2. Foundations
 
