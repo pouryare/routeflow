@@ -5307,3 +5307,10 @@ span.burst { display: inline-flex; }
 .scrollfade__edge--left { left: 0; background: linear-gradient(to right, color-mix(in srgb, var(--foreground, #000) 22%, transparent), transparent); }
 .scrollfade__edge--right { right: 0; background: linear-gradient(to left, color-mix(in srgb, var(--foreground, #000) 22%, transparent), transparent); }
 .scrollfade[data-more-left="true"] .scrollfade__edge--left, .scrollfade[data-more-right="true"] .scrollfade__edge--right { opacity: 1; }
+
+/* DateReel (components/mobile/DateReel.tsx): three snap-scrolling drums with a band over the middle row. */
+.datereel { position: relative; display: grid; grid-template-columns: 1fr 1.6fr 1.2fr; gap: 4px; max-width: 360px; margin-inline: auto; height: 220px; }
+.datereel__band { position: absolute; inset-inline: 0; top: 88px; height: 44px; border-radius: var(--radius-md, 10px); background: color-mix(in srgb, var(--accent) 12%, transparent); pointer-events: none; }
+.datereel__drum { height: 220px; overflow-y: auto; scroll-snap-type: y mandatory; padding-block: 88px; scrollbar-width: none; -webkit-mask-image: linear-gradient(transparent, #000 35%, #000 65%, transparent); mask-image: linear-gradient(transparent, #000 35%, #000 65%, transparent); }
+.datereel__row { height: 44px; display: flex; align-items: center; justify-content: center; scroll-snap-align: center; font-variant-numeric: tabular-nums; }
+.datereel__row[aria-selected="true"] { font-weight: 700; color: var(--accent); }

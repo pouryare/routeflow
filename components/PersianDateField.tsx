@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import { GregorianCalendar, PersianCalendar as ShamsiCalendar, parseDate, toCalendar, type CalendarDate, type DateValue } from "@internationalized/date";
 import { Button, Calendar } from "@heroui/react";
 import { Icon } from "@/components/meridian/Icon";
+import DateReel from "@/components/mobile/DateReel";
 import BottomSheet from "@/components/mobile/BottomSheet";
 import { faJalaliDate, todayJalali, jalaliToIsoDate } from "@/lib/jalali";
 
@@ -97,6 +98,8 @@ export default function PersianDateField({
   ariaLabel?: string;
 }) {
   const [open, setOpen] = useState(false);
+  const [calendar, setCalendar] = useState(false);
+  const [draft, setDraft] = useState("");
   const pick = (iso: string) => {
     if (iso && isDisabled?.(iso)) return;
     onChange(iso);
@@ -113,7 +116,7 @@ export default function PersianDateField({
         className="jdate__field"
         aria-haspopup="dialog"
         aria-label={ariaLabel ? `${ariaLabel}: ${value ? faJalaliDate(value) : "خالی"}` : undefined}
-        onPress={() => setOpen(true)}
+        onPress={() => { setDraft(""); setCalendar(false); setOpen(true); }}
       >
         <Icon name="calendar" size="sm" />
         <span className={value ? "jdate__value" : "jdate__placeholder"}>{value ? faJalaliDate(value) : placeholder}</span>
@@ -126,8 +129,22 @@ export default function PersianDateField({
             <p className="mhelp__how">«امروز» تاریخ امروز را می‌گذارد.</p>
           </HelpHint>
         </HelpRow>
-        <PersianCalendar value={value} onChange={pick} isDisabled={isDisabled} ariaLabel={title} />
+        {calendar ? (
+          <PersianCalendar value={value} onChange={pick} isDisabled={isDisabled} ariaLabel={title} />
+        ) : (
+          <DateReel value={value} onChange={setDraft} />
+        )}
         <div className="jdate__foot">
+          {!calendar && (
+            <Button variant="primary" onPress={() => pick(draft || value || todayIso())}>
+              <Icon name="check" size="md" />
+              تأیید
+            </Button>
+          )}
+          <Button variant="tertiary" onPress={() => setCalendar((v) => !v)}>
+            <Icon name="calendar" size="md" />
+            {calendar ? "چرخ تاریخ" : "تقویم"}
+          </Button>
           <Button variant="tertiary" onPress={() => pick(todayIso())}>
             <Icon name="calendar" size="md" />
             امروز
