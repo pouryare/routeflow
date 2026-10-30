@@ -5116,6 +5116,45 @@ body {
   .done-check { animation: done-check-pop 420ms var(--spring-pop, cubic-bezier(.34,1.56,.64,1)) both; }
 }
 
+/* Pop and burst (lib/burst.ts): a tap that turned something on -- a pin, a star, a saved
+   search, a finished action's check. The icon pops, a ring and eight dots fly out of it
+   and fade. Pseudo-elements, so nothing in the layout moves; centred with inset + auto
+   margins, so it is the same in RTL. */
+.burst { position: relative; }
+span.burst { display: inline-flex; }
+.burst::before,
+.burst::after {
+  content: ""; position: absolute; inset: 0; margin: auto;
+  border-radius: 999px; pointer-events: none; opacity: 0;
+}
+.burst::before { width: 2.2em; height: 2.2em; border: 2px solid var(--accent); }
+.burst::after {
+  width: 4px; height: 4px;
+  box-shadow:
+    0 -15px var(--accent), 11px -11px var(--warn), 15px 0 var(--accent), 11px 11px var(--crit),
+    0 15px var(--accent), -11px 11px var(--warn), -15px 0 var(--accent), -11px -11px var(--crit);
+}
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes burst-pop {
+    0%   { transform: scale(0.6); }
+    45%  { transform: scale(1.3); }
+    100% { transform: none; }
+  }
+  @keyframes burst-ring {
+    from { opacity: 0.9; transform: scale(0.3); }
+    to   { opacity: 0; transform: scale(1.35); border-width: 0; }
+  }
+  @keyframes burst-dots {
+    0%   { opacity: 0; transform: scale(0.4); }
+    30%  { opacity: 1; }
+    100% { opacity: 0; transform: scale(1.3); }
+  }
+  /* The done check keeps its own spin-in pop (.done-check). */
+  .burst[data-burst] > svg:not(.done-check) { animation: burst-pop 420ms var(--spring-pop) both; }
+  .burst[data-burst]::before { animation: burst-ring 520ms var(--ease-out) both; }
+  .burst[data-burst]::after { animation: burst-dots 560ms var(--ease-out) both; }
+}
+
 /* CountUp (components/meridian/CountUp.tsx): each digit is a column showing one cell of a
    0-9 strip; changing the figure slides the strip. */
 .odo { display: inline-block; unicode-bidi: isolate; white-space: nowrap; }

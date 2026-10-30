@@ -3,6 +3,7 @@
 import { MAX_STARS } from "@/lib/leadScore";
 import { faNum } from "@/lib/format";
 import { Icon } from "@/components/meridian/Icon";
+import { burst } from "@/lib/burst";
 
 /** A row of stars for one criterion.
  *
@@ -36,8 +37,11 @@ export default function StarRating({
             aria-checked={value === star}
             aria-label={`${label}: ${faNum(star)} از ${faNum(MAX_STARS)}`}
             disabled={disabled}
-            onClick={() => onChange(value === star ? null : star)}
-            className={`inline-flex min-h-11 min-w-9 items-center justify-center px-0.5 text-[length:var(--text-md)] leading-none transition-colors duration-[var(--dur-fast)] ease-[var(--ease-out)] disabled:opacity-40 ${
+            onClick={(e) => {
+              if (value !== star) burst(e.currentTarget);
+              onChange(value === star ? null : star);
+            }}
+            className={`burst inline-flex min-h-11 min-w-9 items-center justify-center px-0.5 text-[length:var(--text-md)] leading-none transition-colors duration-[var(--dur-fast)] ease-[var(--ease-out)] disabled:opacity-40 ${
               filled ? "text-warn" : "text-text-faint hover:text-warn"
             }`}
           >

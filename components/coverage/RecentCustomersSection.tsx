@@ -3,6 +3,7 @@
 import { CustomerRow } from "@/lib/types";
 import CollapsibleSection from "@/components/CollapsibleSection";
 import { Icon } from "@/components/meridian/Icon";
+import { burst } from "@/lib/burst";
 
 /** The sidebar's «اخیراً دیده‌شده» list.. */
 export default function RecentCustomersSection({ recentCustomers, flyToCustomer, togglePinned }: {
@@ -27,10 +28,13 @@ export default function RecentCustomersSection({ recentCustomers, flyToCustomer,
                   {c.business_name}
                 </button>
                 <button
-                  onClick={() => togglePinned(c.id)}
+                  onClick={(e) => {
+                    burst(e.currentTarget);
+                    togglePinned(c.id);
+                  }}
                   aria-label={`سنجاق کردن ${c.business_name}`}
                   title="سنجاق کردن"
-                  className="shrink-0 text-text-faint transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:text-accent"
+                  className="burst shrink-0 text-text-faint transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:text-accent"
                 >
                   <Icon name="pin" size="sm" />
                 </button>

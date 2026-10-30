@@ -31,6 +31,7 @@ import { useSwipeDismiss } from "./useSwipeDismiss";
 import { faNum } from "@/lib/format";
 import CustomerBento, { useCustomerSummary } from "@/components/meridian/CustomerBento";
 import { Icon } from "@/components/meridian/Icon";
+import { burst } from "@/lib/burst";
 import { faJalaliDateTime } from "@/lib/jalali";
 
 function customerLink(id: number): string {
@@ -208,11 +209,14 @@ export default function CustomerDetailPanel({
         <h2 className="text-[length:var(--text-md)] font-bold leading-snug text-text">{customer.business_name}</h2>
         {onTogglePin && (
           <button
-            onClick={onTogglePin}
+            onClick={(e) => {
+              if (!pinned) burst(e.currentTarget);
+              onTogglePin();
+            }}
             aria-pressed={pinned}
             aria-label={pinned ? "برداشتن سنجاق" : "سنجاق کردن این مشتری"}
             title={pinned ? "برداشتن سنجاق" : "سنجاق کردن — در بالای پنل نگه داشته می‌شود"}
-            className={`shrink-0 rounded-[var(--radius-sm)] p-1 text-[length:var(--text-md)] leading-none transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] ${
+            className={`burst shrink-0 rounded-[var(--radius-sm)] p-1 text-[length:var(--text-md)] leading-none transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] ${
               pinned ? "text-accent hover:text-crit" : "text-text-faint hover:text-accent"
             }`}
           >
