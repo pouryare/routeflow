@@ -120,6 +120,23 @@ The owner had Fleetbase (open source fleet platform, AGPL-3.0) studied for scree
 - **Run replay (with F6).** Scrub a driver's day on a map with time and speed per point, for disputes and mileage; it informs how long positions are kept.
 - **Attempts list on the owner's status page.** Per message: tries, outcome, time and a retry button, built with the batch A delivery log.
 
+**Deferred until another feature is built (decided 2026-10-30).** These stay on the roadmap; each waits for the feature in the second column.
+
+| Item | Waits for | What to build then |
+|---|---|---|
+| Freshness labels on positions and ETAs | F6 live tracking | Age on every live dot; arrival says live, planned or estimated; low confidence visible; all in Persian |
+| Customer tracking page | F6 and F79 | Coarse three-step status before an SMS code, then map, arrival and details; blurred locked sections; masked contact choices; a call button when there is no contact; code rules from the Fleetbase study (10 minutes, 3 tries, 30 s resend) |
+| Late-start, off-route and long-stop manager alerts | F6 | Per-company switches and thresholds, sent once per order, through the existing alerts and quiet hours |
+| Position retention as a setting | F6 | Per-company retention with a system maximum (Fleetbase: 90 days, raw payload stripped after 7) |
+| Route simulator for testing | F6 | A fake driver driving a planned route, to test arrival events and take screenshots |
+| Arrival after a short stay (dwell) | F6 and F38 | Count arrival only after a short stay inside the customer's circle |
+| Run replay map | F6 | Scrub a driver's day with time and speed per point, for disputes and mileage |
+| QR scan proof and a required-proof setting | F17 delivery proof | QR on the delivery note scanned at the door; per-company required proof (none, photo, scan); a no-proof reason |
+| Receipt layout live preview | The receipt layout page | A preview card that updates as you type |
+| Setup checklist details | UI batch D | Minutes per step, % bar, next step highlighted, steps tick from real data, hide when done |
+| Attempts list with retry on the status page | Batch A delivery log | Tries, outcome and time per message, with a retry button |
+| Internal chat phases 2 and 3 | Chat phase 1 (threads on orders and customers) | 1:1 and group chats on the same tables, then photos, search and read receipts |
+
 **Parked or skipped.** The customer tracking page waits for F6 and F79 (reference design: coarse three-step status before an SMS code, blurred locked sections, masked contact choices, a call button when there is no contact). The van check sheet, odometer and expiry dates were skipped. A store-reviewer sign-in for the Android app is not needed. QR scan proof and a required-proof setting wait for the F17 design. Late-start, off-route and long-stop manager alerts are decided at F6; the position retention setting, a route simulator for testing and arrival counted after a short stay in the circle are noted on F6 in `docs/future-features.md`.
 
 ## 2. Foundations
