@@ -4843,8 +4843,14 @@ body {
   .meridian .bottomnav__item span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   /* The page you are on: HeroUI's soft accent pill behind the icon, as its tabs mark a selection. */
   .meridian .bottomnav__item[aria-current="page"] { color: var(--accent-soft-foreground); font-weight: 600; }
-  .meridian .bottomnav__item > svg { box-sizing: content-box; padding: 3px 16px; border-radius: 999px; transition: background-color 160ms var(--ease); }
-  .meridian .bottomnav__item[aria-current="page"] > svg { background: var(--accent-soft); }
+  /* The pill is the icon wrapper's ::before, so BottomNav can slide it from the item you
+     left (lib/pillSlide) without moving the icon itself. */
+  .meridian .bottomnav__icon { position: relative; isolation: isolate; display: inline-flex; padding: 3px 16px; }
+  .meridian .bottomnav__icon::before {
+    content: ""; position: absolute; inset: 0; z-index: -1; border-radius: 999px;
+    background: var(--accent-soft); opacity: 0; transition: opacity 160ms var(--ease);
+  }
+  .meridian .bottomnav__item[aria-current="page"] .bottomnav__icon::before { opacity: 1; transition: none; }
   .meridian .bottomnav__item:focus-visible { outline: 2px solid var(--accent); outline-offset: -3px; }
   .meridian .qa-fab {
     display: inline-flex; align-items: center; gap: 6px; position: fixed; z-index: 60;
@@ -4908,7 +4914,14 @@ body {
   color: var(--foreground); font: inherit; font-size: 14px; font-weight: 500; cursor: pointer; scroll-snap-align: start; flex: none;
 }
 .meridian .daychip small { font-size: 11px; font-weight: 400; color: var(--muted); }
-.meridian .daychip--on { border-color: var(--accent); background: var(--accent); color: var(--accent-foreground); }
+/* The fill of the chosen day is a ::before so DayChips can slide it from the day chosen
+   before (lib/pillSlide); the chip itself only changes its border and ink. */
+.meridian .daychip { position: relative; isolation: isolate; }
+.meridian .daychip--on { border-color: var(--accent); background: transparent; color: var(--accent-foreground); }
+.meridian .daychip--on::before {
+  content: ""; position: absolute; inset: -1px; z-index: -1;
+  border-radius: inherit; background: var(--accent);
+}
 .meridian .daychip--on small { color: var(--accent-foreground); }
 .meridian .daychip--holiday:not(.daychip--on), .meridian .daychip--weekend:not(.daychip--on) { border-style: dashed; }
 .meridian .daychips__link {
