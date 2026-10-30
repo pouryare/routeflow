@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState, useSyncExternalStore } from "react";
 import { Icon } from "@/components/meridian/Icon";
 import { SUPPRESS_DAYS, type Suggestion } from "@/lib/briefingSuggestions";
+import { LeavingRow, LeavingRows } from "@/components/meridian/LeavingRows";
 
 /** Clock read kept out of render; used as a lazy state initialiser. */
 const stamp = () => Date.now();
@@ -59,8 +60,9 @@ export default function ActionCards({ cards }: { cards: Suggestion[] }) {
 
   return (
     <section className="actioncards" aria-label="پیشنهادهای امروز">
+      <LeavingRows>
       {shown.map((c) => (
-        <article key={c.key} className={`actioncard actioncard--${c.kind}`}>
+        <LeavingRow as="article" key={c.key} className={`actioncard actioncard--${c.kind}`}>
           <h3>{c.title}</h3>
           <p>{c.why}</p>
           <div className="actioncard__row">
@@ -79,8 +81,9 @@ export default function ActionCards({ cards }: { cards: Suggestion[] }) {
               الان نه
             </button>
           </div>
-        </article>
+        </LeavingRow>
       ))}
+      </LeavingRows>
     </section>
   );
 }

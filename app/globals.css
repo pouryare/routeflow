@@ -5156,6 +5156,21 @@ body {
   [data-shake] { animation: shake-no 420ms var(--ease-out); }
 }
 
+/* A row that folds away when removed (TaskRow): its height closes to nothing as it fades
+   and slides, so the rows under it glide up rather than jump; undo unfolds it. A grid
+   track animating 1fr -> 0fr is the one way to transition to and from an auto height. */
+.rowcollapse {
+  display: grid; grid-template-rows: 1fr;
+  transition: grid-template-rows 320ms var(--ease-out), opacity 220ms var(--ease-out),
+    transform 220ms var(--ease-out), border-color 220ms var(--ease-out);
+}
+.rowcollapse__inner { min-height: 0; overflow: hidden; }
+.rowcollapse[data-gone] {
+  grid-template-rows: 0fr; opacity: 0; transform: translateX(-24px); border-color: transparent;
+}
+/* LeavingRows' leaving row is taken out of the flow; this is the box it is placed in. */
+.meridian .col { position: relative; }
+
 /* Pop and burst (lib/burst.ts): a tap that turned something on -- a pin, a star, a saved
    search, a finished action's check. The icon pops, a ring and eight dots fly out of it
    and fade. Pseudo-elements, so nothing in the layout moves; centred with inset + auto
