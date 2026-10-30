@@ -816,3 +816,15 @@ Four effects from a UI-motion showcase, built on the draft branch `claude/projec
 The public `routeflow` repo holds code, fake seed data and placeholders only. Everything sensitive, now and in future, goes in the private repo `pouryare/routeflow-private`, which only the owner can access: real env files, the demo password, the real Caddyfile block, backup passphrases and offsite details, and any future key, export, dump or personal file. Plain files, no encryption (owner's choice). Never in the public repo, in CI secrets or in chat.
 
 The public repo reads these from the environment (`.env.example` lists them): `DEMO_PASSWORD` (random and printed by the seed when unset), `CONTACT_EMAIL`, `SESSION_SECRET`, Telegram and VAPID keys. The server pulls `routeflow-private` at deploy time and writes `/etc/routeflow/env`; CI uses throwaway values. Audit of 2026-10-29: no real keys, tokens, `.env` files or dumps in any public branch or `refs/pull/*`; the old demo password stays in public history, so it is treated as burned.
+
+### 10.11 Page skeletons captured from the real pages (2026-10-30, owner decision)
+
+Research: [High-fidelity page skeletons](https://claude.ai/artifact/DmCdRhNzbrBt5kcNiLf2LU). The owner chose boneyard capture drawn with HeroUI, on every page at once.
+
+| Choice | Decision | Notes |
+|---|---|---|
+| Capture | `boneyard-js` 1.10 (MIT), dev dependency only; its `snapshotBones` runs in our own Playwright script, `npm run skeletons:capture` | Owner role first, then the others; phone 390 px and desktop 1280 px, right to left, light, demo data; header card, fixed bars, clipped boxes and screen-reader text left out; neighbouring spans on a line merged into one bar |
+| Drawing | Our own server code in `PageSkeleton` (HeroUI `Skeleton` for lines, plain card surfaces for cards) | boneyard's `<Skeleton>` component draws nothing before scripts load and detects dark mode by a `.dark` class; ours paints from the server with our tokens |
+| Not used | react-loading-skeleton, react-content-loader, skeleton-mammoth, page-skeleton-webpack-plugin | Hand-drawn shapes or dead; see the research |
+| Rule | CI keeps the captures current; by hand, rerun the capture after a layout change and commit `lib/skeletons/` | A page without a capture keeps its fallback shape |
+| Automatic update (owner, 2026-10-30) | `.github/workflows/skeletons.yml` recaptures every page on a throwaway demo database (`scripts/skeletons-ci.sh`, fixed anchor date) and commits the changed JSON to the PR branch | Runs on ready, same-repository PRs that touch `app/(shell)`, `components`, `app/globals.css`, `lib/pageMeta.ts` or the capture scripts themselves; commit pushed with the built-in token, which GitHub does not treat as a person: CI for that commit waits in «action_required» until someone approves the run in the Actions tab (owner chose to merge without it, 2026-10-30; a personal access token secret would remove the wait); a page within 3 px of its stored capture is left alone (`scripts/skeleton-compare.mjs`) |

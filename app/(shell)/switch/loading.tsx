@@ -16,7 +16,7 @@ export default function Loading() {
   return (
     <>
       <PageHeaderCard {...pageMetaFor("/switch")} />
-      <PageSkeleton shape="rows" />
+      <PageSkeleton route="/switch" shape="rows" />
     </>
   );
 }

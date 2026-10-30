@@ -8,5 +8,5 @@ import PageSkeleton from "@/components/meridian/PageSkeleton";
  *  synchronous.
  */
 export default function Loading() {
-  return <PageSkeleton shape="form" />;
+  return <PageSkeleton route="/sales/reps/[id]" shape="form" />;
 }

@@ -16,7 +16,7 @@ export default function Loading() {
   return (
     <>
       <PageHeaderCard {...pageMetaFor("/accounting/balance-sheet")} />
-      <PageSkeleton shape="rows" />
+      <PageSkeleton route="/accounting/balance-sheet" shape="rows" />
     </>
   );
 }

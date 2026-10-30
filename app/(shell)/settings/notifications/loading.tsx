@@ -13,7 +13,7 @@ export default function Loading() {
   return (
     <>
       <PageHeaderCard {...pageMetaFor("/settings/notifications")} />
-      <PageSkeleton shape="form" />
+      <PageSkeleton route="/settings/notifications" shape="form" />
     </>
   );
 }

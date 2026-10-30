@@ -7,7 +7,7 @@ export default function Loading() {
   return (
     <>
       <PageHeaderCard {...pageMetaFor("/accounting/shareholders")} />
-      <PageSkeleton shape="rows" />
+      <PageSkeleton route="/accounting/shareholders" shape="rows" />
     </>
   );
 }
