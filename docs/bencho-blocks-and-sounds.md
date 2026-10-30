@@ -353,7 +353,7 @@ Bencho gives the same 14 meanings in three skins: `mech*` (mechanical), `bubble*
 
 - All 151 names appear exactly once in the sound tables (checked with a script on 2026-10-30). Keep that true when editing.
 - Block verdicts now come from opening every page (2026-10-30). The Pro "How it works" notes were read but not copied.
-- Owner questions on the blocks are open (code use, Pro, drops, decoration rule, build order); answers are logged below as they come.
+- All five owner questions on the blocks are answered (see the answers table). Build waits for the owner's go.
 - No sound has been heard by us. The pairing is by name.
 - Wiring: F117 in `docs/future-features.md` stays the feature; this file is its sound sheet.
 
@@ -367,4 +367,4 @@ Asked one at a time; each answer is logged here as it comes.
 | 2 | Buy Bencho Pro for the other 105, or rebuild them from the idea? | **Rebuild from the idea.** No Pro purchase. Write each Pro block ourselves from its live preview and description; the public "How it works" note may guide the approach but is not pasted in. |
 | 3 | Drop the 8 proposed drops? | **Drop all 8** (eye-tracker, escape, piano, fold-dropdown, sweep-button, slingshot, drag-ball, voice-chat). |
 | 4 | Where may the decoration blocks (Text and moments group) appear? | **Anywhere they fit, work screens included.** Turned off automatically on weak phones (low memory or CPU cores, battery saver, reduced motion), and the company owner has an on/off switch for the whole company in company settings (a company setting, like the sound skin). |
-| 5 | Which group is built first? | pending |
+| 5 | Which group is built first? | **Upgrades of what we have first** (the 27 Upgrade rows), then the rest. Nothing is built until the owner says go. |
