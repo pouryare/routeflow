@@ -17,6 +17,11 @@ export interface PeriodRange {
   toExcl: string;
 }
 
+/** Whether a query-string value is a Jalali «YYYY-MM» period. */
+export function isPeriod(value: unknown): value is string {
+  return typeof value === "string" && /^\d{4}-(0[1-9]|1[0-2])$/.test(value);
+}
+
 /** `'1405-06'` → `{ from: '2026-08-23', toExcl: '2026-09-23' }` (illustrative). */
 export function periodRange(period: string): PeriodRange {
   const [jy, jm] = period.split("-").map(Number);

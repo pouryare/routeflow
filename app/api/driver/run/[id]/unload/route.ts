@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { isId } from "@/lib/inputChecks";
 import { requireRole } from "@/lib/session";
 import { reconcileUnload, DISPOSITIONS, type Disposition } from "@/lib/repo/unload";
 import { runOwnedByDriver, unloadOf } from "@/lib/repo/routeAdapters";
@@ -18,7 +19,9 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   const guard = await requireRole(req, ["field_rep", "delivery_driver"]);
   if (!guard.ok) return guard.response;
 
-  const runId = Number((await ctx.params).id);
+  const runIdRaw = (await ctx.params).id;
+  if (!isId(runIdRaw)) return NextResponse.json({ ok: false, error: "شناسه نامعتبر است" }, { status: 400 });
+  const runId = Number(runIdRaw);
   if (!Number.isInteger(runId)) {
     return NextResponse.json({ ok: false, error: "شناسه نامعتبر است" }, { status: 400 });
   }

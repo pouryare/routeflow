@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Button, Drawer } from "@heroui/react";
 import { Icon } from "@/components/meridian/Icon";
 import WidgetBoundary from "@/components/WidgetBoundary";
+import { playSound } from "@/lib/sound";
 import { useBackToClose } from "@/lib/useBackToClose";
 import { haptic } from "@/lib/haptics";
 
@@ -85,6 +86,13 @@ export default function BottomSheet({
     expandable ? (expanded ? "flow-drawer__dialog--full" : "flow-drawer__dialog--half") : "",
   ].filter(Boolean).join(" ");
 
+  // Sounds on a change only: a sheet that mounts already open (or closed) says nothing.
+  const was = useRef(open);
+  useEffect(() => {
+    if (was.current === open) return;
+    was.current = open;
+    playSound(open ? "sheet.open" : "sheet.close");
+  }, [open]);
   return (
     <Drawer isOpen={open} onOpenChange={(isOpen) => { if (!isOpen) requestClose(); }}>
       <Drawer.Backdrop variant="blur" isDismissable={!dirty}>

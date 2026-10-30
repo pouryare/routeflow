@@ -123,7 +123,7 @@ export function AnswerList({
 
 /** The one confirming button under an answer step: HeroUI's primary Button at the 52 px answer
  *  size, full width. Used where a step has typed or chosen something and needs «ادامه». */
-export function GoButton({ icon, isDisabled, onPress, children }: { icon?: IconName; isDisabled?: boolean; onPress: () => void; children: ReactNode }) {
+export function GoButton({ icon = "check", isDisabled, onPress, children }: { icon?: IconName; isDisabled?: boolean; onPress: () => void; children: ReactNode }) {
   return (
     <Button variant="primary" size="lg" fullWidth className="tf-go" isDisabled={isDisabled} onPress={onPress}>
       {icon ? <Icon name={icon} size="md" /> : null}

@@ -1,5 +1,6 @@
 "use client";
 
+import { Icon } from "@/components/meridian/Icon";
 import { useState } from "react";
 import SectionHead from "@/components/meridian/SectionHead";
 import EmptyState from "@/components/EmptyState";
@@ -108,7 +109,7 @@ export default function ProfitSplitPanel({ legalForm, balances, years, costAccou
         ))}
       </AcctTable>
       <button type="button" className="touch picker-trigger" onClick={() => setPayOpen(true)}>
-        {/* Text-only sheet opener, same as the other picker-trigger buttons: the label says what it does. */}
+        <Icon name="plus" size="md" />
         ثبت پرداخت یا سرمایه
       </button>
 

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { copyText } from "@/lib/clipboard";
+import { playSound } from "@/lib/sound";
 import { useToast } from "./ToastProvider";
 import { Icon } from "@/components/meridian/Icon";
 
@@ -48,6 +49,7 @@ export default function CopyButton({
       return;
     }
     setCopied(true);
+    playSound("clipboard.copied");
     if (timerRef.current !== null) window.clearTimeout(timerRef.current);
     timerRef.current = window.setTimeout(() => setCopied(false), 1600);
   }
@@ -64,7 +66,7 @@ export default function CopyButton({
           : "border-border text-text-faint hover:border-accent hover:text-accent"
       } ${className}`}
     >
-      <Icon name={copied ? "check" : "file"} size="sm" />
+      <Icon name={copied ? "check" : "copy"} size="sm" />
       <span>{copied ? "کپی شد" : label ?? what}</span>
     </button>
   );

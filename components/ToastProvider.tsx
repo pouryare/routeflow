@@ -5,6 +5,7 @@ import { Toast, toast } from "@heroui/react";
 import { Icon, type IconName } from "@/components/meridian/Icon";
 import { OUTBOX_HOLD_MS } from "@/lib/offline/constants";
 import { haptic } from "@/lib/haptics";
+import { playSound } from "@/lib/sound";
 
 type ToastVariant = "success" | "error" | "info";
 
@@ -33,6 +34,10 @@ const ICON: Record<ToastVariant, IconName> = {
   error: "warn",
   info: "info",
 };
+
+/** The sound each toast makes (lib/sound.ts). A save that also flashes its check mark makes one
+ *  sound, not two: lib/sound.ts drops the second of two sounds that close together. */
+const SOUND = { success: "action.done", error: "action.failed", info: "toast.shown" } as const;
 
 /** HeroUI's variant for each of ours. */
 const HERO_VARIANT = { success: "success", error: "danger", info: "accent" } as const;
@@ -68,6 +73,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       indicator: <Icon name={ICON[variant]} size="md" />,
       timeout: action ? ACTION_LIFETIME_MS : LIFETIME_MS[variant],
     };
+    playSound(SOUND[variant]);
     if (!action) {
       toast(message, base);
       return;

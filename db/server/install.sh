@@ -38,6 +38,9 @@ PG_MAJOR=${PG_MAJOR:-18}
 DB_NAME=${DB_NAME:-routeflow}
 APP_USER=${APP_USER:-routeflow}
 APP_ROLE=routeflow_app
+# The role the running app logs in as: not the owner, so a query that reaches the database cannot
+# step up to the owner. The migrations still run as $APP_USER (the owner) over the socket.
+WEB_ROLE=routeflow_web
 STANZA=routeflow
 HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 APP_DIR=${APP_DIR:-$(cd "$HERE/../.." && pwd)}
@@ -85,6 +88,22 @@ DO \$\$ BEGIN
 END \$\$;
 GRANT $APP_ROLE TO "$APP_USER";
 SQL
+# Password for the web role, kept only in $ENV_FILE (mode 640, group $APP_USER). pg_hba gets one
+# scram line for it ahead of the default peer rule; the owner keeps the passwordless socket login.
+WEB_PASS_FILE=/etc/routeflow/web-role-pass
+install -d -m 755 /etc/routeflow
+[ -f "$WEB_PASS_FILE" ] || ( umask 037; head -c 32 /dev/urandom | base64 | tr -d '\n=+/' > "$WEB_PASS_FILE" )
+chgrp "$APP_USER" "$WEB_PASS_FILE"
+WEB_PASS=$(cat "$WEB_PASS_FILE")
+psql_pg -d postgres <<SQL
+DO \$\$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '$WEB_ROLE') THEN CREATE ROLE $WEB_ROLE LOGIN; END IF;
+END \$\$;
+ALTER ROLE $WEB_ROLE PASSWORD '$WEB_PASS';
+GRANT $APP_ROLE TO $WEB_ROLE;
+SQL
+grep -q "$WEB_ROLE" "$PGCONF/pg_hba.conf" || sed -i "0,/^local/s||local   all   $WEB_ROLE   scram-sha-256\n&|" "$PGCONF/pg_hba.conf"
+pg_ctlcluster "$PG_MAJOR" main reload
 if ! as_postgres psql -Atqc "SELECT 1 FROM pg_database WHERE datname = '$DB_NAME'" -d postgres | grep -q 1; then
   psql_pg -d postgres -c "CREATE DATABASE \"$DB_NAME\" OWNER \"$APP_USER\""
 fi
@@ -143,8 +162,8 @@ install -d -m 755 /etc/routeflow
 if [ ! -f "$ENV_FILE" ]; then
   ( umask 027
     cat > "$ENV_FILE" <<ENV
-DATABASE_URL=postgres:///$DB_NAME?host=$SOCKET_DIR
-PG_APP_ROLE=$APP_ROLE
+DATABASE_URL=postgres://$WEB_ROLE:$WEB_PASS@/$DB_NAME?host=$SOCKET_DIR
+PG_SCOPED=1
 SESSION_SECRET=$(head -c 48 /dev/urandom | base64 | tr -d '\n=+/')
 COVERAGE_BACKUP_DIR=/var/lib/routeflow/backups
 ROUTEFLOW_PHOTOS_DIR=$APP_DIR/data/photos
@@ -159,8 +178,9 @@ install -d -o postgres -g "$APP_USER" -m 2775 /var/lib/routeflow/backups
 
 if [ "$NO_MIGRATE" = 0 ]; then
   step "Migrations and the final check"
-  runuser -u "$APP_USER" -- env $(grep -v '^#' "$ENV_FILE" | xargs) bash -c "cd '$APP_DIR' && npm run --silent db:pg:migrate"
-  runuser -u "$APP_USER" -- env $(grep -v '^#' "$ENV_FILE" | xargs) bash -c "cd '$APP_DIR' && node scripts/pg/doctor.mjs" || {
+  # Migrations run as the owner over the socket; the app and the check use the web role from the env file.
+  runuser -u "$APP_USER" -- env DATABASE_URL="postgres:///$DB_NAME?host=$SOCKET_DIR" bash -c "cd '$APP_DIR' && npm run --silent db:pg:migrate"
+  runuser -u "$APP_USER" -- env $(grep -v '^#' "$ENV_FILE" | xargs) PG_APP_ROLE=$APP_ROLE bash -c "cd '$APP_DIR' && node scripts/pg/doctor.mjs" || {
     echo "The check found problems above; the first backup may simply not have run yet: sudo systemctl start routeflow-backup@full"
   }
 fi

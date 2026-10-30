@@ -9,6 +9,7 @@ import { useToast } from "./ToastProvider";
 import { useNavApp } from "./NavAppSetting";
 import { navigateUrl } from "@/lib/navApps";
 import BusyIcon from "@/components/meridian/BusyIcon";
+import { useDoneFlash } from "@/lib/useDoneFlash";
 import { Icon } from "@/components/meridian/Icon";
 
 interface PlanRow {
@@ -48,6 +49,7 @@ export default function NextStopBar({
 }) {
   const [plans, setPlans] = useState<PlanRow[] | null>(null);
   const [saving, setSaving] = useState(false);
+  const [done, flash] = useDoneFlash();
   const toast = useToast();
   const [navAppId] = useNavApp();
 
@@ -104,6 +106,7 @@ export default function NextStopBar({
           load();
         },
       });
+      flash();
       await load();
     } catch {
       toast("ثبت نشد. اینترنت را بررسی کنید و دوباره تلاش کنید.", "error");
@@ -169,6 +172,7 @@ export default function NextStopBar({
             aria-label="مسیریابی به این توقف"
             className="shrink-0 whitespace-nowrap inline-flex items-center justify-center gap-2 rounded-[var(--radius-sm)] border border-accent px-5 py-2 text-[length:var(--text-sm)] font-medium text-accent transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:bg-accent hover:text-accent-ink"
           >
+            <Icon name="navigation" size="sm" />
             مسیریابی توقف
           </a>
         )}
@@ -178,8 +182,8 @@ export default function NextStopBar({
           disabled={saving}
           className="inline-flex items-center justify-center gap-[var(--space-2)] shrink-0 whitespace-nowrap rounded-[var(--radius-sm)] border border-border px-3 py-1.5 text-[length:var(--text-xs)] text-good transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:border-good disabled:opacity-50"
         >
-          <BusyIcon busy={saving} name="check" size="sm" />
-          {saving ? "در حال ثبت…" : next.entity_type === "facility" ? "ثبت حضور" : "ثبت بازدید"}
+          <BusyIcon busy={saving} done={done} name="check" size="sm" />
+          {saving ? "در حال ثبت…" : done ? "ثبت شد" : next.entity_type === "facility" ? "ثبت حضور" : "ثبت بازدید"}
         </button>
 
         <button

@@ -4,15 +4,19 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Icon } from "@/components/meridian/Icon";
 import { faDigits } from "@/lib/crm/vocab";
 import { SkipButton } from "./Answer";
+import { celebrate } from "@/lib/celebrate";
 
 /** The done screen: what was saved, the likeliest next moves, and a return after `seconds`. */
-export default function FlowDone({ chips, next, actions, seconds = 5, onReturn }: {
+export default function FlowDone({ chips, next, actions, seconds = 5, onReturn, milestone }: {
   chips: string[]; next?: string | null; actions?: ReactNode; seconds?: number; onReturn: () => void;
+  /** A milestone (the last stop of a run): the done screen opens with a confetti burst. */
+  milestone?: boolean;
 }) {
   const [left, setLeft] = useState(seconds);
   const ret = useRef(onReturn);
   const fired = useRef(false);
   useEffect(() => { ret.current = onReturn; });
+  useEffect(() => { if (milestone) void celebrate(); }, [milestone]);
   useEffect(() => {
     const t = window.setInterval(() => setLeft((l) => l - 1), 1000);
     return () => window.clearInterval(t);

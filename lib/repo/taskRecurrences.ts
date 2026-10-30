@@ -1,4 +1,6 @@
 import { makeRepo } from "./base";
+import { inOrg } from "./orgRefs";
+import { isIsoDay } from "@/lib/inputChecks";
 
 /** A template that spawns a task on a schedule. `spawnRecurringTasks` (lib/repo/rules.ts,
  *  run from /api/rules/run) reads these on every sweep. */
@@ -56,6 +58,12 @@ export async function listRecurrences(
     .all(...(params as never[])) as unknown as TaskRecurrenceRow[];
 }
 
+/** The people and group a recurrence points at must belong to this company. */
+async function checkRefs(organizationId: number, ref: { assignee_user_id?: number | null; group_id?: number | null }): Promise<void> {
+  if (ref.assignee_user_id != null && !await inOrg("users", ref.assignee_user_id, organizationId)) throw new RecurrenceError("کاربر پیدا نشد");
+  if (ref.group_id != null && !await inOrg("groups", ref.group_id, organizationId)) throw new RecurrenceError("گروه پیدا نشد");
+}
+
 export async function createRecurrence(
   organizationId: number,
   input: RecurrenceInput,
@@ -63,6 +71,7 @@ export async function createRecurrence(
 ): Promise<TaskRecurrenceRow> {
   if (!input.title?.trim()) throw new RecurrenceError("عنوان لازم است");
   if (!VALID_RRULE.test(input.rrule)) throw new RecurrenceError("الگوی تکرار نامعتبر است");
+  await checkRefs(organizationId, input);
   const now = new Date().toISOString();
   const id = await taskRecurrencesRepo.insert(organizationId, {
     organization_id: organizationId,
@@ -109,7 +118,42 @@ export async function patchRecurrence(
   if (patch.rrule !== undefined && !VALID_RRULE.test(patch.rrule)) {
     throw new RecurrenceError("الگوی تکرار نامعتبر است");
   }
-  await taskRecurrencesRepo.patch(organizationId, id, { ...patch, updated_at: new Date().toISOString() });
+  const clean: Partial<TaskRecurrenceRow> = {};
+  const text = (v: unknown, max: number) => (typeof v === "string" && v.trim() && v.length <= max ? v.trim() : null);
+  const intOrNull = (v: unknown) => (v === null || Number.isSafeInteger(v) ? (v as number | null) : undefined);
+  if (patch.title !== undefined) {
+    const t = text(patch.title, 200);
+    if (!t) throw new RecurrenceError("عنوان نامعتبر است");
+    clean.title = t;
+  }
+  if (patch.kind !== undefined) {
+    const k = text(patch.kind, 40);
+    if (!k) throw new RecurrenceError("نوع نامعتبر است");
+    clean.kind = k;
+  }
+  if (patch.rrule !== undefined) clean.rrule = patch.rrule;
+  if (patch.priority !== undefined) {
+    if (!["LOW", "NORMAL", "HIGH", "CRITICAL"].includes(patch.priority as string)) throw new RecurrenceError("اولویت نامعتبر است");
+    clean.priority = patch.priority;
+  }
+  if (patch.active !== undefined) clean.active = patch.active ? 1 : 0;
+  for (const f of ["assignee_user_id", "group_id", "entity_id"] as const) {
+    if (patch[f] === undefined) continue;
+    const v = intOrNull(patch[f]);
+    if (v === undefined) throw new RecurrenceError("شناسه نامعتبر است");
+    clean[f] = v;
+  }
+  for (const f of ["role_hint", "entity_type"] as const) {
+    if (patch[f] === undefined) continue;
+    if (patch[f] !== null && !text(patch[f], 60)) throw new RecurrenceError("مقدار نامعتبر است");
+    clean[f] = patch[f] as never;
+  }
+  if (patch.last_spawned_on !== undefined) {
+    if (patch.last_spawned_on !== null && !isIsoDay(patch.last_spawned_on)) throw new RecurrenceError("تاریخ نامعتبر است");
+    clean.last_spawned_on = patch.last_spawned_on;
+  }
+  await checkRefs(organizationId, clean);
+  await taskRecurrencesRepo.patch(organizationId, id, { ...clean, updated_at: new Date().toISOString() });
   return await taskRecurrencesRepo.get(organizationId, id) as TaskRecurrenceRow;
 }
 

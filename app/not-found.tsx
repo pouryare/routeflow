@@ -1,3 +1,4 @@
+import { Icon } from "@/components/meridian/Icon";
 import Link from "next/link";
 import StatePage from "@/components/meridian/StatePage";
 
@@ -16,9 +17,11 @@ export default function NotFound() {
         actions={
           <>
             <Link className="btn solid" href="/sales">
+              <Icon name="chart" size="md" />
               رفتن به خلاصهٔ فروش
             </Link>
             <Link className="btn ghost" href="/map">
+              <Icon name="map" size="md" />
               رفتن به نقشهٔ پوشش
             </Link>
           </>

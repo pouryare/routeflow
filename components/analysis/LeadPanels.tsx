@@ -34,7 +34,7 @@ export default function LeadPanels() {
       <div role="alert" className="flex flex-wrap items-center gap-[var(--space-3)] text-[length:var(--text-sm)] text-[var(--text-muted)]">
         آمار سرنخ‌ها خوانده نشد.
         <button type="button" className="inline-flex min-h-11 items-center justify-center gap-[var(--space-2)] btn ghost" onClick={() => void load()}>
-          <Icon name="undo" size="sm" />
+          <Icon name="refresh" size="sm" />
           تلاش دوباره
         </button>
       </div>

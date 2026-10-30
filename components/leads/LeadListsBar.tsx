@@ -170,7 +170,7 @@ export default function LeadListsBar({
                             else onOpen(list.id);
                           }}
                         >
-                          <Icon name="x" size="md" />
+                          <Icon name={confirming?.kind === "delete" ? "trash" : "route"} size="md" />
                           {confirming?.kind === "delete" ? "حذف فهرست" : "جایگزینی مسیر"}
                         </Button>
                         <Button variant="tertiary" size="sm" onPress={() => setConfirming(null)}>

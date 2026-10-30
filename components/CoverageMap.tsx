@@ -5,24 +5,16 @@ import SmartPicker from "@/components/mobile/SmartPicker";
 import { tehranTodayIso } from "@/lib/jalali";
 import { useRunAfterMount } from "@/lib/useRunAfterMount";
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
-import { useLatest } from "@/lib/useLatest";
 import { useHydrated } from "@/lib/useHydrated";
-import type { ComponentProps } from "react";
 import { useAccent } from "@/components/AccentPicker";
 import { useTheme } from "@/components/ThemeToggle";
 import dynamic from "next/dynamic";
-import { MapContainer, TileLayer, GeoJSON, Marker, Pane } from "react-leaflet";
-/* This app carries its own DistrictFeature shape, which is not structurally the
-   GeoJsonObject react-leaflet declares. Casting to GeoJSONProps' own field types says
-   exactly which boundary is being crossed; `as any` said nothing and switched off
-   checking for the rest of the prop as well. */
-import type { GeoJSONProps } from "react-leaflet";
-import { geoJSON } from "leaflet";
-import type { Layer, LeafletMouseEvent, Map as LeafletMap } from "leaflet";
-import "leaflet/dist/leaflet.css";
-import "leaflet.markercluster/dist/MarkerCluster.css";
-import MarkerClusterGroup from "react-leaflet-cluster";
-import { DistrictCollection, DistrictFeature, DistrictGeometryMap, DistrictProperties, DistrictPropertiesResponse, CustomerRow, CoverageStatus, STATUS_COLOR, STATUS_LABEL, CustomerColorMode, customerLifecycleColor, debtColor, salespersonColor, inactivityColor, daysSinceLastPurchase, distanceColor, isCustomerColorMode, type DistrictColorMode, districtGroupColor, isDistrictColorMode } from "@/lib/types";
+import { Layer, Marker, Source, type MapRef } from "@vis.gl/react-maplibre";
+import AppMap from "@/components/map/AppMap";
+import { BASEMAP_LABELS } from "@/lib/mapStyle";
+import CustomerLayer, { CLUSTER_LAYER, CUSTOMER_LAYER } from "@/components/coverage/CustomerLayer";
+import DistrictLayer, { type DistrictPaint } from "@/components/coverage/DistrictLayer";
+import { DistrictCollection, DistrictFeature, DistrictGeometryMap, DistrictProperties, DistrictPropertiesResponse, CustomerRow, CoverageStatus, STATUS_COLOR, STATUS_LABEL, CustomerColorMode, customerLifecycleColor, debtColor, salespersonColor, inactivityColor, daysSinceLastPurchase, distanceColor, isCustomerColorMode, shapeForColor, type DistrictColorMode, districtGroupColor, isDistrictColorMode } from "@/lib/types";
 import {
   PrecisionMode,
   PrecisionTier,
@@ -61,9 +53,7 @@ import {
   DEFAULT_BASEMAPS,
   parseBasemaps,
   type BasemapBySkin,
-  LABELS_TILE,
   LAYERS_KEY,
-  QUIET_TILES,
   basemapDef,
   changedFromDefault,
   parseLayerPrefs,
@@ -91,18 +81,15 @@ import { } from "@/components/meridian/icon-map";
 
 // Everything below is reachable only after an interaction -- opening a customer, opening
 // a district, expanding the import panel, switching the heatmap on -- or carries a
-// library the first paint doesn't need (leaflet.heat, leaflet.fullscreen and their CSS).
+// library the first paint doesn't need.
 // Splitting them out keeps that weight off the chunk that has to arrive before the map
 // can draw anything. CoverageMap is itself ssr:false, so none of these need an SSR pass.
 import { readStoredView, linkTargetView, writeStoredView } from "@/components/coverage/mapViewStore";
 import { MAP_INK_FALLBACK, MapInk, readMapInk } from "@/components/coverage/mapInk";
-import { BoundsReporter, DebugMapExpose, ZoomWatcher, ViewWatcher, FitToCustomers, customerIcon, clusterIcon } from "@/components/coverage/mapParts";
+import { MapWatcher, FitToCustomers } from "@/components/coverage/mapParts";
 import CheckField from "@/components/CheckField";
 
 const HeatmapLayer = dynamic(() => import("./HeatmapLayer"), { ssr: false });
-/* MapLibre and its Leaflet bridge are ~250KB: loaded only once a vector basemap is
-   actually chosen, so the raster styles -- including the default -- cost nothing. */
-const VectorBasemap = dynamic(() => import("./VectorBasemap"), { ssr: false });
 const FullscreenControl = dynamic(() => import("./FullscreenControl"), { ssr: false });
 const CustomerDetailPanel = dynamic(() => import("./CustomerDetailPanel"), { ssr: false });
 const DistrictEditor = dynamic(() => import("./DistrictEditor"), { ssr: false });
@@ -211,17 +198,7 @@ export default function CoverageMap({
   // every other preference on this page.
   const [pinnedIds, setPinnedIds] = useState<number[]>([]);
   const [recentIds, setRecentIds] = useState<number[]>([]);
-  /* Read only inside the Leaflet click handler registered in onEachDistrict, which runs
-     long after render -- so this is the "latest value" ref, not render state. Written in
-     an effect because a ref mutated in the render body is not a pure render: StrictMode's
-     double render and any render React discards both write anyway. */
-  const bulkModeRef = useRef(bulkMode);
-  useEffect(() => {
-    bulkModeRef.current = bulkMode;
-  }, [bulkMode]);
-
-  const districtLayersRef = useRef(new Map<number, Layer>());
-  const mapRef = useRef<LeafletMap | null>(null);
+  const mapRef = useRef<MapRef | null>(null);
   const asideRef = useRef<HTMLElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const sectionFilterRef = useRef<HTMLInputElement>(null);
@@ -246,16 +223,11 @@ export default function CoverageMap({
     showShortcuts, setShowShortcuts, selectedCustomer, setSelectedCustomer, sidebarOpen, setSidebarOpen,
   });
 
-  const [districtsVersion, setDistrictsVersion] = useState(0);
   const loadDistricts = useCallback(async () => {
     const res = await fetch("/api/districts");
     const data: DistrictPropertiesResponse = await res.json();
     setDistrictProps(data.districts ?? []);
     setGeomVersion(data.version);
-    // GeoJSON layers below are keyed off this counter: react-leaflet's <GeoJSON> doesn't
-    // re-diff its `data` prop, so an in-place status edit (feature count unchanged) needs
-    // a forced remount to actually recolor the polygon.
-    setDistrictsVersion((v) => v + 1);
   }, []);
 
   const loadCustomers = useCallback(async () => {
@@ -575,7 +547,7 @@ export default function CoverageMap({
       const bar = document.querySelector<HTMLElement>(".bottomnav");
       const barPx = bar && getComputedStyle(bar).display !== "none" ? bar.offsetHeight : 0;
       el.style.height = `${Math.max(360, Math.floor(window.innerHeight - top - 16 - barPx))}px`;
-      mapRef.current?.invalidateSize();
+      mapRef.current?.resize();
     };
     fit();
     /* The bar streams in with the header, which may land after this effect; fit again once it has. */
@@ -607,46 +579,17 @@ export default function CoverageMap({
     });
   }
 
-  function onEachDistrict(feature: DistrictFeature, layer: Layer) {
-    districtLayersRef.current.set(feature.properties.id, layer);
-    layer.on("click", (e: LeafletMouseEvent) => {
-      // mahalle polygons are drawn after mantaghe (see layer order below); stopping
-      // propagation keeps a click on a small mahalle from also selecting its mantaghe.
-      (e as unknown as { originalEvent: MouseEvent }).originalEvent?.stopPropagation();
-      if (bulkModeRef.current) {
-        toggleBulkSelect(feature.properties.id);
-        return;
-      }
-      setSelectedDistrict(feature);
-    });
-    const label = feature.properties.parent_name
-      ? `${feature.properties.name} (${feature.properties.parent_name})`
-      : feature.properties.name;
-    layer.bindTooltip(`${label} — ${STATUS_LABEL[feature.properties.coverage_status]}`);
-  }
-
-  // GeoJSON child layers aren't restyled by react-leaflet when only the `style`
-  // function's *output* changes (see the districtsVersion remount above for the same
-  // limitation on `data`) -- selection highlighting is applied imperatively instead,
-  // directly on the layers captured in onEachDistrict, so toggling a handful of
-  // districts doesn't force a full remount of all ~419 polygons.
-  //
-  // districtStyle is a new function every render, so it is read through a ref and the
-  // dependencies name what should trigger a restyle. `ink` is among them because the
-  // skin changes the stroke and selection colours, and these polygons are already drawn:
-  // without it, flipping the theme leaves 419 districts outlined in the other skin's ink
-  // until something else happens to restyle them.
-  const districtStyleRef = useLatest(districtStyle);
-  useEffect(() => {
-    districtLayersRef.current.forEach((layer) => {
-      const feature = (layer as unknown as { feature?: DistrictFeature }).feature;
-      if (feature && "setStyle" in layer) {
-        (layer as unknown as { setStyle: (s: object) => void }).setStyle(districtStyleRef.current(feature));
-      }
-    });
-  }, [bulkSelectedIds, districtColorMode, groupColors, ink, districtStyleRef]);
-
-
+  const pickDistrict = useCallback(
+    (f: DistrictFeature) => {
+      if (bulkMode) toggleBulkSelect(f.properties.id);
+      else setSelectedDistrict(f);
+    },
+    [bulkMode],
+  );
+  const districtTooltip = useCallback((f: DistrictFeature) => {
+    const label = f.properties.parent_name ? `${f.properties.name} (${f.properties.parent_name})` : f.properties.name;
+    return `${label} — ${STATUS_LABEL[f.properties.coverage_status]}`;
+  }, []);
 
   async function applyBulk() {
     if (bulkSelectedIds.size === 0 || (!bulkStatusChoice && !bulkGroupChoice)) return;
@@ -779,7 +722,7 @@ export default function CoverageMap({
   function flyToCustomer(c: CustomerRow) {
     openCustomer(c);
     if (c.lat && c.lng && mapRef.current) {
-      mapRef.current.flyTo([c.lat, c.lng], 15, { duration: 1 });
+      mapRef.current.flyTo({ center: [c.lng, c.lat], zoom: 15, duration: 1000 });
     }
   }
 
@@ -825,69 +768,66 @@ export default function CoverageMap({
     layers.traffic_zone || layers.low_emission
   );
 
-  /* Declared after corridorDistrictIds, not before it.
-   *
-   * This is only ever called by react-leaflet while rendering the GeoJSON layers, by
-   * which point the memo above has been evaluated -- but read top-down it referenced a
-   * const from further down the file, which react-hooks/immutability flags and which
-   * made the compiler skip optimising this whole component. Moving the declaration is
-   * pure code motion: function declarations hoist, so nothing about when it can be
-   * called changes. */
-  function districtStyle(feature?: DistrictFeature) {
-    const status = (feature?.properties.coverage_status ?? "unknown") as CoverageStatus;
-    /* "unknown" takes the themed neutral rather than the fixed one. It is 429 of the 439
-       districts, so it is not really a status colour at all -- it is what the map looks
-       like, and it is the single biggest reason the map read as warm regardless of which
-       accent was chosen. visited/needs_coverage/not_allowed keep STATUS_COLOR untouched:
-       those three carry meaning shared with /report and /analytics.
-       The legend follows the same rule -- see the swatch in the districts panel. */
-    const fill =
-      districtColorMode === "group"
-        ? districtGroupColor(feature?.properties.group_id ?? null, groupColors)
-        : status === "unknown"
-          ? ink.unknown
-          : STATUS_COLOR[status];
-    const level = feature?.properties.level === "mantaghe" ? "mantaghe" : "mahalle";
-    const selected = !!feature && bulkSelectedIds.has(feature.properties.id);
+  /** How each district is painted, handed to DistrictLayer as per-feature properties. */
+  const districtPaint = useCallback(
+    (feature: DistrictFeature): DistrictPaint => {
+      const status = (feature.properties.coverage_status ?? "unknown") as CoverageStatus;
+      /* "unknown" takes the themed neutral rather than the fixed one. It is 429 of the 439
+         districts, so it is not really a status colour at all -- it is what the map looks
+         like. visited/needs_coverage/not_allowed keep STATUS_COLOR untouched: those three
+         carry meaning shared with /report and /analytics. The legend follows the same rule. */
+      const fill =
+        districtColorMode === "group"
+          ? districtGroupColor(feature.properties.group_id ?? null, groupColors)
+          : status === "unknown"
+            ? ink.unknown
+            : STATUS_COLOR[status];
+      const level = feature.properties.level === "mantaghe" ? "mantaghe" : "mahalle";
+      const selected = bulkSelectedIds.has(feature.properties.id);
 
-    // With the corridor on, districts off it recede rather than disappear: the point is
-    // to show what sits near the drive *in context*, and a map that hides everything
-    // else can't be read as a map any more.
-    const inCorridor = !corridorDistrictIds || (!!feature && corridorDistrictIds.has(feature.properties.id));
-    const dim = corridorDistrictIds && !inCorridor ? 0.25 : 1;
+      // With the corridor on, districts off it recede rather than disappear: the point is
+      // to show what sits near the drive *in context*.
+      const inCorridor = !corridorDistrictIds || corridorDistrictIds.has(feature.properties.id);
+      const dim = corridorDistrictIds && !inCorridor ? 0.25 : 1;
 
-    return {
-      color: selected ? ink.selected : level === "mantaghe" ? ink.strokeMajor : ink.strokeMinor,
-      weight: selected ? 3 : level === "mantaghe" ? 1.5 : 1,
-      fillColor: fill,
-      // Territory reads as a filled area rather than a tint: in group mode the fill is the
-      // whole point, where in status mode it sits under markers that have to stay legible.
-      fillOpacity: (selected ? 0.55 : districtColorMode === "group" ? 0.45 : level === "mantaghe" ? 0.08 : 0.35) * dim,
-      opacity: (selected ? 1 : level === "mantaghe" ? 0.5 : 0.8) * dim,
-      dashArray: selected ? "4 3" : undefined,
-    };
-  }
+      return {
+        line: selected ? ink.selected : level === "mantaghe" ? ink.strokeMajor : ink.strokeMinor,
+        lineWidth: selected ? 3 : level === "mantaghe" ? 1.5 : 1,
+        fill,
+        // Territory reads as a filled area rather than a tint: in group mode the fill is the
+        // whole point, where in status mode it sits under markers that have to stay legible.
+        fillOpacity: (selected ? 0.55 : districtColorMode === "group" ? 0.45 : level === "mantaghe" ? 0.08 : 0.35) * dim,
+        lineOpacity: (selected ? 1 : level === "mantaghe" ? 0.5 : 0.8) * dim,
+        selected,
+      };
+    },
+    [districtColorMode, groupColors, ink, bulkSelectedIds, corridorDistrictIds],
+  );
 
   /** A customer's marker colour under the active mode. Extracted because the selected
    *  customer is rendered separately from the rest and both must agree. */
-  function markerColor(c: CustomerRow): string {
-    if (colorMode === "debt") return debtColor(c.debt);
-    if (colorMode === "phone_sales") return salespersonColor(c.salesperson, salesIndex);
-    if (colorMode === "inactivity") return inactivityColor(c);
-    if (colorMode === "distance") return distanceColor(c, colourOrigin);
-    return customerLifecycleColor(c.lifecycle);
-  }
+  const markerColor = useCallback(
+    (c: CustomerRow): string => {
+      if (colorMode === "debt") return debtColor(c.debt);
+      if (colorMode === "phone_sales") return salespersonColor(c.salesperson, salesIndex);
+      if (colorMode === "inactivity") return inactivityColor(c);
+      if (colorMode === "distance") return distanceColor(c, colourOrigin);
+      return customerLifecycleColor(c.lifecycle);
+    },
+    [colorMode, salesIndex, colourOrigin],
+  );
 
   function flyToFacility(f: FacilityRow & { lat: number; lng: number }) {
-    mapRef.current?.flyTo([f.lat, f.lng], 15, { duration: 1 });
+    mapRef.current?.flyTo({ center: [f.lng, f.lat], zoom: 15, duration: 1000 });
   }
 
   function flyToDistrict(d: DistrictFeature) {
     setSelectedDistrict(d);
     if (!mapRef.current) return;
     try {
-      const bounds = geoJSON(d as unknown as GeoJSON.Feature).getBounds();
-      mapRef.current.flyToBounds(bounds, { padding: [60, 60], duration: 1 });
+      const pts = (d.geometry as GeoJSON.Polygon | GeoJSON.MultiPolygon).coordinates.flat(2) as unknown as [number, number][];
+      const lngs = pts.map((p) => p[0]), lats = pts.map((p) => p[1]);
+      mapRef.current.fitBounds([[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]], { padding: 60, duration: 1000 });
     } catch {
       // malformed geometry -- selection still opens the editor, just skip the fly
     }
@@ -895,37 +835,21 @@ export default function CoverageMap({
 
   function handleLocationFound(lat: number, lng: number, label: string) {
     setFoundLocation({ lat, lng, label });
-    mapRef.current?.flyTo([lat, lng], 16, { duration: 1 });
+    mapRef.current?.flyTo({ center: [lng, lat], zoom: 16, duration: 1000 });
   }
 
   /** A panel is up and is the thing being read. Map chrome stands down for it. */
   const panelOwnsScreen = selectedCustomer !== null || selectedDistrict !== null || layersOpen;
 
-  // Redundant over a basemap that already prints its own names, and drawing both puts two
-  // slightly different label sets on top of each other.
-  const showLabels = layers.labels && !activeBasemap.hasLabels;
-
-  /* Which basemaps have had their vector renderer fail this session. Kept per id rather
-     than as one flag so a single broken style does not condemn the others, and not
-     persisted: a WebGL context lost to a backgrounded tab comes back on reload. */
-  const [vectorFailed, setVectorFailed] = useState<ReadonlySet<BasemapId>>(new Set());
-  const vectorStyle =
-    activeBasemap.styleUrl && !vectorFailed.has(activeBasemap.id) ? activeBasemap.styleUrl : null;
-  const handleVectorError = useCallback(() => {
-    setVectorFailed((prev) => (prev.has(basemap) ? prev : new Set(prev).add(basemap)));
-  }, [basemap]);
-  /* The raster to draw when this basemap is not being drawn as vector -- either it never
-     was one, or its renderer failed and the fallback is standing in. */
-  const rasterTiles = activeBasemap.styleUrl
-    ? { ...(activeBasemap.rasterFallback ?? QUIET_TILES), key: `${activeBasemap.id}-raster` }
-    : {
-        url: activeBasemap.url,
-        attribution: activeBasemap.attribution,
-        subdomains: activeBasemap.subdomains,
-        maxZoom: activeBasemap.maxZoom,
-        toneClass: activeBasemap.toneClass,
-        key: activeBasemap.id,
-      };
+  /* The customers drawn as map pins. The selected one is drawn on its own, above them,
+     and never swallowed into a cluster bubble. */
+  const mapCustomers = useMemo(
+    () =>
+      (layers.customers ? filteredCustomers : []).filter(
+        (c): c is CustomerRow & { lat: number; lng: number } => !!c.lat && !!c.lng && c.id !== selectedCustomer?.id,
+      ),
+    [layers.customers, filteredCustomers, selectedCustomer],
+  );
   const shownZones = useMemo(() => {
     const on = new Set<string>();
     if (layers.traffic_zone) on.add("limited_traffic");
@@ -1005,7 +929,7 @@ export default function CoverageMap({
               سریع» section held: the current view as a link. */}
           <div className="mapside__bar">
             <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] mapbtn mapbtn--sm" onClick={shareView} aria-label="کپی لینک این نما" title="کپی لینک این نما">
-              <Icon name="link" size="sm" />
+              <Icon name="copy" size="sm" />
             </button>
           </div>
 
@@ -1022,7 +946,7 @@ export default function CoverageMap({
                 onClick={retryPosition}
                 className="inline-flex items-center justify-center gap-[var(--space-2)] rounded-[var(--radius-sm)] border border-border px-2 py-0.5 touch text-text-muted transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:border-accent hover:text-accent"
               >
-                <Icon name="undo" size="md" />
+                <Icon name="refresh" size="md" />
                 تلاش دوباره
               </button>
             </p>
@@ -1206,162 +1130,71 @@ export default function CoverageMap({
       </aside>
 
       <div className="absolute inset-0">
-        <MapContainer
-          center={startView ? [startView.lat, startView.lng] : TEHRAN_CENTER}
-          zoom={startView?.zoom ?? 11}
-          className="h-full w-full"
+        <AppMap
           ref={mapRef}
-          // ~430 district polygons as individual SVG <path> nodes is the single most
-          // expensive thing on this page: the browser has to build, lay out and style
-          // that many elements before the first frame, then re-transform all of them on
-          // every pan. The canvas renderer draws them into one element instead. Tooltips
-          // and click handling work the same; only per-path CSS would be lost, and the
-          // polygons are styled entirely through Leaflet's own style options.
-          preferCanvas
+          basemap={basemap}
+          initialViewState={{
+            latitude: startView ? startView.lat : TEHRAN_CENTER[0],
+            longitude: startView ? startView.lng : TEHRAN_CENTER[1],
+            zoom: startView?.zoom ?? 11,
+          }}
+          interactiveLayerIds={[CUSTOMER_LAYER, CLUSTER_LAYER, "mantaghe-fill", "mahalle-fill"]}
         >
-          {/* A vector style draws through MapLibre; everything else is a raster tile
-              layer. If MapLibre cannot run -- no WebGL, or the chunk fails -- the style's
-              declared raster fallback takes over, so the ground is never empty.
-
-              Keyed on the basemap: react-leaflet updates a TileLayer's url in place, and
-              swapping between providers with different subdomain rules leaves the old
-              rotation behind. Remounting is cheap and always right. */}
-          {vectorStyle ? (
-            <VectorBasemap
-              key={activeBasemap.id}
-              styleUrl={vectorStyle}
-              attribution={activeBasemap.attribution}
-              onError={handleVectorError}
-            />
-          ) : (
-            <TileLayer
-              key={rasterTiles.key}
-              attribution={rasterTiles.attribution}
-              url={rasterTiles.url}
-              subdomains={rasterTiles.subdomains ?? "abc"}
-              maxZoom={rasterTiles.maxZoom}
-              /* A tone is baked on only for the styles that have no hosted tiles of their
-                 own (see globals.css). Hosted styles arrive already designed and must not
-                 be recoloured. */
-              className={rasterTiles.toneClass}
-            />
-          )}
-
-          {/* Names go in their own pane above the district fills (overlayPane, 400) and
-              below the markers (600). In the tile pane they would be tinted by every
-              coverage colour drawn over them, which is most of the city.
-
-              Esri's reference labels, drawn light for a dark ground -- see
-              lib/mapLayers.ts. Only satellite still needs them; the other two basemaps
-              are OpenStreetMap and carry their own names. */}
-          {showLabels && (
-            <Pane name="labels" style={{ zIndex: 450, pointerEvents: "none" }}>
-              <TileLayer
-                url={LABELS_TILE.url}
-                attribution={LABELS_TILE.attribution}
-                subdomains={LABELS_TILE.subdomains}
-                maxZoom={LABELS_TILE.maxZoom}
-                className="tiles-labels"
-              />
-            </Pane>
-          )}
-
+          {/* Everything that is area rather than point goes under the basemap's street
+              names (BASEMAP_LABELS), so the names read through the fills. */}
           <TrafficZoneLayer
             zones={trafficZones}
             status={zoneStatus}
             show={shownZones}
             ground={activeBasemap.ground}
+            beforeId={BASEMAP_LABELS}
           />
 
-          {layers.districts && mantagheFeatures && (
-            <GeoJSON
-              key={`mantaghe-${districtsVersion}-${activeTier}-${corridorOn ? corridorWidthKm : "off"}`}
-              data={mantagheFeatures as unknown as GeoJSONProps["data"]}
-              style={districtStyle as unknown as GeoJSONProps["style"]}
-              onEachFeature={onEachDistrict as unknown as GeoJSONProps["onEachFeature"]}
-            />
-          )}
-          {layers.districts && mahalleFeatures && (
-            <GeoJSON
-              key={`mahalle-${districtsVersion}-${activeTier}-${corridorOn ? corridorWidthKm : "off"}`}
-              data={mahalleFeatures as unknown as GeoJSONProps["data"]}
-              style={districtStyle as unknown as GeoJSONProps["style"]}
-              onEachFeature={onEachDistrict as unknown as GeoJSONProps["onEachFeature"]}
+          {layers.districts && (
+            <DistrictLayer
+              mantaghe={mantagheFeatures}
+              mahalle={mahalleFeatures}
+              paint={districtPaint}
+              tooltip={districtTooltip}
+              onPick={pickDistrict}
+              beforeId={BASEMAP_LABELS}
             />
           )}
           {cityBoundary && (
-            <GeoJSON
-              data={cityBoundary as unknown as GeoJSONProps["data"]}
-              interactive={false}
-              style={{ color: ink.boundary, weight: 2, dashArray: "6 5", fill: false, opacity: 0.85 }}
-            />
+            <Source id="city-boundary" type="geojson" data={cityBoundary}>
+              <Layer id="city-boundary" type="line" beforeId={BASEMAP_LABELS}
+                paint={{ "line-color": ink.boundary, "line-width": 2, "line-dasharray": [3, 2.5], "line-opacity": 0.85 }} />
+            </Source>
           )}
 
           {/* Feature 3 + 14b: the band, and the dashed line down its middle that makes it
-              read as a route rather than an arbitrary rectangle. Non-interactive so it
-              never swallows a click meant for a district underneath. */}
-        <CorridorBandLayer corridorOn={corridorOn} corridorEnds={corridorEnds} corridorBand={corridorBand} corridorPath={corridorPath} lightGround={activeBasemap.ground === "light"} />
+              read as a route rather than an arbitrary rectangle. */}
+          <CorridorBandLayer corridorOn={corridorOn} corridorEnds={corridorEnds} corridorBand={corridorBand} corridorPath={corridorPath} lightGround={activeBasemap.ground === "light"} beforeId={BASEMAP_LABELS} />
 
-          {heatmapOn && <HeatmapLayer customers={filteredCustomers} weightByDebt={heatmapByDebt} />}
+          {heatmapOn && <HeatmapLayer customers={filteredCustomers} weightByDebt={heatmapByDebt} beforeId={BASEMAP_LABELS} />}
 
-          {/* Clustering stays switched on at every zoom, which is what makes coincident
-              customers reachable at all.
+          <CustomerLayer customers={mapCustomers} colorOf={markerColor} shaped={shapedMarkers} ink={ink} onOpen={openCustomer} />
 
-              Nearly half the geocoded customers share their exact coordinates with
-              another one -- three catering businesses on a single point, and so on --
-              because they were geocoded to an area rather than to a door. Markers like
-              that never separate at any zoom, so with clustering disabled above 16 the
-              second and third of each stack were simply unclickable: one pin, drawn
-              three times. A cluster that cannot be split by zooming spiderfies instead,
-              fanning its members out on legs, and that is the only way to reach them.
-
-              The radius tightens at close range so this does not come at the cost of
-              bundling genuinely distinct shops: 60px while reading the city, ~15px once
-              you are working a street. */}
-          <MarkerClusterGroup
-            chunkedLoading
-            showCoverageOnHover={false}
-            maxClusterRadius={(zoom: number) => (zoom >= 16 ? 15 : 60)}
-            spiderfyOnMaxZoom
-            spiderLegPolylineOptions={{ weight: 1.5, color: ink.strokeMinor, opacity: 0.9 }}
-            iconCreateFunction={
-            clusterIcon as unknown as ComponentProps<typeof MarkerClusterGroup>["iconCreateFunction"]
-          }
-          >
-            {(layers.customers ? filteredCustomers : [])
-              // The selected customer is drawn outside this group, below.
-              .filter((c) => c.lat && c.lng && c.id !== selectedCustomer?.id)
-              .map((c) => (
-                <Marker
-                  key={c.id}
-                  position={[c.lat as number, c.lng as number]}
-                  title={c.business_name}
-                  icon={customerIcon(markerColor(c), false, shapedMarkers)}
-                  eventHandlers={{ click: () => openCustomer(c) }}
-                />
-              ))}
-          </MarkerClusterGroup>
-
-          {/* Outside the cluster group on purpose: the customer whose panel is open is
-              the one thing on this map that must never be swallowed into a bubble. That
-              is exactly what would happen to a customer opened from the sidebar or from a
-              ?c= link while the map sits at a zoom where their neighbours cluster.
-
-              Drawn even with the customers layer switched off: whatever you turned off,
-              you did not mean the one you are looking at. */}
+          {/* Outside the clusters on purpose: the customer whose panel is open is the one
+              thing on this map that must never be swallowed into a bubble. Drawn even with
+              the customers layer switched off: whatever you turned off, you did not mean
+              the one you are looking at. Only this one pulses. */}
           {selectedCustomer?.lat && selectedCustomer?.lng && (
-            <Marker
-              position={[selectedCustomer.lat, selectedCustomer.lng]}
-              title={selectedCustomer.business_name}
-              icon={customerIcon(markerColor(selectedCustomer), true, shapedMarkers)}
-              zIndexOffset={900}
-              eventHandlers={{ click: () => setSelectedCustomer(selectedCustomer) }}
-            />
+            <Marker longitude={selectedCustomer.lng} latitude={selectedCustomer.lat} style={{ zIndex: 2 }}>
+              <div
+                className={`customer-marker customer-marker--${shapedMarkers ? shapeForColor(markerColor(selectedCustomer)) : "diamond"} customer-marker--selected`}
+                style={{ "--marker-color": markerColor(selectedCustomer) } as React.CSSProperties}
+                title={selectedCustomer.business_name}
+              >
+                <span className="customer-marker__ping" aria-hidden="true" style={{ animationDelay: "0ms" }} />
+                <span className="customer-marker__ping" aria-hidden="true" style={{ animationDelay: "var(--pulse-stagger)" }} />
+                <span className="customer-marker__diamond" />
+              </div>
+            </Marker>
           )}
 
-          {/* Outside the cluster group and lifted above it: these two are landmarks the
-              rest of the map is read against, so they must never be swallowed into a
-              customer bubble or hidden behind a blip that happens to overlap them. */}
+          {/* Landmarks the rest of the map is read against: DOM markers, so they always
+              sit above the customer pins. */}
           {layers.facilities && <FacilityMarkers placedFacilities={placedFacilities} navAppId={navAppId} />}
 
           <LeadMarkers initialLeads={initialLeads} navAppId={navAppId} />
@@ -1372,16 +1205,13 @@ export default function CoverageMap({
             customers={customers}
             enabled={!startView && incoming.customerId === undefined && incoming.districtId === undefined}
           />
-          <ViewWatcher onView={handleView} />
-          <ZoomWatcher onZoom={setZoom} />
+          <MapWatcher onView={handleView} onZoom={setZoom} onBounds={setViewBounds} />
           {/* Always drawn, never waiting to be asked for. */}
           <MyLocationMarker />
           <LocateControl />
           <FullscreenControl />
           <LayersControl open={layersOpen} count={changedFromDefault(layers)} onClick={() => setLayersOpen((v) => !v)} />
-          <DebugMapExpose />
-          <BoundsReporter onBounds={setViewBounds} />
-        </MapContainer>
+        </AppMap>
 
         {selectedCustomer && (
           <CustomerDetailPanel
@@ -1433,7 +1263,7 @@ export default function CoverageMap({
           onFocus={(entityId, lat, lng) => {
             const c = customers.find((x) => x.id === entityId);
             if (c) flyToCustomer(c);
-            else mapRef.current?.flyTo([lat, lng], 15, { duration: 1 });
+            else mapRef.current?.flyTo({ center: [lng, lat], zoom: 15, duration: 1000 });
           }}
         />
       )}
@@ -1481,7 +1311,7 @@ export default function CoverageMap({
               disabled={bulkSaving || (!bulkStatusChoice && !bulkGroupChoice)}
               className="inline-flex items-center justify-center gap-[var(--space-2)] rounded-[var(--radius-sm)] border border-accent bg-accent px-3 py-1.5 text-[length:var(--text-sm)] font-medium text-accent-ink transition-[filter,transform] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:enabled:brightness-110 active:enabled:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
             >
-              <Icon name="map-pin" size="sm" />
+              <Icon name="check" size="sm" />
               {bulkSaving ? "در حال اعمال…" : "اعمال روی همه"}
             </button>
           </div>

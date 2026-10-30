@@ -10,6 +10,7 @@ import { faJalaliDate } from "@/lib/jalali";
 import { useToast } from "@/components/ToastProvider";
 import ProcessingModal from "./ProcessingModal";
 import SwipeRow from "@/components/mobile/SwipeRow";
+import { LeavingRow, LeavingRows } from "@/components/meridian/LeavingRows";
 import { useUndoableAction } from "@/components/tapflow/useUndoableAction";
 import { useIsNarrow } from "@/lib/useIsNarrow";
 import Pocketed from "@/components/meridian/Pocketed";
@@ -243,11 +244,13 @@ export default function OrderPipeline({ orders }: { orders: PipelineOrder[] }) {
                 <span className="c">{faNum(rows.length)}</span>
               </div>
 
+              <LeavingRows>
               {rows.slice(0, LANE_CAP).map((o) => {
                 const movable = stage.key === "draft";
                 const docs = STAGE_DOCS[stage.key];
                 return (
-                  <Pocketed key={o.id} papers={docs.papers} tone={docs.tone} fan>
+                  <LeavingRow key={o.id}>
+                  <Pocketed papers={docs.papers} tone={docs.tone} fan>
                   <SwipeRow
                     ownButtons={false}
                     start={narrow && movable ? { label: "تأیید سفارش", icon: "check", run: () => swipeConfirm(o) } : undefined}
@@ -286,8 +289,10 @@ export default function OrderPipeline({ orders }: { orders: PipelineOrder[] }) {
                   </button>
                   </SwipeRow>
                   </Pocketed>
+                  </LeavingRow>
                 );
               })}
+              </LeavingRows>
 
               {rows.length === 0 && (
                 <p style={{ margin: 0, fontSize: 12, color: "var(--muted)" }}>خالی</p>
@@ -298,7 +303,8 @@ export default function OrderPipeline({ orders }: { orders: PipelineOrder[] }) {
                   href="/sales/orders"
                   style={{ fontSize: 12, color: "var(--accent)", textDecoration: "none", display: "inline-flex", alignItems: "center", minHeight: 44 }}
                 >
-                  {faNum(rows.length - LANE_CAP)} سفارش دیگر در این مرحله ←
+                  {faNum(rows.length - LANE_CAP)} سفارش دیگر در این مرحله
+                  <Icon name="chevron-left" size="sm" />
                 </Link>
               )}
 

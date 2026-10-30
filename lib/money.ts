@@ -22,14 +22,7 @@ const PERSIAN_ZERO = 0x06f0;
 const ARABIC_INDIC_ZERO = 0x0660;
 const GROUPING = /[,٬،\s ‌ ]/g;
 
-/** Reads a human-typed amount into whole Toman, or null if it is not a number at all.
- *
- *  Returns null rather than 0 for unparseable input, because 0 is a real amount and a
- *  silent zero is how a free order gets recorded. The caller decides what an empty box
- *  means. */
-export function toToman(input: string): number | null {
-  if (typeof input !== "string") return null;
-
+function latinise(input: string): string {
   let out = "";
   for (const ch of input) {
     const code = ch.codePointAt(0) as number;
@@ -43,11 +36,25 @@ export function toToman(input: string): number | null {
       out += ch;
     }
   }
+  return out.replace(GROUPING, "");
+}
 
-  out = out.replace(GROUPING, "");
-  if (!/^-?\d+(\.\d+)?$/.test(out)) return null;
+/** A number typed with Persian, Arabic-Indic or Latin digits (grouping marks and ٫ allowed), or null
+ *  when it is not a plain number. For any numeric field that is not an amount of money. */
+export function toNumber(input: string): number | null {
+  if (typeof input !== "string") return null;
+  const out = latinise(input);
+  return /^-?\d+(\.\d+)?$/.test(out) ? Number(out) : null;
+}
 
-  return roundToman(Number(out));
+/** Reads a human-typed amount into whole Toman, or null if it is not a number at all.
+ *
+ *  Returns null rather than 0 for unparseable input, because 0 is a real amount and a
+ *  silent zero is how a free order gets recorded. The caller decides what an empty box
+ *  means. */
+export function toToman(input: string): number | null {
+  const n = toNumber(input);
+  return n === null ? null : roundToman(n);
 }
 
 /** Ceiling for any single money value. Well past anything this business moves in one

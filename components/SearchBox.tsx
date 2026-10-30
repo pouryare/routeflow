@@ -359,7 +359,7 @@ export default function SearchBox({
           aria-label="بستن جستجو"
           className="inline-flex items-center justify-center gap-[var(--space-2)] absolute inset-y-0 right-2 flex items-center text-text-faint transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:text-text"
         >
-          <Icon name="search" size="sm" />
+          <Icon name="x" size="sm" />
         </button>
       )}
       </div>

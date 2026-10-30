@@ -4,6 +4,7 @@
 
 import { getDb, type LocationResolution, type SavedLocationRow } from "@/lib/db";
 import { orgClause } from "@/lib/orgScope";
+import { escapeLike } from "@/lib/persian";
 import { tombstone } from "./tombstones";
 
 type Sql = { sql: string; params: (string | number)[] };
@@ -21,8 +22,8 @@ export async function searchLocations(q: string | undefined, filter: Sql, organi
   const db = getDb();
   return q
     ? (await db
-        .prepare(`SELECT * FROM saved_locations WHERE (name LIKE ? OR address LIKE ?)${filter.sql}${org.sql} ORDER BY created_at DESC`)
-        .all(`%${q}%`, `%${q}%`, ...filter.params, ...org.params) as unknown as SavedLocationRow[])
+        .prepare(`SELECT * FROM saved_locations WHERE (name LIKE ? ESCAPE '\\' OR address LIKE ? ESCAPE '\\')${filter.sql}${org.sql} ORDER BY created_at DESC`)
+        .all(`%${escapeLike(q)}%`, `%${escapeLike(q)}%`, ...filter.params, ...org.params) as unknown as SavedLocationRow[])
     : (await db
         .prepare(`SELECT * FROM saved_locations WHERE 1 = 1${filter.sql}${org.sql} ORDER BY created_at DESC`)
         .all(...filter.params, ...org.params) as unknown as SavedLocationRow[]);

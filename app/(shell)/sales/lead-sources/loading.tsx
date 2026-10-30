@@ -7,7 +7,7 @@ export default function Loading() {
   return (
     <>
       <PageHeaderCard {...pageMetaFor("/sales/lead-sources")} />
-      <PageSkeleton shape="rows" />
+      <PageSkeleton route="/sales/lead-sources" shape="rows" />
     </>
   );
 }

@@ -3,6 +3,10 @@
 import type { Result } from "@/components/SearchBox";
 import { Icon } from "@/components/meridian/Icon";
 import { GeoResult, detectInputType, isFavorite } from "@/components/searchbox/searchBoxStore";
+import { burst } from "@/lib/burst";
+
+const favoriteKey = (r: Result) =>
+  r.kind === "customer" ? `cust_${r.customer.customer_code}` : `dist_${r.district.properties.name}`;
 
 /** What the open search panel shows for a typed query: a link, coordinates, address matches, local matches, or the geocoder offer. */
 export default function SearchResultsBody({ trimmed, isUrl, decodeLink, linkLoading, linkError, inputType, coordMatch, goToCoords, geoResults, selectGeoResult, results, select, toggleFavorite, runGeosearch, geoLoading }: {
@@ -86,8 +90,8 @@ export default function SearchResultsBody({ trimmed, isUrl, decodeLink, linkLoad
                   </span>
                 </>
               )}
-              <button onClick={(e) => { e.stopPropagation(); toggleFavorite(r); }} className="shrink-0 text-[length:var(--text-xs)] text-text-faint hover:text-accent" aria-label="save favorite">
-                <Icon name="star" size="sm" filled={isFavorite(r.kind === "customer" ? `cust_${r.customer.customer_code}` : `dist_${r.district.properties.name}`)} />
+              <button onClick={(e) => { e.stopPropagation(); if (!isFavorite(favoriteKey(r))) burst(e.currentTarget); toggleFavorite(r); }} className="burst shrink-0 text-[length:var(--text-xs)] text-text-faint hover:text-accent" aria-label="save favorite">
+                <Icon name="star" size="sm" filled={isFavorite(favoriteKey(r))} />
               </button>
             </button>
           ))

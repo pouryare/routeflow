@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireRole } from "@/lib/session";
 import { kpiBoard } from "@/lib/repo/kpiSnapshots";
-import { currentPeriod, shiftPeriod } from "@/lib/analysis/period";
+import { currentPeriod, isPeriod, shiftPeriod } from "@/lib/analysis/period";
 import { MANAGE_ROLES } from "@/lib/roles";
 
 export const dynamic = "force-dynamic";
@@ -13,7 +13,13 @@ export async function GET(req: NextRequest) {
   if (!guard.ok) return guard.response;
 
   const period = req.nextUrl.searchParams.get("period") ?? currentPeriod();
+  if (!isPeriod(period)) {
+    return NextResponse.json({ ok: false, error: "دورهٔ نامعتبر است" }, { status: 400 });
+  }
   const prev = req.nextUrl.searchParams.get("prev") ?? shiftPeriod(period, 1);
+  if (!isPeriod(prev)) {
+    return NextResponse.json({ ok: false, error: "دورهٔ نامعتبر است" }, { status: 400 });
+  }
 
   return NextResponse.json({
     ok: true,

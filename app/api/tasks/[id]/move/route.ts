@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { isId } from "@/lib/inputChecks";
 import { requireRole } from "@/lib/session";
 import { canActOnTask, moveTask, tasksRepo } from "@/lib/repo/tasks";
 import type { BoardView } from "@/lib/tasks/lenses";
@@ -17,6 +18,7 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
   ]);
   if (!guard.ok) return guard.response;
   const { id } = await ctx.params;
+  if (!isId(id)) return NextResponse.json({ ok: false, error: "شناسه نامعتبر است" }, { status: 400 });
   const body = (await req.json().catch(() => null)) as
     | { view?: BoardView; to_lane?: string; outcome_code?: string }
     | null;

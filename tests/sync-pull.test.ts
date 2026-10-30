@@ -71,7 +71,7 @@ beforeEach(async () => {
   await setPrice(db, { product_id: product, price_toman: 1000, valid_from: "2026-01-01" });
 });
 
-async function runFor(driver: number, cust: number): Promise<number> {
+async function runFor(driver: number, cust: number, runDate = "2026-01-02"): Promise<number> {
   const db = getDb();
   const o = await createOrder(db, {
     customer_id: cust,
@@ -82,7 +82,7 @@ async function runFor(driver: number, cust: number): Promise<number> {
     lines: [{ product_id: product, packaging_id: packaging, packs: 1 }],
   });
   await confirmOrder(db, o.id);
-  const run = await createRun(db, { driver_user_id: driver, run_date: "2026-01-02", created_by: ownerA, organization_id: 1, group_id: groupA });
+  const run = await createRun(db, { driver_user_id: driver, run_date: runDate, created_by: ownerA, organization_id: 1, group_id: groupA });
   await addStop(db, run, o.id);
   // createRun returns the run id itself, not an object. A version of this helper returned
   // `o.id` (the ORDER id), and a later test then inserted its visit onto that id — which is not
@@ -111,6 +111,20 @@ describe("pullSince", () => {
     const custIds = res.rows.filter((r) => r.table === "customers").map((r) => r.row.id);
     expect(custIds).toContain(custA);
     expect(custIds).not.toContain(custOther);
+  });
+
+  it("sends a driver open runs and recent finished ones, not old finished history", async () => {
+    const today = new Date().toISOString().slice(0, 10);
+    const oldDone = await runFor(driverA, custA, "2026-01-03");
+    const oldOpen = await runFor(driverA, custA, "2026-01-04");
+    const recentDone = await runFor(driverA, custA, today);
+    await getDb().prepare("UPDATE delivery_runs SET status = 'done' WHERE id IN (?, ?)").run(oldDone, recentDone);
+
+    const res = await pullSince(sess(driverA, "delivery_driver", 1, groupA), null);
+    const runIds = res.rows.filter((r) => r.table === "delivery_runs").map((r) => r.row.id);
+    expect(runIds).toContain(oldOpen);
+    expect(runIds).toContain(recentDone);
+    expect(runIds).not.toContain(oldDone);
   });
 
   it("an immediate re-pull at the watermark returns nothing new", async () => {
@@ -147,6 +161,29 @@ describe("pullSince", () => {
     const res = await pullSince(sess(ownerA, "owner", 1, null), null);
     const orgs = new Set(res.rows.filter((r) => r.table === "orders").map((r) => r.row.organization_id));
     expect([...orgs]).toEqual([1]);
+  });
+
+  it("sends an owner open, unpaid and recent orders, not old finished paid ones", async () => {
+    const db = getDb();
+    const now = new Date().toISOString();
+    const insert = async (no: string, status: string, paid: string, date: string) =>
+      Number(
+        (await db
+          .prepare(
+            "INSERT INTO orders (order_no,customer_id,status,payment_status,order_date,created_by,created_at,updated_at,organization_id) VALUES (?,?,?,?,?,?,?,?,1)"
+          )
+          .run(no, custA, status, paid, date, ownerA, now, now)).lastInsertRowid
+      );
+    const today = now.slice(0, 10);
+    const oldClosedPaid = await insert("w1", "CLOSED", "paid", "2026-01-05");
+    const oldClosedUnpaid = await insert("w2", "CLOSED", "unpaid", "2026-01-05");
+    const oldOpen = await insert("w3", "CONFIRMED", "paid", "2026-01-05");
+    const recentClosedPaid = await insert("w4", "CLOSED", "paid", today);
+
+    const res = await pullSince(sess(ownerA, "owner", 1, null), null);
+    const ids = res.rows.filter((r) => r.table === "orders").map((r) => r.row.id);
+    expect(ids).not.toContain(oldClosedPaid);
+    expect(ids).toEqual(expect.arrayContaining([oldClosedUnpaid, oldOpen, recentClosedPaid]));
   });
 
   it("carries the driver's VISITS, not just their deliveries — the gap that motivated the merge", async () => {

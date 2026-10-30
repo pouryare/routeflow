@@ -238,20 +238,22 @@ export default function Pocket({
 
       <div className="acts" style={{ margin: "14px 0 8px" }}>
         <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn ghost" onClick={() => openQuick("reminder")}>
-          <Icon name="clock" size="md" />
-          + ثبت یادآوری
+          <Icon name="alarm" size="md" />
+          ثبت یادآوری
         </button>
         <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn ghost" onClick={() => openQuick("note")}>
-          <Icon name="plus" size="md" />
-          + ثبت یادداشت
+          <Icon name="note" size="md" />
+          ثبت یادداشت
         </button>
         {canOrder && (
           <Link className="btn ghost" href="/sales/orders/new">
-            + ثبت سفارش تازه
+            <Icon name="plus" size="md" />
+            ثبت سفارش تازه
           </Link>
         )}
         {canPlan && <Link className="btn ghost" href="/planner">
-          + برنامه‌ریزی بازدید
+          <Icon name="calendar-plus" size="md" />
+          برنامه‌ریزی بازدید
         </Link>}
       </div>
 

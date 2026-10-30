@@ -13,7 +13,7 @@ export default function Loading() {
   return (
     <>
       <PageHeaderCard {...pageMetaFor("/sales/orders")} />
-      <PageSkeleton shape="rows" />
+      <PageSkeleton route="/sales/orders" shape="rows" />
     </>
   );
 }

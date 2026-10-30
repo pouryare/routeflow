@@ -23,8 +23,8 @@
 //   After=network-online.target
 //   [Service]
 //   Type=simple
-//   WorkingDirectory=/root/pourya/RouteFlow
-//   EnvironmentFile=/root/pourya/RouteFlow/.env.local        (PostgreSQL: /etc/routeflow/env as well)
+//   WorkingDirectory=/srv/routeflow
+//   EnvironmentFile=/srv/routeflow/.env.local        (PostgreSQL: /etc/routeflow/env as well)
 //   ExecStart=/usr/bin/node --experimental-strip-types --import ./scripts/_ts-register.mjs scripts/telegram-poll.ts
 //   Restart=always
 //   RestartSec=5

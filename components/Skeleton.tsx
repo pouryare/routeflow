@@ -8,12 +8,12 @@
  *
  *  The blocks are HeroUI's Skeleton, drawn as spans so a line can sit inside running
  *  text. A client module because HeroUI's is, and because the span is drawn by a render
- *  function, which cannot cross from a server component; every prop here is a string, so
- *  server pages render these as before.
+ *  function, which cannot cross from a server component; every prop here is a string or a
+ *  plain style object, so server pages render these as before.
  */
 "use client";
 
-import type { ComponentPropsWithRef } from "react";
+import type { ComponentPropsWithRef, CSSProperties } from "react";
 import { Skeleton } from "@heroui/react";
 
 const asSpan = (props: ComponentPropsWithRef<"span">) => <span {...props} />;
@@ -24,9 +24,9 @@ export function SkeletonLine({ w = "w-full", className = "" }: { w?: string; cla
   return <Skeleton render={asSpan} animationType="shimmer" className={`block h-3 ${w} ${className}`} />;
 }
 
-/** A rectangle: a thumbnail, a map, a chart. */
-export function SkeletonBlock({ className = "" }: { className?: string }) {
-  return <Skeleton render={asSpan} animationType="shimmer" className={`block ${className}`} />;
+/** A rectangle: a thumbnail, a map, a chart. `style` places a captured box (PageSkeleton). */
+export function SkeletonBlock({ className = "", style }: { className?: string; style?: CSSProperties }) {
+  return <Skeleton render={asSpan} animationType="shimmer" className={`block ${className}`} style={style} />;
 }
 
 /** The repeated-row case -- the shape of every list in this app: one bordered card with

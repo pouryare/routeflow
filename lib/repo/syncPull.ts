@@ -1,8 +1,10 @@
 import { getDb, plain } from "@/lib/db";
+import { idList } from "@/lib/database/dialect";
 import { orderFilter, groupFilter } from "@/lib/session";
 import type { Session } from "@/lib/session";
 import { tombstonesSinceXid, type Tombstone } from "./tombstones";
 import { isVanRole } from "../roles";
+import { TERMINAL_ORDER_STATUSES, sqlStatusList } from "../orderStateMachine";
 
 export interface PullRow {
   table: string;
@@ -80,12 +82,19 @@ export async function pullSince(session: Session, since: string | null): Promise
   const isDriver = isVanRole(session.role);
 
   if (isDriver) {
+    /* shortcut: a driver's phone gets open runs and the last DRIVER_WINDOW_DAYS of finished ones, not
+       every run they ever drove (a year of history was 2 MB, 95% of it finished orders nobody opens
+       in a van). Older runs already on the phone stay; upgrade to an on-demand fetch if a driver
+       needs to look a delivery up from further back while offline. */
+    const since = new Date(Date.now() - DRIVER_WINDOW_DAYS * 86_400_000).toISOString().slice(0, 10);
     const runIds = (
       await db
-        .prepare("SELECT id FROM delivery_runs WHERE driver_user_id = ? AND organization_id = ?")
-        .all(session.user.id, org) as { id: number }[]
+        .prepare(
+          "SELECT id FROM delivery_runs WHERE driver_user_id = ? AND organization_id = ? AND (status <> 'done' OR run_date >= ?)"
+        )
+        .all(session.user.id, org, since) as { id: number }[]
     ).map((r) => r.id);
-    const runList = runIds.length ? runIds.join(",") : "NULL";
+    const runList = idList(runIds);
 
     add(
       "delivery_runs",
@@ -142,7 +151,7 @@ export async function pullSince(session: Session, since: string | null): Promise
       for (const s of runFacilityStops) {
         facilityIds.add(Number((s as { facility_id: number }).facility_id));
       }
-      const list = [...facilityIds].join(",");
+      const list = idList(facilityIds);
       const facilities = plain(
         await db
           .prepare(
@@ -172,7 +181,7 @@ export async function pullSince(session: Session, since: string | null): Promise
       .all() as { location_id: number }[]) {
       locationIds.add(s.location_id);
     }
-    const locList = locationIds.size ? [...locationIds].join(",") : "NULL";
+    const locList = idList(locationIds);
     add(
       "saved_locations",
       plain(
@@ -230,12 +239,20 @@ export async function pullSince(session: Session, since: string | null): Promise
     const of = orderFilter(session);
     const gf = await groupFilter(session, "c.group_id");
 
+    /* shortcut: a finished, fully paid order older than ORDER_WINDOW_DAYS is not sent (an owner's
+       phone held 600 KB of them). Open, unpaid and recent orders always are; the order page still
+       loads any old order online. Upgrade to an on-demand fetch if offline lookups of old paid
+       orders are needed. */
+    const orderSince = new Date(Date.now() - ORDER_WINDOW_DAYS * 86_400_000).toISOString().slice(0, 10);
     add(
       "orders",
       plain(
         await db
-          .prepare(`SELECT o.* FROM orders o WHERE ${changed("o.")}${of.sql}`)
-          .all(mark, ...of.params) as Record<string, unknown>[]
+          .prepare(
+            `SELECT o.* FROM orders o WHERE ${changed("o.")}${of.sql}
+               AND (o.order_date >= ? OR o.payment_status <> 'paid' OR o.status NOT IN (${sqlStatusList([...TERMINAL_ORDER_STATUSES])}))`
+          )
+          .all(mark, ...of.params, orderSince) as Record<string, unknown>[]
       )
     );
     add(
@@ -252,6 +269,12 @@ export async function pullSince(session: Session, since: string | null): Promise
 
   return { watermark: `${XID_PREFIX}${xmin}`, rows, tombstones };
 }
+
+/** How far back a driver's finished runs travel to the phone. */
+const DRIVER_WINDOW_DAYS = 14;
+
+/** How far back a salesperson's, manager's or owner's finished, paid orders travel to the phone. */
+const ORDER_WINDOW_DAYS = 60;
 
 /** A watermark is `x:` and a transaction id; anything else starts from the beginning. */
 const XID_PREFIX = "x:";

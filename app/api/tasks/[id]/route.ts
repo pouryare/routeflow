@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { isId } from "@/lib/inputChecks";
 import { requireRole } from "@/lib/session";
 import { canActOnTask, completeTask, dismissTask, snoozeTask, tasksRepo, taskCustomerType, TaskError } from "@/lib/repo/tasks";
 import { isSnoozeChoice } from "@/lib/taskSnooze";
@@ -9,6 +10,7 @@ export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/tasks/[id]
   const guard = await requireRole(req, [...MANAGE_ROLES, "phone_sales", "field_rep", "delivery_driver", "rep_manager"]);
   if (!guard.ok) return guard.response;
   const { id } = await ctx.params;
+  if (!isId(id)) return NextResponse.json({ ok: false, error: "شناسه نامعتبر است" }, { status: 400 });
   const org = guard.session.organizationId;
   const row = await tasksRepo.get(org, Number(id));
   // Another person's task answers as if it did not exist, like every other cross-scope row.

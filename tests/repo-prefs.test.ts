@@ -44,8 +44,15 @@ describe("prefs repo", () => {
     expect(await getPrefs(uid)).toEqual({ board_mobile_mode: "pager", board_default_view: "time" });
   });
 
+
   it("rejects an unknown key", async () => {
     await expect((async () => await setPrefs(uid, { hacked: 1 } as never))()).rejects.toThrow();
+  });
+
+  it("keeps the sound switch (F117) and refuses anything but on or off", async () => {
+    await setPrefs(uid, { sound: "off" });
+    expect((await getPrefs(uid)).sound).toBe("off");
+    await expect((async () => await setPrefs(uid, { sound: "loud" } as never))()).rejects.toThrow();
   });
 
   it("rejects a bad value", async () => {
@@ -56,5 +63,16 @@ describe("prefs repo", () => {
   it("survives a corrupt blob", async () => {
     await getDb().prepare("UPDATE users SET prefs_json = 'not json' WHERE id = ?").run(uid);
     expect(await getPrefs(uid)).toEqual({});
+  });
+});
+
+describe("company sound skin", () => {
+  it("is bubble until the owner picks, then the pick, and the database refuses a skin that is not offered", async () => {
+    const { soundSkinFor, setSoundSkin } = await import("@/lib/repo/soundSkin");
+    expect(await soundSkinFor(1)).toBe("bubble");
+    await setSoundSkin(1, "press");
+    expect(await soundSkinFor(1)).toBe("press");
+    await expect((async () => await setSoundSkin(1, "plain" as never))()).rejects.toThrow();
+    await setSoundSkin(1, "bubble");
   });
 });

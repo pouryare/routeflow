@@ -17,7 +17,12 @@
  * With PG_APP_ROLE set, every connection switches to that role, which does not own the tables,
  * so row-level security applies to it, and each statement (or transaction) first tells the
  * database which company it runs for (lib/database/scope.ts). Without it the connection is the
- * tables' owner, the policies do not apply, and that round trip is skipped. */
+ * tables' owner, the policies do not apply, and that round trip is skipped.
+ *
+ * With PG_SCOPED=1 the connection itself already logs in as a role that does not own the tables
+ * (db/server/install.sh creates routeflow_web for it): the scope is set the same way, but there is
+ * no SET ROLE, so a query that reaches the database cannot step back up to the owner with
+ * RESET ROLE or set_config('role', ...). Prefer this on a server. */
 import { AsyncLocalStorage } from "node:async_hooks";
 import { createHash } from "node:crypto";
 import pg from "pg";
@@ -101,6 +106,7 @@ export function pgDb(url: string, ready: () => Promise<void> = async () => {}): 
   let pool: pg.Pool | null = null;
   const txClient = new AsyncLocalStorage<TxConn>();
   const appRole = process.env.PG_APP_ROLE;
+  const scoped = !!appRole || process.env.PG_SCOPED === "1";
   if (appRole && !/^[a-z_][a-z0-9_]*$/.test(appRole)) throw new Error(`PG_APP_ROLE is not a plain role name: ${appRole}`);
   const open = () => {
     if (pool) return pool;
@@ -111,7 +117,7 @@ export function pgDb(url: string, ready: () => Promise<void> = async () => {}): 
   /** One statement outside a transaction, on any pooled client, under the caller's company. */
   const once = async (text: string, params?: unknown[]): Promise<pg.QueryResult> => {
     await ready();
-    if (!appRole) return await (open() as Queryable).query(text, params);
+    if (!scoped) return await (open() as Queryable).query(text, params);
     const scope = await currentDbScope();
     const client = await open().connect();
     try {
@@ -151,7 +157,7 @@ export function pgDb(url: string, ready: () => Promise<void> = async () => {}): 
       const client = await open().connect();
       try {
         await client.query("BEGIN");
-        if (appRole) await client.query("SELECT set_config('rf.scope', $1, true)", [await currentDbScope()]);
+        if (scoped) await client.query("SELECT set_config('rf.scope', $1, true)", [await currentDbScope()]);
         const out = await txClient.run(new TxConn(client), fn);
         await client.query("COMMIT");
         return out;

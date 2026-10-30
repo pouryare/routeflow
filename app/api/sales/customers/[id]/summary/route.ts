@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { isId } from "@/lib/inputChecks";
 import { requireRole, orderFilter, groupFilter } from "@/lib/session";
 import { customerVisible } from "@/lib/repo/ordersAccess";
 import { customerSummaryIn } from "@/lib/repo/routeAdapters";
@@ -17,7 +18,9 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
   const guard = await requireRole(req, [...CAN_SEE]);
   if (!guard.ok) return guard.response;
 
-  const id = Number((await ctx.params).id);
+  const idRaw = (await ctx.params).id;
+  if (!isId(idRaw)) return NextResponse.json({ ok: false, error: "شناسه نامعتبر است" }, { status: 400 });
+  const id = Number(idRaw);
   if (!Number.isInteger(id)) {
     return NextResponse.json({ ok: false, error: "شناسه معتبر نیست" }, { status: 400 });
   }

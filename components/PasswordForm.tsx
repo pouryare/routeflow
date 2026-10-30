@@ -4,6 +4,7 @@ import { useState } from "react";
 import { friendlyError } from "@/lib/userMessage";
 import { Icon } from "@/components/meridian/Icon";
 import { PasswordInput } from "@/components/TextInput";
+import { useShakeOn } from "@/lib/useShake";
 
 const MIN_PASSWORD = 8;
 
@@ -29,6 +30,7 @@ export default function PasswordForm({
   const [repeat, setRepeat] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const shakeRef = useShakeOn<HTMLFormElement>(error !== null);
 
   const tooShort = password.length < MIN_PASSWORD;
   const mismatch = repeat.length > 0 && repeat !== password;
@@ -63,7 +65,7 @@ export default function PasswordForm({
   }
 
   return (
-    <form onSubmit={onSubmit}>
+    <form ref={shakeRef} onSubmit={onSubmit}>
       {askCurrent && (
         <PasswordInput label="رمز فعلی" autoFocus={autoFocus} autoComplete="current-password" value={current} onChange={setCurrent} />
       )}
@@ -82,7 +84,7 @@ export default function PasswordForm({
         disabled={blocked}
         className="inline-flex min-h-11 w-full items-center justify-center gap-[var(--space-2)] rounded-[var(--radius-md)] border border-[var(--accent)] bg-[var(--accent)] py-[var(--space-2)] font-medium text-[var(--accent-ink)] disabled:cursor-not-allowed disabled:opacity-40"
       >
-        <Icon name="check" size="md" />
+        <Icon name="save" size="md" />
         {saving ? "در حال ذخیره…" : submitLabel}
       </button>
     </form>

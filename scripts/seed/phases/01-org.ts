@@ -6,11 +6,14 @@
  *  the routing screens measure distance from here.
  */
 
+import { randomBytes } from "node:crypto";
 import { hashPassword } from "@/lib/auth";
 import type { SeedContext } from "../context";
 import { mapSeq } from "@/lib/seq";
 
-const PASSWORD = "demo1234";
+/* Never committed: set DEMO_PASSWORD (kept in routeflow-private), or a random one is made and
+   printed at the end of the seed. */
+const PASSWORD = process.env.DEMO_PASSWORD || randomBytes(9).toString("base64url");
 
 /** All seven roles from lib/roles.ts:13-20. NOT 'salesperson'/'driver' — the users.role
  *  CHECK still permits those two legacy values, but `getDb()` DELETEs them from `user_roles`

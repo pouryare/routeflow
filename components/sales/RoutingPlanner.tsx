@@ -100,7 +100,7 @@ export default function RoutingPlanner({ vehicleNames }: { vehicleNames: Record<
             onClick={() => void commit()}
             className="rounded-[var(--radius-md)] bg-[var(--accent)] px-[var(--space-3)] py-[var(--space-1)] text-white disabled:opacity-50"
           >
-            <Icon name="map" size="md" />
+            <Icon name="pin" size="md" />
             تثبیت
           </button>
         )}

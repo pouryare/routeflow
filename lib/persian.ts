@@ -60,3 +60,8 @@ export function matchesQuery(haystack: string, needle: string): boolean {
   if (!q) return true;
   return normalisePersian(haystack).includes(q);
 }
+
+/** Escapes `%`, `_` and `\` so typed text matches literally in a `LIKE ? ESCAPE '\\'` search. */
+export function escapeLike(s: string): string {
+  return s.replace(/[\\%_]/g, (c) => `\\${c}`);
+}

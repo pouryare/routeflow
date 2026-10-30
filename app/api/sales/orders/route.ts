@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { isId } from "@/lib/inputChecks";
 import { requireRole, orderFilter, canReachGroup, orgScopeId } from "@/lib/session";
 import { activeUserWithRoleInOrg, findCustomerInOrg } from "@/lib/repo/orgRefs";
 import { productInOrg } from "@/lib/repo/catalogueAdmin";
@@ -19,6 +20,7 @@ import {
   type Promotion,
 } from "@/lib/repo/crm/conversion";
 import { everySeq } from "@/lib/seq";
+import { isFirstOrderToday } from "@/lib/repo/orderMilestones";
 
 /** Who may read and place an order.
  *
@@ -42,11 +44,16 @@ export async function GET(req: NextRequest) {
   const customerId = url.searchParams.get("customer");
   const status = url.searchParams.get("status");
 
+  const limit = Number(url.searchParams.get("limit") ?? 200);
+  if ((customerId && !isId(customerId)) || !Number.isInteger(limit) || limit < 1 || limit > 1000) {
+    return NextResponse.json({ ok: false, error: "پارامتر نامعتبر است" }, { status: 400 });
+  }
+
   const scope = orderFilter(guard.session);
   const orders = await ordersIn(scope, {
     customerId: customerId ? Number(customerId) : undefined,
     status: status ?? undefined,
-    limit: Number(url.searchParams.get("limit") ?? 200),
+    limit,
   });
 
   // Additive, and only when a customer is named: what that shop habitually buys is the
@@ -181,6 +188,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       ok: true,
       ...order,
+      // The order form fires its confetti on this.
+      first_today: await isFirstOrderToday(session.user.id, session.user.organization_id),
       // Echoed back so the caller can tell a fresh promotion from one that already existed,
       // and can refresh the pin instead of adding a second copy of it to the pool.
       ...(promotion ? { customerId: promotion.customerId, promotedFromLead: true, leadCreated: promotion.created } : {}),

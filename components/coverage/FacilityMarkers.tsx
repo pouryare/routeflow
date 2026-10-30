@@ -1,12 +1,13 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
-import { Marker, Popup } from "react-leaflet";
+import { Popup } from "@vis.gl/react-maplibre";
 import { useNavApp } from "@/components/NavAppSetting";
 import { navigateUrl } from "@/lib/navApps";
 import { formatDistanceKm } from "@/lib/geo";
 import { FACILITY_LABEL, FacilityRow } from "@/lib/facilityTypes";
-import { facilityIcon } from "@/components/facilityIcon";
+import FacilityMarker from "@/components/FacilityMarker";
 import { coordText } from "@/lib/clipboard";
 import CopyButton from "@/components/CopyButton";
 import { Icon } from "@/components/meridian/Icon";
@@ -17,19 +18,14 @@ export default function FacilityMarkers({ placedFacilities, navAppId }: {
   placedFacilities: (FacilityRow & { lat: number; lng: number })[];
   navAppId: ReturnType<typeof useNavApp>[0];
 }) {
+  const [openId, setOpenId] = useState<number | null>(null);
   return (
     <>
           {placedFacilities.map((f) => {
             const rel = otherFacilityDistance(f, placedFacilities);
             return (
-              <Marker
-                key={f.id}
-                position={[f.lat, f.lng]}
-                title={f.name}
-                icon={facilityIcon(f.kind, f.icon_key)}
-                zIndexOffset={1000}
-              >
-                <Popup>
+              <FacilityMarker key={f.id} lat={f.lat} lng={f.lng} kind={f.kind} iconKey={f.icon_key} name={f.name} onClick={() => setOpenId(f.id)}>
+                {openId === f.id && <Popup longitude={f.lng} latitude={f.lat} offset={16} closeOnClick={false} onClose={() => setOpenId(null)}>
                   <div dir="rtl" className="text-[length:var(--text-sm)] leading-6">
                     <p className="font-medium text-text">{f.name}</p>
                     <p className="mt-0.5 text-[length:var(--text-xs)] text-text-muted">
@@ -54,18 +50,18 @@ export default function FacilityMarkers({ placedFacilities, navAppId }: {
                         rel="noopener noreferrer"
                         className="text-[length:var(--text-xs)] text-accent hover:underline"
                       >
-                        مسیریابی <Icon name="external-link" size="sm" />
+                        <Icon name="navigation" size="sm" /> مسیریابی
                       </a>
                       <Link
                         href={`/facilities?f=${f.id}`}
                         className="text-[length:var(--text-xs)] text-accent hover:underline"
                       >
-                        ویرایش این مکان ←
+                        <Icon name="edit" size="sm" /> ویرایش این مکان
                       </Link>
                     </div>
                   </div>
-                </Popup>
-              </Marker>
+                </Popup>}
+              </FacilityMarker>
             );
           })}
     </>

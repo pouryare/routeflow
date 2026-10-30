@@ -13,20 +13,20 @@ describe("per-skin basemaps", () => {
   });
 
   it("reads each skin's saved choice, and ignores ids that are not basemaps", () => {
-    expect(parseBasemaps(JSON.stringify({ dark: "satellite", light: "voyager" }), null)).toEqual({
-      dark: "satellite",
-      light: "voyager",
+    expect(parseBasemaps(JSON.stringify({ dark: "black", light: "grayscale" }), null)).toEqual({
+      dark: "black",
+      light: "grayscale",
     });
     expect(parseBasemaps(JSON.stringify({ dark: "nope", light: 7 }), null)).toEqual(DEFAULT_BASEMAPS);
   });
 
   it("keeps an old single-basemap choice for the skin whose ground it matches", () => {
-    expect(parseBasemaps(null, "positron")).toEqual({ ...DEFAULT_BASEMAPS, light: "positron" });
-    expect(parseBasemaps(null, "radar")).toEqual({ ...DEFAULT_BASEMAPS, dark: "radar" });
-    expect(parseBasemaps("{not json", "positron")).toEqual({ ...DEFAULT_BASEMAPS, light: "positron" });
+    expect(parseBasemaps(null, "white")).toEqual({ ...DEFAULT_BASEMAPS, light: "white" });
+    expect(parseBasemaps(null, "black")).toEqual({ ...DEFAULT_BASEMAPS, dark: "black" });
+    expect(parseBasemaps("{not json", "white")).toEqual({ ...DEFAULT_BASEMAPS, light: "white" });
   });
 
   it("prefers the per-skin key over the old one", () => {
-    expect(parseBasemaps(JSON.stringify({ dark: "radar", light: "apple" }), "positron").light).toBe("apple");
+    expect(parseBasemaps(JSON.stringify({ dark: "black", light: "light" }), "white").light).toBe("light");
   });
 });

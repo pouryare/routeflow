@@ -34,7 +34,8 @@ export default function WhatsNewCard({ entry }: { entry: WhatsNewEntry }) {
           <Icon name="check" size="sm" />
           دیدم
         </button>
-        <Link href="/settings/updates" className="btn inline-flex min-h-[44px] items-center">
+        <Link href="/settings/updates" className="btn inline-flex min-h-[44px] items-center gap-[var(--space-2)]">
+          <Icon name="sparkle" size="sm" />
           همهٔ تازه‌ها
         </Link>
       </div>

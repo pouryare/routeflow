@@ -73,7 +73,7 @@ export default function PoolViewBatch({
             onClick={(e) => { e.stopPropagation(); setChecked(new Set()); setSelectAll(false); }}
             className="rounded-[var(--radius-sm)] px-2 py-1 text-[length:var(--text-xs)] border border-border text-text-faint hover:border-accent hover:text-accent transition-colors"
           >
-            <Icon name="trash" size="sm" />
+            <Icon name="x" size="sm" />
             پاک کردن
           </button>
         </div>

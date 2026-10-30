@@ -267,7 +267,7 @@ describe.skipIf(!REAL)("board & pocket migration on real data", () => {
 
 - [ ] **Step 6: Run it (gated) then the full suite**
 
-Run: `REALDATA_DB=/root/pourya/RouteFlow/data/routeflow.db npx vitest run tests/board-pocket-migration-realdata.test.ts` then `npm test`
+Run: `REALDATA_DB=/srv/routeflow/data/routeflow.db npx vitest run tests/board-pocket-migration-realdata.test.ts` then `npm test`
 Expected: PASS / all green. (If `REALDATA_DB` unset the gated test skips — acceptable for CI; run it once locally.)
 
 - [ ] **Step 7: Commit**

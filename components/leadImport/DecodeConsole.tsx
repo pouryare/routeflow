@@ -20,7 +20,7 @@ const UNDO_WINDOW_MS = 10_000;
 
 /* The map is the third layer: pins land on Tehran as each link decodes, so the shape of
    the remaining work is visible -- a rush while the cheap tier clears, then a trickle, then
-   a few stragglers. Lazy with ssr:false because leaflet reads `window` on import; the same
+   a few stragglers. Lazy with ssr:false because MapLibre reads `window` on import; the same
    reason the analytics map is loaded, and the shape components/MapLoader.tsx established. */
 const ImportMap = dynamic(() => import("./ImportMap"), {
   ssr: false,
@@ -115,7 +115,7 @@ export default function DecodeConsole({
             onClick={onCancel}
             className="inline-flex items-center justify-center gap-[var(--space-2)] rounded-[var(--radius-sm)] px-1.5 py-0.5 touch transition-colors duration-[var(--dur-base)] hover:text-text"
           >
-            <Icon name="ban" size="md" />
+            <Icon name="stop" size="md" />
             توقف
           </button>
         </p>
@@ -165,7 +165,7 @@ export default function DecodeConsole({
               onClick={onUndo}
               className="inline-flex items-center justify-center gap-[var(--space-2)] rounded-[var(--radius-sm)] border border-border px-2 py-0.5 touch text-[length:var(--text-xs)] text-text-muted transition-colors duration-[var(--dur-base)] hover:border-accent hover:text-accent"
             >
-              <Icon name="external-link" size="sm" />
+              <Icon name="undo" size="sm" />
               بازگرداندن
             </button>
           )}

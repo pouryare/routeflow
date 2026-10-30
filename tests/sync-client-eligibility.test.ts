@@ -95,3 +95,10 @@ describe("the shell asks only when the answer can be yes", () => {
     expect(shell).toMatch(/<Suspense[^>]*>\s*\{?\s*<SyncIsland/);
   });
 });
+describe("the sync pull compresses itself", () => {
+  it("answers gzip when the client accepts it (next start leaves route-handler JSON uncompressed)", () => {
+    const src = readFileSync("app/api/sync/pull/route.ts", "utf8");
+    expect(src).toContain('"content-encoding": "gzip"');
+    expect(src).toContain("accept-encoding");
+  });
+});

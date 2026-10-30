@@ -127,7 +127,7 @@ export default function LeadsPage() {
               <div className="font-mono text-[length:var(--text-xs)] uppercase tracking-[0.12em] text-accent">Prospect Locations</div>
               <h1 className="text-[length:var(--text-xl)] font-bold text-text">فهرست مکان‌های پیشنهادی</h1>
             </div>
-            <Link href="/map" className="rounded-[var(--radius-md)] border border-border bg-surface px-3 py-2 text-[length:var(--text-sm)] text-text-muted transition-colors hover:border-accent hover:text-accent">بازگشت به نقشه ←</Link>
+            <Link href="/map" className="inline-flex items-center gap-2 whitespace-nowrap shrink-0 rounded-[var(--radius-md)] border border-border bg-surface px-3 py-2 text-[length:var(--text-sm)] text-text-muted transition-colors hover:border-accent hover:text-accent"><Icon name="arrow-right" size="sm" />بازگشت به نقشه</Link>
           </div>
 
           <div className="flex flex-wrap items-center gap-2 rounded-[var(--radius-md)] border border-border bg-surface px-3 py-2 text-[length:var(--text-xs)]">
@@ -135,7 +135,7 @@ export default function LeadsPage() {
               <span className="text-good">موقعیت شما زنده است — فهرست با حرکت شما به‌روز می‌شود (دقت {faNum(Math.round(position.accuracy))} متر)</span>
             ) : posStatus === "denied" ? (
               <><span className="text-crit">{posError ?? "دسترسی به موقعیت داده نشده"}</span><span className="text-text-faint">— بدون آن، ترتیب «نزدیک‌ترین» ممکن نیست.</span><button onClick={retryPosition} className="inline-flex items-center justify-center gap-[var(--space-2)] rounded-[var(--radius-sm)] border border-border px-2 py-0.5 touch text-text-muted hover:border-accent hover:text-accent">
-              <Icon name="undo" size="md" />
+              <Icon name="refresh" size="md" />
               تلاش دوباره</button></>
             ) : <span className="text-text-muted">در حال یافتن موقعیت شما…</span>}
           </div>
@@ -166,7 +166,7 @@ export default function LeadsPage() {
               onClick={() => setShowAssigned((v) => !v)}
               className="inline-flex min-h-11 shrink-0 items-center rounded-[var(--radius-sm)] border border-border px-3 text-text-muted transition-colors hover:border-accent hover:text-accent"
             >
-              <Icon name="list" size="md" />
+              <Icon name={showAssigned ? "eye-off" : "eye"} size="md" />
               {showAssigned ? "پنهان‌کردن سپرده‌شده‌ها" : "نمایش مکان‌های سپرده‌شده"}
             </button>
           </div>

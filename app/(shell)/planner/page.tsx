@@ -649,9 +649,10 @@ export default function PlannerPage() {
           </div>
           <Link
             href="/map"
-            className="no-print rounded-[var(--radius-md)] border border-border bg-surface px-3 py-2 text-[length:var(--text-sm)] text-text-muted transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:border-accent hover:text-accent"
+            className="inline-flex items-center gap-2 whitespace-nowrap shrink-0 no-print rounded-[var(--radius-md)] border border-border bg-surface px-3 py-2 text-[length:var(--text-sm)] text-text-muted transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:border-accent hover:text-accent"
           >
-            بازگشت به نقشه ←
+            <Icon name="arrow-right" size="sm" />
+            بازگشت به نقشه
           </Link>
         </div>
 
@@ -772,8 +773,9 @@ export default function PlannerPage() {
                   href={googleRoute.url}
                   target="_blank"
                   rel="noreferrer"
-                  className="rounded-[var(--radius-sm)] border border-accent bg-accent px-2 py-1 text-[length:var(--text-xs)] font-medium text-accent-ink transition-[filter,transform] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:scale-[1.03] hover:brightness-110 active:scale-[0.98]"
+                  className="inline-flex items-center gap-2 rounded-[var(--radius-sm)] border border-accent bg-accent px-2 py-1 text-[length:var(--text-xs)] font-medium text-accent-ink transition-[filter,transform] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:scale-[1.03] hover:brightness-110 active:scale-[0.98]"
                 >
+                  <Icon name="navigation" size="sm" />
                   {googleRoute.singleLeg ? `مسیریابی به توقف ۱ در ${navApp(navAppId).label}` : "شروع مسیر بهینه"}
                 </a>
               )}

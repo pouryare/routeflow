@@ -88,4 +88,26 @@ describe("task_recurrences repo", () => {
     expect((await listRecurrences(1)).map((x) => x.title)).not.toContain("theirs");
     expect(await patchRecurrence(2, mine.id, { title: "x" })).toBe(null); // cannot patch across orgs
   });
+
+  it("ignores or refuses body keys that are not plain fields (no SQL from keys, no moving org)", async () => {
+    const r = await createRecurrence(1, { title: "keep", kind: "admin", rrule: "daily", priority: "LOW" }, user);
+    // A key shaped like SQL is not a field: it is dropped, never executed.
+    await patchRecurrence(1, r.id, { "title = 'pwned', kind": "admin", title: "ok" } as never);
+    const after = await patchRecurrence(1, r.id, { organization_id: 2 } as never);
+    expect(after?.title).toBe("ok");
+    expect(after?.organization_id).toBe(1);
+    await expect(patchRecurrence(1, r.id, { priority: "x" } as never)).rejects.toThrow();
+    await expect(patchRecurrence(1, r.id, { group_id: "1; DROP TABLE users" } as never)).rejects.toThrow();
+  });
+
+  it("refuses an assignee that belongs to another company", async () => {
+    const u2 = Number(
+      (await getDb()
+        .prepare("INSERT INTO users (username,password_hash,display_name,role,created_at,organization_id) VALUES (?,?,?,?,?,2)")
+        .run(`x2${Date.now()}`, "x", "م", "group_manager", new Date().toISOString())).lastInsertRowid
+    );
+    await expect(
+      createRecurrence(1, { title: "t", kind: "admin", rrule: "daily", assignee_user_id: u2 }, user)
+    ).rejects.toThrow();
+  });
 });

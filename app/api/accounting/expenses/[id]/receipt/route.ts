@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { isId } from "@/lib/inputChecks";
 import crypto from "node:crypto";
 import fs from "node:fs/promises";
 import { requireRole } from "@/lib/session";
@@ -14,7 +15,9 @@ const MAX_UPLOAD_BYTES = 20 * 1024 * 1024;
 export async function POST(req: NextRequest, ctx: RouteContext<"/api/accounting/expenses/[id]/receipt">) {
   const guard = await requireRole(req, ROLES);
   if (!guard.ok) return guard.response;
-  const journalId = Number((await ctx.params).id);
+  const journalIdRaw = (await ctx.params).id;
+  if (!isId(journalIdRaw)) return NextResponse.json({ ok: false, error: "شناسه نامعتبر است" }, { status: 400 });
+  const journalId = Number(journalIdRaw);
   if (!Number.isInteger(journalId)) return NextResponse.json({ ok: false, error: "شناسه نامعتبر است" }, { status: 400 });
 
   const form = await req.formData().catch(() => null);
@@ -54,7 +57,9 @@ export async function POST(req: NextRequest, ctx: RouteContext<"/api/accounting/
 export async function GET(req: NextRequest, ctx: RouteContext<"/api/accounting/expenses/[id]/receipt">) {
   const guard = await requireRole(req, ROLES);
   if (!guard.ok) return guard.response;
-  const journalId = Number((await ctx.params).id);
+  const journalIdRaw = (await ctx.params).id;
+  if (!isId(journalIdRaw)) return NextResponse.json({ ok: false, error: "شناسه نامعتبر است" }, { status: 400 });
+  const journalId = Number(journalIdRaw);
   const r = Number.isInteger(journalId) ? await receiptFor(guard.session.organizationId, journalId) : null;
   if (!r) return NextResponse.json({ ok: false, error: "رسیدی ثبت نشده است" }, { status: 404 });
   const format = req.nextUrl.searchParams.get("format") === "avif" ? "avif" : "webp";

@@ -13,7 +13,7 @@ export default function Loading() {
   return (
     <>
       <PageHeaderCard {...pageMetaFor("/facilities")} />
-      <PageSkeleton shape="form" />
+      <PageSkeleton route="/facilities" shape="form" />
     </>
   );
 }

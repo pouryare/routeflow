@@ -46,3 +46,8 @@ export function boundedText(value: unknown, max: number): string | null {
   const t = value.trim();
   return t.length <= max ? t : null;
 }
+
+/** A path segment that is a positive whole-number id ("12", not "abc", "1e3", "-1", "0x1" or "١٢"). */
+export function isId(value: unknown): value is string {
+  return typeof value === "string" && /^[1-9]\d{0,14}$/.test(value);
+}

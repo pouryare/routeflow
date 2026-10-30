@@ -5,6 +5,7 @@ import { carvedCardPath } from "@/lib/design/carve";
 import type { AppTab } from "@/lib/appNav";
 import { CardHelp } from "@/components/meridian/CardHelp";
 import RouteTabs from "@/components/RouteTabs";
+import WordReveal from "@/components/meridian/WordReveal";
 
 /** The card every shell page opens with: what this screen is, in a couple of lines, with
  *  the section's sibling tabs sitting in a bay cut out of its top edge.
@@ -93,7 +94,7 @@ export default function PageHeaderCard({
         <div className="phc__body">
           {date ? <p className="phc__date">{date}</p> : null}
           <h1 className="phc__title">
-            {title}
+            <WordReveal text={title} />
             {/* Only when the page declares one. A trigger that opened "not found" would be
                 worse than no trigger, and every claimed id is checked against lib/help by
                 tests/pageMeta.test.ts. */}

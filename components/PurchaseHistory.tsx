@@ -167,15 +167,17 @@ export default function PurchaseHistory({
           <div className="mt-3 flex flex-wrap gap-2">
             {canSell(role) && <Link
               href={`/sales/orders/new?customer=${customerId}`}
-              className="rounded-[var(--radius-md)] border border-accent bg-accent px-3 py-1.5 text-[length:var(--text-xs)] font-medium text-accent-ink no-underline transition-[filter] duration-[var(--dur-base)] hover:brightness-110"
+              className="inline-flex items-center gap-2 rounded-[var(--radius-md)] border border-accent bg-accent px-3 py-1.5 text-[length:var(--text-xs)] font-medium text-accent-ink no-underline transition-[filter] duration-[var(--dur-base)] hover:brightness-110"
             >
+              <Icon name="plus" size="sm" />
               ثبت سفارش تازه
             </Link>}
             <Link
               href={`/sales/orders?customer=${customerId}`}
-              className="rounded-[var(--radius-md)] border border-border px-3 py-1.5 text-[length:var(--text-xs)] text-text-muted no-underline transition-colors duration-[var(--dur-base)] hover:border-border-strong hover:text-text"
+              className="inline-flex items-center gap-2 rounded-[var(--radius-md)] border border-border px-3 py-1.5 text-[length:var(--text-xs)] text-text-muted no-underline transition-colors duration-[var(--dur-base)] hover:border-border-strong hover:text-text"
               title={`همه سفارش‌های ${customerName}`}
             >
+              <Icon name="receipt" size="sm" />
               همه سفارش‌ها
             </Link>
           </div>

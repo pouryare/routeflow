@@ -49,3 +49,12 @@ describe("normaliseCode", () => {
     expect(normaliseCode("ab12c-d3")).toBe("ab12c" + "d3");
   });
 });
+
+describe("OtpInput bundle", () => {
+  it("imports the client-safe digit helper, not lib/stepUp (which pulls node:crypto into every page)", async () => {
+    const { readFileSync } = await import("node:fs");
+    const src = readFileSync("components/mobile/OtpInput.tsx", "utf8");
+    expect(src).toContain('@/lib/otpCode');
+    expect(src).not.toContain('@/lib/stepUp');
+  });
+});

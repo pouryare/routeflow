@@ -55,7 +55,7 @@ export default function DecisionDeck<T>({
             <Icon name="check" size="lg" />
             <p>{decided > 0 ? `همه تصمیم‌ها گرفته شد · ${faNum(decided)} مورد` : "موردی برای تصمیم‌گیری نیست"}</p>
             <Button variant="primary" size="lg" fullWidth onPress={onClose}>
-              <Icon name="check" size="md" />
+              <Icon name="x" size="md" />
               بستن این فهرست
             </Button>
           </div>
@@ -82,7 +82,7 @@ export default function DecisionDeck<T>({
                   {c.label}
                 </AnswerButton>
               ))}
-              <SkipButton onPress={next}>این مورد بعداً</SkipButton>
+              <SkipButton icon="clock" onPress={next}>این مورد بعداً</SkipButton>
             </div>
           </>
         )}

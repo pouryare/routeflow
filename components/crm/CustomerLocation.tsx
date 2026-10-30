@@ -21,7 +21,7 @@ export default function CustomerLocation({ lat, lng, name, mapsUrl, canWrite, bu
   const close = useCallback(() => setOpen(false), []);
   const hasPin = lat !== null && lng !== null && Number.isFinite(lat) && Number.isFinite(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180;
   const editButton = canWrite && onConfirm ? <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn ghost" style={TOUCH} disabled={busy} onClick={() => setEditing(true)}>
-  <Icon name="map-pin" size="md" />
+  <Icon name={hasPin ? "edit" : "plus"} size="md" />
   {hasPin ? "ویرایش موقعیت" : "افزودن موقعیت"}</button> : null;
   if (editing && canWrite && onConfirm) return <WidgetBoundary label="ویرایش موقعیت"><LocationEditor initial={hasPin ? { lat: lat!, lng: lng!, link: mapsUrl ?? undefined } : null} onCancel={() => setEditing(false)} onConfirm={async (pLat, pLng, link) => { await onConfirm(pLat, pLng, link); setEditing(false); }} /></WidgetBoundary>;
   if (!hasPin) return <div className="no-pin"><Icon name="map-pin" size="sm" /> موقعیت ثبت نشده است{editButton}</div>;
@@ -46,7 +46,7 @@ export default function CustomerLocation({ lat, lng, name, mapsUrl, canWrite, bu
             </Suspense>
           </WidgetBoundary>
         </div>
-        {mapsUrl && /^https?:\/\//i.test(mapsUrl) && <a className="btn ghost" style={TOUCH} href={mapsUrl} target="_blank" rel="noreferrer">پیوند نقشه</a>}
+        {mapsUrl && /^https?:\/\//i.test(mapsUrl) && <a className="btn ghost" style={TOUCH} href={mapsUrl} target="_blank" rel="noreferrer"><Icon name="external-link" size="md" />پیوند نقشه</a>}
       </BottomSheet>
     </figure>
   );

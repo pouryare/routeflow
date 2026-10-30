@@ -264,7 +264,7 @@ export default function NotificationSettings({ initial }: { initial: PrefsMatrix
                     disabled={off || busy !== null || push.state === "busy"}
                     onClick={push.state === "on" ? disconnectPush : connectPush}
                   >
-                    <Icon name="link" size="md" />
+                    <Icon name={push.state === "on" ? "unlink" : "link"} size="md" />
                     {push.state === "on" ? "قطع اتصال این دستگاه" : "این دستگاه را متصل کن"}
                   </button>
                 )
@@ -281,7 +281,7 @@ export default function NotificationSettings({ initial }: { initial: PrefsMatrix
                       disabled={busy !== null}
                       onClick={disconnectTelegram}
                     >
-                      <Icon name="link" size="md" />
+                      <Icon name="unlink" size="md" />
                       قطع اتصال
                     </button>
                   )}
@@ -293,7 +293,7 @@ export default function NotificationSettings({ initial }: { initial: PrefsMatrix
                 disabled={off || !s.connected || busy !== null}
                 onClick={() => sendTest(ch)}
               >
-                <Icon name="check" size="md" />
+                <Icon name="send" size="md" />
                 ارسال پیام آزمایشی
               </button>
             </div>

@@ -116,7 +116,7 @@ export default function DriverRun({
             onClick={() => setWaved((w) => new Set(w).add(atDoor.id))}
             className="inline-flex min-h-[44px] items-center justify-center gap-[var(--space-2)] rounded-[var(--radius-md)] border border-[var(--border)] px-[var(--space-3)] text-[length:var(--text-sm)] text-[var(--text-muted)]"
           >
-            <Icon name="arrow-left" size="md" />
+            <Icon name="x" size="md" />
             فعلاً نه
           </button>
         </div>
@@ -135,6 +135,7 @@ export default function DriverRun({
             runDate={run.run_date}
             driverName={driverName}
             businessName={businessName}
+            lastStop={run.stops.every((s) => s.id === stop.id || s.status !== "pending")}
           />
         ))}
       </ul>
@@ -180,6 +181,7 @@ function StopCard({
   runDate,
   driverName,
   businessName,
+  lastStop,
 }: {
   stop: RunStop;
   /** Bumped by the arrival banner to open this stop's delivery flow. */
@@ -191,6 +193,7 @@ function StopCard({
   runDate: string;
   driverName: string;
   businessName: string;
+  lastStop: boolean;
 }) {
   /* The flow remounts per opening (the `key`), which is what gives each visit a fresh set of
    * questions; `flowOpen` only slides the sheet in and out. */
@@ -279,8 +282,9 @@ function StopCard({
           {stop.phone && (
             <a
               href={`tel:${stop.phone}`}
-              className="mb-[var(--space-3)] inline-block rounded-[var(--radius-md)] border border-[var(--border)] px-[var(--space-3)] py-[var(--space-2)] text-[length:var(--text-sm)] text-[var(--accent)] no-underline"
+              className="mb-[var(--space-3)] inline-flex items-center gap-2 rounded-[var(--radius-md)] border border-[var(--border)] px-[var(--space-3)] py-[var(--space-2)] text-[length:var(--text-sm)] text-[var(--accent)] no-underline"
             >
+              <Icon name="phone" size="sm" />
               تماس با مشتری
             </a>
           )}
@@ -331,7 +335,7 @@ function StopCard({
                 onClick={defer}
                 className="inline-flex min-h-[44px] items-center justify-center gap-[var(--space-2)] rounded-[var(--radius-md)] border border-[var(--border)] px-[var(--space-4)] text-[length:var(--text-sm)] text-[var(--text-muted)]"
               >
-                <Icon name="arrow-left" size="md" />
+                <Icon name="clock" size="md" />
                 بعداً این توقف
               </button>
             )}
@@ -372,6 +376,7 @@ function StopCard({
           onPrint={onPrint}
           onClose={() => setFlowOpen(false)}
           onReopen={() => setFlowOpen(true)}
+          lastStop={lastStop}
         />
       )}
     </li>

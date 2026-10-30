@@ -150,7 +150,7 @@ export default function SyncStatus() {
         onClick={() => setOpen((v) => !v)}
         className="flex items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 py-1 shadow-sm"
       >
-        <Icon name="undo" size="md" />
+        <Icon name="refresh" size="md" />
         <span
           className="inline-block h-2 w-2 rounded-full"
           style={{ background: `var(--${badge.tone === "muted" ? "text-faint" : badge.tone})` }}
@@ -180,7 +180,7 @@ export default function SyncStatus() {
                 {(r.status === "failed" || r.status === "conflict") && (
                   <span className="flex gap-2">
                     <button type="button" onClick={() => void retry(r.id)} className="text-[var(--accent)]">
-                      <Icon name="undo" size="md" />
+                      <Icon name="send" size="md" />
                       ارسال دوباره
                     </button>
                     <button type="button" onClick={() => void discard(r.id)} className="text-[var(--crit)]">

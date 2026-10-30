@@ -1,12 +1,14 @@
 "use client";
 
 import { InputOTP } from "@heroui/react";
-import { normaliseCode } from "@/lib/stepUp";
+import { normaliseCode } from "@/lib/otpCode";
+import { useShakeOn } from "@/lib/useShake";
 
 const LENGTH = 6;
 
 /** Six boxes for an authenticator code. Digits are always left to right, the phone's one-time-code
- *  autofill works, Persian digits are accepted, and the sixth digit submits by itself. */
+ *  autofill works, Persian digits are accepted, and the sixth digit submits by itself. A code
+ *  turned down (`isInvalid`) shakes the boxes. */
 export default function OtpInput({
   value,
   onChange,
@@ -22,8 +24,9 @@ export default function OtpInput({
   disabled?: boolean;
   autoFocus?: boolean;
 }) {
+  const shakeRef = useShakeOn<HTMLDivElement>(Boolean(isInvalid));
   return (
-    <div dir="ltr" className="flex justify-center">
+    <div ref={shakeRef} dir="ltr" className="flex justify-center">
       <InputOTP
         maxLength={LENGTH}
         value={value}

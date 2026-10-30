@@ -101,7 +101,7 @@ export default function DriverRunView({
       <section className="rounded-[var(--radius-lg)] border border-border bg-surface-raised p-4">
         <p className="text-[length:var(--text-sm)] text-crit">{error}</p>
         <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn ghost mt-2" onClick={() => void reload()}>
-          <Icon name="undo" size="md" />
+          <Icon name="refresh" size="md" />
           تلاش دوباره
         </button>
       </section>
@@ -197,11 +197,12 @@ export default function DriverRunView({
                   <div className="flex shrink-0 gap-1">
                     {s.lat !== null && s.lng !== null ? (
                       <a
-                        className="rounded-[var(--radius-sm)] border border-border px-2 py-1 text-[length:var(--text-xs)]"
+                        className="inline-flex items-center gap-2 rounded-[var(--radius-sm)] border border-border px-2 py-1 text-[length:var(--text-xs)]"
                         href={navigateUrl(navAppId, { lat: s.lat, lng: s.lng }, s.name)}
                         target="_blank"
                         rel="noreferrer"
                       >
+                        <Icon name="navigation" size="sm" />
                         مسیریابی
                       </a>
                     ) : null}

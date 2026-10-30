@@ -1,14 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "@/components/meridian/Icon";
-import { useLatest } from "@/lib/useLatest";
-import { useHydrated } from "@/lib/useHydrated";
-import { MapContainer, Marker, Polyline, Popup, Circle, useMap, useMapEvents } from "react-leaflet";
-import L from "leaflet";
-import "leaflet-routing-machine";
-import "leaflet/dist/leaflet.css";
-import "leaflet-routing-machine/dist/leaflet-routing-machine.css";
+import { Layer, Marker, Popup, Source, useMap } from "@vis.gl/react-maplibre";
 import FullscreenControl from "./FullscreenControl";
 import LocateControl from "./LocateControl";
 import MyLocationMarker from "./MyLocationMarker";
@@ -16,9 +10,10 @@ import { useMyPosition } from "./MyPositionProvider";
 import { faFixed, faNum } from "@/lib/format";
 import { formatDistanceKm } from "@/lib/geo";
 import { NEAREST_COUNTS, RADII_KM, nearestN, withinRadius } from "@/lib/mapSelect";
-import type { RoutesFoundEvent, WithRouting } from "@/types/leafletRouting";
-import { guardedOsrmRouter } from "@/lib/guardedRouter";
-import QuietTileLayer from "@/components/map/QuietTileLayer";
+import type { DrivingRoute } from "@/lib/osrm";
+import AppMap from "@/components/map/AppMap";
+import RouteLine from "@/components/map/RouteLine";
+import { geoCircle } from "@/components/map/geoCircle";
 
 export interface LeadPoint {
   id: number;
@@ -33,108 +28,21 @@ export interface LeadPoint {
   statusLabel: string | null;
 }
 
-interface RouteSummary {
-  distanceKm: number;
-  minutes: number;
-}
-
-const iconCache = new Map<string, L.DivIcon>();
-
-function leadIcon(runIndex: number | null, selected: boolean): L.DivIcon {
-  const key = `${runIndex ?? "-"}|${selected}`;
-  const cached = iconCache.get(key);
-  if (cached) return cached;
-
-  // A lead in the run carries its stop number, which is the whole point of the run
-  // being ordered: the map and the list say the same thing in the same order.
-  const inRun = runIndex !== null;
-  const icon = L.divIcon({
-    className: "",
-    html: `<div class="lead-marker${inRun ? " lead-marker--in-run" : ""}${selected ? " lead-marker--selected" : ""}">${
-      inRun ? runIndex : ""
-    }</div>`,
-    iconSize: inRun ? [24, 24] : [14, 14],
-    iconAnchor: inRun ? [12, 12] : [7, 7],
-  });
-  iconCache.set(key, icon);
-  return icon;
-}
-
-/** Road route through the run, when there are at least two points to join.
- *
- *  Same OSRM control the planner map uses. Its own markers are suppressed -- this map
- *  already draws every lead, and a second set of pins on top of them would double
- *  everything in the run. */
-function RunRoute({ points, onSummary }: { points: [number, number][]; onSummary: (s: RouteSummary | null) => void }) {
-  const map = useMap();
-  const key = useMemo(() => points.map((p) => p.join(",")).join("|"), [points]);
-
-  /* The control is rebuilt only when the map or the route itself changes (`key`). What it
-     reads is always the newest: the points through a ref, and the callback, which the parent
-     recreates every render, through another. Listing the callback as a dependency would
-     rebuild the control on every render. */
-  const pointsRef = useLatest(points);
-  const onSummaryRef = useLatest(onSummary);
-
-  useEffect(() => {
-    const pts = pointsRef.current;
-    if (pts.length < 2) {
-      onSummaryRef.current(null);
-      return;
-    }
-    const guarded = guardedOsrmRouter(L as unknown as WithRouting);
-    const control = (L as unknown as WithRouting).Routing.control({
-      router: guarded.router,
-      waypoints: pts.map(([lat, lng]) => L.latLng(lat, lng)),
-      routeWhileDragging: false,
-      addWaypoints: false,
-      draggableWaypoints: false,
-      fitSelectedRoutes: false,
-      show: false,
-      lineOptions: {
-        styles: [{ color: "#2DE0E6", weight: 4, opacity: 0.8 }],
-        extendToWaypoints: true,
-        missingRouteTolerance: 0,
-      },
-      createMarker: () => null,
-    });
-    control.on("routesfound", (e: RoutesFoundEvent) => {
-      const r = e.routes?.[0];
-      if (r) onSummaryRef.current({ distanceKm: r.summary.totalDistance / 1000, minutes: Math.round(r.summary.totalTime / 60) });
-    });
-    control.on("routingerror", () => onSummaryRef.current(null));
-    control.addTo(map);
-    return () => {
-      guarded.dispose();
-      control.remove();
-    };
-  }, [map, key, pointsRef, onSummaryRef]);
-
-  return null;
-}
-
-/** In circle mode, the next tap on the map (not on a pin) sets the centre. */
-function CentrePicker({ active, onPick }: { active: boolean; onPick: (lat: number, lng: number) => void }) {
-  useMapEvents({
-    click(e) {
-      if (active) onPick(e.latlng.lat, e.latlng.lng);
-    },
-  });
-  return null;
-}
-
 /** Keeps the map pointed at something useful without stealing it back afterwards.
  *
  *  Fits once, to whatever there is to see. Re-fitting on every change would yank the
  *  view out from under someone who has just panned somewhere deliberately. */
 function FitOnce({ points }: { points: [number, number][] }) {
-  const map = useMap();
+  const { current: map } = useMap();
   const done = useRef(false);
   useEffect(() => {
-    if (done.current || points.length === 0) return;
+    if (!map || done.current || points.length === 0) return;
     done.current = true;
-    if (points.length === 1) map.setView(points[0], 15);
-    else map.fitBounds(L.latLngBounds(points), { padding: [40, 40], maxZoom: 15 });
+    if (points.length === 1) map.jumpTo({ center: [points[0][1], points[0][0]], zoom: 15 });
+    else {
+      const lats = points.map((p) => p[0]), lngs = points.map((p) => p[1]);
+      map.fitBounds([[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]], { padding: 40, maxZoom: 15, duration: 0 });
+    }
   }, [points, map]);
   return null;
 }
@@ -179,51 +87,15 @@ export default function LeadsMap({
   const [circle, setCircle] = useState<{ lat: number; lng: number; km: number } | null>(null);
   const [pickingCentre, setPickingCentre] = useState(false);
   const [note, setNote] = useState<string | null>(null);
-  const [summary, setSummary] = useState<RouteSummary | null>(null);
+  const [summary, setSummary] = useState<DrivingRoute | null>(null);
   const { position, status } = useMyPosition();
-  /* Whether this has left the server render. Read through useSyncExternalStore rather than a
-   * `mounted` state an effect flips: there is nothing external to subscribe to here, and the
-   * bump would be a second render pass on every mount that the server render already decided.
-   * This map is loaded with `ssr: false`, so in practice the client snapshot is true from the
-   * first render and the placeholder below never flashes. */
-  const hydrated = useHydrated();
-
-  /* Bumped on every mount, and used to key the map container so it always gets a DOM node
-   * Leaflet has never seen.
-   *
-   * react-leaflet v5 cleans up with `useEffect(() => () => context?.map.remove(), [context])`,
-   * and `context` is set by a `setState` inside the map's own ref callback. If the effect's
-   * cleanup runs before that state has flushed -- which is what a Fast Refresh remount does --
-   * `context` is null, `context?.map` short-circuits, and the map is never removed. The
-   * container div keeps the `_leaflet_id` Leaflet stamps on it, so the next mount trips
-   * Leaflet's own guard -- "Map container is being reused by another instance" -- and the
-   * layers then fail on the corpse with `appendChild` and `_removePath` errors.
-   *
-   * A key cannot fix that on its own: `useState(() => Date.now())` is *preserved* across a
-   * Fast Refresh, so the key never changed and the same poisoned div came back. Effects are
-   * re-run by Fast Refresh even when state is kept, so an epoch they advance does change --
-   * and changing it makes React discard the old div, which is what finally takes
-   * `_leaflet_id` with it.
-   *
-   * The bump is scheduled on a microtask rather than run inline, which is the same deferral
-   * lib/useRunAfterMount exists for: nothing is set during the effect body, so there is no
-   * synchronous cascade to guard against. The cascade is still wanted -- React has to discard
-   * the old container -- it just does not have to happen before the browser has painted. */
-  const [mapEpoch, setMapEpoch] = useState(0);
-
-  useEffect(() => {
-    void Promise.resolve().then(() => setMapEpoch((n) => n + 1));
-  }, []);
-
   // Must be called unconditionally — hooks cannot be conditional.
   const allPoints = useMemo<[number, number][]>(() => leads.map((l) => [l.lat, l.lng]), [leads]);
 
-  /* Gated on the epoch having settled as well as on hydration, so a real first load still
-   * builds exactly one map: the map is not created until the key it will be created with is
-   * already its final value, and so cannot be torn down and rebuilt one microtask later. */
-  if (!hydrated || mapEpoch === 0) {
-    return <div className="h-80 w-full rounded-[var(--radius-lg)] border border-border" />;
-  }
+  const circleShape = useMemo(() => (circle ? geoCircle(circle.lat, circle.lng, circle.km * 1000) : null), [circle]);
+  const runStops = useMemo(() => runPoints.map(([lat, lng]) => ({ lat, lng })), [runPoints]);
+  const onRoute = useCallback((r: DrivingRoute | null) => setSummary(r), []);
+  const selected = selecting ? null : leads.find((l) => l.id === selectedId) ?? null;
 
   // Somewhere to start when there are no leads at all and no fix yet. Tehran, which is
   // where this business operates -- an empty map centred on the null island is a bug
@@ -233,99 +105,109 @@ export default function LeadsMap({
   return (
     <div className="overflow-hidden rounded-[var(--radius-lg)] border border-border">
       <div className="h-80 w-full">
-        <MapContainer
-          key={mapEpoch}
-          center={position ? [position.lat, position.lng] : fallbackCentre}
-          zoom={12}
-          className="h-full w-full"
+        <AppMap
+          initialViewState={{
+            latitude: position ? position.lat : fallbackCentre[0],
+            longitude: position ? position.lng : fallbackCentre[1],
+            zoom: 12,
+          }}
+          // In circle mode, the next tap on the map (not on a pin) sets the centre.
+          onClick={(e) => {
+            if (!pickingCentre) return;
+            setCircle({ lat: e.lngLat.lat, lng: e.lngLat.lng, km: 3 });
+            setPickingCentre(false);
+          }}
         >
-          <QuietTileLayer />
-
           <FitOnce points={allPoints} />
-          <CentrePicker
-            active={pickingCentre}
-            onPick={(lat, lng) => {
-              setCircle({ lat, lng, km: 3 });
-              setPickingCentre(false);
-            }}
-          />
-          {circle && <Circle center={[circle.lat, circle.lng]} radius={circle.km * 1000} interactive={false} pathOptions={{ color: "#2DE0E6", weight: 2, fillOpacity: 0.08 }} />}
-          <RunRoute points={runPoints} onSummary={setSummary} />
+          {circleShape && (
+            <Source id="lead-circle" type="geojson" data={circleShape}>
+              <Layer id="lead-circle-fill" type="fill" paint={{ "fill-color": "#2DE0E6", "fill-opacity": 0.08 }} />
+              <Layer id="lead-circle-line" type="line" paint={{ "line-color": "#2DE0E6", "line-width": 2 }} />
+            </Source>
+          )}
+          {/* Road route through the run; dashed straight lines until OSRM answers, so the
+              run is always legible as an order. This map draws its own pins, so the route
+              brings none. */}
+          <RouteLine stops={runStops} onRoute={onRoute} lineOnly />
 
-          {leads.map((l) => (
-            <Marker
-              key={l.id}
-              position={[l.lat, l.lng]}
-              title={l.name}
-              icon={leadIcon(l.runIndex, l.id === selectedId)}
-              zIndexOffset={l.runIndex !== null ? 700 : 500}
-              eventHandlers={{
-                click: () => {
+          {leads.map((l) => {
+            // A lead in the run carries its stop number, which is the whole point of the
+            // run being ordered: the map and the list say the same thing in the same order.
+            const inRun = l.runIndex !== null;
+            return (
+              <Marker
+                key={l.id}
+                longitude={l.lng}
+                latitude={l.lat}
+                style={{ zIndex: inRun ? 2 : 1 }}
+                onClick={(e) => {
+                  e.originalEvent.stopPropagation();
                   if (selecting) {
                     if (l.runIndex === null) onAddToRun(l.id);
                     else onRemoveFromRun(l.id);
                   } else onSelect(l.id);
-                },
-                popupclose: () => onSelect(null),
-              }}
-            >
-              {!selecting && <Popup>
-                <div dir="rtl" className="min-w-44 text-[length:var(--text-sm)] leading-6">
-                  <p className="font-medium text-text">{l.name}</p>
-                  {l.address && <p className="mt-0.5 text-[length:var(--text-xs)] text-text-muted">{l.address}</p>}
+                }}
+              >
+                <button
+                  type="button"
+                  title={l.name}
+                  aria-label={inRun ? `${l.name}، مقصد ${faNum(l.runIndex!)}` : l.name}
+                  className={`lead-marker${inRun ? " lead-marker--in-run" : ""}${l.id === selectedId ? " lead-marker--selected" : ""}`}
+                >
+                  {/* No icon: this button is the map pin itself, a dot or its stop number. */}
+                  {inRun ? faNum(l.runIndex!) : ""}
+                </button>
+              </Marker>
+            );
+          })}
 
-                  <div className="mt-1 flex flex-wrap items-center gap-x-2 text-[length:var(--text-xs)] text-text-faint">
-                    {l.km !== null && <span>{formatDistanceKm(l.km)} — خط مستقیم</span>}
-                    {l.statusLabel && <span className="text-text-muted">{l.statusLabel}</span>}
-                  </div>
+          {selected && (
+            <Popup longitude={selected.lng} latitude={selected.lat} offset={14} closeOnClick={false} onClose={() => onSelect(null)} maxWidth="280px">
+              <div dir="rtl" className="min-w-44 text-[length:var(--text-sm)] leading-6">
+                <p className="font-medium text-text">{selected.name}</p>
+                {selected.address && <p className="mt-0.5 text-[length:var(--text-xs)] text-text-muted">{selected.address}</p>}
 
-                  <div className="mt-2 flex flex-wrap items-center gap-2">
-                    <a
-                      href={navigateHref(l)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="shrink-0 whitespace-nowrap inline-flex items-center justify-center gap-2 rounded-[var(--radius-sm)] border border-accent px-5 py-1.5 text-[length:var(--text-sm)] font-medium text-accent"
-                    >
-                      مسیریابی به مکان
-                    </a>
-                    {l.runIndex === null ? (
-                      <button
-                        onClick={() => onAddToRun(l.id)}
-                        className="rounded-[var(--radius-sm)] border border-border px-2 py-1 text-[length:var(--text-xs)] text-text-muted"
-                      >
-                        <Icon name="plus" size="sm" />
-                        + افزودن به مسیر
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => onRemoveFromRun(l.id)}
-                        className="rounded-[var(--radius-sm)] border border-border px-2 py-1 text-[length:var(--text-xs)] text-crit"
-                      >
-                        <Icon name="trash" size="sm" />
-                        حذف از مسیر (مقصد {faNum(l.runIndex)})
-                      </button>
-                    )}
-                  </div>
+                <div className="mt-1 flex flex-wrap items-center gap-x-2 text-[length:var(--text-xs)] text-text-faint">
+                  {selected.km !== null && <span>{formatDistanceKm(selected.km)} — خط مستقیم</span>}
+                  {selected.statusLabel && <span className="text-text-muted">{selected.statusLabel}</span>}
                 </div>
-              </Popup>}
-            </Marker>
-          ))}
 
-          {/* Straight-line fallback so the run is always legible as an order, even when
-              OSRM is unreachable or still thinking. Drawn under the road route, which
-              covers it once it arrives. */}
-          {runPoints.length > 1 && summary === null && (
-            <Polyline
-              positions={runPoints}
-              interactive={false}
-              pathOptions={{ color: "#2DE0E6", weight: 2, opacity: 0.5, dashArray: "6 6" }}
-            />
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <a
+                    href={navigateHref(selected)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="shrink-0 whitespace-nowrap inline-flex items-center justify-center gap-2 rounded-[var(--radius-sm)] border border-accent px-5 py-1.5 text-[length:var(--text-sm)] font-medium text-accent"
+                  >
+                    <Icon name="navigation" size="sm" />
+                    مسیریابی به مکان
+                  </a>
+                  {selected.runIndex === null ? (
+                    <button
+                      onClick={() => onAddToRun(selected.id)}
+                      className="rounded-[var(--radius-sm)] border border-border px-2 py-1 text-[length:var(--text-xs)] text-text-muted"
+                    >
+                      <Icon name="plus" size="sm" />
+                      افزودن به مسیر
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => onRemoveFromRun(selected.id)}
+                      className="rounded-[var(--radius-sm)] border border-border px-2 py-1 text-[length:var(--text-xs)] text-crit"
+                    >
+                      <Icon name="minus" size="sm" />
+                      حذف از مسیر (مقصد {faNum(selected.runIndex)})
+                    </button>
+                  )}
+                </div>
+              </div>
+            </Popup>
           )}
 
           <MyLocationMarker />
           <LocateControl />
           <FullscreenControl />
-        </MapContainer>
+        </AppMap>
       </div>
 
       {onAddMany && (
@@ -390,7 +272,7 @@ export default function LeadsMap({
                   }}
                   className="inline-flex min-h-[44px] items-center gap-2 rounded-full border border-border px-4 text-[length:var(--text-sm)] text-crit"
                 >
-                  <Icon name="trash" size="sm" />
+                  <Icon name="x" size="sm" />
                   پاک کردن انتخاب
                 </button>
               )}
@@ -442,7 +324,7 @@ export default function LeadsMap({
         </span>
         {summary ? (
           <span className="text-text">
-            {faFixed(summary.distanceKm, 1)} کیلومتر · {faNum(summary.minutes)} دقیقه روی جاده
+            {faFixed(summary.km, 1)} کیلومتر · {faNum(summary.minutes)} دقیقه روی جاده
           </span>
         ) : runPoints.length > 1 ? (
           <span className="text-text-faint">مسیر خط‌چین — فاصله جاده‌ای هنوز محاسبه نشده</span>

@@ -108,13 +108,13 @@ export default function SecondFactorSection() {
         <div className="flex flex-col gap-[var(--space-2)]">
           <FieldInput type="text" inputMode="numeric" autoComplete="one-time-code" dir="ltr" placeholder="کد برای غیرفعال‌سازی" value={code} onChange={(e) => setCode(e.target.value)} className={INPUT} aria-label="کد فعلی" />
           <button type="button" className={GHOST} disabled={busy || !code.trim()} onClick={() => void act("disable")}>
-            <Icon name="x" size="md" />
+            <Icon name="ban" size="md" />
             غیرفعال کردن
           </button>
         </div>
       ) : (
         <button type="button" className={BUTTON} disabled={busy} onClick={() => void act("begin")}>
-          <Icon name="user" size="md" />
+          <Icon name="check" size="md" />
           فعال‌سازی
         </button>
       )}

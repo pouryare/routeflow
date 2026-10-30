@@ -43,7 +43,7 @@ export default function LinkStep({ api }: { api: CustomStepApi }) {
       <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 8 }}>
         <FieldInput className="ltr" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://maps.app.goo.gl/…" aria-label="لینک" inputMode="url" />
         <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn ghost" onClick={() => void paste()}>
-        <Icon name="clipboard" size="md" />
+        <Icon name="paste" size="md" />
         چسباندن</button>
       </div>
       {err ? <div className="tf-card warn">{err}</div> : null}

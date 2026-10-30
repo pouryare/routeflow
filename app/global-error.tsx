@@ -29,7 +29,7 @@ export default function GlobalError({
             code={error.digest}
             actions={
               <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn solid" onClick={() => retry()}>
-                <Icon name="undo" size="md" />
+                <Icon name="refresh" size="md" />
                 تلاش دوباره
               </button>
             }

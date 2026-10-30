@@ -1,3 +1,4 @@
+import { Icon } from "@/components/meridian/Icon";
 import { CardHelp } from "@/components/meridian/CardHelp";
 import Link from "next/link";
 import { cookies } from "next/headers";
@@ -107,6 +108,7 @@ function ListView({
                navigation, and next/link would attempt a client-side transition to a
                route that answers with an .xlsx. */
             <a className="btn ghost" href="/api/sales/orders/export" download>
+              <Icon name="download" size="md" />
               خروجی اکسل
             </a>
           )}
@@ -115,7 +117,8 @@ function ListView({
               className="btn solid"
               href={focused ? `/sales/orders/new?customer=${focused.id}` : "/sales/orders/new"}
             >
-              ＋ ثبت سفارش تازه
+              <Icon name="plus" size="md" />
+              ثبت سفارش تازه
             </Link>
           )}
         </div>
@@ -258,6 +261,7 @@ async function JourneyView({
               aria-current={mode === "one" ? "page" : undefined}
               href={`/sales/orders?view=journey${keep}`}
             >
+              <Icon name="receipt" size="md" />
               این سفارش
             </Link>
             <Link
@@ -265,11 +269,13 @@ async function JourneyView({
               aria-current={mode === "all" ? "page" : undefined}
               href={`/sales/orders?view=journey&mode=all${keep}`}
             >
+              <Icon name="list" size="md" />
               همهٔ سفارش‌ها
             </Link>
           </nav>
           {mode === "one" && focus ? (
             <Link className="btn ghost" href={`/sales/orders/${focus.id}`}>
+              <Icon name="receipt" size="md" />
               صفحهٔ سفارش
             </Link>
           ) : null}

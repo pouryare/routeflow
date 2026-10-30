@@ -1,5 +1,6 @@
 import { canSnooze } from "@/lib/taskSnooze";
 import { getDb } from "@/lib/db";
+import { idList } from "@/lib/database/dialect";
 import type { Session } from "@/lib/session";
 import { scopeGroupIds } from "@/lib/session";
 import { tehranTodayIso, jalaliMonthKey } from "@/lib/jalali";
@@ -219,7 +220,7 @@ export async function todayFor(session: Session): Promise<Briefing> {
     session.role === "platform_owner"
   ) {
     const gids = await scopeGroupIds(session);
-    const inClause = gids === "all" || gids.length === 0 ? null : gids.join(",");
+    const inClause = gids === "all" || gids.length === 0 ? null : idList(gids);
 
     /* One row per ORDER, not one row per status.
      *

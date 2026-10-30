@@ -88,7 +88,7 @@ export default function PoolViewTable({
                         : "border-border text-text-faint hover:border-accent hover:text-accent"
                     }`}
                   >
-                    <Icon name={loc.priority ? "star" : "star-off"} size="sm" filled={loc.priority} />
+                    <Icon name="flag" size="sm" filled={loc.priority} />
                   </button>
                 </td>
               </tr>
@@ -121,7 +121,7 @@ function DropdownMenu({ loc, inRun, onToggleRun, onPin, onTogglePriority }: { lo
               disabled={loc.lat === null || loc.lng === null}
               className="block w-full px-3 py-1.5 text-[length:var(--text-sm)] text-right text-text hover:bg-surface disabled:opacity-30"
             >
-              <Icon name="package" size="sm" />
+              <Icon name={inRun ? "minus" : "plus"} size="sm" />
               {inRun ? "حذف از مسیر" : "افزودن به مسیر"}
             </button>
             <button
@@ -137,7 +137,7 @@ function DropdownMenu({ loc, inRun, onToggleRun, onPin, onTogglePriority }: { lo
               onClick={(e) => { e.stopPropagation(); onTogglePriority(loc.id); setOpen(false); }}
               className="block w-full px-3 py-1.5 text-[length:var(--text-sm)] text-right text-text hover:bg-surface"
             >
-              <Icon name="grip-vertical" size="sm" />
+              <Icon name="flag" size="sm" />
               {loc.priority ? "حذف اولویت" : "افزودن اولویت"}
             </button>
           </div>

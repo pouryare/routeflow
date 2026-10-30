@@ -192,6 +192,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 4. Retention: keep the breadcrumb trail (useful for disputes and `actual_distance_km`) or only the last position?
 5. Volume: the number of drivers is unknown (2026-10-23), so nothing may assume a fleet size. Size by drivers × hours on the road × 3600 ÷ ping interval, keep the pings in a table partitioned by month, and keep raw pings for a limited time (the roadmap proposes 90 days, then a simplified line). Thresholds are in `docs/roadmap.md`, section 10.
 
+**Design inputs from the Fleetbase study (2026-10-30, ideas only):** (1) keep positions as a per-company setting with a system maximum (Fleetbase: 90 days, raw payload stripped after 7); (2) a simulator that drives a fake driver along a planned route, to test arrival events and screenshots without a real driver; (3) arrival counts only after a short stay inside the customer's circle, not on a pass-by; (4) every live dot shows its age and every arrival time says live, planned or estimated; (5) manager alerts for late start, off route and long stop are decided here, not earlier; (6) a run replay map for disputes and mileage; (7) the customer tracking page waits for this and F79.
+
 **Suggested first slice:** position pings every 30–60 s while a run is `IN_TRANSIT`, a live dot on the existing map, and a manager-only view. Customer messages second.
 
 **Prerequisites:** none in code; a messaging provider for the customer-facing half.
@@ -600,6 +602,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 **Prerequisites:** `activity_log`, the briefing exceptions panel.
 
+**EspoCRM study (2026-10-30, E6):** for permissions, the answer to question 1 is a who/when/old/new log of role, group, active state, password resets and company settings, shown on the owner status page. See `docs/roadmap.md` 1h.
+
 ---
 
 ## F28. Customer segmentation and loyalty
@@ -759,6 +763,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 **Suggested first slice:** show/hide and reorder of the existing panels stored in `prefs_json`, with a pinned set that cannot be hidden. No new panels.
 
 **Prerequisites:** none; builds on `briefing.ts` and `prefs.ts`.
+
+**EspoCRM study (2026-10-30, E11):** the owner sets a default per role; each person may hide or reorder, except pinned cards and people the owner locks (question 3). See `docs/roadmap.md` 1h.
 
 ---
 
@@ -933,6 +939,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 **Prerequisites:** the notifications fan-out; role and scope checks.
 
+**EspoCRM study (2026-10-30, E8, E9):** a person who cannot see the record cannot be mentioned on it (question 2); up to 3 pinned messages per thread; own messages editable for 24 hours. See `docs/roadmap.md` 1h.
+
 ---
 
 ## F44. Standing orders and contracts
@@ -1061,6 +1069,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 ## F50. Payment promise tracker
 
 **What:** record "the customer promised to pay on the 15th", follow up automatically if it isn't received, and track each customer's promise-kept rate.
+
+**Twenty study (decided 2026-10-30):** a follow-up closes itself when the payment arrives, otherwise wakes on the date; a calendar view by due date shares the cheques calendar. See `docs/roadmap.md` 1e.
 
 **Technology to consider (2026-10-23):** durable workflows (DBOS) for the multi-step waiting; see `docs/roadmap.md`, section 10.
 
@@ -1475,6 +1485,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 **What:** pick a segment (dormant for 45 days, bought product X, in district Y, owes more than Z), and generate a call list with a short script and a result to record per call, then measure the outcome.
 
+**Twenty study (decided 2026-10-30):** opt-out list with reason and source, promotions vs service topics, test send, scheduling, sent/failed/skipped counts; no short links. Same for F21. See `docs/roadmap.md` 1e.
+
 **Already in the app:** call lists and follow-ups (the briefing's `call_list` panel, tasks, call-outcome flows), lead lists and lead runs (`/leads`, `lib/repo/leadRuns.ts`) for planned visits to leads, and churn and health scores for who is at risk. There is no segment builder and no campaign record that ties a list, a script and results together.
 
 **Why parked:** segments built from many filters invite mistakes (everyone in the list is the wrong people); calling the same customers too often damages the relationship, so contact frequency needs a limit; results need a clear measure (reorder within 14 days).
@@ -1727,6 +1739,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 ## F82. Approval delegation while away
 
 **What:** a manager or owner who is on leave names a stand-in for order review, credit approvals and other approvals (see F48, F76), for a set period. Decisions are recorded as "approved by X on behalf of Y", and the delegation ends on its own.
+
+**Twenty study (decided 2026-10-30):** also design a temporary lend of a rep's customers to a colleague for N days (ends by itself, both told, logged, ownership unchanged). See `docs/roadmap.md` 1e.
 
 **Already in the app:** a person can hold several roles (`user_roles`, with `setRoles`, `usersWithRole` and `rolesFor` in `lib/repo/userRoles.ts`), and the code's rule is that "who can do X" is answered from that table, not from the primary role. So an approval can already be done by anyone holding the approving role, and order transitions accept an actor with several roles. What is missing is a time limit on a role grant, a way to say "I am away", and the "on behalf of" record. I also found no leave or absence state for users.
 
@@ -2355,6 +2369,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 **What:** deleted customers, tasks, reminders, photos and similar records are kept for 30 days and can be restored by a manager, then removed for good.
 
+**Twenty study (decided 2026-10-30):** keep the JSON copy in a trash table (not a `deleted_at` column); a link to a deleted item shows who deleted it and when with a restore button for managers; keep-for-N-days per company. See `docs/roadmap.md` 1e.
+
 **Already in the app:** some records are switched off rather than removed (users and products carry an active flag), but many deletes are real deletes (for example reminders, photos and the customer rows created by lead conversion are removed with `DELETE`). A deletion record exists for offline sync clients (`deleted_rows`, in `lib/repo/tombstones.ts`) but it stores only the type, id and time, not the content, so it cannot bring anything back. Confirmation prompts before destructive actions were added earlier, which reduces accidents without allowing recovery.
 
 **Why parked:** restoring a record means restoring what hung off it (orders, payments, tasks, photos) and that varies by type; foreign keys and uniqueness (a phone number reused after deletion) can block a restore; keeping deleted data for 30 days has privacy consequences (see F-privacy).
@@ -2487,11 +2503,13 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 **Why parked:** vibration is not available in every mobile browser (it is not supported on iOS Safari), so the behaviour differs by device; sounds in a customer's shop can be intrusive; an accessibility setting must be respected for people who use screen readers or reduced motion.
 
-**Open questions**
-1. Which events: scan success, order saved, payment saved, error, undo?
-2. Default off or on? Sound off by default, haptics on where supported.
-3. One master switch plus separate toggles, saved in the preferences blob?
-4. Respect the phone's silent mode and the app's reduced-motion setting.
+**Built (2026-10-30), sounds:** all decisions are in `docs/bencho-blocks-and-sounds.md` (the sound sheet). `lib/sound.ts` is the one entry point (`playSound("payment.saved")`) and `lib/soundRecipes.ts` holds 151 sounds made in the browser. Sounds are on by default, with one switch per person in the preferences blob and off by default for anyone whose phone asks for reduced motion; the company owner picks the skin (bubble, mech or press) on «صدا» (`/settings/sound`), bubble until then. Haptics stay as they were (`lib/haptic.ts`), with no separate switch yet.
+
+**Answered questions**
+1. Events: every sound has an event; the first callers are the done check, the refusal shake, toasts, sheets, tabs, switches, copy, the theme switch and the new-order ping.
+2. On by default (owner, 2026-10-30).
+3. One switch per person; no per-event toggles.
+4. iPhone: the audio session is "ambient", so the silent switch mutes it. Android has no such signal for a web page. Reduced motion starts sound off.
 
 **Suggested first slice:** a settings entry with "vibrate on confirm" and "sound on confirm", stored in the existing preferences, applied to the tap-flow confirmation screen only, and silent where the device does not support it.
 
@@ -2587,6 +2605,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 **What:** the owner adds their own fields to customers (for example "shop type", "number of employees", "delivery gate side") with a type (text, number, choice, date), shown on the customer page, usable in filters and exports, without a developer.
 
+**Twenty study (decided 2026-10-30):** text, number, choice, date, yes/no; up to ten; ordered, coloured choices; archive instead of delete; a per-role hidden or read-only switch; filterable through the shared filter format. See `docs/roadmap.md` 1e.
+
 **Technology to consider (2026-10-23):** forms generated from data (JSON Forms or `@rjsf/core`), with the definition stored in the database; see `docs/roadmap.md`, section 10.
 
 **Already in the app:** customers carry a fixed set of columns, and the CRM edit route accepts only a named list of fields with validation (name, phone numbers, address, area, business type, price tier, working hours, website, Instagram and a few more, `lib/repo/crm/fields.ts`). Customer tags exist as a table (`customer_tags`), which covers labels but not typed values such as numbers or dates.
@@ -2602,6 +2622,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 **Suggested first slice:** owner-defined text and choice fields (up to ten), stored as values in a separate table keyed by customer and field, editable on the customer page and shown as columns in the customer list. No flow integration.
 
 **Prerequisites:** none; F148 duplicates and F98 search could later include them.
+
+**EspoCRM study (2026-10-30, E16):** each custom field may have one «show and require when…» condition, in the shared filter format (T1). See `docs/roadmap.md` 1h.
 
 ---
 
@@ -2674,6 +2696,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 ## F126. Organisation setup wizard
 
 **What:** for the platform owner (the vendor), a guided setup of a new customer organisation: company details, groups, first users with generated credentials, products, price list and first customers, with optional sample data to try the app.
+
+**Twenty study (decided 2026-10-30):** the customer and product import steps are upload, pick sheet, pick header row, match columns (remembered per company), fix bad cells in place, import with dedupe by mobile number. See `docs/roadmap.md` 1e.
 
 **Technology to consider (2026-10-23):** an import wizard for the company's existing customers and products, and a per-company subdomain and branding; see `docs/roadmap.md`, section 10.
 
@@ -2768,6 +2792,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 ## F130. Rule builder screen
 
 **What:** the owner creates and edits automation rules in a form: pick an event or schedule, add conditions (for example "balance above X", "no order for 30 days"), choose the result (create a task, raise an alert, send a notification), set a cooldown and an escalation, and see recent firings.
+
+**Twenty study (decided 2026-10-30):** edit a draft then publish; test on one customer first; a firing log per condition; a daily firing budget per rule and company that pauses and alerts; firings kept 14 days. Answers questions 2 and 3. See `docs/roadmap.md` 1e.
 
 **Library (2026-10-23):** `react-querybuilder` for the condition editor, producing a validated structure rather than free text; see `docs/roadmap.md`, section 10.
 

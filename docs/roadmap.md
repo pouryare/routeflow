@@ -14,6 +14,14 @@ Totals: 46 small, 73 medium, 27 large first slices; 123 entries note existing co
 
 1. [Build these first: small first slices on existing code](#1-build-these-first)
     - [1b. UI pattern batches (2026-10-28)](#1b-ui-pattern-batches-2026-10-28)
+    - [1c. Fleetbase study: UI/UX batches (2026-10-30)](#1c-fleetbase-study-uiux-batches-decided-2026-10-30)
+    - [1d. Fleetbase code deep dive (2026-10-30)](#1d-fleetbase-code-deep-dive-decided-2026-10-30)
+    - [1e. Twenty CRM study (2026-10-30)](#1e-twenty-crm-study-decided-2026-10-30)
+    - [1g. Dolibarr study (2026-10-30)](#1g-dolibarr-study-decided-2026-10-30)
+    - [1h. EspoCRM study (2026-10-30)](#1h-espocrm-study-decided-2026-10-30)
+    - [1i. Akaunting study (2026-10-30)](#1i-akaunting-study-decided-2026-10-30)
+    - [1j. Bigcapital study (2026-10-30)](#1j-bigcapital-study-decided-2026-10-30)
+    - [1k. ezBookkeeping study (2026-10-30)](#1k-ezbookkeeping-study-decided-2026-10-30)
 2. [Foundations: build once, many entries depend on them](#2-foundations)
 3. [Overlaps: entries that should be designed together](#3-overlaps)
 4. [Suggested order](#4-suggested-order)
@@ -92,6 +100,276 @@ The owner picked 53 favourite UI patterns from a Gemini chat and added two ideas
 **Batch F: parked.** The rest of the 53 that need a decision or a library first; passkeys as a later way to sign in.
 
 Each batch is built as one draft PR with one commit per task, merged once at the end (the batch rule in `CLAUDE.md`). Any new dependency is asked first.
+
+### 1c. Fleetbase study: UI/UX batches (decided 2026-10-30)
+
+The owner had Fleetbase (open source fleet platform, AGPL-3.0) studied for screen and flow ideas, then answered 16 items one by one. **Ideas only: no Fleetbase code is used, because AGPL would force RouteFlow's source open.** Reports: features https://claude.ai/artifact/WQs5FvBKURvuUZotd3ruW7 and screens https://claude.ai/artifact/M4CQjmRZMo2nE32SmwLiMN. Nothing below is built yet. Each batch is one draft PR with one commit per item, merged once at the end (batch rule in `CLAUDE.md`).
+
+**Batch 1: lists and trust.**
+- **Orders list you can search and filter.** `/sales/orders` reads at most 100 orders and takes no filter inputs. Add `FilterChips` for status, payment, rep and day, a count, «load more» past 100, and one paste-many search (paste order numbers or phones, get just those).
+- **Undo on the planner.** Commit, freeze and day-lane moves get the 5-second undo toast (`useUndoableAction`); `RoutingPlanner` calls `/routing/commit` and `/runs/{id}/freeze` directly today.
+- **Edit rules by order stage, with reasons.** Ready: lines may only be removed, the day only moved earlier. Out for delivery: lines and day locked. Delivered or cancelled: everything locked. Each locked field shows a one-line Persian reason; one shared rule used by the page, the API and offline sync (relates to F73).
+- **Empty states name what is hidden.** Action centre, tasks and filtered lists say «۳ مورد به تعویق افتاده، فردا ۰۹:۰۰» and offer «پاک کردن فیلتر» when a filter is the cause.
+- **Detail sheets: bottom by default, movable to the side.** Every detail sheet opens at the bottom (phone and desk); the user can move it to the side. Reuse the toggle in `CustomerDetailPanel` (`orient`, saved in `coverage_panel_orient`, icons `panel-bottom` / `panel-side`), flip its default to bottom, apply it to order details, and keep one shared saved choice per person for every detail sheet (decided 2026-10-30).
+
+**Batch 2: desk speed.**
+- **Saved views.** Per person, named filter sets on the orders and customers lists, stored on the server.
+- **Keyboard triage on desk.** Action centre, tasks and orders list: J/K move, X select, E acknowledge, S snooze, open, with a one-line hint strip; desk only, phones keep swipe. `BINDINGS` in `lib/hotkeys.ts` is empty and `eventMatchesChord` matches `event.key`, so the new keys must match the physical key (`event.code`) or they fail under the Persian keyboard layout; it also needs a list-cursor model on top of `lib/selection`.
+- **Category strip and daily score on the action centre.** One chip per area (credit, stock, delivery, cheques) with its count that filters the queue, plus a 0 to 100 score with the change since yesterday, stored daily in `kpi_snapshots`. The score reuses the action centre's own impact, probability and urgency numbers as weights (decided 2026-10-30), so it agrees with the order of the queue and there is no second set of weights.
+- **Internal chat, first slice: threads on orders and customers.** See the decision below.
+
+**Internal chat system (decided 2026-10-30).** A native chat, no outside chat server; the existing-solutions search was skipped on the owner's say-so. Phases: (1) a thread on every order and customer, (2) 1:1 and group chats on the same tables (one conversation table with a subject: customer, order, direct or group), (3) photos, search and read receipts. Decided 2026-10-30: the owner may read any 1:1 or group chat, members see a standing notice («مالک می‌تواند این گفتگو را ببیند») and each owner read is logged. Rules to settle when it is designed: a thread is visible only to people who may see the record, and adding someone grants no access to the record; mentions go through the existing notification preferences and quiet hours; online-only at first, saying so on a failed send; live delivery by server-sent events or polling over Postgres, no Redis.
+
+**Planned with other work.**
+- **Freshness labels (rule now, built with F6).** Every live position shows its age; an arrival time says live, planned or estimated; low confidence is visible. All text in Persian (Fleetbase hard-codes English «Stale GPS» and «Fallback ETA»).
+- **Receipt layout live preview.** A preview card that updates as you type; only this setting for now.
+- **Setup checklist details (UI batch D).** Minutes per step, a % bar, the next step highlighted, steps ticking themselves from real data, the card hidden when done.
+- **Run replay (with F6).** Scrub a driver's day on a map with time and speed per point, for disputes and mileage; it informs how long positions are kept.
+- **Attempts list on the owner's status page.** Per message: tries, outcome, time and a retry button, built with the batch A delivery log.
+
+**Deferred until another feature is built (decided 2026-10-30).** These stay on the roadmap; each waits for the feature in the second column.
+
+| Item | Waits for | What to build then |
+|---|---|---|
+| Freshness labels on positions and ETAs | F6 live tracking | Age on every live dot; arrival says live, planned or estimated; low confidence visible; all in Persian |
+| Customer tracking page | F6 and F79 | Coarse three-step status before an SMS code, then map, arrival and details; blurred locked sections; masked contact choices; a call button when there is no contact; code rules from the Fleetbase study (10 minutes, 3 tries, 30 s resend) |
+| Late-start, off-route and long-stop manager alerts | F6 | Per-company switches and thresholds, sent once per order, through the existing alerts and quiet hours |
+| Position retention as a setting | F6 | Per-company retention with a system maximum (Fleetbase: 90 days, raw payload stripped after 7) |
+| Route simulator for testing | F6 | A fake driver driving a planned route, to test arrival events and take screenshots |
+| Arrival after a short stay (dwell) | F6 and F38 | Count arrival only after a short stay inside the customer's circle |
+| Run replay map | F6 | Scrub a driver's day with time and speed per point, for disputes and mileage |
+| QR scan proof and a required-proof setting | F17 delivery proof | QR on the delivery note scanned at the door; per-company required proof (none, photo, scan); a no-proof reason |
+| Receipt layout live preview | The receipt layout page | A preview card that updates as you type |
+| Setup checklist details | UI batch D | Minutes per step, % bar, next step highlighted, steps tick from real data, hide when done |
+| Attempts list with retry on the status page | Batch A delivery log | Tries, outcome and time per message, with a retry button |
+| Internal chat phases 2 and 3 | Chat phase 1 (threads on orders and customers) | 1:1 and group chats on the same tables, then photos, search and read receipts |
+
+**Parked or skipped.** The customer tracking page waits for F6 and F79 (reference design: coarse three-step status before an SMS code, blurred locked sections, masked contact choices, a call button when there is no contact). The van check sheet, odometer and expiry dates were skipped. A store-reviewer sign-in for the Android app is not needed. QR scan proof and a required-proof setting wait for the F17 design. Late-start, off-route and long-stop manager alerts are decided at F6; the position retention setting, a route simulator for testing and arrival counted after a short stay in the circle are noted on F6 in `docs/future-features.md`.
+
+### 1d. Fleetbase code deep dive (decided 2026-10-30)
+
+A second pass through the Fleetbase code (report https://claude.ai/artifact/DUP4Msm4XZaUuPBGgYJcTc). Ideas only, AGPL-3.0, no code copied. The owner's answers:
+
+- **SMS guard, in batch A with Farazsms (built small).** Iranian mobile numbers only (09…); a per-number cooldown; a per-company daily budget in toman; an alert when many distinct numbers are texted in a short time; one ledger row per attempt (reserved, then sent, failed or blocked, with purpose, source, hashed number, IP and block reason), which is the delivery log already decided for batch A; monitor mode first (log what it would block), then enforce; an owner «pause SMS» switch. Public sends fail closed if the counter store is down; staff sends (sign-in codes) fail open. Fleetbase also pauses automatically on spikes, a new destination country and a low sent-to-verified ratio; only the spike alert is in the first version.
+- **Change summaries on edited orders.** When an order is edited after confirmation, the driver gets a one-line Persian push («اقلام تغییر کرد»، «موعد به … منتقل شد»، «مبلغ دریافتی تغییر کرد») and the warehouse sees a «تغییر کرده» badge. Extends the stage-based edit rules in 1c.
+- **ETA stage rules (recorded for F6 and F79).** No driver assigned: no ETA. Dispatched but not started: an estimated start only. Started: a live ETA per remaining stop, so each customer sees their own stop's time. Finished: none. Every ETA carries a confidence and warnings (stale position, off route, fallback estimate).
+- **Planner blockers and warnings.** Every planner check returns a result with a severity: a blocker stops, a warning tells; each has a Persian reason. A new owner setting, maximum working hours per driver per day, shows as a warning. No legal hours rules are built in.
+- **Live commission preview (first slice of F19).** The commission editor shows the result for sample sales values as the rule changes, using the same calculation as payroll so the preview cannot drift from the real engine.
+- **Message templates (F136).** Placeholders such as `{customer.name}` with a picker so staff never type a variable name; an unknown placeholder becomes empty text; a literal brace can be escaped; chained filters are allowed.
+- **Authenticator nudge.** A banner with a «فعال‌سازی اکنون» button for managers and anyone required to use the authenticator, shown until they enrol; no lock-out after a grace period.
+- **Company data purge and export with a dry run: parked** until a second company is signed (F126, F127). `TENANT_TABLES` in `lib/database/tenantTables.ts` already lists what it would cover.
+- **Noted as references, not decided:** the report-builder safety rules (allowed tables, columns and joins, complexity score, row limit, a log of each run) for F14; broadcasting an urgent order to nearby drivers for F7; the warehouse, section, aisle, rack and bin hierarchy with bin size and maximum weight for F93.
+
+**Third pass (more ideas from the storefront, promotions and access code, decided 2026-10-30):**
+
+- **Merged order timeline: built with chat phase 1.** One feed per order with status changes, notes, edits (who and the one-line summary), payment adjustments and chat messages.
+- **Internal versus customer-visible notes: wait for the tracking page** (F6/F79). Until then every note is internal.
+- **Owner access review card on the owner status page.** Users per role, never signed in, no authenticator, no sign-in for 30+ days, recent impersonations; each line opens the list. Reads the existing sign-in log.
+- **Delivery window capacity (with F57).** The owner sets a maximum number of orders per window; order entry shows the places left and warns when it is full.
+- **Saved smart segments (with F28/F21).** A customer filter saved by name (for example «بدون سفارش در ۳۰ روز») that promotions and reminders can target. When F21 is built, a rejected promotion states its reason in Persian (Fleetbase's promotion engine does this).
+
+**Fourth pass (driver app, ledger and pallet code, decided 2026-10-30):**
+
+- **Driver «گزارش مشکل» sheet (small version).** The driver picks a type (vehicle, road, customer, goods) and a priority, adds an optional photo and note; the report is stamped with the phone position and the current stop and shows on the action centre.
+- **Invoice sent stamp, now.** Record when an invoice was sent (printed or shared) and show it on the customer page. A first-viewed time waits for the tracking page, because it needs a customer-facing link.
+- **Note for F6:** sort incoming position pings by their time before use, so a late ping cannot move the dot backwards.
+
+**Fifth pass (fleetops, core and storefront code, decided 2026-10-30):**
+
+- **Stale draft orders.** An action centre card lists draft orders older than N days (owner setting, default 7). Drafts older than the limit are cancelled automatically, with a log line for each.
+- **Log retention with a preview.** Each growing log table (SMS ledger, sign-in log, outbox, notifications) gets a keep-for-N-days setting. The owner status page shows how many rows the next nightly purge would delete.
+- **Recurring driver unavailability: design note only**, on the parked shifts and leave entry (F-shifts): a recurring day off or a leave week with a reason, shown as a planner warning. Nothing is built.
+- **Stock hold for a quote with an expiry** (held, committed, released) is the Fleetbase answer to the open question under F51; no decision taken.
+- **Scheduled saved reports to Telegram: skipped.**
+
+### 1e. Twenty CRM study (decided 2026-10-30)
+
+The owner had Twenty (open source CRM, `twentyhq/twenty`) studied in three passes; 24 ideas were answered one by one. Report: https://claude.ai/artifact/L3pBQvp2bSQFZ9BzorFW13. **Ideas only: Twenty is AGPL-3.0 and files marked `@license Enterprise` are commercial, so no Twenty code is used.** Nothing below is built yet. Not copied: runtime custom objects and a schema per company, the workflow canvas with code/HTTP/AI steps, AI agents, Gmail/Outlook sync, a marketplace, a row-level permission designer.
+
+**Batch 1 (lists and trust), additions**
+- **Totals for the filtered list.** Orders, payments and cheques lists show a count and the toman sum for the current filter; the lead pool and task board show a count per column. Computed on the server with the same filter (T7).
+- **Export follows what you see.** `/api/sales/orders/export` takes no filter today. It writes the current filter and sort, or only ticked rows, up to a row cap, and says how many rows it wrote; customers and payments follow. Customer export stays behind the authenticator code (T21).
+- **Sales chart bug.** `revenue_by_day` in `lib/dashboard.ts` is built only from days that had orders and the sales page takes the first 7 as «this week» and the next 7 as «last week», so one empty day shifts every bar. Build calendar days filled with 0, show Fridays and holidays as closed, compare the same weekdays (T15). With it: sales by weekday, a cumulative month-to-date line against last month, and rankings showing top 10 plus “سایر” instead of silently dropping the rest (T20).
+
+**Batch 2 (desk speed), additions**
+- **One filter format.** Saved views, saved smart segments (D3-5), rule conditions (F130) and the report builder (F123) share one filter shape: field, operator, value, nested AND/OR, with «من» and relative Jalali dates («۳۰ روز گذشته»). Each list offers a fixed menu of fields and operators, turned into parameterised SQL through the scoped reads (T1).
+- **Unsaved-changes bar.** Changing a saved view's filters shows Save, Save as new view and Reset. Views stay personal; no sharing to roles (T2).
+- **New record pre-filled from the filter.** «مشتری جدید» from a list filtered to a group and rep opens with both set (T11).
+
+**Batch D (find and act faster), additions**
+- **Bulk edit on the shared selection bar.** Customers: rep, group, district, price tier, tags. Tasks: assignee, due date. An empty field is left alone; a count preview («۴۲ مشتری تغییر می‌کند»); one activity line per record; credit limit is not bulk-editable; owner changes also go to the F100 history (T4).
+- **One action list.** Each action is declared once (label, icon, role set, where it applies, pinned or under «بیشتر», hotkey) and feeds the record buttons, the selection bar and Ctrl-K, so the three never disagree on role gates (T14).
+
+**Records and history**
+- **Created by, and how.** Orders, customers, payments and tasks store a source next to the creator (form, quick order, offline sync, import, rule, system, Telegram), shown as one line and usable in filters. F85 stays the sales channel (T5).
+- **Readable timelines.** On the merged order timeline and the customer timeline: one person's edits within 10 minutes merge into one entry; cost, margin and credit changes are hidden from roles that cannot see them; position pings and counters are not logged (T6).
+- **Recycle bin (F111): a JSON copy in a trash table**, not a `deleted_at` column; first types reminders, tasks and photos, per-company keep-for-N-days in the log-retention setting. A link to a deleted item shows who deleted it and when, with a restore button for managers (T3, T18).
+- **Calendar view of cheques by due date.** Phone: an agenda grouped by day (`DayChips`); desk: a Jalali month grid with daily sums. Payment promises (F50) and tasks reuse it later (T8).
+
+**Platform and safety**
+- **Maintenance banner.** The owner sets a start and end; everyone sees a dismissible Persian banner; drivers and reps are also told to sync offline work before it starts (T17).
+- **Staff invitation by SMS link (after Farazsms).** Owner enters name, mobile and role; the person gets a 48-hour single-use link, sets their own password and can enrol the authenticator at once; a pending list with resend and revoke. Goes through the SMS guard (1d). The owner-typed first password stays as a fallback (T22).
+- **Rate limiter move to Postgres.** Give each rule a short and a long window, keyed by person and IP (for example 5 code tries a minute and 20 an hour) (T24).
+
+**Design notes on parked entries (nothing built)**
+- **F130 rule builder:** edit a draft then publish; «test on this customer» before turning a rule on; a firing log showing which condition passed or failed; a daily firing budget per rule and per company that pauses the rule and alerts the owner; firings kept 14 days (T9).
+- **F126 setup wizard / F10:** import steps upload, pick sheet, pick header row, match columns (remembered per company), fix bad cells in place, import with dedupe by mobile number (update or skip), on the lead import job runner (T10).
+- **F122 custom fields:** text, number, choice, date, yes/no; up to ten; choices ordered and coloured; archive instead of delete so old values survive; a per-role hidden or read-only switch; filterable through the shared filter (T12).
+- **F82 / F59:** a manager lends a rep's customers to a colleague for N days; access ends by itself, both are told, every grant is logged; ownership does not move (T13).
+- **F70 / F21 SMS campaigns:** an opt-out list with reason and source; two topics (promotions and service messages) so a customer who stops promotions still gets delivery notices; a test send to yourself; scheduling; sent, failed and skipped counts; no short links or click counting (T16).
+- **F50 payment promises:** a follow-up closes itself when the payment arrives, otherwise wakes on the date; one stored wake-up row can also serve snooze (F142) and rule cooldowns (T23).
+
+**Skipped:** sharing saved views with a role or group (T2 option), a log of who opens sensitive pages (T19; F27 stays as is), short links with click counts (T16).
+
+### 1g. Dolibarr study (decided 2026-10-30)
+
+The owner had Dolibarr (open source ERP/CRM, `Dolibarr/dolibarr`) studied in four passes; 32 ideas were answered one by one. Report: https://claude.ai/artifact/SPy6MTQhrBmSNGfvtAFMs9. **Ideas only: Dolibarr is GPL-3.0, so no Dolibarr code is used.** Nothing below is built yet. Not copied: manufacturing (BOM, MRP), product variants and kits, multi-currency and Incoterms, projects and timesheets, tickets, email collector, public booking page, knowledge base, a rights tick-box per module.
+
+**Money in hand and the bank**
+- **Money in hand per driver and rep (D1).** Cash and cheques a person collects land in their own box, not straight in the office cash account (`1101`). At day end the office counts and confirms; a short or extra amount is saved with a reason and shows on the action centre. The owner sees one line per person: holding now, since when.
+- **Cheque deposit slips and more than one bank account (D2).** Tick cheques on the board, pick the bank account, get a numbered slip with count, total and a printable list. A bounce takes the cheque out and reopens the debt. Works with D1 (driver box, office box, bank).
+- **Close a small leftover (D3).** A manager closes a small remaining balance with a reason (rounding, bank fee, small discount) under an owner-set limit (default 50,000 toman); bigger amounts and bad debt need the owner. Ledger entry plus log line.
+- **Supplier pay list (D21).** Supplier terms (days) set a due date on each purchase; a list shows what is due, oldest first; ticked rows give a sheet (supplier, Sheba, amount) for the accountant; the payment is recorded with the bank tracking number. No bank file (formats differ, F10).
+- **Month pack for the accountant (D26).** After a month is closed, one spreadsheet with fixed columns: journal, trial balance, customer and supplier balances, cheques, expenses with receipt links, stock value (D9). Owner and the read-only auditor (F128) download it; each download is logged. No accounting-software format.
+- **Recurring costs (D23, answers F49 question 1).** A list of rent, salaries and subscriptions (category, amount, Jalali day of month, who pays). On the day a task asks «پرداخت شد؟» with the amount filled; one tap records the expense; the cash forecast reads the list.
+- **Bank loans (D24).** A loan card (bank, amount, instalments, first due date); the schedule is made once; each due date gives a reminder and a one-tap payment that splits principal and interest; the forecast (F49) and the balance sheet read it.
+- **Payment term kinds (D5, answers F83).** Cash on delivery, N days after delivery, or end of month plus N days. The due date is saved on the order at delivery, so later changes to the customer do not rewrite it.
+- **Tamper-evident money log (D6, answers F27).** One hash chain per company over money events only (order confirmed, payment, cheque status, journal posted, month closed, leftover closed); the owner has a «check the chain» button. Not every edit.
+
+**Prices and selling**
+- **Floor price (D4).** A line under cost (or a higher owner-set floor per product) needs approval even when the discount percent is under `discount_auto_pass_pct`; the rep sees «زیر حداقل قیمت این کالا».
+- **Prices that follow a base number (D14, with F56).** The owner keeps named numbers (dollar, raw material); a product price is number × factor, rounded to 1,000 toman. Changing a number shows a preview (products, customers, margin before and after) and creates new price rows from a date. A «raise selected by X%» button covers the simple case. Old orders never move.
+- **Quantity price steps (D22).** Up to four steps per product and pack size (starting quantity, price). Order entry applies the step and nudges toward the next one. A step price is a list price, so it needs no discount approval; the floor price (D4) still applies.
+- **Official invoice, some customers only (D7, answers F147 numbering).** A per-order choice: tax IDs on company and customer, VAT per product, an invoice number given at confirmation per Jalali year (drafts use no number), a Moadian export later. Other orders stay as today.
+- **Logo and stamp (D29).** The owner uploads a logo and a stamp/signature image once; PDF receipt, delivery note and statements print them; the thermal printer prints the logo in black and white; the stamp is on or off per document type.
+- **Reopen a cancelled order (D31).** A manager or owner reopens a cancelled order to draft within an owner-set time (default 7 days). It must be confirmed again, so stock and credit are re-checked; logged with who and why; not after delivery.
+- **Sell-off product state «تصفیه» (D32).** Still sellable, off the buy list, no reorder warnings; it turns inactive by itself when available stock reaches zero; reps see a chip.
+
+**Stock and buying**
+- **Warehouse count session (D8).** Start a count for a facility (a snapshot), several phones count, a «what is left» list, a review with the toman value of every gap, one confirm. Reuses the reason chips of `lib/flows/stockCount.ts`.
+- **Stock and value on a past date (D9).** A Jalali date chip on the stock page shows quantity and value per product and facility on that date, with a total and export.
+- **Supplier price rows (D16).** Per product and supplier: price, minimum quantity, delivery days, supplier code. Purchase entry pre-fills the price and warns under the minimum; feeds D17 and F31.
+- **Buy list grouped by supplier (D17, the F11 first slice).** «لیست خرید»: products under their reorder point, minus what is on order, rounded up to the supplier minimum, grouped by the cheapest or fastest supplier. Tick to make a purchase draft per supplier; a person confirms.
+- **«Arrives on…» (D27, after D17).** Confirmed purchase drafts carry an expected date; order entry shows «+300 expected Tuesday» beside a shortage and can offer a pre-order (F121). Nothing is promised automatically.
+- **Labels (D19).** At goods receipt, print one label per batch or pallet (product, batch, expiry, QR) on the Bluetooth printer, plus an A4 PDF of pack barcodes. The same QR serves F1 scanning later.
+
+**People, settings and data**
+- **Money rules for expenses (D15, answers F26 and F88).** The owner sets a limit per expense category and role (per entry and per day). Over it, the expense waits as «منتظر تأیید» for a manager or owner with the reason shown.
+- **Owner-set thresholds (D30).** One settings card for the numbers now fixed in code: stalled order days (`actionCenter.ts`, 2), quiet customer days (`mapWorklist.ts`, 45), data ageing days (`freshness.ts`, 7 and 14), duplicate order window (`duplicateOrder.ts`, 24 hours), alert snooze days (7). Current values are the defaults; reset button; changes logged.
+- **Switches per company (D12, with F126).** Cheques, batches and expiry, leads and CRM, commission, van stock. Off hides menus and buttons; the data stays. A step in the setup wizard.
+- **Per-person extra switches (D13).** A short list on top of roles (for example a rep may see cost), checked in the same gates as roles. The exact list is proposed at build time.
+- **Team week grid (D18).** Managers get people down the side and days across, each box counting visits, tasks and deliveries; tapping opens that person's day. Phone: one card per person with a week strip.
+- **Forget a person (D20).** Owner-only and manual: name, phones, address, pin and notes are cleared; orders and ledger stay under «مشتری حذف‌شده»; the person is also removed from the trash copy (T3) and campaign lists; logged without the old values. No automatic job.
+
+**Skipped:** the customer page with SMS code (D10), depreciation of vans and equipment (D25, F140 stays without a money side), a calendar feed for the phone's own calendar (D28). Pay by link through an Iranian gateway (D11) is recorded for later: a link per order or per balance on the company's own merchant account, payments saved and matched to the oldest unpaid orders; building waits for a merchant account.
+
+### 1h. EspoCRM study (decided 2026-10-30)
+
+The owner had EspoCRM (open source CRM, `espocrm/espocrm`, version 10.0.11) studied; 17 ideas were answered one by one. Report: https://claude.ai/artifact/6fgN5gZh7yc3Gk8hSqA3wN. **Ideas only: EspoCRM is AGPL-3.0, so no EspoCRM code is used.** Nothing below is built yet. Not copied: the email inbox, email-to-case and mass email with open tracking, the customer portal and web lead form, many currencies, LDAP/OAuth/OIDC sign-in, API keys and webhooks, run-time tables and layouts, meeting invitations with free/busy, and deal money weighted by stage probability.
+
+**Knowing when something changes**
+- **Follow a customer or an order (E1).** A «دنبال کردن» bell on customer and order pages. You follow what you own or created automatically; anyone can follow or unfollow by hand. Followers get pushes for new orders, payments, complaints, status changes and notes, through the existing grouping, quiet hours and per-type switches. Today pushes go only to fixed people per notice type.
+- **«به شما سپرده شد» (E2), built with S6, T4 and F59.** One notice type for customers, leads and complaints given to someone by another person; many at once arrive as one push («۱۲ مشتری به شما سپرده شد»). Only `task.assigned` exists today, and a customer changes owner only when a rep claims it, so the notice comes with the features that hand records out.
+
+**Keeping data correct**
+- **Lock a checked customer (E3).** A manager locks name, phone, address and pin. While locked, a call or visit flow cannot change them: the change becomes a suggestion the manager accepts with one tap (the F78 path). Logged. Today `applyCustomerUpdates` in `lib/repo/crm/write.ts` overwrites phone, name and pin from any flow.
+- **One contact, several businesses (E4).** A contact can link to more than one business (an owner of two shops, a head office and its branches). The phone check allows the same number for the same person; a call from it asks which shop. Today `phoneFor` in `lib/repo/crm/contacts.ts` refuses a phone another business already has.
+- **Undo your own fresh mistake (E5).** Whoever entered a payment, note, task or photo can void it within N minutes (owner setting, default 15) with a reason; after that, manager only. Logged, and voided payments stay in the money log (D6). Today voiding a payment is for managers only.
+- **Access and settings change log (E6, answers F27 question 1 for permissions).** A who/when/old/new line for role, group, active state and password resets of users, and for company settings (discount auto-pass percent, code for sensitive actions, the D30 thresholds), shown on the owner status page beside the access review card (D3-3). Today `setRoles`, user edits and these settings write no log line.
+- **Sign out after idle time (E17).** The owner sets idle hours per role (for example 12 for owner, managers and accountant); drivers and reps stay signed in so offline work is not lost. Today a sign-in lives 30 days whether used or not.
+
+**Big jobs**
+- **Background exports and bulk edits (E7).** Exports over about 1,000 rows (T21) and bulk edits over about 100 records (T4) run on the job runner with a progress count and a push when ready; the file is kept 24 hours.
+
+**Selling**
+- **Track a cross-sell try (E14).** «پیگیری» on the action centre cross-sell hint (`crossSellCandidates`) makes a try: product, rep, next step date. It closes as won when the first order with that product arrives, or as lost with a reason after N days. A small report of tries and wins by rep.
+
+**Answers and notes on parked entries (nothing built)**
+- **Internal chat / F43:** up to 3 pinned messages per customer or order thread; a person edits their own message for 24 hours, then it is locked; edited messages show «ویرایش شد» and the owner can see the old text (E8). A person who cannot see the record cannot be mentioned on it (E9, answers F43 question 2).
+- **D13 per-person switches:** start with four: may see cost, may export, may bulk edit (T4), may give customers to others. Checked in the same gates as roles (E10).
+- **F146 home screen:** the owner sets a default per role; each person may hide or reorder cards, except cards the owner pins (exceptions, approvals) and people the owner locks (E11, answers F146 question 3).
+- **F122 custom fields:** each custom field may have one «show and require when…» condition on another field, written in the shared filter format (T1) (E16).
+
+**Skipped:** fixed rules for self-service password reset (E12; F109 stays parked, managers reset by hand), an SMS with the complaint number (E13), separate lead stage lists per group (E15).
+
+### 1i. Akaunting study (decided 2026-10-30)
+
+The owner had Akaunting (free accounting app, `akaunting/akaunting`) studied in three passes; 17 ideas were answered one by one. Report: https://claude.ai/artifact/2YBqNTPRRh1rGrdjoEqVA7. **Ideas only: Akaunting uses the Business Source License (free only up to 2 users, 1 company and 1000 invoices, no accounting service for others), so no Akaunting code is used.** Nothing below is built yet. Not copied: many currencies, bank feeds, the paid module store, a rights matrix per action, the customer portal, "viewed" tracking of sent documents, firewall middleware.
+
+**The books: starting, closing, moving**
+- **Starting balances (A1, a step in F126).** The setup wizard asks once for cash, bank, what each customer owes, what the company owes each supplier and stock value. It makes one `OPENING` entry (the type exists in `ledgerCore.ts` but nothing writes it) and puts the difference into «سرمایه اولیه» (`3101`). Owner only, dated the day before the first real entry.
+- **Close a month (A2).** `fiscal_periods` and the closed-month refusal in `postJournal` exist, but nothing sets a month to closed (`lib/repo/reports.ts` only reads it). The owner closes a month after a short checklist (deliveries posted, drafts listed, cash counted); reopening needs a reason; both are logged (E6). A closed month refuses new entries; corrections go into the next open month. D26 (month pack) and E5 (own-mistake window) need this.
+- **Transfer between own accounts (A4).** One «انتقال وجه» form: from, to, amount, date, bank tracking number, optional fee; one balanced entry. D1 (driver box to office), D2 (cash deposit to bank) and A3 reuse it. Petty cash `1103` is in the chart but unused today.
+- **Hand reconcile of cash and bank (A3).** Pick an account and a date, type the counted or bank-paper balance, tick lines until the difference is zero, save. Ticked lines lock; a mistake after that is fixed by a reversal. No bank file; F10 may later pre-tick from one. D1's end-of-day count lands here.
+
+**Reading the money**
+- **Money in and out (A5).** A monthly page «ورودی و خروجی پول»: money in (receipts, cheques cashed), money out (suppliers, expenses by category, commission, loans), opening and closing cash and bank, read from the ledger legs of the money accounts. No new tables.
+- **Money tiles (A7).** One strip on the owner home: cash box, each bank, owed to us (with the overdue part), we owe (with what is due in 7 days), cheques due this week. Each tile opens its page. A default card for F146.
+- **Discounts given (A11).** A monthly report of toman given as discount by rep, customer and product, with approvals versus auto-passes. No page reads `order_discounts` for a report today.
+
+**Categories**
+- **Expense categories per company (A6).** The `accounts` table has no `organization_id`, so the chart is shared and `expenseCategories()` lists every active expense account for every company. A small per-company category table pointing at the shared accounts lets each company add, rename, retire and group categories and mark one «هزینه مستقیم» (printed above gross profit). History is untouched. Decide before a second company is added.
+
+**Documents and customers**
+- **Freeze customer details on the order (A12).** At confirm, copy name, phone and address (tax IDs once D7 exists) onto the order; `orders` keeps only `customer_id` today, so reprints show the customer's current data. Reprints use the copy. «Forget a person» (D20) clears these copies too.
+- **Receipt footer and order number prefix (A13).** A settings card: footer text per document (receipt, delivery note, statement; the receipt footer is fixed in `lib/deliveryReceipt.ts` today) and an order number prefix per company. The next number can only go up.
+- **Phone that does not work (A15, after Farazsms).** An invalid-number failure marks the phone «شماره نامعتبر», skips it in campaigns and makes a «شمارهٔ مشتری را اصلاح کن» task for the customer's owner. Feeds F54.
+- **Payment receipt SMS (A16, after Farazsms).** When a payment is saved the customer gets a short service message with the amount received and the remaining balance; it counts as a service message, not a promotion, in the opt-out rules (S15, T16); a per-company switch turns it off.
+
+**Reminders, entry, search**
+- **Reminder days around the due date (A8, first slice of F18).** The owner sets a day list (for example −3, 0, +3, +7, +14). Each day a task is made for the customer's rep; supplier bills give the owner a reminder to pay. SMS later. Uses the due date from D5.
+- **Repeat an expense (A10).** A «تکرار این» button on an expense row opens the form pre-filled (category, supplier, amount, new date). Expenses only, not customer payments.
+- **Typed filters on desk screens (A17, with T1).** Text such as `بدهی>۱۰۰۰۰۰۰ منطقه:۳` in the search box turns into the same filter chips; phones keep tapping chips.
+
+**Skipped:** three tax kinds for D7 (A9: added on top, already inside the price, withheld; D7 stays as decided) and a «بدون قیمت» print option for delivery notes (A14).
+
+### 1j. Bigcapital study (decided 2026-10-30)
+
+The owner had Bigcapital (open source accounting, `bigcapitalhq/bigcapital`) studied in two passes; 12 ideas were answered one by one. Report: https://claude.ai/artifact/Qv4hrACBn39vQoQmD1b8Ki. **Ideas only: Bigcapital is AGPL-3.0, so no Bigcapital code is used.** Nothing below is built yet. Most of Bigcapital (reports, ageing, locking, opening balances, tax, numbering) was already built or decided in 1g and 1i.
+
+**Money**
+- **Credit note (B1).** A manager makes a credit for goods returned after delivery, with a reason and an amount. It lowers what the customer owes and is applied to open orders or paid back in cash. Suppliers get the same document for goods sent back. Today the `RETURNED` status only ends the undelivered part (`lib/orderStateMachine.ts`); this is the money side of F12 and F80.
+- **Open a date range in a closed month (B2, extends A2).** The owner opens one date range with a reason; it closes again by itself after a set time. Logged. A2 stays one lock for all areas.
+- **Books behind a document (B3).** A «ثبت‌های حسابداری» button on order, payment, expense and cheque pages for the owner and the accountant: the debit and credit lines the document made, each linked to its account.
+- **Bank line rules (B4, after F10).** The owner keeps a short rule list (contains text, amount range, category, supplier); imported bank lines arrive pre-filled. Parked until the F10 bank import exists; A3 may use the same matching to pre-tick lines.
+
+**Stock**
+- **Sent and received transfers between facilities (B5).** Goods leave the source when sent, show as «در راه» (not sellable, counted in stock value) and land when received; not received after N days goes to the action centre. Warehouse-to-van loading stays one step.
+- **Product page with its history (B10).** Tabs: orders that sold it, purchases that bought it, stock moves, cost and price changes. Rows link to the order or purchase.
+- **Cost after a purchase edit (B6, parked).** `recordPurchase` in `lib/purchases.ts` is the only purchase writer; there is no edit or void. When one is built it must recompute the average cost and show which orders are affected.
+
+**Screens**
+- **Bulk results (B7).** Every bulk action on the shared selection bar ends with «N انجام شد، M نشد» and a list of the skipped rows, each with a Persian reason.
+
+**Skipped:** VAT owed report after D7 (B8), profit on a cash basis (B9), sellable and buyable switches (B11), draft-then-publish money entries (B12). Custom role grids (D13 and E10 cover it) and many currencies (toman only) were not offered.
+
+### 1k. ezBookkeeping study (decided 2026-10-30)
+
+The owner had ezBookkeeping (a small self-hosted personal bookkeeping app, `mayswind/ezbookkeeping`; the path first given, `rookie-luochao/ezbookkeeping`, does not exist) studied in three passes; 20 ideas were answered one by one. Report: https://claude.ai/artifact/Hp2U9M3ZVYQFKFcTUkQ1zo. **Ideas only: it is MIT-licensed, but no ezBookkeeping code is used.** Skipped as already built or decided: scheduled entries (D23, A10), reconcile (A3), import rules (B4, F10), home widgets (F146), saved views (F123), drafts (batch C), receipt photo, AI receipt reading (a foreign paid API), tag groups.
+
+**Entering money**
+- **Sums in the keypad (Z1).** The shared keypad (`components/mobile/Keypad.tsx`, `lib/keypad.ts`) gets + and − only (no × ÷) and shows the running total.
+- **No double save (Z2).** Every money form (payments, expenses, cheques, transfers, purchases) sends a one-time key; a repeat returns the first result and saves nothing new. One shared helper. Offline sync already does this with `client_uuid`; the online forms and the journal table do not.
+- **Save and add next (Z18).** A «ثبت و بعدی» button on the expense, payment and customer forms; it keeps the date and the remembered method and account.
+- **Remember method and account (Z10).** Per person, only payment method and bank account are remembered; the category always starts empty.
+- **Type a sentence (Z12) and paste a bank SMS (Z15).** A plain rule parser, no AI, works offline. «بنزین ۴۵۰ هزار» opens the expense form with the amount and a category guessed from words used before. A pasted card-to-card bank SMS opens the payment form with amount, date and tracking number; start with the 3 or 4 biggest banks, fall back to an empty form.
+- **Share a photo into the app (Z13).** `app/manifest.ts` gets a share target; a shared photo opens a new expense with it as the receipt. Expense receipt only for now. **Icon shortcuts (Z14):** long-press the app icon for record payment, new order, record expense, by role.
+- **Expenses by paste (Z6):** waits for the F10 import (it must accept an expenses sheet).
+
+**Seeing money**
+- **Month calendar (Z5).** A tab on the A5 money in/out page: Jalali grid, collected, delivered and expenses per day, short cash days in red, tap a day for its list.
+- **Month so far (Z20).** A bar for the share of the month gone and a straight-line month-end guess for expenses, collected and sales, on the A7 tiles and the A5 page. Not checked: whether the forecast or targets pages already show pace.
+- **Total of the list (Z17).** A strip on the payments, expenses and orders lists that follows the filters and the selected rows. Not checked on every list.
+- **Needs attention (Z7).** A filter chip on expense and payment lists for entries with no photo, note or supplier; the month-close checklist (A2) shows the count and the owner accepts or fixes it.
+- **Hide money (Z3).** An eye in the top bar turns every money number into dots until tapped again; for everyone, remembered per person on that phone. **Owner-only amounts (Z11):** the owner marks an expense category private; others see the line with dots and owner totals still count it. It must also hide the amount in totals and exports for others.
+
+**Safety and upkeep**
+- **App lock (Z4).** After N minutes in the background the app asks for a 4-digit PIN or fingerprint; the owner sets N per company; forgot PIN means a normal login. Separate from the authenticator code for sensitive actions.
+- **Place on money entries (Z9).** The phone's GPS spot is saved with cash, cheque and expense entries and shown as a pin; no far-from-customer flag for now. Not checked: whether delivery stops already store a proof location.
+- **Merge duplicates (Z16).** «ادغام در…» moves all rows of a supplier, product or district to another and retires the old one: owner only, typed-name confirm, a log line. Expense and money categories wait until the ledger question is decided (re-point the label, or post a reversal pair).
+- **Safe refresh (Z19).** «به‌روزرسانی داده‌ها» in settings refuses while items are still waiting to sync, then clears the local copy and reloads.
+
+**Parked:** a read-only token for the accountant's sheet (Z8); the month pack (D26) covers the accountant for now.
 
 ## 2. Foundations
 
@@ -230,7 +508,7 @@ Platform claims in [section 10](#10-platform-facts-and-decisions-not-features), 
 - The official `farazsms` client was found on npm but not inspected.
 - Whether Centrifugo can read events from a Postgres outbox table.
 - Whether the Postgres extension `pg_duckdb` fits, and DuckDB's npm "latest" tag being a development build.
-- Whether the current MapLibre version still needs the right-to-left text plugin, and how Persian labels look on the vector basemap today.
+- ~~Whether MapLibre needs the right-to-left text plugin~~: answered 2026-10-28, MapLibre 6 shapes Persian itself and labels render in Peyda (see 10.1, map tiles).
 - Whether Google Play and Cafe Bazaar or Myket rules allow updating web code inside the Android app.
 
 ## 9. Every entry by theme
@@ -463,6 +741,7 @@ How to read it: **10.1 is fact and decision** (the owner's words). **10.2 to 10.
 | Schema tooling: node-pg-migrate (plain SQL files), kysely-codegen (types, checked for drift in CI), Squawk (lints each migration in CI), and a committed `db/schema.sql` from `pg_dump --schema-only`. | Decided 2026-10-23. Atlas was rejected: it is a Go binary downloaded from abroad, which is hard from Iran. |
 | Row-level security is enforced before the cut-over, not after. | Decided 2026-10-23. |
 | Off-site backup goes to a second machine the owner controls, over SSH; self-hosted S3 can come later. | Decided 2026-10-23. |
+| Map tiles come from our own server, never a foreign host; every map is on MapLibre. | Decided 2026-10-28 (owner: "No it does not worth the risk. Also no to foreign host."; then "Full MapLibre rewrite", "Tehran province only", "Use @vis.gl/react-maplibre"). One Protomaps PMTiles extract of Tehran province (`pmtiles` 4.5.0) is read on the server and served one tile at a time at `/api/map/tiles/{z}/{x}/{y}`, public and cookie-free so Arvan's CDN caches each small tile (Arvan caches whole files only up to 100 MB, so the archive itself is never fetched by byte range through it). Style from `@protomaps/basemaps` 5.7.2 with Persian names (`name:fa`) in the app's own Peyda font through MapLibre 6's `font-faces`, so there is no glyph server and no RTL plugin; sprites in `public/map/sprites`. Leaflet and its 8 plugins are gone; React bindings are `@vis.gl/react-maplibre` 8.1.3. Satellite and topographic looks were dropped (no self-hostable source). Building and replacing the file: `docs/map-tiles.md`. Routing (OSRM) and address search (Nominatim) still call foreign public servers until they are self-hosted. |
 | The UI moves to HeroUI v3 with the full HeroUI look. | Decided 2026-10-23 (owner chose "full HeroUI look" over keeping the Meridian look on HeroUI parts). `@heroui/react` and `@heroui/styles` 3.2.6, MIT, built on React Aria Components; no HeroUI Pro (paid, foreign). HeroUI's theme becomes the visual system and MASTER.md's colour, radius and base-component rules are retired as screens move. Our component names (`BottomSheet`, `useToast`, `FilterChips` …) stay during the move so callers change once. Persian calendar and digits through `I18nProvider locale="fa-IR-u-ca-persian"`; `lib/jalali.ts` stays for storage. Styles are imported part by part, because the full sheet restyles `.card`, `.chip`, `.badge`, `.modal` and `.skeleton`. Phase 0 and the payment-flow pilot are done (TapFlow sheet, date step, buttons, toasts), and phase 2 (every sheet on one Drawer; card help, profile menu and bell in Popovers, each with a written reason in `check:mobile`; banners as Alerts), and phase 3 (Shamsi date fields on HeroUI's Persian Calendar in a sheet, switches and checkboxes, no `<select>` left, password and login fields on HeroUI's TextField, colour and font pickers in Popovers), and phase 4 (section and view tabs on HeroUI Tabs at 44 px, Chip, Avatar, Skeleton, EmptyState, collapsible sections on Disclosure, accounting tables and pager in HeroUI's table and pagination look on their own server markup), and phase 5 (every flow, picker and deck answer on HeroUI Button / ToggleButton through `components/tapflow/Answer.tsx`, SearchField for list search, day chips as ToggleButtons; Keypad, SwipeRow, the bottom bar and the signature cards restyled with HeroUI tokens), and phase 6 (HeroUI token names hold the palette inside `.meridian`, the older names are aliases, dead CSS removed, MASTER.md rewritten around HeroUI); the per-component map and order are in the plan page linked from `TODO-REPORT.md`. |
 
 ### 10.2 Proposed platform choices
@@ -527,7 +806,7 @@ Nothing here has been tested from Iran. Check each from the server and, where a 
 | Server | `nominatim.openstreetmap.org` | resolving pasted map links (`lib/resolveMapsLink.ts`) |
 | Server | push services of Google, Mozilla, Apple and Microsoft (`lib/pushEndpoint.ts`) | web push |
 | Server and phones | `router.project-osrm.org` | route matrix and corridors; the public demo server, not meant for production load |
-| Phones | OpenStreetMap, Carto, Stadia, MapTiler and Esri tile hosts (`next.config.ts`) | map backgrounds |
+| Phones | `nominatim.openstreetmap.org` | address search on the map (`components/searchbox/searchBoxStore.ts`); map backgrounds no longer leave our server (10.1) |
 | Build and deploy | npm registry, container registries, GitHub releases | installing and updating; often restricted from Iranian servers, so check before choosing a tool that ships only as a container image |
 
 If one fails: self-hosted OSRM and VROOM and own map tiles move earlier in the order; an Iranian SMS gateway or a domestic messenger (for example Bale or Eitaa, to be evaluated) takes over staff messages from Telegram. Most hosted foreign model APIs are not available from Iran, so F1, F2, F3, F5 and F14 plan for on-device or self-hosted models.
@@ -543,7 +822,7 @@ From the 2026-10-23 review of what the code builds by hand. The codebase has alm
 | Input validation | 161 route files, about 79 hand-written type checks, `lib/inputChecks.ts`; the audit fixed unvalidated dates, amounts and lengths route by route | A schema per route: Zod, or Valibot for code shared with the client |
 | CSV export | `lib/csv.ts` (15 lines) does not neutralise cells starting with `=`, `+`, `-` or `@`; phones lose their leading zero in Excel | A formula guard, from a CSV library or a few lines |
 | Password hashing | `scryptSync` at Node's default cost (N=16384), stored as `salt:hash`; below OWASP's current minimum (N=2^17) and the format cannot carry parameters | Argon2id (a native package: check it installs from Iran) or scrypt with proper parameters and a self-describing format. Cheap now because the data is dummy |
-| Maps | Two stacks: 22 files on Leaflet with 8 Leaflet packages, 1 file on MapLibre; `leaflet-routing-machine` and `leaflet.heat` last published 2022 | Standardise on MapLibre before F6, F68 and F92 (clustering, heatmap, fullscreen and geolocation are built in; handles many moving points; fits PostGIS vector tiles) |
+| Maps | Done 2026-10-28: every map is on MapLibre with self-hosted tiles (10.1); Leaflet and its plugins are removed | — |
 | Geometry | `lib/geo.ts` and `lib/simplify.ts` (about 450 lines); the corridor band only approximates a buffer | PostGIS (`ST_Distance`, `ST_Buffer`, `ST_Simplify`) on the server; no new library |
 | Overlays and date picker | Hand-built toasts, hotkeys, Jalali date picker and sheets with hand-set ARIA | Decided: HeroUI v3 on React Aria (see 10.1). Toasts, every bottom sheet, the date step, card help, the profile menu, the bell, the banners, the Jalali pickers, switches, checkboxes, password fields, tabs, disclosures, chips, avatars, skeletons and empty states have moved; other text fields, the search overlay and the flow, picker and deck answers have moved too; the filter chips, the «بیشتر» menu links and the other text fields follow. Leftovers done 2026-10-27: answer links and buttons, filter chips and all text fields are on HeroUI parts, `.meridian` rules use the HeroUI colour names, and a filter group with 9 or more options opens a searchable sheet. Extras added 2026-10-27: the (?) help (Popover), Spinner in saving buttons, ProgressBar, Kbd, Tag, ListBox and a sortable Table on the margin report; a Dropdown, Modal or Select as separate parts wait for a screen that needs them |
 
@@ -563,7 +842,7 @@ Lower priority: the hand-written service worker (`public/sw.js`, manual cache ve
 | `@simplewebauthn/server` | F106 two-step login | Passkeys on top of the existing TOTP; test on the real Android phones |
 | `zxing-wasm` | F1 and F30 barcode scanning | For browsers without `BarcodeDetector`; try the browser API first |
 | `bwip-js` | Batch and bin labels (F30, F93) | QR and Code 128 as image or SVG; also the way to draw a QR code, which the app does not do today |
-| `pmtiles` | Own map backgrounds | A single-file basemap served from the own server and read by MapLibre; removes the dependency on public tile hosts |
+| `pmtiles` | Own map backgrounds | Added 2026-10-28 (10.1) |
 | `csv-parse` and `iconv-lite` | F10 bank statements, lead import | Proper CSV parsing, and conversion of older Windows-1256 files; test with a real bank statement |
 | `archiver` | F34 data export | Streams a zip of many CSV files without holding them in memory |
 | `@opentelemetry/sdk-node` | F108 status page, tracing | Next.js supports it through `instrumentation.ts`; send to a self-hosted collector |
@@ -673,7 +952,7 @@ Ideas that are interesting for this app but not chosen. None is decided; the own
 | Bad-network tests: Playwright network throttling and offline mode, Toxiproxy | A pretend bad tunnel for the app | Prove that an order queued while signal drops every few seconds is sent exactly once (F13, F105) | Playwright is already a dependency; the offline-first design depends on this being tested |
 | Real-phone tests: Maestro with one physical Android phone | A robot finger on a real phone | Run the main flows of the Capacitor app on real hardware, which the build container cannot do (F113) | Needs a phone and a machine to plug it into; not installed or tried |
 | Load testing: k6 | A thousand pretend users pressing buttons at once | Simulate 200 orders a day for several companies while 1,000 drivers send positions (F6, F127); shows where Postgres or the app slows down | A small smoke test already exists (`npm run perf:smoke`) |
-| Persian map labels: the right-to-left text plugin for MapLibre (`@mapbox/mapbox-gl-rtl-text` 1.0.0) | Teaches the map to read Persian right to left | Street and place names on the vector basemap (the CARTO style drawn through `components/VectorBasemap.tsx`) and on any future MapLibre map (F6, F68, F92) | The code has no `setRTLTextPlugin` call. Whether the current MapLibre version still needs it and how labels look today are unchecked (dependencies were not installed in the review environment); look at the live map first |
+| Persian map labels: the right-to-left text plugin for MapLibre (`@mapbox/mapbox-gl-rtl-text` 1.0.0) | Teaches the map to read Persian right to left | — | Not needed: checked 2026-10-28, MapLibre 6 shapes right-to-left text itself and Persian street names render correctly in Peyda (10.1) |
 | Forms generated from data: JSON Forms (`@jsonforms/core` 3.8.0) or `@rjsf/core` (6.11.0) | Describe a form in a list and the app draws it | Each company adds its own customer fields (F122), builds a survey (F141) or an onboarding checklist (F40) without a developer; the form definition is saved in the database | Compare the two with Persian and right-to-left rendering before choosing; validate submitted values on the server too |
 | Import wizard: upload a spreadsheet, match its columns, preview and fix rows, then import (`react-spreadsheet-import` 4.7.1, last release Aug 2024; or a screen built on the existing lead import) | A guided copy-in of an old customer or product list, with the bad rows shown before anything is saved | Bringing a company's existing customers, products and balances in on day one (F126); bank statements (F10); the lead import already has a job runner (`components/LeadImportPanel.tsx`) | The library's last release is two years old and its right-to-left support is unchecked; reusing the lead import's job runner may be enough. Pairs with `csv-parse` and `iconv-lite` in 10.6 |
 | Per-company subdomain and branding (the `Host` header read in `proxy.ts`, a logo and colour per company) | Each company gets its own address and sees its own name and logo | A second company's own look (F126, F127); its logo on invoices and delivery notes (F147) | No library needed. Needs a wildcard certificate (Caddy can issue one with a DNS challenge; check that the domain's DNS provider works from Iran). Only worth doing when a second company signs |
@@ -681,3 +960,55 @@ Ideas that are interesting for this app but not chosen. None is decided; the own
 | Call detection on the phone (a small Capacitor plugin reading Android's phone state; `capacitor-call-detector` 0.0.5 is too young to rely on) | When a rep's phone rings, the app shows who the customer is | Customer snapshot on call pickup (F104) without VoIP; logging calls made from the rep's own phone (F4, F41) | Android only; reading the call log needs a permission Google Play restricts, so it may only suit a direct-file install. Not tested. Ties to the Android distribution decision in section 5 |
 | Straighten photos before OCR: find the paper's edges and flatten it (`jscanify` 1.4.3, Jul 2026, on OpenCV.js) | Turns a crooked phone photo of a receipt or cheque into a flat, square scan | Better text reading for camera capture (F1); clearer expense receipts (F26) and delivery proof photos (F17) | Runs on the phone, so no image leaves it. OpenCV.js is several megabytes; load it only on the capture screen. Test on real receipts |
 | Contact picker: the browser's Contact Picker API (Chrome on Android), or `@capacitor-community/contacts` (8.0.0, Sep 2026) in the Android shell | Fill a new customer's name and phone from the phone's address book instead of typing | Faster customer creation in the field (F40), with the duplicate check run straight after (F148) | The browser API reads only the contacts the user picks and needs no permission; the plugin needs a contacts permission. Not tested on the target phones |
+
+### 10.9 Motion effects (decided 2026-10-28)
+
+Four effects from a UI-motion showcase, built on the draft branch `claude/project-thread-eua087`. The owner chose the full showcase style on every section and card.
+
+| Effect | Decision | Notes |
+|---|---|---|
+| Hero reveal | Built by hand, CSS only (`WordReveal`) | Whole words, never letters (Persian letters join); blur only on fine pointers; off under reduced motion; plays on every mount, not once a day |
+| Click → success | Built by hand (`BusyIcon done`, `useDoneFlash`) plus `canvas-confetti` 1.9.4 (MIT, about 3 KB gzipped, loaded only when a burst fires) | Confetti only for milestones: the last stop of a run, the first order of the Tehran day |
+| Price roll | `@number-flow/react` 0.6.2 was tried first and dropped: it drew no Persian digits in Chromium. Hand-built odometer in `CountUp` | Rolls on change, not from zero on first view |
+| Sale pings | Own endpoint `/api/sales/pings`, checked every 15 s while the sales summary is visible; managers and owners only | Reps keep the 60 s bell check |
+| Realized / unrealized profit | `salesDashboard().profit`: margin on delivered orders times the paid share of each order | Owner and manager card on the sales summary; sellers and drivers see paid against owed commission |
+
+### 10.10 Sensitive data lives in `routeflow-private` (2026-10-29, owner decision)
+
+The public `routeflow` repo holds code, fake seed data and placeholders only. Everything sensitive, now and in future, goes in the private repo `pouryare/routeflow-private`, which only the owner can access: real env files, the demo password, the real Caddyfile block, backup passphrases and offsite details, and any future key, export, dump or personal file. Plain files, no encryption (owner's choice). Never in the public repo, in CI secrets or in chat.
+
+The public repo reads these from the environment (`.env.example` lists them): `DEMO_PASSWORD` (random and printed by the seed when unset), `CONTACT_EMAIL`, `SESSION_SECRET`, Telegram and VAPID keys. The server pulls `routeflow-private` at deploy time and writes `/etc/routeflow/env`; CI uses throwaway values. Audit of 2026-10-29: no real keys, tokens, `.env` files or dumps in any public branch or `refs/pull/*`; the old demo password stays in public history, so it is treated as burned.
+
+### 10.11 Page skeletons captured from the real pages (2026-10-30, owner decision)
+
+Research: [High-fidelity page skeletons](https://claude.ai/artifact/DmCdRhNzbrBt5kcNiLf2LU). The owner chose boneyard capture drawn with HeroUI, on every page at once.
+
+| Choice | Decision | Notes |
+|---|---|---|
+| Capture | `boneyard-js` 1.10 (MIT), dev dependency only; its `snapshotBones` runs in our own Playwright script, `npm run skeletons:capture` | Owner role first, then the others; phone 390 px and desktop 1280 px, right to left, light, demo data; header card, fixed bars, clipped boxes and screen-reader text left out; neighbouring spans on a line merged into one bar |
+| Drawing | Our own server code in `PageSkeleton` (HeroUI `Skeleton` for lines, plain card surfaces for cards) | boneyard's `<Skeleton>` component draws nothing before scripts load and detects dark mode by a `.dark` class; ours paints from the server with our tokens |
+| Not used | react-loading-skeleton, react-content-loader, skeleton-mammoth, page-skeleton-webpack-plugin | Hand-drawn shapes or dead; see the research |
+| Rule | CI keeps the captures current; by hand, rerun the capture after a layout change and commit `lib/skeletons/` | A page without a capture keeps its fallback shape |
+| Automatic update (owner, 2026-10-30) | `.github/workflows/skeletons.yml` recaptures every page on a throwaway demo database (`scripts/skeletons-ci.sh`, fixed anchor date) and commits the changed JSON to the PR branch | Runs on ready, same-repository PRs that touch `app/(shell)`, `components`, `app/globals.css`, `lib/pageMeta.ts` or the capture scripts themselves; commit pushed with the built-in token, which GitHub does not treat as a person: CI for that commit waits in «action_required» until someone approves the run in the Actions tab (owner chose to merge without it, 2026-10-30; a personal access token secret would remove the wait); a page within 3 px of its stored capture is left alone (`scripts/skeleton-compare.mjs`) |
+
+### 10.12 Theme switch and six motion effects (2026-10-30, owner decision)
+
+From a "which feels better" motion clip and telegram.org's dark/light switch. Write-up: [Motion ideas: video + Telegram theme switch](https://claude.ai/artifact/FxsvhEhLqhSZt63VWDQeP2). The owner chose all six effects in one batch and "grow to light, shrink to dark" for the theme switch. No new dependency: the browser's View Transitions API, CSS, and framer-motion (already installed).
+
+| Effect | Where | How |
+|---|---|---|
+| Theme switch | Both sun/moon toggles (`switchTheme` in `lib/theme.ts`) | View Transitions: light grows as a circle out of the button, dark is the light page shrinking back into it; instant on browsers without the API and under reduced motion |
+| Toggle stretch | Every `ToggleSwitch` | CSS: pressed, the thumb stretches toward where it goes; released, it travels on the pop spring and settles |
+| Pop and burst | Customer pin, recent-customers pin, search favourite, star ratings, `BusyIcon` done check | `lib/burst.ts` and `.burst` pseudo-elements: icon pops, a ring and eight dots fly out, one short buzz; only when turning something on |
+| Menu from the button | Header group menu (`HoverPill`), every HeroUI popover and dropdown | Scale from 60% at the trigger, pop spring |
+| Shake for "no" | Login (password and code), step-up code sheet, password change | `useShakeOn`: fields shake side to side, the phone knocks twice; the message still says why |
+| Sliding pill | Bottom bar, page tabs (`RouteTabs`, also between pages), day chips | `lib/pillSlide.ts`: the new pill plays in from the old one, stretching over both on the way |
+| Gap closes | Today task delete and finish, pipeline lanes, suggestion cards | `.rowcollapse` (grid 1fr to 0fr) for rows hidden while their undo runs; `LeavingRows` (framer-motion popLayout) for rows that leave the data |
+
+### 10.13 GitHub labels, milestones and project board (2026-10-30, owner decision)
+
+The owner chose to keep `docs/roadmap.md` as the plan: an issue is opened only when a batch is picked up or a bug is found, never copied ahead from the roadmap. Labels (type, area, priority, status), one milestone per batch and one user-level project board are described in [`docs/github-workflow.md`](github-workflow.md); `scripts/github-labels.sh` sets the labels (a few lines of `gh api`, so no label-sync tool or Action was added).
+
+### 10.14 UI sounds (2026-10-30, owner decision)
+
+From bencho.dev's 151 UI sounds (`docs/bencho-blocks-and-sounds.md`). No library and no audio files: our own Web Audio code in `lib/sound.ts` and our own recipes in `lib/soundRecipes.ts`, written after reading how the site builds its sounds (the site states no licence, so nothing was copied). Owner choices: every sound gets a job, three skins with the company owner choosing (bubble by default), sounds on by default with a switch per person, map panning silent. Settings page «صدا» (`/settings/sound`). F117.

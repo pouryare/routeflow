@@ -1,7 +1,7 @@
 "use client";
 
 import { FieldInput } from "@/components/FieldInput";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Icon } from "@/components/meridian/Icon";
 import BusinessCard from "./BusinessCard";
 import AfterCallFlow from "./AfterCallFlow";
@@ -42,7 +42,14 @@ export default function CrmBoard({ initialRows, initialCounts, initialView }: {
     if (j?.ok) { setRows(j.rows ?? []); setCounts(j.counts ?? initialCounts); }
   }, [initialCounts]);
 
+  /* The page already rendered `initialRows` for `initialView` on the server; asking the API for the same
+     list on mount cost a request at ~9 s on a slow phone for nothing. */
+  const showingInitial = useRef(true);
   useEffect(() => {
+    if (showingInitial.current) {
+      showingInitial.current = false;
+      return;
+    }
     const t = window.setTimeout(() => void load(view, q), q ? 300 : 0);
     return () => window.clearTimeout(t);
   }, [view, q, load]);
@@ -101,7 +108,7 @@ export default function CrmBoard({ initialRows, initialCounts, initialView }: {
         </div>
         <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn solid" onClick={() => setLead({ kind: "lead", open: true, prefillPhone: null })}>
         <Icon name="plus" size="md" />
-        + سرنخ</button>
+        سرنخ تازه</button>
       </div>
       <div className="crm-views" role="toolbar" aria-label="نمای فهرست">
         {VIEW_ORDER.map((v) => (

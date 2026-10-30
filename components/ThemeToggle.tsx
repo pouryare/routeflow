@@ -7,6 +7,7 @@ import {
   Theme,
   applyTheme,
   readTheme,
+  switchTheme,
 } from "@/lib/theme";
 
 function subscribe(onChange: () => void): () => void {
@@ -42,14 +43,14 @@ export function useTheme(): [Theme, (t: Theme) => void] {
  *  React has hydrated and before useTheme has read anything.
  */
 export default function ThemeToggle({ className = "" }: { className?: string }) {
-  const [theme, setTheme] = useTheme();
+  const [theme] = useTheme();
   const maskId = useId();
   const next = theme === "dark" ? "light" : "dark";
 
   return (
     <button
       type="button"
-      onClick={() => setTheme(next)}
+      onClick={(e) => switchTheme(next, e.currentTarget)}
       aria-pressed={theme === "light"}
       // The icon shows the mode you are in; only the label says what pressing does. An
       // icon alone is genuinely ambiguous here -- a moon can as easily mean "you are in

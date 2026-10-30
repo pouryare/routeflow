@@ -2,7 +2,7 @@
 
 import type { RefObject } from "react";
 import { useEffect } from "react";
-import type { Map as LeafletMap } from "leaflet";
+import type { MapRef } from "@vis.gl/react-maplibre";
 import { CustomerRow } from "@/lib/types";
 
 /** Keyboard shortcuts for the map, for the half of this app's life that happens at a desk. Moved out of CoverageMap unchanged. */
@@ -12,7 +12,7 @@ export function useMapShortcuts({
 }: {
   searchInputRef: RefObject<HTMLInputElement | null>;
   sectionFilterRef: RefObject<HTMLInputElement | null>;
-  mapRef: RefObject<LeafletMap | null>;
+  mapRef: RefObject<MapRef | null>;
   myPosition: { lat: number; lng: number } | null;
   retryPosition: () => void;
   toast: (message: string, kind: "info" | "success" | "error") => void;
@@ -54,7 +54,7 @@ export function useMapShortcuts({
           break;
         case "g":
         case "G":
-          if (myPosition) mapRef.current?.flyTo([myPosition.lat, myPosition.lng], 16, { duration: 1 });
+          if (myPosition) mapRef.current?.flyTo({ center: [myPosition.lng, myPosition.lat], zoom: 16, duration: 1000 });
           else {
             toast("هنوز موقعیتی دریافت نشده", "info");
             retryPosition();

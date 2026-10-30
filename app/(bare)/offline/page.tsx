@@ -27,11 +27,11 @@ export default function OfflinePage() {
             className="inline-flex items-center justify-center gap-[var(--space-2)] btn solid"
             onClick={() => location.reload()}
           >
-            <Icon name="undo" size="md" />
+            <Icon name="refresh" size="md" />
             تلاش دوباره
           </button>
           <Link className="inline-flex items-center justify-center gap-[var(--space-2)] btn" href="/">
-            <Icon name="compass" size="md" />
+            <Icon name="home" size="md" />
             صفحهٔ اصلی
           </Link>
         </>

@@ -94,7 +94,7 @@ export default function AccountSwitcher({ variant = "page" }: { variant?: "menu"
             برنامه را به‌جای «{asking.display_name}» ببینید؟ تا وقتی «بازگشت به حساب خودم» را نزنید، هر کاری که انجام دهید به نام او ثبت می‌شود.
           </p>
           <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn solid" onClick={() => void confirmActAs(asking)}>
-            <Icon name="check" size="md" />
+            <Icon name="eye" size="md" />
             دیدن برنامه به‌جای «{asking.display_name}»
           </button>
           <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn ghost" onClick={() => setAsking(null)}>

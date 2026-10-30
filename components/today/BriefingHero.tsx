@@ -1,5 +1,6 @@
 import Avatar from "@/components/meridian/Avatar";
 import CountUp from "@/components/meridian/CountUp";
+import WordReveal from "@/components/meridian/WordReveal";
 import type { Briefing as BriefingData } from "@/lib/repo/briefing";
 import type { BriefingCard } from "@/lib/repo/briefingCards";
 import { faJalaliLong } from "@/lib/jalali";
@@ -14,7 +15,7 @@ import { faJalaliLong } from "@/lib/jalali";
  *
  *  Three rules this component exists to hold:
  *
- *  1. **One headline number.** Not four. `CountUp` sweeps it on arrival, which is exactly
+ *  1. **One headline number.** Not four. `CountUp` rolls its digits when it changes, which is exactly
  *     what MASTER.md's Tier 3 motion is for, and the only place on this screen where a
  *     number animates — a card grid of moving figures is noise.
  *  2. **The photo is `aria-hidden`.** The name beside it is the accessible content. A screen
@@ -47,7 +48,7 @@ export default function BriefingHero({
           size={96}
         />
       </span>
-      <h1 className="hello__name">{data.hero.displayName}</h1>
+      <h1 className="hello__name"><WordReveal text={data.hero.displayName} /></h1>
       <p className="hello__meta">
         {roleLabel} · {faJalaliLong(dateIso)}
       </p>

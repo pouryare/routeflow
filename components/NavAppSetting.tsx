@@ -111,8 +111,9 @@ export default function NavAppSetting() {
                   href={navigateUrl(a.id, NAV_TEST_POINT, NAV_TEST_LABEL)}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="shrink-0 rounded-[var(--radius-sm)] border border-border px-2 py-1 text-[length:var(--text-xs)] text-text-muted transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:border-accent hover:text-accent"
+                  className="inline-flex items-center gap-2 shrink-0 rounded-[var(--radius-sm)] border border-border px-2 py-1 text-[length:var(--text-xs)] text-text-muted transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:border-accent hover:text-accent"
                 >
+                  <Icon name="external-link" size="sm" />
                   امتحان
                 </a>
               </div>

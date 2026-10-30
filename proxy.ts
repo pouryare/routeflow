@@ -35,7 +35,8 @@ function isPasswordChangePath(pathname: string): boolean {
 export function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  if (PUBLIC_PATHS.some((p) => pathname === p) || pathname.startsWith("/_next")) {
+  // Map tiles are OpenStreetMap's open data; served without a session so the CDN can cache them.
+  if (PUBLIC_PATHS.some((p) => pathname === p) || pathname.startsWith("/_next") || pathname.startsWith("/api/map/tiles/")) {
     return NextResponse.next();
   }
 

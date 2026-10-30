@@ -1,5 +1,6 @@
 "use client";
 
+import { toNumber } from "@/lib/money";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import KeypadField from "@/components/mobile/KeypadField";
@@ -13,16 +14,22 @@ export default function DiscountSettingsForm({ initial }: { initial: DiscountSet
   const [commission, setCommission] = useState(String(initial.commission_pct));
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
-  const dirty = Number(auto) !== initial.auto_pass_pct || Number(commission) !== initial.commission_pct;
+  const dirty = toNumber(auto) !== initial.auto_pass_pct || toNumber(commission) !== initial.commission_pct;
 
   const save = async () => {
+    const autoPct = auto.trim() === "" ? 0 : toNumber(auto);
+    const commissionPct = commission.trim() === "" ? 0 : toNumber(commission);
+    if (autoPct === null || commissionPct === null) {
+      setMsg({ ok: false, text: "مقدار نامعتبر است" });
+      return;
+    }
     setBusy(true);
     setMsg(null);
     try {
       const res = await fetch("/api/admin/discount-settings", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ auto_pass_pct: Number(auto || 0), commission_pct: Number(commission || 0) }),
+        body: JSON.stringify({ auto_pass_pct: autoPct, commission_pct: commissionPct }),
       });
       const j = (await res.json().catch(() => null)) as { error?: string } | null;
       if (res.ok) {
@@ -56,7 +63,7 @@ export default function DiscountSettingsForm({ initial }: { initial: DiscountSet
         )}
       </section>
       <div className="sticky-action-gap" aria-hidden />
-      <StickyAction label="ذخیرهٔ تنظیمات" busy={busy ? "در حال ذخیره…" : undefined} onClick={save} disabled={busy || !dirty} />
+      <StickyAction icon="save" label="ذخیرهٔ تنظیمات" busy={busy ? "در حال ذخیره…" : undefined} onClick={save} disabled={busy || !dirty} />
     </>
   );
 }

@@ -35,7 +35,7 @@ export default function ImpersonationBanner({ asName, asRole }: { asName: string
         </Alert.Description>
       </Alert.Content>
       <Button size="sm" variant="primary" onPress={() => void back()} isDisabled={busy}>
-        <Icon name="user" size="md" />
+        <Icon name="arrow-right" size="md" />
         {busy ? "در حال بازگشت…" : "بازگشت به حساب خودم"}
       </Button>
     </Alert>

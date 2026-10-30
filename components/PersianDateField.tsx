@@ -134,7 +134,7 @@ export default function PersianDateField({
           </Button>
           {!required && value ? (
             <Button variant="tertiary" onPress={() => pick("")}>
-              <Icon name="trash" size="md" />
+              <Icon name="x" size="md" />
               پاک کردن تاریخ
             </Button>
           ) : null}

@@ -11,7 +11,7 @@ import { useMemo, useState } from "react";
 import { Icon } from "@/components/meridian/Icon";
 import { useRouter } from "next/navigation";
 import JalaliDatePicker from "@/components/JalaliDatePicker";
-import { toToman } from "@/lib/money";
+import { toNumber, toToman } from "@/lib/money";
 import { faToman } from "@/lib/format";
 import {
   commissionFor,
@@ -77,17 +77,6 @@ const METRIC_LABEL: Record<CommissionMetric, string> = {
  *  applies to and what unit it is in -- تومان در هر کیلو for فروشنده and راننده,
  *  درصد از فروش گروه for مدیر گروه. The kind selector switches both.
  */
-/** Parse a number typed with Persian or Arabic-Indic digits and `٫` as the decimal mark;
- *  null when it is not a plain number. Pure, so it lives outside the component. */
-function toNumber(input: string): number | null {
-  const ascii = input.replace(/[۰-۹٠-٩]/g, (d) => {
-    const code = d.codePointAt(0)!;
-    return String(code >= 0x06f0 ? code - 0x06f0 : code - 0x0660);
-  }).replace("٫", ".");
-  if (!/^-?\d+(\.\d+)?$/.test(ascii)) return null;
-  return Number(ascii);
-}
-
 export default function CommissionEditor({
   sellers,
   drivers,
@@ -352,7 +341,7 @@ export default function CommissionEditor({
                       setTierRows(e.rows);
                     }}
                   >
-                    <Icon name="layers" size="md" />
+                    <Icon name="copy" size="md" />
                     {`کپی از ${src.label}`}
                   </button>
                 ))}

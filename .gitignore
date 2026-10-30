@@ -32,6 +32,7 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env.example
 
 # vercel
 .vercel
@@ -53,6 +54,8 @@ next-env.d.ts
 # this line existed (see git log) precisely because the old pattern only caught the one
 # blessed location -- this one catches any .db file dropped anywhere under data/.
 /data/backups/
+# The basemap tile file (docs/map-tiles.md): hundreds of MB, built on the server.
+/data/map/
 /data/*.db*
 
 # git worktrees created for feature work: a whole second checkout, node_modules and all
