@@ -192,6 +192,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 4. Retention: keep the breadcrumb trail (useful for disputes and `actual_distance_km`) or only the last position?
 5. Volume: the number of drivers is unknown (2026-10-23), so nothing may assume a fleet size. Size by drivers × hours on the road × 3600 ÷ ping interval, keep the pings in a table partitioned by month, and keep raw pings for a limited time (the roadmap proposes 90 days, then a simplified line). Thresholds are in `docs/roadmap.md`, section 10.
 
+**Design inputs from the Fleetbase study (2026-10-30, ideas only):** (1) keep positions as a per-company setting with a system maximum (Fleetbase: 90 days, raw payload stripped after 7); (2) a simulator that drives a fake driver along a planned route, to test arrival events and screenshots without a real driver; (3) arrival counts only after a short stay inside the customer's circle, not on a pass-by; (4) every live dot shows its age and every arrival time says live, planned or estimated; (5) manager alerts for late start, off route and long stop are decided here, not earlier; (6) a run replay map for disputes and mileage; (7) the customer tracking page waits for this and F79.
+
 **Suggested first slice:** position pings every 30–60 s while a run is `IN_TRANSIT`, a live dot on the existing map, and a manager-only view. Customer messages second.
 
 **Prerequisites:** none in code; a messaging provider for the customer-facing half.

@@ -14,6 +14,8 @@ Totals: 46 small, 73 medium, 27 large first slices; 123 entries note existing co
 
 1. [Build these first: small first slices on existing code](#1-build-these-first)
     - [1b. UI pattern batches (2026-10-28)](#1b-ui-pattern-batches-2026-10-28)
+    - [1c. Fleetbase study: UI/UX batches (2026-10-30)](#1c-fleetbase-study-uiux-batches-decided-2026-10-30)
+    - [1d. Fleetbase code deep dive (2026-10-30)](#1d-fleetbase-code-deep-dive-decided-2026-10-30)
 2. [Foundations: build once, many entries depend on them](#2-foundations)
 3. [Overlaps: entries that should be designed together](#3-overlaps)
 4. [Suggested order](#4-suggested-order)
@@ -92,6 +94,87 @@ The owner picked 53 favourite UI patterns from a Gemini chat and added two ideas
 **Batch F: parked.** The rest of the 53 that need a decision or a library first; passkeys as a later way to sign in.
 
 Each batch is built as one draft PR with one commit per task, merged once at the end (the batch rule in `CLAUDE.md`). Any new dependency is asked first.
+
+### 1c. Fleetbase study: UI/UX batches (decided 2026-10-30)
+
+The owner had Fleetbase (open source fleet platform, AGPL-3.0) studied for screen and flow ideas, then answered 16 items one by one. **Ideas only: no Fleetbase code is used, because AGPL would force RouteFlow's source open.** Reports: features https://claude.ai/artifact/WQs5FvBKURvuUZotd3ruW7 and screens https://claude.ai/artifact/M4CQjmRZMo2nE32SmwLiMN. Nothing below is built yet. Each batch is one draft PR with one commit per item, merged once at the end (batch rule in `CLAUDE.md`).
+
+**Batch 1: lists and trust.**
+- **Orders list you can search and filter.** `/sales/orders` reads at most 100 orders and takes no filter inputs. Add `FilterChips` for status, payment, rep and day, a count, «load more» past 100, and one paste-many search (paste order numbers or phones, get just those).
+- **Undo on the planner.** Commit, freeze and day-lane moves get the 5-second undo toast (`useUndoableAction`); `RoutingPlanner` calls `/routing/commit` and `/runs/{id}/freeze` directly today.
+- **Edit rules by order stage, with reasons.** Ready: lines may only be removed, the day only moved earlier. Out for delivery: lines and day locked. Delivered or cancelled: everything locked. Each locked field shows a one-line Persian reason; one shared rule used by the page, the API and offline sync (relates to F73).
+- **Empty states name what is hidden.** Action centre, tasks and filtered lists say «۳ مورد به تعویق افتاده، فردا ۰۹:۰۰» and offer «پاک کردن فیلتر» when a filter is the cause.
+- **Detail sheets: bottom by default, movable to the side.** Every detail sheet opens at the bottom (phone and desk); the user can move it to the side. Reuse the toggle in `CustomerDetailPanel` (`orient`, saved in `coverage_panel_orient`, icons `panel-bottom` / `panel-side`), flip its default to bottom, apply it to order details, and keep one shared saved choice per person for every detail sheet (decided 2026-10-30).
+
+**Batch 2: desk speed.**
+- **Saved views.** Per person, named filter sets on the orders and customers lists, stored on the server.
+- **Keyboard triage on desk.** Action centre, tasks and orders list: J/K move, X select, E acknowledge, S snooze, open, with a one-line hint strip; desk only, phones keep swipe. `BINDINGS` in `lib/hotkeys.ts` is empty and `eventMatchesChord` matches `event.key`, so the new keys must match the physical key (`event.code`) or they fail under the Persian keyboard layout; it also needs a list-cursor model on top of `lib/selection`.
+- **Category strip and daily score on the action centre.** One chip per area (credit, stock, delivery, cheques) with its count that filters the queue, plus a 0 to 100 score with the change since yesterday, stored daily in `kpi_snapshots`. The score reuses the action centre's own impact, probability and urgency numbers as weights (decided 2026-10-30), so it agrees with the order of the queue and there is no second set of weights.
+- **Internal chat, first slice: threads on orders and customers.** See the decision below.
+
+**Internal chat system (decided 2026-10-30).** A native chat, no outside chat server; the existing-solutions search was skipped on the owner's say-so. Phases: (1) a thread on every order and customer, (2) 1:1 and group chats on the same tables (one conversation table with a subject: customer, order, direct or group), (3) photos, search and read receipts. Decided 2026-10-30: the owner may read any 1:1 or group chat, members see a standing notice («مالک می‌تواند این گفتگو را ببیند») and each owner read is logged. Rules to settle when it is designed: a thread is visible only to people who may see the record, and adding someone grants no access to the record; mentions go through the existing notification preferences and quiet hours; online-only at first, saying so on a failed send; live delivery by server-sent events or polling over Postgres, no Redis.
+
+**Planned with other work.**
+- **Freshness labels (rule now, built with F6).** Every live position shows its age; an arrival time says live, planned or estimated; low confidence is visible. All text in Persian (Fleetbase hard-codes English «Stale GPS» and «Fallback ETA»).
+- **Receipt layout live preview.** A preview card that updates as you type; only this setting for now.
+- **Setup checklist details (UI batch D).** Minutes per step, a % bar, the next step highlighted, steps ticking themselves from real data, the card hidden when done.
+- **Run replay (with F6).** Scrub a driver's day on a map with time and speed per point, for disputes and mileage; it informs how long positions are kept.
+- **Attempts list on the owner's status page.** Per message: tries, outcome, time and a retry button, built with the batch A delivery log.
+
+**Deferred until another feature is built (decided 2026-10-30).** These stay on the roadmap; each waits for the feature in the second column.
+
+| Item | Waits for | What to build then |
+|---|---|---|
+| Freshness labels on positions and ETAs | F6 live tracking | Age on every live dot; arrival says live, planned or estimated; low confidence visible; all in Persian |
+| Customer tracking page | F6 and F79 | Coarse three-step status before an SMS code, then map, arrival and details; blurred locked sections; masked contact choices; a call button when there is no contact; code rules from the Fleetbase study (10 minutes, 3 tries, 30 s resend) |
+| Late-start, off-route and long-stop manager alerts | F6 | Per-company switches and thresholds, sent once per order, through the existing alerts and quiet hours |
+| Position retention as a setting | F6 | Per-company retention with a system maximum (Fleetbase: 90 days, raw payload stripped after 7) |
+| Route simulator for testing | F6 | A fake driver driving a planned route, to test arrival events and take screenshots |
+| Arrival after a short stay (dwell) | F6 and F38 | Count arrival only after a short stay inside the customer's circle |
+| Run replay map | F6 | Scrub a driver's day with time and speed per point, for disputes and mileage |
+| QR scan proof and a required-proof setting | F17 delivery proof | QR on the delivery note scanned at the door; per-company required proof (none, photo, scan); a no-proof reason |
+| Receipt layout live preview | The receipt layout page | A preview card that updates as you type |
+| Setup checklist details | UI batch D | Minutes per step, % bar, next step highlighted, steps tick from real data, hide when done |
+| Attempts list with retry on the status page | Batch A delivery log | Tries, outcome and time per message, with a retry button |
+| Internal chat phases 2 and 3 | Chat phase 1 (threads on orders and customers) | 1:1 and group chats on the same tables, then photos, search and read receipts |
+
+**Parked or skipped.** The customer tracking page waits for F6 and F79 (reference design: coarse three-step status before an SMS code, blurred locked sections, masked contact choices, a call button when there is no contact). The van check sheet, odometer and expiry dates were skipped. A store-reviewer sign-in for the Android app is not needed. QR scan proof and a required-proof setting wait for the F17 design. Late-start, off-route and long-stop manager alerts are decided at F6; the position retention setting, a route simulator for testing and arrival counted after a short stay in the circle are noted on F6 in `docs/future-features.md`.
+
+### 1d. Fleetbase code deep dive (decided 2026-10-30)
+
+A second pass through the Fleetbase code (report https://claude.ai/artifact/DUP4Msm4XZaUuPBGgYJcTc). Ideas only, AGPL-3.0, no code copied. The owner's answers:
+
+- **SMS guard, in batch A with Farazsms (built small).** Iranian mobile numbers only (09…); a per-number cooldown; a per-company daily budget in toman; an alert when many distinct numbers are texted in a short time; one ledger row per attempt (reserved, then sent, failed or blocked, with purpose, source, hashed number, IP and block reason), which is the delivery log already decided for batch A; monitor mode first (log what it would block), then enforce; an owner «pause SMS» switch. Public sends fail closed if the counter store is down; staff sends (sign-in codes) fail open. Fleetbase also pauses automatically on spikes, a new destination country and a low sent-to-verified ratio; only the spike alert is in the first version.
+- **Change summaries on edited orders.** When an order is edited after confirmation, the driver gets a one-line Persian push («اقلام تغییر کرد»، «موعد به … منتقل شد»، «مبلغ دریافتی تغییر کرد») and the warehouse sees a «تغییر کرده» badge. Extends the stage-based edit rules in 1c.
+- **ETA stage rules (recorded for F6 and F79).** No driver assigned: no ETA. Dispatched but not started: an estimated start only. Started: a live ETA per remaining stop, so each customer sees their own stop's time. Finished: none. Every ETA carries a confidence and warnings (stale position, off route, fallback estimate).
+- **Planner blockers and warnings.** Every planner check returns a result with a severity: a blocker stops, a warning tells; each has a Persian reason. A new owner setting, maximum working hours per driver per day, shows as a warning. No legal hours rules are built in.
+- **Live commission preview (first slice of F19).** The commission editor shows the result for sample sales values as the rule changes, using the same calculation as payroll so the preview cannot drift from the real engine.
+- **Message templates (F136).** Placeholders such as `{customer.name}` with a picker so staff never type a variable name; an unknown placeholder becomes empty text; a literal brace can be escaped; chained filters are allowed.
+- **Authenticator nudge.** A banner with a «فعال‌سازی اکنون» button for managers and anyone required to use the authenticator, shown until they enrol; no lock-out after a grace period.
+- **Company data purge and export with a dry run: parked** until a second company is signed (F126, F127). `TENANT_TABLES` in `lib/database/tenantTables.ts` already lists what it would cover.
+- **Noted as references, not decided:** the report-builder safety rules (allowed tables, columns and joins, complexity score, row limit, a log of each run) for F14; broadcasting an urgent order to nearby drivers for F7; the warehouse, section, aisle, rack and bin hierarchy with bin size and maximum weight for F93.
+
+**Third pass (more ideas from the storefront, promotions and access code, decided 2026-10-30):**
+
+- **Merged order timeline: built with chat phase 1.** One feed per order with status changes, notes, edits (who and the one-line summary), payment adjustments and chat messages.
+- **Internal versus customer-visible notes: wait for the tracking page** (F6/F79). Until then every note is internal.
+- **Owner access review card on the owner status page.** Users per role, never signed in, no authenticator, no sign-in for 30+ days, recent impersonations; each line opens the list. Reads the existing sign-in log.
+- **Delivery window capacity (with F57).** The owner sets a maximum number of orders per window; order entry shows the places left and warns when it is full.
+- **Saved smart segments (with F28/F21).** A customer filter saved by name (for example «بدون سفارش در ۳۰ روز») that promotions and reminders can target. When F21 is built, a rejected promotion states its reason in Persian (Fleetbase's promotion engine does this).
+
+**Fourth pass (driver app, ledger and pallet code, decided 2026-10-30):**
+
+- **Driver «گزارش مشکل» sheet (small version).** The driver picks a type (vehicle, road, customer, goods) and a priority, adds an optional photo and note; the report is stamped with the phone position and the current stop and shows on the action centre.
+- **Invoice sent stamp, now.** Record when an invoice was sent (printed or shared) and show it on the customer page. A first-viewed time waits for the tracking page, because it needs a customer-facing link.
+- **Note for F6:** sort incoming position pings by their time before use, so a late ping cannot move the dot backwards.
+
+**Fifth pass (fleetops, core and storefront code, decided 2026-10-30):**
+
+- **Stale draft orders.** An action centre card lists draft orders older than N days (owner setting, default 7). Drafts older than the limit are cancelled automatically, with a log line for each.
+- **Log retention with a preview.** Each growing log table (SMS ledger, sign-in log, outbox, notifications) gets a keep-for-N-days setting. The owner status page shows how many rows the next nightly purge would delete.
+- **Recurring driver unavailability: design note only**, on the parked shifts and leave entry (F-shifts): a recurring day off or a leave week with a reason, shown as a planner warning. Nothing is built.
+- **Stock hold for a quote with an expiry** (held, committed, released) is the Fleetbase answer to the open question under F51; no decision taken.
+- **Scheduled saved reports to Telegram: skipped.**
 
 ## 2. Foundations
 
