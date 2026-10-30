@@ -66,7 +66,7 @@ export default function CopyButton({
           : "border-border text-text-faint hover:border-accent hover:text-accent"
       } ${className}`}
     >
-      <Icon name={copied ? "check" : "copy"} size="sm" />
+      <Icon key={copied ? "done" : "copy"} name={copied ? "check" : "copy"} size="sm" className={copied ? "done-check" : undefined} />
       <span>{copied ? "کپی شد" : label ?? what}</span>
     </button>
   );

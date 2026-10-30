@@ -5161,6 +5161,18 @@ body {
   [data-shake] { animation: shake-no 420ms var(--ease-out); }
 }
 
+/* The bell swings once from its top when a new notification arrives (NotificationBell). */
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes bell-swing {
+    0%, 100% { transform: none; }
+    20% { transform: rotate(16deg); }
+    40% { transform: rotate(-13deg); }
+    60% { transform: rotate(8deg); }
+    80% { transform: rotate(-4deg); }
+  }
+  .bell-swing { transform-origin: 50% 0; animation: bell-swing 800ms var(--ease-out); }
+}
+
 /* A row that folds away when removed (TaskRow): its height closes to nothing as it fades
    and slides, so the rows under it glide up rather than jump; undo unfolds it. A grid
    track animating 1fr -> 0fr is the one way to transition to and from an auto height. */
