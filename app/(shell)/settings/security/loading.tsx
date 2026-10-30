@@ -13,7 +13,7 @@ export default function Loading() {
   return (
     <>
       <PageHeaderCard {...pageMetaFor("/settings/security")} />
-      <PageSkeleton shape="rows" />
+      <PageSkeleton route="/settings/security" shape="rows" />
     </>
   );
 }

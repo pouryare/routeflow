@@ -6,7 +6,7 @@ export default function Loading() {
   return (
     <>
       <PageHeaderCard {...pageMetaFor("/crm")} />
-      <PageSkeleton shape="chart" />
+      <PageSkeleton route="/crm" shape="chart" />
     </>
   );
 }
