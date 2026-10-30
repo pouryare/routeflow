@@ -20,6 +20,7 @@ Totals: 46 small, 73 medium, 27 large first slices; 123 entries note existing co
     - [1g. Dolibarr study (2026-10-30)](#1g-dolibarr-study-decided-2026-10-30)
     - [1h. EspoCRM study (2026-10-30)](#1h-espocrm-study-decided-2026-10-30)
     - [1i. Akaunting study (2026-10-30)](#1i-akaunting-study-decided-2026-10-30)
+    - [1j. Bigcapital study (2026-10-30)](#1j-bigcapital-study-decided-2026-10-30)
 2. [Foundations: build once, many entries depend on them](#2-foundations)
 3. [Overlaps: entries that should be designed together](#3-overlaps)
 4. [Suggested order](#4-suggested-order)
@@ -320,6 +321,26 @@ The owner had Akaunting (free accounting app, `akaunting/akaunting`) studied in 
 - **Typed filters on desk screens (A17, with T1).** Text such as `بدهی>۱۰۰۰۰۰۰ منطقه:۳` in the search box turns into the same filter chips; phones keep tapping chips.
 
 **Skipped:** three tax kinds for D7 (A9: added on top, already inside the price, withheld; D7 stays as decided) and a «بدون قیمت» print option for delivery notes (A14).
+
+### 1j. Bigcapital study (decided 2026-10-30)
+
+The owner had Bigcapital (open source accounting, `bigcapitalhq/bigcapital`) studied in two passes; 12 ideas were answered one by one. Report: https://claude.ai/artifact/Qv4hrACBn39vQoQmD1b8Ki. **Ideas only: Bigcapital is AGPL-3.0, so no Bigcapital code is used.** Nothing below is built yet. Most of Bigcapital (reports, ageing, locking, opening balances, tax, numbering) was already built or decided in 1g and 1i.
+
+**Money**
+- **Credit note (B1).** A manager makes a credit for goods returned after delivery, with a reason and an amount. It lowers what the customer owes and is applied to open orders or paid back in cash. Suppliers get the same document for goods sent back. Today the `RETURNED` status only ends the undelivered part (`lib/orderStateMachine.ts`); this is the money side of F12 and F80.
+- **Open a date range in a closed month (B2, extends A2).** The owner opens one date range with a reason; it closes again by itself after a set time. Logged. A2 stays one lock for all areas.
+- **Books behind a document (B3).** A «ثبت‌های حسابداری» button on order, payment, expense and cheque pages for the owner and the accountant: the debit and credit lines the document made, each linked to its account.
+- **Bank line rules (B4, after F10).** The owner keeps a short rule list (contains text, amount range, category, supplier); imported bank lines arrive pre-filled. Parked until the F10 bank import exists; A3 may use the same matching to pre-tick lines.
+
+**Stock**
+- **Sent and received transfers between facilities (B5).** Goods leave the source when sent, show as «در راه» (not sellable, counted in stock value) and land when received; not received after N days goes to the action centre. Warehouse-to-van loading stays one step.
+- **Product page with its history (B10).** Tabs: orders that sold it, purchases that bought it, stock moves, cost and price changes. Rows link to the order or purchase.
+- **Cost after a purchase edit (B6, parked).** `recordPurchase` in `lib/purchases.ts` is the only purchase writer; there is no edit or void. When one is built it must recompute the average cost and show which orders are affected.
+
+**Screens**
+- **Bulk results (B7).** Every bulk action on the shared selection bar ends with «N انجام شد، M نشد» and a list of the skipped rows, each with a Persian reason.
+
+**Skipped:** VAT owed report after D7 (B8), profit on a cash basis (B9), sellable and buyable switches (B11), draft-then-publish money entries (B12). Custom role grids (D13 and E10 cover it) and many currencies (toman only) were not offered.
 
 ## 2. Foundations
 
