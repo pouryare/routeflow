@@ -9,6 +9,7 @@ import BottomSheet from "@/components/mobile/BottomSheet";
 import { TAB_ICON, type BottomTabs } from "@/lib/mobileNav";
 import { currentTab } from "@/lib/appNav";
 import { boxOf, slidePill, type Box } from "@/lib/pillSlide";
+import { playSound } from "@/lib/sound";
 
 /** The phone's navigation bar: the four places a role goes dozens of times a day, and «بیشتر»
  *  for everything else (grouped the way the desk menu groups it). Phone only -- the desk pill
@@ -44,7 +45,7 @@ export default function BottomNav({ primary, more, account }: BottomTabs) {
     <>
       <nav ref={nav} className="bottomnav" aria-label="ناوبری اصلی">
         {primary.map((t) => (
-          <Link key={t.href} href={t.href} className="bottomnav__item" aria-current={t.href === current ? "page" : undefined}>
+          <Link key={t.href} href={t.href} className="bottomnav__item" aria-current={t.href === current ? "page" : undefined} onClick={() => playSound("nav.tab")}>
             <span className="bottomnav__icon"><Icon name={TAB_ICON[t.href] ?? "dot"} size="md" /></span>
             <span>{t.label}</span>
           </Link>

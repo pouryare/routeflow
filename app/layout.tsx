@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import ServiceWorkerRegister from "@/components/ServiceWorkerRegister";
+import SoundSync from "@/components/SoundSync";
 import { ToastProvider } from "@/components/ToastProvider";
 import HeroUIProvider from "@/components/HeroUIProvider";
 import { THEME_INIT_SCRIPT } from "@/lib/theme";
@@ -51,6 +52,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         {/* And the letterforms you read best. See lib/font.ts. */}
         <script dangerouslySetInnerHTML={{ __html: FONT_INIT_SCRIPT }} />
         <ServiceWorkerRegister />
+        <SoundSync />
         <HeroUIProvider>
           <ToastProvider>
             {children}

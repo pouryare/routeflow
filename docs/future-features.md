@@ -2503,11 +2503,13 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 **Why parked:** vibration is not available in every mobile browser (it is not supported on iOS Safari), so the behaviour differs by device; sounds in a customer's shop can be intrusive; an accessibility setting must be respected for people who use screen readers or reduced motion.
 
-**Open questions**
-1. Which events: scan success, order saved, payment saved, error, undo?
-2. Default off or on? Sound off by default, haptics on where supported.
-3. One master switch plus separate toggles, saved in the preferences blob?
-4. Respect the phone's silent mode and the app's reduced-motion setting.
+**Built (2026-10-30), sounds:** all decisions are in `docs/bencho-blocks-and-sounds.md` (the sound sheet). `lib/sound.ts` is the one entry point (`playSound("payment.saved")`) and `lib/soundRecipes.ts` holds 151 sounds made in the browser. Sounds are on by default, with one switch per person in the preferences blob and off by default for anyone whose phone asks for reduced motion; the company owner picks the skin (bubble, mech or press) on «صدا» (`/settings/sound`), bubble until then. Haptics stay as they were (`lib/haptic.ts`), with no separate switch yet.
+
+**Answered questions**
+1. Events: every sound has an event; the first callers are the done check, the refusal shake, toasts, sheets, tabs, switches, copy, the theme switch and the new-order ping.
+2. On by default (owner, 2026-10-30).
+3. One switch per person; no per-event toggles.
+4. iPhone: the audio session is "ambient", so the silent switch mutes it. Android has no such signal for a web page. Reduced motion starts sound off.
 
 **Suggested first slice:** a settings entry with "vibrate on confirm" and "sound on confirm", stored in the existing preferences, applied to the tap-flow confirmation screen only, and silent where the device does not support it.
 
