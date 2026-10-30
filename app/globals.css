@@ -5286,3 +5286,12 @@ span.burst { display: inline-flex; }
 @media (prefers-reduced-motion: reduce) {
   .chart-pill, .bars rect { transition: none; }
 }
+
+/* Stars (StarRating): the ones you just filled pop in one after another, left of the chosen one first. */
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes star-pop { 50% { transform: scale(1.3) rotate(-8deg); } }
+  .star[aria-checked="true"] svg, .star.text-warn svg { animation: star-pop 320ms var(--ease-out, ease-out) calc(var(--star-i) * 45ms) both; }
+  /* A chip you pick swells a little, like it was pulled toward your finger. */
+  .meridian .choicechip.on { animation: chip-swell 260ms var(--spring-pop, ease-out); }
+  @keyframes chip-swell { 40% { transform: scale(1.07); } }
+}
