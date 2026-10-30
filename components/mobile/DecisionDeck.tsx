@@ -92,7 +92,7 @@ export default function DecisionDeck<T>({
               </div>
             )}
             {canThrow && good && bad ? (
-              <p className="deck__hint">کارت را بکشید: به راست «{good.label}» · به چپ «{bad.label}»</p>
+              <p className="deck__hint">کارت را بکشید: به راست = {good.label} · به چپ = {bad.label}</p>
             ) : null}
             <div className="deck__choices">
               {choices.map((c) => (

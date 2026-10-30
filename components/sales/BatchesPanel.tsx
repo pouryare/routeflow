@@ -183,19 +183,6 @@ export default function BatchesPanel({ products }: { products: Product[] }) {
                     <td className={`p-2 text-left font-mono ${b.on_hand < 0 ? "text-danger" : ""}`}>{faNum(b.on_hand)}</td>
                     <td className="p-2">{BATCH_STATUS_LABEL[b.status]}</td>
                     <td className="p-2 text-left">
-                      {recallArmed === b.id ? (
-                        <div className="flex flex-wrap items-center justify-end gap-1" role="group" aria-label="تأیید فراخوان">
-                          <span className="text-xs text-danger">برای همهٔ مشتریانی که این سری را گرفته‌اند یادآور ثبت می‌شود و برگشت‌پذیر نیست.</span>
-                          <button onClick={() => setStatus(b.id, "recalled")} className="rounded border border-danger px-2 py-0.5 touch text-xs text-danger">
-                            <Icon name="check" size="md" />
-                            بله، فراخوان شود
-                          </button>
-                          <button onClick={() => setRecallArmed(null)} className="rounded border border-border px-2 py-0.5 touch text-xs hover:border-accent">
-                            <Icon name="x" size="md" />
-                            انصراف
-                          </button>
-                        </div>
-                      ) : (
                       <div className="flex flex-wrap justify-end gap-1">
                         {(BATCH_TRANSITIONS[b.status] ?? [])
                           .filter((t) => MANUAL_MOVES.includes(t))
@@ -210,9 +197,27 @@ export default function BatchesPanel({ products }: { products: Product[] }) {
                           ردیابی
                         </button>
                       </div>
-                      )}
                     </td>
                   </tr>
+                  {recallArmed === b.id && (
+                    <tr className="border-b border-border bg-bg">
+                      <td colSpan={6} className="p-3">
+                        <div className="flex flex-col gap-2" role="group" aria-label="تأیید فراخوان">
+                          <p className="m-0 text-sm text-danger">فراخوان این سری برای همهٔ مشتریانی که آن را گرفته‌اند یادآور ثبت می‌کند و برگشت‌پذیر نیست.</p>
+                          <div className="flex flex-wrap gap-2">
+                            <button onClick={() => setStatus(b.id, "recalled")} className="rounded border border-danger px-3 py-1 touch text-sm text-danger">
+                              <Icon name="check" size="md" />
+                              بله، فراخوان شود
+                            </button>
+                            <button onClick={() => setRecallArmed(null)} className="rounded border border-border px-3 py-1 touch text-sm hover:border-accent">
+                              <Icon name="x" size="md" />
+                              انصراف
+                            </button>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
                   {traceFor === b.id && (
                     <tr className="bg-bg">
                       <td colSpan={6} className="p-2 text-xs">
