@@ -643,6 +643,17 @@ body {
 :root[data-theme="light"] .theme-toggle__bite { transform: translate(110%, -110%); }
 :root[data-theme="light"] .theme-toggle__rays { opacity: 1; transform: scale(1); }
 
+/* ---- Theme switch: the new skin is seen through a circle from the button (lib/theme.ts
+   switchTheme). Only while that switch runs: the browser's default cross-fade is turned
+   off so the circle is the whole effect, and going dark the OLD (light) photo is put on
+   top, because that is the one that shrinks back into the button. */
+:root[data-theme-reveal]::view-transition-old(root),
+:root[data-theme-reveal]::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+:root[data-theme-reveal="shrink"]::view-transition-old(root) { z-index: 1; }
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
