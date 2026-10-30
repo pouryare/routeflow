@@ -1,6 +1,6 @@
 # Map tiles: our own basemap
 
-Every map in RouteFlow draws its background from this server. No map request goes to a foreign tile host (owner's decision, 2026-10-28; `docs/roadmap.md` 10.1).
+Every map in RouteFlow draws its background from this server. No map request goes to a foreign tile host (owner's decision, 2026-10-28; `docs/decisions.md` 10.1).
 
 ## How it fits together
 
@@ -55,4 +55,4 @@ The data is © OpenStreetMap contributors under the ODbL, and the style is Proto
 
 ## Still foreign
 
-Routes (`lib/osrm.ts`, `router.project-osrm.org`) and address search (`components/searchbox/searchBoxStore.ts`, `nominatim.openstreetmap.org`) still call public foreign servers. Self-hosting OSRM and Nominatim on the same Tehran extract is the next step (`docs/roadmap.md` 10.2).
+Routes (`lib/osrm.ts`, `router.project-osrm.org`) and address search (`components/searchbox/searchBoxStore.ts`, `nominatim.openstreetmap.org`) still call public foreign servers. Self-hosting OSRM and Nominatim on the same Tehran extract is the next step (`docs/decisions.md` 10.2).

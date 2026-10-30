@@ -5,7 +5,7 @@ import { Button, Drawer } from "@heroui/react";
 import { Icon } from "@/components/meridian/Icon";
 import WidgetBoundary from "@/components/WidgetBoundary";
 
-/** Every bottom sheet in the app, on a HeroUI bottom Drawer (docs/roadmap.md §10): the «بیشتر»
+/** Every bottom sheet in the app, on a HeroUI bottom Drawer (docs/decisions.md §10): the «بیشتر»
  *  list, the quick actions, the filters, a card's breakdown, the customer sheet and the tap
  *  flows. The Drawer brings the backdrop, Escape, drag-down to dismiss, a focus trap and the
  *  focus return; HeroUIProvider draws it in the `.meridian` root so a transformed ancestor

@@ -47,7 +47,7 @@ const LIFETIME_MS: Record<ToastVariant, number> = { success: 3500, error: 6500, 
  *  so the toast and the hold cannot drift. */
 export const ACTION_LIFETIME_MS = OUTBOX_HOLD_MS;
 
-/** Toasts are HeroUI's (docs/roadmap.md §10): `toast()` adds to one queue and
+/** Toasts are HeroUI's (docs/decisions.md §10): `toast()` adds to one queue and
  *  `<Toast.Provider>` draws it. React Aria already pauses the clock while the region is
  *  hovered or focused; this adds the third pause the hand-built toast had -- a deadline
  *  that runs out in a tab nobody is looking at was never offered.

@@ -1,6 +1,6 @@
 # PostgreSQL (Wave P)
 
-RouteFlow runs on PostgreSQL only (the SQLite code was removed in Wave P, phase 5; plan and history: `docs/roadmap.md` 10.1 and 10.2). This folder is the database: image, migrations, server setup. Running it on a real server is `docs/postgres-server.md`.
+RouteFlow runs on PostgreSQL only (the SQLite code was removed in Wave P, phase 5; plan and history: `docs/decisions.md` 10.1 and 10.2). This folder is the database: image, migrations, server setup. Running it on a real server is `docs/postgres-server.md`.
 
 | Path | What it is |
 |---|---|

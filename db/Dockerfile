@@ -3,7 +3,7 @@
 #   docker build -t routeflow-postgres db
 #   docker compose -f db/compose.yml up -d
 #
-# Every extension docs/roadmap.md 10.1 names. PostGIS comes from PGDG, whose apt source the
+# Every extension docs/decisions.md 10.1 names. PostGIS comes from PGDG, whose apt source the
 # official image already has; pg_trgm, btree_gist and pg_stat_statements ship with Postgres;
 # pg_duckdb comes from the Pigsty repository, which PGDG does not carry.
 FROM postgres:18-trixie

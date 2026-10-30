@@ -1,377 +1,1059 @@
-# Roadmap: parked features, grouped and ordered
+# Roadmap: what to build, in order of status
 
-A prioritised view of every entry in `docs/future-features.md` (F1–F148). Nothing here is promised or scheduled: every feature stays **parked** until someone writes its spec (see "How to promote an item" in that file). This page only helps choose what to promote first.
+This is the working list of every idea for RouteFlow that is not built yet. It is sorted **first by status, then by area**. Nothing here is promised or scheduled: an item is only a plan until someone writes its spec (see "How to promote an item" in `docs/future-features.md`).
 
-**How it was made.** The title, the "existing code noted" flag and the "needs / relates to" column are taken from each entry in the future-features file (its "Already in the app" note and its Prerequisites line), so they match it. The grouping into themes, the size and the suggested order are my judgement and are meant to be argued with.
+Two other files go with it:
 
-**Size** is a rough estimate of the *first slice* described in the entry, not of the whole feature: **S** = a small change on top of code that exists (a field, a list, a button, a report from existing data); **M** = a new table or screen with some design; **L** = cross-cutting, needs infrastructure or an outside service, or changes a core flow. **Existing code noted** = the entry has an "Already in the app" note (or, for F13 and F15, a "Correction (found later)" note) describing related code (it can equally say that nothing was found, so this does not mean the feature is built); the entries that really are partly built are listed in section 6.
+- [`docs/decisions.md`](decisions.md): platform facts the owner decided (database, hosting, libraries, maps, UI kit) and the questions still open.
+- [`docs/roadmap-archive.md`](roadmap-archive.md): finished batches and the full answer the owner gave to every study idea. Each item below says where its full text is.
 
-Totals: 46 small, 73 medium, 27 large first slices; 123 entries note existing code (121 in an "Already in the app" note, F13 and F15 in a "Correction (found later)" note); 2 entries are records of built work, not features.
+## How to read it
 
-**Ground facts (2026-10-23).** The database is moving to PostgreSQL, the current data is dummy, the server is in Iran, one company uses the app today (others may later), and the number of drivers is unknown. They are recorded in [section 10](#10-platform-facts-and-decisions-not-features) and affect how several entries are built.
+| Status | Meaning |
+|---|---|
+| **Build next** | Decided by the owner, and nothing else has to exist first. Shown with its full decision (open the arrow). |
+| **Waiting** | Decided, but it needs another feature, an account (for example Farazsms) or an unbuilt part first. Short line only. |
+| **Parked or skipped** | The owner parked it, skipped it, or said "not now". Short line only, with the reason. |
+| **Done** | Built. Listed in section 4; the long history is in the archive. |
+| **Not chosen yet** | An F-entry from `docs/future-features.md` that nobody has decided on. They are in the index in section 5. |
+
+**IDs.** Every old ID is kept: **F** = entry in `docs/future-features.md`; **T** Twenty, **S** SuiteCRM, **D** Dolibarr, **E** EspoCRM, **A** Akaunting, **B** Bigcapital, **Z** ezBookkeeping studies; **UIB-A…F** the 2026-10-28 UI pattern batches; **FB1…FB44** the Fleetbase study items (new short tags for items that had none; the old text calls the third-pass ones D3-n, so D3-5 is FB36). Two ideas that two studies both suggested were merged into one line and show both IDs: **T7 / Z17** (totals of the filtered list) and **D13 / E10** (per-person switches). Ideas that are only similar stay separate and point to each other.
+
+**Size** of an F-entry is a rough guess for its *first slice*: **S** a small change on code that exists, **M** a new table or screen, **L** cross-cutting or needs infrastructure or an outside service. It is a judgement and is meant to be argued with.
+
+**How the status was decided.** The owner has not given statuses; this is the cleaner's reading of the old text. "Build next" means the old text names no prerequisite. "Waiting" means the text says "after", "with", "waits for" or "built with" another unbuilt thing. Move any item that looks wrong.
+
+**Ground facts (2026-10-23).** The database is PostgreSQL, the current data is dummy, the server is in Iran, one company uses the app today (others may follow), and the number of drivers is unknown. Details: [decisions.md](decisions.md).
 
 ## Contents
 
-1. [Build these first: small first slices on existing code](#1-build-these-first)
-    - [1b. UI pattern batches (2026-10-28)](#1b-ui-pattern-batches-2026-10-28)
-    - [1c. Fleetbase study: UI/UX batches (2026-10-30)](#1c-fleetbase-study-uiux-batches-decided-2026-10-30)
-    - [1d. Fleetbase code deep dive (2026-10-30)](#1d-fleetbase-code-deep-dive-decided-2026-10-30)
-    - [1e. Twenty CRM study (2026-10-30)](#1e-twenty-crm-study-decided-2026-10-30)
-    - [1g. Dolibarr study (2026-10-30)](#1g-dolibarr-study-decided-2026-10-30)
-    - [1h. EspoCRM study (2026-10-30)](#1h-espocrm-study-decided-2026-10-30)
-    - [1i. Akaunting study (2026-10-30)](#1i-akaunting-study-decided-2026-10-30)
-    - [1j. Bigcapital study (2026-10-30)](#1j-bigcapital-study-decided-2026-10-30)
-    - [1k. ezBookkeeping study (2026-10-30)](#1k-ezbookkeeping-study-decided-2026-10-30)
-2. [Foundations: build once, many entries depend on them](#2-foundations)
-3. [Overlaps: entries that should be designed together](#3-overlaps)
-4. [Suggested order](#4-suggested-order)
-5. [Decisions needed before building](#5-decisions-needed-before-building)
-6. [Already partly built](#6-already-partly-built)
-7. [Looked like features but already exist](#7-looked-like-features-but-already-exist)
-8. [Claims not yet verified](#8-claims-not-yet-verified)
-9. [Every entry by theme](#9-every-entry-by-theme)
-10. [Platform facts and decisions (not features)](#10-platform-facts-and-decisions-not-features)
-    - [10.1 Stated and decided by the owner](#101-stated-and-decided-by-the-owner)
-    - [10.2 Proposed platform choices](#102-proposed-platform-choices)
-    - [10.3 Not adding yet, and what would change that](#103-not-adding-yet-and-what-would-change-that)
-    - [10.4 Driver count unknown: how to size](#104-driver-count-unknown-how-to-size)
-    - [10.5 Outside services to check from Iran](#105-outside-services-to-check-from-iran)
-    - [10.6 Libraries: replace, add, keep](#106-libraries-replace-add-keep)
-    - [10.7 Live updates: where they would be used](#107-live-updates-where-they-would-be-used)
-    - [10.8 Interesting technologies (not decided)](#108-interesting-technologies-not-decided)
-
-## 1. Build these first
-
-Small first slices that need no new infrastructure and no outside decision, ordered roughly by how much they unblock or save. Each rests on something the entry confirms already exists.
-
-**Status (2026-10-23): every row below is built as a first slice.** F35, F89, F99, F100, F107, F108, F110, F116, F132, F138 (part 1) and F144 came in PR #57; the rest, plus F8, F16, F23, F62, F67, F72 and F112, came in the small-difficulty batch. Each entry in `docs/future-features.md` now has a "Built (2026-10-23)" note saying what the slice covers and what it leaves out. Section 1a lists what that batch left for later.
-
-| Order | Feature | Why it is cheap |
-|---|---|---|
-| 1 | F144 Failure, cancellation, return and delay reason reports | Reasons are captured on every cancel, return and failed delivery but nothing counts them; one owner report of the last 90 days by reason. |
-| 2 | F99 Product catalogue change log | A generic activity log exists but the product routes never write to it; call it from create, update and deactivate. |
-| 3 | F100 Customer ownership change history | An owner-change entry exists but only for pool claims; write previous and new owner from every path that changes the owner. |
-| 4 | F107 Device and session management | Each user has a token version, so "sign out everywhere" needs no new storage. |
-| 5 | F110 Login activity log | Sign-ins are only rate-limited in memory; store each success and failure and show the last 100 to the owner. |
-| 6 | F108 System status page for the owner | Backup age, sweep time, failed notifications and data freshness already exist; one owner-only page that reads them. |
-| 7 | F138 Off-site backup copy | Run an integrity check on each new backup snapshot and write a status file the status page can read; the off-site copy follows. |
-| 8 | F116 Amount in words | A small, tested number-to-words function for whole toman, shown on the receipt and payment confirmation. |
-| 9 | F132 Order priority flag | The order priority column and the planner's weights already exist; add the picker and a tag on the order, planner and driver stop. |
-| 10 | F89 Customer price history | Order lines freeze their sale price; show the last prices per product on the customer page. |
-| 11 | F98 Customer note and visit search | Notes are stored on activities and search already folds Persian letters and digits; add a notes mode to the search. |
-| 12 | F101 Bulk delivery notes per run | The single-stop receipt builder and print button exist; render one per stop with page breaks and a cover sheet. |
-| 13 | F54 Data quality dashboard | A manager-only list of customers missing a location, phone number or district. |
-| 14 | F47 Customer 360 page | Add balance, open cheques and open complaints cards to the existing customer page, role-gated. |
-| 15 | F40 Customer onboarding checklist | A four-item onboarding checklist derived from existing customer fields. |
-| 16 | F84 In-app help and tooltips | The help registry and the (i) button exist; write the missing entries for the five busiest screens. |
-| 17 | F133 Required training and completion tracking | Add a required-lessons list to the academy manifest and a manager table of who has finished which. Quizzes are written by managers (decided 2026-10-27), not generated by a model. |
-| 18 | F142 Snooze for alerts and tasks | Snooze on tasks and reminders by moving the due date; notifications later. |
-| 19 | F137 Lead source return on spend | A source report (leads, converted customers, first-90-day revenue) from data that already exists; spend entry comes later. |
-| 20 | F58 Order templates and favourites | Show a "usual basket" suggestion next to the existing "same as last time" in the repeat-order flow. |
-| 21 | F19 Salesperson earnings view and commission simulator | A read-only earnings card from the existing commission statements. |
-| 22 | F35 Force a new password on first sign-in | A boolean on the user, a redirect to a new-password screen while it is set, cleared when the user saves one (an earlier parked item). |
-
-### 1a. Small after a prerequisite: left for later
-
-The small-difficulty batch built the easy entries and the two "small after a prerequisite" entries whose prerequisite it built in the same batch (F62 on F58, F112 on F84). These stay parked because their prerequisite is still missing or needs a decision: F104 (customer snapshot sheet; can be built next, it only needs the call list), F74, F77, F85, F86, F91, F114, F69, F31, F42, F34, F95, F140, F2, F5, F117 and F38. Their entries name the prerequisite.
-
-### 1b. UI pattern batches (2026-10-28)
-
-The owner picked 53 favourite UI patterns from a Gemini chat and added two ideas (discount approval, a code for sensitive actions). The plan was split into batches; the owner's answers are in the memory note `ui-pattern-plan-2026-10-28`.
-
-**Batch A: built (2026-10-28, PR #2).**
-- Discount approval on orders: the group manager of the order's group or the owner decides, first answer wins, never your own; a group manager's own discount goes to the owner; the owner sets the percent that passes without approval and how much of a discount comes out of commission; the discount is split between chosen people (equal, editable) and charged to their commission, with what a person cannot cover carried to the next period.
-- Authenticator code (Google Authenticator) before 15 sensitive actions: managers always, other roles only when editing or voiding a payment; the person's own code, single use, 10-minute trusted device; the owner switches it on per company (off by default); six-box code input and a hold-to-confirm button.
-
-**Batch A leftovers (not built):**
-- SMS backup for the code through Farazsms (needs an account and an approved template); until then someone without an authenticator is told to enrol first. Includes a resend countdown.
-- The code guard on creating an owner or manager, customer export, changing your own mobile number, hard deletes, cancelling or editing a delivered order, authenticator reset and overwrite imports (the rules and the guard exist; each route needs one line).
-- Credit approval is closed to group managers by `proxy.ts` (its API is under `/api/admin`); move it the way the discount decision was moved to `/api/sales`.
-- Discount is ignored by customer lifetime value, the driver stop list, dashboard revenue, the commission «value» metric and offline sync; the tap-flow quick order has no discount; no push or notification for a new request.
-
-**Batch B: quick wins.** Haptics on tap and on errors, one button-state rule (idle, busy, done, failed), validation that waits for the person to leave a field.
-
-**Batch C: forms that keep your work.** Drafts that survive a closed tab, an unsaved-changes bar, keyboard handling on phones, optimistic updates (`useOptimistic`) with a rollback.
-
-**Batch D: find and act faster.** Ctrl-K gets actions and not only search, pinned pages, one shared selection bar for lists, a setup checklist for a new company, a first-use tour. The map's saved-list search still has English labels.
-
-**Batch E: desk and dashboards.** Denser desk layouts and dashboard patterns from the list, after the phone patterns are done.
-
-**Batch F: parked.** The rest of the 53 that need a decision or a library first; passkeys as a later way to sign in.
-
-Each batch is built as one draft PR with one commit per task, merged once at the end (the batch rule in `CLAUDE.md`). Any new dependency is asked first.
-
-### 1c. Fleetbase study: UI/UX batches (decided 2026-10-30)
-
-The owner had Fleetbase (open source fleet platform, AGPL-3.0) studied for screen and flow ideas, then answered 16 items one by one. **Ideas only: no Fleetbase code is used, because AGPL would force RouteFlow's source open.** Reports: features https://claude.ai/artifact/WQs5FvBKURvuUZotd3ruW7 and screens https://claude.ai/artifact/M4CQjmRZMo2nE32SmwLiMN. Nothing below is built yet. Each batch is one draft PR with one commit per item, merged once at the end (batch rule in `CLAUDE.md`).
-
-**Batch 1: lists and trust.**
-- **Orders list you can search and filter.** `/sales/orders` reads at most 100 orders and takes no filter inputs. Add `FilterChips` for status, payment, rep and day, a count, «load more» past 100, and one paste-many search (paste order numbers or phones, get just those).
-- **Undo on the planner.** Commit, freeze and day-lane moves get the 5-second undo toast (`useUndoableAction`); `RoutingPlanner` calls `/routing/commit` and `/runs/{id}/freeze` directly today.
-- **Edit rules by order stage, with reasons.** Ready: lines may only be removed, the day only moved earlier. Out for delivery: lines and day locked. Delivered or cancelled: everything locked. Each locked field shows a one-line Persian reason; one shared rule used by the page, the API and offline sync (relates to F73).
-- **Empty states name what is hidden.** Action centre, tasks and filtered lists say «۳ مورد به تعویق افتاده، فردا ۰۹:۰۰» and offer «پاک کردن فیلتر» when a filter is the cause.
-- **Detail sheets: bottom by default, movable to the side.** Every detail sheet opens at the bottom (phone and desk); the user can move it to the side. Reuse the toggle in `CustomerDetailPanel` (`orient`, saved in `coverage_panel_orient`, icons `panel-bottom` / `panel-side`), flip its default to bottom, apply it to order details, and keep one shared saved choice per person for every detail sheet (decided 2026-10-30).
-
-**Batch 2: desk speed.**
-- **Saved views.** Per person, named filter sets on the orders and customers lists, stored on the server.
-- **Keyboard triage on desk.** Action centre, tasks and orders list: J/K move, X select, E acknowledge, S snooze, open, with a one-line hint strip; desk only, phones keep swipe. `BINDINGS` in `lib/hotkeys.ts` is empty and `eventMatchesChord` matches `event.key`, so the new keys must match the physical key (`event.code`) or they fail under the Persian keyboard layout; it also needs a list-cursor model on top of `lib/selection`.
-- **Category strip and daily score on the action centre.** One chip per area (credit, stock, delivery, cheques) with its count that filters the queue, plus a 0 to 100 score with the change since yesterday, stored daily in `kpi_snapshots`. The score reuses the action centre's own impact, probability and urgency numbers as weights (decided 2026-10-30), so it agrees with the order of the queue and there is no second set of weights.
-- **Internal chat, first slice: threads on orders and customers.** See the decision below.
-
-**Internal chat system (decided 2026-10-30).** A native chat, no outside chat server; the existing-solutions search was skipped on the owner's say-so. Phases: (1) a thread on every order and customer, (2) 1:1 and group chats on the same tables (one conversation table with a subject: customer, order, direct or group), (3) photos, search and read receipts. Decided 2026-10-30: the owner may read any 1:1 or group chat, members see a standing notice («مالک می‌تواند این گفتگو را ببیند») and each owner read is logged. Rules to settle when it is designed: a thread is visible only to people who may see the record, and adding someone grants no access to the record; mentions go through the existing notification preferences and quiet hours; online-only at first, saying so on a failed send; live delivery by server-sent events or polling over Postgres, no Redis.
-
-**Planned with other work.**
-- **Freshness labels (rule now, built with F6).** Every live position shows its age; an arrival time says live, planned or estimated; low confidence is visible. All text in Persian (Fleetbase hard-codes English «Stale GPS» and «Fallback ETA»).
-- **Receipt layout live preview.** A preview card that updates as you type; only this setting for now.
-- **Setup checklist details (UI batch D).** Minutes per step, a % bar, the next step highlighted, steps ticking themselves from real data, the card hidden when done.
-- **Run replay (with F6).** Scrub a driver's day on a map with time and speed per point, for disputes and mileage; it informs how long positions are kept.
-- **Attempts list on the owner's status page.** Per message: tries, outcome, time and a retry button, built with the batch A delivery log.
-
-**Deferred until another feature is built (decided 2026-10-30).** These stay on the roadmap; each waits for the feature in the second column.
-
-| Item | Waits for | What to build then |
-|---|---|---|
-| Freshness labels on positions and ETAs | F6 live tracking | Age on every live dot; arrival says live, planned or estimated; low confidence visible; all in Persian |
-| Customer tracking page | F6 and F79 | Coarse three-step status before an SMS code, then map, arrival and details; blurred locked sections; masked contact choices; a call button when there is no contact; code rules from the Fleetbase study (10 minutes, 3 tries, 30 s resend) |
-| Late-start, off-route and long-stop manager alerts | F6 | Per-company switches and thresholds, sent once per order, through the existing alerts and quiet hours |
-| Position retention as a setting | F6 | Per-company retention with a system maximum (Fleetbase: 90 days, raw payload stripped after 7) |
-| Route simulator for testing | F6 | A fake driver driving a planned route, to test arrival events and take screenshots |
-| Arrival after a short stay (dwell) | F6 and F38 | Count arrival only after a short stay inside the customer's circle |
-| Run replay map | F6 | Scrub a driver's day with time and speed per point, for disputes and mileage |
-| QR scan proof and a required-proof setting | F17 delivery proof | QR on the delivery note scanned at the door; per-company required proof (none, photo, scan); a no-proof reason |
-| Receipt layout live preview | The receipt layout page | A preview card that updates as you type |
-| Setup checklist details | UI batch D | Minutes per step, % bar, next step highlighted, steps tick from real data, hide when done |
-| Attempts list with retry on the status page | Batch A delivery log | Tries, outcome and time per message, with a retry button |
-| Internal chat phases 2 and 3 | Chat phase 1 (threads on orders and customers) | 1:1 and group chats on the same tables, then photos, search and read receipts |
-
-**Parked or skipped.** The customer tracking page waits for F6 and F79 (reference design: coarse three-step status before an SMS code, blurred locked sections, masked contact choices, a call button when there is no contact). The van check sheet, odometer and expiry dates were skipped. A store-reviewer sign-in for the Android app is not needed. QR scan proof and a required-proof setting wait for the F17 design. Late-start, off-route and long-stop manager alerts are decided at F6; the position retention setting, a route simulator for testing and arrival counted after a short stay in the circle are noted on F6 in `docs/future-features.md`.
-
-### 1d. Fleetbase code deep dive (decided 2026-10-30)
-
-A second pass through the Fleetbase code (report https://claude.ai/artifact/DUP4Msm4XZaUuPBGgYJcTc). Ideas only, AGPL-3.0, no code copied. The owner's answers:
-
-- **SMS guard, in batch A with Farazsms (built small).** Iranian mobile numbers only (09…); a per-number cooldown; a per-company daily budget in toman; an alert when many distinct numbers are texted in a short time; one ledger row per attempt (reserved, then sent, failed or blocked, with purpose, source, hashed number, IP and block reason), which is the delivery log already decided for batch A; monitor mode first (log what it would block), then enforce; an owner «pause SMS» switch. Public sends fail closed if the counter store is down; staff sends (sign-in codes) fail open. Fleetbase also pauses automatically on spikes, a new destination country and a low sent-to-verified ratio; only the spike alert is in the first version.
-- **Change summaries on edited orders.** When an order is edited after confirmation, the driver gets a one-line Persian push («اقلام تغییر کرد»، «موعد به … منتقل شد»، «مبلغ دریافتی تغییر کرد») and the warehouse sees a «تغییر کرده» badge. Extends the stage-based edit rules in 1c.
-- **ETA stage rules (recorded for F6 and F79).** No driver assigned: no ETA. Dispatched but not started: an estimated start only. Started: a live ETA per remaining stop, so each customer sees their own stop's time. Finished: none. Every ETA carries a confidence and warnings (stale position, off route, fallback estimate).
-- **Planner blockers and warnings.** Every planner check returns a result with a severity: a blocker stops, a warning tells; each has a Persian reason. A new owner setting, maximum working hours per driver per day, shows as a warning. No legal hours rules are built in.
-- **Live commission preview (first slice of F19).** The commission editor shows the result for sample sales values as the rule changes, using the same calculation as payroll so the preview cannot drift from the real engine.
-- **Message templates (F136).** Placeholders such as `{customer.name}` with a picker so staff never type a variable name; an unknown placeholder becomes empty text; a literal brace can be escaped; chained filters are allowed.
-- **Authenticator nudge.** A banner with a «فعال‌سازی اکنون» button for managers and anyone required to use the authenticator, shown until they enrol; no lock-out after a grace period.
-- **Company data purge and export with a dry run: parked** until a second company is signed (F126, F127). `TENANT_TABLES` in `lib/database/tenantTables.ts` already lists what it would cover.
-- **Noted as references, not decided:** the report-builder safety rules (allowed tables, columns and joins, complexity score, row limit, a log of each run) for F14; broadcasting an urgent order to nearby drivers for F7; the warehouse, section, aisle, rack and bin hierarchy with bin size and maximum weight for F93.
-
-**Third pass (more ideas from the storefront, promotions and access code, decided 2026-10-30):**
-
-- **Merged order timeline: built with chat phase 1.** One feed per order with status changes, notes, edits (who and the one-line summary), payment adjustments and chat messages.
-- **Internal versus customer-visible notes: wait for the tracking page** (F6/F79). Until then every note is internal.
-- **Owner access review card on the owner status page.** Users per role, never signed in, no authenticator, no sign-in for 30+ days, recent impersonations; each line opens the list. Reads the existing sign-in log.
-- **Delivery window capacity (with F57).** The owner sets a maximum number of orders per window; order entry shows the places left and warns when it is full.
-- **Saved smart segments (with F28/F21).** A customer filter saved by name (for example «بدون سفارش در ۳۰ روز») that promotions and reminders can target. When F21 is built, a rejected promotion states its reason in Persian (Fleetbase's promotion engine does this).
-
-**Fourth pass (driver app, ledger and pallet code, decided 2026-10-30):**
-
-- **Driver «گزارش مشکل» sheet (small version).** The driver picks a type (vehicle, road, customer, goods) and a priority, adds an optional photo and note; the report is stamped with the phone position and the current stop and shows on the action centre.
-- **Invoice sent stamp, now.** Record when an invoice was sent (printed or shared) and show it on the customer page. A first-viewed time waits for the tracking page, because it needs a customer-facing link.
-- **Note for F6:** sort incoming position pings by their time before use, so a late ping cannot move the dot backwards.
-
-**Fifth pass (fleetops, core and storefront code, decided 2026-10-30):**
-
-- **Stale draft orders.** An action centre card lists draft orders older than N days (owner setting, default 7). Drafts older than the limit are cancelled automatically, with a log line for each.
-- **Log retention with a preview.** Each growing log table (SMS ledger, sign-in log, outbox, notifications) gets a keep-for-N-days setting. The owner status page shows how many rows the next nightly purge would delete.
-- **Recurring driver unavailability: design note only**, on the parked shifts and leave entry (F-shifts): a recurring day off or a leave week with a reason, shown as a planner warning. Nothing is built.
-- **Stock hold for a quote with an expiry** (held, committed, released) is the Fleetbase answer to the open question under F51; no decision taken.
-- **Scheduled saved reports to Telegram: skipped.**
-
-### 1e. Twenty CRM study (decided 2026-10-30)
-
-The owner had Twenty (open source CRM, `twentyhq/twenty`) studied in three passes; 24 ideas were answered one by one. Report: https://claude.ai/artifact/L3pBQvp2bSQFZ9BzorFW13. **Ideas only: Twenty is AGPL-3.0 and files marked `@license Enterprise` are commercial, so no Twenty code is used.** Nothing below is built yet. Not copied: runtime custom objects and a schema per company, the workflow canvas with code/HTTP/AI steps, AI agents, Gmail/Outlook sync, a marketplace, a row-level permission designer.
-
-**Batch 1 (lists and trust), additions**
-- **Totals for the filtered list.** Orders, payments and cheques lists show a count and the toman sum for the current filter; the lead pool and task board show a count per column. Computed on the server with the same filter (T7).
-- **Export follows what you see.** `/api/sales/orders/export` takes no filter today. It writes the current filter and sort, or only ticked rows, up to a row cap, and says how many rows it wrote; customers and payments follow. Customer export stays behind the authenticator code (T21).
-- **Sales chart bug.** `revenue_by_day` in `lib/dashboard.ts` is built only from days that had orders and the sales page takes the first 7 as «this week» and the next 7 as «last week», so one empty day shifts every bar. Build calendar days filled with 0, show Fridays and holidays as closed, compare the same weekdays (T15). With it: sales by weekday, a cumulative month-to-date line against last month, and rankings showing top 10 plus “سایر” instead of silently dropping the rest (T20).
-
-**Batch 2 (desk speed), additions**
-- **One filter format.** Saved views, saved smart segments (D3-5), rule conditions (F130) and the report builder (F123) share one filter shape: field, operator, value, nested AND/OR, with «من» and relative Jalali dates («۳۰ روز گذشته»). Each list offers a fixed menu of fields and operators, turned into parameterised SQL through the scoped reads (T1).
-- **Unsaved-changes bar.** Changing a saved view's filters shows Save, Save as new view and Reset. Views stay personal; no sharing to roles (T2).
-- **New record pre-filled from the filter.** «مشتری جدید» from a list filtered to a group and rep opens with both set (T11).
-
-**Batch D (find and act faster), additions**
-- **Bulk edit on the shared selection bar.** Customers: rep, group, district, price tier, tags. Tasks: assignee, due date. An empty field is left alone; a count preview («۴۲ مشتری تغییر می‌کند»); one activity line per record; credit limit is not bulk-editable; owner changes also go to the F100 history (T4).
-- **One action list.** Each action is declared once (label, icon, role set, where it applies, pinned or under «بیشتر», hotkey) and feeds the record buttons, the selection bar and Ctrl-K, so the three never disagree on role gates (T14).
-
-**Records and history**
-- **Created by, and how.** Orders, customers, payments and tasks store a source next to the creator (form, quick order, offline sync, import, rule, system, Telegram), shown as one line and usable in filters. F85 stays the sales channel (T5).
-- **Readable timelines.** On the merged order timeline and the customer timeline: one person's edits within 10 minutes merge into one entry; cost, margin and credit changes are hidden from roles that cannot see them; position pings and counters are not logged (T6).
-- **Recycle bin (F111): a JSON copy in a trash table**, not a `deleted_at` column; first types reminders, tasks and photos, per-company keep-for-N-days in the log-retention setting. A link to a deleted item shows who deleted it and when, with a restore button for managers (T3, T18).
-- **Calendar view of cheques by due date.** Phone: an agenda grouped by day (`DayChips`); desk: a Jalali month grid with daily sums. Payment promises (F50) and tasks reuse it later (T8).
-
-**Platform and safety**
-- **Maintenance banner.** The owner sets a start and end; everyone sees a dismissible Persian banner; drivers and reps are also told to sync offline work before it starts (T17).
-- **Staff invitation by SMS link (after Farazsms).** Owner enters name, mobile and role; the person gets a 48-hour single-use link, sets their own password and can enrol the authenticator at once; a pending list with resend and revoke. Goes through the SMS guard (1d). The owner-typed first password stays as a fallback (T22).
-- **Rate limiter move to Postgres.** Give each rule a short and a long window, keyed by person and IP (for example 5 code tries a minute and 20 an hour) (T24).
-
-**Design notes on parked entries (nothing built)**
-- **F130 rule builder:** edit a draft then publish; «test on this customer» before turning a rule on; a firing log showing which condition passed or failed; a daily firing budget per rule and per company that pauses the rule and alerts the owner; firings kept 14 days (T9).
-- **F126 setup wizard / F10:** import steps upload, pick sheet, pick header row, match columns (remembered per company), fix bad cells in place, import with dedupe by mobile number (update or skip), on the lead import job runner (T10).
-- **F122 custom fields:** text, number, choice, date, yes/no; up to ten; choices ordered and coloured; archive instead of delete so old values survive; a per-role hidden or read-only switch; filterable through the shared filter (T12).
-- **F82 / F59:** a manager lends a rep's customers to a colleague for N days; access ends by itself, both are told, every grant is logged; ownership does not move (T13).
-- **F70 / F21 SMS campaigns:** an opt-out list with reason and source; two topics (promotions and service messages) so a customer who stops promotions still gets delivery notices; a test send to yourself; scheduling; sent, failed and skipped counts; no short links or click counting (T16).
-- **F50 payment promises:** a follow-up closes itself when the payment arrives, otherwise wakes on the date; one stored wake-up row can also serve snooze (F142) and rule cooldowns (T23).
-
-**Skipped:** sharing saved views with a role or group (T2 option), a log of who opens sensitive pages (T19; F27 stays as is), short links with click counts (T16).
-
-### 1g. Dolibarr study (decided 2026-10-30)
-
-The owner had Dolibarr (open source ERP/CRM, `Dolibarr/dolibarr`) studied in four passes; 32 ideas were answered one by one. Report: https://claude.ai/artifact/SPy6MTQhrBmSNGfvtAFMs9. **Ideas only: Dolibarr is GPL-3.0, so no Dolibarr code is used.** Nothing below is built yet. Not copied: manufacturing (BOM, MRP), product variants and kits, multi-currency and Incoterms, projects and timesheets, tickets, email collector, public booking page, knowledge base, a rights tick-box per module.
-
-**Money in hand and the bank**
-- **Money in hand per driver and rep (D1).** Cash and cheques a person collects land in their own box, not straight in the office cash account (`1101`). At day end the office counts and confirms; a short or extra amount is saved with a reason and shows on the action centre. The owner sees one line per person: holding now, since when.
-- **Cheque deposit slips and more than one bank account (D2).** Tick cheques on the board, pick the bank account, get a numbered slip with count, total and a printable list. A bounce takes the cheque out and reopens the debt. Works with D1 (driver box, office box, bank).
-- **Close a small leftover (D3).** A manager closes a small remaining balance with a reason (rounding, bank fee, small discount) under an owner-set limit (default 50,000 toman); bigger amounts and bad debt need the owner. Ledger entry plus log line.
-- **Supplier pay list (D21).** Supplier terms (days) set a due date on each purchase; a list shows what is due, oldest first; ticked rows give a sheet (supplier, Sheba, amount) for the accountant; the payment is recorded with the bank tracking number. No bank file (formats differ, F10).
-- **Month pack for the accountant (D26).** After a month is closed, one spreadsheet with fixed columns: journal, trial balance, customer and supplier balances, cheques, expenses with receipt links, stock value (D9). Owner and the read-only auditor (F128) download it; each download is logged. No accounting-software format.
-- **Recurring costs (D23, answers F49 question 1).** A list of rent, salaries and subscriptions (category, amount, Jalali day of month, who pays). On the day a task asks «پرداخت شد؟» with the amount filled; one tap records the expense; the cash forecast reads the list.
-- **Bank loans (D24).** A loan card (bank, amount, instalments, first due date); the schedule is made once; each due date gives a reminder and a one-tap payment that splits principal and interest; the forecast (F49) and the balance sheet read it.
-- **Payment term kinds (D5, answers F83).** Cash on delivery, N days after delivery, or end of month plus N days. The due date is saved on the order at delivery, so later changes to the customer do not rewrite it.
-- **Tamper-evident money log (D6, answers F27).** One hash chain per company over money events only (order confirmed, payment, cheque status, journal posted, month closed, leftover closed); the owner has a «check the chain» button. Not every edit.
-
-**Prices and selling**
-- **Floor price (D4).** A line under cost (or a higher owner-set floor per product) needs approval even when the discount percent is under `discount_auto_pass_pct`; the rep sees «زیر حداقل قیمت این کالا».
-- **Prices that follow a base number (D14, with F56).** The owner keeps named numbers (dollar, raw material); a product price is number × factor, rounded to 1,000 toman. Changing a number shows a preview (products, customers, margin before and after) and creates new price rows from a date. A «raise selected by X%» button covers the simple case. Old orders never move.
-- **Quantity price steps (D22).** Up to four steps per product and pack size (starting quantity, price). Order entry applies the step and nudges toward the next one. A step price is a list price, so it needs no discount approval; the floor price (D4) still applies.
-- **Official invoice, some customers only (D7, answers F147 numbering).** A per-order choice: tax IDs on company and customer, VAT per product, an invoice number given at confirmation per Jalali year (drafts use no number), a Moadian export later. Other orders stay as today.
-- **Logo and stamp (D29).** The owner uploads a logo and a stamp/signature image once; PDF receipt, delivery note and statements print them; the thermal printer prints the logo in black and white; the stamp is on or off per document type.
-- **Reopen a cancelled order (D31).** A manager or owner reopens a cancelled order to draft within an owner-set time (default 7 days). It must be confirmed again, so stock and credit are re-checked; logged with who and why; not after delivery.
-- **Sell-off product state «تصفیه» (D32).** Still sellable, off the buy list, no reorder warnings; it turns inactive by itself when available stock reaches zero; reps see a chip.
-
-**Stock and buying**
-- **Warehouse count session (D8).** Start a count for a facility (a snapshot), several phones count, a «what is left» list, a review with the toman value of every gap, one confirm. Reuses the reason chips of `lib/flows/stockCount.ts`.
-- **Stock and value on a past date (D9).** A Jalali date chip on the stock page shows quantity and value per product and facility on that date, with a total and export.
-- **Supplier price rows (D16).** Per product and supplier: price, minimum quantity, delivery days, supplier code. Purchase entry pre-fills the price and warns under the minimum; feeds D17 and F31.
-- **Buy list grouped by supplier (D17, the F11 first slice).** «لیست خرید»: products under their reorder point, minus what is on order, rounded up to the supplier minimum, grouped by the cheapest or fastest supplier. Tick to make a purchase draft per supplier; a person confirms.
-- **«Arrives on…» (D27, after D17).** Confirmed purchase drafts carry an expected date; order entry shows «+300 expected Tuesday» beside a shortage and can offer a pre-order (F121). Nothing is promised automatically.
-- **Labels (D19).** At goods receipt, print one label per batch or pallet (product, batch, expiry, QR) on the Bluetooth printer, plus an A4 PDF of pack barcodes. The same QR serves F1 scanning later.
-
-**People, settings and data**
-- **Money rules for expenses (D15, answers F26 and F88).** The owner sets a limit per expense category and role (per entry and per day). Over it, the expense waits as «منتظر تأیید» for a manager or owner with the reason shown.
-- **Owner-set thresholds (D30).** One settings card for the numbers now fixed in code: stalled order days (`actionCenter.ts`, 2), quiet customer days (`mapWorklist.ts`, 45), data ageing days (`freshness.ts`, 7 and 14), duplicate order window (`duplicateOrder.ts`, 24 hours), alert snooze days (7). Current values are the defaults; reset button; changes logged.
-- **Switches per company (D12, with F126).** Cheques, batches and expiry, leads and CRM, commission, van stock. Off hides menus and buttons; the data stays. A step in the setup wizard.
-- **Per-person extra switches (D13).** A short list on top of roles (for example a rep may see cost), checked in the same gates as roles. The exact list is proposed at build time.
-- **Team week grid (D18).** Managers get people down the side and days across, each box counting visits, tasks and deliveries; tapping opens that person's day. Phone: one card per person with a week strip.
-- **Forget a person (D20).** Owner-only and manual: name, phones, address, pin and notes are cleared; orders and ledger stay under «مشتری حذف‌شده»; the person is also removed from the trash copy (T3) and campaign lists; logged without the old values. No automatic job.
-
-**Skipped:** the customer page with SMS code (D10), depreciation of vans and equipment (D25, F140 stays without a money side), a calendar feed for the phone's own calendar (D28). Pay by link through an Iranian gateway (D11) is recorded for later: a link per order or per balance on the company's own merchant account, payments saved and matched to the oldest unpaid orders; building waits for a merchant account.
-
-### 1h. EspoCRM study (decided 2026-10-30)
-
-The owner had EspoCRM (open source CRM, `espocrm/espocrm`, version 10.0.11) studied; 17 ideas were answered one by one. Report: https://claude.ai/artifact/6fgN5gZh7yc3Gk8hSqA3wN. **Ideas only: EspoCRM is AGPL-3.0, so no EspoCRM code is used.** Nothing below is built yet. Not copied: the email inbox, email-to-case and mass email with open tracking, the customer portal and web lead form, many currencies, LDAP/OAuth/OIDC sign-in, API keys and webhooks, run-time tables and layouts, meeting invitations with free/busy, and deal money weighted by stage probability.
-
-**Knowing when something changes**
-- **Follow a customer or an order (E1).** A «دنبال کردن» bell on customer and order pages. You follow what you own or created automatically; anyone can follow or unfollow by hand. Followers get pushes for new orders, payments, complaints, status changes and notes, through the existing grouping, quiet hours and per-type switches. Today pushes go only to fixed people per notice type.
-- **«به شما سپرده شد» (E2), built with S6, T4 and F59.** One notice type for customers, leads and complaints given to someone by another person; many at once arrive as one push («۱۲ مشتری به شما سپرده شد»). Only `task.assigned` exists today, and a customer changes owner only when a rep claims it, so the notice comes with the features that hand records out.
-
-**Keeping data correct**
-- **Lock a checked customer (E3).** A manager locks name, phone, address and pin. While locked, a call or visit flow cannot change them: the change becomes a suggestion the manager accepts with one tap (the F78 path). Logged. Today `applyCustomerUpdates` in `lib/repo/crm/write.ts` overwrites phone, name and pin from any flow.
-- **One contact, several businesses (E4).** A contact can link to more than one business (an owner of two shops, a head office and its branches). The phone check allows the same number for the same person; a call from it asks which shop. Today `phoneFor` in `lib/repo/crm/contacts.ts` refuses a phone another business already has.
-- **Undo your own fresh mistake (E5).** Whoever entered a payment, note, task or photo can void it within N minutes (owner setting, default 15) with a reason; after that, manager only. Logged, and voided payments stay in the money log (D6). Today voiding a payment is for managers only.
-- **Access and settings change log (E6, answers F27 question 1 for permissions).** A who/when/old/new line for role, group, active state and password resets of users, and for company settings (discount auto-pass percent, code for sensitive actions, the D30 thresholds), shown on the owner status page beside the access review card (D3-3). Today `setRoles`, user edits and these settings write no log line.
-- **Sign out after idle time (E17).** The owner sets idle hours per role (for example 12 for owner, managers and accountant); drivers and reps stay signed in so offline work is not lost. Today a sign-in lives 30 days whether used or not.
-
-**Big jobs**
-- **Background exports and bulk edits (E7).** Exports over about 1,000 rows (T21) and bulk edits over about 100 records (T4) run on the job runner with a progress count and a push when ready; the file is kept 24 hours.
-
-**Selling**
-- **Track a cross-sell try (E14).** «پیگیری» on the action centre cross-sell hint (`crossSellCandidates`) makes a try: product, rep, next step date. It closes as won when the first order with that product arrives, or as lost with a reason after N days. A small report of tries and wins by rep.
-
-**Answers and notes on parked entries (nothing built)**
-- **Internal chat / F43:** up to 3 pinned messages per customer or order thread; a person edits their own message for 24 hours, then it is locked; edited messages show «ویرایش شد» and the owner can see the old text (E8). A person who cannot see the record cannot be mentioned on it (E9, answers F43 question 2).
-- **D13 per-person switches:** start with four: may see cost, may export, may bulk edit (T4), may give customers to others. Checked in the same gates as roles (E10).
-- **F146 home screen:** the owner sets a default per role; each person may hide or reorder cards, except cards the owner pins (exceptions, approvals) and people the owner locks (E11, answers F146 question 3).
-- **F122 custom fields:** each custom field may have one «show and require when…» condition on another field, written in the shared filter format (T1) (E16).
-
-**Skipped:** fixed rules for self-service password reset (E12; F109 stays parked, managers reset by hand), an SMS with the complaint number (E13), separate lead stage lists per group (E15).
-
-### 1i. Akaunting study (decided 2026-10-30)
-
-The owner had Akaunting (free accounting app, `akaunting/akaunting`) studied in three passes; 17 ideas were answered one by one. Report: https://claude.ai/artifact/2YBqNTPRRh1rGrdjoEqVA7. **Ideas only: Akaunting uses the Business Source License (free only up to 2 users, 1 company and 1000 invoices, no accounting service for others), so no Akaunting code is used.** Nothing below is built yet. Not copied: many currencies, bank feeds, the paid module store, a rights matrix per action, the customer portal, "viewed" tracking of sent documents, firewall middleware.
-
-**The books: starting, closing, moving**
-- **Starting balances (A1, a step in F126).** The setup wizard asks once for cash, bank, what each customer owes, what the company owes each supplier and stock value. It makes one `OPENING` entry (the type exists in `ledgerCore.ts` but nothing writes it) and puts the difference into «سرمایه اولیه» (`3101`). Owner only, dated the day before the first real entry.
-- **Close a month (A2).** `fiscal_periods` and the closed-month refusal in `postJournal` exist, but nothing sets a month to closed (`lib/repo/reports.ts` only reads it). The owner closes a month after a short checklist (deliveries posted, drafts listed, cash counted); reopening needs a reason; both are logged (E6). A closed month refuses new entries; corrections go into the next open month. D26 (month pack) and E5 (own-mistake window) need this.
-- **Transfer between own accounts (A4).** One «انتقال وجه» form: from, to, amount, date, bank tracking number, optional fee; one balanced entry. D1 (driver box to office), D2 (cash deposit to bank) and A3 reuse it. Petty cash `1103` is in the chart but unused today.
-- **Hand reconcile of cash and bank (A3).** Pick an account and a date, type the counted or bank-paper balance, tick lines until the difference is zero, save. Ticked lines lock; a mistake after that is fixed by a reversal. No bank file; F10 may later pre-tick from one. D1's end-of-day count lands here.
-
-**Reading the money**
-- **Money in and out (A5).** A monthly page «ورودی و خروجی پول»: money in (receipts, cheques cashed), money out (suppliers, expenses by category, commission, loans), opening and closing cash and bank, read from the ledger legs of the money accounts. No new tables.
-- **Money tiles (A7).** One strip on the owner home: cash box, each bank, owed to us (with the overdue part), we owe (with what is due in 7 days), cheques due this week. Each tile opens its page. A default card for F146.
-- **Discounts given (A11).** A monthly report of toman given as discount by rep, customer and product, with approvals versus auto-passes. No page reads `order_discounts` for a report today.
-
-**Categories**
-- **Expense categories per company (A6).** The `accounts` table has no `organization_id`, so the chart is shared and `expenseCategories()` lists every active expense account for every company. A small per-company category table pointing at the shared accounts lets each company add, rename, retire and group categories and mark one «هزینه مستقیم» (printed above gross profit). History is untouched. Decide before a second company is added.
-
-**Documents and customers**
-- **Freeze customer details on the order (A12).** At confirm, copy name, phone and address (tax IDs once D7 exists) onto the order; `orders` keeps only `customer_id` today, so reprints show the customer's current data. Reprints use the copy. «Forget a person» (D20) clears these copies too.
-- **Receipt footer and order number prefix (A13).** A settings card: footer text per document (receipt, delivery note, statement; the receipt footer is fixed in `lib/deliveryReceipt.ts` today) and an order number prefix per company. The next number can only go up.
-- **Phone that does not work (A15, after Farazsms).** An invalid-number failure marks the phone «شماره نامعتبر», skips it in campaigns and makes a «شمارهٔ مشتری را اصلاح کن» task for the customer's owner. Feeds F54.
-- **Payment receipt SMS (A16, after Farazsms).** When a payment is saved the customer gets a short service message with the amount received and the remaining balance; it counts as a service message, not a promotion, in the opt-out rules (S15, T16); a per-company switch turns it off.
-
-**Reminders, entry, search**
-- **Reminder days around the due date (A8, first slice of F18).** The owner sets a day list (for example −3, 0, +3, +7, +14). Each day a task is made for the customer's rep; supplier bills give the owner a reminder to pay. SMS later. Uses the due date from D5.
-- **Repeat an expense (A10).** A «تکرار این» button on an expense row opens the form pre-filled (category, supplier, amount, new date). Expenses only, not customer payments.
-- **Typed filters on desk screens (A17, with T1).** Text such as `بدهی>۱۰۰۰۰۰۰ منطقه:۳` in the search box turns into the same filter chips; phones keep tapping chips.
-
-**Skipped:** three tax kinds for D7 (A9: added on top, already inside the price, withheld; D7 stays as decided) and a «بدون قیمت» print option for delivery notes (A14).
-
-### 1j. Bigcapital study (decided 2026-10-30)
-
-The owner had Bigcapital (open source accounting, `bigcapitalhq/bigcapital`) studied in two passes; 12 ideas were answered one by one. Report: https://claude.ai/artifact/Qv4hrACBn39vQoQmD1b8Ki. **Ideas only: Bigcapital is AGPL-3.0, so no Bigcapital code is used.** Nothing below is built yet. Most of Bigcapital (reports, ageing, locking, opening balances, tax, numbering) was already built or decided in 1g and 1i.
-
-**Money**
-- **Credit note (B1).** A manager makes a credit for goods returned after delivery, with a reason and an amount. It lowers what the customer owes and is applied to open orders or paid back in cash. Suppliers get the same document for goods sent back. Today the `RETURNED` status only ends the undelivered part (`lib/orderStateMachine.ts`); this is the money side of F12 and F80.
-- **Open a date range in a closed month (B2, extends A2).** The owner opens one date range with a reason; it closes again by itself after a set time. Logged. A2 stays one lock for all areas.
-- **Books behind a document (B3).** A «ثبت‌های حسابداری» button on order, payment, expense and cheque pages for the owner and the accountant: the debit and credit lines the document made, each linked to its account.
-- **Bank line rules (B4, after F10).** The owner keeps a short rule list (contains text, amount range, category, supplier); imported bank lines arrive pre-filled. Parked until the F10 bank import exists; A3 may use the same matching to pre-tick lines.
-
-**Stock**
-- **Sent and received transfers between facilities (B5).** Goods leave the source when sent, show as «در راه» (not sellable, counted in stock value) and land when received; not received after N days goes to the action centre. Warehouse-to-van loading stays one step.
-- **Product page with its history (B10).** Tabs: orders that sold it, purchases that bought it, stock moves, cost and price changes. Rows link to the order or purchase.
-- **Cost after a purchase edit (B6, parked).** `recordPurchase` in `lib/purchases.ts` is the only purchase writer; there is no edit or void. When one is built it must recompute the average cost and show which orders are affected.
-
-**Screens**
-- **Bulk results (B7).** Every bulk action on the shared selection bar ends with «N انجام شد، M نشد» and a list of the skipped rows, each with a Persian reason.
-
-**Skipped:** VAT owed report after D7 (B8), profit on a cash basis (B9), sellable and buyable switches (B11), draft-then-publish money entries (B12). Custom role grids (D13 and E10 cover it) and many currencies (toman only) were not offered.
-
-### 1k. ezBookkeeping study (decided 2026-10-30)
-
-The owner had ezBookkeeping (a small self-hosted personal bookkeeping app, `mayswind/ezbookkeeping`; the path first given, `rookie-luochao/ezbookkeeping`, does not exist) studied in three passes; 20 ideas were answered one by one. Report: https://claude.ai/artifact/Hp2U9M3ZVYQFKFcTUkQ1zo. **Ideas only: it is MIT-licensed, but no ezBookkeeping code is used.** Skipped as already built or decided: scheduled entries (D23, A10), reconcile (A3), import rules (B4, F10), home widgets (F146), saved views (F123), drafts (batch C), receipt photo, AI receipt reading (a foreign paid API), tag groups.
-
-**Entering money**
-- **Sums in the keypad (Z1).** The shared keypad (`components/mobile/Keypad.tsx`, `lib/keypad.ts`) gets + and − only (no × ÷) and shows the running total.
-- **No double save (Z2).** Every money form (payments, expenses, cheques, transfers, purchases) sends a one-time key; a repeat returns the first result and saves nothing new. One shared helper. Offline sync already does this with `client_uuid`; the online forms and the journal table do not.
-- **Save and add next (Z18).** A «ثبت و بعدی» button on the expense, payment and customer forms; it keeps the date and the remembered method and account.
-- **Remember method and account (Z10).** Per person, only payment method and bank account are remembered; the category always starts empty.
-- **Type a sentence (Z12) and paste a bank SMS (Z15).** A plain rule parser, no AI, works offline. «بنزین ۴۵۰ هزار» opens the expense form with the amount and a category guessed from words used before. A pasted card-to-card bank SMS opens the payment form with amount, date and tracking number; start with the 3 or 4 biggest banks, fall back to an empty form.
-- **Share a photo into the app (Z13).** `app/manifest.ts` gets a share target; a shared photo opens a new expense with it as the receipt. Expense receipt only for now. **Icon shortcuts (Z14):** long-press the app icon for record payment, new order, record expense, by role.
-- **Expenses by paste (Z6):** waits for the F10 import (it must accept an expenses sheet).
-
-**Seeing money**
-- **Month calendar (Z5).** A tab on the A5 money in/out page: Jalali grid, collected, delivered and expenses per day, short cash days in red, tap a day for its list.
-- **Month so far (Z20).** A bar for the share of the month gone and a straight-line month-end guess for expenses, collected and sales, on the A7 tiles and the A5 page. Not checked: whether the forecast or targets pages already show pace.
-- **Total of the list (Z17).** A strip on the payments, expenses and orders lists that follows the filters and the selected rows. Not checked on every list.
-- **Needs attention (Z7).** A filter chip on expense and payment lists for entries with no photo, note or supplier; the month-close checklist (A2) shows the count and the owner accepts or fixes it.
-- **Hide money (Z3).** An eye in the top bar turns every money number into dots until tapped again; for everyone, remembered per person on that phone. **Owner-only amounts (Z11):** the owner marks an expense category private; others see the line with dots and owner totals still count it. It must also hide the amount in totals and exports for others.
-
-**Safety and upkeep**
-- **App lock (Z4).** After N minutes in the background the app asks for a 4-digit PIN or fingerprint; the owner sets N per company; forgot PIN means a normal login. Separate from the authenticator code for sensitive actions.
-- **Place on money entries (Z9).** The phone's GPS spot is saved with cash, cheque and expense entries and shown as a pin; no far-from-customer flag for now. Not checked: whether delivery stops already store a proof location.
-- **Merge duplicates (Z16).** «ادغام در…» moves all rows of a supplier, product or district to another and retires the old one: owner only, typed-name confirm, a log line. Expense and money categories wait until the ledger question is decided (re-point the label, or post a reversal pair).
-- **Safe refresh (Z19).** «به‌روزرسانی داده‌ها» in settings refuses while items are still waiting to sync, then clears the local copy and reloads.
-
-**Parked:** a read-only token for the accountant's sheet (Z8); the month pack (D26) covers the accountant for now.
-
-## 2. Foundations
+1. [Build next](#1-build-next)
+2. [Waiting](#2-waiting-for-something)
+3. [Parked or skipped](#3-parked-or-skipped)
+4. [Done and partly done](#4-done-and-partly-done)
+5. [Index of F-entries (ideas not chosen yet)](#5-index-of-f-entries)
+6. [Design notes: foundations, overlaps, order, unverified claims](#6-design-notes)
+
+## 1. Build next
+
+Decided, and nothing else has to be built first. Open the arrow on an item for the owner's full decision, word for word from the old roadmap. Order inside an area is not a priority; the owner picks the batches. Batches decided so far: Fleetbase batch 1 (FB1 to FB5) and batch 2 (FB6 to FB9) are next in `TODO-REPORT.md`.
+
+### Screens, lists and desk speed
+
+- **UIB-B. Quick wins for taps.** Haptics on tap and on errors, one button-state rule (idle, busy, done, failed), and checks that wait until you leave a field.
+  <details><summary>Full decision</summary>
+
+  **Batch B: quick wins.** Haptics on tap and on errors, one button-state rule (idle, busy, done, failed), validation that waits for the person to leave a field.
+
+  </details>
+- **UIB-D. Find and act faster.** Ctrl-K runs actions, pinned pages, one shared selection bar for lists, a setup checklist for a new company, and a first-use tour.
+  <details><summary>Full decision</summary>
+
+  **Batch D: find and act faster.** Ctrl-K gets actions and not only search, pinned pages, one shared selection bar for lists, a setup checklist for a new company, a first-use tour. The map's saved-list search still has English labels.
+
+  </details>
+- **FB1. Orders list you can search and filter.** Filter chips for status, payment, rep and day; a count; load more past 100; paste many order numbers or phones to find them.
+  <details><summary>Full decision</summary>
+
+  **Orders list you can search and filter.** `/sales/orders` reads at most 100 orders and takes no filter inputs. Add `FilterChips` for status, payment, rep and day, a count, «load more» past 100, and one paste-many search (paste order numbers or phones, get just those).
+
+  </details>
+- **FB2. Undo on the planner.** Commit, freeze and day-lane moves get the 5-second undo toast.
+  <details><summary>Full decision</summary>
+
+  **Undo on the planner.** Commit, freeze and day-lane moves get the 5-second undo toast (`useUndoableAction`); `RoutingPlanner` calls `/routing/commit` and `/runs/{id}/freeze` directly today.
+
+  </details>
+- **FB4. Empty states name what is hidden.** Say what is hidden («۳ مورد به تعویق افتاده») and offer to clear the filter that causes it.
+  <details><summary>Full decision</summary>
+
+  **Empty states name what is hidden.** Action centre, tasks and filtered lists say «۳ مورد به تعویق افتاده، فردا ۰۹:۰۰» and offer «پاک کردن فیلتر» when a filter is the cause.
+
+  </details>
+- **FB5. Detail sheets: bottom by default, movable to the side.** Every detail sheet opens at the bottom; one saved choice per person moves them to the side.
+  <details><summary>Full decision</summary>
+
+  **Detail sheets: bottom by default, movable to the side.** Every detail sheet opens at the bottom (phone and desk); the user can move it to the side. Reuse the toggle in `CustomerDetailPanel` (`orient`, saved in `coverage_panel_orient`, icons `panel-bottom` / `panel-side`), flip its default to bottom, apply it to order details, and keep one shared saved choice per person for every detail sheet (decided 2026-10-30).
+
+  </details>
+- **FB6. Saved views.** Per person, named filter sets on the orders and customers lists, stored on the server.
+  <details><summary>Full decision</summary>
+
+  **Saved views.** Per person, named filter sets on the orders and customers lists, stored on the server.
+
+  </details>
+- **FB7. Keyboard triage on desk.** J/K, X, E, S keys on the action centre, tasks and orders list. Must match the physical key so it works with the Persian layout.
+  <details><summary>Full decision</summary>
+
+  **Keyboard triage on desk.** Action centre, tasks and orders list: J/K move, X select, E acknowledge, S snooze, open, with a one-line hint strip; desk only, phones keep swipe. `BINDINGS` in `lib/hotkeys.ts` is empty and `eventMatchesChord` matches `event.key`, so the new keys must match the physical key (`event.code`) or they fail under the Persian keyboard layout; it also needs a list-cursor model on top of `lib/selection`.
+
+  </details>
+- **FB8. Category strip and daily score on the action centre.** One chip per area with its count, plus a 0 to 100 score with the change since yesterday. The score uses the queue's own weights.
+  <details><summary>Full decision</summary>
+
+  **Category strip and daily score on the action centre.** One chip per area (credit, stock, delivery, cheques) with its count that filters the queue, plus a 0 to 100 score with the change since yesterday, stored daily in `kpi_snapshots`. The score reuses the action centre's own impact, probability and urgency numbers as weights (decided 2026-10-30), so it agrees with the order of the queue and there is no second set of weights.
+
+  </details>
+- **T7. Totals for the filtered list (also Z17).** Orders, payments, cheques and expenses lists show a count and a toman sum for the current filter and ticked rows; the lead pool and task board show a count per column.
+  <details><summary>Full decision</summary>
+
+  **Totals for the filtered list.** Orders, payments and cheques lists show a count and the toman sum for the current filter; the lead pool and task board show a count per column. Computed on the server with the same filter (T7).<br><br>**Total of the list (Z17).** A strip on the payments, expenses and orders lists that follows the filters and the selected rows. Not checked on every list.
+
+  </details>
+- **T21. Export follows what you see.** Export writes the current filter and sort, or only ticked rows, up to a row cap, and says how many rows. Customer export stays behind the authenticator code.
+  <details><summary>Full decision</summary>
+
+  **Export follows what you see.** `/api/sales/orders/export` takes no filter today. It writes the current filter and sort, or only ticked rows, up to a row cap, and says how many rows it wrote; customers and payments follow. Customer export stays behind the authenticator code (T21).
+
+  </details>
+- **T1. One filter format.** Saved views, segments, rules and the report builder share one filter shape: field, operator, value, AND/OR, «من» and relative Jalali dates.
+  <details><summary>Full decision</summary>
+
+  **One filter format.** Saved views, saved smart segments (D3-5), rule conditions (F130) and the report builder (F123) share one filter shape: field, operator, value, nested AND/OR, with «من» and relative Jalali dates («۳۰ روز گذشته»). Each list offers a fixed menu of fields and operators, turned into parameterised SQL through the scoped reads (T1).
+
+  </details>
+- **T2. Unsaved-changes bar for saved views.** Changing a saved view shows Save, Save as new and Reset. Views stay personal.
+  <details><summary>Full decision</summary>
+
+  **Unsaved-changes bar.** Changing a saved view's filters shows Save, Save as new view and Reset. Views stay personal; no sharing to roles (T2).
+
+  </details>
+- **T11. New record pre-filled from the filter.** «مشتری جدید» from a filtered list opens with that group and rep set.
+  <details><summary>Full decision</summary>
+
+  **New record pre-filled from the filter.** «مشتری جدید» from a list filtered to a group and rep opens with both set (T11).
+
+  </details>
+- **T4. Bulk edit on the selection bar.** Customers: rep, group, district, price tier, tags. Tasks: assignee, due date. Count preview, one log line per record.
+  <details><summary>Full decision</summary>
+
+  **Bulk edit on the shared selection bar.** Customers: rep, group, district, price tier, tags. Tasks: assignee, due date. An empty field is left alone; a count preview («۴۲ مشتری تغییر می‌کند»); one activity line per record; credit limit is not bulk-editable; owner changes also go to the F100 history (T4).
+
+  </details>
+- **T14. One action list.** Each action is declared once (label, icon, roles, place) and feeds record buttons, the selection bar and Ctrl-K.
+  <details><summary>Full decision</summary>
+
+  **One action list.** Each action is declared once (label, icon, role set, where it applies, pinned or under «بیشتر», hotkey) and feeds the record buttons, the selection bar and Ctrl-K, so the three never disagree on role gates (T14).
+
+  </details>
+- **B7. Bulk results.** Every bulk action ends with «N انجام شد، M نشد» and a list of skipped rows with reasons.
+  <details><summary>Full decision</summary>
+
+  **Bulk results (B7).** Every bulk action on the shared selection bar ends with «N انجام شد، M نشد» and a list of the skipped rows, each with a Persian reason.
+
+  </details>
+- **Z3. Hide money (eye in the top bar).** One tap turns every money number into dots.
+  <details><summary>Full decision</summary>
+
+  **Hide money (Z3).** An eye in the top bar turns every money number into dots until tapped again; for everyone, remembered per person on that phone. **Owner-only amounts (Z11):** the owner marks an expense category private; others see the line with dots and owner totals still count it. It must also hide the amount in totals and exports for others.
+
+  </details>
+- **S12. Edit conflict warning.** If a field changed since you opened it, show both values and who/when; keep mine or theirs.
+- **S14. Show a list or selection on the map.** The selection bar and filtered customer lists open the map with only those customers (UI batch D).
+
+### Customers and sales (CRM)
+
+- **E1. Follow a customer or an order.** A «دنبال کردن» bell; you follow what you own or create; followers get pushes for new orders, payments, complaints and notes.
+  <details><summary>Full decision</summary>
+
+  **Follow a customer or an order (E1).** A «دنبال کردن» bell on customer and order pages. You follow what you own or created automatically; anyone can follow or unfollow by hand. Followers get pushes for new orders, payments, complaints, status changes and notes, through the existing grouping, quiet hours and per-type switches. Today pushes go only to fixed people per notice type.
+
+  </details>
+- **E3. Lock a checked customer.** A manager locks name, phone, address and pin; a flow's change becomes a suggestion for the manager.
+  <details><summary>Full decision</summary>
+
+  **Lock a checked customer (E3).** A manager locks name, phone, address and pin. While locked, a call or visit flow cannot change them: the change becomes a suggestion the manager accepts with one tap (the F78 path). Logged. Today `applyCustomerUpdates` in `lib/repo/crm/write.ts` overwrites phone, name and pin from any flow.
+
+  </details>
+- **E4. One contact, several businesses.** A contact can link to more than one shop; the phone check allows the same person.
+  <details><summary>Full decision</summary>
+
+  **One contact, several businesses (E4).** A contact can link to more than one business (an owner of two shops, a head office and its branches). The phone check allows the same number for the same person; a call from it asks which shop. Today `phoneFor` in `lib/repo/crm/contacts.ts` refuses a phone another business already has.
+
+  </details>
+- **E14. Track a cross-sell try.** «پیگیری» on the cross-sell hint makes a try; it closes as won on the first order with that product.
+  <details><summary>Full decision</summary>
+
+  **Track a cross-sell try (E14).** «پیگیری» on the action centre cross-sell hint (`crossSellCandidates`) makes a try: product, rep, next step date. It closes as won when the first order with that product arrives, or as lost with a reason after N days. A small report of tries and wins by rep.
+
+  </details>
+- **S2. Head office and branches card.** HQ lists its branches with last order and balance; branch links up. Bill-to-HQ is not now.
+- **S3. Lead pipeline board.** A column per stage with counts, days in stage, a stuck chip, and a 90-day stage-to-stage report by rep.
+- **S4. Complaint waiting states and duplicate-of.** Waiting on customer or supplier stops the SLA clock; close as a duplicate of another.
+- **S6. Fair lead assignment per group.** Per group: pool (default), round robin, or least open work; people on leave are skipped.
+- **S15. Do-not-call and contact preferences.** Three switches per customer (calls, promo messages, service messages) with reason, date and who.
+- **S16. Revive lost leads.** After a wait that depends on the lost reason (price 60 days, already supplied 120, not interested 180), back to the pool with a call-again task.
+- **S17. Referrals shown and rewarded with a thank-you task.** Show the referrer on the customer page, top referrers in the source report, and a thank-you task. Rewards stay in F137.
+
+### Orders, pricing and promotions
+
+- **UIB-A4. Discount gaps.** Discount is ignored by customer lifetime value, the driver stop list, dashboard revenue, the commission value metric and offline sync. The quick order has no discount. No push for a new request.
+  <details><summary>Full decision</summary>
+
+  Discount is ignored by customer lifetime value, the driver stop list, dashboard revenue, the commission «value» metric and offline sync; the tap-flow quick order has no discount; no push or notification for a new request.
+
+  </details>
+- **FB3. Edit rules by order stage, with reasons.** What may change depends on the stage (ready, out for delivery, delivered). A locked field says why in one Persian line. One shared rule for the page, the API and offline sync.
+  <details><summary>Full decision</summary>
+
+  **Edit rules by order stage, with reasons.** Ready: lines may only be removed, the day only moved earlier. Out for delivery: lines and day locked. Delivered or cancelled: everything locked. Each locked field shows a one-line Persian reason; one shared rule used by the page, the API and offline sync (relates to F73).
+
+  </details>
+- **FB24. Change summaries on edited orders.** After a confirmed order is edited, the driver gets a one-line push and the warehouse sees a «تغییر کرده» badge.
+  <details><summary>Full decision</summary>
+
+  **Change summaries on edited orders.** When an order is edited after confirmation, the driver gets a one-line Persian push («اقلام تغییر کرد»، «موعد به … منتقل شد»، «مبلغ دریافتی تغییر کرد») and the warehouse sees a «تغییر کرده» badge. Extends the stage-based edit rules in 1c.
+
+  </details>
+- **FB32. Merged order timeline.** One feed per order: status changes, notes, edits, payment adjustments and chat. Built with chat phase 1.
+  <details><summary>Full decision</summary>
+
+  **Merged order timeline: built with chat phase 1.** One feed per order with status changes, notes, edits (who and the one-line summary), payment adjustments and chat messages.
+
+  </details>
+- **FB38. Invoice sent stamp.** Record when an invoice was sent and show it on the customer page. First-viewed waits for the tracking page.
+  <details><summary>Full decision</summary>
+
+  **Invoice sent stamp, now.** Record when an invoice was sent (printed or shared) and show it on the customer page. A first-viewed time waits for the tracking page, because it needs a customer-facing link.
+
+  </details>
+- **FB40. Stale draft orders.** An action centre card lists drafts older than N days (default 7); older ones are cancelled automatically with a log line.
+  <details><summary>Full decision</summary>
+
+  **Stale draft orders.** An action centre card lists draft orders older than N days (owner setting, default 7). Drafts older than the limit are cancelled automatically, with a log line for each.
+
+  </details>
+- **D4. Floor price.** A line under cost (or an owner floor per product) needs approval.
+  <details><summary>Full decision</summary>
+
+  **Floor price (D4).** A line under cost (or a higher owner-set floor per product) needs approval even when the discount percent is under `discount_auto_pass_pct`; the rep sees «زیر حداقل قیمت این کالا».
+
+  </details>
+- **D22. Quantity price steps.** Up to four steps per product and pack size; order entry nudges toward the next step.
+  <details><summary>Full decision</summary>
+
+  **Quantity price steps (D22).** Up to four steps per product and pack size (starting quantity, price). Order entry applies the step and nudges toward the next one. A step price is a list price, so it needs no discount approval; the floor price (D4) still applies.
+
+  </details>
+- **D31. Reopen a cancelled order.** A manager reopens a cancelled order to draft within N days (default 7); must be confirmed again.
+  <details><summary>Full decision</summary>
+
+  **Reopen a cancelled order (D31).** A manager or owner reopens a cancelled order to draft within an owner-set time (default 7 days). It must be confirmed again, so stock and credit are re-checked; logged with who and why; not after delivery.
+
+  </details>
+- **A12. Freeze customer details on the order.** At confirm, copy name, phone and address onto the order so reprints do not change.
+  <details><summary>Full decision</summary>
+
+  **Freeze customer details on the order (A12).** At confirm, copy name, phone and address (tax IDs once D7 exists) onto the order; `orders` keeps only `customer_id` today, so reprints show the customer's current data. Reprints use the copy. «Forget a person» (D20) clears these copies too.
+
+  </details>
+- **A13. Receipt footer and order number prefix.** Settings for footer text per document and a prefix per company.
+  <details><summary>Full decision</summary>
+
+  **Receipt footer and order number prefix (A13).** A settings card: footer text per document (receipt, delivery note, statement; the receipt footer is fixed in `lib/deliveryReceipt.ts` today) and an order number prefix per company. The next number can only go up.
+
+  </details>
+
+### Delivery, routing and drivers
+
+- **FB26. Planner blockers and warnings.** Each planner check has a severity (blocker or warning) and a Persian reason. New owner setting: maximum working hours per driver per day.
+  <details><summary>Full decision</summary>
+
+  **Planner blockers and warnings.** Every planner check returns a result with a severity: a blocker stops, a warning tells; each has a Persian reason. A new owner setting, maximum working hours per driver per day, shows as a warning. No legal hours rules are built in.
+
+  </details>
+- **FB37. Driver «گزارش مشکل» sheet.** The driver picks a type and priority, adds a photo and note; it is stamped with position and stop and shows on the action centre.
+  <details><summary>Full decision</summary>
+
+  **Driver «گزارش مشکل» sheet (small version).** The driver picks a type (vehicle, road, customer, goods) and a priority, adds an optional photo and note; the report is stamped with the phone position and the current stop and shows on the action centre.
+
+  </details>
+
+### Stock, warehouse and suppliers
+
+- **D21. Supplier pay list.** Supplier terms set a due date; a list shows what is due; ticked rows give a sheet for the accountant.
+  <details><summary>Full decision</summary>
+
+  **Supplier pay list (D21).** Supplier terms (days) set a due date on each purchase; a list shows what is due, oldest first; ticked rows give a sheet (supplier, Sheba, amount) for the accountant; the payment is recorded with the bank tracking number. No bank file (formats differ, F10).
+
+  </details>
+- **D32. Sell-off product state «تصفیه».** Still sellable, off the buy list; turns inactive when stock hits zero.
+  <details><summary>Full decision</summary>
+
+  **Sell-off product state «تصفیه» (D32).** Still sellable, off the buy list, no reorder warnings; it turns inactive by itself when available stock reaches zero; reps see a chip.
+
+  </details>
+- **D8. Warehouse count session.** Start a count for a facility, several phones count, review the toman value of every gap, one confirm.
+  <details><summary>Full decision</summary>
+
+  **Warehouse count session (D8).** Start a count for a facility (a snapshot), several phones count, a «what is left» list, a review with the toman value of every gap, one confirm. Reuses the reason chips of `lib/flows/stockCount.ts`.
+
+  </details>
+- **D9. Stock and value on a past date.** A Jalali date chip on the stock page shows quantity and value on that date.
+  <details><summary>Full decision</summary>
+
+  **Stock and value on a past date (D9).** A Jalali date chip on the stock page shows quantity and value per product and facility on that date, with a total and export.
+
+  </details>
+- **D16. Supplier price rows.** Per product and supplier: price, minimum quantity, delivery days, supplier code.
+  <details><summary>Full decision</summary>
+
+  **Supplier price rows (D16).** Per product and supplier: price, minimum quantity, delivery days, supplier code. Purchase entry pre-fills the price and warns under the minimum; feeds D17 and F31.
+
+  </details>
+- **D17. Buy list grouped by supplier (first slice of F11).** Products under their reorder point, minus what is on order, grouped by supplier; tick to make purchase drafts.
+  <details><summary>Full decision</summary>
+
+  **Buy list grouped by supplier (D17, the F11 first slice).** «لیست خرید»: products under their reorder point, minus what is on order, rounded up to the supplier minimum, grouped by the cheapest or fastest supplier. Tick to make a purchase draft per supplier; a person confirms.
+
+  </details>
+- **D19. Labels at goods receipt.** Print a label per batch or pallet (product, batch, expiry, QR) and an A4 PDF of barcodes.
+  <details><summary>Full decision</summary>
+
+  **Labels (D19).** At goods receipt, print one label per batch or pallet (product, batch, expiry, QR) on the Bluetooth printer, plus an A4 PDF of pack barcodes. The same QR serves F1 scanning later.
+
+  </details>
+- **B5. Sent and received transfers between facilities.** Goods show as «در راه» between send and receive; not received after N days goes to the action centre.
+  <details><summary>Full decision</summary>
+
+  **Sent and received transfers between facilities (B5).** Goods leave the source when sent, show as «در راه» (not sellable, counted in stock value) and land when received; not received after N days goes to the action centre. Warehouse-to-van loading stays one step.
+
+  </details>
+- **B10. Product page with its history.** Tabs: orders that sold it, purchases, stock moves, cost and price changes.
+  <details><summary>Full decision</summary>
+
+  **Product page with its history (B10).** Tabs: orders that sold it, purchases that bought it, stock moves, cost and price changes. Rows link to the order or purchase.
+
+  </details>
+
+### Money: credit, payments and cash
+
+- **UIB-A3. Credit approval for group managers.** The proxy closes credit approval to group managers. Move it to the sales API the way the discount decision was moved.
+  <details><summary>Full decision</summary>
+
+  Credit approval is closed to group managers by `proxy.ts` (its API is under `/api/admin`); move it the way the discount decision was moved to `/api/sales`.
+
+  </details>
+- **T8. Calendar view of cheques by due date.** Phone: agenda grouped by day. Desk: Jalali month grid with daily sums.
+  <details><summary>Full decision</summary>
+
+  **Calendar view of cheques by due date.** Phone: an agenda grouped by day (`DayChips`); desk: a Jalali month grid with daily sums. Payment promises (F50) and tasks reuse it later (T8).
+
+  </details>
+- **D1. Money in hand per driver and rep.** Cash and cheques go to the person's own box; the office counts at day end; a gap is saved with a reason.
+  <details><summary>Full decision</summary>
+
+  **Money in hand per driver and rep (D1).** Cash and cheques a person collects land in their own box, not straight in the office cash account (`1101`). At day end the office counts and confirms; a short or extra amount is saved with a reason and shows on the action centre. The owner sees one line per person: holding now, since when.
+
+  </details>
+- **D2. Cheque deposit slips, several bank accounts.** Tick cheques, pick a bank account, get a numbered slip. A bounce reopens the debt.
+  <details><summary>Full decision</summary>
+
+  **Cheque deposit slips and more than one bank account (D2).** Tick cheques on the board, pick the bank account, get a numbered slip with count, total and a printable list. A bounce takes the cheque out and reopens the debt. Works with D1 (driver box, office box, bank).
+
+  </details>
+- **D3. Close a small leftover.** A manager closes a small balance with a reason under an owner limit (default 50,000 toman).
+  <details><summary>Full decision</summary>
+
+  **Close a small leftover (D3).** A manager closes a small remaining balance with a reason (rounding, bank fee, small discount) under an owner-set limit (default 50,000 toman); bigger amounts and bad debt need the owner. Ledger entry plus log line.
+
+  </details>
+- **D23. Recurring costs.** A list of rent, salaries and subscriptions; on the day a task asks «پرداخت شد؟» and one tap records it.
+  <details><summary>Full decision</summary>
+
+  **Recurring costs (D23, answers F49 question 1).** A list of rent, salaries and subscriptions (category, amount, Jalali day of month, who pays). On the day a task asks «پرداخت شد؟» with the amount filled; one tap records the expense; the cash forecast reads the list.
+
+  </details>
+- **D24. Bank loans.** A loan card with a schedule; reminders and a one-tap payment that splits principal and interest.
+  <details><summary>Full decision</summary>
+
+  **Bank loans (D24).** A loan card (bank, amount, instalments, first due date); the schedule is made once; each due date gives a reminder and a one-tap payment that splits principal and interest; the forecast (F49) and the balance sheet read it.
+
+  </details>
+- **D5. Payment term kinds.** Cash on delivery, N days after delivery, or end of month plus N. Due date saved on the order at delivery.
+  <details><summary>Full decision</summary>
+
+  **Payment term kinds (D5, answers F83).** Cash on delivery, N days after delivery, or end of month plus N days. The due date is saved on the order at delivery, so later changes to the customer do not rewrite it.
+
+  </details>
+- **A4. Transfer between own accounts.** One «انتقال وجه» form: from, to, amount, date, tracking number, optional fee.
+  <details><summary>Full decision</summary>
+
+  **Transfer between own accounts (A4).** One «انتقال وجه» form: from, to, amount, date, bank tracking number, optional fee; one balanced entry. D1 (driver box to office), D2 (cash deposit to bank) and A3 reuse it. Petty cash `1103` is in the chart but unused today.
+
+  </details>
+- **A3. Hand reconcile of cash and bank.** Type the counted balance, tick lines until the difference is zero; ticked lines lock.
+  <details><summary>Full decision</summary>
+
+  **Hand reconcile of cash and bank (A3).** Pick an account and a date, type the counted or bank-paper balance, tick lines until the difference is zero, save. Ticked lines lock; a mistake after that is fixed by a reversal. No bank file; F10 may later pre-tick from one. D1's end-of-day count lands here.
+
+  </details>
+- **A5. Money in and out page.** A monthly page of money in and out and opening and closing cash and bank, read from the ledger.
+  <details><summary>Full decision</summary>
+
+  **Money in and out (A5).** A monthly page «ورودی و خروجی پول»: money in (receipts, cheques cashed), money out (suppliers, expenses by category, commission, loans), opening and closing cash and bank, read from the ledger legs of the money accounts. No new tables.
+
+  </details>
+- **A7. Money tiles on the owner home.** Cash box, banks, owed to us, we owe, cheques due this week; each tile opens its page.
+  <details><summary>Full decision</summary>
+
+  **Money tiles (A7).** One strip on the owner home: cash box, each bank, owed to us (with the overdue part), we owe (with what is due in 7 days), cheques due this week. Each tile opens its page. A default card for F146.
+
+  </details>
+- **A10. Repeat an expense.** A «تکرار این» button opens the expense form pre-filled.
+  <details><summary>Full decision</summary>
+
+  **Repeat an expense (A10).** A «تکرار این» button on an expense row opens the form pre-filled (category, supplier, amount, new date). Expenses only, not customer payments.
+
+  </details>
+- **B1. Credit note.** A manager makes a credit for goods returned after delivery; applied to open orders or paid back. Suppliers get the same document.
+  <details><summary>Full decision</summary>
+
+  **Credit note (B1).** A manager makes a credit for goods returned after delivery, with a reason and an amount. It lowers what the customer owes and is applied to open orders or paid back in cash. Suppliers get the same document for goods sent back. Today the `RETURNED` status only ends the undelivered part (`lib/orderStateMachine.ts`); this is the money side of F12 and F80.
+
+  </details>
+- **Z9. Place on money entries.** The phone's GPS spot is saved with cash, cheque and expense entries.
+  <details><summary>Full decision</summary>
+
+  **Place on money entries (Z9).** The phone's GPS spot is saved with cash, cheque and expense entries and shown as a pin; no far-from-customer flag for now. Not checked: whether delivery stops already store a proof location.
+
+  </details>
+
+### Accounting, reports and analytics
+
+- **T15. Sales chart bug and calendar days (with T20).** The weekly chart skips empty days, so one empty day shifts every bar. Fill calendar days with 0, show closed days, compare the same weekdays; add sales by weekday, a month-to-date line, and rankings with an «سایر» row.
+  <details><summary>Full decision</summary>
+
+  **Sales chart bug.** `revenue_by_day` in `lib/dashboard.ts` is built only from days that had orders and the sales page takes the first 7 as «this week» and the next 7 as «last week», so one empty day shifts every bar. Build calendar days filled with 0, show Fridays and holidays as closed, compare the same weekdays (T15). With it: sales by weekday, a cumulative month-to-date line against last month, and rankings showing top 10 plus “سایر” instead of silently dropping the rest (T20).
+
+  </details>
+- **D7. Official invoice for some customers.** Per-order choice: tax IDs, VAT per product, invoice number per Jalali year, Moadian export later.
+  <details><summary>Full decision</summary>
+
+  **Official invoice, some customers only (D7, answers F147 numbering).** A per-order choice: tax IDs on company and customer, VAT per product, an invoice number given at confirmation per Jalali year (drafts use no number), a Moadian export later. Other orders stay as today.
+
+  </details>
+- **D29. Logo and stamp on documents.** Upload once; PDF receipt, delivery note and statements print them; thermal printer prints the logo.
+  <details><summary>Full decision</summary>
+
+  **Logo and stamp (D29).** The owner uploads a logo and a stamp/signature image once; PDF receipt, delivery note and statements print them; the thermal printer prints the logo in black and white; the stamp is on or off per document type.
+
+  </details>
+- **A2. Close a month.** Owner closes a month after a short checklist; reopening needs a reason; a closed month refuses entries.
+  <details><summary>Full decision</summary>
+
+  **Close a month (A2).** `fiscal_periods` and the closed-month refusal in `postJournal` exist, but nothing sets a month to closed (`lib/repo/reports.ts` only reads it). The owner closes a month after a short checklist (deliveries posted, drafts listed, cash counted); reopening needs a reason; both are logged (E6). A closed month refuses new entries; corrections go into the next open month. D26 (month pack) and E5 (own-mistake window) need this.
+
+  </details>
+- **A11. Discounts given report.** Toman given as discount by rep, customer and product, approvals versus auto-passes.
+  <details><summary>Full decision</summary>
+
+  **Discounts given (A11).** A monthly report of toman given as discount by rep, customer and product, with approvals versus auto-passes. No page reads `order_discounts` for a report today.
+
+  </details>
+- **A6. Expense categories per company.** A small per-company category table pointing at the shared accounts. Decide before a second company.
+  <details><summary>Full decision</summary>
+
+  **Expense categories per company (A6).** The `accounts` table has no `organization_id`, so the chart is shared and `expenseCategories()` lists every active expense account for every company. A small per-company category table pointing at the shared accounts lets each company add, rename, retire and group categories and mark one «هزینه مستقیم» (printed above gross profit). History is untouched. Decide before a second company is added.
+
+  </details>
+- **B2. Open a date range in a closed month.** Owner opens one range with a reason; it closes again by itself. Extends A2.
+  <details><summary>Full decision</summary>
+
+  **Open a date range in a closed month (B2, extends A2).** The owner opens one date range with a reason; it closes again by itself after a set time. Logged. A2 stays one lock for all areas.
+
+  </details>
+- **B3. Books behind a document.** A «ثبت‌های حسابداری» button on order, payment, expense and cheque pages for the owner and accountant.
+  <details><summary>Full decision</summary>
+
+  **Books behind a document (B3).** A «ثبت‌های حسابداری» button on order, payment, expense and cheque pages for the owner and the accountant: the debit and credit lines the document made, each linked to its account.
+
+  </details>
+- **Z7. Needs attention.** A filter chip for entries with no photo, note or supplier; the month-close checklist shows the count.
+  <details><summary>Full decision</summary>
+
+  **Needs attention (Z7).** A filter chip on expense and payment lists for entries with no photo, note or supplier; the month-close checklist (A2) shows the count and the owner accepts or fixes it.
+
+  </details>
+
+### People, approvals and management control
+
+- **FB27. Live commission preview (first slice of F19).** The commission editor shows the result for sample sales as the rule changes, using the payroll calculation.
+  <details><summary>Full decision</summary>
+
+  **Live commission preview (first slice of F19).** The commission editor shows the result for sample sales values as the rule changes, using the same calculation as payroll so the preview cannot drift from the real engine.
+
+  </details>
+- **D15. Money rules for expenses.** Owner sets limits per expense category and role; over the limit the expense waits for approval.
+  <details><summary>Full decision</summary>
+
+  **Money rules for expenses (D15, answers F26 and F88).** The owner sets a limit per expense category and role (per entry and per day). Over it, the expense waits as «منتظر تأیید» for a manager or owner with the reason shown.
+
+  </details>
+- **D18. Team week grid.** People down the side, days across, counting visits, tasks and deliveries; tap for that person's day.
+  <details><summary>Full decision</summary>
+
+  **Team week grid (D18).** Managers get people down the side and days across, each box counting visits, tasks and deliveries; tapping opens that person's day. Phone: one card per person with a week strip.
+
+  </details>
+- **E5. Undo your own fresh mistake.** Whoever entered a payment, note, task or photo can void it within N minutes (default 15) with a reason.
+  <details><summary>Full decision</summary>
+
+  **Undo your own fresh mistake (E5).** Whoever entered a payment, note, task or photo can void it within N minutes (owner setting, default 15) with a reason; after that, manager only. Logged, and voided payments stay in the money log (D6). Today voiding a payment is for managers only.
+
+  </details>
+- **S23. Staff on leave until a date.** Still can sign in; assignment skips them; planner warns; a cover card lists their open leads and tasks.
+
+### Platform, security and administration
+
+- **UIB-A2. Code guard on the remaining sensitive actions.** The rule and the guard exist; each of these needs one line: creating an owner or manager, customer export, changing your own mobile, hard deletes, cancelling or editing a delivered order, authenticator reset, overwrite imports.
+  <details><summary>Full decision</summary>
+
+  The code guard on creating an owner or manager, customer export, changing your own mobile number, hard deletes, cancelling or editing a delivered order, authenticator reset and overwrite imports (the rules and the guard exist; each route needs one line).
+
+  </details>
+- **FB29. Authenticator nudge.** A banner with «فعال‌سازی اکنون» for managers until they enrol. No lock-out.
+  <details><summary>Full decision</summary>
+
+  **Authenticator nudge.** A banner with a «فعال‌سازی اکنون» button for managers and anyone required to use the authenticator, shown until they enrol; no lock-out after a grace period.
+
+  </details>
+- **FB34. Owner access review card.** On the status page: users per role, never signed in, no authenticator, idle 30+ days, recent impersonations.
+  <details><summary>Full decision</summary>
+
+  **Owner access review card on the owner status page.** Users per role, never signed in, no authenticator, no sign-in for 30+ days, recent impersonations; each line opens the list. Reads the existing sign-in log.
+
+  </details>
+- **FB41. Log retention with a preview.** Each growing log gets a keep-for-N-days setting; the status page shows what the next purge would delete.
+  <details><summary>Full decision</summary>
+
+  **Log retention with a preview.** Each growing log table (SMS ledger, sign-in log, outbox, notifications) gets a keep-for-N-days setting. The owner status page shows how many rows the next nightly purge would delete.
+
+  </details>
+- **T5. Created by, and how.** Orders, customers, payments and tasks store a source (form, quick order, import, rule, system...) next to the creator.
+  <details><summary>Full decision</summary>
+
+  **Created by, and how.** Orders, customers, payments and tasks store a source next to the creator (form, quick order, offline sync, import, rule, system, Telegram), shown as one line and usable in filters. F85 stays the sales channel (T5).
+
+  </details>
+- **T6. Readable timelines.** Merge one person's edits within 10 minutes; hide cost, margin and credit changes from roles that cannot see them.
+  <details><summary>Full decision</summary>
+
+  **Readable timelines.** On the merged order timeline and the customer timeline: one person's edits within 10 minutes merge into one entry; cost, margin and credit changes are hidden from roles that cannot see them; position pings and counters are not logged (T6).
+
+  </details>
+- **T3. Recycle bin (F111): JSON copy in a trash table (also T18).** First types: reminders, tasks, photos. A link to a deleted item shows who deleted it, with a restore button for managers.
+  <details><summary>Full decision</summary>
+
+  **Recycle bin (F111): a JSON copy in a trash table**, not a `deleted_at` column; first types reminders, tasks and photos, per-company keep-for-N-days in the log-retention setting. A link to a deleted item shows who deleted it and when, with a restore button for managers (T3, T18).
+
+  </details>
+- **T17. Maintenance banner.** Owner sets start and end; everyone sees a banner; drivers and reps are told to sync first.
+  <details><summary>Full decision</summary>
+
+  **Maintenance banner.** The owner sets a start and end; everyone sees a dismissible Persian banner; drivers and reps are also told to sync offline work before it starts (T17).
+
+  </details>
+- **T24. Rate limiter moved to Postgres.** Short and long windows per person and IP.
+  <details><summary>Full decision</summary>
+
+  **Rate limiter move to Postgres.** Give each rule a short and a long window, keyed by person and IP (for example 5 code tries a minute and 20 an hour) (T24).
+
+  </details>
+- **D6. Tamper-evident money log.** A hash chain over money events only, with a «check the chain» button for the owner.
+  <details><summary>Full decision</summary>
+
+  **Tamper-evident money log (D6, answers F27).** One hash chain per company over money events only (order confirmed, payment, cheque status, journal posted, month closed, leftover closed); the owner has a «check the chain» button. Not every edit.
+
+  </details>
+- **D30. Owner-set thresholds.** One settings card for numbers now fixed in code (stalled order days, quiet customer days, ageing days, duplicate order window, snooze days).
+  <details><summary>Full decision</summary>
+
+  **Owner-set thresholds (D30).** One settings card for the numbers now fixed in code: stalled order days (`actionCenter.ts`, 2), quiet customer days (`mapWorklist.ts`, 45), data ageing days (`freshness.ts`, 7 and 14), duplicate order window (`duplicateOrder.ts`, 24 hours), alert snooze days (7). Current values are the defaults; reset button; changes logged.
+
+  </details>
+- **D13. Per-person extra switches (also E10).** A short list on top of roles; start with four: may see cost, may export, may bulk edit, may give customers to others.
+  <details><summary>Full decision</summary>
+
+  **Per-person extra switches (D13).** A short list on top of roles (for example a rep may see cost), checked in the same gates as roles. The exact list is proposed at build time.<br><br>**D13 per-person switches:** start with four: may see cost, may export, may bulk edit (T4), may give customers to others. Checked in the same gates as roles (E10).
+
+  </details>
+- **D20. Forget a person.** Owner-only and manual: personal data cleared, orders and ledger stay under «مشتری حذف‌شده».
+  <details><summary>Full decision</summary>
+
+  **Forget a person (D20).** Owner-only and manual: name, phones, address, pin and notes are cleared; orders and ledger stay under «مشتری حذف‌شده»; the person is also removed from the trash copy (T3) and campaign lists; logged without the old values. No automatic job.
+
+  </details>
+- **E6. Access and settings change log.** A who/when/old/new line for role, group, active state, password resets and company settings.
+  <details><summary>Full decision</summary>
+
+  **Access and settings change log (E6, answers F27 question 1 for permissions).** A who/when/old/new line for role, group, active state and password resets of users, and for company settings (discount auto-pass percent, code for sensitive actions, the D30 thresholds), shown on the owner status page beside the access review card (D3-3). Today `setRoles`, user edits and these settings write no log line.
+
+  </details>
+- **E17. Sign out after idle time.** Owner sets idle hours per role; drivers and reps stay signed in so offline work is not lost.
+  <details><summary>Full decision</summary>
+
+  **Sign out after idle time (E17).** The owner sets idle hours per role (for example 12 for owner, managers and accountant); drivers and reps stay signed in so offline work is not lost. Today a sign-in lives 30 days whether used or not.
+
+  </details>
+- **E7. Background exports and bulk edits.** Exports over ~1,000 rows and bulk edits over ~100 run as jobs with progress and a push when ready.
+  <details><summary>Full decision</summary>
+
+  **Background exports and bulk edits (E7).** Exports over about 1,000 rows (T21) and bulk edits over about 100 records (T4) run on the job runner with a progress count and a push when ready; the file is kept 24 hours.
+
+  </details>
+- **Z2. No double save.** Every money form sends a one-time key; a repeat returns the first result.
+  <details><summary>Full decision</summary>
+
+  **No double save (Z2).** Every money form (payments, expenses, cheques, transfers, purchases) sends a one-time key; a repeat returns the first result and saves nothing new. One shared helper. Offline sync already does this with `client_uuid`; the online forms and the journal table do not.
+
+  </details>
+- **Z11. Owner-only amounts.** The owner marks an expense category private; others see dots and totals still count it.
+  <details><summary>Full decision</summary>
+
+  **Hide money (Z3).** An eye in the top bar turns every money number into dots until tapped again; for everyone, remembered per person on that phone. **Owner-only amounts (Z11):** the owner marks an expense category private; others see the line with dots and owner totals still count it. It must also hide the amount in totals and exports for others.
+
+  </details>
+- **Z4. App lock.** After N minutes in the background the app asks for a 4-digit PIN or fingerprint.
+  <details><summary>Full decision</summary>
+
+  **App lock (Z4).** After N minutes in the background the app asks for a 4-digit PIN or fingerprint; the owner sets N per company; forgot PIN means a normal login. Separate from the authenticator code for sensitive actions.
+
+  </details>
+- **Z16. Merge duplicates.** «ادغام در…» moves all rows of a supplier, product or district to another: owner only, typed-name confirm.
+  <details><summary>Full decision</summary>
+
+  **Merge duplicates (Z16).** «ادغام در…» moves all rows of a supplier, product or district to another and retires the old one: owner only, typed-name confirm, a log line. Expense and money categories wait until the ledger question is decided (re-point the label, or post a reversal pair).
+
+  </details>
+- **Z19. Safe refresh.** «به‌روزرسانی داده‌ها» refuses while items are waiting to sync, then clears the local copy.
+  <details><summary>Full decision</summary>
+
+  **Safe refresh (Z19).** «به‌روزرسانی داده‌ها» in settings refuses while items are still waiting to sync, then clears the local copy and reloads.
+
+  </details>
+- **S24. «گزارش مشکل برنامه» button.** One line and an optional screenshot with page, role, version, phone and connection attached; a list for the owner.
+
+### Mobile, input, offline and help
+
+- **UIB-C. Forms that keep your work.** Drafts survive a closed tab, an unsaved-changes bar, phone keyboard handling, and instant updates with a rollback.
+  <details><summary>Full decision</summary>
+
+  **Batch C: forms that keep your work.** Drafts that survive a closed tab, an unsaved-changes bar, keyboard handling on phones, optimistic updates (`useOptimistic`) with a rollback.
+
+  </details>
+- **Z1. Sums in the keypad.** The shared keypad gets + and − and shows the running total.
+  <details><summary>Full decision</summary>
+
+  **Sums in the keypad (Z1).** The shared keypad (`components/mobile/Keypad.tsx`, `lib/keypad.ts`) gets + and − only (no × ÷) and shows the running total.
+
+  </details>
+- **Z18. Save and add next.** A «ثبت و بعدی» button on expense, payment and customer forms.
+  <details><summary>Full decision</summary>
+
+  **Save and add next (Z18).** A «ثبت و بعدی» button on the expense, payment and customer forms; it keeps the date and the remembered method and account.
+
+  </details>
+- **Z10. Remember method and account.** Per person, only payment method and bank account are remembered.
+  <details><summary>Full decision</summary>
+
+  **Remember method and account (Z10).** Per person, only payment method and bank account are remembered; the category always starts empty.
+
+  </details>
+- **Z12. Type a sentence and Z15 paste a bank SMS.** A plain rule parser, no AI: «بنزین ۴۵۰ هزار» opens the expense form; a pasted card-to-card SMS opens the payment form.
+  <details><summary>Full decision</summary>
+
+  **Type a sentence (Z12) and paste a bank SMS (Z15).** A plain rule parser, no AI, works offline. «بنزین ۴۵۰ هزار» opens the expense form with the amount and a category guessed from words used before. A pasted card-to-card bank SMS opens the payment form with amount, date and tracking number; start with the 3 or 4 biggest banks, fall back to an empty form.
+
+  </details>
+- **Z13. Share a photo into the app, and Z14 icon shortcuts.** A shared photo opens a new expense with it as the receipt; long-press the app icon for record payment, new order, record expense.
+  <details><summary>Full decision</summary>
+
+  **Share a photo into the app (Z13).** `app/manifest.ts` gets a share target; a shared photo opens a new expense with it as the receipt. Expense receipt only for now. **Icon shortcuts (Z14):** long-press the app icon for record payment, new order, record expense, by role.
+
+  </details>
+
+### Messaging, chat and telephony
+
+- **FB9. Internal chat, phase 1: threads on orders and customers.** A native chat, no outside server. Phase 1 is a thread on every order and customer. The owner may read any 1:1 or group chat and members see a notice.
+  <details><summary>Full decision</summary>
+
+  **Internal chat, first slice: threads on orders and customers.** See the decision below.<br><br>**Internal chat system (decided 2026-10-30).** A native chat, no outside chat server; the existing-solutions search was skipped on the owner's say-so. Phases: (1) a thread on every order and customer, (2) 1:1 and group chats on the same tables (one conversation table with a subject: customer, order, direct or group), (3) photos, search and read receipts. Decided 2026-10-30: the owner may read any 1:1 or group chat, members see a standing notice («مالک می‌تواند این گفتگو را ببیند») and each owner read is logged. Rules to settle when it is designed: a thread is visible only to people who may see the record, and adding someone grants no access to the record; mentions go through the existing notification preferences and quiet hours; online-only at first, saying so on a failed send; live delivery by server-sent events or polling over Postgres, no Redis.
+
+  </details>
+- **S19. Push before a timed task.** One push 10 minutes before (owner can change). Check first that none exists.
+
+## 2. Waiting for something
+
+Decided, but each needs something first. The "waits for" part is in the line. The full decision is in the archive (`docs/roadmap-archive.md`, sections 1b to 1k).
+
+### Screens, lists and desk speed
+
+- **UIB-E. Desk layouts and dashboards.** Denser desk screens and dashboard patterns. Comes after the phone patterns are done.
+- **FB19. Setup checklist details.** Minutes per step, a % bar, steps that tick from real data. Waits for UI batch D (UIB-D).
+- **A17. Typed filters on desk screens.** Text such as `بدهی>۱۰۰۰۰۰۰ منطقه:۳` turns into filter chips. Comes with T1.
+
+### Customers and sales (CRM)
+
+- **FB36. Saved smart segments.** A customer filter saved by name, usable by promotions and reminders. Comes with F28 and F21.
+- **T12. F122 custom fields rules.** Text, number, choice, date, yes/no; up to ten; archive instead of delete. Waits for F122.
+- **T13. F82 / F59 lend a rep's customers.** A manager lends customers to a colleague for N days; access ends by itself. Waits for F82 / F59.
+- **E2. «به شما سپرده شد» notice.** One push when records are handed to you; many at once become one push. Built with S6, T4 and F59.
+- **E16. F122 conditional custom fields.** A custom field may show and require itself when another field matches. Waits for F122.
+- **S7. Merge with a choice per field.** Pick name, phone, pin, address, owner; the losing phone is kept as a second number. Part of F148.
+- **S21. Expected first-order month on a lead.** Optional Jalali month shown on the pipeline board. Comes after S3.
+
+### Orders, pricing and promotions
+
+- **FB18. Receipt layout live preview.** A preview card that updates as you type. Waits for the receipt layout page.
+- **FB33. Internal versus customer-visible notes.** Until the tracking page (F6, F79) exists every note is internal.
+- **D14. Prices that follow a base number.** Product price = named number × factor, rounded to 1,000 toman, with a preview. Comes with F56.
+- **S8. F29 quote answers.** Draft, sent, accepted, lost, expired; expiry 7 days; frozen prices; accept makes an order draft. Waits for F29.
+- **S10. F44 contract end and renewal task.** End date, reminder N days before (default 30), ended contracts stop drafts. Waits for F44.
+
+### Delivery, routing and drivers
+
+- **FB10. Freshness labels on positions and ETAs.** Every live dot shows its age; an arrival says live, planned or estimated. Waits for F6 live tracking.
+- **FB11. Customer tracking page.** A coarse three-step status before an SMS code, then map and arrival. Waits for F6 and F79.
+- **FB12. Late-start, off-route and long-stop alerts.** Per-company switches and thresholds, sent once per order. Waits for F6.
+- **FB13. Position retention as a setting.** Per-company keep time with a system maximum. Waits for F6.
+- **FB14. Route simulator for testing.** A fake driver on a planned route to test arrivals and take screenshots. Waits for F6.
+- **FB15. Arrival after a short stay (dwell).** Count arrival only after a short stay inside the customer's circle. Waits for F6 and F38.
+- **FB16. Run replay map.** Scrub a driver's day with time and speed per point, for disputes and mileage. Waits for F6.
+- **FB17. QR scan proof and a required-proof setting.** QR on the delivery note scanned at the door; per-company required proof. Waits for the F17 design.
+- **FB25. ETA stage rules.** No driver means no ETA; started means a live ETA per stop; every ETA has a confidence. Recorded for F6 and F79.
+- **FB35. Delivery window capacity.** Owner sets a maximum orders per window; order entry shows places left. Waits for F57.
+- **FB39. Sort position pings by their own time.** Note for F6: a late ping must not move the dot backwards.
+
+### Stock, warehouse and suppliers
+
+- **D27. «Arrives on…» date.** Order entry shows «+300 expected Tuesday» beside a shortage. Comes after D17.
+
+### Money: credit, payments and cash
+
+- **T23. F50 payment promises wake-up row.** A follow-up closes itself when paid, otherwise wakes on the date; the same row can serve snooze and cooldowns. Waits for F50.
+- **D11. Pay by link through an Iranian gateway.** A link per order or balance on the company's own merchant account. Waits for a merchant account.
+- **A8. Reminder days around the due date.** Owner sets a day list (−3, 0, +3...); each day a task is made for the rep. First slice of F18; uses D5.
+- **B4. Bank line rules.** A short rule list pre-fills imported bank lines. Waits for the F10 bank import.
+- **Z5. Month calendar.** A tab on the money in/out page (A5): Jalali grid with collected, delivered and expenses per day.
+- **Z20. Month so far.** A bar for the month gone and a month-end guess, on the A7 tiles and the A5 page.
+
+### Accounting, reports and analytics
+
+- **D26. Month pack for the accountant.** One spreadsheet after a month is closed. Waits for closing a month (A2) and stock value on a date (D9).
+- **A1. Starting balances.** The setup wizard asks once for cash, bank, debts and stock value and makes one OPENING entry. A step in F126.
+- **Z6. Expenses by paste.** Waits for the F10 import to accept an expenses sheet.
+- **S11. F123 report questions and subtotals.** Run-time chips (period, rep, group), group by a column with subtotals, one chart. Waits for F123.
+
+### People, approvals and management control
+
+- **S5. SLA working-hours clock.** Owner sets working hours (default Sat–Wed 8–17, Thu 8–13). Part of F51.
+
+### Platform, security and administration
+
+- **UIB-A1. SMS backup for the sensitive-action code.** Send the code by SMS (Farazsms) when someone has no authenticator, with a resend countdown. Needs an account and an approved template.
+- **T22. Staff invitation by SMS link.** A 48-hour single-use link to set a password. Waits for Farazsms and the SMS guard.
+- **T9. F130 rule builder: draft, test, firing log and budget.** Edit a draft then publish; test on one customer; firing log; daily firing budget per rule. Waits for F130.
+- **T10. F126 import wizard steps.** Upload, pick sheet and header row, match columns, fix cells, import with dedupe by mobile. Waits for F126 / F10.
+- **D12. Switches per company.** Cheques, batches, leads, commission, van stock can be turned off per company. A step in the setup wizard (F126).
+- **S9. F130 rules skip imported records.** Imported records are skipped unless a rule switch says otherwise. Waits for F130.
+- **S13. Who-can-do-what page.** Owner, view only, made from the real gates. Comes after T14.
+- **S20. Replaced document keeps the old version.** Kept 30 days as «نسخهٔ قبلی». Waits for the documents feature.
+- **S25. Document valid-until date.** A task 30 days before and an expired chip. Waits for the documents feature.
+
+### Mobile, input, offline and help
+
+- **E11. F146 home screen defaults.** Owner sets a default per role; each person may hide or reorder cards except pinned ones. Waits for F146.
+
+### Messaging, chat and telephony
+
+- **FB21. Internal chat phases 2 and 3.** 1:1 and group chats on the same tables, then photos, search and read receipts. Waits for phase 1.
+- **FB20. Attempts list with retry on the status page.** Per message: tries, outcome, time and a retry button. Waits for the batch A delivery log.
+- **FB23. SMS guard.** Iranian numbers only, a cooldown per number, a daily budget, a spike alert and one ledger row per attempt; monitor first, then enforce; owner pause switch. Built together with Farazsms.
+- **FB28. Message templates (F136).** Placeholders such as `{customer.name}` with a picker. Waits for F18, F79 and F120.
+- **T16. F70 / F21 SMS campaigns rules.** Opt-out list with reason and source, two topics (promotions, service), test send, scheduling, counts. Waits for Farazsms and F70.
+- **E8-E9. Chat rules (F43).** Up to 3 pinned messages; edit your own for 24 hours; a person who cannot see a record cannot be mentioned on it. Waits for chat.
+- **A15. Phone that does not work.** An invalid-number failure marks the phone and makes a fix-it task. Waits for Farazsms.
+- **A16. Payment receipt SMS.** The customer gets the amount received and remaining balance. Waits for Farazsms.
+- **S22. Pre-flight checklist before an SMS campaign.** Red items block sending (empty list, empty placeholder, budget, no test send). Waits for T16.
+
+## 3. Parked or skipped
+
+Not planned now. The reason is in the line; the full text is in the archive.
+
+### Screens, lists and desk speed
+
+- **UIB-F. Rest of the 53 favourite patterns.** Need a decision or a library first. Passkeys are a later way to sign in.
+- **T-skip. Skipped from the Twenty study.** Sharing saved views with a role (T2 option), a log of who opens sensitive pages (T19), short links with click counts (T16).
+
+### Customers and sales (CRM)
+
+- **S18. Public «request to buy» form.** Skipped (not now).
+
+### Delivery, routing and drivers
+
+- **FB22. Skipped: van check sheet, odometer, expiry dates, store-reviewer sign-in.** The owner skipped these (the reviewer sign-in is not needed).
+
+### Stock, warehouse and suppliers
+
+- **FB43. Stock hold for a quote with an expiry.** No decision taken (open question under F51).
+- **B6. Cost after a purchase edit.** Parked until a purchase edit or void exists; then recompute the average cost.
+
+### Money: credit, payments and cash
+
+- **D10-D25-D28. Skipped from the Dolibarr study.** Customer page with SMS code (D10), depreciation of vans and equipment (D25), a calendar feed (D28).
+
+### Accounting, reports and analytics
+
+- **FB31. Reference notes, not decided.** Report-builder safety rules (F14), urgent-order broadcast to nearby drivers (F7), warehouse bin hierarchy (F93).
+- **FB44. Scheduled saved reports to Telegram.** Skipped.
+- **A9-A14. Skipped from the Akaunting study.** Three tax kinds for D7 (A9); a «بدون قیمت» print option for delivery notes (A14).
+- **B8-B9-B11-B12. Skipped from the Bigcapital study.** VAT owed report (B8), profit on a cash basis (B9), sellable and buyable switches (B11), draft-then-publish money entries (B12).
+- **Z8. Read-only token for the accountant's sheet.** Parked; the month pack (D26) covers the accountant for now.
+
+### People, approvals and management control
+
+- **FB42. Recurring driver unavailability.** Design note only: a recurring day off or leave week shown as a planner warning.
+
+### Platform, security and administration
+
+- **FB30. Company data purge and export with a dry run.** Parked until a second company is signed (F126, F127).
+- **E12-E13-E15. Skipped from the EspoCRM study.** Fixed password-reset rules (E12), an SMS with the complaint number (E13), separate lead stage lists per group (E15).
+
+## 4. Done and partly done
+
+**Built as first slices (2026-10-23, PR #57 and the small-difficulty batch):** F8, F16, F19, F23, F35, F40, F47, F54, F58, F62, F67, F72, F84, F89, F98, F99, F100, F101, F107, F108, F110, F112, F116, F132, F133, F137, F142, F144. Each has a "Built" note in `docs/future-features.md` saying what the slice covers and what it leaves out. The original table of the 22 quick wins and the list of what the small batch left for later are in the archive (section 1 and 1a).
+
+**Built from the 2026-10-28 UI pattern batch A (PR #2):** discount approval on orders, and the authenticator code before 15 sensitive actions. What was left over is UIB-A1 to UIB-A4 above. Full text: archive 1b.
+
+**Built from the studies:** S1 (branches no longer shown as duplicates, PR #20). The records F36 (duplicate customers as a decision deck) and F37 (decisions from the mobile-first rollout) are also built work, not ideas.
+
+**Partly built.** These F-entries say in their own notes that a meaningful part exists, so their real first slice is smaller than the title suggests:
+
+- **F9 Churn and credit-risk scoring:** churn scoring exists; credit-risk scoring is the missing half (see F46).
+- **F11 Demand forecasting and auto-purchasing:** demand forecast and reorder point exist; supplier lead times and purchase drafts are missing.
+- **F13 Offline-first everywhere:** the offline layer already covers sales roles for orders, deliveries, payments, cheques, complaints and new customers; tasks, notes and call outcomes are not covered (see F105).
+- **F15 Multi-warehouse and multi-branch:** stock is already location-aware, with warehouse-to-van transfers; per-branch ledgers and a first-class warehouse transfer are missing.
+- **F17 Delivery proof and dispute handling:** receiver name, GPS, photo and signature columns exist on deliveries; no required-proof rule or dispute case.
+- **F33 Seasonal and holiday planning:** Jalali seasonal factors exist in the forecast; holiday-period shifting is missing.
+- **F51 SLA and escalation rules:** the rule engine already supports escalation windows; which SLAs are configured and a breach report are missing.
+- **F61 Backorders and partial fulfilment:** partial delivery and an automatic backorder draft exist; promised dates, a list and auto-fulfilment are missing.
+- **F130 Rule builder screen:** the rule engine exists; owners can only toggle a rule and change its cooldown.
+- **F132 Order priority flag:** built in PR #57 (picker and tags).
+- **F138 Off-site backup copy:** the integrity check and status file are built (PR #57); the off-site copy and alert are missing.
+- **F143 Approve from Telegram:** push notifications already carry one-tap actions for cheques and reminders; Telegram messages have no buttons.
+- **F144 Failure, cancellation, return and delay reason reports:** built in PR #57 (/sales/reasons).
+
+## 5. Index of F-entries
+
+All 148 entries of `docs/future-features.md` (F1 to F148), grouped by area, with a status and the study ideas that mention them ("Also in"). This is the same table as the old section 9, with two columns added. Totals from the old text: 46 small, 73 medium, 27 large first slices; 123 entries note existing code; 2 entries are records of built work.
+
+### Customers and sales (CRM)
+
+| ID | Feature | Size | Existing code noted | Needs / relates to | Status | Also in |
+|---|---|---|---|---|---|---|
+| F8 | Reorder prediction (who is due to order) | S |  | — | Built (first slice) | — |
+| F20 | Daily visit route for salespeople | M | yes | F8 | Not built | — |
+| F22 | Market and competitor price log | M |  | F1 | Not built | — |
+| F28 | Customer segmentation and loyalty | M |  | F9 | Not built | FB36 |
+| F29 | Sales pipeline and quotations | L | yes | F23 | Not built | S8 |
+| F40 | Customer onboarding checklist | S | yes | — | Built (first slice) | — |
+| F41 | Visit and call quality review | M | yes | F4 | Not built | — |
+| F43 | Shared notes and @-mentions | M | yes | — | Not built | E8-E9 |
+| F47 | Customer 360 page | S | yes | F8, F46 | Built (first slice) | — |
+| F52 | Free samples tracking | M | yes | — | Not built | — |
+| F53 | New product launch tracker | M |  | F21, F52 | Not built | — |
+| F54 | Data quality dashboard | S | yes | F148 | Built (first slice) | A15 |
+| F59 | Salesperson handover | M | yes | F27 | Not built | T13, E2 |
+| F70 | Segment campaigns | M | yes | F8, F9 | Not built | T16 |
+| F74 | Rep daily wrap-up | S | yes | F50 | Small, waits for a prerequisite | — |
+| F77 | Customer visit frequency targets | S | yes | F20, F28 | Small, waits for a prerequisite | — |
+| F85 | Order source tracking | S | yes | F3, F4, F44 | Small, waits for a prerequisite | T5 |
+| F86 | Manager coaching notes | S | yes | F41, F59 | Small, waits for a prerequisite | — |
+| F91 | Call and visit quota tracking | S | yes | F41 | Small, waits for a prerequisite | — |
+| F98 | Customer note and visit search | S | yes | — | Built (first slice) | — |
+| F100 | Customer ownership change history | S | yes | F59 | Built (first slice) | T4 |
+| F104 | Customer snapshot on call pickup | S | yes | F8, F46, F47 | Small, waits for a prerequisite | — |
+| F122 | Custom fields on customers | M | yes | F98, F148 | Not built | T12, E16 |
+| F135 | Manager ride-along visits | M | yes | F86 | Not built | — |
+| F137 | Lead source return on spend | S | yes | F28, F85 | Built (first slice) | S17 |
+| F141 | Survey builder | M | yes | F45, F79 | Not built | — |
+| F148 | Duplicate customer detection upgrade (fuzzy match, preview, undo) | M | yes | F5 | Not built | S7 |
+
+### Orders, pricing and promotions
+
+| ID | Feature | Size | Existing code noted | Needs / relates to | Status | Also in |
+|---|---|---|---|---|---|---|
+| F3 | Paste-to-parse (turn a pasted message into a draft) | L |  | — | Not built | — |
+| F21 | Promotion and campaign manager | L |  | — | Not built | FB36, T16 |
+| F23 | Digital catalogue and price list | S |  | — | Built (first slice) | — |
+| F44 | Standing orders and contracts | L | yes | — | Not built | S10 |
+| F56 | Price list versioning and scheduled price changes | M | yes | F21, F48 | Not built | D14 |
+| F58 | Order templates and favourites | S | yes | — | Built (first slice) | — |
+| F60 | Call-to-order shortcut | M | yes | F4, F58 | Not built | — |
+| F61 | Backorders and partial fulfilment | M | yes | F44, F64 | Partly built | — |
+| F62 | Customer-specific product visibility | S | yes | F58 | Built (first slice) | — |
+| F64 | Minimum order and delivery fee rules | M | yes | — | Not built | — |
+| F65 | Small-quantity price uplift | M | yes | F48, F56, F64 | Not built | — |
+| F71 | Customer credit holds by rep | M | yes | F48 | Not built | — |
+| F72 | Duplicate order warning | S | yes | — | Built (first slice) | — |
+| F73 | Order edit history | M | yes | F27, F48 | Not built | FB3 |
+| F76 | Order approval by value | M | yes | F48, F51 | Not built | — |
+| F89 | Customer price history | S | yes | F29, F56 | Built (first slice) | — |
+| F96 | Inter-group order transfers | L | yes | F48 | Not built | — |
+| F114 | Carton completion nudges | S | yes | F58, F65 | Small, waits for a prerequisite | — |
+| F121 | Pre-orders against incoming stock | L | yes | F61, F66 | Not built | D27 |
+| F131 | Keyboard-first desk order entry | M | yes | F58 | Not built | — |
+| F132 | Order priority flag | S | yes | F28, F64 | Built (first slice) | — |
+| F145 | Counter sales and customer pickup | L | yes | F63 | Not built | — |
+
+### Delivery, routing and drivers
+
+| ID | Feature | Size | Existing code noted | Needs / relates to | Status | Also in |
+|---|---|---|---|---|---|---|
+| F6 | Live driver tracking and customer ETA | L |  | — | Not built | FB10, FB11, FB12, FB13, FB14, FB15, FB16, FB22, FB25, FB33, FB39 |
+| F7 | Dynamic re-routing during the day | L |  | F6 | Not built | FB31 |
+| F17 | Delivery proof and dispute handling | M | yes | — | Partly built | FB17, FB22 |
+| F24 | Driver pay and incentives | M |  | — | Not built | — |
+| F38 | Automatic arrival and departure (geofencing) | S | yes | F6 | Small, waits for a prerequisite | FB15 |
+| F45 | Customer feedback loop (delivery rating) | M | yes | F6, F18 | Not built | — |
+| F57 | Delivery time windows | M | yes | F38 | Not built | FB35 |
+| F68 | Rep activity map | M | yes | F6, F38 | Not built | — |
+| F69 | Delivery instructions (per customer and per order) | S | yes | F57 | Small, waits for a prerequisite | — |
+| F78 | Driver map pin correction | M | yes | F27 | Not built | E3 |
+| F79 | Late-delivery notices to customers | M | yes | F6 | Not built | FB11, FB22, FB25, FB28, FB33 |
+| F81 | Peak-day capacity warning | M | yes | F25, F57 | Not built | — |
+| F97 | Vehicle assignment history | M | yes | — | Not built | — |
+| F101 | Bulk delivery notes per run | S | yes | F147 | Built (first slice) | — |
+| F103 | Rep mileage log | M | yes | F68, F88 | Not built | — |
+| F115 | Voice read-out for drivers | M | yes | F69, F117 | Not built | — |
+| F118 | Supplier pickup runs | L | yes | F31, F66 | Not built | — |
+| F119 | Return pickup scheduling | M | yes | F12, F80 | Not built | — |
+| F120 | Delivery confirmation code | M | yes | F6, F17, F79 | Not built | FB28 |
+| F139 | Third-party carrier shipments | L | yes | F17 | Not built | — |
+
+### Stock, warehouse and suppliers
+
+| ID | Feature | Size | Existing code noted | Needs / relates to | Status | Also in |
+|---|---|---|---|---|---|---|
+| F11 | Demand forecasting and auto-purchasing | L | yes | — | Partly built | D17 |
+| F12 | Returns and quality management | M |  | F1 | Not built | B1 |
+| F15 | Multi-warehouse and multi-branch | L | yes | — | Partly built | — |
+| F30 | Van loading verification | M |  | F1 | Not built | — |
+| F31 | Supplier scorecards and price history | S | yes | F12 | Small, waits for a prerequisite | D16 |
+| F33 | Seasonal and holiday planning | M | yes | F11 | Partly built | — |
+| F42 | Complaint root-cause analytics | S | yes | F12, F31 | Small, waits for a prerequisite | — |
+| F66 | Supplier order tracking (purchase orders) | L | yes | F11, F31 | Not built | — |
+| F80 | Warehouse returns handling | M | yes | F12 | Not built | B1 |
+| F87 | Warehouse receiving appointments | M | yes | F31, F66 | Not built | — |
+| F93 | Warehouse bin locations and stock transfers | M | yes | F1, F30 | Not built | FB31 |
+| F94 | Warehouse picking accuracy log | M | yes | F30 | Not built | — |
+
+### Money: credit, payments and cash
+
+| ID | Feature | Size | Existing code noted | Needs / relates to | Status | Also in |
+|---|---|---|---|---|---|---|
+| F9 | Churn and credit-risk scoring | M | yes | — | Partly built | — |
+| F10 | Bank and payment reconciliation | L |  | F5 | Not built | T10, D21, A3, B4, Z6 |
+| F18 | Customer statements and dunning | M |  | F10 | Not built | FB28, A8 |
+| F46 | Credit-risk scoring from payment behaviour | M | yes | — | Not built | — |
+| F49 | Cash-flow forecast | M | yes | F46, F50 | Not built | D23, D24 |
+| F50 | Payment promise tracker | M | yes | F18, F46 | Not built | T8, T23 |
+| F63 | Deposits and prepayments | M | yes | F46 | Not built | — |
+| F83 | Payment terms and early-payment discounts | M | yes | F18, F46, F50 | Not built | D5 |
+
+### Accounting, analytics and reporting
+
+| ID | Feature | Size | Existing code noted | Needs / relates to | Status | Also in |
+|---|---|---|---|---|---|---|
+| F14 | Natural-language reports ("ask your data") | L |  | — | Not built | FB31 |
+| F16 | Owner mobile dashboard with push alerts | S |  | — | Built (first slice) | — |
+| F32 | Margin analytics (customer, product, route) | M | yes | — | Not built | — |
+| F34 | Data export and backup self-service | S | yes | F27 | Small, waits for a prerequisite | — |
+| F67 | Friday weekly scorecard | S | yes | — | Built (first slice) | — |
+| F90 | Monthly staff pay summary for the accountant | M | yes | F25, F27, F88 | Not built | — |
+| F92 | Territory revenue map | M | yes | — | Not built | — |
+| F116 | Amount in words | S | yes | F18, F147 | Built (first slice) | — |
+| F123 | Report builder with saved reports | L | yes | F14 | Not built | T1, S11 |
+| F134 | Profit and loss by group | M | yes | F32 | Not built | — |
+| F144 | Failure, cancellation, return and delay reason reports | S | yes | F12, F42 | Built (first slice) | — |
+| F147 | Document templates (invoices, delivery notes, statements) | M |  | F18 | Not built | D7 |
+
+### People, approvals and management control
+
+| ID | Feature | Size | Existing code noted | Needs / relates to | Status | Also in |
+|---|---|---|---|---|---|---|
+| F19 | Salesperson earnings view and commission simulator | S | yes | — | Built (first slice) | FB27 |
+| F25 | Staff scheduling and attendance | L |  | — | Not built | — |
+| F26 | Field expenses and petty cash | M |  | — | Not built | D15 |
+| F27 | Audit trail and anomaly detection | M | yes | — | Not built | T-skip, D6, E6 |
+| F48 | Change approvals (second-person sign-off) | M | yes | F27 | Not built | — |
+| F51 | SLA and escalation rules | M | yes | — | Partly built | FB43, S5 |
+| F82 | Approval delegation while away | M | yes | F27, F48 | Not built | T13 |
+| F88 | Staff expense reimbursement | M | yes | F26, F48 | Not built | D15 |
+| F95 | Staff birthdays and work anniversaries | S | yes | F86, F90 | Small, waits for a prerequisite | — |
+| F102 | Manager approval inbox | M | yes | F48, F76, F82, F88 | Not built | — |
+| F129 | Approval chains | L | yes | F48, F76, F82, F102 | Not built | — |
+| F130 | Rule builder screen | L | yes | F51 | Partly built | T1, T9, S9 |
+| F133 | Required training and completion tracking | S | yes | F84, F112 | Built (first slice) | — |
+
+### Platform, security and administration
+
+| ID | Feature | Size | Existing code noted | Needs / relates to | Status | Also in |
+|---|---|---|---|---|---|---|
+| F35 | Force a new password on first sign-in | S |  | — | Built (first slice) | — |
+| F99 | Product catalogue change log | S | yes | F27 | Built (first slice) | — |
+| F106 | Two-step login for owners and managers | L | yes | F107 | Not built | — |
+| F107 | Device and session management | S | yes | F106 | Built (first slice) | — |
+| F108 | System status page for the owner | S | yes | F34 | Built (first slice) | — |
+| F109 | Self-service password reset | M | yes | F106, F110 | Not built | E12-E13-E15 |
+| F110 | Login activity log | S | yes | F27, F107 | Built (first slice) | — |
+| F111 | Recycle bin | M | yes | F27, F34 | Not built | T3 |
+| F125 | Wallboard display | M | yes | F108 | Not built | — |
+| F126 | Organisation setup wizard | L | yes | F109, F127 | Not built | FB30, T10, D12, A1 |
+| F127 | Tenant usage and plan limits | M | yes | F108, F126 | Not built | FB30 |
+| F128 | Read-only auditor role | L | yes | F107, F110 | Not built | D26 |
+| F138 | Off-site backup copy | S | yes | F34, F108 | Partly built | — |
+| F140 | Company asset register | S | yes | F59, F107 | Small, waits for a prerequisite | D11, D10-D25-D28 |
+
+### Mobile experience, input, offline and help
+
+| ID | Feature | Size | Existing code noted | Needs / relates to | Status | Also in |
+|---|---|---|---|---|---|---|
+| F1 | Camera capture (read a document instead of typing it) | L |  | — | Not built | D19 |
+| F2 | Voice input (speak instead of typing a note) | S |  | — | Small, waits for a prerequisite | — |
+| F5 | Persian text proofing (help users type clean Persian) | S | yes | F1, F3 | Small, waits for a prerequisite | — |
+| F13 | Offline-first everywhere | L | yes | — | Partly built | — |
+| F39 | Training and onboarding mode | M | yes | — | Not built | — |
+| F75 | Offline product catalogue for reps | M | yes | F13 | Not built | — |
+| F84 | In-app help and tooltips | S | yes | — | Built (first slice) | — |
+| F105 | Offline tasks and notes | M | yes | F13 | Not built | — |
+| F112 | What's new notes | S | yes | F84 | Built (first slice) | — |
+| F113 | Radial quick-action menu and home-screen shortcuts | M | yes | — | Not built | — |
+| F117 | Haptic and sound feedback settings | S | yes | F1, F30 | Small, waits for a prerequisite | — |
+| F142 | Snooze for alerts and tasks | S | yes | — | Built (first slice) | T23 |
+| F146 | Role-based dashboard builder | M | yes | — | Not built | E11, A7 |
+
+### Telephony and messaging channels
+
+| ID | Feature | Size | Existing code noted | Needs / relates to | Status | Also in |
+|---|---|---|---|---|---|---|
+| F4 | Wazo VoIP inside the CRM/ERP (call from, and log to, the customer record) | L |  | — | Not built | — |
+| F55 | Owner announcements with read receipts | M | yes | — | Not built | — |
+| F124 | Telegram bot for staff queries | L | yes | F107 | Not built | — |
+| F136 | Message template editor | M | yes | F18, F79, F120 | Not built | FB28 |
+| F143 | Approve from Telegram | M | yes | F82, F102, F124 | Partly built | — |
+
+### Records of built work (not future features)
+
+| ID | Feature |
+|---|---|
+| F36 | Duplicate customers as a decision deck — built |
+| F37 | Decisions from the mobile-first rollout |
+
+## 6. Design notes
+
+### 6.1 Foundations
 
 Entries that other entries list as a prerequisite or a close relation. Doing the first slice of one of these early removes a blocker for several others. The count is how many entries name it in their Prerequisites line (taken from the file); the table is sorted by it.
 
@@ -392,7 +1074,7 @@ Entries that other entries list as a prerequisite or a close relation. Doing the
 
 Most-referenced entries by the file's own Prerequisites lines: F27 (10), F48 (10), F1 (6), F6 (6), F18 (6), F46 (6), F12 (5), F107 (5), F8 (4), F31 (4), F58 (4), F4 (3), F50 (3), F64 (3).
 
-## 3. Overlaps
+### 6.2 Overlaps
 
 Groups of entries that cover the same ground from different angles. Design each group once, then build the entries as slices of it, so the pieces fit.
 
@@ -417,13 +1099,13 @@ Groups of entries that cover the same ground from different angles. Design each 
 | Sessions and access | F106, F107, F110, F128, F109 | sign-in security as one design |
 | Backup and recovery | F34, F138, F108, F111 | backup, copy, status and restore as one chain |
 
-## 4. Suggested order
+### 6.3 Suggested order of waves
 
 A suggestion in waves. Within a wave the order is flexible; across waves it follows the dependencies above.
 
-**Wave P — platform.** The move to PostgreSQL and the platform choices in [section 10](#10-platform-facts-and-decisions-not-features) come first, because every later entry is written against the new database. They are not F-entries.
+**Wave P — platform.** The move to PostgreSQL and the platform choices in [docs/decisions.md section 10](decisions.md#10-platform-facts-and-decisions-not-features) come first, because every later entry is written against the new database. They are not F-entries.
 
-**Wave 0 — quick wins.** The 22 items in section 1. They add visible value, touch little, and several (F99, F100, F110, F108, F138) are groundwork for later waves.
+**Wave 0 — quick wins.** The 22 quick wins (listed under Done). They add visible value, touch little, and several (F99, F100, F110, F108, F138) are groundwork for later waves.
 
 **Wave 1 — foundations.** First slices of F27 (audit record), F48 (one approval type), F107 → F106 (sessions, then two-step login), F66 (purchase orders, once the ordering practice is confirmed) and the single decision on the customer message channel (F6/F79). The SMS provider is decided (Farazsms); consent, opt-out and any other channel are still open.
 
@@ -433,56 +1115,7 @@ A suggestion in waves. Within a wave the order is flexible; across waves it foll
 
 **Wave 4 — heavier or external.** F4 (telephony), F10 (bank formats), F1 (OCR), F13/F105 (more offline), F126/F127 (tenant tooling), F139 (carriers), F124/F143 (Telegram bot and approvals), F14/F123 (report builders).
 
-## 5. Decisions needed before building
-
-Entries blocked by a choice, not by code. Settle these once and several entries unblock.
-
-| Decision | Entries it unblocks | Status |
-|---|---|---|
-| Customer message channel, provider and consent | F6, F79, F18, F45, F120, F136, F55, F70, F141 | Partly decided 2026-10-23: SMS provider is Farazsms. Consent, opt-out and other channels open |
-| Staff location: collect, keep and show positions | F6, F38, F68, F103 | Partly decided 2026-10-23: source is the phone's GPS (Capacitor shell). Keeping and showing policy open |
-| Where Persian text and images may be processed (device, server, a model) | F1, F3, F5, F14, F2 | Narrowed 2026-10-23: the server is in Iran, so a hosted foreign model is unlikely; device or self-hosted. Open |
-| Telephony infrastructure and carrier | F4, F60 | Open (an Iranian carrier is assumed in F4) |
-| Bank statement formats or a payment gateway | F10 | Open |
-| Pricing policy: uplift, minimum order, early-payment discount, campaigns | F21, F56, F64, F65, F83 | Open |
-| Legal and tax: e-invoicing, document numbering, payroll outputs | F147, F90 | Open |
-| Off-site backup destination and who holds the key | F138, F34 | Open (the server is in Iran) |
-| Credit policy: auto-pass thresholds, holds, starter limits, approvals | F46, F71, F76, F48, F129 | Open |
-| How commission works across groups | F96, F134 | Open |
-| Real-device testing before any build | F113, F115, F117 | Open (Maestro with one physical phone is suggested in section 10.8) |
-| Android distribution route (a domestic Android store or a direct file) and iPhone support | F6, F38, F103, F1, F30 | Open (the Capacitor shell itself is decided, section 10.1) |
-| When to turn on row-level security | F27, F73, F99, F100, F111, F126, F127 | Decided and built 2026-10-23: on PostgreSQL from the start, before the cut-over (section 10.2, P3) |
-| One chart library or keep the custom charts | F123, F146, F32 | Open (section 10.6: decide before writing more chart types) |
-
-## 6. Already partly built
-
-These entries say, in their own "Already in the app" or "Correction (found later)" notes, that a meaningful part exists. Their real first slice is smaller than the title suggests.
-
-- **F9 Churn and credit-risk scoring:** churn scoring exists; credit-risk scoring is the missing half (see F46).
-- **F11 Demand forecasting and auto-purchasing:** demand forecast and reorder point exist; supplier lead times and purchase drafts are missing.
-- **F13 Offline-first everywhere:** the offline layer already covers sales roles for orders, deliveries, payments, cheques, complaints and new customers; tasks, notes and call outcomes are not covered (see F105).
-- **F15 Multi-warehouse and multi-branch:** stock is already location-aware, with warehouse-to-van transfers; per-branch ledgers and a first-class warehouse transfer are missing.
-- **F17 Delivery proof and dispute handling:** receiver name, GPS, photo and signature columns exist on deliveries; no required-proof rule or dispute case.
-- **F33 Seasonal and holiday planning:** Jalali seasonal factors exist in the forecast; holiday-period shifting is missing.
-- **F51 SLA and escalation rules:** the rule engine already supports escalation windows; which SLAs are configured and a breach report are missing.
-- **F61 Backorders and partial fulfilment:** partial delivery and an automatic backorder draft exist; promised dates, a list and auto-fulfilment are missing.
-- **F130 Rule builder screen:** the rule engine exists; owners can only toggle a rule and change its cooldown.
-- **F132 Order priority flag:** built in PR #57 (picker and tags).
-- **F138 Off-site backup copy:** the integrity check and status file are built (PR #57); the off-site copy and alert are missing.
-- **F143 Approve from Telegram:** push notifications already carry one-tap actions for cheques and reminders; Telegram messages have no buttons.
-- **F144 Failure, cancellation, return and delay reason reports:** built in PR #57 (/sales/reasons).
-
-## 7. Looked like features but already exist
-
-Ideas that came up during the brainstorm and were checked against the code, then not added as features because they are built:
-
-- **Notifications centre:** priorities, per-user type-by-channel preferences, a quiet window, a grouped feed with unread counts, push and Telegram.
-- **Stock reservation:** confirming an order reserves earliest-expiry batches, records a shortfall, and releases or consumes the reservation through the order state machine.
-- **Accounting period locking (enforcement):** closed fiscal periods refuse postings. What is missing is a screen or flow that closes one (not verified; none found).
-- **Referrer on a lead:** customers already store who referred them; only rewards and reporting are missing.
-- **Duplicate customer decision deck** and **expense receipt photo** and several mobile-first items: recorded as built in F36 and F37.
-
-## 8. Claims not yet verified
+### 6.4 Claims not yet verified
 
 Statements in the entries that I could not confirm from the code. Check them before relying on the entry:
 
@@ -501,7 +1134,7 @@ Statements in the entries that I could not confirm from the code. Check them bef
 - F147 (document templates): how far the existing print code goes.
 - Whether any screen closes a fiscal period.
 
-Platform claims in [section 10](#10-platform-facts-and-decisions-not-features), all unverified:
+Platform claims in [docs/decisions.md section 10](decisions.md#10-platform-facts-and-decisions-not-features), all unverified:
 
 - Nothing has been tested from Iran: the outside services in 10.5, package registries, Firebase push, map tiles.
 - Package versions and dates come from the npm registry; no package was installed or run.
@@ -511,475 +1144,3 @@ Platform claims in [section 10](#10-platform-facts-and-decisions-not-features), 
 - ~~Whether MapLibre needs the right-to-left text plugin~~: answered 2026-10-28, MapLibre 6 shapes Persian itself and labels render in Peyda (see 10.1, map tiles).
 - Whether Google Play and Cafe Bazaar or Myket rules allow updating web code inside the Android app.
 
-## 9. Every entry by theme
-
-### Customers and sales (CRM)
-
-| ID | Feature | Size | Existing code noted | Needs / relates to |
-|---|---|---|---|---|
-| F8 | Reorder prediction (who is due to order) | S |  | — |
-| F20 | Daily visit route for salespeople | M | yes | F8 |
-| F22 | Market and competitor price log | M |  | F1 |
-| F28 | Customer segmentation and loyalty | M |  | F9 |
-| F29 | Sales pipeline and quotations | L | yes | F23 |
-| F40 | Customer onboarding checklist | S | yes | — |
-| F41 | Visit and call quality review | M | yes | F4 |
-| F43 | Shared notes and @-mentions | M | yes | — |
-| F47 | Customer 360 page | S | yes | F8, F46 |
-| F52 | Free samples tracking | M | yes | — |
-| F53 | New product launch tracker | M |  | F21, F52 |
-| F54 | Data quality dashboard | S | yes | F148 |
-| F59 | Salesperson handover | M | yes | F27 |
-| F70 | Segment campaigns | M | yes | F8, F9 |
-| F74 | Rep daily wrap-up | S | yes | F50 |
-| F77 | Customer visit frequency targets | S | yes | F20, F28 |
-| F85 | Order source tracking | S | yes | F3, F4, F44 |
-| F86 | Manager coaching notes | S | yes | F41, F59 |
-| F91 | Call and visit quota tracking | S | yes | F41 |
-| F98 | Customer note and visit search | S | yes | — |
-| F100 | Customer ownership change history | S | yes | F59 |
-| F104 | Customer snapshot on call pickup | S | yes | F8, F46, F47 |
-| F122 | Custom fields on customers | M | yes | F98, F148 |
-| F135 | Manager ride-along visits | M | yes | F86 |
-| F137 | Lead source return on spend | S | yes | F28, F85 |
-| F141 | Survey builder | M | yes | F45, F79 |
-| F148 | Duplicate customer detection upgrade (fuzzy match, preview, undo) | M | yes | F5 |
-
-### Orders, pricing and promotions
-
-| ID | Feature | Size | Existing code noted | Needs / relates to |
-|---|---|---|---|---|
-| F3 | Paste-to-parse (turn a pasted message into a draft) | L |  | — |
-| F21 | Promotion and campaign manager | L |  | — |
-| F23 | Digital catalogue and price list | S |  | — |
-| F44 | Standing orders and contracts | L | yes | — |
-| F56 | Price list versioning and scheduled price changes | M | yes | F21, F48 |
-| F58 | Order templates and favourites | S | yes | — |
-| F60 | Call-to-order shortcut | M | yes | F4, F58 |
-| F61 | Backorders and partial fulfilment | M | yes | F44, F64 |
-| F62 | Customer-specific product visibility | S | yes | F58 |
-| F64 | Minimum order and delivery fee rules | M | yes | — |
-| F65 | Small-quantity price uplift | M | yes | F48, F56, F64 |
-| F71 | Customer credit holds by rep | M | yes | F48 |
-| F72 | Duplicate order warning | S | yes | — |
-| F73 | Order edit history | M | yes | F27, F48 |
-| F76 | Order approval by value | M | yes | F48, F51 |
-| F89 | Customer price history | S | yes | F29, F56 |
-| F96 | Inter-group order transfers | L | yes | F48 |
-| F114 | Carton completion nudges | S | yes | F58, F65 |
-| F121 | Pre-orders against incoming stock | L | yes | F61, F66 |
-| F131 | Keyboard-first desk order entry | M | yes | F58 |
-| F132 | Order priority flag | S | yes | F28, F64 |
-| F145 | Counter sales and customer pickup | L | yes | F63 |
-
-### Delivery, routing and drivers
-
-| ID | Feature | Size | Existing code noted | Needs / relates to |
-|---|---|---|---|---|
-| F6 | Live driver tracking and customer ETA | L |  | — |
-| F7 | Dynamic re-routing during the day | L |  | F6 |
-| F17 | Delivery proof and dispute handling | M | yes | — |
-| F24 | Driver pay and incentives | M |  | — |
-| F38 | Automatic arrival and departure (geofencing) | S | yes | F6 |
-| F45 | Customer feedback loop (delivery rating) | M | yes | F6, F18 |
-| F57 | Delivery time windows | M | yes | F38 |
-| F68 | Rep activity map | M | yes | F6, F38 |
-| F69 | Delivery instructions (per customer and per order) | S | yes | F57 |
-| F78 | Driver map pin correction | M | yes | F27 |
-| F79 | Late-delivery notices to customers | M | yes | F6 |
-| F81 | Peak-day capacity warning | M | yes | F25, F57 |
-| F97 | Vehicle assignment history | M | yes | — |
-| F101 | Bulk delivery notes per run | S | yes | F147 |
-| F103 | Rep mileage log | M | yes | F68, F88 |
-| F115 | Voice read-out for drivers | M | yes | F69, F117 |
-| F118 | Supplier pickup runs | L | yes | F31, F66 |
-| F119 | Return pickup scheduling | M | yes | F12, F80 |
-| F120 | Delivery confirmation code | M | yes | F6, F17, F79 |
-| F139 | Third-party carrier shipments | L | yes | F17 |
-
-### Stock, warehouse and suppliers
-
-| ID | Feature | Size | Existing code noted | Needs / relates to |
-|---|---|---|---|---|
-| F11 | Demand forecasting and auto-purchasing | L | yes | — |
-| F12 | Returns and quality management | M |  | F1 |
-| F15 | Multi-warehouse and multi-branch | L | yes | — |
-| F30 | Van loading verification | M |  | F1 |
-| F31 | Supplier scorecards and price history | S | yes | F12 |
-| F33 | Seasonal and holiday planning | M | yes | F11 |
-| F42 | Complaint root-cause analytics | S | yes | F12, F31 |
-| F66 | Supplier order tracking (purchase orders) | L | yes | F11, F31 |
-| F80 | Warehouse returns handling | M | yes | F12 |
-| F87 | Warehouse receiving appointments | M | yes | F31, F66 |
-| F93 | Warehouse bin locations and stock transfers | M | yes | F1, F30 |
-| F94 | Warehouse picking accuracy log | M | yes | F30 |
-
-### Money: credit, payments and cash
-
-| ID | Feature | Size | Existing code noted | Needs / relates to |
-|---|---|---|---|---|
-| F9 | Churn and credit-risk scoring | M | yes | — |
-| F10 | Bank and payment reconciliation | L |  | F5 |
-| F18 | Customer statements and dunning | M |  | F10 |
-| F46 | Credit-risk scoring from payment behaviour | M | yes | — |
-| F49 | Cash-flow forecast | M | yes | F46, F50 |
-| F50 | Payment promise tracker | M | yes | F18, F46 |
-| F63 | Deposits and prepayments | M | yes | F46 |
-| F83 | Payment terms and early-payment discounts | M | yes | F18, F46, F50 |
-
-### Accounting, analytics and reporting
-
-| ID | Feature | Size | Existing code noted | Needs / relates to |
-|---|---|---|---|---|
-| F14 | Natural-language reports ("ask your data") | L |  | — |
-| F16 | Owner mobile dashboard with push alerts | S |  | — |
-| F32 | Margin analytics (customer, product, route) | M | yes | — |
-| F34 | Data export and backup self-service | S | yes | F27 |
-| F67 | Friday weekly scorecard | S | yes | — |
-| F90 | Monthly staff pay summary for the accountant | M | yes | F25, F27, F88 |
-| F92 | Territory revenue map | M | yes | — |
-| F116 | Amount in words | S | yes | F18, F147 |
-| F123 | Report builder with saved reports | L | yes | F14 |
-| F134 | Profit and loss by group | M | yes | F32 |
-| F144 | Failure, cancellation, return and delay reason reports | S | yes | F12, F42 |
-| F147 | Document templates (invoices, delivery notes, statements) | M |  | F18 |
-
-### People, approvals and management control
-
-| ID | Feature | Size | Existing code noted | Needs / relates to |
-|---|---|---|---|---|
-| F19 | Salesperson earnings view and commission simulator | S | yes | — |
-| F25 | Staff scheduling and attendance | L |  | — |
-| F26 | Field expenses and petty cash | M |  | — |
-| F27 | Audit trail and anomaly detection | M | yes | — |
-| F48 | Change approvals (second-person sign-off) | M | yes | F27 |
-| F51 | SLA and escalation rules | M | yes | — |
-| F82 | Approval delegation while away | M | yes | F27, F48 |
-| F88 | Staff expense reimbursement | M | yes | F26, F48 |
-| F95 | Staff birthdays and work anniversaries | S | yes | F86, F90 |
-| F102 | Manager approval inbox | M | yes | F48, F76, F82, F88 |
-| F129 | Approval chains | L | yes | F48, F76, F82, F102 |
-| F130 | Rule builder screen | L | yes | F51 |
-| F133 | Required training and completion tracking | S | yes | F84, F112 |
-
-### Platform, security and administration
-
-| ID | Feature | Size | Existing code noted | Needs / relates to |
-|---|---|---|---|---|
-| F35 | Force a new password on first sign-in | S |  | — |
-| F99 | Product catalogue change log | S | yes | F27 |
-| F106 | Two-step login for owners and managers | L | yes | F107 |
-| F107 | Device and session management | S | yes | F106 |
-| F108 | System status page for the owner | S | yes | F34 |
-| F109 | Self-service password reset | M | yes | F106, F110 |
-| F110 | Login activity log | S | yes | F27, F107 |
-| F111 | Recycle bin | M | yes | F27, F34 |
-| F125 | Wallboard display | M | yes | F108 |
-| F126 | Organisation setup wizard | L | yes | F109, F127 |
-| F127 | Tenant usage and plan limits | M | yes | F108, F126 |
-| F128 | Read-only auditor role | L | yes | F107, F110 |
-| F138 | Off-site backup copy | S | yes | F34, F108 |
-| F140 | Company asset register | S | yes | F59, F107 |
-
-### Mobile experience, input, offline and help
-
-| ID | Feature | Size | Existing code noted | Needs / relates to |
-|---|---|---|---|---|
-| F1 | Camera capture (read a document instead of typing it) | L |  | — |
-| F2 | Voice input (speak instead of typing a note) | S |  | — |
-| F5 | Persian text proofing (help users type clean Persian) | S | yes | F1, F3 |
-| F13 | Offline-first everywhere | L | yes | — |
-| F39 | Training and onboarding mode | M | yes | — |
-| F75 | Offline product catalogue for reps | M | yes | F13 |
-| F84 | In-app help and tooltips | S | yes | — |
-| F105 | Offline tasks and notes | M | yes | F13 |
-| F112 | What's new notes | S | yes | F84 |
-| F113 | Radial quick-action menu and home-screen shortcuts | M | yes | — |
-| F117 | Haptic and sound feedback settings | S | yes | F1, F30 |
-| F142 | Snooze for alerts and tasks | S | yes | — |
-| F146 | Role-based dashboard builder | M | yes | — |
-
-### Telephony and messaging channels
-
-| ID | Feature | Size | Existing code noted | Needs / relates to |
-|---|---|---|---|---|
-| F4 | Wazo VoIP inside the CRM/ERP (call from, and log to, the customer record) | L |  | — |
-| F55 | Owner announcements with read receipts | M | yes | — |
-| F124 | Telegram bot for staff queries | L | yes | F107 |
-| F136 | Message template editor | M | yes | F18, F79, F120 |
-| F143 | Approve from Telegram | M | yes | F82, F102, F124 |
-
-### Records of built work (not future features)
-
-| ID | Feature | Size | Existing code noted | Needs / relates to |
-|---|---|---|---|---|
-| F36 | Duplicate customers as a decision deck — built | — |  | — |
-| F37 | Decisions from the mobile-first rollout | — |  | — |
-
-## 10. Platform facts and decisions (not features)
-
-Not an F-entry. This records what the owner stated and decided on 2026-10-23 and what follows from it for the entries above.
-
-How to read it: **10.1 is fact and decision** (the owner's words). **10.2 to 10.8 are proposals**, meant to be argued with. Package versions and dates were read from the npm registry on 2026-10-23; nothing was installed or tested, including from Iran. Per the "look for existing solutions" rule in `CLAUDE.md`, each proposal is compared with alternatives and put to the owner before anything is adopted.
-
-### 10.1 Stated and decided by the owner
-
-| Fact or decision | What it means |
-|---|---|
-| The database moves from SQLite to PostgreSQL. | Decided. It replaces "stay on SQLite" in `docs/crm-erp-plan.md` (Part 0 row 12, Part 2). The condition set there, every query behind `lib/repo`, is met. |
-| The data in the current database is dummy. | Nothing has to be carried over. Postgres starts from one clean baseline schema and is filled from the seed scripts. The eight step-by-step migrations, the table-rebuild code, the boot-time backfills and the real-data migration tests exist to upgrade old SQLite files and are not needed (check each backfill before dropping it); the reference-data seeds (roles, reason codes, notification types, chart of accounts) are. |
-| The production server is in Iran. | Self-host everything and use no paid foreign API or key, the rule already followed for OpenStreetMap, Open-Meteo, OSRM and VROOM. Every outside service must be checked from the server and from a phone on an Iranian network (list below). |
-| One company uses RouteFlow today; other companies may later. | Keep one database with `organization_id` (`docs/crm-erp-plan.md`, decision 1). F126 and F127 stay parked until a second company is signed. |
-| The number of drivers is unknown and cannot be predicted. | No design may assume a fleet size. Size by formula and watch the thresholds below. |
-| RouteFlow gets an Android app: the web app wrapped in a Capacitor shell. | Decided. Needed because a PWA gets background location only while open (F6, F38, F103); also gives native barcode scanning and Bluetooth printing. Distribution route (domestic Android store or a direct file) is still open. |
-| SMS provider: Farazsms. | Decided. The official npm client `farazsms` (1.1.0, 2026-06-21) exists and has not been inspected; decide between it and a thin wrapper when the SMS slice starts. Consent, opt-out and any other customer channel stay open. |
-| Staff positions come from the phone's GPS for now. | Decided. No dedicated trackers, so a tracker server such as Traccar is not needed yet. Revisit if vehicles get hardware trackers. |
-| Amount in words (F116) uses our own small function, not `@persian-tools/persian-tools`. | Decided 2026-10-23. `lib/amountWords.ts`; one dependency fewer, wording under our control. |
-| PostgreSQL is self-hosted on the owner's own server; ArvanCloud is dropped. | Decided 2026-10-23. Arvan's managed database is MySQL only anyway. A repo Dockerfile (Postgres 18 plus the extensions below) serves CI and local development. |
-| Install every extension this roadmap names: PostGIS, `pg_trgm`, `btree_gist`, `pg_stat_statements` and `pg_duckdb`, with `wal_level = logical`. | Decided 2026-10-23. `pg_duckdb` comes from the Pigsty apt repository, not PGDG, and needs `shared_preload_libraries`. |
-| Driver and queries: `pg` behind the existing `Db` interface (a thin wrapper turns `?` into `$n`), with Kysely for new typed queries. Not Prisma. | Decided 2026-10-23 (owner: "Defaults"). |
-| Schema tooling: node-pg-migrate (plain SQL files), kysely-codegen (types, checked for drift in CI), Squawk (lints each migration in CI), and a committed `db/schema.sql` from `pg_dump --schema-only`. | Decided 2026-10-23. Atlas was rejected: it is a Go binary downloaded from abroad, which is hard from Iran. |
-| Row-level security is enforced before the cut-over, not after. | Decided 2026-10-23. |
-| Off-site backup goes to a second machine the owner controls, over SSH; self-hosted S3 can come later. | Decided 2026-10-23. |
-| Map tiles come from our own server, never a foreign host; every map is on MapLibre. | Decided 2026-10-28 (owner: "No it does not worth the risk. Also no to foreign host."; then "Full MapLibre rewrite", "Tehran province only", "Use @vis.gl/react-maplibre"). One Protomaps PMTiles extract of Tehran province (`pmtiles` 4.5.0) is read on the server and served one tile at a time at `/api/map/tiles/{z}/{x}/{y}`, public and cookie-free so Arvan's CDN caches each small tile (Arvan caches whole files only up to 100 MB, so the archive itself is never fetched by byte range through it). Style from `@protomaps/basemaps` 5.7.2 with Persian names (`name:fa`) in the app's own Peyda font through MapLibre 6's `font-faces`, so there is no glyph server and no RTL plugin; sprites in `public/map/sprites`. Leaflet and its 8 plugins are gone; React bindings are `@vis.gl/react-maplibre` 8.1.3. Satellite and topographic looks were dropped (no self-hostable source). Building and replacing the file: `docs/map-tiles.md`. Routing (OSRM) and address search (Nominatim) still call foreign public servers until they are self-hosted. |
-| The UI moves to HeroUI v3 with the full HeroUI look. | Decided 2026-10-23 (owner chose "full HeroUI look" over keeping the Meridian look on HeroUI parts). `@heroui/react` and `@heroui/styles` 3.2.6, MIT, built on React Aria Components; no HeroUI Pro (paid, foreign). HeroUI's theme becomes the visual system and MASTER.md's colour, radius and base-component rules are retired as screens move. Our component names (`BottomSheet`, `useToast`, `FilterChips` …) stay during the move so callers change once. Persian calendar and digits through `I18nProvider locale="fa-IR-u-ca-persian"`; `lib/jalali.ts` stays for storage. Styles are imported part by part, because the full sheet restyles `.card`, `.chip`, `.badge`, `.modal` and `.skeleton`. Phase 0 and the payment-flow pilot are done (TapFlow sheet, date step, buttons, toasts), and phase 2 (every sheet on one Drawer; card help, profile menu and bell in Popovers, each with a written reason in `check:mobile`; banners as Alerts), and phase 3 (Shamsi date fields on HeroUI's Persian Calendar in a sheet, switches and checkboxes, no `<select>` left, password and login fields on HeroUI's TextField, colour and font pickers in Popovers), and phase 4 (section and view tabs on HeroUI Tabs at 44 px, Chip, Avatar, Skeleton, EmptyState, collapsible sections on Disclosure, accounting tables and pager in HeroUI's table and pagination look on their own server markup), and phase 5 (every flow, picker and deck answer on HeroUI Button / ToggleButton through `components/tapflow/Answer.tsx`, SearchField for list search, day chips as ToggleButtons; Keypad, SwipeRow, the bottom bar and the signature cards restyled with HeroUI tokens), and phase 6 (HeroUI token names hold the palette inside `.meridian`, the older names are aliases, dead CSS removed, MASTER.md rewritten around HeroUI); the per-component map and order are in the plan page linked from `TODO-REPORT.md`. |
-
-### 10.2 Proposed platform choices
-
-The PostgreSQL rows here are now decided (10.1). The plan is phased: P1 an asynchronous `Db` interface and portable SQL while still on SQLite (done 2026-10-23: every call is awaited, transactions go through `db.tx()`, lint catches a forgotten `await`, and `tests/sql-dialect-guard.test.ts` refuses SQLite-only SQL outside `lib/database/`); P2 the Postgres baseline schema, the `pg` adapter and a CI run against Postgres (done 2026-10-23: `db/` has the image and the generated baseline, `DB_DIALECT=postgres` switches the app to `lib/database/pg.ts`, and CI runs the unit suite on Postgres against `tests/pg-known-failures.txt`, 77 files at the start); P3 green on Postgres, the `xid8` sync watermark and row-level security (done 2026-10-23: `tests/pg-known-failures.txt` is empty and files that only make sense on SQLite are listed with a reason in `tests/pg-sqlite-only.txt`; the demo seed builds a separate `routeflow_demo` database; each synced table carries a trigger-set `sync_xid` and the pull watermark is `x:<snapshot xmin>`; the app connects as `routeflow_app`, which is subject to a per-company policy on every table with `organization_id`, keyed on `rf.scope` set before each statement from the signed-in session); P4 the server, backups and cut-over by re-seeding (done 2026-10-27: `db/server/install.sh`, pgBackRest to two repositories with a monthly restore drill, `scripts/pg/doctor.mjs`, `docs/postgres-server.md`); P5 removing the SQLite code (done 2026-10-27 in the same pull request: the SQLite client, boot migrations, backfills, `DB_DIALECT` and the SQLite-only tests and scripts are gone, `npm test` runs on PostgreSQL, CI is one job, and the baseline migration is hand-owned).
-
-| Choice | Serves | When |
-|---|---|---|
-| PostgreSQL, self-hosted, with `wal_level = logical`, PostGIS, `pg_trgm`, `btree_gist` and `pg_stat_statements` | everything; geofencing (F38), rep map (F68), mileage (F103), search (F98, F148, F10, F3) | with the move |
-| Row-level security keyed on a per-transaction organisation setting; the same setting feeds one audit trigger | tenant safety now and when a second company arrives; F27, F73, F99, F100, F111 | with the move (`organization_id` already exists on the tenant tables) |
-| `pg` with Kysely (types generated from the database) and plain SQL migration files; not Prisma | everything | with the move |
-| A pg-boss worker process: retries, schedules, jobs enqueued in the same transaction as the write | sweeps, F16, F18, F67, F79, F127, F138 | with the move |
-| Real Postgres in tests, one template database per test file | the database tests | with the move |
-| Backups with point-in-time restore (pgBackRest or WAL-G) and an encrypted off-site copy; self-hosted error tracking and uptime check | F34, F108, F138 | with the move, early |
-| S3-compatible object storage, self-hosted | F1, F17, F26, F34, F147 | first wave that stores files |
-| Chromium print-to-PDF in the worker (Playwright is already a dependency) | F18, F101, F147 | when F147 starts |
-| A message-channel adapter with a consent table and an outbox; first provider Farazsms | F6, F18, F79, F120, F106, F109 | with the first SMS slice |
-| Valkey and server-sent events | F6, F125, the F4 screen pop; shared rate limits and one-time codes | with the first live feature, not with the Postgres cut-over (2026-10-24: one change at a time; Postgres covers cache, queue and pub/sub at this size) |
-| Self-hosted OSRM and VROOM and own map tiles | F6, F7, F57, F103 | before live tracking |
-| A Capacitor Android shell with a background-geolocation plugin (`@capacitor-community/background-geolocation`, 1.3.1, updated Oct 2026; untested) | F6, F38, F103, F1, F30 | before F6 starts |
-| Wazo | F4 | wave 4 |
-| OCR, speech and language models on the device or a self-hosted server, behind an interface | F1, F2, F3, F5, F14 | wave 4 |
-| A read replica and materialised views for reports | F14, F123, F32, F134 | when reports get heavy |
-
-### 10.2a Company and shareholders in the books (decided 2026-10-28)
-
-Decisions and the design are in `docs/company-and-shareholders.md`: commission posted into the ledger, a person (party) and a group on every ledger line, shareholders with fixed percentages that carry a start date, a legal-form setting per company, advances anytime with one yearly split, per-group profit with shared costs divided by share of sales, and a read-only page for each shareholder. No outside library: the work is the app's own double-entry ledger, so there was nothing to adopt.
-
-### 10.3 Not adding yet, and what would change that
-
-| Not now | Why | Revisit when |
-|---|---|---|
-| Elasticsearch, Meilisearch | Search here is short names, phones, notes and product names, and the Persian letter and digit folding already lives in `lib/persian.ts`. `pg_trgm` on a normalised column does fuzzy matching in SQL. A second search copy has to be kept in sync and does not obey row-level security, so every query would repeat the tenant filter, the kind of leak the 2026-10-22 audit found about twenty times. | Search over the real row counts stays slower than about 150 ms after indexing, or instant typo-tolerant search across many entity types with facets is wanted. Try Meilisearch first and test its Persian handling. |
-| Kafka, RabbitMQ | A broker is a second system whose messages can disagree with the database (an order saved with no message, or the reverse). pg-boss queues the job in the same transaction as the write. Volumes are far below what a Postgres queue handles: orders are hundreds per day, and GPS pings are a few dozen inserts per second even with a thousand drivers. Kafka also needs a cluster to run, and container images can be hard to pull from Iran. | Several independent services must consume the same event stream, or a Postgres queue shows contention at sustained thousands of jobs per second. NATS JetStream or Valkey Streams are the lighter step before Kafka. |
-| Kubernetes | One Next.js process behind Caddy, one Postgres, one worker and a few helpers fit on one or two machines under systemd or docker compose. Kubernetes adds a control plane, networking, storage and upgrades to run yourself, and the big clouds' managed offerings are not an option from Iran. More companies do not need it: they share one deployment through `organization_id`. | More than three or four app nodes, autoscaling, a dedicated operations person, or a customer who needs its own isolated deployment. |
-| Microservices | Orders, ledger postings, stock reservations and commission must commit together; splitting them turns one transaction into distributed sagas. `lib/repo` and the architecture checks already give module boundaries inside one deployable. The worker, OSRM, VROOM, the Telegram poller and the Wazo listener are extra processes of the same codebase or stateless helpers, not services with their own databases. | Separate teams, or a part that needs a different runtime or independent scaling (for example a Python OCR helper with a narrow API). |
-
-### 10.4 Driver count unknown: how to size
-
-Position pings per day = drivers × hours on the road × 3600 ÷ ping interval in seconds. At a 30 second interval and 8 hours that is 960 pings per driver per day, about 350,000 per driver per year.
-
-| Drivers | Pings per day | Inserts per second while all are on the road |
-|---|---|---|
-| 100 | 96,000 | about 3 |
-| 1,000 | 960,000 | about 33 |
-| 10,000 | 9,600,000 | about 333 |
-
-A rough ladder, from judgement and not from measurement:
-
-- **Up to a few hundred drivers:** one table partitioned by month, batch inserts, one "last position" row per driver. Keep raw pings 90 days, then keep a simplified line (PostGIS `ST_Simplify`) and drop the rest.
-- **Around a thousand:** move "last position" to Valkey, write pings in batches, read from a replica.
-- **Several thousand:** revisit with real numbers. This is where a dedicated time-series or streaming store becomes a topic.
-
-### 10.5 Outside services to check from Iran
-
-Nothing here has been tested from Iran. Check each from the server and, where a phone calls it, from a phone on an Iranian mobile network.
-
-| Called by | Service | Used for |
-|---|---|---|
-| Server | `api.open-meteo.com`, `air-quality-api.open-meteo.com` | weather and air quality (`lib/weather`) |
-| Server | `api.telegram.org` | staff notifications and the link worker (`lib/telegram.ts`, `scripts/telegram-poll.ts`); Telegram has been filtered in Iran |
-| Server | `nominatim.openstreetmap.org` | resolving pasted map links (`lib/resolveMapsLink.ts`) |
-| Server | push services of Google, Mozilla, Apple and Microsoft (`lib/pushEndpoint.ts`) | web push |
-| Server and phones | `router.project-osrm.org` | route matrix and corridors; the public demo server, not meant for production load |
-| Phones | `nominatim.openstreetmap.org` | address search on the map (`components/searchbox/searchBoxStore.ts`); map backgrounds no longer leave our server (10.1) |
-| Build and deploy | npm registry, container registries, GitHub releases | installing and updating; often restricted from Iranian servers, so check before choosing a tool that ships only as a container image |
-
-If one fails: self-hosted OSRM and VROOM and own map tiles move earlier in the order; an Iranian SMS gateway or a domestic messenger (for example Bale or Eitaa, to be evaluated) takes over staff messages from Telegram. Most hosted foreign model APIs are not available from Iran, so F1, F2, F3, F5 and F14 plan for on-device or self-hosted models.
-
-### 10.6 Libraries: replace, add, keep
-
-From the 2026-10-23 review of what the code builds by hand. The codebase has almost no third-party libraries besides Leaflet and its plugins, framer-motion, sharp, exceljs, web-push and Playwright.
-
-**Where a library does better than the current code**
-
-| Area | Today | Change |
-|---|---|---|
-| Input validation | 161 route files, about 79 hand-written type checks, `lib/inputChecks.ts`; the audit fixed unvalidated dates, amounts and lengths route by route | A schema per route: Zod, or Valibot for code shared with the client |
-| CSV export | `lib/csv.ts` (15 lines) does not neutralise cells starting with `=`, `+`, `-` or `@`; phones lose their leading zero in Excel | A formula guard, from a CSV library or a few lines |
-| Password hashing | `scryptSync` at Node's default cost (N=16384), stored as `salt:hash`; below OWASP's current minimum (N=2^17) and the format cannot carry parameters | Argon2id (a native package: check it installs from Iran) or scrypt with proper parameters and a self-describing format. Cheap now because the data is dummy |
-| Maps | Done 2026-10-28: every map is on MapLibre with self-hosted tiles (10.1); Leaflet and its plugins are removed | — |
-| Geometry | `lib/geo.ts` and `lib/simplify.ts` (about 450 lines); the corridor band only approximates a buffer | PostGIS (`ST_Distance`, `ST_Buffer`, `ST_Simplify`) on the server; no new library |
-| Overlays and date picker | Hand-built toasts, hotkeys, Jalali date picker and sheets with hand-set ARIA | Decided: HeroUI v3 on React Aria (see 10.1). Toasts, every bottom sheet, the date step, card help, the profile menu, the bell, the banners, the Jalali pickers, switches, checkboxes, password fields, tabs, disclosures, chips, avatars, skeletons and empty states have moved; other text fields, the search overlay and the flow, picker and deck answers have moved too; the filter chips, the «بیشتر» menu links and the other text fields follow. Leftovers done 2026-10-27: answer links and buttons, filter chips and all text fields are on HeroUI parts, `.meridian` rules use the HeroUI colour names, and a filter group with 9 or more options opens a searchable sheet. Extras added 2026-10-27: the (?) help (Popover), Spinner in saving buttons, ProgressBar, Kbd, Tag, ListBox and a sortable Table on the margin report; a Dropdown, Modal or Select as separate parts wait for a screen that needs them |
-
-Lower priority: the hand-written service worker (`public/sw.js`, manual cache versions) could move to Serwist if stale-cache bugs appear.
-
-**Add for roadmap features**
-
-| Library | Serves | Note |
-|---|---|---|
-| `@persian-tools/persian-tools` (4.0.4, Dec 2025) | F116 amount in words, F5 half-space fixes, F10 Sheba and card-to-bank checks, national ID validation | Test the number-to-words output on real toman amounts |
-| `libphonenumber-js` | F4 caller matching, F79 and F106 SMS, duplicate detection (`lib/crm/phone.ts` is 44 lines) | Use the `min` build |
-| grammY | F124 and F143 (`scripts/telegram-poll.ts` understands only `/start`) | Supports a custom API root, useful from Iran; whether Bale or Eitaa accept the same calls is unverified |
-| pino and a GlitchTip-compatible SDK | F108, structured logs | Replaces `console.*` and the `slowSql` wrapper |
-| `@tanstack/react-virtual` | long lists on phones; no list is virtualised today | `content-visibility: auto` is a free first step |
-| One SVG chart library | F123, F146, F32 | Keep the 4 custom charts (749 lines); decide before writing more chart types; test Persian digits and right-to-left first |
-| `rate-limiter-flexible` with a Valkey or Postgres store | shared rate limits once there is more than one app instance | `lib/rateLimit.ts` is in-memory and right for one process |
-| `@simplewebauthn/server` | F106 two-step login | Passkeys on top of the existing TOTP; test on the real Android phones |
-| `zxing-wasm` | F1 and F30 barcode scanning | For browsers without `BarcodeDetector`; try the browser API first |
-| `bwip-js` | Batch and bin labels (F30, F93) | QR and Code 128 as image or SVG; also the way to draw a QR code, which the app does not do today |
-| `pmtiles` | Own map backgrounds | Added 2026-10-28 (10.1) |
-| `csv-parse` and `iconv-lite` | F10 bank statements, lead import | Proper CSV parsing, and conversion of older Windows-1256 files; test with a real bank statement |
-| `archiver` | F34 data export | Streams a zip of many CSV files without holding them in memory |
-| `@opentelemetry/sdk-node` | F108 status page, tracing | Next.js supports it through `instrumentation.ts`; send to a self-hosted collector |
-| `p-queue` | Throttling of outside calls | Replaces the hand-written gate in `lib/resolveMapsLink.ts`; also useful for SMS and OSRM limits |
-| `react-querybuilder` (8.25.0) | F130 rule builder, F123 report builder | Builds a validated filter structure that is turned into parameterised SQL, which fits the rule "never raw SQL from the user" |
-| `json-logic-js` (2.0.5, last release July 2024) | F130 stored rule conditions | Option for storing conditions as JSON; check whether the query-builder format is enough before adding it |
-| AG Grid Community (36.2.0) | F131 keyboard-first desk order entry | Spreadsheet-style editing; check right-to-left and Persian digit behaviour first |
-| `web-vitals` (6.2.3), sent to the own server | real-user timings from phones on Iranian networks | Lab tests cannot show these |
-| `react-error-boundary` (6.1.6) | Every chart, sheet body, header widget and map | Added 2026-10-27 as `components/WidgetBoundary.tsx` |
-| `lru-cache` (11.5.3) | Hot lookups on the server (price lists, permissions) | Cap its memory; one process only, so it is not shared between app servers |
-| `valibot` (1.5.0) | Validating request bodies at the API edge, unknown keys dropped | Use for new routes; no rewrite of old ones |
-| `nuqs` (2.10.2) | Filters and tabs kept in the address (F98, F123, lists) | Check it against our own `useFilter` before replacing it |
-| `@tanstack/react-query` (5.105.0) | The chat screen and live panels only (infinite message list, updates from server-sent events) | Not app-wide: it would overlap the offline sync engine and server components |
-| `@tanstack/react-table` (9.3.1) | The keyboard-first order entry grid (F131) | Later; v9 is a recent major, read its migration notes; compare with AG Grid above. Reports stay server pages |
-| `react-hook-form` (7.91.0) | The few long forms (customer create, product) | Later; tap flows and short forms stay plain controlled fields |
-| `jose` (6.2.13) | Signed one-time links and wallboard display keys (F125, F6 tracking page) | Later; Node `crypto` HMAC is enough for one simple signed link |
-| `nanoid` (6.0.2) | Short public codes (tracking links, ticket numbers) | Later; custom alphabet without 0, O, 1, l. Row keys stay UUIDv7 |
-| `microdiff` (1.6.0) | Showing «what changed» on a record in the UI | Later; the database audit trigger stays the record of truth |
-| `canvas-confetti` (1.9.4) | Reward after a finished lesson or tour (F39, F133) | Later; skip when `prefers-reduced-motion` |
-| `idb` (8.0.4) | A nicer IndexedDB wrapper | Later, only if `lib/offline/idbStore.ts` gets awkward |
-| `papaparse` (5.7.0) | Previewing a CSV in the browser before upload (F10, F126) | Later; the server side stays `csv-parse` + `iconv-lite` above |
-| `sanitize-html` (2.18.1) | Rendering rich notes (F43) | Later, only if notes become HTML; plain text or Markdown needs no sanitiser |
-| BroadcastChannel (browser built-in) | Sign out everywhere across open tabs (F107) | Nothing to install |
-| Zustand (5.0.16) | Client state shared by distant components (chat unread count, an active tour) | Later; React context first |
-| Action-gated tours (driver.js, joyride or HeroUI Popover as the spotlight) | F39 training mode | Later; one tour on the order screen first; check right-to-left behaviour |
-
-**Small-difficulty batch (2026-10-23): no new library.** All 18 entries were built on existing code: the browser's print path for the price list and run notes, the commission engine, the briefing panels, the notification flush and `users.prefs_json`. Nothing was added to `package.json`.
-
-**Keep as is**: `lib/jalali.ts` (tested against Intl over twenty years), TOTP, UUIDv7, the thermal-receipt PDF and ESC/POS code (Chromium print-to-PDF only for A4 documents), the offline outbox, the VROOM fallback.
-
-**Building and testing, and only if needed**
-
-`@testcontainers/postgresql` (a real Postgres with PostGIS per test run), `fast-check` (property tests for money, ledger and commission), `@faker-js/faker` with the Persian locale (the demo seeding fetches portraits from `randomuser.me` today), `@axe-core/playwright` (accessibility checks in CI). Only if the need appears: `jose` (signed one-time links, wallboard display keys), `ical-generator` (F87). Not needed: client-side search libraries (`pg_trgm` does it), `node-cron` and BullMQ (pg-boss), date libraries (`Intl` and `lib/jalali.ts`).
-
-**Shortlist audit (2026-10-27).** The owner short-listed about 60 libraries from a chat with Gemini; the audit and its reasons are in the project file `audits/shortlist-audit-2026-10-27.md`. Decisions:
-
-- **Added now:** `react-error-boundary` 6.1.6 (exact), behind one `components/WidgetBoundary.tsx`. It sits in `ChartFrame` (every chart), `BottomSheet` (every sheet body), the header's search and bell, the sync island, and every map.
-- **Adopt when the feature starts:** `pino`, `web-vitals`, `lru-cache`, Valibot, `nuqs`, `@tanstack/react-virtual`. TanStack Query only on the chat screen and live panels. Each one has a row in the table above.
-- **Later:** `rate-limiter-flexible` (with more than one app server), `jose`, `nanoid` (short public codes only), `microdiff`, `canvas-confetti`, TanStack Table (desk order entry), React Hook Form, Zustand, `idb`, PapaParse (browser preview), `sanitize-html`, action-gated tours. Each one has a row in the table above.
-- **Owner decision, stay on one server as long as possible:** no Centrifugo for now. Chat runs on PostgreSQL plus server-sent events and an `events` table with an increasing id, so a phone that lost signal catches up from `Last-Event-ID`. Revisit with a second app server or presence.
-- **Owner decision, quizzes are written by managers:** no AI-generated quizzes for now (a hosted foreign model is unlikely from Iran, 10.2). They belong with the academy and F133.
-- **Not used, already covered:** Fuse, MiniSearch, FlexSearch (`pg_trgm`); Graphile Worker, `node-cron` (pg-boss); `p-limit` (`p-queue`); ULID, cuid2 (UUIDv7); `date-fns` (Intl and `lib/jalali.ts`); AutoAnimate (framer-motion); tinykeys (`lib/hotkeys.ts`); clipboard-copy (`lib/clipboard.ts`); `localforage` (`lib/offline/idbStore.ts`); `@xstate/fsm` (`lib/orderStateMachine.ts`).
-- **Rejected:** `solve-tsp` and `javascript-tsp` (not on npm), `glpk.js` (GPL-3.0), `link-preview-js` (the server would fetch any URL).
-
-### 10.7 Live updates: where they would be used
-
-Added 2026-10-23 from a review of the code and these docs. The candidates in the last group are inferred, not stated in the entries.
-
-**What polls today (current code)**
-
-| Place | Today |
-|---|---|
-| `components/CoverageMap.tsx` | Re-asks for customers every 45 seconds and when the tab becomes visible |
-| `components/NotificationBell.tsx` | Re-asks for the unread count every 60 seconds |
-| `components/LeadImportPanel.tsx` | Polls the job status while a lead import runs |
-| Orders pipeline, runs view, order status panel | Refresh only after the user's own action, so a coworker's change shows only after they act or reload |
-
-**Named in the entries**: F6 (live driver positions and ETA), F125 (wallboard; the entry notes nothing refreshes by itself today), F4 (incoming-call screen pop).
-
-**Inferred candidates**: F38 and F68 (arrival events, rep activity map); F7 (a re-route proposal reaching the dispatcher or driver); F55 and F16 (announcements, owner alerts); F102 and F143 (an approval request reaching a manager, the answer going back); F107 (sign out everywhere closing open tabs); F13 and F105 (a "the server has news, pull now" signal for the offline sync); F30 and F94 (van loading progress visible to the office); F61 and F121 (stock arrived, a backorder can ship); progress of long jobs (exports F34, OCR F1, route optimisation, setup wizard F126).
-
-**What a live-updates server such as Centrifugo adds beyond plain server-sent events**
-- Presence: who is online or looking at the same order (helps F73 and conflicts in offline sync).
-- Catch-up after a gap: a phone that lost signal asks for what it missed, which suits offline-first.
-- Per-company and per-group channels with signed access tokens, which fits serving other companies later.
-- Shared planning boards where two dispatchers see each other's moves.
-- Live dashboard widgets (F16, F146) in place of polling loops.
-- Several transports (WebSocket, SSE and fallbacks), which may help on filtered or unreliable networks.
-- Possibly events read from a Postgres outbox table, so an event is saved in the same transaction as the business write. Unverified: check before relying on it.
-
-**Limits**
-- It reaches only screens that are open. A closed app still needs web push, SMS (Farazsms) or Telegram.
-- It is one more service to run; with several nodes it needs Valkey or NATS behind it, which is the same moment Valkey is added anyway.
-- Writes keep going through the app's API, so money and stock rules stay in one place.
-- Untested from Iran. Per the "look for existing solutions" rule in `CLAUDE.md`, compare it with plain SSE plus Valkey pub/sub and other options before adopting it.
-
-**Recommendation**: start with server-sent events on one server; bring in Centrifugo when more than one app server runs or presence is wanted.
-
-**Decided 2026-10-27 (owner): stay on one server as long as possible.** Centrifugo is not added. Chat is built on PostgreSQL: the message row, then an `events` row with an increasing id, streamed over server-sent events; a phone that lost signal sends `Last-Event-ID` and gets what it missed. Presence waits for a second app server.
-
-### 10.8 Interesting technologies (not decided)
-
-Ideas that are interesting for this app but not chosen. None is decided; the owner picks which to pursue (see the intro to section 10).
-
-| Technology | What it is, in plain words | Where it could help | Note |
-|---|---|---|---|
-| Local-first sync: Yjs (13.6.33) or Automerge (3.5.0) for merging edits; PowerSync (`@powersync/web` 2.5.0) or Electric (`@electric-sql/client` 1.5.28) for copying Postgres data to the device | Everyone edits their own copy, offline, and the copies merge when phones reconnect | Shared notes (F43), offline tasks and notes (F105), the offline catalogue (F75), two dispatchers editing one day plan | Keep the current outbox for money and stock; this is for notes, planning and read-only data. `wal_level = logical` is already proposed, which these need |
-| Durable workflows: DBOS (`@dbos-inc/dbos-sdk` 5.3.0) | A to-do list that survives a power cut: it remembers which step it was on and carries on | Approval chains (F129), payment reminders that wait days (F18, F50), standing orders (F44) | Runs on Postgres. pg-boss covers single jobs; this is for multi-step processes |
-| DuckDB (browser build `@duckdb/duckdb-wasm`, whose npm latest tag is a dev build; Node client `@duckdb/node-api`; or the `pg_duckdb` Postgres extension, unverified) | A fast calculator next to the database that counts large piles quickly | Margin by customer, product and route (F32), profit and loss by group (F134), saved reports (F123) | Try a read replica and materialised views first; add DuckDB if reports are still slow |
-| deck.gl (9.4.0) on top of MapLibre | Paints very large numbers of points and areas on a map smoothly | Rep activity map (F68), territory revenue map (F92), GPS ping heat maps (F6) | Needs the MapLibre map stack decision first |
-| Offline vector maps for drivers: PMTiles (4.5.0) with MapLibre, stored by the Capacitor shell | Download the city onto the phone like a paper map | Drivers in dead zones still see the map and next stop (F6, F13, F20) | Size of a Tehran basemap not checked; depends on the MapLibre and Capacitor decisions |
-| H3 hexagon grid (`h3-js` 4.5.0) | Cover the city in honeycomb cells and count things per cell | Orders, customers or GPS pings per area (F92, F11, F81); fairer territory splits | PostGIS can also bin points; compare before adding |
-| Valhalla routing | Answers "where can a van get to in 30 minutes" and draws that area | Real delivery zones around the depot (F57, F81); snapping messy GPS pings to roads for mileage (F103) | OSRM can also match pings to roads, so this is an alternative, not a requirement; not tested |
-| Database tests: pgTAP and `squawk` | A referee for the database | pgTAP checks that company A cannot read company B under row-level security; `squawk` warns before a migration locks a big table | Goes with the row-level security plan; nothing to ship to users |
-| Mutation testing: Stryker (10.0.0) | Breaks the code on purpose to see whether the tests notice | Money code only: commission, ledger, margin, pricing | Slow, so run it on a few folders, not the whole repo |
-| Per-company switches (OpenFeature 1.23.0 or a simple table) and usage numbers (Umami, self-hosted) | A light switch per company and a counter on each button | Turn a feature on for one company first (F126, F127); measure whether voice notes are used (F2 asks for this) | A table with a company id may be enough instead of a library |
-| Live updates for the Android shell: `@capgo/capacitor-updater` (8.53.1) | Change the app on every phone without anyone reinstalling it | Ship a bug fix to drivers' phones without waiting for a store review (F6, F13) | Self-hosting route not verified; check each store's rules on updating web code inside an app |
-| A no-login tracking page, with Altcha (3.5.0) against abuse | A secret link sent by SMS that shows delivery progress; Altcha is a self-hosted CAPTCHA that makes bots solve a small puzzle | F6 ETA, F120 confirmation code, F79 late notices | Link must be signed and expire; keep phone numbers and full addresses off the page; needs the Farazsms and position decisions |
-| Short links for SMS: a short-code route inside the app, or a self-hosted shortener such as Shlink | Shrink a long web address to a few characters | Persian SMS counts about 70 characters per message part, so a long tracking link can double the cost (F79, F6, F120, F106) | Check Farazsms pricing per message part first; a short-code table in the app is probably enough |
-| Bad-network tests: Playwright network throttling and offline mode, Toxiproxy | A pretend bad tunnel for the app | Prove that an order queued while signal drops every few seconds is sent exactly once (F13, F105) | Playwright is already a dependency; the offline-first design depends on this being tested |
-| Real-phone tests: Maestro with one physical Android phone | A robot finger on a real phone | Run the main flows of the Capacitor app on real hardware, which the build container cannot do (F113) | Needs a phone and a machine to plug it into; not installed or tried |
-| Load testing: k6 | A thousand pretend users pressing buttons at once | Simulate 200 orders a day for several companies while 1,000 drivers send positions (F6, F127); shows where Postgres or the app slows down | A small smoke test already exists (`npm run perf:smoke`) |
-| Persian map labels: the right-to-left text plugin for MapLibre (`@mapbox/mapbox-gl-rtl-text` 1.0.0) | Teaches the map to read Persian right to left | — | Not needed: checked 2026-10-28, MapLibre 6 shapes right-to-left text itself and Persian street names render correctly in Peyda (10.1) |
-| Forms generated from data: JSON Forms (`@jsonforms/core` 3.8.0) or `@rjsf/core` (6.11.0) | Describe a form in a list and the app draws it | Each company adds its own customer fields (F122), builds a survey (F141) or an onboarding checklist (F40) without a developer; the form definition is saved in the database | Compare the two with Persian and right-to-left rendering before choosing; validate submitted values on the server too |
-| Import wizard: upload a spreadsheet, match its columns, preview and fix rows, then import (`react-spreadsheet-import` 4.7.1, last release Aug 2024; or a screen built on the existing lead import) | A guided copy-in of an old customer or product list, with the bad rows shown before anything is saved | Bringing a company's existing customers, products and balances in on day one (F126); bank statements (F10); the lead import already has a job runner (`components/LeadImportPanel.tsx`) | The library's last release is two years old and its right-to-left support is unchecked; reusing the lead import's job runner may be enough. Pairs with `csv-parse` and `iconv-lite` in 10.6 |
-| Per-company subdomain and branding (the `Host` header read in `proxy.ts`, a logo and colour per company) | Each company gets its own address and sees its own name and logo | A second company's own look (F126, F127); its logo on invoices and delivery notes (F147) | No library needed. Needs a wildcard certificate (Caddy can issue one with a DNS challenge; check that the domain's DNS provider works from Iran). Only worth doing when a second company signs |
-| Backup fire drill: a scheduled restore of the latest backup into a scratch database, with row counts and a checksum compared | Proves the backup actually restores, instead of finding out on the bad day | Backup self-service (F34), off-site copy (F138), the status page shows the last good drill (F108) | Today's `scripts/backup.mjs` writes snapshots but never restores one. pgBackRest and WAL-G have their own verify commands once on Postgres; a drill on a timer through pg-boss |
-| Call detection on the phone (a small Capacitor plugin reading Android's phone state; `capacitor-call-detector` 0.0.5 is too young to rely on) | When a rep's phone rings, the app shows who the customer is | Customer snapshot on call pickup (F104) without VoIP; logging calls made from the rep's own phone (F4, F41) | Android only; reading the call log needs a permission Google Play restricts, so it may only suit a direct-file install. Not tested. Ties to the Android distribution decision in section 5 |
-| Straighten photos before OCR: find the paper's edges and flatten it (`jscanify` 1.4.3, Jul 2026, on OpenCV.js) | Turns a crooked phone photo of a receipt or cheque into a flat, square scan | Better text reading for camera capture (F1); clearer expense receipts (F26) and delivery proof photos (F17) | Runs on the phone, so no image leaves it. OpenCV.js is several megabytes; load it only on the capture screen. Test on real receipts |
-| Contact picker: the browser's Contact Picker API (Chrome on Android), or `@capacitor-community/contacts` (8.0.0, Sep 2026) in the Android shell | Fill a new customer's name and phone from the phone's address book instead of typing | Faster customer creation in the field (F40), with the duplicate check run straight after (F148) | The browser API reads only the contacts the user picks and needs no permission; the plugin needs a contacts permission. Not tested on the target phones |
-
-### 10.9 Motion effects (decided 2026-10-28)
-
-Four effects from a UI-motion showcase, built on the draft branch `claude/project-thread-eua087`. The owner chose the full showcase style on every section and card.
-
-| Effect | Decision | Notes |
-|---|---|---|
-| Hero reveal | Built by hand, CSS only (`WordReveal`) | Whole words, never letters (Persian letters join); blur only on fine pointers; off under reduced motion; plays on every mount, not once a day |
-| Click → success | Built by hand (`BusyIcon done`, `useDoneFlash`) plus `canvas-confetti` 1.9.4 (MIT, about 3 KB gzipped, loaded only when a burst fires) | Confetti only for milestones: the last stop of a run, the first order of the Tehran day |
-| Price roll | `@number-flow/react` 0.6.2 was tried first and dropped: it drew no Persian digits in Chromium. Hand-built odometer in `CountUp` | Rolls on change, not from zero on first view |
-| Sale pings | Own endpoint `/api/sales/pings`, checked every 15 s while the sales summary is visible; managers and owners only | Reps keep the 60 s bell check |
-| Realized / unrealized profit | `salesDashboard().profit`: margin on delivered orders times the paid share of each order | Owner and manager card on the sales summary; sellers and drivers see paid against owed commission |
-
-### 10.10 Sensitive data lives in `routeflow-private` (2026-10-29, owner decision)
-
-The public `routeflow` repo holds code, fake seed data and placeholders only. Everything sensitive, now and in future, goes in the private repo `pouryare/routeflow-private`, which only the owner can access: real env files, the demo password, the real Caddyfile block, backup passphrases and offsite details, and any future key, export, dump or personal file. Plain files, no encryption (owner's choice). Never in the public repo, in CI secrets or in chat.
-
-The public repo reads these from the environment (`.env.example` lists them): `DEMO_PASSWORD` (random and printed by the seed when unset), `CONTACT_EMAIL`, `SESSION_SECRET`, Telegram and VAPID keys. The server pulls `routeflow-private` at deploy time and writes `/etc/routeflow/env`; CI uses throwaway values. Audit of 2026-10-29: no real keys, tokens, `.env` files or dumps in any public branch or `refs/pull/*`; the old demo password stays in public history, so it is treated as burned.
-
-### 10.11 Page skeletons captured from the real pages (2026-10-30, owner decision)
-
-Research: [High-fidelity page skeletons](https://claude.ai/artifact/DmCdRhNzbrBt5kcNiLf2LU). The owner chose boneyard capture drawn with HeroUI, on every page at once.
-
-| Choice | Decision | Notes |
-|---|---|---|
-| Capture | `boneyard-js` 1.10 (MIT), dev dependency only; its `snapshotBones` runs in our own Playwright script, `npm run skeletons:capture` | Owner role first, then the others; phone 390 px and desktop 1280 px, right to left, light, demo data; header card, fixed bars, clipped boxes and screen-reader text left out; neighbouring spans on a line merged into one bar |
-| Drawing | Our own server code in `PageSkeleton` (HeroUI `Skeleton` for lines, plain card surfaces for cards) | boneyard's `<Skeleton>` component draws nothing before scripts load and detects dark mode by a `.dark` class; ours paints from the server with our tokens |
-| Not used | react-loading-skeleton, react-content-loader, skeleton-mammoth, page-skeleton-webpack-plugin | Hand-drawn shapes or dead; see the research |
-| Rule | CI keeps the captures current; by hand, rerun the capture after a layout change and commit `lib/skeletons/` | A page without a capture keeps its fallback shape |
-| Automatic update (owner, 2026-10-30) | `.github/workflows/skeletons.yml` recaptures every page on a throwaway demo database (`scripts/skeletons-ci.sh`, fixed anchor date) and commits the changed JSON to the PR branch | Runs on ready, same-repository PRs that touch `app/(shell)`, `components`, `app/globals.css`, `lib/pageMeta.ts` or the capture scripts themselves; commit pushed with the built-in token, which GitHub does not treat as a person: CI for that commit waits in «action_required» until someone approves the run in the Actions tab (owner chose to merge without it, 2026-10-30; a personal access token secret would remove the wait); a page within 3 px of its stored capture is left alone (`scripts/skeleton-compare.mjs`) |

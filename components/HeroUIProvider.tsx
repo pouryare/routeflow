@@ -7,7 +7,7 @@ import { UNSAFE_PortalProvider } from "react-aria";
 
 /** The Persian calendar and Persian digits, for every HeroUI part: the Calendar shows
  *  Shamsi months, and NumberField, Calendar and ProgressBar format with ۰–۹. Storage stays
- *  ISO -- lib/jalali.ts is the only bridge (docs/roadmap.md §10). */
+ *  ISO -- lib/jalali.ts is the only bridge (docs/decisions.md §10). */
 export const HEROUI_LOCALE = "fa-IR-u-ca-persian";
 
 /** Where HeroUI's overlays (Drawer, Popover, Toast) are drawn: the `.meridian` root. The tokens
