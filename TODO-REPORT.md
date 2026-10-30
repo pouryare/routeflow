@@ -247,7 +247,7 @@ _Condensed 2026-10-23, updated 2026-10-30. Each finished piece of work is one li
 - [ ] Map: not looked at on a real phone; the lead import map was not screenshotted
 
 ## Next steps
-0b. Sounds (owner, 2026-10-30: all three skins kept, the company owner sets the company skin): get the sound recipes into the repo (they are unreadable from the cloud container), then build `lib/sound.ts` with the event map, the company skin setting and the per-person switch (`docs/bencho-blocks-and-sounds.md`, F117)
+0b. Sounds (owner, 2026-10-30: all three skins kept, the company owner sets the company skin): get the sound recipes into the repo (they are unreadable from the cloud container), then build `lib/sound.ts` with the event map, the company skin setting and the per-person switch, sounds on by default (`docs/bencho-blocks-and-sounds.md`, F117)
 0. Owner opens a few pages on a real phone on a slow line to see the captured skeletons; add representative profiles to the demo seed and capture `/sales/reps/[id]`
 0a. Owner reviews draft PR #12 on a phone; then mark it ready, wait for CI on the final head and merge it with a merge commit
 0. Owner cuts the Tehran-province tile file and puts it on the server, sets the Arvan cache rule, then redraw the picker thumbnails (`docs/map-tiles.md`)
