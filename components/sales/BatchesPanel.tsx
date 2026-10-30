@@ -12,7 +12,6 @@ import { Fragment, useCallback, useMemo, useState } from "react";
 import { faNum } from "@/lib/format";
 import { BATCH_STATUS_LABEL, BATCH_TRANSITIONS, type BatchStatus } from "@/lib/batchStates";
 
-import { confirmAction } from "@/lib/confirm";
 interface Product {
   id: number;
   name: string;
@@ -42,6 +41,9 @@ export default function BatchesPanel({ products }: { products: Product[] }) {
   const [batches, setBatches] = useState<Batch[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [traceFor, setTraceFor] = useState<number | null>(null);
+  /* The batch whose «فراخوان» button has been pressed once: that row's buttons turn into the
+     question (no dialog, nothing moves), and only «بله» sends. */
+  const [recallArmed, setRecallArmed] = useState<number | null>(null);
   const [trace, setTrace] = useState<TraceDelivery[] | null>(null);
   const [form, setForm] = useState({
     product_id: "",
@@ -98,8 +100,9 @@ export default function BatchesPanel({ products }: { products: Product[] }) {
 
   async function setStatus(id: number, to: BatchStatus) {
     // A recall raises a reminder for every customer who received the lot, and recalled is a dead end
-    // (it can only go to depleted), so it asks first; quarantine is reversible and does not.
-    if (to === "recalled" && !confirmAction("این سری ساخت فراخوان شود؟ برای همهٔ مشتریانی که آن را گرفته‌اند یادآور ثبت می‌شود و برگشت‌پذیر نیست.")) return;
+    // (it can only go to depleted), so its button asks first (recallArmed); quarantine is reversible
+    // and does not.
+    setRecallArmed(null);
     const res = await fetch(`/api/sales/batches/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -180,11 +183,24 @@ export default function BatchesPanel({ products }: { products: Product[] }) {
                     <td className={`p-2 text-left font-mono ${b.on_hand < 0 ? "text-danger" : ""}`}>{faNum(b.on_hand)}</td>
                     <td className="p-2">{BATCH_STATUS_LABEL[b.status]}</td>
                     <td className="p-2 text-left">
+                      {recallArmed === b.id ? (
+                        <div className="flex flex-wrap items-center justify-end gap-1" role="group" aria-label="تأیید فراخوان">
+                          <span className="text-xs text-danger">برای همهٔ مشتریانی که این سری را گرفته‌اند یادآور ثبت می‌شود و برگشت‌پذیر نیست.</span>
+                          <button onClick={() => setStatus(b.id, "recalled")} className="rounded border border-danger px-2 py-0.5 touch text-xs text-danger">
+                            <Icon name="check" size="md" />
+                            بله، فراخوان شود
+                          </button>
+                          <button onClick={() => setRecallArmed(null)} className="rounded border border-border px-2 py-0.5 touch text-xs hover:border-accent">
+                            <Icon name="x" size="md" />
+                            انصراف
+                          </button>
+                        </div>
+                      ) : (
                       <div className="flex flex-wrap justify-end gap-1">
                         {(BATCH_TRANSITIONS[b.status] ?? [])
                           .filter((t) => MANUAL_MOVES.includes(t))
                           .map((t) => (
-                            <button key={t} onClick={() => setStatus(b.id, t)} className="rounded border border-border px-2 py-0.5 touch text-xs hover:border-accent">
+                            <button key={t} onClick={() => (t === "recalled" ? setRecallArmed(b.id) : setStatus(b.id, t))} className="rounded border border-border px-2 py-0.5 touch text-xs hover:border-accent">
                               <Icon name="package" size="md" />
                               {BATCH_STATUS_LABEL[t]}
                             </button>
@@ -194,6 +210,7 @@ export default function BatchesPanel({ products }: { products: Product[] }) {
                           ردیابی
                         </button>
                       </div>
+                      )}
                     </td>
                   </tr>
                   {traceFor === b.id && (
