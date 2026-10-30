@@ -57,7 +57,9 @@ const card = (r: Row): DupSideCard => ({
 const side = (c: DupSideCard): DupSide => ({ id: c.id, orders: c.orders, lastActivity: c.last_activity });
 
 /** Pairs of live customer records that share a phone number or an Instagram page and have not been
- *  marked «not the same». Only pairs the caller can see on BOTH sides. */
+ *  marked «not the same». Only pairs the caller can see on BOTH sides. A branch and its head office,
+ *  or two branches of one head office, share a number on purpose (the add-lead step offers «شعبهٔ …»
+ *  exactly when they match), so they are never offered for merging. */
 export async function duplicatePairs(session: Session, limit = 30): Promise<DupPair[]> {
   const db = getDb();
   const pairs = await db
@@ -69,6 +71,8 @@ export async function duplicatePairs(session: Session, limit = 30): Promise<DupP
         WHERE a.organization_id = ? AND a.merged_into_id IS NULL AND b.merged_into_id IS NULL
           AND ((a.phone_norm IS NOT NULL AND a.phone_norm = b.phone_norm)
                OR (a.instagram IS NOT NULL AND a.instagram <> '' AND a.instagram = b.instagram))
+          AND a.id IS DISTINCT FROM b.parent_customer_id AND b.id IS DISTINCT FROM a.parent_customer_id
+          AND (a.parent_customer_id IS NULL OR a.parent_customer_id IS DISTINCT FROM b.parent_customer_id)
           AND NOT EXISTS (SELECT 1 FROM crm_not_duplicates n
                            WHERE n.organization_id = a.organization_id AND n.low_id = a.id AND n.high_id = b.id)
         ORDER BY a.id, b.id LIMIT ?`
@@ -134,6 +138,13 @@ export async function mergeBusinesses(session: Session, keepId: number, dropId: 
   await db.tx(async () => {
     const rep = await db.prepare("SELECT COUNT(*) AS n FROM representative_profiles WHERE customer_id IN (?, ?)").get(keepId, dropId) as { n: number };
     if (rep.n > 1) throw new DuplicateError("هر دو پرونده نماینده هستند و ادغام نمی‌شوند");
+    const branch = await db
+      .prepare(
+        `SELECT 1 FROM customers a JOIN customers b ON b.id = ?
+          WHERE a.id = ? AND (a.parent_customer_id = b.id OR b.parent_customer_id = a.id OR a.parent_customer_id = b.parent_customer_id)`
+      )
+      .get(dropId, keepId);
+    if (branch) throw new DuplicateError("این دو پرونده شعبه‌های یک کسب‌وکارند و ادغام نمی‌شوند");
     if (await ledgerLines(dropId) > 0) throw new DuplicateError("دفتر حسابداری این پرونده سند دارد؛ پروندهٔ دیگر را نگه دارید");
     const clash = await db
       .prepare(
