@@ -11,6 +11,7 @@ import OtpInput from "@/components/mobile/OtpInput";
 import WordReveal from "@/components/meridian/WordReveal";
 import BusyIcon from "@/components/meridian/BusyIcon";
 import { useDoneFlash } from "@/lib/useDoneFlash";
+import { useShakeOn } from "@/lib/useShake";
 
 /** The sign-in button: its icon is a spinner while the request runs and a check once it passed. */
 function SubmitButton({ loading, done, disabled, label }: { loading: boolean; done: boolean; disabled: boolean; label: string }) {
@@ -23,6 +24,24 @@ function SubmitButton({ loading, done, disabled, label }: { loading: boolean; do
       <BusyIcon busy={loading && !done} done={done} name="login" />
       {done ? "وارد شدید" : loading ? "در حال ورود…" : label}
     </button>
+  );
+}
+
+/** Username and password, shaking together when the pair was turned down. (The code boxes
+ *  of the second step shake themselves, in OtpInput.) */
+function CredentialFields({ username, setUsername, password, setPassword, failed }: {
+  username: string;
+  setUsername: (v: string) => void;
+  password: string;
+  setPassword: (v: string) => void;
+  failed: boolean;
+}) {
+  const ref = useShakeOn<HTMLDivElement>(failed);
+  return (
+    <div ref={ref}>
+      <TextInput label="نام کاربری" autoFocus autoComplete="username" value={username} onChange={setUsername} />
+      <PasswordInput label="رمز عبور" autoComplete="current-password" value={password} onChange={setPassword} className="mb-[var(--space-4)]" />
+    </div>
   );
 }
 
@@ -148,10 +167,7 @@ function LoginForm() {
                 </div>
               )
             ) : (
-            <>
-            <TextInput label="نام کاربری" autoFocus autoComplete="username" value={username} onChange={setUsername} />
-            <PasswordInput label="رمز عبور" autoComplete="current-password" value={password} onChange={setPassword} className="mb-[var(--space-4)]" />
-            </>
+            <CredentialFields username={username} setUsername={setUsername} password={password} setPassword={setPassword} failed={error !== null} />
             )}
             {challenge && (
               <button

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { burst } from "@/lib/burst";
+import { burst, replay } from "@/lib/burst";
 
 /** Just enough of an element for burst(): attributes and a layout read. */
 function fakeEl() {
@@ -22,5 +22,21 @@ describe("burst", () => {
     expect(el.attrs.has("data-burst")).toBe(true);
     vi.advanceTimersByTime(600);
     expect(el.attrs.has("data-burst")).toBe(false);
+  });
+});
+
+describe("replay", () => {
+  afterEach(() => vi.useRealTimers());
+
+  it("can be cancelled, leaving the attribute for the next run to restart", () => {
+    vi.useFakeTimers();
+    const el = fakeEl();
+    const cancel = replay(el, "data-shake", 460);
+    cancel();
+    vi.advanceTimersByTime(1000);
+    expect(el.attrs.has("data-shake")).toBe(true);
+    replay(el, "data-shake", 460);
+    vi.advanceTimersByTime(460);
+    expect(el.attrs.has("data-shake")).toBe(false);
   });
 });

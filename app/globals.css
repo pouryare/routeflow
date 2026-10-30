@@ -5130,6 +5130,19 @@ body {
   }
 }
 
+/* Shake for "no" (lib/useShake.ts): a wrong code or a refused save moves the fields side
+   to side, big then smaller, like a head shaking. Sideways is the same in RTL. */
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes shake-no {
+    0%, 100% { transform: none; }
+    15% { transform: translateX(-9px); }
+    35% { transform: translateX(8px); }
+    55% { transform: translateX(-5px); }
+    75% { transform: translateX(3px); }
+  }
+  [data-shake] { animation: shake-no 420ms var(--ease-out); }
+}
+
 /* Pop and burst (lib/burst.ts): a tap that turned something on -- a pin, a star, a saved
    search, a finished action's check. The icon pops, a ring and eight dots fly out of it
    and fade. Pseudo-elements, so nothing in the layout moves; centred with inset + auto
