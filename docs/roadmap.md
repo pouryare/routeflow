@@ -168,6 +168,14 @@ A second pass through the Fleetbase code (report https://claude.ai/artifact/DUP4
 - **Invoice sent stamp, now.** Record when an invoice was sent (printed or shared) and show it on the customer page. A first-viewed time waits for the tracking page, because it needs a customer-facing link.
 - **Note for F6:** sort incoming position pings by their time before use, so a late ping cannot move the dot backwards.
 
+**Fifth pass (fleetops, core and storefront code, decided 2026-10-30):**
+
+- **Stale draft orders.** An action centre card lists draft orders older than N days (owner setting, default 7). Drafts older than the limit are cancelled automatically, with a log line for each.
+- **Log retention with a preview.** Each growing log table (SMS ledger, sign-in log, outbox, notifications) gets a keep-for-N-days setting. The owner status page shows how many rows the next nightly purge would delete.
+- **Recurring driver unavailability: design note only**, on the parked shifts and leave entry (F-shifts): a recurring day off or a leave week with a reason, shown as a planner warning. Nothing is built.
+- **Stock hold for a quote with an expiry** (held, committed, released) is the Fleetbase answer to the open question under F51; no decision taken.
+- **Scheduled saved reports to Telegram: skipped.**
+
 ## 2. Foundations
 
 Entries that other entries list as a prerequisite or a close relation. Doing the first slice of one of these early removes a blocker for several others. The count is how many entries name it in their Prerequisites line (taken from the file); the table is sorted by it.
