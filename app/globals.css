@@ -643,6 +643,20 @@ body {
 :root[data-theme="light"] .theme-toggle__bite { transform: translate(110%, -110%); }
 :root[data-theme="light"] .theme-toggle__rays { opacity: 1; transform: scale(1); }
 
+/* ---- Theme switch: the new skin is seen through a circle from the button (lib/theme.ts
+   switchTheme). Only while that switch runs: the browser's default cross-fade is turned
+   off so the circle is the whole effect, and going dark the OLD (light) photo is put on
+   top, because that is the one that shrinks back into the button. HeroUI's base sets
+   `view-transition-name: none` on :root, which leaves the browser nothing to photograph
+   and ends the transition at once; the root is named again for the switch only. */
+:root[data-theme-reveal] { view-transition-name: root; }
+:root[data-theme-reveal]::view-transition-old(root),
+:root[data-theme-reveal]::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+:root[data-theme-reveal="shrink"]::view-transition-old(root) { z-index: 1; }
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
@@ -2960,6 +2974,23 @@ body {
    area around a bare switch, is the tap target; the 20 px box and track stay HeroUI's. */
 .checkfield__hit { display: flex; align-items: center; gap: 8px; min-height: 44px; cursor: pointer; }
 .toggle__hit { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; cursor: pointer; }
+/* The thumb behaves like a real switch: pressed, it stretches toward where it is about to
+   go; released, it travels there on a spring, overshoots a little and settles back to its
+   size. Width and margin are both logical, so the stretch points the right way in RTL.
+   The 1.75rem stretch keeps the 0.125rem end gap HeroUI leaves (100% - 1.5rem + 1.375rem). */
+.toggle .switch__thumb {
+  transition:
+    margin 420ms var(--spring-pop),
+    width 420ms var(--spring-snap),
+    background-color 200ms var(--ease-out);
+}
+.toggle:is(:active, :has([data-pressed="true"])) .switch__thumb {
+  width: 1.75rem;
+  transition-duration: var(--dur-fast);
+}
+.toggle[data-selected="true"]:is(:active, :has([data-pressed="true"])) .switch__thumb {
+  margin-inline-start: calc(100% - 1.875rem);
+}
 /* RouteTabs: HeroUI tabs whose tabs are pages. The list carries the pill HeroUI gives its
    list container (left out for its English scroll arrows); each tab is 44 px to tap. */
 .routetabs .tabs__list { background: var(--default); border-radius: calc(var(--radius) * 2.5); }
@@ -4815,8 +4846,14 @@ body {
   .meridian .bottomnav__item span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   /* The page you are on: HeroUI's soft accent pill behind the icon, as its tabs mark a selection. */
   .meridian .bottomnav__item[aria-current="page"] { color: var(--accent-soft-foreground); font-weight: 600; }
-  .meridian .bottomnav__item > svg { box-sizing: content-box; padding: 3px 16px; border-radius: 999px; transition: background-color 160ms var(--ease); }
-  .meridian .bottomnav__item[aria-current="page"] > svg { background: var(--accent-soft); }
+  /* The pill is the icon wrapper's ::before, so BottomNav can slide it from the item you
+     left (lib/pillSlide) without moving the icon itself. */
+  .meridian .bottomnav__icon { position: relative; isolation: isolate; display: inline-flex; padding: 3px 16px; }
+  .meridian .bottomnav__icon::before {
+    content: ""; position: absolute; inset: 0; z-index: -1; border-radius: 999px;
+    background: var(--accent-soft); opacity: 0; transition: opacity 160ms var(--ease);
+  }
+  .meridian .bottomnav__item[aria-current="page"] .bottomnav__icon::before { opacity: 1; transition: none; }
   .meridian .bottomnav__item:focus-visible { outline: 2px solid var(--accent); outline-offset: -3px; }
   .meridian .qa-fab {
     display: inline-flex; align-items: center; gap: 6px; position: fixed; z-index: 60;
@@ -4880,7 +4917,14 @@ body {
   color: var(--foreground); font: inherit; font-size: 14px; font-weight: 500; cursor: pointer; scroll-snap-align: start; flex: none;
 }
 .meridian .daychip small { font-size: 11px; font-weight: 400; color: var(--muted); }
-.meridian .daychip--on { border-color: var(--accent); background: var(--accent); color: var(--accent-foreground); }
+/* The fill of the chosen day is a ::before so DayChips can slide it from the day chosen
+   before (lib/pillSlide); the chip itself only changes its border and ink. */
+.meridian .daychip { position: relative; isolation: isolate; }
+.meridian .daychip--on { border-color: var(--accent); background: transparent; color: var(--accent-foreground); }
+.meridian .daychip--on::before {
+  content: ""; position: absolute; inset: -1px; z-index: -1;
+  border-radius: inherit; background: var(--accent);
+}
 .meridian .daychip--on small { color: var(--accent-foreground); }
 .meridian .daychip--holiday:not(.daychip--on), .meridian .daychip--weekend:not(.daychip--on) { border-style: dashed; }
 .meridian .daychips__link {
@@ -5086,6 +5130,87 @@ body {
     100% { transform: none; }
   }
   .done-check { animation: done-check-pop 420ms var(--spring-pop, cubic-bezier(.34,1.56,.64,1)) both; }
+}
+
+/* Menus grow out of the button that opened them. HeroUI already sets the origin to the
+   trigger (--trigger-anchor-point); its 90% zoom over 150 ms is too small to read as
+   "came from there", so the start is smaller and the landing springs. */
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes menu-grow {
+    from { opacity: 0; transform: scale(0.6); }
+    to   { opacity: 1; transform: none; }
+  }
+  .popover[data-entering="true"],
+  .dropdown__popover[data-entering="true"] {
+    animation: menu-grow 280ms var(--spring-pop) both;
+  }
+}
+
+/* Shake for "no" (lib/useShake.ts): a wrong code or a refused save moves the fields side
+   to side, big then smaller, like a head shaking. Sideways is the same in RTL. */
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes shake-no {
+    0%, 100% { transform: none; }
+    15% { transform: translateX(-9px); }
+    35% { transform: translateX(8px); }
+    55% { transform: translateX(-5px); }
+    75% { transform: translateX(3px); }
+  }
+  [data-shake] { animation: shake-no 420ms var(--ease-out); }
+}
+
+/* A row that folds away when removed (TaskRow): its height closes to nothing as it fades
+   and slides, so the rows under it glide up rather than jump; undo unfolds it. A grid
+   track animating 1fr -> 0fr is the one way to transition to and from an auto height. */
+.rowcollapse {
+  display: grid; grid-template-rows: 1fr;
+  transition: grid-template-rows 320ms var(--ease-out), opacity 220ms var(--ease-out),
+    transform 220ms var(--ease-out), border-color 220ms var(--ease-out);
+}
+.rowcollapse__inner { min-height: 0; overflow: hidden; }
+.rowcollapse[data-gone] {
+  grid-template-rows: 0fr; opacity: 0; transform: translateX(-24px); border-color: transparent;
+}
+/* LeavingRows' leaving row is taken out of the flow; this is the box it is placed in. */
+.meridian .col { position: relative; }
+
+/* Pop and burst (lib/burst.ts): a tap that turned something on -- a pin, a star, a saved
+   search, a finished action's check. The icon pops, a ring and eight dots fly out of it
+   and fade. Pseudo-elements, so nothing in the layout moves; centred with inset + auto
+   margins, so it is the same in RTL. */
+.burst { position: relative; }
+span.burst { display: inline-flex; }
+.burst::before,
+.burst::after {
+  content: ""; position: absolute; inset: 0; margin: auto;
+  border-radius: 999px; pointer-events: none; opacity: 0;
+}
+.burst::before { width: 2.2em; height: 2.2em; border: 2px solid var(--accent); }
+.burst::after {
+  width: 4px; height: 4px;
+  box-shadow:
+    0 -15px var(--accent), 11px -11px var(--warn), 15px 0 var(--accent), 11px 11px var(--crit),
+    0 15px var(--accent), -11px 11px var(--warn), -15px 0 var(--accent), -11px -11px var(--crit);
+}
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes burst-pop {
+    0%   { transform: scale(0.6); }
+    45%  { transform: scale(1.3); }
+    100% { transform: none; }
+  }
+  @keyframes burst-ring {
+    from { opacity: 0.9; transform: scale(0.3); }
+    to   { opacity: 0; transform: scale(1.35); border-width: 0; }
+  }
+  @keyframes burst-dots {
+    0%   { opacity: 0; transform: scale(0.4); }
+    30%  { opacity: 1; }
+    100% { opacity: 0; transform: scale(1.3); }
+  }
+  /* The done check keeps its own spin-in pop (.done-check). */
+  .burst[data-burst] > svg:not(.done-check) { animation: burst-pop 420ms var(--spring-pop) both; }
+  .burst[data-burst]::before { animation: burst-ring 520ms var(--ease-out) both; }
+  .burst[data-burst]::after { animation: burst-dots 560ms var(--ease-out) both; }
 }
 
 /* CountUp (components/meridian/CountUp.tsx): each digit is a column showing one cell of a

@@ -983,3 +983,18 @@ Research: [High-fidelity page skeletons](https://claude.ai/artifact/DmCdRhNzbrBt
 | Not used | react-loading-skeleton, react-content-loader, skeleton-mammoth, page-skeleton-webpack-plugin | Hand-drawn shapes or dead; see the research |
 | Rule | CI keeps the captures current; by hand, rerun the capture after a layout change and commit `lib/skeletons/` | A page without a capture keeps its fallback shape |
 | Automatic update (owner, 2026-10-30) | `.github/workflows/skeletons.yml` recaptures every page on a throwaway demo database (`scripts/skeletons-ci.sh`, fixed anchor date) and commits the changed JSON to the PR branch | Runs on ready, same-repository PRs that touch `app/(shell)`, `components`, `app/globals.css`, `lib/pageMeta.ts` or the capture scripts themselves; commit pushed with the built-in token, which GitHub does not treat as a person: CI for that commit waits in «action_required» until someone approves the run in the Actions tab (owner chose to merge without it, 2026-10-30; a personal access token secret would remove the wait); a page within 3 px of its stored capture is left alone (`scripts/skeleton-compare.mjs`) |
+
+### 10.12 Theme switch and six motion effects (2026-10-30, owner decision)
+
+From a "which feels better" motion clip and telegram.org's dark/light switch. Write-up: [Motion ideas: video + Telegram theme switch](https://claude.ai/artifact/FxsvhEhLqhSZt63VWDQeP2). The owner chose all six effects in one batch and "grow to light, shrink to dark" for the theme switch. No new dependency: the browser's View Transitions API, CSS, and framer-motion (already installed).
+
+| Effect | Where | How |
+|---|---|---|
+| Theme switch | Both sun/moon toggles (`switchTheme` in `lib/theme.ts`) | View Transitions: light grows as a circle out of the button, dark is the light page shrinking back into it; instant on browsers without the API and under reduced motion |
+| Toggle stretch | Every `ToggleSwitch` | CSS: pressed, the thumb stretches toward where it goes; released, it travels on the pop spring and settles |
+| Pop and burst | Customer pin, recent-customers pin, search favourite, star ratings, `BusyIcon` done check | `lib/burst.ts` and `.burst` pseudo-elements: icon pops, a ring and eight dots fly out, one short buzz; only when turning something on |
+| Menu from the button | Header group menu (`HoverPill`), every HeroUI popover and dropdown | Scale from 60% at the trigger, pop spring |
+| Shake for "no" | Login (password and code), step-up code sheet, password change | `useShakeOn`: fields shake side to side, the phone knocks twice; the message still says why |
+| Sliding pill | Bottom bar, page tabs (`RouteTabs`, also between pages), day chips | `lib/pillSlide.ts`: the new pill plays in from the old one, stretching over both on the way |
+| Gap closes | Today task delete and finish, pipeline lanes, suggestion cards | `.rowcollapse` (grid 1fr to 0fr) for rows hidden while their undo runs; `LeavingRows` (framer-motion popLayout) for rows that leave the data |
+

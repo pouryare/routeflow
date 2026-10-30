@@ -3,11 +3,12 @@
 import { AnswerLink } from "@/components/tapflow/Answer";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { Icon } from "@/components/meridian/Icon";
 import BottomSheet from "@/components/mobile/BottomSheet";
 import { TAB_ICON, type BottomTabs } from "@/lib/mobileNav";
 import { currentTab } from "@/lib/appNav";
+import { boxOf, slidePill, type Box } from "@/lib/pillSlide";
 
 /** The phone's navigation bar: the four places a role goes dozens of times a day, and «بیشتر»
  *  for everything else (grouped the way the desk menu groups it). Phone only -- the desk pill
@@ -15,7 +16,8 @@ import { currentTab } from "@/lib/appNav";
  *  never both show.
  *
  *  Every item is icon AND word. The active item is the longest-prefix match, so
- *  /sales/orders/12 lights «سفارش‌ها». */
+ *  /sales/orders/12 lights «سفارش‌ها». The pill behind its icon slides over from the item
+ *  you left (lib/pillSlide), so the eye follows where you went. */
 export default function BottomNav({ primary, more, account }: BottomTabs) {
   const pathname = usePathname();
   const [moreOpen, setMoreOpen] = useState(false);
@@ -27,18 +29,29 @@ export default function BottomNav({ primary, more, account }: BottomTabs) {
     (currentTab(pathname, more.flatMap((g) => g.tabs)) !== undefined ||
       account.some((l) => pathname === l.href || pathname.startsWith(`${l.href}/`)));
 
+  const nav = useRef<HTMLElement | null>(null);
+  const lastPill = useRef<Box | null>(null);
+  const lit = current ?? (inMore ? "more" : "");
+  useLayoutEffect(() => {
+    const icon = nav.current?.querySelector('[aria-current="page"] .bottomnav__icon');
+    if (!icon) return;
+    const box = boxOf(icon);
+    slidePill(icon, lastPill.current, box, "::before");
+    lastPill.current = box;
+  }, [lit]);
+
   return (
     <>
-      <nav className="bottomnav" aria-label="ناوبری اصلی">
+      <nav ref={nav} className="bottomnav" aria-label="ناوبری اصلی">
         {primary.map((t) => (
           <Link key={t.href} href={t.href} className="bottomnav__item" aria-current={t.href === current ? "page" : undefined}>
-            <Icon name={TAB_ICON[t.href] ?? "dot"} size="md" />
+            <span className="bottomnav__icon"><Icon name={TAB_ICON[t.href] ?? "dot"} size="md" /></span>
             <span>{t.label}</span>
           </Link>
         ))}
         {(more.length > 0 || account.length > 0) && (
           <button type="button" className="bottomnav__item" aria-haspopup="dialog" aria-current={inMore ? "page" : undefined} onClick={() => setMoreOpen(true)}>
-            <Icon name="menu" size="md" />
+            <span className="bottomnav__icon"><Icon name="menu" size="md" /></span>
             <span>بیشتر</span>
           </button>
         )}

@@ -91,6 +91,10 @@ describe("popoverStyle", () => {
     expect(popoverStyle({ left: 10, top: 20 })!.position).toBe("fixed");
   });
 
+  it("grows out of the chip's centre", () => {
+    expect(popoverStyle({ left: 10, top: 20, originX: 40 })!.transformOrigin).toBe("40px 0px");
+  });
+
   it("returns undefined before the chip has been measured", () => {
     expect(popoverStyle(null)).toBeUndefined();
   });
