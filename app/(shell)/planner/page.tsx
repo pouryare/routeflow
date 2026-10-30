@@ -1,5 +1,6 @@
 "use client";
 
+import ScrollFade from "@/components/mobile/ScrollFade";
 import { FieldInput } from "@/components/FieldInput";
 import VisitPlanEntry from "@/components/flows/VisitPlanEntry";
 import { useRunAfterMount } from "@/lib/useRunAfterMount";
@@ -656,7 +657,7 @@ export default function PlannerPage() {
           </Link>
         </div>
 
-        <div className="no-print flex gap-1 overflow-x-auto rounded-[var(--radius-md)] border border-border bg-surface p-1">
+        <ScrollFade className="no-print flex gap-1 overflow-x-auto rounded-[var(--radius-md)] border border-border bg-surface p-1">
           {days.map((d) => {
             const ds = toDateStr(d);
             const active = ds === selectedDate;
@@ -684,7 +685,7 @@ export default function PlannerPage() {
               </button>
             );
           })}
-        </div>
+        </ScrollFade>
 
         <div className="no-print flex gap-1 rounded-[var(--radius-md)] border border-border bg-surface p-1 md:hidden" role="group" aria-label="نمایش برنامه">
           {([["list", "فهرست برنامه", "calendar"], ["map", "نقشه مسیر", "map-pin"]] as const).map(([id, label, icon]) => (

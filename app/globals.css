@@ -5314,3 +5314,8 @@ span.burst { display: inline-flex; }
 .datereel__drum { height: 220px; overflow-y: auto; scroll-snap-type: y mandatory; padding-block: 88px; scrollbar-width: none; -webkit-mask-image: linear-gradient(transparent, #000 35%, #000 65%, transparent); mask-image: linear-gradient(transparent, #000 35%, #000 65%, transparent); }
 .datereel__row { height: 44px; display: flex; align-items: center; justify-content: center; scroll-snap-align: center; font-variant-numeric: tabular-nums; }
 .datereel__row[aria-selected="true"] { font-weight: 700; color: var(--accent); }
+
+/* While a mouse drags a ScrollFade row it follows the pointer exactly (no snapping, no text selection). */
+.is-dragging { scroll-snap-type: none !important; user-select: none; cursor: grabbing; }
+.is-autoscroll { cursor: ew-resize; }
+@media (hover: hover) { .scrollfade > div { cursor: grab; } }

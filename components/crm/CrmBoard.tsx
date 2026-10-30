@@ -1,5 +1,6 @@
 "use client";
 
+import ScrollFade from "@/components/mobile/ScrollFade";
 import { FieldInput } from "@/components/FieldInput";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Icon } from "@/components/meridian/Icon";
@@ -110,14 +111,14 @@ export default function CrmBoard({ initialRows, initialCounts, initialView }: {
         <Icon name="plus" size="md" />
         سرنخ تازه</button>
       </div>
-      <div className="crm-views" role="toolbar" aria-label="نمای فهرست">
+      <ScrollFade className="crm-views" role="toolbar" aria-label="نمای فهرست">
         {VIEW_ORDER.map((v) => (
           <button key={v} type="button" aria-pressed={view === v} onClick={() => setView(v)}>
             <Icon name="user" size="md" />
             {VIEW_LABEL[v]}<i>{faDigits(String(counts[v] ?? 0))}</i>
           </button>
         ))}
-      </div>
+      </ScrollFade>
       <div className="crm-list">
         {rows.length === 0 ? <p className="tf-sub" style={{ textAlign: "center", padding: 24 }}>در این نما موردی نیست. نما یا عبارت جستجو را تغییر دهید.</p> : null}
         {rows.map((row) => (

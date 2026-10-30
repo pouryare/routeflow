@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { fadeSides } from "@/lib/scrollFade";
+import { autoscrollSpeed, fadeSides } from "@/lib/scrollFade";
 
 // ScrollFade (components/mobile/ScrollFade.tsx) shows its edge fades from this.
 describe("ScrollFade sides", () => {
@@ -14,5 +14,10 @@ describe("ScrollFade sides", () => {
   });
   it("LTR mid-way: both sides", () => {
     expect(fadeSides(80, 200, false)).toEqual({ left: true, right: true });
+  });
+  it("autoscroll: still in the dead zone, then faster the further you move", () => {
+    expect(autoscrollSpeed(8)).toBe(0);
+    expect(autoscrollSpeed(60)).toBeGreaterThan(autoscrollSpeed(30));
+    expect(autoscrollSpeed(-60)).toBe(-autoscrollSpeed(60));
   });
 });

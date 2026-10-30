@@ -1,5 +1,6 @@
 "use client";
 
+import ScrollFade from "@/components/mobile/ScrollFade";
 import { Icon } from "@/components/meridian/Icon";
 import { LEAD_VIEWS, saveViewMode, type LeadViewMode } from "@/lib/leadViews";
 
@@ -10,7 +11,7 @@ interface PoolViewToggleProps {
 
 export default function PoolViewToggle({ activeView, onChange }: PoolViewToggleProps) {
   return (
-    <div className="pool-toggle-bar flex items-center gap-1 overflow-x-auto pb-1 scrollbar-none" role="tablist" aria-label="نمای فهرست لیدها">
+    <ScrollFade className="pool-toggle-bar flex items-center gap-1 overflow-x-auto pb-1 scrollbar-none" role="tablist" aria-label="نمای فهرست لیدها">
       {LEAD_VIEWS.map((view) => {
         const isActive = view.mode === activeView;
         return (
@@ -32,6 +33,6 @@ export default function PoolViewToggle({ activeView, onChange }: PoolViewToggleP
           </button>
         );
       })}
-    </div>
+    </ScrollFade>
   );
 }
