@@ -19,6 +19,9 @@ on:
       - "app/globals.css"
       - "lib/pageMeta.ts"
       - "scripts/capture-skeletons.mjs"
+      - "scripts/skeleton-compare.mjs"
+      - "scripts/skeletons-ci.sh"
+      - ".github/workflows/skeletons.yml"
 
 concurrency:
   group: skeletons-${{ github.ref }}
