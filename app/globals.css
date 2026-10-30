@@ -5247,8 +5247,12 @@ span.burst { display: inline-flex; }
 .odo__strip { display: flex; flex-direction: column; transform: translateY(calc(var(--odo-d) * -1.25em)); }
 .odo__strip > span { display: block; height: 1.25em; line-height: 1.25em; text-align: center; }
 @media (prefers-reduced-motion: no-preference) {
-  .odo__strip { transition: transform 700ms var(--ease, cubic-bezier(.16,1,.3,1)); }
+  .odo__strip { transition: transform 700ms var(--ease, cubic-bezier(.16,1,.3,1)); animation: odo-roll 900ms var(--ease, cubic-bezier(.16,1,.3,1)) both; }
+  .odo__col:nth-child(2n) .odo__strip { animation-delay: 60ms; }
+  .odo__col:nth-child(3n) .odo__strip { animation-delay: 120ms; }
 }
+/* First view: every digit rolls up from ۰ to its value (pure CSS, so the server's HTML needs no flash-prone reset). */
+@keyframes odo-roll { from { transform: translateY(0); } }
 
 /* «سفارش تازه» pings on the sales summary (components/sales/SalePings.tsx): the newest card
    drops in bright, older ones sit dimmer and smaller behind it. */

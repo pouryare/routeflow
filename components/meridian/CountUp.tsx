@@ -16,8 +16,8 @@ const FA_DIGITS = "۰۱۲۳۴۵۶۷۸۹";
  *  Formatting is a `mode` + `suffix`, never a function prop — this renders inside server
  *  components (the dashboard), and a function cannot cross the server→client boundary.
  *
- *  shortcut: the digits roll on change only, not from zero on first view; rolling from zero
- *  needs the figure to start at 0 on the client, which flashes after the server's HTML.
+ *  On first view each digit also rolls up from ۰ (a CSS animation, so no client reset after the
+ *  server's HTML).
  */
 export default function CountUp({
   value,
