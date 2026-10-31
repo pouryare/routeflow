@@ -17,7 +17,7 @@ Two other files go with it:
 | **Done** | Built. Listed in section 4; the long history is in the archive. |
 | **Not chosen yet** | An F-entry from `docs/future-features.md` that nobody has decided on. They are in the index in section 5. |
 
-**IDs.** Every old ID is kept: **F** = entry in `docs/future-features.md`; **T** Twenty, **S** SuiteCRM, **D** Dolibarr, **E** EspoCRM, **A** Akaunting, **B** Bigcapital, **Z** ezBookkeeping studies; **UIB-A…F** the 2026-10-28 UI pattern batches; **FB1…FB44** the Fleetbase study items (new short tags for items that had none; the old text calls the third-pass ones D3-n, so D3-5 is FB36). Two ideas that two studies both suggested were merged into one line and show both IDs: **T7 / Z17** (totals of the filtered list) and **D13 / E10** (per-person switches). Ideas that are only similar stay separate and point to each other.
+**IDs.** Every old ID is kept: **F** = entry in `docs/future-features.md`; **T** Twenty, **S** SuiteCRM, **D** Dolibarr, **E** EspoCRM, **A** Akaunting, **B** Bigcapital, **Z** ezBookkeeping studies, **H** the Holoo comparison; **UIB-A…F** the 2026-10-28 UI pattern batches; **FB1…FB44** the Fleetbase study items (new short tags for items that had none; the old text calls the third-pass ones D3-n, so D3-5 is FB36). Two ideas that two studies both suggested were merged into one line and show both IDs: **T7 / Z17** (totals of the filtered list) and **D13 / E10** (per-person switches). Ideas that are only similar stay separate and point to each other.
 
 **Size** of an F-entry is a rough guess for its *first slice*: **S** a small change on code that exists, **M** a new table or screen, **L** cross-cutting or needs infrastructure or an outside service. It is a judgement and is meant to be argued with.
 
@@ -419,6 +419,13 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
 
   </details>
 
+- **H5. Cleared cheque reaches the bank.** When a cheque is marked «وصول شد», one entry moves it from cheques receivable to the bank.
+  <details><summary>Full decision</summary>
+
+  **Cleared cheque reaches the bank (H5, Holoo comparison, fixes a wrong number).** Today `advanceCheque` (`lib/repo/cheques.ts`) only changes the status on «به بانک سپرده شد» and «وصول شد»; the money stays in `1202` چک‌های دریافتنی and the bank `1102` is too low by every cleared cheque. On «وصول شد» post Dr bank / Cr `1202`, with the account chosen the way D2 picks it. Cheques already cleared get one catch-up entry. A bounce already voids the payment and works. Built first of the Holoo fixes. Not checked: whether any report works around it.
+
+  </details>
+
 ### Accounting, reports and analytics
 
 - **T15. Sales chart bug and calendar days (with T20).** The weekly chart skips empty days, so one empty day shifts every bar. Fill calendar days with 0, show closed days, compare the same weekdays; add sales by weekday, a month-to-date line, and rankings with an «سایر» row.
@@ -476,6 +483,25 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
 
   </details>
 
+- **H1. Real کل / معین levels in the chart of accounts.** Use the empty `parent_id` to link accounts to their group; reports show a subtotal per group.
+  <details><summary>Full decision</summary>
+
+  **Real کل / معین levels (H1, Holoo comparison).** `accounts.parent_id` exists but no code reads it and the seed leaves it empty; the header rows `1000` to `5000` are not linked to the accounts under them, so the chart is flat plus a type. Link each account to its group, show a subtotal per group in the trial balance, balance sheet and income statement. The تفصیلی layer stays as the customer, supplier, party and group tags on ledger lines (no account per customer). An export mapping for an outside accountant was not chosen; it can follow the month pack (D26).
+
+  </details>
+- **H2. Close the year.** A «بستن سال» button moves the year's profit into retained earnings; reports get a year filter.
+  <details><summary>Full decision</summary>
+
+  **Close the year (H2, Holoo comparison).** There is no year object and no closing entry, on purpose (no second set of books). The balance sheet derives one line «سود و زیان دوره» (`3900`) from all revenue and expense since the start, so old profit never resets, and the profit split debits `3103` which never received the profit, so `3103` goes negative. A «بستن سال» button posts one closing entry per Jalali year that moves the year's profit into `3103`; the `3900` line then covers only the open year; income statement and balance sheet get a year filter (today a single month or all time). Owner and the accountant role (H3) can run it; reopening needs a reason and is logged. Entry numbers keep running as today (restarting each year was not chosen). Works with A2 (close a month) and the yearly split. Not checked in the app: only the code was read.
+
+  </details>
+- **H6. Void an expense or a purchase.** A «باطل کردن» button with a reason posts the mirror entry and keeps the original visible.
+  <details><summary>Full decision</summary>
+
+  **Void an expense or a purchase (H6, Holoo comparison).** Payments can be voided and re-allocated, but expenses and purchases have no edit or void route (only the receipt photo), so a 2,000,000 fuel entry typed instead of 200,000 cannot be corrected from the app. Add a «باطل کردن» button with a reason on expenses and purchases: it posts the mirror entry (as `postReceiptReversal` does for payments), the original stays visible, and the log names who did it. Expenses first. Voiding a purchase must recompute the product's average cost and show the affected orders, so it waits with B6.
+
+  </details>
+
 ### People, approvals and management control
 
 - **FB27. Live commission preview (first slice of F19).** The commission editor shows the result for sample sales as the rule changes, using the payroll calculation.
@@ -503,6 +529,13 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
 
   </details>
 - **S23. Staff on leave until a date.** Still can sign in; assignment skips them; planner warns; a cover card lists their open leads and tasks.
+
+- **H3. Accountant role.** A new login that reads all accounting and can post manual entries, reversals and the year close.
+  <details><summary>Full decision</summary>
+
+  **Accountant role (H3, Holoo comparison).** Today only owners read all accounting and a group manager reads the journal and expenses (`lib/accountingGate.ts`); the roadmap speaks of «the accountant» only as someone who receives a file (D21, D26). A new role reads every accounting page and export, and can post a manual سند (a bank fee, a loan, a correction between accounts; it must balance and be tagged MANUAL), reverse an entry (H6), and close a month (A2) or the year (H2). Every action is logged by name. No user admin, prices or commission. Adding a role means checking every role list in the gates (`MANAGE_ROLES`, `OWNER_ROLES` and the proxy), so it is a real piece of work; per-screen ticks like Holoo's were not chosen. F128 (auditor) was not found in `docs/roadmap.md`; check before reusing the number.
+
+  </details>
 
 ### Platform, security and administration
 
