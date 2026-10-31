@@ -5,7 +5,7 @@ export async function celebrate(): Promise<void> {
   if (typeof window === "undefined") return;
   if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
   const { default: confetti } = await import("canvas-confetti");
-  const shot = { particleCount: 70, spread: 75, startVelocity: 42, ticks: 160, disableForReducedMotion: true, zIndex: 2000 };
+  const shot = { particleCount: 60, spread: 70, startVelocity: 38, ticks: 260, gravity: 0.7, drift: 0.4, decay: 0.92, scalar: 1.1, flat: true, shapes: ["square" as const], disableForReducedMotion: true, zIndex: 2000 };
   void confetti({ ...shot, angle: 60, origin: { x: 0, y: 0.75 } });
   void confetti({ ...shot, angle: 120, origin: { x: 1, y: 0.75 } });
 }

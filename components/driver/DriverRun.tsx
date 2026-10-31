@@ -54,6 +54,7 @@ export default function DriverRun({
   const router = useRouter();
   const [openStop, setOpenStop] = useState<number | null>(null);
   const [receipt, setReceipt] = useState<ReceiptData | null>(null);
+  const [folded, setFolded] = useState(false);
 
   /* Arrival: when the driver is within 150 m of a pending stop, a one-line banner offers the
      delivery flow for exactly that stop (a banner, not a question). «فعلاً نه» hides it for
@@ -131,7 +132,7 @@ export default function DriverRun({
             open={openStop === stop.id}
             onToggle={() => setOpenStop(openStop === stop.id ? null : stop.id)}
             onRecorded={() => router.refresh()}
-            onPrint={(data) => setReceipt(data)}
+            onPrint={(data) => { setFolded(false); setReceipt(data); }}
             runDate={run.run_date}
             driverName={driverName}
             businessName={businessName}
@@ -144,16 +145,31 @@ export default function DriverRun({
         <div className="rounded-[var(--radius-lg)] border border-[var(--border-strong)] bg-[var(--surface-raised)] p-[var(--space-4)]">
           <div className="mb-[var(--space-3)] flex items-center justify-between">
             <h2 className="m-0 text-[length:var(--text-base)] text-[var(--text)]">رسید</h2>
-            <button
-              type="button"
-              onClick={() => setReceipt(null)}
-              className="rounded-[var(--radius-md)] border border-[var(--border)] px-[var(--space-3)] py-[var(--space-1)] text-[length:var(--text-xs)] text-[var(--text-muted)]"
-            >
-              <Icon name="x" size="sm" />
-              بستن رسید
-            </button>
+            <div className="flex gap-[var(--space-2)]">
+              <button
+                type="button"
+                aria-expanded={!folded}
+                onClick={() => setFolded((f) => !f)}
+                className="touch rounded-[var(--radius-md)] border border-[var(--border)] px-[var(--space-3)] py-[var(--space-1)] text-[length:var(--text-xs)] text-[var(--text-muted)]"
+              >
+                <Icon name={folded ? "chevron-down" : "minimize"} size="sm" />
+                {folded ? "باز کردن رسید" : "تا کردن رسید"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setReceipt(null)}
+                className="touch rounded-[var(--radius-md)] border border-[var(--border)] px-[var(--space-3)] py-[var(--space-1)] text-[length:var(--text-xs)] text-[var(--text-muted)]"
+              >
+                <Icon name="x" size="sm" />
+                بستن رسید
+              </button>
+            </div>
           </div>
-          <ReceiptPrinter data={receipt} />
+          <div className="foldbill" data-folded={folded}>
+            <div className="foldbill__inner">
+              <ReceiptPrinter data={receipt} />
+            </div>
+          </div>
         </div>
       )}
     </div>

@@ -1,3 +1,4 @@
+import CardTable from "@/components/CardTable";
 import { Icon } from "@/components/meridian/Icon";
 import { roleLabel } from "@/lib/roles";
 import type { AcademyModule, TrainingPerson } from "@/lib/repo/academy";
@@ -9,7 +10,7 @@ export default function TrainingTable({ lessons, people }: { lessons: AcademyMod
   if (people.length === 0) return <p className="acad__muted">کسی در این گروه درس اجباری ندارد.</p>;
   return (
     <div style={{ overflowX: "auto" }}>
-      <table className="w-full border-collapse text-[length:var(--text-sm)]">
+      <CardTable className="w-full border-collapse text-[length:var(--text-sm)]">
         <thead>
           <tr className="border-b border-border text-right text-text-muted">
             <th className="py-1 font-normal">نام</th>
@@ -42,7 +43,7 @@ export default function TrainingTable({ lessons, people }: { lessons: AcademyMod
             </tr>
           ))}
         </tbody>
-      </table>
+      </CardTable>
     </div>
   );
 }

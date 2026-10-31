@@ -1,3 +1,4 @@
+import CardTable from "@/components/CardTable";
 import { Icon } from "@/components/meridian/Icon";
 import { CardHelp } from "@/components/meridian/CardHelp";
 import RepDefinitions from "@/components/sales/RepDefinitions";
@@ -69,7 +70,7 @@ export default async function RepsPage({
         <CardHelp id="card.reps" />
       </div>
       <div className="kblock__body overflow-x-auto">
-        <table className="w-full border-collapse text-[length:var(--text-sm)]">
+        <CardTable className="w-full border-collapse text-[length:var(--text-sm)]">
           <thead>
             <tr className="text-[var(--text-muted)]">
               <th className="border-b border-[var(--border)] py-2 text-right font-medium">کد / نام</th>
@@ -100,7 +101,7 @@ export default async function RepsPage({
               </tr>
             ))}
           </tbody>
-        </table>
+        </CardTable>
       </div>
     </div>
     )}

@@ -28,8 +28,8 @@ export default function KpiCarousel({ cards, onOpen, ariaLabel }: { cards: Carou
   return (
     <div className="kpicarousel">
       <ul ref={row} className="kpicarousel__row" aria-label={ariaLabel} onScroll={settle}>
-        {cards.map((c) => (
-          <li key={c.id} className="kpicarousel__item">
+        {cards.map((c, i) => (
+          <li key={c.id} className="kpicarousel__item" data-on={i === at}>
             <button type="button" className="kpicarousel__card" aria-label={c.label} onClick={() => onOpen(c.id)}>
               {/* The card is its own picture: a number, its change chip (with an arrow icon) and a sparkline, so a further icon would only add noise. */}
               {c.body}

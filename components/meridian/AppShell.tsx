@@ -1,6 +1,7 @@
 import { Suspense, type ReactNode } from "react";
 import AppHeader from "@/components/meridian/AppHeader";
 import HeaderSkeleton from "@/components/meridian/HeaderSkeleton";
+import PullToRefresh from "@/components/meridian/PullToRefresh";
 import RevealRoute from "@/components/meridian/RevealRoute";
 import RouteFade from "@/components/meridian/RouteFade";
 import SquircleFallback from "@/components/meridian/SquircleFallback";
@@ -33,6 +34,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
         <AppHeader />
       </Suspense>
 
+      <PullToRefresh />
       <RevealRoute />
       <RouteFade>{children}</RouteFade>
 

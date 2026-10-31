@@ -1,5 +1,6 @@
 "use client";
 
+import CardTable from "@/components/CardTable";
 import { FieldInput } from "@/components/FieldInput";
 import { ChipGroup } from "@/components/mobile/FilterChips";
 import SmartPicker from "@/components/mobile/SmartPicker";
@@ -167,7 +168,7 @@ export default function RepDefinitions() {
       <section className="card p-4">
         <SectionHead help="card.rep-list" title="نمایندگان تعریف‌شده" sub="مرحله و پذیرش هر نماینده را از اینجا جلو ببرید." />
         <div className="overflow-x-auto">
-          <table className="w-full border-collapse text-[length:var(--text-sm)]">
+          <CardTable className="w-full border-collapse text-[length:var(--text-sm)]">
             <thead>
               <tr className="text-right text-text-muted">
                 <th className="px-3 py-2">کد</th>
@@ -202,7 +203,7 @@ export default function RepDefinitions() {
                 </tr>
               )}
             </tbody>
-          </table>
+          </CardTable>
         </div>
       </section>
 

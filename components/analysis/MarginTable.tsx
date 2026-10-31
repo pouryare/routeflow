@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { Table, type SortDescriptor } from "@heroui/react";
 import { friendlyError } from "@/lib/userMessage";
 
+import CardTable from "@/components/CardTable";
 import { Icon } from "@/components/meridian/Icon";
 import { sortRows, visibleRows } from "@/components/analysis/marginRows";
 interface MarginRow {
@@ -108,7 +109,26 @@ export default function MarginTable({ period }: { period: string }) {
       )}
       {rows && rows.length > 0 && (
         <div className="kblock__body overflow-x-auto">
-          <Table>
+          {/* A phone gets one card per row (tables are desktop only); the sortable grid is from md up. */}
+          <CardTable className="md:hidden">
+            <thead>
+              <tr>{COLS.map((c) => <th key={c.id}>{c.label}</th>)}</tr>
+            </thead>
+            <tbody>
+              {shown.map((r) => (
+                <tr key={r.key}>
+                  <td>{r.label}</td>
+                  <td className="tabular-nums">{fa(r.revenue_toman)}</td>
+                  <td className="tabular-nums" style={{ color: r.margin_toman < 0 ? "var(--crit)" : undefined }}>{fa(r.margin_toman)}</td>
+                  <td className="tabular-nums" style={{ color: r.margin_pct < 0.1 ? "var(--warn)" : undefined }}>
+                    {Math.round(r.margin_pct * 100).toLocaleString("fa-IR")}٪
+                  </td>
+                  <td className="tabular-nums">{Math.round(r.share_pct * 100).toLocaleString("fa-IR")}٪</td>
+                </tr>
+              ))}
+            </tbody>
+          </CardTable>
+          <Table className="hidden md:block">
             <Table.ScrollContainer>
               <Table.Content aria-label="حاشیهٔ مشارکتی" sortDescriptor={sort} onSortChange={setSort}>
                 <Table.Header>

@@ -443,6 +443,7 @@ body {
    positioned by a measured offset, so it stays centred on its point at any chart width
    without JavaScript having to measure the pill.                                        */
 .chart-pill {
+  transition: left 140ms var(--ease, ease-out), top 140ms var(--ease, ease-out);
   position: absolute;
   z-index: 2;
   transform: translate(-50%, -120%);
@@ -1697,8 +1698,8 @@ body {
    bottom of the viewport) then sat at the bottom of the page instead, visibly open with
    a dead close button. tests/routeFade.test.ts guards it. */
 @keyframes meridian-route-in {
-  from { opacity: 0; transform: translateY(8px); }
-  to   { opacity: 1; transform: none; }
+  from { opacity: 0; transform: translateY(8px); filter: blur(5px); }
+  to   { opacity: 1; transform: none; filter: none; }
 }
 .meridian .route-fade { animation: meridian-route-in 240ms var(--ease) backwards; }
 @media (prefers-reduced-motion: reduce) { .meridian .route-fade { animation: none; } }
@@ -2967,6 +2968,9 @@ body {
    unavailable (already booked) is struck rather than hidden: the gap would be a puzzle. */
 .meridian .jdate { display: inline-block; }
 .meridian .jdate__field.button { min-width: 10rem; justify-content: flex-start; font-variant-numeric: tabular-nums; }
+/* `jdate--fill`: the field takes the whole width of its column (a form on a phone). */
+.meridian .jdate--fill { display: block; }
+.meridian .jdate--fill .jdate__field.button { width: 100%; }
 .meridian .jdate__placeholder { color: var(--muted); }
 .meridian .calendar__cell[data-unavailable] { text-decoration: line-through; text-decoration-thickness: 1px; }
 /* HeroUI's checkbox and switch (CheckField.tsx, ToggleSwitch.tsx): the row, or the 44 px
@@ -3010,6 +3014,11 @@ body {
 /* TextInput / PasswordInput: a 44 px field with its label above, room under it before the next. */
 .textinput { margin-bottom: var(--space-3); gap: 4px; }
 .textinput .label { font-size: var(--text-xs); color: var(--text-muted); }
+.textinput--float { position: relative; }
+.textinput--float .label { position: absolute; z-index: 1; inset-inline-start: 12px; top: 12px; margin: 0; pointer-events: none; font-size: var(--text-base); transition: top 160ms var(--ease-out, ease-out), font-size 160ms var(--ease-out, ease-out); }
+.textinput--float:focus-within .label, .textinput--float:has(input:not(:placeholder-shown)) .label { top: 3px; font-size: 11px; color: var(--accent); }
+.textinput--float .input, .textinput--float .input-group__input { padding-top: 14px; }
+@media (prefers-reduced-motion: reduce) { .textinput--float .label { transition: none; } }
 .textinput .input, .textinput .input-group { min-height: 44px; font-size: var(--text-base); }
 /* The bare HeroUI Input and TextArea (components/FieldInput.tsx): 44 px, 16 px type so a phone does not zoom in. */
 .meridian .fieldinput { min-height: 44px; font-size: var(--text-base); }
@@ -5055,6 +5064,8 @@ body {
 .meridian .deck__progress { margin: 0; text-align: center; color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
 .meridian .deck__card { display: grid; gap: 6px; padding: 16px; border: 1px solid var(--border); border-radius: var(--r-lg); background: var(--surface); }
 .meridian .deck__card strong { font-size: 17px; }
+.meridian .deck__card--throw { touch-action: pan-y; cursor: grab; }
+.meridian .deck__hint { margin: 0; text-align: center; color: var(--muted); font-size: 12px; }
 .meridian .deck__choices { display: grid; gap: 8px; }
 .meridian .deck__done { display: grid; gap: 12px; justify-items: center; padding: 24px 0; text-align: center; }
 
@@ -5096,6 +5107,8 @@ body {
   .meridian .kpibar, .meridian .kpibar__detail { display: none; }
 }
 .meridian ul.kpicarousel__row, .meridian ul.summarycards { list-style: none; margin: 0; padding-inline: 2px; }
+.meridian .kpicarousel__item { transition: opacity 200ms ease, transform 200ms ease; } .meridian .kpicarousel__item[data-on="false"] { opacity: .72; transform: scale(.97); }
+.meridian .kpicarousel__dots i { transition: width 200ms ease, background 200ms ease; } .meridian .kpicarousel__dots i.on { width: 18px; border-radius: 4px; }
 .meridian .kpicarousel__item { flex: 0 0 80%; scroll-snap-align: center; display: flex; }
 .meridian .kpicarousel__item .kpicarousel__card { flex: 1 1 auto; }
 .meridian ul.summarycards > li.summarycard { display: flex; }
@@ -5130,6 +5143,10 @@ body {
   .acct-cards td { display: flex; justify-content: space-between; gap: 12px; padding: 3px 0; text-align: start; }
   .acct-cards td:first-child { font-weight: 600; padding-bottom: 6px; }
   .acct-cards td[data-label]::before { content: attr(data-label); color: var(--muted); font-weight: 400; }
+  /* `--tiles`: each row is a card of its own (a rounded box with a gap), not a ruled row. */
+  .acct-cards--tiles tbody { display: grid; gap: 10px; }
+  .acct-cards--tiles tr { border: 1px solid var(--border); border-radius: var(--r-md); background: var(--surface); }
+  .acct-cards--tiles td:last-child:not([data-label]) { padding-top: 8px; }
 }
 
 /* ---- order pipeline: swipe through the stages on a phone ------------------------------------------
@@ -5233,6 +5250,24 @@ body {
   [data-shake] { animation: shake-no 420ms var(--ease-out); }
 }
 
+/* A field's reason unfolds under it instead of appearing (TextInput, PasswordInput). */
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes field-error-in { from { opacity: 0; transform: translateY(-6px); } }
+  .textinput .field-error { animation: field-error-in 240ms var(--ease-out) both; }
+}
+
+/* The bell swings once from its top when a new notification arrives (NotificationBell). */
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes bell-swing {
+    0%, 100% { transform: none; }
+    20% { transform: rotate(16deg); }
+    40% { transform: rotate(-13deg); }
+    60% { transform: rotate(8deg); }
+    80% { transform: rotate(-4deg); }
+  }
+  .bell-swing { transform-origin: 50% 0; animation: bell-swing 800ms var(--ease-out); }
+}
+
 /* A row that folds away when removed (TaskRow): its height closes to nothing as it fades
    and slides, so the rows under it glide up rather than jump; undo unfolds it. A grid
    track animating 1fr -> 0fr is the one way to transition to and from an auto height. */
@@ -5294,8 +5329,12 @@ span.burst { display: inline-flex; }
 .odo__strip { display: flex; flex-direction: column; transform: translateY(calc(var(--odo-d) * -1.25em)); }
 .odo__strip > span { display: block; height: 1.25em; line-height: 1.25em; text-align: center; }
 @media (prefers-reduced-motion: no-preference) {
-  .odo__strip { transition: transform 700ms var(--ease, cubic-bezier(.16,1,.3,1)); }
+  .odo__strip { transition: transform 700ms var(--ease, cubic-bezier(.16,1,.3,1)); animation: odo-roll 900ms var(--ease, cubic-bezier(.16,1,.3,1)) both; }
+  .odo__col:nth-child(2n) .odo__strip { animation-delay: 60ms; }
+  .odo__col:nth-child(3n) .odo__strip { animation-delay: 120ms; }
 }
+/* First view: every digit rolls up from ۰ to its value (pure CSS, so the server's HTML needs no flash-prone reset). */
+@keyframes odo-roll { from { transform: translateY(0); } }
 
 /* «سفارش تازه» pings on the sales summary (components/sales/SalePings.tsx): the newest card
    drops in bright, older ones sit dimmer and smaller behind it. */
@@ -5319,3 +5358,95 @@ span.burst { display: inline-flex; }
 .meridian .realized-bar { height: 8px; border-radius: 999px; background: var(--border); overflow: hidden; }
 .meridian .realized-bar > span { display: block; height: 100%; border-radius: inherit; background: var(--accent); transition: width 700ms var(--ease, ease); }
 @media (prefers-reduced-motion: reduce) { .meridian .realized-bar > span { transition: none; } }
+
+/* Bar chart: pointing at one bar dims the rest, so the one you read stands out. */
+.bars rect { transition: opacity 160ms ease; }
+.bars:hover rect:not(:hover) { opacity: .55; }
+@media (prefers-reduced-motion: reduce) {
+  .chart-pill, .bars rect { transition: none; }
+}
+
+/* Stars (StarRating): the ones you just filled pop in one after another, left of the chosen one first. */
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes star-pop { 50% { transform: scale(1.3) rotate(-8deg); } }
+  .star[aria-checked="true"] svg, .star.text-warn svg { animation: star-pop 320ms var(--ease-out, ease-out) calc(var(--star-i) * 45ms) both; }
+  /* A chip you pick swells a little, like it was pulled toward your finger. */
+  .meridian .choicechip.on { animation: chip-swell 260ms var(--spring-pop, ease-out); }
+  @keyframes chip-swell { 40% { transform: scale(1.07); } }
+}
+
+/* ScrollFade (components/mobile/ScrollFade.tsx): a dark fade on each edge that has more to scroll to. */
+.scrollfade { position: relative; min-width: 0; max-width: 100%; }
+.scrollfade__edge { position: absolute; top: 0; bottom: 6px; width: 28px; pointer-events: none; opacity: 0; transition: opacity 160ms ease; z-index: 1; }
+.scrollfade__edge--left { left: 0; background: linear-gradient(to right, color-mix(in srgb, var(--foreground, #000) 22%, transparent), transparent); }
+.scrollfade__edge--right { right: 0; background: linear-gradient(to left, color-mix(in srgb, var(--foreground, #000) 22%, transparent), transparent); }
+.scrollfade[data-more-left="true"] .scrollfade__edge--left, .scrollfade[data-more-right="true"] .scrollfade__edge--right { opacity: 1; }
+
+/* DateReel (components/mobile/DateReel.tsx): three snap-scrolling drums with a band over the middle row. */
+.datereel { position: relative; display: grid; grid-template-columns: 1fr 1.6fr 1.2fr; gap: 4px; max-width: 360px; margin-inline: auto; height: 220px; }
+.datereel__band { position: absolute; inset-inline: 0; top: 88px; height: 44px; border-radius: var(--radius-md, 10px); background: color-mix(in srgb, var(--accent) 12%, transparent); pointer-events: none; }
+.datereel__drum { height: 220px; overflow-y: auto; scroll-snap-type: y mandatory; padding-block: 88px; scrollbar-width: none; -webkit-mask-image: linear-gradient(transparent, #000 35%, #000 65%, transparent); mask-image: linear-gradient(transparent, #000 35%, #000 65%, transparent); }
+.datereel__row { height: 44px; display: flex; align-items: center; justify-content: center; scroll-snap-align: center; font-variant-numeric: tabular-nums; }
+.datereel__row[aria-selected="true"] { font-weight: 700; color: var(--accent); }
+
+/* While a mouse drags a ScrollFade row it follows the pointer exactly (no snapping, no text selection). */
+.is-dragging { scroll-snap-type: none !important; user-select: none; cursor: grabbing; }
+.is-autoscroll { cursor: ew-resize; }
+@media (hover: hover) { .scrollfade > div { cursor: grab; } }
+
+/* Password meter (components/PasswordForm.tsx): four bar steps, then the rules ticked as you type. */
+.pwmeter { margin: calc(var(--space-2) * -1) 0 var(--space-3); }
+.pwmeter__bar { display: flex; gap: 4px; margin-bottom: var(--space-2); }
+.pwmeter__bar i { flex: 1; height: 5px; border-radius: 3px; background: var(--border); transition: background 200ms ease; }
+.pwmeter[data-score="1"] .pwmeter__bar i.on { background: var(--crit); }
+.pwmeter[data-score="2"] .pwmeter__bar i.on { background: var(--warn); }
+.pwmeter[data-score="3"] .pwmeter__bar i.on, .pwmeter[data-score="4"] .pwmeter__bar i.on { background: var(--ok, #16a34a); }
+.pwmeter__rules { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; font-size: var(--text-xs); color: var(--text-muted); }
+.pwmeter__rules li { display: flex; align-items: center; gap: 4px; }
+.pwmeter__rules li.met { color: var(--ok, #16a34a); }
+
+/* Pull to refresh (components/meridian/PullToRefresh.tsx): a round disc that follows the finger down from the top. */
+.ptr { position: fixed; inset-inline: 0; top: env(safe-area-inset-top, 0); display: flex; justify-content: center; z-index: 40; pointer-events: none; transition: opacity 120ms ease; }
+.ptr__disc { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; background: var(--surface-raised); color: var(--accent); box-shadow: var(--elev-2); }
+@media (prefers-reduced-motion: no-preference) {
+  .ptr__disc--busy svg { animation: ptr-spin 700ms linear infinite; }
+  @keyframes ptr-spin { to { transform: rotate(360deg); } }
+}
+@media (hover: hover) and (pointer: fine) { .ptr { display: none; } }
+
+/* Price flow (CountUp): a figure that just rose reads green, one that fell reads red, then settles. */
+.odo { transition: color 900ms ease; }
+.odo[data-dir="up"] { color: var(--good, #16a34a); transition-duration: 120ms; }
+.odo[data-dir="down"] { color: var(--crit, #dc2626); transition-duration: 120ms; }
+
+/* Hide money (components/HideMoneyButton.tsx): rolling figures blur, digit by digit, while the eye is on. */
+.hidemoney { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; border: 0; background: transparent; color: var(--text-muted); }
+.odo { transition: color 900ms ease, filter 260ms ease; }
+html[data-hide-money="1"] .odo { filter: blur(7px); }
+
+/* Folding receipt (DriverRun): the preview folds away to nothing, like a bill tucked back in a pocket. */
+.foldbill { display: grid; grid-template-rows: 1fr; transition: grid-template-rows 320ms var(--ease, ease), opacity 240ms ease; }
+.foldbill__inner { overflow: hidden; min-height: 0; transform-origin: top; }
+.foldbill[data-folded="true"] { grid-template-rows: 0fr; opacity: 0; }
+@media (prefers-reduced-motion: reduce) { .foldbill { transition: none; } }
+
+/* LeanTitle (login): each word leans toward the pointer by its own amount. */
+@media (prefers-reduced-motion: no-preference) {
+  .lean .wr { display: inline-block; transition: translate 220ms var(--ease-out, ease-out); translate: calc(var(--lx, 0) * 5px) calc(var(--ly, 0) * 3px); }
+  .lean .wr:nth-child(2n) { translate: calc(var(--lx, 0) * 8px) calc(var(--ly, 0) * 4px); }
+}
+/* TumbleWords (done screen): words drop off with a spin, and return on the next tap. */
+.tumble { all: unset; cursor: pointer; display: inline-block; min-height: 44px; }
+.tumble__w { display: inline-block; transition: transform 700ms cubic-bezier(.5,0,.9,.6), opacity 700ms ease; }
+@media (prefers-reduced-motion: no-preference) {
+  .tumble__w[data-fallen="true"] { transform: translateY(120px) rotate(calc(18deg - var(--tw-i) * 24deg)); opacity: 0; transition-delay: calc(var(--tw-i) * 90ms); }
+}
+/* Dot loader (BusyIcon): the one small loader for buttons and pills. */
+.dotloader { display: inline-flex; align-items: center; gap: 3px; height: 1.25em; }
+.dotloader i { width: 5px; height: 5px; border-radius: 50%; background: currentColor; opacity: .5; }
+@media (prefers-reduced-motion: no-preference) {
+  .dotloader i { animation: dotloader 900ms ease-in-out infinite; }
+  .dotloader i:nth-child(2) { animation-delay: 120ms; }
+  .dotloader i:nth-child(3) { animation-delay: 240ms; }
+  @keyframes dotloader { 40% { transform: translateY(-4px); opacity: 1; } }
+}

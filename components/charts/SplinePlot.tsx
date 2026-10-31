@@ -76,7 +76,7 @@ export default function SplinePlot({
   return (
     <div
       ref={wrap}
-      className="relative"
+      className="relative touch-pan-y"
       onPointerMove={onMove}
       onPointerLeave={() => setActive(null)}
       style={{ ["--dot-count" as string]: n }}

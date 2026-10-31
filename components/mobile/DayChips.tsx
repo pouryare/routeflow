@@ -1,5 +1,6 @@
 "use client";
 
+import ScrollFade from "@/components/mobile/ScrollFade";
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { boxOf, slidePill, type Box } from "@/lib/pillSlide";
 import { Button, ToggleButton } from "@heroui/react";
@@ -92,7 +93,7 @@ export default function DayChips({
       )}
       {mode === "strip" && (
         <>
-          <div className="daychips__row daychips__row--strip">{strip.map((d) => chip(d.iso!, d.label, d.sub, d.flag))}</div>
+          <ScrollFade className="daychips__row daychips__row--strip">{strip.map((d) => chip(d.iso!, d.label, d.sub, d.flag))}</ScrollFade>
           <Button variant="ghost" className="daychips__link" onPress={() => setMode("calendar")}>
             <Icon name="calendar" size="sm" />
             تقویم کامل

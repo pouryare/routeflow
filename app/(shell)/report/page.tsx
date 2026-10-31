@@ -1,3 +1,4 @@
+import CardTable from "@/components/CardTable";
 import { Icon } from "@/components/meridian/Icon";
 import Link from "next/link";
 import type { CoverageStatus } from "@/lib/db";
@@ -237,7 +238,7 @@ export default async function ReportPage({
               )}
             </div>
             <div className="overflow-x-auto rounded-[var(--radius-md)] border border-border">
-              <table className="w-full border-collapse text-[length:var(--text-sm)]">
+              <CardTable className="w-full border-collapse text-[length:var(--text-sm)]">
                 <thead>
                   <tr className="border-b border-border bg-surface text-right text-text-muted">
                     <th className="px-3 py-2 font-medium">نام</th>
@@ -262,7 +263,7 @@ export default async function ReportPage({
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </CardTable>
             </div>
           </section>
         )}
@@ -272,7 +273,7 @@ export default async function ReportPage({
             فهرست مشتریان ({faNum(customers.length)})
           </h2>
           <div className="overflow-x-auto rounded-[var(--radius-md)] border border-border">
-            <table className="w-full border-collapse text-[length:var(--text-sm)]">
+            <CardTable className="w-full border-collapse text-[length:var(--text-sm)]">
               <thead>
                 <tr className="border-b border-border bg-surface text-right text-text-muted">
                   <th className="px-3 py-2 font-medium">نام</th>
@@ -301,7 +302,7 @@ export default async function ReportPage({
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </CardTable>
           </div>
         </section>
       </div>

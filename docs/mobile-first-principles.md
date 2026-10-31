@@ -43,7 +43,7 @@ as targets and correct them here when someone measures.
 | Judging a queue | DecisionDeck | `components/mobile/DecisionDeck`, `lib/decisions` |
 | Choosing places | Map select (tap pins, nearest N, circle) | `components/LeadsMap`, `lib/mapSelect` |
 | Reading numbers | KpiCarousel + DrillSheet, SummaryCards | `components/mobile/Kpi*`, `components/accounting/SummaryCards` |
-| A wide table | AcctTable (cards below 768px) | `components/accounting/AcctTable`, `lib/tableCards` |
+| Any table | `CardTable` (or AcctTable for reports): **tables are for desktop only, a phone never shows one**; below 768 px each row is a card, the first cell its title, the others labelled from the header. A bare `<table>` fails `tests/no-phone-tables.test.ts` (print pages are the listed exception). A sortable grid gets a `CardTable md:hidden` beside it | `components/CardTable`, `components/accounting/AcctTable`, `lib/tableCards` |
 | The app should open the next step | Banner / ActionCards | `components/driver/DriverRun`, `components/mobile/ActionCard` |
 | Setting up reference data | Admin presets (copy-from, chips, generated credentials) or a desk form | `lib/commission/copyPlan`, `lib/credentials` |
 | Anything else | start from the nearest row and write down why in the PR | |

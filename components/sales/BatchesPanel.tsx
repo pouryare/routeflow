@@ -9,10 +9,10 @@ import { friendlyError } from "@/lib/userMessage";
 import { Icon } from "@/components/meridian/Icon";
 import JalaliDateInput from "@/components/meridian/JalaliDateInput";
 import { Fragment, useCallback, useMemo, useState } from "react";
+import { labelCells } from "@/lib/tableCards";
 import { faNum } from "@/lib/format";
 import { BATCH_STATUS_LABEL, BATCH_TRANSITIONS, type BatchStatus } from "@/lib/batchStates";
 
-import { confirmAction } from "@/lib/confirm";
 interface Product {
   id: number;
   name: string;
@@ -38,10 +38,16 @@ interface TraceDelivery {
 
 const MANUAL_MOVES: BatchStatus[] = ["active", "quarantined", "recalled"];
 
+/** The column titles, which a phone card repeats in front of each value (lib/tableCards). */
+const HEAD = ["کالا", "کد", "انقضا", "موجودی", "وضعیت", ""];
+
 export default function BatchesPanel({ products }: { products: Product[] }) {
   const [batches, setBatches] = useState<Batch[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [traceFor, setTraceFor] = useState<number | null>(null);
+  /* The batch whose «فراخوان» button has been pressed once: that row's buttons turn into the
+     question (no dialog, nothing moves), and only «بله» sends. */
+  const [recallArmed, setRecallArmed] = useState<number | null>(null);
   const [trace, setTrace] = useState<TraceDelivery[] | null>(null);
   const [form, setForm] = useState({
     product_id: "",
@@ -98,8 +104,9 @@ export default function BatchesPanel({ products }: { products: Product[] }) {
 
   async function setStatus(id: number, to: BatchStatus) {
     // A recall raises a reminder for every customer who received the lot, and recalled is a dead end
-    // (it can only go to depleted), so it asks first; quarantine is reversible and does not.
-    if (to === "recalled" && !confirmAction("این سری ساخت فراخوان شود؟ برای همهٔ مشتریانی که آن را گرفته‌اند یادآور ثبت می‌شود و برگشت‌پذیر نیست.")) return;
+    // (it can only go to depleted), so its button asks first (recallArmed); quarantine is reversible
+    // and does not.
+    setRecallArmed(null);
     const res = await fetch(`/api/sales/batches/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -137,15 +144,15 @@ export default function BatchesPanel({ products }: { products: Product[] }) {
         <label className="flex flex-col gap-1 text-xs text-text-muted">کد سری ساخت<FieldInput className="w-full" placeholder="خودکار اگر خالی" value={form.batch_code} onChange={(e) => setForm((f) => ({ ...f, batch_code: e.target.value }))} /></label>
         <div className="flex flex-col gap-1 text-xs text-text-muted">مقدار دریافتی<KeypadField label="مقدار دریافتی" value={form.qty_received_base} onChange={(v) => setForm((f) => ({ ...f, qty_received_base: v }))} decimal /></div>
         <label className="flex flex-col gap-1 text-xs text-text-muted">مرجع سری ساخت تأمین‌کننده<FieldInput className="w-full" value={form.supplier_batch_ref} onChange={(e) => setForm((f) => ({ ...f, supplier_batch_ref: e.target.value }))} /></label>
-        <label className="flex items-center gap-1 text-xs text-text-muted">
+        <label className="col-span-2 flex flex-col gap-1 text-xs text-text-muted md:col-span-1">
           تولید
-          <JalaliDateInput value={form.produced_at} onChange={(iso) => setForm((f) => ({ ...f, produced_at: iso }))} aria-label="تاریخ تولید" />
+          <JalaliDateInput className="jdate--fill" value={form.produced_at} onChange={(iso) => setForm((f) => ({ ...f, produced_at: iso }))} aria-label="تاریخ تولید" />
         </label>
-        <label className="flex items-center gap-1 text-xs text-text-muted">
+        <label className="col-span-2 flex flex-col gap-1 text-xs text-text-muted md:col-span-1">
           انقضا
-          <JalaliDateInput value={form.expiry_date} onChange={(iso) => setForm((f) => ({ ...f, expiry_date: iso }))} aria-label="تاریخ انقضا" />
+          <JalaliDateInput className="jdate--fill" value={form.expiry_date} onChange={(iso) => setForm((f) => ({ ...f, expiry_date: iso }))} aria-label="تاریخ انقضا" />
         </label>
-        <button type="submit" className="inline-flex items-center justify-center gap-[var(--space-2)] rounded bg-accent px-4 py-2 text-sm text-white">
+        <button type="submit" className="touch gap-[var(--space-2)] rounded bg-accent px-4 py-2 text-sm text-white">
           <Icon name="plus" size="md" />
           ثبت سری ساخت
         </button>
@@ -155,7 +162,7 @@ export default function BatchesPanel({ products }: { products: Product[] }) {
       {batches === null ? (
         <p className="text-sm text-text-muted">در حال بارگذاری…</p>
       ) : (
-        <table className="w-full text-sm">
+        <table className="acct-cards acct-cards--tiles w-full text-sm">
           <thead className="text-text-faint">
             <tr>
               <th className="p-2 text-right">کالا</th>
@@ -167,7 +174,7 @@ export default function BatchesPanel({ products }: { products: Product[] }) {
             </tr>
           </thead>
           <tbody>
-            {batches.map((b) => {
+            {labelCells(batches.map((b) => {
               const overdue = b.expiry_date && b.expiry_date < today;
               return (
                 <Fragment key={b.id}>
@@ -180,11 +187,11 @@ export default function BatchesPanel({ products }: { products: Product[] }) {
                     <td className={`p-2 text-left font-mono ${b.on_hand < 0 ? "text-danger" : ""}`}>{faNum(b.on_hand)}</td>
                     <td className="p-2">{BATCH_STATUS_LABEL[b.status]}</td>
                     <td className="p-2 text-left">
-                      <div className="flex flex-wrap justify-end gap-1">
+                      <div className="flex flex-wrap justify-start gap-1 md:justify-end">
                         {(BATCH_TRANSITIONS[b.status] ?? [])
                           .filter((t) => MANUAL_MOVES.includes(t))
                           .map((t) => (
-                            <button key={t} onClick={() => setStatus(b.id, t)} className="rounded border border-border px-2 py-0.5 touch text-xs hover:border-accent">
+                            <button key={t} onClick={() => (t === "recalled" ? setRecallArmed(b.id) : setStatus(b.id, t))} className="rounded border border-border px-2 py-0.5 touch text-xs hover:border-accent">
                               <Icon name="package" size="md" />
                               {BATCH_STATUS_LABEL[t]}
                             </button>
@@ -196,6 +203,25 @@ export default function BatchesPanel({ products }: { products: Product[] }) {
                       </div>
                     </td>
                   </tr>
+                  {recallArmed === b.id && (
+                    <tr className="border-b border-border bg-bg">
+                      <td colSpan={6} className="p-3">
+                        <div className="flex flex-col gap-2" role="group" aria-label="تأیید فراخوان">
+                          <p className="m-0 text-sm text-danger">فراخوان این سری برای همهٔ مشتریانی که آن را گرفته‌اند یادآور ثبت می‌کند و برگشت‌پذیر نیست.</p>
+                          <div className="flex flex-wrap gap-2">
+                            <button onClick={() => setStatus(b.id, "recalled")} className="rounded border border-danger px-3 py-1 touch text-sm text-danger">
+                              <Icon name="check" size="md" />
+                              بله، فراخوان شود
+                            </button>
+                            <button onClick={() => setRecallArmed(null)} className="rounded border border-border px-3 py-1 touch text-sm hover:border-accent">
+                              <Icon name="x" size="md" />
+                              انصراف
+                            </button>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
                   {traceFor === b.id && (
                     <tr className="bg-bg">
                       <td colSpan={6} className="p-2 text-xs">
@@ -218,7 +244,7 @@ export default function BatchesPanel({ products }: { products: Product[] }) {
                   )}
                 </Fragment>
               );
-            })}
+            }), HEAD)}
           </tbody>
         </table>
       )}

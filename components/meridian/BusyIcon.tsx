@@ -1,9 +1,8 @@
 "use client";
 
-import { Spinner } from "@heroui/react";
 import { Icon, type IconName } from "@/components/meridian/Icon";
 
-/** The icon of an action button: its own icon at rest, a HeroUI Spinner while the action
+/** The icon of an action button: its own icon at rest, three bouncing dots (the one small loader) while the action
  *  runs, and a popping check mark for a moment once it succeeded (`done`, see
  *  `useDoneFlash`) with a ring bursting out of it, so a saving button visibly works and then visibly finishes instead of
  *  just changing its words. Page content keeps skeletons; the spinner is only for something
@@ -23,5 +22,9 @@ export default function BusyIcon({ busy, done, name, size = "md" }: {
     );
   }
   if (!busy) return <Icon name={name} size={size} />;
-  return <Spinner size={size === "sm" ? "sm" : "md"} color="current" aria-label="در حال انجام" />;
+  return (
+    <span className="dotloader" role="status" aria-label="در حال انجام">
+      <i /><i /><i />
+    </span>
+  );
 }

@@ -36,10 +36,10 @@ export function TextInput({
       isRequired={required}
       isInvalid={!!error}
       fullWidth
-      className={`textinput ${className}`.trim()}
+      className={`textinput ${placeholder ? "" : "textinput--float "}${className}`.trim()}
     >
       <Label>{label}</Label>
-      <Input placeholder={placeholder} dir={dir} inputMode={inputMode} />
+      <Input placeholder={placeholder ?? " "} dir={dir} inputMode={inputMode} />
       {error ? <FieldError>{error}</FieldError> : null}
     </TextField>
   );
@@ -62,11 +62,11 @@ export function PasswordInput({
       isRequired={required}
       isInvalid={!!error}
       fullWidth
-      className={`textinput ${className}`.trim()}
+      className={`textinput ${placeholder ? "" : "textinput--float "}${className}`.trim()}
     >
       <Label>{label}</Label>
       <InputGroup fullWidth>
-        <InputGroup.Input placeholder={placeholder} dir="ltr" />
+        <InputGroup.Input placeholder={placeholder ?? " "} dir="ltr" />
         <InputGroup.Suffix>
           <Button
             isIconOnly

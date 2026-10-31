@@ -1,3 +1,4 @@
+import HideMoneyButton from "@/components/HideMoneyButton";
 import CountUp from "@/components/meridian/CountUp";
 import { faNum } from "@/lib/format";
 
@@ -9,7 +10,10 @@ export default function RealizedProfitCard({ realized, unrealized }: { realized:
   const pct = total > 0 ? Math.max(0, Math.min(100, Math.round((realized / total) * 100))) : 0;
   return (
     <section className="card mb-3 p-[var(--space-4)]">
-      <h2 className="sechead__title">سود تحقق‌یافته و در انتظار</h2>
+      <div className="flex items-center justify-between gap-2">
+        <h2 className="sechead__title">سود تحقق‌یافته و در انتظار</h2>
+        <HideMoneyButton />
+      </div>
       <p className="m-0 mt-[var(--space-1)] text-[length:var(--text-xs)] text-[var(--text-muted)]">
         سود سفارش‌های تحویل‌شده، به نسبت آنچه مشتری‌ها پرداخته‌اند
       </p>
