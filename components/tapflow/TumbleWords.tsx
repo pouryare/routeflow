@@ -9,6 +9,7 @@ export default function TumbleWords({ text }: { text: string }) {
   const [fallen, setFallen] = useState(false);
   return (
     <button type="button" className="tumble" aria-label={text} aria-pressed={fallen} onClick={() => setFallen((f) => !f)}>
+      {/* No icon: the headline's own words are the whole button, and a glyph beside them would read as an action. */}
       {splitWords(text).map((w, i) => (
         <span key={i} aria-hidden="true">
           {i > 0 ? " " : null}

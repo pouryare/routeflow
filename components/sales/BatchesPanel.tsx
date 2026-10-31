@@ -215,7 +215,7 @@ export default function BatchesPanel({ products }: { products: Product[] }) {
                             </button>
                             <button onClick={() => setRecallArmed(null)} className="rounded border border-border px-3 py-1 touch text-sm hover:border-accent">
                               <Icon name="x" size="md" />
-                              انصراف
+                              انصراف از فراخوان
                             </button>
                           </div>
                         </div>
