@@ -168,7 +168,7 @@ export default function ProfitSplitPanel({ legalForm, balances, years, costAccou
         </>
       )}
 
-      <BottomSheet open={payOpen} title="پرداخت یا دریافت از شریک" onClose={() => setPayOpen(false)} closeLabel="بستن پرداخت به شریک">
+      <BottomSheet open={payOpen} title="پرداخت یا دریافت از شریک" onClose={() => setPayOpen(false)} closeLabel="بستن پرداخت به شریک" dirty={amount !== ""}>
         <Row>
           <ChipGroup group={{ id: "pay-kind", label: "نوع", mode: "single", neutral: "__none__", value: kind, options: [{ id: "advance", label: "علی‌الحساب" }, { id: "dividend", label: "پرداخت سود" }, { id: "capital", label: "سرمایه" }], onChange: (v) => setKind((v as string) || "advance") }} />
         </Row>

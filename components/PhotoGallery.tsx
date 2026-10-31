@@ -9,6 +9,10 @@ import { useToast } from "./ToastProvider";
 import { faNum } from "@/lib/format";
 import { SkeletonLabel, SkeletonThumbs } from "./Skeleton";
 import EmptyState from "./EmptyState";
+import dynamic from "next/dynamic";
+
+// Cast back to the generic component: dynamic() drops the type parameter.
+const PhotoLightbox = dynamic(() => import("@/components/PhotoLightbox"), { ssr: false }) as typeof import("@/components/PhotoLightbox").default;
 
 interface PhotoItem {
   id: number;
@@ -27,6 +31,9 @@ export default function PhotoGallery({
   const [photos, setPhotos] = useState<PhotoItem[] | null>(null);
   const [uploading, setUploading] = useState(false);
   const [lightbox, setLightbox] = useState<PhotoItem | null>(null);
+  // The viewer's code loads with the first photo opened and then stays, so it can animate out.
+  const [viewerUsed, setViewerUsed] = useState(false);
+  if (lightbox && !viewerUsed) setViewerUsed(true);
   const inputRef = useRef<HTMLInputElement>(null);
   const toast = useToast();
 
@@ -130,38 +137,18 @@ export default function PhotoGallery({
         </div>
       )}
 
-      {lightbox && (
-        <div
-          className="fixed inset-0 z-[var(--z-lightbox)] flex items-center justify-center bg-black/80 p-4"
-          onClick={() => setLightbox(null)}
-        >
-          <div className="relative max-h-full max-w-full" onClick={(e) => e.stopPropagation()}>
-            <picture>
-              <source srcSet={`/api/photos/${lightbox.id}/file?format=avif`} type="image/avif" />
-              <img
-                src={`/api/photos/${lightbox.id}/file?format=webp`}
-                alt={lightbox.caption ?? ""}
-                className="max-h-[85vh] max-w-full rounded-[var(--radius-md)]"
-              />
-            </picture>
-            <div className="mt-2 flex items-center justify-between">
-              <button
-                onClick={() => setLightbox(null)}
-                className="rounded-[var(--radius-sm)] border border-border bg-surface-raised px-3 py-1.5 text-[length:var(--text-sm)] text-text"
-              >
-                <Icon name="x" size="sm" />
-                بستن عکس
-              </button>
-              <button
-                onClick={() => remove(lightbox.id)}
-                className="rounded-[var(--radius-sm)] border border-crit px-3 py-1.5 text-[length:var(--text-sm)] text-crit"
-              >
-                <Icon name="trash" size="sm" />
-                حذف عکس
-              </button>
-            </div>
-          </div>
-        </div>
+      {viewerUsed && (
+        <PhotoLightbox
+          photos={photos ?? []}
+          index={lightbox && photos ? photos.indexOf(lightbox) : -1}
+          onClose={() => setLightbox(null)}
+          actions={(p) => (
+            <button type="button" onClick={() => remove(p.id)} className="photo-lightbox__delete">
+              <Icon name="trash" size="sm" />
+              حذف عکس
+            </button>
+          )}
+        />
       )}
     </div>
   );

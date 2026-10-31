@@ -11,6 +11,10 @@ import CopyButton from "@/components/CopyButton";
 import { SkeletonLabel, SkeletonThumbs } from "@/components/Skeleton";
 import EmptyState from "@/components/EmptyState";
 import { faJalaliDate } from "@/lib/jalali";
+import dynamic from "next/dynamic";
+
+// Cast back to the generic component: dynamic() drops the type parameter.
+const PhotoLightbox = dynamic(() => import("@/components/PhotoLightbox"), { ssr: false }) as typeof import("@/components/PhotoLightbox").default;
 
 interface PhotoItem {
   id: number;
@@ -24,6 +28,9 @@ interface PhotoItem {
 export default function GalleryPage() {
   const [photos, setPhotos] = useState<PhotoItem[] | null>(null);
   const [lightbox, setLightbox] = useState<PhotoItem | null>(null);
+  // The viewer's code loads with the first photo opened and then stays, so it can animate out.
+  const [viewerUsed, setViewerUsed] = useState(false);
+  if (lightbox && !viewerUsed) setViewerUsed(true);
 
   // /gallery?p=8 -- a link to one photo. Read once on mount, then applied when the list
   // lands, since the photo it names does not exist until then.
@@ -126,52 +133,30 @@ export default function GalleryPage() {
         )}
       </div>
 
-      {lightbox && (
-        <div
-          className="fixed inset-0 z-[var(--z-lightbox)] flex items-center justify-center bg-black/80 p-4"
-          onClick={() => setLightbox(null)}
-        >
-          <div className="relative max-h-full max-w-full" onClick={(e) => e.stopPropagation()}>
-            <picture>
-              <source srcSet={`/api/photos/${lightbox.id}/file?format=avif`} type="image/avif" />
-              <img
-                src={`/api/photos/${lightbox.id}/file?format=webp`}
-                alt={lightbox.caption ?? ""}
-                className="max-h-[80vh] max-w-full rounded-[var(--radius-md)]"
+      {viewerUsed && (
+        <PhotoLightbox
+          photos={photos ?? []}
+          index={lightbox && photos ? photos.indexOf(lightbox) : -1}
+          onClose={() => setLightbox(null)}
+          actions={(p) => (
+            <>
+              <span className="photo-lightbox__label">
+                {p.label}{" "}
+                <span dir="ltr" className="font-mono text-[length:var(--text-xs)]">{faJalaliDate(p.taken_at)}</span>
+              </span>
+              <CopyButton
+                value={() => `${window.location.origin}/gallery?p=${p.id}`}
+                label="لینک"
+                what="کپی لینک این عکس"
+                className="px-3 py-1.5 text-[length:var(--text-sm)]"
               />
-            </picture>
-            <div dir="rtl" className="mt-2 flex items-center justify-between">
-              <div className="text-[length:var(--text-sm)] text-text">
-                {lightbox.label}{" "}
-                <span dir="ltr" className="font-mono text-[length:var(--text-xs)] text-text-faint">
-                  {faJalaliDate(lightbox.taken_at)}
-                </span>
-              </div>
-              <div className="flex gap-2">
-                <CopyButton
-                  value={() => `${window.location.origin}/gallery?p=${lightbox.id}`}
-                  label="لینک"
-                  what="کپی لینک این عکس"
-                  className="px-3 py-1.5 text-[length:var(--text-sm)]"
-                />
-                <button
-                  onClick={() => setLightbox(null)}
-                  className="rounded-[var(--radius-sm)] border border-border bg-surface-raised px-3 py-1.5 text-[length:var(--text-sm)] text-text"
-                >
-                  <Icon name="x" size="sm" />
-                  بستن عکس
-                </button>
-                <button
-                  onClick={() => remove(lightbox.id)}
-                  className="rounded-[var(--radius-sm)] border border-crit px-3 py-1.5 text-[length:var(--text-sm)] text-crit"
-                >
-                  <Icon name="trash" size="sm" />
-                  حذف عکس
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+              <button type="button" onClick={() => remove(p.id)} className="photo-lightbox__delete">
+                <Icon name="trash" size="sm" />
+                حذف عکس
+              </button>
+            </>
+          )}
+        />
       )}
     </div>    </>
   );
