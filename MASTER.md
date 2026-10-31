@@ -142,7 +142,7 @@ Rules:
 Same semantic roles in both themes; different values. Status meaning never moves.
 Every figure below is computed, not eyeballed — see `scripts/check-contrast.mjs`.
 
-**The token names are HeroUI's (2026-10-24, `docs/roadmap.md` 10.1).** Inside `.meridian` the
+**The token names are HeroUI's (2026-10-24, `docs/decisions.md` 10.1).** Inside `.meridian` the
 values are written under HeroUI's names — `--background`, `--foreground`, `--surface`,
 `--surface-secondary`, `--surface-tertiary`, `--muted`, `--accent-foreground`, `--success`,
 `--warning`, `--danger` and their `-soft` fills — so HeroUI's own parts and ours read one

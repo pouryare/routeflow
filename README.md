@@ -106,7 +106,7 @@ The app runs on one server with PostgreSQL on the same machine, behind Caddy (a 
 What comes next is planned in two documents:
 
 - [`docs/future-features.md`](docs/future-features.md) holds about 150 parked feature ideas (F1 to F148). Each is parked until it gets its own spec; nothing there is promised.
-- [`docs/roadmap.md`](docs/roadmap.md) groups those ideas by theme, estimates the size of each first slice, lists the decisions that block them, and records the platform decisions.
+- [`docs/roadmap.md`](docs/roadmap.md) lists every idea by status (build next, waiting, parked, done) and area, with the size of each first slice; [`docs/decisions.md`](docs/decisions.md) holds the platform decisions and the open questions; [`docs/roadmap-archive.md`](docs/roadmap-archive.md) keeps finished batches and the full study notes.
 
 The current direction, in order:
 

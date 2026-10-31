@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-/* ---- HeroUI v3 (docs/roadmap.md §10, "full HeroUI look") ------------------------------
+/* ---- HeroUI v3 (docs/decisions.md §10, "full HeroUI look") ------------------------------
    Imported part by part, not as one `@import "@heroui/styles"`. The full sheet styles
    `.card`, `.badge` and `.modal` -- class names this file already uses for its own
    components -- so importing all of it would restyle screens nobody has migrated yet.

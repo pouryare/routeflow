@@ -25,10 +25,10 @@
 | 9 | **Batch / lot traceability** | ✅ locked (reversed from v1) |
 | 10 | `Delivery` as an entity distinct from `delivery_stops` | ✅ locked (reversed from v1) |
 | 11 | Remove `APP_PASSWORD` | ✅ **done** |
-| 12 | ~~Stay on SQLite; Postgres is a later migration~~ → **Move to PostgreSQL now** (decided 2026-10-23) | ✅ locked — the repository-layer condition in Part 2 is met; see `docs/roadmap.md` section 10 |
+| 12 | ~~Stay on SQLite; Postgres is a later migration~~ → **Move to PostgreSQL now** (decided 2026-10-23) | ✅ locked — the repository-layer condition in Part 2 is met; see `docs/decisions.md` section 10 |
 | 13 | **Offline-first**: optimistic UI, local write, background sync | ✅ locked — designed in §4.5 |
 | 14 | Undo bar on notifications, shrinking, with undo | ✅ locked — designed in §4.6 |
-| 15 | Ground facts stated by the owner on 2026-10-23: the production server is **in Iran** (self-host, no paid foreign APIs or keys); the data in the current database is **dummy**; **one company** uses the app today and others may later; the **number of drivers is unknown** | ✅ recorded — consequences in `docs/roadmap.md` section 10 |
+| 15 | Ground facts stated by the owner on 2026-10-23: the production server is **in Iran** (self-host, no paid foreign APIs or keys); the data in the current database is **dummy**; **one company** uses the app today and others may later; the **number of drivers is unknown** | ✅ recorded — consequences in `docs/decisions.md` section 10 |
 
 ---
 
@@ -62,7 +62,7 @@ Committed as `8296c07` and pushed.
 
 **Decided: stay on SQLite. Build offline-first instead. Postgres is a later migration.**
 
-> **Superseded on 2026-10-23.** The owner decided to move to PostgreSQL now. The repository layer this part asked for exists (no route, page or component opens the database), the data in the current database is dummy, and only about a tenth of v1 is built, so moving now costs less than moving later. The text below is kept as the history of the earlier decision. See `docs/roadmap.md`, section 10.
+> **Superseded on 2026-10-23.** The owner decided to move to PostgreSQL now. The repository layer this part asked for exists (no route, page or component opens the database), the data in the current database is dummy, and only about a tenth of v1 is built, so moving now costs less than moving later. The text below is kept as the history of the earlier decision. See `docs/decisions.md`, section 10.
 
 That is a coherent choice, and for a field app it is arguably the better order — but it
 only works if two things are true, so they are requirements, not suggestions:

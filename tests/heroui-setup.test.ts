@@ -9,7 +9,7 @@ const { HERO_OVERLAYS, HERO_OVERLAY_REASONS, heroOverlayImporters } = await impo
 
 const css = readFileSync("app/globals.css", "utf8");
 
-/** The HeroUI foundation (docs/roadmap.md §10). Each guard is here because the thing it
+/** The HeroUI foundation (docs/decisions.md §10). Each guard is here because the thing it
  *  protects fails silently: a short button still renders, a light token still paints. */
 describe("HeroUI setup", () => {
   it("imports HeroUI's styles part by part, never the whole sheet", () => {
