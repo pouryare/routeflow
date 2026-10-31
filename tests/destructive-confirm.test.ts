@@ -20,8 +20,9 @@ const GUARDED: [file: string, mustContain: string][] = [
   ["app/(shell)/facilities/page.tsx", "restore("],
   ["app/(shell)/leads/hooks/useLeads.ts", "بازگردانی فهرست"],
   /* The one irreversible action left: a recall raises a reminder for every customer who received
-     the lot and cannot be undone, so it asks first, saying what will happen. */
-  ["components/sales/BatchesPanel.tsx", "confirmAction("],
+     the lot and cannot be undone, so its button turns into the question in place (no dialog),
+     saying what will happen. */
+  ["components/sales/BatchesPanel.tsx", "recallArmed"],
 ];
 
 describe("destructive actions are guarded", () => {

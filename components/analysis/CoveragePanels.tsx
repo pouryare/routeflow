@@ -1,3 +1,4 @@
+import CardTable from "@/components/CardTable";
 import { faNum } from "@/lib/format";
 import { STATUS_LABEL, STATUS_TEXT } from "@/lib/types";
 import type { CoverageStatus } from "@/lib/db";
@@ -95,7 +96,7 @@ export default function CoveragePanels({
             روزهای کاری اخیر
           </h3>
           <div className="overflow-x-auto rounded-[var(--radius-md)] border border-[var(--border)]">
-            <table className="w-full border-collapse text-[length:var(--text-sm)]">
+            <CardTable className="w-full border-collapse text-[length:var(--text-sm)]">
               <thead>
                 <tr className="border-b border-[var(--border)] bg-[var(--surface)] text-right text-[var(--text-muted)]">
                   <th className="px-[var(--space-3)] py-[var(--space-2)] font-medium">تاریخ</th>
@@ -136,7 +137,7 @@ export default function CoveragePanels({
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </CardTable>
           </div>
           <p className="mt-[var(--space-2)] text-[length:var(--text-xs)] leading-5 text-[var(--text-faint)]">
             از روی ثبت خودکار حضور در انبارها و مبدأ ساخته می‌شود — روزهایی که این گزینه خاموش بوده،

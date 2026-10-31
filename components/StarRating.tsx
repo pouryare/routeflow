@@ -41,7 +41,8 @@ export default function StarRating({
               if (value !== star) burst(e.currentTarget);
               onChange(value === star ? null : star);
             }}
-            className={`burst inline-flex min-h-11 min-w-9 items-center justify-center px-0.5 text-[length:var(--text-md)] leading-none transition-colors duration-[var(--dur-fast)] ease-[var(--ease-out)] disabled:opacity-40 ${
+            style={{ "--star-i": i } as React.CSSProperties}
+            className={`burst star inline-flex min-h-11 min-w-9 items-center justify-center px-0.5 text-[length:var(--text-md)] leading-none transition-colors duration-[var(--dur-fast)] ease-[var(--ease-out)] disabled:opacity-40 ${
               filled ? "text-warn" : "text-text-faint hover:text-warn"
             }`}
           >

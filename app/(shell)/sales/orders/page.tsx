@@ -1,3 +1,4 @@
+import ScrollFade from "@/components/mobile/ScrollFade";
 import { Icon } from "@/components/meridian/Icon";
 import { CardHelp } from "@/components/meridian/CardHelp";
 import Link from "next/link";
@@ -292,7 +293,7 @@ async function JourneyView({
           {orders.length > 0 && (
             <div className="picker">
               <span className="picker__label">سفارش:</span>
-              <div className="picker__row">
+              <ScrollFade className="picker__row">
                 {orders.slice(0, 12).map((o) => (
                   <Link
                     key={o.id}
@@ -303,7 +304,7 @@ async function JourneyView({
                     <span className="picker__who">{o.customer_name}</span>
                   </Link>
                 ))}
-              </div>
+              </ScrollFade>
             </div>
           )}
 

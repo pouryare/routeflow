@@ -4,7 +4,7 @@ import { createElement as h } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import DecisionDeck from "@/components/mobile/DecisionDeck";
 import SwipeRow from "@/components/mobile/SwipeRow";
-import { CHEQUE_CHOICES, COMPLAINT_CHOICES, chequeRequest, chequesDue, complaintRequest, complaintsToTriage } from "@/lib/decisions";
+import { CHEQUE_CHOICES, COMPLAINT_CHOICES, throwVerdict, chequeRequest, chequesDue, complaintRequest, complaintsToTriage } from "@/lib/decisions";
 import { CHEQUE_TRANSITIONS } from "@/lib/chequeStates";
 
 describe("decision queues", () => {
@@ -73,5 +73,21 @@ describe("duplicate customers deck", () => {
     expect(dupRequest("merge", 5, 9)).toEqual({ action: "merge", keep_id: 5, drop_id: 9 });
     expect(dupRequest("separate", 5, 9)).toEqual({ action: "separate", a_id: 5, b_id: 9 });
     expect(DUP_CHOICES.find((c) => c.id === "merge")?.tone).toBe("bad");
+  });
+});
+
+describe("throwing a deck card", () => {
+  it("right (start side in Persian) is the good verdict, left the bad one", () => {
+    expect(throwVerdict(CHEQUE_CHOICES, 120, 0)).toBe("deposited");
+    expect(throwVerdict(CHEQUE_CHOICES, -120, 0)).toBe("bounced");
+  });
+  it("a short slow drag springs back; a short fast flick counts", () => {
+    expect(throwVerdict(CHEQUE_CHOICES, 40, 100)).toBeNull();
+    expect(throwVerdict(CHEQUE_CHOICES, 40, 900)).toBe("deposited");
+    expect(throwVerdict(CHEQUE_CHOICES, 5, 2000)).toBeNull();
+  });
+  it("a neutral choice stays a button; two good verdicts leave no side to throw to", () => {
+    expect(throwVerdict(COMPLAINT_CHOICES, 200, 0)).toBe("resolved");
+    expect(throwVerdict([{ id: "a", label: "a", tone: "good" }, { id: "b", label: "b", tone: "good" }], 200, 0)).toBeNull();
   });
 });

@@ -24,7 +24,7 @@ export default function StepperStep({ items, option, submit }: {
       <HelpRow>
         <HelpHint title="شمارش اقلام" label="راهنمای شمارش اقلام">
           <p className="mhelp__what">هر ردیف با تعداد انتظار رفته پر شده است؛ اگر همه‌چیز درست بود فقط دکمهٔ پایین را بزنید.</p>
-          <p className="mhelp__how">برای کم و زیاد بودن یک قلم، روی «کم» یا «زیاد» همان ردیف بزنید.</p>
+          <p className="mhelp__how">برای کم و زیاد بودن یک قلم، روی «کم» یا «زیاد» همان ردیف بزنید؛ نگه داشتن دکمه سریع‌تر می‌شمارد.</p>
         </HelpHint>
       </HelpRow>
       {items.map((i) => (
@@ -33,11 +33,11 @@ export default function StepperStep({ items, option, submit }: {
             {i.label}
             {i.unit ? <small> · {i.unit}</small> : null}
           </span>
-          <AnswerButton icon="minus" ariaLabel={`کم کردن ${i.label}`} onPress={() => bump(i, -1)}>
+          <AnswerButton icon="minus" repeat ariaLabel={`کم کردن ${i.label}`} onPress={() => bump(i, -1)}>
             کم
           </AnswerButton>
           <b>{faNum(n[i.id] ?? 0)}</b>
-          <AnswerButton icon="plus" ariaLabel={`اضافه کردن ${i.label}`} onPress={() => bump(i, 1)}>
+          <AnswerButton icon="plus" repeat ariaLabel={`اضافه کردن ${i.label}`} onPress={() => bump(i, 1)}>
             زیاد
           </AnswerButton>
         </div>

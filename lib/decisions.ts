@@ -9,6 +9,25 @@ export interface DeckChoice {
   tone?: "good" | "bad";
 }
 
+/** How far (px) or how fast (px/s) a finger must throw a deck card for it to count as a verdict. */
+const THROW_DISTANCE = 90;
+const THROW_SPEED = 600;
+
+/** The verdict a thrown card stands for, or null. Only a deck with exactly one «good» and one
+ *  «bad» choice can be thrown (a third choice would have no side). A throw towards the start of
+ *  the line (right in Persian) means the good verdict, the other way the bad one; a drag that
+ *  stops short, or a flick too slow and too short, gives null and the card springs back. */
+export function throwVerdict(choices: DeckChoice[], offsetX: number, velocityX: number, rtl = true): string | null {
+  const good = choices.filter((c) => c.tone === "good");
+  const bad = choices.filter((c) => c.tone === "bad");
+  if (good.length !== 1 || bad.length !== 1) return null;
+  const far = Math.abs(offsetX) >= THROW_DISTANCE;
+  const fast = Math.abs(velocityX) >= THROW_SPEED && Math.abs(offsetX) >= THROW_DISTANCE / 3;
+  if (!far && !fast) return null;
+  const towardStart = (offsetX > 0) === rtl;
+  return (towardStart ? good[0] : bad[0]).id;
+}
+
 /** Cheques that need a verdict soon: still in hand and due on or before `horizon` (overdue ones
  *  first). Ordered by due date. */
 export function chequesDue<T extends { status: ChequeStatus; due_date: string }>(cheques: T[], horizon: string): T[] {

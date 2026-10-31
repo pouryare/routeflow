@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 import { Button, Link, ListBox, SearchField, ToggleButton, buttonVariants } from "@heroui/react";
 import { Icon, type IconName } from "@/components/meridian/Icon";
+import { useRepeatPress } from "./useRepeatPress";
 
 /** The answer button every tap flow, picker and decision is made of: a HeroUI Button, or a
  *  HeroUI ToggleButton when it shows a current choice (`selected`), so the choice is announced
@@ -14,6 +15,7 @@ export function AnswerButton({
   tone,
   isDisabled,
   onPress,
+  repeat,
   ariaLabel,
   className = "",
   children,
@@ -24,10 +26,13 @@ export function AnswerButton({
   tone?: string;
   isDisabled?: boolean;
   onPress: () => void;
+  /** Holding the button repeats `onPress` (a count up or down); a tap is still one press. */
+  repeat?: boolean;
   ariaLabel?: string;
   className?: string;
   children: ReactNode;
 }) {
+  const held = useRepeatPress(onPress);
   const cls = `tf-opt${tone ? ` ${tone}` : ""}${selected ? " on" : ""}${className ? ` ${className}` : ""}`;
   const body = (
     <>
@@ -37,7 +42,7 @@ export function AnswerButton({
   );
   if (selected === undefined) {
     return (
-      <Button variant="secondary" className={cls} isDisabled={isDisabled} onPress={onPress} aria-label={ariaLabel}>
+      <Button variant="secondary" className={cls} isDisabled={isDisabled} aria-label={ariaLabel} {...(repeat ? held : { onPress })}>
         {body}
       </Button>
     );

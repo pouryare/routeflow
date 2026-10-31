@@ -46,7 +46,7 @@ export const needsReason = (action: OrderAction): boolean => action in REASON_DO
 export const CONFIRM_ONLY: OrderAction[] = ["rejectCredit"];
 
 /** Every action that must not fire from a single tap: it opens the sheet. The audit that added
- *  `confirmAction` to this panel asked for exactly this; the sheet is the ask, and the 5 s undo
+ *  the browser dialog on this panel asked for exactly this; the sheet is the ask, and the 5 s undo
  *  follows it. */
 export const needsAsk = (action: OrderAction): boolean => needsReason(action) || CONFIRM_ONLY.includes(action);
 

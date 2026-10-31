@@ -1,5 +1,6 @@
 "use client";
 
+import CardTable from "@/components/CardTable";
 import { useState } from "react";
 import { Icon } from "@/components/meridian/Icon";
 import { averageScore } from "@/lib/leadScore";
@@ -28,7 +29,7 @@ export default function PoolViewTable({
 }: PoolViewTableProps) {
   return (
     <div className="overflow-x-auto">
-      <table className="w-full border-collapse">
+      <CardTable className="w-full border-collapse">
         <thead>
           <tr className="border-b border-border">
             <th className="sticky top-0 rounded-tl-[var(--radius-md)] bg-surface-raised px-3 py-2 text-[length:var(--text-xs)] text-text-muted text-right font-medium">#</th>
@@ -95,7 +96,7 @@ export default function PoolViewTable({
             );
           })}
         </tbody>
-      </table>
+      </CardTable>
     </div>
   );
 }

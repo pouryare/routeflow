@@ -1,3 +1,4 @@
+import CardTable from "@/components/CardTable";
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
@@ -38,7 +39,7 @@ function Area({ area }: { area: ReasonArea }) {
           <p className="text-[length:var(--text-sm)] text-[var(--text-muted)]">در این بازه موردی ثبت نشده.</p>
         ) : (
           <>
-            <table className="w-full border-collapse text-[length:var(--text-sm)]">
+            <CardTable className="w-full border-collapse text-[length:var(--text-sm)]">
               <thead>
                 <tr className="border-b border-border text-right text-text-muted">
                   <th className="py-1 font-normal">دلیل</th>
@@ -57,7 +58,7 @@ function Area({ area }: { area: ReasonArea }) {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </CardTable>
             {area.rows[0]?.label && (
               <p className="mt-2 text-[length:var(--text-sm)] text-text-muted">
                 بیشترین دلیل: «{area.rows[0].label}» با {pct(area.rows[0].share)} موارد.

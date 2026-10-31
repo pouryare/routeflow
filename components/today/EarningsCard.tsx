@@ -1,3 +1,4 @@
+import HideMoneyButton from "@/components/HideMoneyButton";
 import { Icon } from "@/components/meridian/Icon";
 import Link from "next/link";
 import type { EarningsSoFar } from "@/lib/repo/earningsSoFar";
@@ -10,7 +11,10 @@ import { faJalaliDate } from "@/lib/jalali";
 export default function EarningsCard({ e }: { e: EarningsSoFar }) {
   return (
     <section className="card mb-3 p-[var(--space-4)]">
-      <h2 className="sechead__title">پورسانت این ماه تا امروز</h2>
+      <div className="flex items-center justify-between gap-2">
+        <h2 className="sechead__title">پورسانت این ماه تا امروز</h2>
+        <HideMoneyButton />
+      </div>
       <p className="m-0 mt-[var(--space-1)] text-[length:var(--text-xs)] text-[var(--text-muted)]">
         از {faJalaliDate(e.from)} · {faNum(e.orders)} سفارش تحویل‌شده · {faNum(e.kg)} کیلو
       </p>

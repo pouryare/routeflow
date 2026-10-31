@@ -1,3 +1,4 @@
+import CardTable from "@/components/CardTable";
 import { CardHelp } from "@/components/meridian/CardHelp";
 import { Icon } from "@/components/meridian/Icon";
 export interface CapacityRow {
@@ -33,7 +34,7 @@ export default function LearnedCapacity({ rows }: { rows: CapacityRow[] }) {
       </div>
       <div className="kblock__body">
         <div className="overflow-x-auto">
-          <table className="w-full border-collapse text-[length:var(--text-sm)]">
+          <CardTable className="w-full border-collapse text-[length:var(--text-sm)]">
             <thead>
               <tr className="text-[var(--text-muted)]">
                 <th className="border-b border-[var(--border)] py-1 text-right font-medium">شرایط</th>
@@ -64,7 +65,7 @@ export default function LearnedCapacity({ rows }: { rows: CapacityRow[] }) {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </CardTable>
         </div>
         <p className="mt-[var(--space-1)] text-[length:var(--text-xs)] text-[var(--text-faint)]">
           زیر {MIN_LEARN_N.toLocaleString("fa-IR")} مشاهده، همان مقدار پیش‌فرض کارخانه استفاده می‌شود.

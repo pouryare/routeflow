@@ -11,11 +11,13 @@
  *  unit-tested, per repo convention.
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button, Popover } from "@heroui/react";
 import { faNum } from "@/lib/format";
 import NotificationCenter from "./NotificationCenter";
 import { Icon } from "@/components/meridian/Icon";
+import { playSound } from "@/lib/sound";
+import { unreadRose } from "@/lib/unreadRose";
 
 export default function NotificationBell({
   placement = "floating",
@@ -27,6 +29,19 @@ export default function NotificationBell({
   const [unread, setUnread] = useState(0);
   const [open, setOpen] = useState(false);
   const [authed, setAuthed] = useState(true);
+  /* A new notification swings the bell once and plays its sound; the 60 s poll is how it learns. */
+  const lastUnread = useRef<number | null>(null);
+  const [swing, setSwing] = useState(false);
+  useEffect(() => {
+    if (unreadRose(lastUnread.current, unread)) {
+      setSwing(true);
+      playSound("notify.new");
+      const h = window.setTimeout(() => setSwing(false), 900);
+      lastUnread.current = unread;
+      return () => window.clearTimeout(h);
+    }
+    lastUnread.current = unread;
+  }, [unread]);
 
   // Poll the unread count on an interval so the badge stays live without a socket.
   useEffect(() => {
@@ -85,7 +100,7 @@ export default function NotificationBell({
               : "relative rounded-full border border-[var(--border)] bg-[var(--surface)] shadow-[var(--elev-2)]"
           }
         >
-          <Icon name="bell" size={inHeader ? "md" : "lg"} />
+          <Icon name="bell" size={inHeader ? "md" : "lg"} className={swing ? "bell-swing" : undefined} />
           {unread > 0 && (
             <span className="absolute top-0 right-0 grid min-w-[1.15rem] place-items-center rounded-full bg-[var(--accent)] px-1 text-[length:var(--text-xs)] font-bold text-[var(--accent-ink)]">
               {unread > 9 ? "۹+" : faNum(unread)}

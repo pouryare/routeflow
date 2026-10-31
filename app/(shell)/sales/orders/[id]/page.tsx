@@ -1,3 +1,4 @@
+import CardTable from "@/components/CardTable";
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { redirect, notFound } from "next/navigation";
@@ -180,7 +181,7 @@ export default async function OrderDetailPage({
         />
       )}
 
-      <table className="w-full border-collapse rounded-[var(--radius-lg)] text-[length:var(--text-sm)]">
+      <CardTable className="w-full border-collapse rounded-[var(--radius-lg)] text-[length:var(--text-sm)]">
         <thead>
           <tr className="text-[var(--text-muted)]">
             <th className="border-b border-[var(--border)] py-[var(--space-2)] text-right font-medium">
@@ -218,7 +219,7 @@ export default async function OrderDetailPage({
             </tr>
           ))}
         </tbody>
-      </table>
+      </CardTable>
 
       {/* One order's attempts, which is what `deliveries` records. Absent, not empty:
           an order that has never shipped says so in a sentence. */}
