@@ -62,6 +62,7 @@ const ACTION_ICONS: [RegExp, string][] = [
 const EXEMPT: { file: string; match: string; reason: string }[] = [
   { file: "components/mobile/Keypad.tsx", match: "keypad__key", reason: "a keypad digit is the content" },
   { file: "components/mobile/MonthGrid.tsx", match: "monthgrid__day", reason: "a calendar day is the content" },
+  { file: "components/tapflow/TumbleWords.tsx", match: "tumble", reason: "the done-screen headline is the button; its words are the content" },
   { file: "components/AccentPicker.tsx", match: "", reason: "the colour swatch is the icon" },
   { file: "components/FontPicker.tsx", match: "", reason: "the «آ» sample in the font is the icon" },
   { file: "app/(shell)/gallery/page.tsx", match: "group flex flex-col overflow-hidden", reason: "a photo thumbnail is the content" },
