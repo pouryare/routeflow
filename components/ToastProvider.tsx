@@ -4,6 +4,7 @@ import { createContext, useCallback, useContext, useEffect } from "react";
 import { Toast, toast } from "@heroui/react";
 import { Icon, type IconName } from "@/components/meridian/Icon";
 import { OUTBOX_HOLD_MS } from "@/lib/offline/constants";
+import { haptic } from "@/lib/haptics";
 import { playSound } from "@/lib/sound";
 
 type ToastVariant = "success" | "error" | "info";
@@ -66,6 +67,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const showToast = useCallback<ShowToast>((message, variant = "info", action) => {
+    if (variant !== "info") haptic(variant);
     const base = {
       variant: HERO_VARIANT[variant],
       indicator: <Icon name={ICON[variant]} size="md" />,
