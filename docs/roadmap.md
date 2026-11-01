@@ -441,6 +441,18 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
   **Logo and stamp (D29).** The owner uploads a logo and a stamp/signature image once; PDF receipt, delivery note and statements print them; the thermal printer prints the logo in black and white; the stamp is on or off per document type.
 
   </details>
+- **U1. Profit per stop (differentiator, 2026-11-01).** One number per delivery stop: sales, goods cost, fuel and driver share, minutes on site; a list of shops that lose money to serve.
+  <details><summary>Full decision</summary>
+
+  **Profit per stop (U1).** Chosen from the talk on what no CRM or ERP can copy: a CRM has no costs and an ERP has no routes, so only a joined system can say «shop X: sales 4M, goods cost 3.2M, fuel 90k, 40 minutes, profit 310k» and list the shops that lose money to serve. What exists: `components/CostToServePanel.tsx` (straight-line km from the depot, a per-km cost typed by hand in the browser, revenue matched to customers by business name text, so a renamed shop silently drops out), vehicles with `cost_per_km`, order margin in `lib/dashboard.ts`, OSRM routes in the planner. What is missing: real driving distance and time per stop, order margin per stop, vehicle cost per km and the driver's share joined in one report. An order with unknown cost shows «هزینه ناقص», never a made-up profit. Not checked: how accurate stored stop times are on real routes.
+
+  </details>
+- **U2. Money map (differentiator, 2026-11-01).** A «money» colour mode for districts: total owed and the part older than 30 days; tap a district for its numbers.
+  <details><summary>Full decision</summary>
+
+  **Money map (U2).** Customer pins can already be coloured by debt (`debtColor` in `lib/types.ts`: over 30 days red, 8 to 30 orange) and the map has a debt heat switch (`CoverageMap.tsx`), but district colours only know «status» and «group» (`DistrictColorMode`). Add a «money» mode: each district shaded by what is owed there, and a tap shows «38M owed, 20M older than 30 days, 6 shops». Small build on layers and numbers that exist. A supporting feature for demos, easy for a rival to copy, so it is not the moat.
+
+  </details>
 - **A2. Close a month.** Owner closes a month after a short checklist; reopening needs a reason; a closed month refuses entries.
   <details><summary>Full decision</summary>
 
