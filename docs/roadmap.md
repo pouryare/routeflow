@@ -25,6 +25,8 @@ Two other files go with it:
 
 **Ground facts (2026-10-23).** The database is PostgreSQL, the current data is dummy, the server is in Iran, one company uses the app today (others may follow), and the number of drivers is unknown. Details: [decisions.md](decisions.md).
 
+**Owner direction (2026-11-01).** Two choices set the build order. (1) **Street first:** the van loop that no other CRM or ERP covers (money in hand per driver with a day-end count D1, order edit rules by stage, the double-save guard Z2, offline for tasks and notes F105) is built before office accounting depth. (2) **RouteFlow replaces Holoo for the daily books:** the book fixes (cleared cheque to bank H5, returned goods B1, month close A2, year close H2) come right after the street work, then the accountant role H3 and VAT D7; until D7 exists an outside accountant files tax from the month pack. No-code flexibility (custom fields, rule builder, report builder) stays last. Comparison: [how RouteFlow differs from other CRMs and ERPs](https://claude.ai/artifact/CM5CtuL2H5iEHtLgsZFHiv).
+
 ## Contents
 
 1. [Build next](#1-build-next)
@@ -1108,6 +1110,8 @@ A suggestion in waves. Within a wave the order is flexible; across waves it foll
 **Wave 0 — quick wins.** The 22 quick wins (listed under Done). They add visible value, touch little, and several (F99, F100, F110, F108, F138) are groundwork for later waves.
 
 **Wave 1 — foundations.** First slices of F27 (audit record), F48 (one approval type), F107 → F106 (sessions, then two-step login), F66 (purchase orders, once the ordering practice is confirmed) and the single decision on the customer message channel (F6/F79). The SMS provider is decided (Farazsms); consent, opt-out and any other channel are still open.
+
+**Order set by the owner on 2026-11-01:** street loop first, then the book fixes (replace Holoo), then office depth, then no-code flexibility (see "Owner direction" in the ground facts). The waves below stay as the dependency map.
 
 **Wave 2 — money and orders.** F83 (payment terms) → F50 (promises) → F18 (statements) → F46 (risk) → F49 (cash-flow forecast); F58 → F60/F62/F131 (order shortcuts); F44 (standing orders); F56/F64/F65 (pricing) together; F61 (backorders) and F71/F76 (holds and approval by value).
 
