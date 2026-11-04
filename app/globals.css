@@ -5455,3 +5455,6 @@ html[data-hide-money="1"] .odo { filter: blur(7px); }
 .crm-card { position: relative; }
 .favheart { position: absolute; inset-block-start: 4px; inset-inline-end: 4px; display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; border: 0; background: transparent; color: var(--text-faint); z-index: 1; }
 .favheart--on { color: var(--crit, #dc2626); }
+
+/* DragStop (planner): the grip of a stop you can drag. */
+.dragstop__grip { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; border: 0; background: transparent; color: var(--text-faint); touch-action: none; cursor: grab; }

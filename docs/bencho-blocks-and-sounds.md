@@ -85,7 +85,7 @@ All 150 block pages were opened on 2026-10-30 (description, live preview, and th
 | avatar-group | Pro | New | Who is on a task or route: faces in a row, the name slides to the one under the finger. |
 | profile-card | Pro | New | Tap a face to see the rep's card (phone, today's numbers). |
 | access-request | Pro | New | Discount approval requests: a pill that opens into the list, each with approve and refuse. |
-| liq-arrange | Pro | New | Reorder stops in a run by dragging; neighbours make room. |
+| liq-arrange | Pro | Built | Reorder stops in a run by dragging; neighbours make room. |
 | todo-tower | MIT | New | Today's tasks as a stack: take one out and the rest come down. |
 | checklist | MIT | Have it | Task tick: the box fills, the tick draws, the words strike out (our task rows). |
 | tree-view | Pro | New | Chart of accounts and product categories. |
