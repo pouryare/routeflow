@@ -5427,6 +5427,12 @@ html[data-hide-money="1"] .odo { filter: blur(7px); }
 /* Folding receipt (DriverRun): the preview folds away to nothing, like a bill tucked back in a pocket. */
 .foldbill { display: grid; grid-template-rows: 1fr; transition: grid-template-rows 320ms var(--ease, ease), opacity 240ms ease; }
 .foldbill__inner { overflow: hidden; min-height: 0; transform-origin: top; }
+/* Ticket look (screen only: the printed bitmap is the canvas itself, untouched): a torn zigzag edge under
+   the receipt and a soft paper shadow. The canvas is drawn white, so the teeth are white too. */
+.foldbill__inner::after { content: ""; display: block; height: 10px;
+  background: linear-gradient(135deg, #fff 5px, transparent 0) 0 0 / 10px 10px, linear-gradient(225deg, #fff 5px, transparent 0) 0 0 / 10px 10px; }
+.foldbill:not([data-folded="true"]) { filter: drop-shadow(0 6px 10px rgb(0 0 0 / 0.12)); }
+@media print { .foldbill__inner::after { display: none; } }
 .foldbill[data-folded="true"] { grid-template-rows: 0fr; opacity: 0; }
 @media (prefers-reduced-motion: reduce) { .foldbill { transition: none; } }
 
