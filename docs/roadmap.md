@@ -25,6 +25,8 @@ Two other files go with it:
 
 **Ground facts (2026-10-23).** The database is PostgreSQL, the current data is dummy, the server is in Iran, one company uses the app today (others may follow), and the number of drivers is unknown. Details: [decisions.md](decisions.md).
 
+**Owner direction (2026-11-01).** Two choices set the build order. (1) **Street first:** the van loop that no other CRM or ERP covers (money in hand per driver with a day-end count D1, order edit rules by stage, the double-save guard Z2, offline for tasks and notes F105) is built before office accounting depth. (2) **RouteFlow replaces Holoo for the daily books:** the book fixes (cleared cheque to bank H5, returned goods B1, month close A2, year close H2) come right after the street work, then the accountant role H3 and VAT D7; until D7 exists an outside accountant files tax from the month pack. No-code flexibility (custom fields, rule builder, report builder) stays last. Comparison: [how RouteFlow differs from other CRMs and ERPs](https://claude.ai/artifact/CM5CtuL2H5iEHtLgsZFHiv).
+
 ## Contents
 
 1. [Build next](#1-build-next)
@@ -446,6 +448,18 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
   **Logo and stamp (D29).** The owner uploads a logo and a stamp/signature image once; PDF receipt, delivery note and statements print them; the thermal printer prints the logo in black and white; the stamp is on or off per document type.
 
   </details>
+- **U1. Profit per stop (differentiator, 2026-11-01).** One number per delivery stop: sales, goods cost, fuel and driver share, minutes on site; a list of shops that lose money to serve.
+  <details><summary>Full decision</summary>
+
+  **Profit per stop (U1).** Chosen from the talk on what no CRM or ERP can copy: a CRM has no costs and an ERP has no routes, so only a joined system can say «shop X: sales 4M, goods cost 3.2M, fuel 90k, 40 minutes, profit 310k» and list the shops that lose money to serve. What exists: `components/CostToServePanel.tsx` (straight-line km from the depot, a per-km cost typed by hand in the browser, revenue matched to customers by business name text, so a renamed shop silently drops out), vehicles with `cost_per_km`, order margin in `lib/dashboard.ts`, OSRM routes in the planner. What is missing: real driving distance and time per stop, order margin per stop, vehicle cost per km and the driver's share joined in one report. An order with unknown cost shows «هزینه ناقص», never a made-up profit. Not checked: how accurate stored stop times are on real routes.
+
+  </details>
+- **U2. Money map (differentiator, 2026-11-01).** A «money» colour mode for districts: total owed and the part older than 30 days; tap a district for its numbers.
+  <details><summary>Full decision</summary>
+
+  **Money map (U2).** Customer pins can already be coloured by debt (`debtColor` in `lib/types.ts`: over 30 days red, 8 to 30 orange) and the map has a debt heat switch (`CoverageMap.tsx`), but district colours only know «status» and «group» (`DistrictColorMode`). Add a «money» mode: each district shaded by what is owed there, and a tap shows «38M owed, 20M older than 30 days, 6 shops». Small build on layers and numbers that exist. A supporting feature for demos, easy for a rival to copy, so it is not the moat.
+
+  </details>
 - **A2. Close a month.** Owner closes a month after a short checklist; reopening needs a reason; a closed month refuses entries.
   <details><summary>Full decision</summary>
 
@@ -745,6 +759,9 @@ Decided, but each needs something first. The "waits for" part is in the line. Th
 - **S10. F44 contract end and renewal task.** End date, reminder N days before (default 30), ended contracts stop drafts. Waits for F44.
 
 ### Delivery, routing and drivers
+
+- **U3. Learned open hours (differentiator, 2026-11-04).** Repeated «مغازه تعطیل بود» visits in the same weekday and hour suggest new hours for a shop; one tap accepts; the planner prefers the learned window. Waits for the F57 soft window and about a month of real routes.
+  Exists: `working_hours_json` weekday ranges (`lib/crm/hours.ts`), the seeded failure reasons SHOP_CLOSED and CUSTOMER_ABSENT, `actual_arrival` on stops, a per-stop `time_window` in `lib/routing/vroom.ts` that nothing fills yet. Missing: link each visit to its weekday and hour, an evidence rule (for example 3 closed visits in the same slot), the suggestion card, the planner preference. A driver's «closed» tap can be wrong, so hours change only on a person's tap.
 
 - **FB10. Freshness labels on positions and ETAs.** Every live dot shows its age; an arrival says live, planned or estimated. Waits for F6 live tracking.
 - **FB11. Customer tracking page.** A coarse three-step status before an SMS code, then map and arrival. Waits for F6 and F79.
@@ -1141,6 +1158,8 @@ A suggestion in waves. Within a wave the order is flexible; across waves it foll
 **Wave 0 — quick wins.** The 22 quick wins (listed under Done). They add visible value, touch little, and several (F99, F100, F110, F108, F138) are groundwork for later waves.
 
 **Wave 1 — foundations.** First slices of F27 (audit record), F48 (one approval type), F107 → F106 (sessions, then two-step login), F66 (purchase orders, once the ordering practice is confirmed) and the single decision on the customer message channel (F6/F79). The SMS provider is decided (Farazsms); consent, opt-out and any other channel are still open.
+
+**Order set by the owner on 2026-11-01:** street loop first, then the book fixes (replace Holoo), then office depth, then no-code flexibility (see "Owner direction" in the ground facts). The waves below stay as the dependency map.
 
 **Wave 2 — money and orders.** F83 (payment terms) → F50 (promises) → F18 (statements) → F46 (risk) → F49 (cash-flow forecast); F58 → F60/F62/F131 (order shortcuts); F44 (standing orders); F56/F64/F65 (pricing) together; F61 (backorders) and F71/F76 (holds and approval by value).
 
