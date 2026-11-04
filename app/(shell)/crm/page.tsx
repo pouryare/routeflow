@@ -8,7 +8,7 @@ import CrmBoard from "@/components/crm/CrmBoard";
 import { listBusinesses, viewCounts } from "@/lib/repo/crm/businesses";
 import { pageMetaFor } from "@/lib/pageMeta";
 import type { Metadata } from "next";
-import { isVanRole } from "@/lib/roles";
+import { MANAGE_ROLES, isVanRole } from "@/lib/roles";
 
 export const dynamic = "force-dynamic";
 
@@ -31,7 +31,7 @@ export default async function CrmPage() {
     <>
       <PageHeader route="/crm" />
       {/* node:sqlite rows have a null prototype, which a client component cannot receive. */}
-      <CrmBoard initialRows={plain(rows)} initialCounts={counts} initialView={view} />
+      <CrmBoard initialRows={plain(rows)} initialCounts={counts} initialView={view} canPlan={MANAGE_ROLES.includes(session.role)} />
     </>
   );
 }

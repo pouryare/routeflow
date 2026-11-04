@@ -11,7 +11,7 @@ import {
   List, LayoutGrid, Repeat, PanelBottom, PanelRight, Phone, Maximize, Minimize, Eye, EyeOff,
   Save, Copy, ClipboardPaste, Send, Upload, RefreshCw, LogIn, Navigation, Pin, PinOff,
   AlarmClock, StickyNote, CalendarPlus, CheckCheck, Archive, KeyRound, Unlink, CircleStop,
-  House, Delete, Volume2, VolumeX, Play,
+  House, Delete, Volume2, VolumeX, Play, Heart,
   type LucideIcon,
 } from "lucide-react";
 
@@ -55,6 +55,7 @@ export const ICONS = {
   download: Download,
   print: Printer,
   star: Star,
+  heart: Heart,
   "star-off": StarOff,
   clock: Clock,
 

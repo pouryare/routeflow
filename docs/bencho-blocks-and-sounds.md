@@ -80,12 +80,12 @@ All 150 block pages were opened on 2026-10-30 (description, live preview, and th
 | activity-stack | Pro | New | Notifications stacked by depth: swipe the front one away, the next rises. |
 | pull | MIT | Built | Pull to refresh on every list (customers, orders, today). Not built yet. |
 | roster | Pro | New | Pick people (reps, drivers) and a button grows out once someone is picked. |
-| selection-actions | Pro | New | The shared selection bar: pick rows and a pill of actions appears. |
+| selection-actions | Pro | Built | The shared selection bar: pick rows and a pill of actions appears. |
 | picker | MIT | New | Assignees: pick reps for a task and their faces stack up in the pill. |
 | avatar-group | Pro | New | Who is on a task or route: faces in a row, the name slides to the one under the finger. |
 | profile-card | Pro | New | Tap a face to see the rep's card (phone, today's numbers). |
 | access-request | Pro | New | Discount approval requests: a pill that opens into the list, each with approve and refuse. |
-| liq-arrange | Pro | New | Reorder stops in a run by dragging; neighbours make room. |
+| liq-arrange | Pro | Built | Reorder stops in a run by dragging; neighbours make room. |
 | todo-tower | MIT | New | Today's tasks as a stack: take one out and the rest come down. |
 | checklist | MIT | Have it | Task tick: the box fills, the tick draws, the words strike out (our task rows). |
 | tree-view | Pro | New | Chart of accounts and product categories. |
@@ -114,14 +114,14 @@ All 150 block pages were opened on 2026-10-30 (description, live preview, and th
 | form-error | Pro | Built | Field shakes once and unfolds the reason (we have `useShake`). |
 | password-strength | Pro | Built | Password change and new user: a bar and rules ticked as you type. |
 | copy-field | Pro | Built | Our `CopyButton` gets the drawn check and sheen (IBAN, phone, codes). |
-| upload-dropzone | MIT | New | Photos and documents, with too-big refused clearly. |
+| upload-dropzone | MIT | Built | Photos and documents, with too-big refused clearly. |
 | voice-note | MIT | New | Driver or rep voice note: hold to record, slide to bin. Needs object storage first. |
 | seek | MIT | Have it | Our `SearchBox`: the icon opens into the field. |
 | command | Pro | New | Ctrl-K command bar on desktop (planned). |
 | ai-chat-input | Pro | New | Was "not useful". The message box of the native chat (no AI: the model menu becomes «پیوست» and «فوری»). |
 | ai-autocomplete | Pro | New | Was "not useful". No AI: suggest the rest of a note from the rep's own past notes, kept on the server. Tab or tap to take it. |
 | emoji-reactions | MIT | New | React to a note or chat message. |
-| like | MIT | New | Favourites (customer, product). |
+| like | MIT | Built | Favourites (customer, product). |
 | peek-rating | Pro | Built | Our `StarRating`: stars rise and a tip names the score before you give it. |
 | feedback-bar | Pro | New | "Was this helpful?" under help pages. |
 | date-reel | Pro | Built | Time and Jalali date drums in `JalaliDatePicker`. |
@@ -136,7 +136,7 @@ All 150 block pages were opened on 2026-10-30 (description, live preview, and th
 | tape | Pro | Merge | Same slider, quarter steps: route replay speed. |
 | liq-toggle | MIT | Have it | Our `ToggleSwitch` gets the stretching droplet. |
 | magnet-select | MIT | Built | Our `ChipGroup` / `FilterChips`: the picked chip swells. |
-| aspect | MIT | New | Crop a shop or product photo (4:3, 1:1, 3:4) before upload. |
+| aspect | MIT | Built | Crop a shop or product photo (4:3, 1:1, 3:4) before upload. |
 | resize-frame | Pro | Merge | Same crop tool with live sizes. |
 | palette | MIT | Have it | Our `AccentPicker`: press for a new matching palette. |
 

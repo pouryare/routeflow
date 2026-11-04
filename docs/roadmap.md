@@ -17,13 +17,15 @@ Two other files go with it:
 | **Done** | Built. Listed in section 4; the long history is in the archive. |
 | **Not chosen yet** | An F-entry from `docs/future-features.md` that nobody has decided on. They are in the index in section 5. |
 
-**IDs.** Every old ID is kept: **F** = entry in `docs/future-features.md`; **T** Twenty, **S** SuiteCRM, **D** Dolibarr, **E** EspoCRM, **A** Akaunting, **B** Bigcapital, **Z** ezBookkeeping studies; **UIB-A…F** the 2026-10-28 UI pattern batches; **FB1…FB44** the Fleetbase study items (new short tags for items that had none; the old text calls the third-pass ones D3-n, so D3-5 is FB36). Two ideas that two studies both suggested were merged into one line and show both IDs: **T7 / Z17** (totals of the filtered list) and **D13 / E10** (per-person switches). Ideas that are only similar stay separate and point to each other.
+**IDs.** Every old ID is kept: **F** = entry in `docs/future-features.md`; **T** Twenty, **S** SuiteCRM, **D** Dolibarr, **E** EspoCRM, **A** Akaunting, **B** Bigcapital, **Z** ezBookkeeping studies, **H** the Holoo comparison; **UIB-A…F** the 2026-10-28 UI pattern batches; **FB1…FB44** the Fleetbase study items (new short tags for items that had none; the old text calls the third-pass ones D3-n, so D3-5 is FB36). Two ideas that two studies both suggested were merged into one line and show both IDs: **T7 / Z17** (totals of the filtered list) and **D13 / E10** (per-person switches). Ideas that are only similar stay separate and point to each other.
 
 **Size** of an F-entry is a rough guess for its *first slice*: **S** a small change on code that exists, **M** a new table or screen, **L** cross-cutting or needs infrastructure or an outside service. It is a judgement and is meant to be argued with.
 
 **How the status was decided.** The owner has not given statuses; this is the cleaner's reading of the old text. "Build next" means the old text names no prerequisite. "Waiting" means the text says "after", "with", "waits for" or "built with" another unbuilt thing. Move any item that looks wrong.
 
 **Ground facts (2026-10-23).** The database is PostgreSQL, the current data is dummy, the server is in Iran, one company uses the app today (others may follow), and the number of drivers is unknown. Details: [decisions.md](decisions.md).
+
+**Owner direction (2026-11-01).** Two choices set the build order. (1) **Street first:** the van loop that no other CRM or ERP covers (money in hand per driver with a day-end count D1, order edit rules by stage, the double-save guard Z2, offline for tasks and notes F105) is built before office accounting depth. (2) **RouteFlow replaces Holoo for the daily books:** the book fixes (cleared cheque to bank H5, returned goods B1, month close A2, year close H2) come right after the street work, then the accountant role H3 and VAT D7; until D7 exists an outside accountant files tax from the month pack. No-code flexibility (custom fields, rule builder, report builder) stays last. Comparison: [how RouteFlow differs from other CRMs and ERPs](https://claude.ai/artifact/CM5CtuL2H5iEHtLgsZFHiv).
 
 ## Contents
 
@@ -419,6 +421,13 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
 
   </details>
 
+- **H5. Cleared cheque reaches the bank.** When a cheque is marked «وصول شد», one entry moves it from cheques receivable to the bank.
+  <details><summary>Full decision</summary>
+
+  **Cleared cheque reaches the bank (H5, Holoo comparison, fixes a wrong number).** Today `advanceCheque` (`lib/repo/cheques.ts`) only changes the status on «به بانک سپرده شد» and «وصول شد»; the money stays in `1202` چک‌های دریافتنی and the bank `1102` is too low by every cleared cheque. On «وصول شد» post Dr bank / Cr `1202`, with the account chosen the way D2 picks it. Cheques already cleared get one catch-up entry. A bounce already voids the payment and works. Built first of the Holoo fixes. Not checked: whether any report works around it.
+
+  </details>
+
 ### Accounting, reports and analytics
 
 - **T15. Sales chart bug and calendar days (with T20).** The weekly chart skips empty days, so one empty day shifts every bar. Fill calendar days with 0, show closed days, compare the same weekdays; add sales by weekday, a month-to-date line, and rankings with an «سایر» row.
@@ -437,6 +446,18 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
   <details><summary>Full decision</summary>
 
   **Logo and stamp (D29).** The owner uploads a logo and a stamp/signature image once; PDF receipt, delivery note and statements print them; the thermal printer prints the logo in black and white; the stamp is on or off per document type.
+
+  </details>
+- **U1. Profit per stop (differentiator, 2026-11-01).** One number per delivery stop: sales, goods cost, fuel and driver share, minutes on site; a list of shops that lose money to serve.
+  <details><summary>Full decision</summary>
+
+  **Profit per stop (U1).** Chosen from the talk on what no CRM or ERP can copy: a CRM has no costs and an ERP has no routes, so only a joined system can say «shop X: sales 4M, goods cost 3.2M, fuel 90k, 40 minutes, profit 310k» and list the shops that lose money to serve. What exists: `components/CostToServePanel.tsx` (straight-line km from the depot, a per-km cost typed by hand in the browser, revenue matched to customers by business name text, so a renamed shop silently drops out), vehicles with `cost_per_km`, order margin in `lib/dashboard.ts`, OSRM routes in the planner. What is missing: real driving distance and time per stop, order margin per stop, vehicle cost per km and the driver's share joined in one report. An order with unknown cost shows «هزینه ناقص», never a made-up profit. Not checked: how accurate stored stop times are on real routes.
+
+  </details>
+- **U2. Money map (differentiator, 2026-11-01).** A «money» colour mode for districts: total owed and the part older than 30 days; tap a district for its numbers.
+  <details><summary>Full decision</summary>
+
+  **Money map (U2).** Customer pins can already be coloured by debt (`debtColor` in `lib/types.ts`: over 30 days red, 8 to 30 orange) and the map has a debt heat switch (`CoverageMap.tsx`), but district colours only know «status» and «group» (`DistrictColorMode`). Add a «money» mode: each district shaded by what is owed there, and a tap shows «38M owed, 20M older than 30 days, 6 shops». Small build on layers and numbers that exist. A supporting feature for demos, easy for a rival to copy, so it is not the moat.
 
   </details>
 - **A2. Close a month.** Owner closes a month after a short checklist; reopening needs a reason; a closed month refuses entries.
@@ -476,6 +497,25 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
 
   </details>
 
+- **H1. Real کل / معین levels in the chart of accounts.** Use the empty `parent_id` to link accounts to their group; reports show a subtotal per group.
+  <details><summary>Full decision</summary>
+
+  **Real کل / معین levels (H1, Holoo comparison).** `accounts.parent_id` exists but no code reads it and the seed leaves it empty; the header rows `1000` to `5000` are not linked to the accounts under them, so the chart is flat plus a type. Link each account to its group, show a subtotal per group in the trial balance, balance sheet and income statement. The تفصیلی layer stays as the customer, supplier, party and group tags on ledger lines (no account per customer). An export mapping for an outside accountant was not chosen; it can follow the month pack (D26).
+
+  </details>
+- **H2. Close the year.** A «بستن سال» button moves the year's profit into retained earnings; reports get a year filter.
+  <details><summary>Full decision</summary>
+
+  **Close the year (H2, Holoo comparison).** There is no year object and no closing entry, on purpose (no second set of books). The balance sheet derives one line «سود و زیان دوره» (`3900`) from all revenue and expense since the start, so old profit never resets, and the profit split debits `3103` which never received the profit, so `3103` goes negative. A «بستن سال» button posts one closing entry per Jalali year that moves the year's profit into `3103`; the `3900` line then covers only the open year; income statement and balance sheet get a year filter (today a single month or all time). Owner and the accountant role (H3) can run it; reopening needs a reason and is logged. Entry numbers keep running as today (restarting each year was not chosen). Works with A2 (close a month) and the yearly split. Not checked in the app: only the code was read.
+
+  </details>
+- **H6. Void an expense or a purchase.** A «باطل کردن» button with a reason posts the mirror entry and keeps the original visible.
+  <details><summary>Full decision</summary>
+
+  **Void an expense or a purchase (H6, Holoo comparison).** Payments can be voided and re-allocated, but expenses and purchases have no edit or void route (only the receipt photo), so a 2,000,000 fuel entry typed instead of 200,000 cannot be corrected from the app. Add a «باطل کردن» button with a reason on expenses and purchases: it posts the mirror entry (as `postReceiptReversal` does for payments), the original stays visible, and the log names who did it. Expenses first. Voiding a purchase must recompute the product's average cost and show the affected orders, so it waits with B6.
+
+  </details>
+
 ### People, approvals and management control
 
 - **FB27. Live commission preview (first slice of F19).** The commission editor shows the result for sample sales as the rule changes, using the payroll calculation.
@@ -503,6 +543,13 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
 
   </details>
 - **S23. Staff on leave until a date.** Still can sign in; assignment skips them; planner warns; a cover card lists their open leads and tasks.
+
+- **H3. Accountant role.** A new login that reads all accounting and can post manual entries, reversals and the year close.
+  <details><summary>Full decision</summary>
+
+  **Accountant role (H3, Holoo comparison).** Today only owners read all accounting and a group manager reads the journal and expenses (`lib/accountingGate.ts`); the roadmap speaks of «the accountant» only as someone who receives a file (D21, D26). A new role reads every accounting page and export, and can post a manual سند (a bank fee, a loan, a correction between accounts; it must balance and be tagged MANUAL), reverse an entry (H6), and close a month (A2) or the year (H2). Every action is logged by name. No user admin, prices or commission. Adding a role means checking every role list in the gates (`MANAGE_ROLES`, `OWNER_ROLES` and the proxy), so it is a real piece of work; per-screen ticks like Holoo's were not chosen. F128 (auditor) was not found in `docs/roadmap.md`; check before reusing the number.
+
+  </details>
 
 ### Platform, security and administration
 
@@ -712,6 +759,9 @@ Decided, but each needs something first. The "waits for" part is in the line. Th
 - **S10. F44 contract end and renewal task.** End date, reminder N days before (default 30), ended contracts stop drafts. Waits for F44.
 
 ### Delivery, routing and drivers
+
+- **U3. Learned open hours (differentiator, 2026-11-04).** Repeated «مغازه تعطیل بود» visits in the same weekday and hour suggest new hours for a shop; one tap accepts; the planner prefers the learned window. Waits for the F57 soft window and about a month of real routes.
+  Exists: `working_hours_json` weekday ranges (`lib/crm/hours.ts`), the seeded failure reasons SHOP_CLOSED and CUSTOMER_ABSENT, `actual_arrival` on stops, a per-stop `time_window` in `lib/routing/vroom.ts` that nothing fills yet. Missing: link each visit to its weekday and hour, an evidence rule (for example 3 closed visits in the same slot), the suggestion card, the planner preference. A driver's «closed» tap can be wrong, so hours change only on a person's tap.
 
 - **FB10. Freshness labels on positions and ETAs.** Every live dot shows its age; an arrival says live, planned or estimated. Waits for F6 live tracking.
 - **FB11. Customer tracking page.** A coarse three-step status before an SMS code, then map and arrival. Waits for F6 and F79.
@@ -1108,6 +1158,8 @@ A suggestion in waves. Within a wave the order is flexible; across waves it foll
 **Wave 0 — quick wins.** The 22 quick wins (listed under Done). They add visible value, touch little, and several (F99, F100, F110, F108, F138) are groundwork for later waves.
 
 **Wave 1 — foundations.** First slices of F27 (audit record), F48 (one approval type), F107 → F106 (sessions, then two-step login), F66 (purchase orders, once the ordering practice is confirmed) and the single decision on the customer message channel (F6/F79). The SMS provider is decided (Farazsms); consent, opt-out and any other channel are still open.
+
+**Order set by the owner on 2026-11-01:** street loop first, then the book fixes (replace Holoo), then office depth, then no-code flexibility (see "Owner direction" in the ground facts). The waves below stay as the dependency map.
 
 **Wave 2 — money and orders.** F83 (payment terms) → F50 (promises) → F18 (statements) → F46 (risk) → F49 (cash-flow forecast); F58 → F60/F62/F131 (order shortcuts); F44 (standing orders); F56/F64/F65 (pricing) together; F61 (backorders) and F71/F76 (holds and approval by value).
 

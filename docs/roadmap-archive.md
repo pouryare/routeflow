@@ -2,7 +2,7 @@
 
 This file holds the long text that used to sit in `docs/roadmap.md`. Nothing was edited or removed when it moved here (only the heading numbers were kept so old references still work). The short, current view is [`docs/roadmap.md`](roadmap.md). Platform facts and open decisions are in [`docs/decisions.md`](decisions.md).
 
-Use this file to find the full answer the owner gave to an idea, the report link of a study, or what was built in an early batch. Each section keeps its old number (1, 1a to 1k, 7).
+Use this file to find the full answer the owner gave to an idea, the report link of a study, or what was built in an early batch. Each section keeps its old number (1, 1a to 1l, 7).
 
 ## 1. Build these first
 
@@ -370,6 +370,21 @@ The owner had SuiteCRM 7.15.2 (`SuiteCRM/SuiteCRM`, AGPL-3.0) studied in three p
 - S23 staff on-leave: CHOSE leave until a date + reason (still can sign in; auto-assign skips; planner warns; ends by itself) + manager cover card listing their open leads/tasks. PR #20 (S1) merged 2026-10-30. (2026-10-30)
 - S24 app problem report: CHOSE button in account menu, one line + optional screenshot, page/role/version/phone/connection auto-attached, list for owner + platform owner with status. (2026-10-30)
 - S25 document valid-until: CHOSE «اعتبار تا» date, task for owner/rep 30 days before, expired chip on customer page. All 25 answered 2026-10-30; roadmap write-up (section 1f) still Later.
+
+
+### 1l. Holoo comparison (decided 2026-10-31)
+
+The owner asked how RouteFlow's accounting compares with Holoo (هلو), the Iranian desktop accounting program. Discussion only, no code. Report: https://claude.ai/artifact/BcF6CRHH1LJJGaYpfgMbfb. **What Holoo does is from memory, not from its manuals or a running copy; spots marked unsure there are unchecked.** Verdict: the same engine idea (automatic سند from every sale, payment, purchase and expense; the same standard reports), covering roughly half of what a distributor uses Holoo for. RouteFlow is stronger in field-to-books flow, revenue at delivery, commission and shareholders, and immutable entries; it lacks the office side. The first reading of the code said the chart had 2 levels; that was too generous (see H1).
+
+**Found in the code (read, not run):** a cleared cheque never reaches the bank in the books (H5); no void for expenses or purchases (H6); no manual سند screen (H3); no year close and a derived «سود و زیان دوره» that never resets (H2); `parent_id` unused (H1); returns after delivery post nothing (B1); supplier payment code exists but no screen (D21); no issued cheques or خرج چک; no payroll; no VAT or مودیان (D7); entry numbers never restart; no fiscal year object, only Jalali months; unknown cost posts revenue alone (a flag marks the report); moving average cost only; no accountant role.
+
+**Answers**
+- **H1 chart levels.** Real کل / معین tree using `parent_id`, group subtotals in reports; tags stay as تفصیلی. Export mapping not chosen.
+- **H2 fiscal year.** Chose A: a «بستن سال» button with a year filter. B (yearly entry numbers) and C (display fix only) were not chosen.
+- **H3 accountant.** Chose read plus manual entries and close, over read-only and per-screen ticks.
+- **H5 and H6 order.** Both, cheque fix first, then the void button.
+
+**Not chosen yet:** the replace-or-sit-beside-Holoo question was asked on a card and not answered; the recommendation is that RouteFlow keeps the daily books while an outside accountant files tax from the month pack (D26) until D7 and مودیان are built. Other differences were listed but not decided: cost centres or projects, a separate discount account, printing the journal and the account card, other stock cost methods, restarting entry numbers each year.
 
 ## 7. Looked like features but already exist
 
