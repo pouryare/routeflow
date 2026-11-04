@@ -14,6 +14,10 @@ import { navigateUrl } from "@/lib/navApps";
 import type { BusinessRow, CrmView } from "@/lib/repo/crm/businesses";
 import { faDigits } from "@/lib/crm/vocab";
 import { useFavourites } from "@/lib/useFavourites";
+import { toggleFavourite as toggleId } from "@/lib/favourites";
+import StickyAction from "@/components/mobile/StickyAction";
+import { useToast } from "@/components/ToastProvider";
+import { tehranTodayIso } from "@/lib/jalali";
 
 const VIEW_LABEL: Record<CrmView, string> = {
   today: "پیگیری امروز", hot: "داغ", my_leads: "سرنخ‌های من", my_customers: "مشتریان من",
@@ -25,8 +29,10 @@ const NEXT_MODE: ReadonlySet<CrmView> = new Set<CrmView>(["today", "hot"]);
 type CallFlow = { kind: "call"; customerId: number; entry: "call" | "talked_now"; open: boolean };
 type LeadFlow = { kind: "lead"; open: boolean; prefillPhone: string | null };
 
-export default function CrmBoard({ initialRows, initialCounts, initialView }: {
+export default function CrmBoard({ initialRows, initialCounts, initialView, canPlan }: {
   initialRows: BusinessRow[]; initialCounts: Record<CrmView, number>; initialView: CrmView;
+  /** The roles whose API lets them add stops to the day plan (MANAGE_ROLES): only they get «انتخاب». */
+  canPlan: boolean;
 }) {
   const [view, setView] = useState<CrmView>(initialView);
   const [q, setQ] = useState("");
@@ -39,6 +45,25 @@ export default function CrmBoard({ initialRows, initialCounts, initialView }: {
   const [navApp] = useNavApp();
   const [favs, toggleFav] = useFavourites();
   const [onlyFavs, setOnlyFavs] = useState(false);
+  const [selecting, setSelecting] = useState(false);
+  const [picked, setPicked] = useState<number[]>([]);
+  const [adding, setAdding] = useState(false);
+  const toast = useToast();
+  const stopSelecting = () => { setSelecting(false); setPicked([]); };
+  async function addPickedToPlan() {
+    setAdding(true);
+    const results = await Promise.all(picked.map((id) =>
+      fetch("/api/visit-plans", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ entity_type: "customer", entity_id: id, planned_date: tehranTodayIso() }),
+      }).then((r) => r.ok).catch(() => false),
+    ));
+    const ok = results.filter(Boolean).length;
+    toast(ok === picked.length ? `${faDigits(String(ok))} مشتری به برنامهٔ امروز اضافه شد.` : `${faDigits(String(ok))} از ${faDigits(String(picked.length))} مشتری اضافه شد؛ بقیه نشد.`, ok === picked.length ? "success" : "error");
+    setAdding(false);
+    stopSelecting();
+  }
   const shown = onlyFavs ? rows.filter((r) => favs.includes(r.id)) : rows;
 
   const load = useCallback(async (v: CrmView, query: string) => {
@@ -126,11 +151,18 @@ export default function CrmBoard({ initialRows, initialCounts, initialView }: {
           <Icon name="heart" size="md" filled={onlyFavs} />
           دلخواه‌ها<i>{faDigits(String(favs.length))}</i>
         </button>
+        {canPlan ? (
+          <button type="button" aria-pressed={selecting} onClick={() => (selecting ? stopSelecting() : setSelecting(true))}>
+            <Icon name={selecting ? "x" : "check"} size="md" />
+            {selecting ? "لغو انتخاب" : "انتخاب"}
+          </button>
+        ) : null}
       </ScrollFade>
       <div className="crm-list">
         {shown.length === 0 ? <p className="tf-sub" style={{ textAlign: "center", padding: 24 }}>در این نما موردی نیست. نما یا عبارت جستجو را تغییر دهید.</p> : null}
         {shown.map((row) => (
-          <BusinessCard key={row.id} row={row} favourite={favs.includes(row.id)} onFavourite={(r) => toggleFav(r.id)} mode={NEXT_MODE.has(view) ? "next" : "business"} highlight={highlight === row.id}
+          <BusinessCard key={row.id} row={row} favourite={favs.includes(row.id)} onFavourite={(r) => toggleFav(r.id)}
+            selected={selecting ? picked.includes(row.id) : undefined} onSelect={selecting ? (r) => setPicked((cur) => toggleId(cur, r.id)) : undefined} mode={NEXT_MODE.has(view) ? "next" : "business"} highlight={highlight === row.id}
             onCall={onCall} onOpen={(r) => setSheet({ id: r.id, name: r.business_name })} onNavigate={onNavigate} />
         ))}
       </div>
@@ -159,6 +191,15 @@ export default function CrmBoard({ initialRows, initialCounts, initialView }: {
           onCallNow={(id, phone) => startCall(id, phone)}
           onOpenBusiness={(id) => setSheet({ id })}
           onTalkedNow={(id) => setCall({ kind: "call", customerId: id, entry: "talked_now", open: true })}
+        />
+      ) : null}
+      {selecting && picked.length > 0 ? (
+        <StickyAction
+          icon="calendar-plus"
+          label={`افزودن ${faDigits(String(picked.length))} مشتری به برنامهٔ امروز`}
+          busy={adding ? "در حال افزودن…" : undefined}
+          disabled={adding}
+          onClick={() => void addPickedToPlan()}
         />
       ) : null}
       <CustomerSheet customerId={sheet?.id ?? null} fallbackName={sheet?.name} onClose={() => setSheet(null)} />

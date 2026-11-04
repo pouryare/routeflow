@@ -5458,3 +5458,10 @@ html[data-hide-money="1"] .odo { filter: blur(7px); }
 
 /* DragStop (planner): the grip of a stop you can drag. */
 .dragstop__grip { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; border: 0; background: transparent; color: var(--text-faint); touch-action: none; cursor: grab; }
+
+/* Selection (CRM list): a tick box in the card corner, the picked card outlined. */
+.selbox { position: absolute; inset-block-start: 4px; inset-inline-end: 4px; display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; border: 0; background: transparent; color: transparent; z-index: 1; }
+.selbox::before { content: ""; position: absolute; width: 24px; height: 24px; border-radius: 7px; border: 2px solid var(--border-strong, var(--border)); background: var(--surface); z-index: -1; }
+.selbox--on { color: var(--accent-ink, #fff); }
+.selbox--on::before { background: var(--accent); border-color: var(--accent); }
+.crm-card--picked { outline: 2px solid var(--accent); }

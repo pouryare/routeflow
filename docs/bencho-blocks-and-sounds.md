@@ -80,7 +80,7 @@ All 150 block pages were opened on 2026-10-30 (description, live preview, and th
 | activity-stack | Pro | New | Notifications stacked by depth: swipe the front one away, the next rises. |
 | pull | MIT | Built | Pull to refresh on every list (customers, orders, today). Not built yet. |
 | roster | Pro | New | Pick people (reps, drivers) and a button grows out once someone is picked. |
-| selection-actions | Pro | New | The shared selection bar: pick rows and a pill of actions appears. |
+| selection-actions | Pro | Built | The shared selection bar: pick rows and a pill of actions appears. |
 | picker | MIT | New | Assignees: pick reps for a task and their faces stack up in the pill. |
 | avatar-group | Pro | New | Who is on a task or route: faces in a row, the name slides to the one under the finger. |
 | profile-card | Pro | New | Tap a face to see the rep's card (phone, today's numbers). |

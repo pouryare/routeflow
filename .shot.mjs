@@ -1,0 +1,16 @@
+import { chromium } from "playwright";
+const [,, role, path, out, theme="light"] = process.argv;
+const user = process.env.U || "demo.owner";
+const b = await chromium.launch({ executablePath: process.env.CHROME });
+const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, hasTouch: true, isMobile: true, colorScheme: theme, locale: "fa-IR" });
+const p = await ctx.newPage();
+await p.goto("http://127.0.0.1:3099/login");
+await p.fill('input[autocomplete="username"]', user);
+await p.fill('input[autocomplete="current-password"]', "Preview-pass-1");
+await p.click('button[type=submit]');
+await p.waitForTimeout(2500);
+await p.goto("http://127.0.0.1:3099" + path);
+await p.waitForTimeout(2500);
+console.log(await p.evaluate(() => JSON.stringify({ w: document.documentElement.scrollWidth, url: location.pathname })));
+await p.screenshot({ path: out });
+await b.close();
