@@ -13,6 +13,7 @@ import { useNavApp } from "@/components/NavAppSetting";
 import { navigateUrl } from "@/lib/navApps";
 import type { BusinessRow, CrmView } from "@/lib/repo/crm/businesses";
 import { faDigits } from "@/lib/crm/vocab";
+import { useFavourites } from "@/lib/useFavourites";
 
 const VIEW_LABEL: Record<CrmView, string> = {
   today: "پیگیری امروز", hot: "داغ", my_leads: "سرنخ‌های من", my_customers: "مشتریان من",
@@ -36,6 +37,9 @@ export default function CrmBoard({ initialRows, initialCounts, initialView }: {
   const [lead, setLead] = useState<LeadFlow | null>(null);
   const [sheet, setSheet] = useState<{ id: number; name?: string } | null>(null);
   const [navApp] = useNavApp();
+  const [favs, toggleFav] = useFavourites();
+  const [onlyFavs, setOnlyFavs] = useState(false);
+  const shown = onlyFavs ? rows.filter((r) => favs.includes(r.id)) : rows;
 
   const load = useCallback(async (v: CrmView, query: string) => {
     const j = (await fetch(`/api/crm/businesses?view=${v}&q=${encodeURIComponent(query)}`).then((r) => r.json()).catch(() => null)) as
@@ -118,11 +122,15 @@ export default function CrmBoard({ initialRows, initialCounts, initialView }: {
             {VIEW_LABEL[v]}<i>{faDigits(String(counts[v] ?? 0))}</i>
           </button>
         ))}
+        <button type="button" aria-pressed={onlyFavs} onClick={() => setOnlyFavs((v) => !v)}>
+          <Icon name="heart" size="md" filled={onlyFavs} />
+          دلخواه‌ها<i>{faDigits(String(favs.length))}</i>
+        </button>
       </ScrollFade>
       <div className="crm-list">
-        {rows.length === 0 ? <p className="tf-sub" style={{ textAlign: "center", padding: 24 }}>در این نما موردی نیست. نما یا عبارت جستجو را تغییر دهید.</p> : null}
-        {rows.map((row) => (
-          <BusinessCard key={row.id} row={row} mode={NEXT_MODE.has(view) ? "next" : "business"} highlight={highlight === row.id}
+        {shown.length === 0 ? <p className="tf-sub" style={{ textAlign: "center", padding: 24 }}>در این نما موردی نیست. نما یا عبارت جستجو را تغییر دهید.</p> : null}
+        {shown.map((row) => (
+          <BusinessCard key={row.id} row={row} favourite={favs.includes(row.id)} onFavourite={(r) => toggleFav(r.id)} mode={NEXT_MODE.has(view) ? "next" : "business"} highlight={highlight === row.id}
             onCall={onCall} onOpen={(r) => setSheet({ id: r.id, name: r.business_name })} onNavigate={onNavigate} />
         ))}
       </div>

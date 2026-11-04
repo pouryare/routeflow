@@ -1,5 +1,6 @@
 "use client";
 
+import FavouriteHeart from "@/components/FavouriteHeart";
 import { Icon } from "@/components/meridian/Icon";
 import type { BusinessRow } from "@/lib/repo/crm/businesses";
 import { labelDue } from "@/lib/crm/due";
@@ -10,8 +11,8 @@ import {
 
 /** "next" mode is the pocket card (the task is the headline) for the follow-up views;
  *  "business" mode leads with the business, for browsing. Two buttons only: Call, Open. */
-export default function BusinessCard({ row, mode, highlight, onCall, onOpen, onNavigate }: {
-  row: BusinessRow; mode: "next" | "business"; highlight: boolean;
+export default function BusinessCard({ row, mode, highlight, favourite, onFavourite, onCall, onOpen, onNavigate }: {
+  row: BusinessRow; mode: "next" | "business"; highlight: boolean; favourite: boolean; onFavourite: (row: BusinessRow) => void;
   onCall: (row: BusinessRow) => void; onOpen: (row: BusinessRow) => void; onNavigate: (row: BusinessRow) => void;
 }) {
   const now = new Date().toISOString();
@@ -25,6 +26,7 @@ export default function BusinessCard({ row, mode, highlight, onCall, onOpen, onN
 
   return (
     <article className={`crm-card${highlight ? " hl" : ""}`}>
+      <FavouriteHeart on={favourite} name={row.business_name} onToggle={() => onFavourite(row)} />
       <div className={`due${overdue ? " over" : ""}`}>{mode === "next" ? nextLine : [type, row.area_label].filter(Boolean).join(" · ")}</div>
       <p className="title">{mode === "next" ? (row.next_title?.split(" · ")[0] ?? row.business_name) : row.business_name}</p>
       <div className="meta">

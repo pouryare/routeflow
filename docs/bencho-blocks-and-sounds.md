@@ -121,7 +121,7 @@ All 150 block pages were opened on 2026-10-30 (description, live preview, and th
 | ai-chat-input | Pro | New | Was "not useful". The message box of the native chat (no AI: the model menu becomes «پیوست» and «فوری»). |
 | ai-autocomplete | Pro | New | Was "not useful". No AI: suggest the rest of a note from the rep's own past notes, kept on the server. Tab or tap to take it. |
 | emoji-reactions | MIT | New | React to a note or chat message. |
-| like | MIT | New | Favourites (customer, product). |
+| like | MIT | Built | Favourites (customer, product). |
 | peek-rating | Pro | Built | Our `StarRating`: stars rise and a tip names the score before you give it. |
 | feedback-bar | Pro | New | "Was this helpful?" under help pages. |
 | date-reel | Pro | Built | Time and Jalali date drums in `JalaliDatePicker`. |
