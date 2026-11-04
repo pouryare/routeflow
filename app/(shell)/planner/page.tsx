@@ -1,5 +1,6 @@
 "use client";
 
+import { reorderPatches } from "@/lib/planReorder";
 import ScrollFade from "@/components/mobile/ScrollFade";
 import { FieldInput } from "@/components/FieldInput";
 import VisitPlanEntry from "@/components/flows/VisitPlanEntry";
@@ -327,6 +328,21 @@ export default function PlannerPage() {
       }),
     ]);
     loadWeek();
+  }
+
+  async function reorder(ids: number[]) {
+    const patches = reorderPatches(dayPlans, ids);
+    if (patches.length === 0) return;
+    await Promise.all(
+      patches.map((p) =>
+        fetch(`/api/visit-plans/${p.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sort_order: p.sort_order }),
+        }),
+      ),
+    );
+    await loadWeek();
   }
 
   function locate() {
@@ -807,7 +823,7 @@ export default function PlannerPage() {
               number they cannot check. */}
           {dayPlans.length > 0 && <PlanOriginPanel origin={origin} originPickerOpen={originPickerOpen} setOriginPickerOpen={setOriginPickerOpen} returnToOrigin={returnToOrigin} toggleReturnToOrigin={toggleReturnToOrigin} facilities={facilities} originOverrideId={originOverrideId} setOriginOverrideId={setOriginOverrideId} setMyPos={setMyPos} locate={locate} dayLengthKm={dayLengthKm} warehouseDetour={warehouseDetour} googleRoute={googleRoute} navAppId={navAppId} optimisation={optimisation} applyOptimalOrder={applyOptimalOrder} optimising={optimising} />}
 
-          <PlanDayList loading={loading} dayPlans={dayPlans} legKm={legKm} restockHint={restockHint} optimising={optimising} insertRestockStop={insertRestockStop} move={move} setStatus={setStatus} removePlan={removePlan} navAppId={navAppId} returnLegKm={returnLegKm} origin={origin} />
+          <PlanDayList loading={loading} dayPlans={dayPlans} legKm={legKm} restockHint={restockHint} optimising={optimising} insertRestockStop={insertRestockStop} move={move} reorder={reorder} setStatus={setStatus} removePlan={removePlan} navAppId={navAppId} returnLegKm={returnLegKm} origin={origin} />
         </section>
         </div>
 

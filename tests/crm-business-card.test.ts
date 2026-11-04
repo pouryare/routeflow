@@ -32,7 +32,7 @@ const row: BusinessRow = {
 
 it.each(["unverified", null, "verified"])("labels unverified information explicitly for verification=%s", async (verification) => {
   await act(async () => root.render(createElement(BusinessCard, {
-    row: { ...row, verification }, mode: "business", highlight: false,
+    row: { ...row, verification }, mode: "business", highlight: false, favourite: false, onFavourite: vi.fn(),
     onCall: vi.fn(), onOpen: vi.fn(), onNavigate: vi.fn(),
   })));
   const badges = Array.from(host.querySelectorAll(".pills .pill"), el => el.textContent);

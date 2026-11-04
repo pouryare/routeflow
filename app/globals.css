@@ -5450,3 +5450,24 @@ html[data-hide-money="1"] .odo { filter: blur(7px); }
   .dotloader i:nth-child(3) { animation-delay: 240ms; }
   @keyframes dotloader { 40% { transform: translateY(-4px); opacity: 1; } }
 }
+
+/* Favourite heart (components/FavouriteHeart.tsx): sits at the top corner of a customer card. */
+.crm-card { position: relative; }
+.favheart { position: absolute; inset-block-start: 4px; inset-inline-end: 4px; display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; border: 0; background: transparent; color: var(--text-faint); z-index: 1; }
+.favheart--on { color: var(--crit, #dc2626); }
+
+/* DragStop (planner): the grip of a stop you can drag. */
+.dragstop__grip { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; border: 0; background: transparent; color: var(--text-faint); touch-action: none; cursor: grab; }
+
+/* Selection (CRM list): a tick box in the card corner, the picked card outlined. */
+.selbox { position: absolute; inset-block-start: 4px; inset-inline-end: 4px; display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; border: 0; background: transparent; color: transparent; z-index: 1; }
+.selbox::before { content: ""; position: absolute; width: 24px; height: 24px; border-radius: 7px; border: 2px solid var(--border-strong, var(--border)); background: var(--surface); z-index: -1; }
+.selbox--on { color: var(--accent-ink, #fff); }
+.selbox--on::before { background: var(--accent); border-color: var(--accent); }
+.crm-card--picked { outline: 2px solid var(--accent); }
+
+/* Photo upload (PhotoGallery drop target, PhotoCropSheet): drop a file on the gallery; frame it before it goes up. */
+.dropzone--over { outline: 2px dashed var(--accent); outline-offset: 4px; border-radius: var(--radius-md); background: color-mix(in srgb, var(--accent) 6%, transparent); }
+.photocrop { width: 100%; max-height: 52vh; overflow: hidden; border-radius: var(--radius-md); background: var(--surface-secondary, var(--border)); margin-bottom: var(--space-3); transition: aspect-ratio 200ms ease; }
+.photocrop__img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.photocrop__aspects { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-2); margin-bottom: var(--space-3); }

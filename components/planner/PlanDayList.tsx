@@ -8,9 +8,12 @@ import EmptyState from "@/components/EmptyState";
 import { Icon } from "@/components/meridian/Icon";
 import { RestockHint } from "@/components/planner/RestockHint";
 import { PlanRow, Origin, STATUS_META } from "@/lib/plannerView";
+import { useState } from "react";
+import { Reorder } from "framer-motion";
+import DragStop from "@/components/planner/DragStop";
 
 /** The selected day's stops: loading skeleton, empty state, or the ordered list with leg distances. */
-export default function PlanDayList({ loading, dayPlans, legKm, restockHint, optimising, insertRestockStop, move, setStatus, removePlan, navAppId, returnLegKm, origin }: {
+export default function PlanDayList({ loading, dayPlans, legKm, restockHint, optimising, insertRestockStop, move, reorder, setStatus, removePlan, navAppId, returnLegKm, origin }: {
   loading: boolean;
   dayPlans: PlanRow[];
   legKm: Map<number, number>;
@@ -18,12 +21,18 @@ export default function PlanDayList({ loading, dayPlans, legKm, restockHint, opt
   optimising: boolean;
   insertRestockStop: () => void;
   move: (id: number, dir: 1 | -1) => void | Promise<void>;
+  /** The day's stop ids in their new order, after a drag. */
+  reorder: (ids: number[]) => void | Promise<void>;
   setStatus: (id: number, status: PlanRow["status"]) => void;
   removePlan: (id: number) => void;
   navAppId: ReturnType<typeof useNavApp>[0];
   returnLegKm: number | null;
   origin: Origin | null;
 }) {
+  // The order while a stop is being dragged; null means the server's order.
+  const [drag, setDrag] = useState<number[] | null>(null);
+  const order = drag ?? dayPlans.map((p) => p.id);
+  const shown = order.map((id) => dayPlans.find((p) => p.id === id)).filter((p): p is PlanRow => !!p);
   return (
 loading ? (
         <>
@@ -43,7 +52,7 @@ loading ? (
             فاصله‌های نشان‌داده‌شده بین توقف‌ها خط مستقیم است، نه مسیر جاده‌ای.
           </p>
         )}
-        <ul className="print-day-sheet flex flex-col gap-2">
+        <Reorder.Group as="ul" axis="y" values={order} onReorder={setDrag} className="print-day-sheet flex flex-col gap-2">
           {/* The hint sits between the two stops it concerns, not in a summary the
               user has to translate back into "between which two?". afterIndex 0
               means the leg from the origin, so it renders above the first stop. */}
@@ -52,8 +61,9 @@ loading ? (
               <RestockHint hint={restockHint} busy={optimising} onAdd={insertRestockStop} />
             </li>
           )}
-          {dayPlans.map((p, i) => (
-            <li key={p.id} className="flex flex-col gap-2">
+          {shown.map((p, i) => (
+            <DragStop key={p.id} id={p.id} onDrop={async () => { if (drag) await reorder(drag); setDrag(null); }}>
+              {(grip) => (<>
             {legKm.has(p.id) && (
               <div className="flex items-center gap-2 pe-6 font-mono text-[length:var(--text-xs)] text-text-faint">
                 <span aria-hidden="true" className="text-text-faint"><Icon name="arrow-down" size="sm" /></span>
@@ -64,7 +74,8 @@ loading ? (
             <div
               className="print-stop flex flex-wrap items-center gap-2 rounded-[var(--radius-md)] border border-border bg-surface px-3 py-2"
             >
-              <div className="no-print flex flex-col gap-0.5">
+              <div className="no-print flex flex-col items-center gap-0.5">
+                {grip}
                 <button
                   onClick={() => move(p.id, -1)}
                   disabled={i === 0}
@@ -135,7 +146,8 @@ loading ? (
             {restockHint && restockHint.afterIndex === i + 1 && (
               <RestockHint hint={restockHint} busy={optimising} onAdd={insertRestockStop} />
             )}
-            </li>
+              </>)}
+            </DragStop>
           ))}
           {returnLegKm !== null && origin && (
             <li className="flex items-center gap-2 pe-6 font-mono text-[length:var(--text-xs)] text-text-faint">
@@ -145,7 +157,7 @@ loading ? (
               <span className="h-px flex-1 bg-border" aria-hidden="true" />
             </li>
           )}
-        </ul>
+        </Reorder.Group>
         </>
       )
   );
