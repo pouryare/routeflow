@@ -48,6 +48,7 @@
 @import "@heroui/styles/components/search-field.css" layer(components);
 @import "@heroui/styles/components/input-otp.css" layer(components);
 @import "@heroui/styles/components/progress-circle.css" layer(components);
+@import "@heroui/styles/components/slider.css" layer(components);
 @import "@heroui/styles/utilities";
 @import "@heroui/styles/variants";
 
