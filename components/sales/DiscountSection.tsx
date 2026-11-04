@@ -88,18 +88,9 @@ export default function DiscountSection({
         unit={draft.kind === "percent" ? "٪" : "تومان"}
         decimal={draft.kind === "percent"}
       />
-      {draft.kind === "percent" && (
-        /* A quick coarse pick up to 30 %; anything finer or higher is typed on the keypad above. */
-        <AmountSlider
-          label="کشیدن برای درصد"
-          min={0}
-          max={30}
-          step={0.5}
-          value={Number(draft.value) || 0}
-          format={(n) => `${faNum(n)}٪`}
-          onChange={(n) => onChange({ ...draft, value: n === 0 ? "" : String(n) })}
-        />
-      )}
+      {/* A quick coarse pick up to 30 %; anything finer or higher is typed on the keypad above. */}
+      {draft.kind === "percent" && <AmountSlider label="کشیدن برای درصد" min={0} max={30} step={0.5} value={Number(draft.value) || 0}
+        format={(n) => `${faNum(n)}٪`} onChange={(n) => onChange({ ...draft, value: n === 0 ? "" : String(n) })} />}
 
       <ChipGroup
         wrap
