@@ -194,6 +194,7 @@ export default function CrmBoard({ initialRows, initialCounts, initialView, canP
         />
       ) : null}
       {selecting && picked.length > 0 ? (
+        <div data-has-primary-bar>
         <StickyAction
           icon="calendar-plus"
           label={`افزودن ${faDigits(String(picked.length))} مشتری به برنامهٔ امروز`}
@@ -201,6 +202,7 @@ export default function CrmBoard({ initialRows, initialCounts, initialView, canP
           disabled={adding}
           onClick={() => void addPickedToPlan()}
         />
+        </div>
       ) : null}
       <CustomerSheet customerId={sheet?.id ?? null} fallbackName={sheet?.name} onClose={() => setSheet(null)} />
     </div>
