@@ -3,6 +3,7 @@
 _Condensed 2026-10-23, updated 2026-10-30. Each finished piece of work is one line here; the full earlier text is in git history (`git log -p TODO-REPORT.md`)._
 
 ## Done
+- [x] Health check endpoint (2026-11-04): `GET /api/health` answers `{ok:true}` when the database answers, 503 when not; no session, no data in the reply; public in `proxy.ts`; proxy test added. Tests not run here (need a PostgreSQL template); typecheck has no errors in the new files
 - [x] Roadmap clean-up (2026-10-30, docs only, no code): `docs/roadmap.md` is now sorted by status (build next, waiting, parked or skipped, done) and then by area, with one plain-English line per idea and the owner's full decision under an arrow for the build-next items; platform facts and open questions moved word for word to `docs/decisions.md` (old sections 5 and 10, same numbers); finished batches and the full text of every study (1b to 1k, plus the new SuiteCRM section 1f for S1 to S25) moved word for word to `docs/roadmap-archive.md`. Every old ID is kept; two exact duplicates were merged (T7 with Z17, D13 with E10); the F-entry index gained a status column and an «Also in» column. Statuses are the cleaner's reading and need the owner's check
 - [x] ezBookkeeping study (2026-10-30, research and decisions only, no code): 20 ideas in three passes answered one by one and recorded in `docs/roadmap-archive.md` 1k (sums in the keypad, no double save, hide-money eye, app lock, month calendar, needs-attention filter, share a photo in, bank SMS paste, merge duplicates, list totals, safe refresh). Nothing built yet.
 - [x] Bigcapital study (2026-10-30, research and decisions only, no code): 12 ideas in two passes answered one by one and recorded in `docs/roadmap-archive.md` 1j (credit note, open a date range in a closed month, books behind a document, bank line rules after F10, sent/received transfers, product page with history, bulk results; cost fix parked with purchase edit). Nothing built.
@@ -259,6 +260,7 @@ _Condensed 2026-10-23, updated 2026-10-30. Each finished piece of work is one li
 - [ ] Sheets, not checked on a real phone: the keyboard cap (iPhone Safari moves the visual viewport differently), iPhone haptics (web-haptics' hidden-switch hack), and swipe direction in the photo viewer (the library swipes left-to-right for next, not mirrored for RTL). Not done: page-shrink behind sheets (owner skipped); other forms in sheets are not marked `dirty` yet
 
 ## Next steps
+-1. Owner: run `npm test` on a PostgreSQL server to confirm the proxy test; VPS items: deploy user, SSH test from outside Iran, firewall and updates, an outside monitor on `/api/health`, a restore run, staging copy
 0c. Owner makes the RouteFlow project board from `docs/github-workflow.md` section 4, and open the first milestone with the next batch
 0b. Owner tries the theme switch and the six effects on a phone (PR #27) and says which lists should close their gap next
 0b. Owner listens on a phone (sound board link above, then «صدا» in the app) and names any sound that feels wrong for its job; then wire more events as their screens are touched
