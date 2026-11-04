@@ -19,7 +19,7 @@ export default function PullToRefresh() {
 
   useEffect(() => {
     const down = (e: TouchEvent) => {
-      const t = e.target as HTMLElement | null;
+      const t = e.target instanceof Element ? e.target : null;
       if (window.scrollY > 0 || busy || t?.closest('[role="dialog"], .leaflet-container, [data-no-pull], .scrollfade')) {
         start.current = null;
         return;
