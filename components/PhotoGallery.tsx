@@ -10,6 +10,9 @@ import { faNum } from "@/lib/format";
 import { SkeletonLabel, SkeletonThumbs } from "./Skeleton";
 import EmptyState from "./EmptyState";
 import dynamic from "next/dynamic";
+import PhotoCropSheet from "@/components/mobile/PhotoCropSheet";
+import { photoProblem } from "@/lib/photoCrop";
+import { useDropFile } from "@/lib/useDropFile";
 
 // Cast back to the generic component: dynamic() drops the type parameter.
 const PhotoLightbox = dynamic(() => import("@/components/PhotoLightbox"), { ssr: false }) as typeof import("@/components/PhotoLightbox").default;
@@ -35,6 +38,8 @@ export default function PhotoGallery({
   const [viewerUsed, setViewerUsed] = useState(false);
   if (lightbox && !viewerUsed) setViewerUsed(true);
   const inputRef = useRef<HTMLInputElement>(null);
+  // The chosen file waits in the crop sheet until the person confirms the frame.
+  const [framing, setFraming] = useState<File | null>(null);
   const toast = useToast();
 
   /* Only the newest request may write: opening another customer while this one's photos
@@ -48,6 +53,16 @@ export default function PhotoGallery({
   }, [entityType, entityId]);
 
   useRunAfterMount(load);
+
+  /** A chosen or dropped file: refuse what cannot be a photo, otherwise let the person frame it. */
+  function choose(file: File) {
+    const problem = photoProblem(file);
+    if (problem) toast(problem, "error");
+    else setFraming(file);
+    if (inputRef.current) inputRef.current.value = "";
+  }
+
+  const drop = useDropFile(choose);
 
   async function handleFile(file: File) {
     setUploading(true);
@@ -86,7 +101,10 @@ export default function PhotoGallery({
   }
 
   return (
-    <div className="mt-4 border-t border-border pt-3">
+    <div
+      className={`mt-4 border-t border-border pt-3${drop.over ? " dropzone--over" : ""}`}
+      {...drop.props}
+    >
       <div className="mb-2 flex items-center justify-between">
         <h3 className="sechead__title sechead__title--minor">
           گالری تصاویر{photos && photos.length > 0 ? ` (${faNum(photos.length)})` : ""}
@@ -101,7 +119,7 @@ export default function PhotoGallery({
             className="hidden"
             onChange={(e) => {
               const f = e.target.files?.[0];
-              if (f) handleFile(f);
+              if (f) choose(f);
             }}
           />
         </label>
@@ -136,6 +154,8 @@ export default function PhotoGallery({
           ))}
         </div>
       )}
+
+      <PhotoCropSheet file={framing} onCancel={() => setFraming(null)} onDone={(f) => { setFraming(null); void handleFile(f); }} />
 
       {viewerUsed && (
         <PhotoLightbox

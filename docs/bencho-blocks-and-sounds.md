@@ -114,7 +114,7 @@ All 150 block pages were opened on 2026-10-30 (description, live preview, and th
 | form-error | Pro | Built | Field shakes once and unfolds the reason (we have `useShake`). |
 | password-strength | Pro | Built | Password change and new user: a bar and rules ticked as you type. |
 | copy-field | Pro | Built | Our `CopyButton` gets the drawn check and sheen (IBAN, phone, codes). |
-| upload-dropzone | MIT | New | Photos and documents, with too-big refused clearly. |
+| upload-dropzone | MIT | Built | Photos and documents, with too-big refused clearly. |
 | voice-note | MIT | New | Driver or rep voice note: hold to record, slide to bin. Needs object storage first. |
 | seek | MIT | Have it | Our `SearchBox`: the icon opens into the field. |
 | command | Pro | New | Ctrl-K command bar on desktop (planned). |
@@ -136,7 +136,7 @@ All 150 block pages were opened on 2026-10-30 (description, live preview, and th
 | tape | Pro | Merge | Same slider, quarter steps: route replay speed. |
 | liq-toggle | MIT | Have it | Our `ToggleSwitch` gets the stretching droplet. |
 | magnet-select | MIT | Built | Our `ChipGroup` / `FilterChips`: the picked chip swells. |
-| aspect | MIT | New | Crop a shop or product photo (4:3, 1:1, 3:4) before upload. |
+| aspect | MIT | Built | Crop a shop or product photo (4:3, 1:1, 3:4) before upload. |
 | resize-frame | Pro | Merge | Same crop tool with live sizes. |
 | palette | MIT | Have it | Our `AccentPicker`: press for a new matching palette. |
 
