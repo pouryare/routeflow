@@ -31,3 +31,4 @@ describe("range bar model", () => {
     expect(b.max).toBeGreaterThanOrEqual(48_700_000);
   });
 });
+// also AmountSlider (components/mobile/AmountSlider): its value is the discount percent, 0 to 30.
