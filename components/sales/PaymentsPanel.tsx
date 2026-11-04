@@ -8,6 +8,8 @@ import { friendlyError } from "@/lib/userMessage";
 import FilterChips from "@/components/mobile/FilterChips";
 import { PERIODS, PERIOD_LABEL, periodRange, type Period } from "@/lib/periods";
 import { Icon } from "@/components/meridian/Icon";
+import BusyIcon from "@/components/meridian/BusyIcon";
+import { useDoneFlash } from "@/lib/useDoneFlash";
 import SectionHead from "@/components/meridian/SectionHead";
 import JalaliDateInput from "@/components/meridian/JalaliDateInput";
 import { Fragment, useCallback, useMemo, useState } from "react";
@@ -38,6 +40,7 @@ export default function PaymentsPanel({ customers }: { customers: Customer[] }) 
   const [note, setNote] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [done, flash] = useDoneFlash();
   /* The tap flow remounts per opening (the key) so each recording starts on its first
      question; `open` only slides the sheet in and out. */
   const [flow, setFlow] = useState(() => autoOpenFlow("new", currentSearch()));
@@ -177,6 +180,7 @@ export default function PaymentsPanel({ customers }: { customers: Customer[] }) 
       setError(friendlyError(body?.error, "دریافت ثبت نشد؛ دوباره تلاش کنید"));
       return;
     }
+    flash();
     setAmount("");
     setReference("");
     setNote("");
@@ -280,8 +284,8 @@ export default function PaymentsPanel({ customers }: { customers: Customer[] }) 
           disabled={busy}
           className="inline-flex items-center justify-center gap-[var(--space-2)] rounded bg-accent px-4 py-2 text-sm text-white disabled:opacity-50"
         >
-          <Icon name="check" size="md" />
-          ثبت دریافت
+          <BusyIcon busy={busy} done={done} name="check" />
+          {busy ? "در حال ثبت…" : done ? "ثبت شد" : "ثبت دریافت"}
         </button>
       </form>
 
