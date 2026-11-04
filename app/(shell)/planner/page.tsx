@@ -36,24 +36,14 @@ import { Icon } from "@/components/meridian/Icon";
 import PlanDayList from "@/components/planner/PlanDayList";
 import PlanOriginPanel from "@/components/planner/PlanOriginPanel";
 
-import { LeadLocation, AddCandidate, PlanRow, toDateStr, dayLabel, dateLabel, Origin, RETURN_KEY, readReturnToOrigin, addCandidatesFor, pickCandidatesFor } from "@/lib/plannerView";
+import { LeadLocation, AddCandidate, PlanRow, toDateStr, plannerDays, dayLabel, dateLabel, Origin, RETURN_KEY, readReturnToOrigin, addCandidatesFor, pickCandidatesFor } from "@/lib/plannerView";
 import WidgetBoundary from "@/components/WidgetBoundary";
 
 const PlannerPickMap = dynamic(() => import("@/components/PlannerPickMap"), { ssr: false });
 const PlannerRouteMap = dynamic(() => import("@/components/PlannerRouteMap"), { ssr: false });
 
 export default function PlannerPage() {
-  const days = useMemo(() => {
-    const arr: Date[] = [];
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    for (let i = 0; i < 7; i++) {
-      const d = new Date(today);
-      d.setDate(d.getDate() + i);
-      arr.push(d);
-    }
-    return arr;
-  }, []);
+  const days = useMemo(() => plannerDays(), []);
 
   const [selectedDate, setSelectedDate] = useState(() => toDateStr(days[0]));
   /* Below md the plan list and the route map are two panes behind a segmented control (one screen

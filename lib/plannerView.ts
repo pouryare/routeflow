@@ -1,6 +1,7 @@
 /** The planner page's plain data: the week's date labels, the shapes of a plan row and an origin, the saved
  *  return-to-origin toggle, and the status styling. No React, so the page file holds the screen only. */
 
+import { tehranTodayIso } from "@/lib/jalali";
 import type { CustomerRow } from "@/lib/types";
 import type { SavedLocationRow } from "@/lib/db";
 
@@ -31,6 +32,12 @@ export interface PlanRow {
 
 export function toDateStr(d: Date) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+/** The seven days the planner shows, starting at Tehran's today (not the browser's: near midnight they differ).
+ *  Local-midnight Dates, so toDateStr gives the same day back. */
+export function plannerDays(now: Date = new Date()): Date[] {
+  const [y, m, d] = tehranTodayIso(now).split("-").map(Number);
+  return Array.from({ length: 7 }, (_, i) => new Date(y, m - 1, d + i));
 }
 export function dayLabel(d: Date) {
   return `${WEEKDAYS[d.getDay()]}`;

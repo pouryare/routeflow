@@ -55,6 +55,15 @@ describe("prefs repo", () => {
     await expect((async () => await setPrefs(uid, { sound: "loud" } as never))()).rejects.toThrow();
   });
 
+  it("keeps a person's favourite customers and refuses junk", async () => {
+    await setPrefs(uid, { favourite_customers: [3, 5, 8] });
+    expect((await getPrefs(uid)).favourite_customers).toEqual([3, 5, 8]);
+    await expect((async () => await setPrefs(uid, { favourite_customers: [1, "x"] } as never))()).rejects.toThrow();
+    await expect((async () => await setPrefs(uid, { favourite_customers: [-2] } as never))()).rejects.toThrow();
+    await expect((async () => await setPrefs(uid, { favourite_customers: "all" } as never))()).rejects.toThrow();
+    await expect((async () => await setPrefs(uid, { favourite_customers: Array.from({ length: 501 }, (_, i) => i + 1) } as never))()).rejects.toThrow();
+  });
+
   it("rejects a bad value", async () => {
     await expect((async () => await setPrefs(uid, { board_mobile_mode: "spiral" } as never))()).rejects.toThrow();
     await expect((async () => await setPrefs(uid, { board_default_view: "kanban" } as never))()).rejects.toThrow();
