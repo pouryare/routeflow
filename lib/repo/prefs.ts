@@ -11,6 +11,8 @@ export interface BoardPrefs {
   whats_new_seen?: string;
   /** F117: this person's sound switch (lib/sound.ts). Unset is the default, on. */
   sound?: "on" | "off";
+  /** How loud the sounds are, in percent (20 to 100, steps of 10). Unset is full. */
+  sound_volume?: number;
   /** This person's own switch for decorative effects (lib/fx.ts). Unset follows the company and the phone. */
   effects?: "on" | "off";
   /** The customers this person hearted (the CRM list's «دلخواه‌ها»). Whole ids only, newest last. */
@@ -29,6 +31,7 @@ const ALLOWED: Record<Exclude<keyof BoardPrefs, "favourite_customers">, readonly
   board_default_view: ["status", "time", "workflow"],
   whats_new_seen: WHATS_NEW_VERSIONS,
   sound: ["on", "off"],
+  sound_volume: ["20", "30", "40", "50", "60", "70", "80", "90", "100"],
   effects: ["on", "off"],
 };
 

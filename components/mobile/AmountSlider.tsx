@@ -12,6 +12,7 @@ export default function AmountSlider({
   value,
   format,
   onChange,
+  onCommit,
 }: {
   label: string;
   min: number;
@@ -20,6 +21,8 @@ export default function AmountSlider({
   value: number;
   format: (n: number) => string;
   onChange: (v: number) => void;
+  /** Called once when the thumb is let go (to save), not on every move. */
+  onCommit?: (v: number) => void;
 }) {
   return (
     <Slider
@@ -29,6 +32,7 @@ export default function AmountSlider({
       step={step}
       value={Math.min(max, Math.max(min, value))}
       onChange={(v) => onChange(v as number)}
+      onChangeEnd={(v) => onCommit?.(v as number)}
       className="w-full"
     >
       <div className="mb-[var(--space-1)] flex items-center justify-between text-[length:var(--text-xs)] text-[var(--text-muted)]">

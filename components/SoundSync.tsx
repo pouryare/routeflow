@@ -12,14 +12,14 @@ export default function SoundSync() {
     let stopped = false;
     void fetch("/api/prefs", { cache: "no-store" })
       .then(async (res) => {
-        const data = (await res.json().catch(() => null)) as { ok?: boolean; prefs?: { sound?: unknown }; soundSkin?: unknown } | null;
+        const data = (await res.json().catch(() => null)) as { ok?: boolean; prefs?: { sound?: unknown; sound_volume?: unknown }; soundSkin?: unknown } | null;
         if (stopped) return;
         if (!res.ok || !data?.ok) {
           if (res.status === 401 || res.status === 403) configureSound({ skin: null });
           return;
         }
         const s = data.prefs?.sound;
-        configureSound({ choice: s === "on" || s === "off" ? s : null, skin: isSkin(data.soundSkin) ? data.soundSkin : null });
+        configureSound({ choice: s === "on" || s === "off" ? s : null, skin: isSkin(data.soundSkin) ? data.soundSkin : null, volume: typeof data.prefs?.sound_volume === "number" ? data.prefs.sound_volume : 100 });
       })
       .catch(() => undefined /* offline: the kept settings stand */);
     return () => {

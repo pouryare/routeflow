@@ -23,7 +23,7 @@ export default async function SoundSettingsPage() {
   return (
     <>
       <PageHeader route="/settings/sound" />
-      <SoundSettings initialChoice={prefs.sound ?? null} initialSkin={skin} canPickSkin={isOwner(session.role)} />
+      <SoundSettings initialChoice={prefs.sound ?? null} initialSkin={skin} initialVolume={prefs.sound_volume ?? 100} canPickSkin={isOwner(session.role)} />
       <div className="mt-[var(--space-4)]">
         <EffectsSettings initialPerson={prefs.effects ?? null} initialCompany={company} canSetCompany={isOwner(session.role)} />
       </div>

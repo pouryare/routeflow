@@ -4,6 +4,7 @@ import { useState } from "react";
 import { ToggleButton } from "@heroui/react";
 import SectionHead from "@/components/meridian/SectionHead";
 import { Icon } from "@/components/meridian/Icon";
+import AmountSlider from "@/components/mobile/AmountSlider";
 import ToggleSwitch from "@/components/ToggleSwitch";
 import { usePrefersReducedMotion } from "@/lib/usePrefersReducedMotion";
 import { configureSound, playSound, soundOn, type SoundSwitch } from "@/lib/sound";
@@ -23,14 +24,17 @@ const SKIN_HINT: Record<Skin, string> = {
 export default function SoundSettings({
   initialChoice,
   initialSkin,
+  initialVolume,
   canPickSkin,
 }: {
   initialChoice: SoundSwitch;
   initialSkin: Skin;
+  initialVolume: number;
   canPickSkin: boolean;
 }) {
   const [choice, setChoice] = useState<SoundSwitch>(initialChoice);
   const [skin, setSkin] = useState<Skin>(initialSkin);
+  const [volume, setVolume] = useState(initialVolume);
   const [error, setError] = useState<string | null>(null);
   // Unset follows reduced motion (lib/sound.ts soundOn); the server cannot see that, so it is read here.
   const on = soundOn(choice, usePrefersReducedMotion());
@@ -50,6 +54,17 @@ export default function SoundSettings({
     setChoice(next);
     configureSound({ choice: next });
     if (next === "on") playSound("settings.saved");
+  }
+
+  /** Heard while dragging (configureSound), saved when the thumb is let go. */
+  async function saveVolume(v: number) {
+    const res = await fetch("/api/prefs", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sound_volume: v }),
+    }).catch(() => null);
+    setError(res?.ok ? null : "ذخیره نشد؛ دوباره تلاش کنید");
+    playSound("sound.try", { force: true });
   }
 
   async function pick(next: Skin) {
@@ -87,6 +102,19 @@ export default function SoundSettings({
           این انتخاب فقط برای شماست و روی همهٔ دستگاه‌هایتان می‌ماند. وقتی گوشی آیفون روی بی‌صداست، صدایی پخش نمی‌شود.
           {" اگر در تنظیمات گوشی «کاهش حرکت» روشن است، صدا تا وقتی خودتان روشنش نکنید خاموش می‌ماند."}
         </p>
+        <AmountSlider
+          label="بلندی صدا"
+          min={20}
+          max={100}
+          step={10}
+          value={volume}
+          format={(n) => `${n.toLocaleString("fa-IR")}٪`}
+          onChange={(v) => {
+            setVolume(v);
+            configureSound({ volume: v });
+          }}
+          onCommit={(v) => void saveVolume(v)}
+        />
         <button
           type="button"
           onClick={() => playSound("sound.try", { force: true })}
