@@ -5486,3 +5486,12 @@ html[data-hide-money="1"] .odo { filter: blur(7px); }
   box-shadow: inset 0 0 0 2px rgb(255 255 255 / 0.35), 0 1px 3px rgb(0 0 0 / 0.25); animation: coin-turn 900ms var(--ease, ease) 1; }
 @keyframes coin-turn { from { transform: rotateY(0) scale(0.6); } 60% { transform: rotateY(900deg) scale(1.1); } to { transform: rotateY(1080deg) scale(1); } }
 @media (prefers-reduced-motion: reduce) { .coin__face { animation: none; } }
+
+/* Photo accordion: the open photo is wide, the rest are strips; the width change is a flex-grow transition. */
+.photoacc { display: flex; gap: 6px; height: 132px; }
+.photoacc__item { flex: 1 1 0; min-width: 0; overflow: hidden; border-radius: var(--radius-sm); border: 1px solid var(--border); padding: 0;
+  transition: flex-grow 320ms var(--ease, ease), border-color 160ms ease; }
+.photoacc__item[data-open="true"] { flex-grow: 5; border-color: var(--accent); }
+.photoacc__item picture, .photoacc__item img { display: block; width: 100%; height: 100%; }
+.photoacc__item img { object-fit: cover; }
+@media (prefers-reduced-motion: reduce) { .photoacc__item { transition: none; } }

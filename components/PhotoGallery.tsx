@@ -15,6 +15,7 @@ import { photoProblem } from "@/lib/photoCrop";
 import { useDropFile } from "@/lib/useDropFile";
 
 // Cast back to the generic component: dynamic() drops the type parameter.
+import PhotoThumbs from "@/components/PhotoAccordion";
 const PhotoLightbox = dynamic(() => import("@/components/PhotoLightbox"), { ssr: false }) as typeof import("@/components/PhotoLightbox").default;
 
 interface PhotoItem {
@@ -133,26 +134,7 @@ export default function PhotoGallery({
       ) : photos.length === 0 ? (
         <EmptyState icon="image" title="هنوز عکسی ثبت نشده" className="py-4" />
       ) : (
-        <div className="grid grid-cols-4 gap-1.5">
-          {photos.map((p) => (
-            <button
-              key={p.id}
-              onClick={() => setLightbox(p)}
-              className="aspect-square overflow-hidden rounded-[var(--radius-sm)] border border-border transition-[border-color] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:border-accent"
-            >
-              <picture>
-                <source srcSet={`/api/photos/${p.id}/file?format=avif`} type="image/avif" />
-                <img
-                  src={`/api/photos/${p.id}/file?format=webp`}
-                  alt={p.caption ?? ""}
-                  loading="lazy"
-                  decoding="async"
-                  className="h-full w-full object-cover"
-                />
-              </picture>
-            </button>
-          ))}
-        </div>
+        <PhotoThumbs photos={photos} onView={(id) => setLightbox(photos.find((p) => p.id === id) ?? null)} />
       )}
 
       <PhotoCropSheet file={framing} onCancel={() => setFraming(null)} onDone={(f) => { setFraming(null); void handleFile(f); }} />
