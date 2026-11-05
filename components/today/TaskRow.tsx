@@ -9,7 +9,8 @@ import OutcomeFlow from "@/components/flows/OutcomeFlow";
 import { useHeldSave } from "@/components/crm/useHeldSave";
 import { useToast } from "@/components/ToastProvider";
 import { friendlyError } from "@/lib/userMessage";
-import SnoozeChoices from "./SnoozeChoices";
+import SnoozeChoices, { SnoozePicker, useSnooze } from "./SnoozeChoices";
+import { SNOOZE_CHOICES, SNOOZE_PICK_LABEL, SNOOZE_STOPS_PX } from "@/lib/taskSnooze";
 
 interface ObjectionCard {
   title_fa: string;
@@ -29,6 +30,20 @@ export default function TaskRow({ taskId, label, sub, customerId, snoozable = fa
      .rowcollapse) and sends after the 5 s undo window, so «بازگردانی ثبت» is a local unfold
      and there is no "are you sure?" tap in front of it. */
   const [gone, setGone] = useState(false);
+  /* Snoozable work swipes toward the end to put it off: 1 h, 3 h, tomorrow 9, then «زمان دیگر» (the picker);
+     deleting keeps its button. */
+  const { snooze, busy: snoozing } = useSnooze(taskId, () => router.refresh());
+  const [picking, setPicking] = useState(false);
+  const snoozeSwipe = {
+    label: "عقب انداختن",
+    icon: "clock" as const,
+    stops: [...SNOOZE_CHOICES.map((c) => c.label), SNOOZE_PICK_LABEL].map((label, i) => ({ at: SNOOZE_STOPS_PX[i], label })),
+    run: (stop?: number) => {
+      const c = stop === undefined ? undefined : SNOOZE_CHOICES[stop];
+      if (c) void snooze(c.id, c.label);
+      else setPicking(true);
+    },
+  };
 
   async function patch(body: Record<string, unknown>) {
     const res = await fetch(`/api/tasks/${taskId}`, {
@@ -87,7 +102,7 @@ export default function TaskRow({ taskId, label, sub, customerId, snoozable = fa
     <SwipeRow
       ownButtons={false}
       start={{ label: "ثبت نتیجه", icon: "check", run: openOutcome }}
-      end={{ label: "حذف این کار", icon: "trash", tone: "bad", run: remove }}
+      end={snoozable ? snoozeSwipe : { label: "حذف این کار", icon: "trash", tone: "bad", run: remove }}
     >
     <div className="flex flex-col gap-[var(--space-1)] py-[var(--space-2)]">
       <span className="text-[var(--text)]">
@@ -110,7 +125,7 @@ export default function TaskRow({ taskId, label, sub, customerId, snoozable = fa
             ثبت نتیجهٔ این کار
           </button>
         )}
-        {snoozable && <SnoozeChoices taskId={taskId} onDone={() => router.refresh()} />}
+        {snoozable && <SnoozeChoices taskId={taskId} onDone={() => router.refresh()} onPickOpen={() => setPicking(true)} />}
         <button
           type="button"
           onClick={remove}
@@ -131,6 +146,16 @@ export default function TaskRow({ taskId, label, sub, customerId, snoozable = fa
     </div>
     {/* The sheets sit outside the swipe face: events from a portal bubble through React's tree,
         and a drag inside a sheet must not move the row. */}
+      {snoozable && (
+        <SnoozePicker
+          open={picking}
+          busy={snoozing}
+          onClose={() => setPicking(false)}
+          onPick={async (day, hour, label) => {
+            if (await snooze({ day, hour }, label)) setPicking(false);
+          }}
+        />
+      )}
       {customerId && flow ? (
         <AfterCallFlow customerId={customerId} taskId={taskId} open={flow.open}
           onHide={() => setFlow({ open: false })}

@@ -2,15 +2,20 @@
 
 import { useRef, useState, type ReactNode } from "react";
 import { Icon, type IconName } from "@/components/meridian/Icon";
-import { decide, LONG_PRESS_MS, SWIPE_DEFAULTS } from "@/lib/swipe";
+import { decide, LONG_PRESS_MS, stopAt, SWIPE_DEFAULTS } from "@/lib/swipe";
+import { buzz } from "@/lib/haptic";
 
 export interface SwipeAction {
   /** What it does, as a verb phrase («ثبت نتیجه»). Also the accessible name of its button. */
   label: string;
   icon: IconName;
   tone?: "good" | "bad";
-  run: () => void;
+  /** Several results along one drag (the snooze times): each starts `at` px; the label under the row follows
+   *  the finger, a buzz marks each new stop, and letting go runs `run` with the stop reached. */
+  stops?: { at: number; label: string }[];
+  run: (stop?: number) => void;
 }
+
 
 const TRAVEL = 6;
 const CLICK_GUARD_MS = 60;
@@ -48,6 +53,8 @@ export default function SwipeRow({ start, end, children, ownButtons = true, onLo
   const side = (d: number) => decide({ dx: d }, { ...SWIPE_DEFAULTS, rtl: true });
   const live = side(dx);
   const armed = live.state === "idle" ? null : live.side === "start" ? start : end;
+  const stop = armed?.stops ? stopAt(armed.stops, dx) : -1;
+  const lastStop = useRef(-1);
 
   function onPointerDown(e: React.PointerEvent<HTMLDivElement>) {
     if (e.pointerType === "mouse" || !(start || end || onLongPress)) return;
@@ -81,8 +88,16 @@ export default function SwipeRow({ start, end, children, ownButtons = true, onLo
     }
     // Only drag toward a side that has an action.
     const toStart = mx > 0;
-    if ((toStart && !start) || (!toStart && !end)) return setDx(0);
-    setDx(Math.max(-220, Math.min(220, mx)));
+    const a = toStart ? start : end;
+    if (!a) return setDx(0);
+    const far = a.stops ? a.stops[a.stops.length - 1].at + 30 : 220;
+    const next = Math.max(-far, Math.min(far, mx));
+    if (a.stops) {
+      const k = stopAt(a.stops, next);
+      if (k !== lastStop.current && k >= 0) buzz(8);
+      lastStop.current = k;
+    }
+    setDx(next);
   }
   function release(e: React.PointerEvent<HTMLDivElement>, cancelled: boolean) {
     stopHold();
@@ -90,15 +105,20 @@ export default function SwipeRow({ start, end, children, ownButtons = true, onLo
     press.current = null;
     if (!p || !moved.current) return;
     const r = side(e.clientX - p.x);
+    const reached = lastStop.current;
+    lastStop.current = -1;
     setDx(0);
     guard.current = true;
     window.setTimeout(() => (guard.current = false), CLICK_GUARD_MS);
     if (cancelled || r.state !== "commit") return;
-    (r.side === "start" ? start : end)?.run();
+    const a = r.side === "start" ? start : end;
+    if (a?.stops) {
+      if (reached >= 0) a.run(reached);
+    } else a?.run();
   }
 
   const btn = (a: SwipeAction, which: "start" | "end") => (
-    <button key={which} type="button" className={`swiperow__btn swiperow__btn--${a.tone ?? "good"}`} onClick={a.run}>
+    <button key={which} type="button" className={`swiperow__btn swiperow__btn--${a.tone ?? "good"}`} onClick={() => a.run()}>
       <Icon name={a.icon} size="md" />
       {a.label}
     </button>
@@ -110,7 +130,7 @@ export default function SwipeRow({ start, end, children, ownButtons = true, onLo
       {armed && (
         <div className={`swiperow__under swiperow__under--${live.state === "commit" ? "commit" : "reveal"} swiperow__under--${live.state !== "idle" ? live.side : "start"} swiperow__under--${armed.tone ?? "good"}`} aria-hidden>
           <Icon name={armed.icon} size="md" />
-          {armed.label}
+          {armed.stops && stop >= 0 ? <span key={stop} className="swiperow__stop">{armed.stops[stop].label}</span> : armed.label}
         </div>
       )}
       <div

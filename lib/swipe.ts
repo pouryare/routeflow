@@ -31,3 +31,13 @@ export function decide({ dx, dy = 0 }: { dx: number; dy?: number }, cfg: SwipeCo
   const side: "start" | "end" = (dx > 0) === cfg.rtl ? "start" : "end";
   return distance >= cfg.commit ? { state: "commit", side } : { state: "reveal", side };
 }
+
+/** For a swipe with several results along one drag (snooze times): the last stop a drag of `px` reached,
+ *  or -1 before the first. */
+export function stopAt(stops: readonly { at: number }[], px: number): number {
+  let i = -1;
+  stops.forEach((s, k) => {
+    if (Math.abs(px) >= s.at) i = k;
+  });
+  return i;
+}

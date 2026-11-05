@@ -5654,3 +5654,9 @@ html[data-fx="off"] .amountslider__bubble { animation: none; }
   @keyframes tf-popin { from { opacity: 0; transform: scale(0.7) translateY(6px); } }
   html[data-fx="off"] .tf-popin > * { animation: none; }
 }
+
+/* SwipeRow stops (snooze on a task): the time under the row swaps with a small pop at each stop. */
+.swiperow__stop { display: inline-block; animation: swiperow-stop 180ms var(--spring-pop, ease-out); }
+@keyframes swiperow-stop { from { transform: scale(0.7); opacity: 0.4; } }
+html[data-fx="off"] .swiperow__stop { animation: none; }
+@media (prefers-reduced-motion: reduce) { .swiperow__stop { animation: none; } }
