@@ -132,4 +132,46 @@ Quickest to a first tour (a day), but it decides the scrolling, buttons and flow
 |---|---|---|
 | 1 | **Own layer + driver.js for the spotlight only** (option A) | 2026-11-05 |
 | 2 | **Real taps where safe; steps that save money or send a message only point and explain** | 2026-11-05 |
-| 3 | _waiting_ | |
+| 3 | Owner chose a third way: **demo data inside the real page while a tutorial runs**, swapped to real data with no reload (section 11). A separate training company is not needed | 2026-11-05 |
+| 4 | _waiting_ | |
+
+## 11. Owner's direction (2026-11-05): many tutorials, practice on demo data in the page
+
+The owner wants **a tutorial for almost every action**, because many users are not used to apps, and **demo data shown on the page while a tutorial runs, replaced by the real data the moment it ends, with no page reload**.
+
+### Is it possible? Yes. How it works
+
+Today a page reads from the database on the server and passes the rows to a client part. For example, `/sales/today` reads the tasks and hands them to `TaskRow`. So the real rows are already in the phone's memory. We add a thin layer in the browser:
+
+1. **`TutorialProvider`** (one, in the shell) knows whether a tutorial is running and which demo set it uses.
+2. **`useTutorialData(key, realRows)`**: one line in each list part. It returns the demo rows while a tutorial runs and the real rows otherwise:
+   ```ts
+   const tasks = useTutorialData("tasks", props.tasks); // demo while learning, real after
+   ```
+3. **Demo sets** live in code next to the tutorial (`lib/tutorials/demo/*.ts`): «فروشگاه نمونهٔ رضایی», three orders, one cheque and so on, in Persian, with ids that start with `demo-`.
+4. **Pretend saves**: while a tutorial runs, `postJSON` and the offline outbox (`lib/offline/net.ts`, `outbox.ts`) answer «ذخیره شد» themselves and send nothing. The server also refuses any id that starts with `demo-` as a second lock. So now even a payment or an SMS step can be done for real, on pretend data (this upgrades answer 2: money steps are no longer explain-only inside a tutorial).
+5. **The swap**: when the tutorial ends, the provider switches off. React redraws the same parts with the real rows already in memory. That's instant, with no reload, and a short fade with the effects switch. Then `router.refresh()` quietly fetches fresh rows from the server without reloading the page, in case something changed meanwhile.
+
+Example: a driver starts «ثبت چک». The run shows a demo stop «سوپرمارکت نمونه». The driver slides «تحویل شد», types a cheque amount, takes a photo, and gets the success sound. The tutorial ends, the demo stop fades out, and their real 14 stops are there.
+
+### Limits to know
+
+- Every list or card that shows demo data needs that one `useTutorialData` line. Reports drawn only on the server (accounting tables) can't swap that way. There, a tutorial points at the real screen, or we turn that list into a client part.
+- Demo rows always wear a «نمونه» chip and a faint striped edge, and a banner reads «حالت آموزش: این اطلاعات واقعی نیست». Nobody can mistake them for real data.
+- Maps: demo pins are drawn as an extra layer and removed at the end, and the real pins stay underneath.
+- **Many tutorials = much writing.** About 60 to 80 actions × 3 to 6 Persian lines. A CI check lists every main button (`data-tour` id) that has no tutorial yet, the same way the help-debt test lists unwritten (i) entries, so the gaps stay visible.
+
+## 12. Ideas to make it great
+
+1. **Just in time, not all at once.** The first time someone opens the payment sheet, a small chip offers «۳۰ ثانیه آموزش؟». Nobody sits through a 20-step tour on day one.
+2. **Ask for help in words.** A «چطور…؟» search in the (i) panel: typing «چک» lists «ثبت چک», «برگشت چک» and so on, and one tap starts it.
+3. **Voice-over in Persian.** Each step can play a short recorded voice clip, which helps people who read slowly. The owner or a staff member records it on the phone, and it's stored with the tutorial.
+4. **Big-finger mode.** During a tutorial the target button gets a soft pulse and a pointing hand that moves to it, like a game's first level.
+5. **Show me, then let me.** Step 1 plays a ghost hand doing the action on demo data (like a short video, but live). Step 2 says «حالا شما».
+6. **Stuck detector.** If someone opens the same sheet three times and closes it without saving, a calm chip offers the tutorial for it.
+7. **Manager sends a tutorial.** A manager taps a person and picks «ارسال آموزش ثبت چک». It shows up on that person's today page with the manager's name.
+8. **Progress you can see.** A ring on the profile picture fills as first-steps are done, and a small «استاد مسیر» badge comes when the driver set is complete. Confetti and a sound play once, then never again.
+9. **Phone-less practice.** «تمرین» mode repeats a tutorial with different demo data and no hints, and gives a gentle time («۴۲ ثانیه، دفعه قبل ۷۰»).
+10. **Fresh after an update.** When a release changes a screen, the what's-new card offers «ببینید چه عوض شد» and runs a 2-step tour of just the change.
+11. **Offline-proof.** Tutorials, demo data and voice clips ship in the app bundle, so a driver in a basement can still learn.
+12. **Tutorial health for the owner.** The owner sees which steps people skip or quit on most. A step everyone quits is a confusing screen, and that's worth fixing in the screen itself.
