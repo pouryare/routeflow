@@ -19,6 +19,7 @@ import { Icon } from "@/components/meridian/Icon";
 import { playSound } from "@/lib/sound";
 import { unreadRose } from "@/lib/unreadRose";
 import { useToast } from "@/components/ToastProvider";
+import { replay } from "@/lib/burst";
 
 export default function NotificationBell({
   placement = "floating",
@@ -34,6 +35,7 @@ export default function NotificationBell({
   const [shown, setShown] = useState(0);
   const latestTitle = useRef<string | null>(null);
   const toast = useToast();
+  const badge = useRef<HTMLSpanElement>(null);
   const [open, setOpen] = useState(false);
   const [authed, setAuthed] = useState(true);
   /* A new notification swings the bell once and plays its sound; the 60 s poll is how it learns. */
@@ -47,6 +49,8 @@ export default function NotificationBell({
         setSwing(true);
         playSound("notify.new");
         window.setTimeout(() => setSwing(false), 900);
+        // The number pops as it rises (owner, 2026-11-05); the badge renders on this same update, so wait a frame.
+        requestAnimationFrame(() => badge.current && replay(badge.current, "data-landed", 420));
       };
       lastUnread.current = unread;
       if (latestTitle.current) toast(latestTitle.current, "info", undefined, { flyTo: "bell", onLanded: land });
@@ -118,7 +122,7 @@ export default function NotificationBell({
         >
           <Icon name="bell" size={inHeader ? "md" : "lg"} className={swing ? "bell-swing" : undefined} />
           {shown > 0 && (
-            <span className="absolute top-0 right-0 grid min-w-[1.15rem] place-items-center rounded-full bg-[var(--accent)] px-1 text-[length:var(--text-xs)] font-bold text-[var(--accent-ink)]">
+            <span ref={badge} className="absolute top-0 right-0 grid min-w-[1.15rem] place-items-center rounded-full bg-[var(--accent)] px-1 text-[length:var(--text-xs)] font-bold text-[var(--accent-ink)]">
               {shown > 9 ? "۹+" : faNum(shown)}
             </span>
           )}
