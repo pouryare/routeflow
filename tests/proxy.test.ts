@@ -381,3 +381,9 @@ describe("pages whose data routes are manager-only", () => {
     expect(proxy(req("/sales/payments", "phone_sales")).status).toBe(200);
   });
 });
+
+describe("health check", () => {
+  it("lets an outside monitor reach /api/health without a session", () => {
+    expect(proxy(req("/api/health")).status).toBe(200);
+  });
+});

@@ -1,0 +1,648 @@
+#!/usr/bin/env bash
+# routeflow: the one command for a RouteFlow server. Install a fresh server, upgrade to a release,
+# roll back, check, back up, restore, read logs. Run with no arguments on a terminal for a menu.
+#
+#   sudo routeflow install routeflow-0.1.0-linux-x64.tar.gz   # fresh Ubuntu or Debian server
+#   sudo routeflow upgrade routeflow-0.2.0-linux-x64.tar.gz   # upgrade now (otherwise: tonight, below)
+#   sudo routeflow rollback | status | backup [full|diff|incr] | restore-drill | restore | logs
+#   sudo routeflow secrets list | set KEY | unset KEY | backup [file] | restore <file>
+#   routeflow upgrade-scheduled                               # the nightly timer: newest tarball in incoming/
+#   sudo routeflow                                            # Whiptail menu
+#
+# A release tarball (scripts/release/pack.sh) holds the built app, its own Node, the migrations and
+# the server scripts. Releases live in $ROOT/releases/<version>; $ROOT/current points at the live one;
+# photos and map tiles live in $ROOT/data and survive every upgrade. Answers to the install questions
+# are kept in /etc/routeflow/routeflow.conf, and every other config file is written from it.
+#
+# The menu only calls these same commands: whatever GitHub runs, the menu runs too.
+
+set -euo pipefail
+
+ROOT=${ROUTEFLOW_ROOT:-/opt/routeflow}
+CONF_DIR=${ROUTEFLOW_CONF_DIR:-/etc/routeflow}
+CONF=$CONF_DIR/routeflow.conf
+ENV_FILE=$CONF_DIR/env
+SECRETS=$CONF_DIR/secrets.cred
+APP_USER=routeflow
+DB_NAME=routeflow
+SERVICE=routeflow
+LOCK=/run/lock/routeflow.lock
+
+say() { printf '== %s\n' "$*"; }
+warn() { printf 'routeflow: %s\n' "$*" >&2; }
+die() { warn "$*"; exit 1; }
+
+# x86_64 servers take the x64 tarball, ARM machines (the Pi, ARM VPSes) the arm64 one.
+machine_arch() {
+  case "${1:-$(uname -m)}" in
+    x86_64 | amd64) echo x64 ;;
+    aarch64 | arm64) echo arm64 ;;
+    *) return 1 ;;
+  esac
+}
+
+# routeflow-0.2.0-linux-arm64.tar.gz -> "0.2.0 arm64"; anything else is refused.
+parse_tarball_name() {
+  local base
+  base=$(basename "$1")
+  [[ $base =~ ^routeflow-([0-9]+\.[0-9]+\.[0-9]+)-linux-(x64|arm64)\.tar\.gz$ ]] || return 1
+  echo "${BASH_REMATCH[1]} ${BASH_REMATCH[2]}"
+}
+
+# The tarball must sit next to its .sha256 file, and the sum must match.
+verify_checksum() {
+  local tarball=$1 sumfile="$1.sha256" want got
+  [ -f "$sumfile" ] || { warn "no checksum file $sumfile"; return 1; }
+  want=$(awk '{print $1; exit}' "$sumfile")
+  got=$(sha256sum "$tarball" | awk '{print $1}')
+  [ -n "$want" ] && [ "$want" = "$got" ] || { warn "checksum does not match for $(basename "$tarball")"; return 1; }
+}
+
+current_version() { [ -L "$ROOT/current" ] && basename "$(readlink -f "$ROOT/current")" || true; }
+
+# Newest first, by the time each release was unpacked.
+list_releases() { [ -d "$ROOT/releases" ] && ls -1t "$ROOT/releases" 2>/dev/null | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' || true; }
+
+# The release to fall back to: the newest one that is not live.
+previous_release() {
+  local live
+  live=$(current_version)
+  list_releases | grep -vxF "${live:-}" | head -1
+}
+
+# Keep the live release and the newest others up to KEEP_RELEASES in all.
+prune_releases() {
+  local keep=${KEEP_RELEASES:-3} live n=0 r
+  live=$(current_version)
+  for r in $(list_releases); do
+    if [ "$r" = "$live" ]; then continue; fi
+    n=$((n + 1))
+    if [ "$n" -ge "$keep" ]; then rm -rf "${ROOT:?}/releases/$r"; fi
+  done
+}
+
+# Unpacks into releases/<version> (via a temporary folder, so a half-unpacked release never exists)
+# and links the shared data folders into it. Prints the version.
+unpack_release() {
+  local tarball=$1 version arch here tmp
+  read -r version arch < <(parse_tarball_name "$tarball") || die "not a release tarball name: $(basename "$tarball")"
+  here=$(machine_arch) || die "unsupported machine type $(uname -m)"
+  [ "$arch" = "$here" ] || die "$(basename "$tarball") is for $arch, this machine is $here"
+  verify_checksum "$tarball" || die "refusing an unverified release"
+  [ ! -e "$ROOT/releases/$version" ] || die "release $version is already unpacked; use: routeflow switch $version"
+  mkdir -p "$ROOT/releases"
+  tmp=$(mktemp -d "$ROOT/releases/.unpack.XXXXXX")
+  tar -xzf "$tarball" -C "$tmp" --strip-components=1
+  [ -x "$tmp/node/bin/node" ] && [ -f "$tmp/server.js" ] && [ "$(cat "$tmp/VERSION")" = "$version" ] \
+    || { rm -rf "$tmp"; die "$(basename "$tarball") is incomplete"; }
+  # Photos, avatars and map tiles are state, not code: one copy in $ROOT/data, linked into each release.
+  mkdir -p "$ROOT/data/photos" "$ROOT/data/map"
+  rm -rf "$tmp/data/photos" "$tmp/data/map"
+  ln -s "$ROOT/data/photos" "$tmp/data/photos"
+  ln -s "$ROOT/data/map" "$tmp/data/map"
+  mv "$tmp" "$ROOT/releases/$version"
+  echo "$version"
+}
+
+# Migrations in the release that the database has not run yet, one name per line.
+pending_migrations() {
+  local rel=$1 applied
+  applied=$(as_app psql -X -qtA "postgres:///$DB_NAME?host=/var/run/postgresql" \
+    -c "SELECT name FROM pgmigrations" 2>/dev/null || true)
+  for f in "$rel"/db/migrations/*.sql; do
+    local name
+    name=$(basename "$f" .sql)
+    grep -qxF "$name" <<<"$applied" || echo "$name"
+  done
+}
+
+# True when every named migration says, in its header, that it only adds (scripts/check-migrations.mjs
+# holds the rule in CI). Only then is it safe to put the previous release back on this database.
+all_expand_only() {
+  local rel=$1 name
+  shift
+  for name in "$@"; do
+    head -20 "$rel/db/migrations/$name.sql" | grep -q '^-- rf: expand-only' || return 1
+  done
+}
+
+as_app() { if [ "$(id -un)" = "$APP_USER" ]; then "$@"; else runuser -u "$APP_USER" -- "$@"; fi; }
+
+run_migrations() {
+  local rel=$1
+  as_app env DATABASE_URL="postgres:///$DB_NAME?host=/var/run/postgresql" \
+    "$rel/node/bin/node" "$rel/tools/node_modules/node-pg-migrate/bin/node-pg-migrate.js" up -m "$rel/db/migrations"
+}
+
+app_port() { echo "${APP_PORT:-3003}"; }
+
+# Waits up to 60 s for /api/health to answer {"ok":true} with the expected version (any, if none given).
+wait_healthy() {
+  local want=${1:-} i body
+  for i in $(seq 1 30); do
+    body=$(curl -fsS --max-time 3 "http://127.0.0.1:$(app_port)/api/health" 2>/dev/null || true)
+    if grep -q '"ok":true' <<<"$body" && { [ -z "$want" ] || grep -qF "\"version\":\"$want\"" <<<"$body"; }; then return 0; fi
+    sleep 2
+  done
+  return 1
+}
+
+# After an upgrade, more than the database ping: the sign-in page renders, a script it links loads,
+# and, when a smoke login is set up (SMOKE_USER in the config, SMOKE_PASSWORD in the secrets), a
+# signed-in list answers. Prints what failed.
+smoke_check() {
+  local base="http://127.0.0.1:$(app_port)" page asset jar ok=0
+  page=$(curl -fsS --max-time 10 "$base/login" 2>/dev/null) && grep -qi '<html' <<<"$page" || { warn "smoke: /login did not render"; return 1; }
+  asset=$(grep -o '/_next/static/[^"]*\.js' <<<"$page" | head -1)
+  [ -n "$asset" ] && curl -fsS --max-time 10 -o /dev/null "$base$asset" || { warn "smoke: $asset did not load"; return 1; }
+  if [ -n "${SMOKE_USER:-}" ] && [ -n "${SMOKE_PASSWORD:-}" ]; then
+    jar=$(mktemp)
+    # The body goes through stdin and JSON.stringify: no password on a command line, no quoting bugs.
+    if SMOKE_USER=$SMOKE_USER SMOKE_PASSWORD=$SMOKE_PASSWORD "$ROOT/current/node/bin/node" -e 'console.log(JSON.stringify({ username: process.env.SMOKE_USER, password: process.env.SMOKE_PASSWORD }))' \
+         | curl -fsS --max-time 10 -c "$jar" -H 'content-type: application/json' --data @- "$base/api/login" -o /dev/null \
+       && curl -fsS --max-time 10 -b "$jar" "$base/api/me" | grep -q '"ok":true' \
+       && curl -fsS --max-time 20 -b "$jar" -o /dev/null "$base/api/customers"; then ok=1; fi
+    rm -f "$jar"
+    [ "$ok" = 1 ] || { warn "smoke: signed-in check as $SMOKE_USER failed (login, /api/me or /api/customers)"; return 1; }
+  fi
+  return 0
+}
+
+switch_to() {
+  local version=$1
+  [ -d "$ROOT/releases/$version" ] || die "no release $version in $ROOT/releases"
+  ln -sfn "releases/$version" "$ROOT/current.new"
+  mv -T "$ROOT/current.new" "$ROOT/current"
+  systemctl restart "$SERVICE"
+}
+
+# ---- Secrets ---------------------------------------------------------------------------------------
+# Passwords, keys and tokens live in $SECRETS, encrypted with systemd-creds (this machine's key, and
+# its TPM when it has one), never in a plain file. systemd decrypts it only for the app and the backup
+# units (LoadCredentialEncrypted), which read it with node --env-file. Everything else stays in the
+# plain $ENV_FILE. A copy for rebuilding the server elsewhere is gpg-encrypted with a passphrase
+# (routeflow secrets backup) and kept in the private repo, since this machine's key dies with it.
+
+# A key whose value is a secret: moved out of the plain env file.
+is_secret_key() { [[ $1 =~ ^(DATABASE_URL|SESSION_SECRET)$ || $1 =~ _(TOKEN|PASSWORD|PASS|SECRET|KEY|APIKEY)$ ]]; }
+
+# Splits an env file into its plain lines (comments too) and its secret lines.
+split_env() {
+  local in=$1 plain=$2 secret=$3 line
+  : >"$plain"; : >"$secret"
+  while IFS= read -r line || [ -n "$line" ]; do
+    if [[ $line =~ ^([A-Za-z_][A-Za-z0-9_]*)= ]] && is_secret_key "${BASH_REMATCH[1]}"; then
+      printf '%s\n' "$line" >>"$secret"
+    else
+      printf '%s\n' "$line" >>"$plain"
+    fi
+  done <"$in"
+}
+
+# KEY=value lines of both files, one per key; the second file wins.
+merge_env() { awk 'FNR==NR && /^[A-Za-z_][A-Za-z0-9_]*=/ {k=$0; sub(/=.*/,"",k); seen[k]=1; print; next}
+  FNR!=NR && /^[A-Za-z_][A-Za-z0-9_]*=/ {k=$0; sub(/=.*/,"",k); if (!(k in seen)) print}' "$2" "$1"; }
+
+# A private scratch folder in RAM, so a decrypted copy never reaches the disk.
+secret_tmp() { mktemp -d -p /run routeflow-secrets.XXXXXX; }
+
+secrets_read() { [ -f "$SECRETS" ] && systemd-creds decrypt --name=secrets "$SECRETS" - || true; }
+
+secrets_write() {
+  install -d -m 755 "$CONF_DIR"
+  systemd-creds encrypt --name=secrets "$1" "$SECRETS.new" && chmod 600 "$SECRETS.new" && mv -f "$SECRETS.new" "$SECRETS"
+}
+
+secret_value() { secrets_read | sed -n "s/^$1=//p" | tail -1; }
+
+# Moves any secret lines left in the plain env file (a first install writes them there) into
+# $SECRETS. Values already in $SECRETS win, so a restored copy keeps its SESSION_SECRET.
+secrets_absorb() {
+  local t
+  [ -f "$ENV_FILE" ] || return 0
+  t=$(secret_tmp)
+  split_env "$ENV_FILE" "$t/plain" "$t/new"
+  if [ -s "$t/new" ]; then
+    secrets_read >"$t/old"
+    merge_env "$t/new" "$t/old" >"$t/all"
+    secrets_write "$t/all"
+    install -m 640 -g "$APP_USER" "$t/plain" "$ENV_FILE"
+    say "Moved $(wc -l <"$t/new") secret(s) from $ENV_FILE into $SECRETS"
+  fi
+  rm -rf "$t"
+  # install.sh's copy of the web role's password; it is inside DATABASE_URL now.
+  rm -f "$CONF_DIR/web-role-pass"
+}
+
+cmd_secrets() {
+  need_root secrets
+  local action=${1:-list} key value t out
+  case "$action" in
+    list) secrets_read | sed -n 's/=.*//p' ;;
+    set)
+      key=${2:?usage: routeflow secrets set KEY (the value is asked, never typed on the command line)}
+      [[ $key =~ ^[A-Z][A-Z0-9_]*$ ]] || die "a key is upper case letters, digits and _"
+      if [ -t 0 ]; then read -rsp "Value for $key: " value; echo; else IFS= read -r value; fi
+      [ -n "$value" ] || die "empty value; nothing changed"
+      t=$(secret_tmp)
+      secrets_read >"$t/old"
+      printf '%s=%s\n' "$key" "$value" >"$t/new"
+      merge_env "$t/old" "$t/new" >"$t/all"
+      secrets_write "$t/all"; rm -rf "$t"
+      say "$key saved"
+      systemctl try-restart "$SERVICE" ;;
+    unset)
+      key=${2:?usage: routeflow secrets unset KEY}
+      t=$(secret_tmp)
+      secrets_read | grep -v "^$key=" >"$t/all" || true
+      secrets_write "$t/all"; rm -rf "$t"
+      say "$key removed"
+      systemctl try-restart "$SERVICE" ;;
+    backup)
+      out=${2:-$PWD/routeflow-secrets-$(hostname -s)-$(date +%F).env.asc}
+      [ -f "$SECRETS" ] || die "no secrets yet"
+      say "Choose a passphrase you keep outside this server (a password manager)."
+      secrets_read | gpg --pinentry-mode loopback --symmetric --cipher-algo AES256 --armor -o "$out"
+      chmod 600 "$out"
+      say "Wrote $out. Put it in the private repo; it opens only with that passphrase." ;;
+    restore)
+      [ -f "${2:-}" ] || die "usage: routeflow secrets restore <routeflow-secrets-....env.asc>"
+      t=$(secret_tmp)
+      gpg --pinentry-mode loopback -q -d -o "$t/all" "$2"
+      secrets_write "$t/all"; rm -rf "$t"
+      say "Secrets restored for this machine"
+      systemctl try-restart "$SERVICE" ;;
+    *) die "routeflow secrets list | set KEY | unset KEY | backup [file] | restore <file>" ;;
+  esac
+}
+
+load_conf() { if [ -f "$CONF" ]; then . "$CONF"; fi; }
+
+need_root() { [ "$(id -u)" = 0 ] || die "run as root: sudo routeflow $*"; }
+
+cmd_upgrade() {
+  local tarball=${1:?usage: routeflow upgrade <routeflow-X.Y.Z-linux-ARCH.tar.gz>} from version pending
+  need_root upgrade
+  load_conf
+  exec 9>"$LOCK"; flock -n 9 || die "another routeflow command is running"
+  from=$(current_version)
+  version=$(unpack_release "$tarball")
+  say "Release $version unpacked (live: ${from:-none})"
+  if [ -n "$from" ] && [ -f /etc/systemd/system/routeflow-backup@.service ]; then
+    say "Backup before the upgrade"
+    systemctl start routeflow-backup@incr || die "the backup failed; nothing was changed. Fix it or rerun with a working backup."
+  fi
+  mapfile -t pending < <(pending_migrations "$ROOT/releases/$version")
+  say "Migrations to run: ${#pending[@]}"
+  run_migrations "$ROOT/releases/$version" || die "migrations failed; the live release ($from) was not touched. Read the error above."
+  say "Starting $version"
+  switch_to "$version"
+  SMOKE_PASSWORD=${SMOKE_PASSWORD:-$(secret_value SMOKE_PASSWORD)}
+  if wait_healthy "$version" && smoke_check; then
+    say "$version is live"
+    prune_releases
+    return 0
+  fi
+  warn "$version failed its checks (health within 60 s, then the smoke check)"
+  if [ -z "$from" ]; then die "first install: nothing to go back to. See: routeflow logs"; fi
+  if [ "${#pending[@]}" = 0 ] || all_expand_only "$ROOT/releases/$version" "${pending[@]}"; then
+    warn "switching back to $from (the new migrations only add, so $from can run on this database)"
+    switch_to "$from"
+    wait_healthy "$from" && die "back on $from; $version stays unpacked for a look: routeflow logs" || die "$from is not healthy either. See: routeflow logs"
+  fi
+  die "NOT switching back: a migration in $version changes existing data or columns, so $from may not run on this database. $version is still live and unhealthy. See: routeflow logs, then decide."
+}
+
+# Run by routeflow-upgrade.timer (UPGRADE_AT, default 03:30 Tehran = 00:00 UTC). GitHub's deploy job
+# only drops a tarball and its .sha256 in $ROOT/incoming; the upgrade itself waits for the quiet hour.
+newest_incoming() {
+  local arch best="" bestv="" f v a
+  arch=$(machine_arch) || return 0
+  for f in "$ROOT"/incoming/routeflow-*-linux-"$arch".tar.gz; do
+    # A tarball still being copied has no .sha256 yet (the deploy job sends it last).
+    [ -f "$f" ] && [ -f "$f.sha256" ] || continue
+    read -r v a < <(parse_tarball_name "$f") || continue
+    if [ -z "$bestv" ] || [ "$(printf '%s\n%s\n' "$bestv" "$v" | sort -V | tail -1)" = "$v" ]; then best=$f; bestv=$v; fi
+  done
+  echo "$best"
+}
+
+cmd_upgrade_scheduled() {
+  local next live v a
+  next=$(newest_incoming)
+  [ -n "$next" ] || { say "nothing waiting in $ROOT/incoming"; return 0; }
+  read -r v a < <(parse_tarball_name "$next")
+  live=$(current_version)
+  if [ -n "$live" ] && [ "$(printf '%s\n%s\n' "$live" "$v" | sort -V | tail -1)" = "$live" ]; then
+    say "$v is not newer than the live $live; nothing to do"
+    return 0
+  fi
+  [ ! -d "$ROOT/releases/$v" ] || { say "$v was already tried (it is in releases/); not retrying on schedule"; return 0; }
+  cmd_upgrade "$next"
+}
+
+cmd_rollback() {
+  local to from
+  need_root rollback
+  load_conf
+  exec 9>"$LOCK"; flock -n 9 || die "another routeflow command is running"
+  from=$(current_version)
+  to=${1:-$(previous_release)}
+  [ -n "$to" ] || die "no earlier release on this machine"
+  say "Rolling back $from -> $to (the database is not rolled back)"
+  switch_to "$to"
+  wait_healthy "$to" && say "$to is live" || die "$to did not become healthy. See: routeflow logs"
+}
+
+cmd_status() {
+  load_conf
+  local live
+  live=$(current_version)
+  echo "Release:   ${live:-none}   (on disk: $(list_releases | tr '\n' ' '))"
+  echo "Service:   $(systemctl is-active "$SERVICE" 2>/dev/null || true)"
+  if curl -fsS --max-time 3 "http://127.0.0.1:$(app_port)/api/health" >/dev/null 2>&1; then echo "Health:    ok"; else echo "Health:    NOT ANSWERING"; fi
+  echo "Disk:      $(df -h --output=pcent "$ROOT" 2>/dev/null | tail -1 | tr -d ' ') used on $ROOT"
+  if [ -f /var/lib/routeflow/backups/backup-status.json ]; then
+    echo "Backup:    last status written $(date -r /var/lib/routeflow/backups/backup-status.json '+%Y-%m-%d %H:%M')"
+  else
+    echo "Backup:    no backup status yet"
+  fi
+  if [ -n "$live" ] && [ -f "$ENV_FILE" ] && [ "$(id -u)" = 0 ]; then
+    echo "Database check:"
+    local t; t=$(secret_tmp); secrets_read >"$t/secrets"; chown -R "$APP_USER" "$t"
+    ( cd "$ROOT/current" && set -a && . "$ENV_FILE" && set +a \
+      && as_app env PG_APP_ROLE=routeflow_app "$ROOT/current/node/bin/node" --env-file="$t/secrets" scripts/pg/doctor.mjs ) || true
+    rm -rf "$t"
+  fi
+}
+
+cmd_backup() {
+  need_root backup
+  local kind=${1:-incr}
+  case "$kind" in full | diff | incr) ;; *) die "backup type is full, diff or incr" ;; esac
+  systemctl start "routeflow-backup@$kind" && say "$kind backup done"
+}
+
+cmd_restore_drill() { need_root restore-drill; systemctl start routeflow-restore-drill && say "restore drill done; see /var/lib/routeflow/backups/restore-drill.json"; }
+
+# Replaces the live database with a backup. The current data folder is moved aside, never deleted.
+cmd_restore() {
+  need_root restore
+  local repo=${1:-} target=${2:-} pgdata stamp
+  [ -n "$repo" ] || die "usage: routeflow restore <1|2> [\"YYYY-MM-DD HH:MM:SS+00\"]   (1 = this machine, 2 = the second machine)"
+  pgdata=$(runuser -u postgres -- psql -X -qtA -c "SHOW data_directory")
+  stamp=$(date +%Y%m%d-%H%M%S)
+  if [ -t 0 ]; then
+    read -r -p "This stops the app and replaces the database with backup repo $repo${target:+ at $target}. Type RESTORE to go on: " answer
+    [ "$answer" = RESTORE ] || die "nothing changed"
+  elif [ "${ROUTEFLOW_YES:-}" != 1 ]; then
+    die "not on a terminal: set ROUTEFLOW_YES=1 to confirm"
+  fi
+  systemctl stop "$SERVICE" || true
+  systemctl stop postgresql
+  mv "$pgdata" "$pgdata.before-restore-$stamp"
+  install -d -o postgres -g postgres -m 700 "$pgdata"
+  if [ -n "$target" ]; then
+    runuser -u postgres -- pgbackrest --stanza=routeflow --repo="$repo" --type=time "--target=$target" --target-action=promote restore
+  else
+    runuser -u postgres -- pgbackrest --stanza=routeflow --repo="$repo" restore
+  fi
+  systemctl start postgresql
+  systemctl start "$SERVICE"
+  say "Restored. The old data folder is at $pgdata.before-restore-$stamp; delete it once you are happy."
+  cmd_status
+}
+
+cmd_logs() {
+  journalctl -u "$SERVICE" -n "${1:-100}" --no-pager || true
+  journalctl -u caddy -n 20 --no-pager --priority=warning || true
+}
+
+# Asks once and remembers the answers in $CONF. On a terminal it uses Whiptail; otherwise the values
+# must already be in $CONF or the environment.
+ask() {
+  local var=$1 question=$2 default=${3:-} value
+  value=${!var:-$default}
+  if [ -t 0 ] && command -v whiptail >/dev/null; then
+    value=$(whiptail --title "RouteFlow install" --inputbox "$question" 10 70 "$value" 3>&1 1>&2 2>&3) || die "cancelled"
+  fi
+  printf -v "$var" '%s' "$value"
+}
+
+write_conf() {
+  install -d -m 755 "$CONF_DIR"
+  ( umask 022
+    cat > "$CONF" <<CONF
+# Written by 'routeflow install'. Edit here, then run 'routeflow install' again to apply.
+DOMAIN=$DOMAIN
+APP_PORT=$APP_PORT
+OFFSITE_HOST=$OFFSITE_HOST
+OFFSITE_USER=$OFFSITE_USER
+OFFSITE_PATH=$OFFSITE_PATH
+KEEP_RELEASES=$KEEP_RELEASES
+# When a waiting release is applied (systemd OnCalendar). 03:30 Tehran is 00:00 UTC.
+UPGRADE_AT="$UPGRADE_AT"
+CONF
+  )
+}
+
+write_app_unit() {
+  cat > /etc/systemd/system/$SERVICE.service <<UNIT
+# Written by 'routeflow install'.
+[Unit]
+Description=RouteFlow app
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+User=$APP_USER
+WorkingDirectory=$ROOT/current
+EnvironmentFile=$ENV_FILE
+# The secrets, decrypted by systemd into a private folder only this service can read (%d).
+LoadCredentialEncrypted=secrets:$SECRETS
+Environment=NODE_ENV=production PORT=$APP_PORT HOSTNAME=127.0.0.1
+ExecStart=$ROOT/current/node/bin/node --env-file=%d/secrets server.js
+Restart=on-failure
+RestartSec=3
+# Lets running requests finish on a restart.
+TimeoutStopSec=20
+
+[Install]
+WantedBy=multi-user.target
+UNIT
+}
+
+write_upgrade_timer() {
+  cat > /etc/systemd/system/routeflow-upgrade.service <<UNIT
+# Written by 'routeflow install'. Applies the newest tarball waiting in $ROOT/incoming.
+[Unit]
+Description=RouteFlow scheduled upgrade
+After=postgresql.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/routeflow upgrade-scheduled
+UNIT
+  cat > /etc/systemd/system/routeflow-upgrade.timer <<UNIT
+# Written by 'routeflow install' from UPGRADE_AT in $CONF.
+[Unit]
+Description=RouteFlow scheduled upgrade ($UPGRADE_AT)
+
+[Timer]
+OnCalendar=$UPGRADE_AT
+# A missed night is skipped, never run on boot in the middle of the day.
+Persistent=false
+
+[Install]
+WantedBy=timers.target
+UNIT
+}
+
+write_caddy() {
+  # A file of its own, imported once, so another site in the Caddyfile is never touched.
+  cat > /etc/caddy/routeflow.caddy <<CADDY
+# Written by 'routeflow install' from $CONF.
+$DOMAIN {
+	# next start leaves signed-in API JSON uncompressed; this covers every route.
+	encode zstd gzip
+	# Photos (up to 20 MB) are the largest legitimate request.
+	request_body {
+		max_size 25MB
+	}
+	reverse_proxy 127.0.0.1:$APP_PORT
+}
+CADDY
+  grep -qxF 'import /etc/caddy/routeflow.caddy' /etc/caddy/Caddyfile 2>/dev/null \
+    || printf '\nimport /etc/caddy/routeflow.caddy\n' >> /etc/caddy/Caddyfile
+  caddy validate --config /etc/caddy/Caddyfile >/dev/null
+  systemctl reload caddy || systemctl restart caddy
+}
+
+cmd_install() {
+  local tarball=${1:?usage: routeflow install <routeflow-X.Y.Z-linux-ARCH.tar.gz>} version tmp
+  need_root install
+  [ -f /etc/os-release ] && . /etc/os-release
+  case "${ID:-}" in ubuntu | debian) ;; *) die "this installer is for Ubuntu or Debian" ;; esac
+  load_conf
+  APP_PORT=${APP_PORT:-3003}; KEEP_RELEASES=${KEEP_RELEASES:-3}; UPGRADE_AT=${UPGRADE_AT:-*-*-* 03:30:00 Asia/Tehran}
+  ask DOMAIN "Domain users open (pointed at this server through Arvan CDN):" "${DOMAIN:-}"
+  ask OFFSITE_HOST "Second machine for off-site backups (the Pi), host or IP. Empty = local only:" "${OFFSITE_HOST:-}"
+  if [ -n "$OFFSITE_HOST" ]; then
+    ask OFFSITE_USER "User on $OFFSITE_HOST for the backups:" "${OFFSITE_USER:-rfbackup}"
+    ask OFFSITE_PATH "Folder on $OFFSITE_HOST for the backups:" "${OFFSITE_PATH:-/srv/routeflow-pgbackrest}"
+  fi
+  [ -n "$DOMAIN" ] || die "a domain is needed"
+  write_conf
+
+  say "Packages"
+  apt-get update -q
+  DEBIAN_FRONTEND=noninteractive apt-get install -y -q --no-install-recommends \
+    ca-certificates curl tar gnupg whiptail ufw unattended-upgrades caddy postgresql-client
+
+  say "Firewall: SSH, HTTP and HTTPS only"
+  ufw allow OpenSSH >/dev/null; ufw allow 80/tcp >/dev/null; ufw allow 443/tcp >/dev/null
+  ufw --force enable >/dev/null
+
+  # Tehran time on the server, so logs and the reboot window read the way the owner thinks.
+  timedatectl set-timezone Asia/Tehran
+  # Night order (Tehran): 01:30 backup, 02:30 OS reboot if an update needs one, 03:30 app upgrade,
+  # 04:00 on the 1st the restore drill.
+  say "Security updates on, a needed reboot only at 02:30"
+  cat > /etc/apt/apt.conf.d/52routeflow-upgrades <<APT
+Unattended-Upgrade::Automatic-Reboot "true";
+Unattended-Upgrade::Automatic-Reboot-Time "02:30";
+APT
+  systemctl enable --now unattended-upgrades >/dev/null 2>&1 || true
+
+  say "Log size cap"
+  install -d /etc/systemd/journald.conf.d
+  printf '[Journal]\nSystemMaxUse=500M\n' > /etc/systemd/journald.conf.d/routeflow.conf
+  systemctl restart systemd-journald
+
+  # The database installer ships inside the release, so it always matches the migrations.
+  tmp=$(mktemp -d)
+  tar -xzf "$tarball" -C "$tmp" --strip-components=1 --wildcards '*/db/server/*'
+  say "Database, roles, backups ($tmp/db/server/install.sh)"
+  # A rebuilt server with restored secrets keeps the web role's password from DATABASE_URL.
+  WEB_PASS=$(secret_value DATABASE_URL | sed -n 's|^postgres://[^:]*:\([^@]*\)@.*|\1|p') \
+  APP_DIR=$ROOT OFFSITE_HOST=$OFFSITE_HOST OFFSITE_USER=${OFFSITE_USER:-} OFFSITE_PATH=${OFFSITE_PATH:-} \
+    bash "$tmp/db/server/install.sh" --no-migrate
+  rm -rf "$tmp"
+  secrets_absorb
+  install -d -o "$APP_USER" -g "$APP_USER" "$ROOT" "$ROOT/data" "$ROOT/data/photos" "$ROOT/data/map"
+
+  say "App service"
+  write_app_unit
+  # The backup units run the scripts of the live release, with the secrets like the app.
+  sed -i "s|^WorkingDirectory=.*|WorkingDirectory=$ROOT/current|; s|^ExecStart=/usr/bin/node |ExecStart=$ROOT/current/node/bin/node --env-file=%d/secrets |; /^LoadCredentialEncrypted=/d; /^EnvironmentFile=/a LoadCredentialEncrypted=secrets:$SECRETS" \
+    /etc/systemd/system/routeflow-backup@.service /etc/systemd/system/routeflow-restore-drill.service 2>/dev/null || true
+  write_upgrade_timer
+  systemctl daemon-reload
+  systemctl enable "$SERVICE" >/dev/null
+  systemctl enable --now routeflow-upgrade.timer >/dev/null
+  install -d -o "$APP_USER" -g "$APP_USER" -m 775 "$ROOT/incoming"
+  # The key-only user GitHub copies releases as (docs/release-and-deploy.md) may write here, nothing more.
+  if id deploy >/dev/null 2>&1; then usermod -aG "$APP_USER" deploy; fi
+
+  say "Caddy for $DOMAIN"
+  write_caddy
+
+  if [ -z "$(current_version)" ]; then
+    cmd_upgrade "$tarball"
+  else
+    say "A release is already live ($(current_version)); to change it: routeflow upgrade <tarball>"
+  fi
+  ln -sfn "$ROOT/current/bin/routeflow" /usr/local/bin/routeflow
+  say "Done. Next: create the owner login with  sudo -u $APP_USER $ROOT/current/node/bin/node $ROOT/current/scripts/create-user.mjs"
+}
+
+menu() {
+  command -v whiptail >/dev/null || die "whiptail is not installed; run a command instead (routeflow help)"
+  local choice arg
+  choice=$(whiptail --title "RouteFlow $(current_version)" --menu "What do you want to do?" 19 76 10 \
+    status "Check the app, database, disk and backups" \
+    upgrade "Upgrade to a release tarball now" \
+    upgrade-scheduled "Apply the waiting release now instead of tonight" \
+    rollback "Go back to the previous release" \
+    backup "Run a backup now" \
+    restore-drill "Test that the newest backup restores" \
+    logs "Show the latest app log" \
+    restore "Replace the database with a backup" \
+    secrets "List the secret names (set them with: routeflow secrets set KEY)" \
+    install "Install or re-apply the server setup" \
+    3>&1 1>&2 2>&3) || exit 0
+  case "$choice" in
+    upgrade | install)
+      arg=$(whiptail --inputbox "Path to the release tarball:" 10 70 "$(ls -1t "$ROOT"/incoming/routeflow-*.tar.gz 2>/dev/null | head -1)" 3>&1 1>&2 2>&3) || exit 0
+      main "$choice" "$arg" ;;
+    restore)
+      arg=$(whiptail --menu "Restore from which copy?" 12 70 2 1 "This machine" 2 "The second machine" 3>&1 1>&2 2>&3) || exit 0
+      main restore "$arg" ;;
+    *) main "$choice" ;;
+  esac
+}
+
+usage() { sed -n '2,10p' "$0" | sed 's/^# \{0,1\}//'; }
+
+main() {
+  local cmd=${1:-}
+  [ $# -gt 0 ] && shift
+  case "$cmd" in
+    install) cmd_install "$@" ;;
+    upgrade) cmd_upgrade "$@" ;;
+    upgrade-scheduled) cmd_upgrade_scheduled ;;
+    rollback | switch) cmd_rollback "$@" ;;
+    status) cmd_status ;;
+    backup) cmd_backup "$@" ;;
+    restore-drill) cmd_restore_drill ;;
+    restore) cmd_restore "$@" ;;
+    logs) cmd_logs "$@" ;;
+    secrets) cmd_secrets "$@" ;;
+    help | -h | --help) usage ;;
+    "") if [ -t 0 ]; then menu; else usage; fi ;;
+    *) usage; exit 2 ;;
+  esac
+}
+
+# Sourced by the tests (tests/routeflow-cli.test.ts) to call the helpers; run otherwise.
+if [ "${BASH_SOURCE[0]}" = "$0" ]; then main "$@"; fi

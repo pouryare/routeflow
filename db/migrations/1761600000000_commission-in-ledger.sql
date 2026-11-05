@@ -1,4 +1,5 @@
 -- Up Migration
+-- rf: contract
 -- Commission in the ledger, and the person and group on a ledger line (company-and-shareholders, step 1 and 2).
 --
 -- Until now commission lived beside the books: accrued on the fly, paid out into three side tables, and

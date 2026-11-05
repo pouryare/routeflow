@@ -1,4 +1,5 @@
 -- Up Migration
+-- rf: expand-only
 -- The owner turns step-up codes on once the managers have enrolled an authenticator, so switching the
 -- feature on never locks anybody out of an action they had no way to confirm yet. A constant default:
 -- nothing is rewritten.

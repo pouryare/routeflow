@@ -1,4 +1,5 @@
 -- Up Migration
+-- rf: contract
 -- Row-level security on every table that carries organization_id (Wave P, phase 3).
 --
 -- The app's own WHERE organization_id = ? stays; this is the net under it. A query that forgets

@@ -1,4 +1,5 @@
 -- Up Migration
+-- rf: expand-only
 -- The offline pull's watermark on PostgreSQL (Wave P, phase 3; lib/repo/syncPull.ts).
 --
 -- On SQLite the watermark is a timestamp, which is safe because SQLite has one writer at a time.

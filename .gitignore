@@ -103,3 +103,7 @@ graphify-out/
 /.clinerules/
 /superpowers-cline/
 .pg-test-results.json
+
+# Release tarballs (scripts/release/pack.sh) and the Node download cache
+/dist/
+/.cache/

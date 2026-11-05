@@ -97,6 +97,7 @@ CI runs these on pull requests that are ready for review. Draft pull requests an
 The app runs on one server with PostgreSQL on the same machine, behind Caddy (a CDN can sit in front; map tiles are cacheable). Backups are taken by pgBackRest to the local disk and to a second machine, with a monthly restore drill.
 
 - Server setup, backups and restore: [`docs/postgres-server.md`](docs/postgres-server.md)
+- Releases, upgrades, secrets and the monitor: [`docs/release-and-deploy.md`](docs/release-and-deploy.md)
 - Database development notes, row-level security and sync: [`db/README.md`](db/README.md)
 - Building and serving the map tiles: [`docs/map-tiles.md`](docs/map-tiles.md)
 - Caddy block template: [`deploy/Caddy-snippet.txt`](deploy/Caddy-snippet.txt)

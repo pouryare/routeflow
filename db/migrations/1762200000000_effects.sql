@@ -1,4 +1,5 @@
 -- Up Migration
+-- rf: expand-only
 -- Decorative effects (the coin, ticket edge, light on a card, ...): the company owner can switch them off for
 -- everyone; 'auto' leaves them on except on weak phones (lib/fx.ts). A constant default: nothing is rewritten.
 -- squawk-ignore-file ban-drop-column

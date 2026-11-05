@@ -1,4 +1,5 @@
 -- Up Migration
+-- rf: contract
 -- Advances, the yearly profit split and shared-cost rules (company-and-shareholders, step 4).
 --
 --   * three accounts: 2105 سود سهام پرداختنی (dividends owed to a partner), 2106 جاری شرکا (a partner's

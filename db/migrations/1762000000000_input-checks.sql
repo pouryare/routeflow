@@ -1,4 +1,5 @@
 -- Up Migration
+-- rf: contract
 -- Database-level input checks (security audit 2026-10-29): ranges on money and quantities, length caps on
 -- free text, and row-level security on child tables that have no organization_id of their own.
 -- The app validates first; these stop a bad row arriving by any other path. The tables are small (dummy data),

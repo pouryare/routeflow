@@ -1,0 +1,215 @@
+#!/usr/bin/env bash
+# routeflow-monitor: watches a RouteFlow server from a second machine (the home Pi) and tells the
+# owner on Telegram, with SMS (Farazsms) for what cannot wait. Runs once a minute from a systemd
+# timer; keeps what it saw in $STATE_DIR.
+#
+#   sudo routeflow-monitor install   # once on the Pi: config file, service and every-minute timer
+#   routeflow-monitor tick           # one round of checks (what the timer runs)
+#   routeflow-monitor test           # send a test message on Telegram and SMS now
+#
+# Rules (decided 2026-11-05):
+#   - The app is down only after 2 failed checks in a row (one blip is not an outage).
+#   - Telegram at once; SMS too when it stays down 5 minutes, or when Telegram cannot be reached.
+#   - "Back up" message after an outage that was reported.
+#   - The newest backup on this machine older than 26 hours: Telegram and SMS, once.
+#   - This machine's backup disk 80% full or more: Telegram, once a day.
+#   - A daily summary at SUMMARY_HOUR (Tehran), and on the 1st of each month a test on both channels,
+#     so a silent monitor is noticed.
+#
+# Config (/etc/routeflow-monitor.conf, mode 600):
+#   URL=https://app.example.ir          TELEGRAM_BOT_TOKEN=...   TELEGRAM_CHAT_ID=...
+#   TELEGRAM_PROXY=socks5h://127.0.0.1:1080   (optional: Telegram is filtered from inside Iran)
+#   SMS_TOKEN=...  SMS_FROM=+983000505  SMS_TO=+98912...   SMS_API=https://edge.ippanel.com/v1
+#   BACKUP_DIR=/srv/routeflow-pgbackrest   SUMMARY_HOUR=9
+
+set -uo pipefail
+
+CONF=${ROUTEFLOW_MONITOR_CONF:-/etc/routeflow-monitor.conf}
+STATE_DIR=${ROUTEFLOW_MONITOR_STATE:-/var/lib/routeflow-monitor}
+DOWN_AFTER=2          # failed checks in a row
+SMS_AFTER=300         # seconds down before an SMS
+BACKUP_MAX_HOURS=26
+DISK_MAX_PCT=80
+
+log() { printf 'routeflow-monitor: %s\n' "$*" >&2; }
+
+load_conf() {
+  URL="" TELEGRAM_BOT_TOKEN="" TELEGRAM_CHAT_ID="" TELEGRAM_PROXY="" SMS_TOKEN="" SMS_FROM="" SMS_TO=""
+  SMS_API=https://edge.ippanel.com/v1 BACKUP_DIR="" SUMMARY_HOUR=9
+  # shellcheck disable=SC1090
+  [ -f "$CONF" ] && . "$CONF"
+  return 0
+}
+
+# One value per file in $STATE_DIR, so a crash mid-round loses at most that round.
+get() { cat "$STATE_DIR/$1" 2>/dev/null || echo "${2:-}"; }
+put() { mkdir -p "$STATE_DIR" && printf '%s\n' "$2" >"$STATE_DIR/$1"; }
+
+json_escape() { local s=$1; s=${s//\\/\\\\}; s=${s//\"/\\\"}; s=${s//$'\n'/\\n}; printf '%s' "$s"; }
+
+telegram_send() {
+  [ -n "$TELEGRAM_BOT_TOKEN" ] && [ -n "$TELEGRAM_CHAT_ID" ] || { log "telegram not set up"; return 1; }
+  curl -fsS --max-time 20 ${TELEGRAM_PROXY:+-x "$TELEGRAM_PROXY"} -o /dev/null \
+    --data-urlencode "chat_id=$TELEGRAM_CHAT_ID" --data-urlencode "text=$1" \
+    "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/sendMessage" || { log "telegram send failed"; return 1; }
+}
+
+# IPPanel Edge "webservice" send (Farazsms runs on IPPanel).
+sms_send() {
+  [ -n "$SMS_TOKEN" ] && [ -n "$SMS_FROM" ] && [ -n "$SMS_TO" ] || { log "sms not set up"; return 1; }
+  local body
+  body=$(printf '{"sending_type":"webservice","from_number":"%s","message":"%s","params":{"recipients":["%s"]}}' \
+    "$(json_escape "$SMS_FROM")" "$(json_escape "$1")" "$(json_escape "$SMS_TO")")
+  curl -fsS --max-time 20 -H "Authorization: $SMS_TOKEN" -H 'Content-Type: application/json' \
+    --data "$body" "$SMS_API/api/send" | grep -q '"status":true' || { log "sms send failed"; return 1; }
+}
+
+# Sets HEALTH_OK (1 or 0) and HEALTH_VERSION.
+check_health() {
+  local body
+  body=$(curl -fsS --max-time 10 "$URL/api/health" 2>/dev/null || true)
+  if grep -q '"ok":true' <<<"$body"; then HEALTH_OK=1; else HEALTH_OK=0; fi
+  HEALTH_VERSION=$(sed -n 's/.*"version":"\([^"]*\)".*/\1/p' <<<"$body")
+}
+
+# Hours since the newest file under $BACKUP_DIR was written; empty when there is none to check.
+backup_age_hours() {
+  local newest
+  [ -n "$BACKUP_DIR" ] && [ -d "$BACKUP_DIR" ] || return 0
+  newest=$(find "$BACKUP_DIR" -type f -printf '%T@\n' 2>/dev/null | sort -n | tail -1)
+  [ -n "$newest" ] || { echo 9999; return 0; }
+  echo $(( ($1 - ${newest%.*}) / 3600 ))
+}
+
+disk_pct() { [ -n "$BACKUP_DIR" ] && [ -d "$BACKUP_DIR" ] && df --output=pcent "$BACKUP_DIR" | tail -1 | tr -dc 0-9; }
+
+tick() {
+  load_conf
+  [ -n "$URL" ] || { log "URL is not set in $CONF"; return 1; }
+  local now=${NOW:-$(date +%s)} day hour month dom fails since age pct
+  day=$(TZ=Asia/Tehran date -d "@$now" +%F); hour=$(TZ=Asia/Tehran date -d "@$now" +%-H)
+  month=$(TZ=Asia/Tehran date -d "@$now" +%Y-%m); dom=$(TZ=Asia/Tehran date -d "@$now" +%-d)
+
+  check_health
+  put checks "$(( $(get checks 0) + 1 ))"
+  if [ "$HEALTH_OK" = 1 ]; then
+    [ -n "$HEALTH_VERSION" ] && put version "$HEALTH_VERSION"
+    if [ "$(get down_alerted 0)" = 1 ]; then
+      since=$(get down_since "$now")
+      telegram_send "✅ RouteFlow is back up after $(( (now - since + 59) / 60 )) min ($URL)" \
+        || { [ "$(get down_sms 0)" = 1 ] && sms_send "RouteFlow is back up"; }
+    fi
+    put fails 0; put down_since ""; put down_alerted 0; put down_sms 0
+  else
+    fails=$(( $(get fails 0) + 1 )); put fails "$fails"
+    put failed "$(( $(get failed 0) + 1 ))"
+    since=$(get down_since); [ -n "$since" ] || { since=$now; put down_since "$now"; }
+    if [ "$fails" -ge "$DOWN_AFTER" ] && [ "$(get down_alerted 0)" = 0 ]; then
+      put down_alerted 1
+      # Telegram unreachable: the SMS goes now instead of in 5 minutes.
+      telegram_send "🔴 RouteFlow is not answering ($URL/api/health failed $fails times in a row)" \
+        || { sms_send "RouteFlow is down: $URL" && put down_sms 1; }
+    fi
+    if [ "$(get down_alerted 0)" = 1 ] && [ "$(get down_sms 0)" = 0 ] && [ $(( now - since )) -ge "$SMS_AFTER" ]; then
+      sms_send "RouteFlow down for $(( (now - since) / 60 )) min: $URL" && put down_sms 1
+    fi
+  fi
+
+  age=$(backup_age_hours "$now")
+  if [ -n "$age" ] && [ "$age" -gt "$BACKUP_MAX_HOURS" ]; then
+    if [ "$(get backup_alerted 0)" = 0 ]; then
+      put backup_alerted 1
+      telegram_send "🟠 RouteFlow: the newest backup on the Pi is $age hours old (limit $BACKUP_MAX_HOURS)"
+      sms_send "RouteFlow backup is $age hours old"
+    fi
+  elif [ -n "$age" ]; then
+    put backup_alerted 0
+  fi
+
+  pct=$(disk_pct || true)
+  if [ -n "$pct" ] && [ "$pct" -ge "$DISK_MAX_PCT" ] && [ "$(get disk_alerted_day)" != "$day" ]; then
+    put disk_alerted_day "$day"
+    telegram_send "🟠 RouteFlow: the Pi's backup disk is $pct% full"
+  fi
+
+  if [ "$hour" -ge "$SUMMARY_HOUR" ] && [ "$(get summary_day)" != "$day" ]; then
+    put summary_day "$day"
+    telegram_send "RouteFlow daily: version $(get version ?), $(get failed 0) of $(get checks 0) checks failed since the last summary, newest backup ${age:-?} h old, Pi disk ${pct:-?}%" \
+      && { put checks 0; put failed 0; }
+  fi
+
+  if [ "$dom" = 1 ] && [ "$hour" -ge "$SUMMARY_HOUR" ] && [ "$(get test_month)" != "$month" ]; then
+    put test_month "$month"
+    cmd_test
+  fi
+  return 0
+}
+
+cmd_test() {
+  load_conf
+  local ok=0
+  telegram_send "🧪 RouteFlow monitor test: Telegram works" && ok=$((ok + 1))
+  sms_send "RouteFlow monitor test: SMS works" && ok=$((ok + 1))
+  [ "$ok" = 2 ] || log "the monthly test reached only $ok of 2 channels"
+}
+
+cmd_install() {
+  [ "$(id -u)" = 0 ] || { log "run as root"; exit 1; }
+  install -m 755 "$0" /usr/local/bin/routeflow-monitor
+  if [ ! -f "$CONF" ]; then
+    ( umask 077; cat >"$CONF" <<'CONF'
+# routeflow-monitor settings. Fill in, then run: routeflow-monitor test
+URL=https://
+TELEGRAM_BOT_TOKEN=
+TELEGRAM_CHAT_ID=
+# Telegram is filtered from inside Iran; a local proxy, e.g. socks5h://127.0.0.1:1080
+TELEGRAM_PROXY=
+# Farazsms (IPPanel Edge): access key from the panel's Developers page, a sender line, your phone.
+SMS_TOKEN=
+SMS_FROM=+98
+SMS_TO=+989
+SMS_API=https://edge.ippanel.com/v1
+# Where the server's off-site backups land on this machine (pgBackRest repo over SFTP).
+BACKUP_DIR=/srv/routeflow-pgbackrest
+SUMMARY_HOUR=9
+CONF
+    )
+    log "wrote $CONF; fill it in, then: routeflow-monitor test"
+  fi
+  cat >/etc/systemd/system/routeflow-monitor.service <<'UNIT'
+[Unit]
+Description=RouteFlow monitor (one round of checks)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/routeflow-monitor tick
+TimeoutStartSec=50
+UNIT
+  cat >/etc/systemd/system/routeflow-monitor.timer <<'UNIT'
+[Unit]
+Description=RouteFlow monitor, every minute
+
+[Timer]
+OnCalendar=*-*-* *:*:00
+AccuracySec=5s
+
+[Install]
+WantedBy=timers.target
+UNIT
+  systemctl daemon-reload
+  systemctl enable --now routeflow-monitor.timer
+}
+
+main() {
+  case "${1:-}" in
+    tick) tick ;;
+    test) cmd_test ;;
+    install) cmd_install ;;
+    *) sed -n '2,8p' "$0" | sed 's/^# \{0,1\}//'; exit 2 ;;
+  esac
+}
+
+# Sourced by tests/routeflow-monitor.test.ts; run otherwise.
+if [ "${BASH_SOURCE[0]}" = "$0" ]; then main "$@"; fi

@@ -4,6 +4,8 @@ This is the operator's page for the PostgreSQL side (Wave P, phase 4): setting t
 
 One machine is assumed: PostgreSQL and the app together, a second machine you own for the off-site copy. Nothing here needs a paid or foreign service.
 
+The app side (release tarballs, the `routeflow` command, secrets, the monitor) is in `docs/release-and-deploy.md`.
+
 ## What you get
 
 | Piece | Where | What it does |

@@ -1,4 +1,5 @@
 -- Up Migration
+-- rf: contract
 -- Shareholders, their fixed shares, and the company's legal form (company-and-shareholders, step 3).
 --
 -- A shareholder is a `parties` row of kind 'shareholder' (made in 1761600000000), optionally linked to a
