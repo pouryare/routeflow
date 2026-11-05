@@ -65,12 +65,16 @@ describe("expense receipt photo", () => {
     expect(res.headers.get("content-type")).toBe("image/webp");
     expect((await journalsWithReceipt(1, [expense, sale])).has(expense)).toBe(true);
   });
-  it("a second upload replaces the first (one receipt per expense, the old files go)", async () => {
+  it("a second upload replaces the first (one receipt per expense, the old files go through the trash)", async () => {
     const before = (await getDb().prepare("SELECT file_stem FROM expense_receipts WHERE journal_id = ?").get(expense) as { file_stem: string }).file_stem;
     expect((await upload(expense)).status).toBe(201);
     const rows = await getDb().prepare("SELECT file_stem FROM expense_receipts WHERE journal_id = ?").all(expense) as { file_stem: string }[];
     expect(rows).toHaveLength(1);
     expect(rows[0].file_stem).not.toBe(before);
+    // In the 30-day trash first (docs/storage.md, decision 12); the purge removes the files.
+    expect((await getDb().prepare("SELECT deleted_at FROM stored_files WHERE stem = ?").get(before) as { deleted_at: string | null }).deleted_at).toBeTruthy();
+    const { purgeTrash } = await import("@/lib/storage/maintenance");
+    await purgeTrash(1, new Date(Date.now() + 31 * 86_400_000));
     expect(fs.existsSync(photoFilePath(before, "webp"))).toBe(false);
   });
   it("only an expense of your own organisation takes a receipt", async () => {

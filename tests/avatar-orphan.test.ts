@@ -67,7 +67,7 @@ describe("an avatar file left behind by a re-upload", () => {
   });
 });
 describe("the upload route, end to end", () => {
-  it("replaces the photograph and removes the files the previous one left", async () => {
+  it("replaces the photograph and the previous one leaves through the trash", async () => {
     // The unit tests above prove the helper works. This proves the ROUTE calls it, in the
     // right order — reading the old stem before setAvatar overwrites the only record of it.
     process.env.ROUTEFLOW_DB_PATH = path.join(
@@ -131,8 +131,15 @@ describe("the upload route, end to end", () => {
     ).avatar_stem;
     expect(second).not.toBe(first);
     expect(fs.existsSync(avatarPaths(second, "webp"))).toBe(true);
+    // The previous one is in the 30-day trash (docs/storage.md, decision 12), not orphaned: the purge
+    // after 30 days removes both encodings.
+    const trashed = await db.prepare("SELECT deleted_at FROM stored_files WHERE stem = ?").get(first) as { deleted_at: string | null };
+    expect(trashed.deleted_at, "the previous avatar was orphaned").toBeTruthy();
+    const { purgeTrash } = await import("@/lib/storage/maintenance");
+    expect(await purgeTrash(org, new Date(Date.now() + 31 * 86_400_000))).toBe(1);
     expect(fs.existsSync(avatarPaths(first, "webp")), "the previous avatar was orphaned").toBe(false);
     expect(fs.existsSync(avatarPaths(first, "avif")), "the previous avatar was orphaned").toBe(false);
+    expect(fs.existsSync(avatarPaths(second, "webp"))).toBe(true);
 
     // And the shared preset directory is untouched by any of it.
     for (const p of AVATAR_PRESETS) {

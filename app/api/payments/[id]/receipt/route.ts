@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isId } from "@/lib/inputChecks";
 import crypto from "node:crypto";
-import fs from "node:fs/promises";
 import sharp from "sharp";
 import { requireRole } from "@/lib/session";
 import { getPayment, attachReceiptPhoto, PaymentError } from "@/lib/repo/payments";
-import { ensurePhotosDir, photoFilePath } from "@/lib/photos";
+import { discardFile, readFile, saveFile, storageRefusal } from "@/lib/storage/files";
 import { MANAGE_ROLES } from "@/lib/roles";
 
 const MAX_UPLOAD_BYTES = 20 * 1024 * 1024;
@@ -20,14 +19,11 @@ export async function GET(req: NextRequest, ctx: RouteContext<"/api/payments/[id
   if (!payment || !payment.receipt_photo_stem) {
     return NextResponse.json({ ok: false, error: "رسیدی ثبت نشده است" }, { status: 404 });
   }
-  try {
-    const bytes = await fs.readFile(photoFilePath(payment.receipt_photo_stem, "webp"));
-    return new NextResponse(new Uint8Array(bytes), {
-      headers: { "Content-Type": "image/webp", "Cache-Control": "private, max-age=86400" },
-    });
-  } catch {
-    return NextResponse.json({ ok: false, error: "فایل رسید پیدا نشد" }, { status: 404 });
-  }
+  const bytes = await readFile(payment.receipt_photo_stem, "webp", "receipt");
+  if (!bytes) return NextResponse.json({ ok: false, error: "فایل رسید پیدا نشد" }, { status: 404 });
+  return new NextResponse(new Uint8Array(bytes), {
+    headers: { "Content-Type": "image/webp", "Cache-Control": "private, max-age=86400" },
+  });
 }
 
 export async function POST(req: NextRequest, ctx: RouteContext<"/api/payments/[id]/receipt">) {
@@ -65,12 +61,18 @@ export async function POST(req: NextRequest, ctx: RouteContext<"/api/payments/[i
     return NextResponse.json({ ok: false, error: "فایل تصویر قابل پردازش نیست" }, { status: 422 });
   }
 
-  ensurePhotosDir();
-  await fs.writeFile(photoFilePath(stem, "webp"), webpBuffer);
+  try {
+    await saveFile(guard.session.organizationId, "receipt", stem, [{ ext: "webp", body: webpBuffer, contentType: "image/webp" }]);
+  } catch (e) {
+    const r = storageRefusal(e);
+    if (r) return NextResponse.json({ ok: false, error: r.error }, { status: r.status });
+    throw e;
+  }
 
   try {
     await attachReceiptPhoto(guard.session.organizationId, Number(id), stem, caption);
   } catch (e) {
+    await discardFile(stem);
     if (e instanceof PaymentError) {
       return NextResponse.json({ ok: false, error: e.message }, { status: 409 });
     }

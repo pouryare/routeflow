@@ -68,6 +68,8 @@ CREATE TABLE stored_files (
   held_since text,
   deleted_at text,
   deleted_by bigint REFERENCES users(id),
+  trash_ref text CHECK (length(trash_ref) <= 1000),
+  last_move_id bigint,
   created_at text NOT NULL
 );
 CREATE INDEX ix_stored_files_storage ON stored_files(storage_id);

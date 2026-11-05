@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { encodeImage, PHOTO_MAX_EDGE } from "@/lib/imagePipeline";
 import crypto from "node:crypto";
-import fs from "node:fs/promises";
 import type { EntityType } from "@/lib/db";
 import { addPhoto, listPhotos } from "@/lib/repo/photosAdmin";
 import { canReachEntity, entityGroupFilter, requireRole } from "@/lib/session";
-import { ensurePhotosDir, photoFilePath } from "@/lib/photos";
+import { saveFile, storageRefusal } from "@/lib/storage/files";
 import { MANAGE_ROLES } from "@/lib/roles";
 
 // photos is option 2: a photo is *of* a customer, district or facility, so it inherits
@@ -68,9 +67,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "فایل تصویر قابل پردازش نیست" }, { status: 422 });
   }
 
-  ensurePhotosDir();
-  await fs.writeFile(photoFilePath(stem, "avif"), avifBuffer);
-  await fs.writeFile(photoFilePath(stem, "webp"), webpBuffer);
+  try {
+    await saveFile(guard.session.organizationId, "photo", stem, [
+      { ext: "avif", body: avifBuffer, contentType: "image/avif" },
+      { ext: "webp", body: webpBuffer, contentType: "image/webp" },
+    ]);
+  } catch (e) {
+    const r = storageRefusal(e);
+    if (r) return NextResponse.json({ ok: false, error: r.error }, { status: r.status });
+    throw e;
+  }
 
   const id = await addPhoto(entityType, entityId, stem, caption, { name: guard.session.user.display_name, id: guard.session.user.id });
 

@@ -1435,12 +1435,14 @@ export interface StoredFiles {
   file_kind: string;
   held_since: string | null;
   id: Generated<number>;
+  last_move_id: number | null;
   mirror_state: Generated<string>;
   mirror_storage_id: number | null;
   month: string;
   organization_id: number;
   stem: string;
   storage_id: number | null;
+  trash_ref: string | null;
   upload_state: Generated<string>;
   variants: string;
 }

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { readAvatarStem } from "@/lib/repo/avatars";
 import { getSession, orgScopeId } from "@/lib/session";
 import { AVATAR_PRESETS, readAvatarBytes, safePresetKey } from "@/lib/avatarStore";
+import { readFile } from "@/lib/storage/files";
 
 /** The encoded bytes for one person's avatar.
  *
@@ -48,7 +49,8 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
     return NextResponse.json({ ok: false, error: "عکس پیدا نشد" }, { status: 404 });
   }
 
-  const bytes = await readAvatarBytes(fileStem, format);
+  // Presets are the app's own pictures on the server; a person's photo is a company file.
+  const bytes = presetKey ? await readAvatarBytes(fileStem, format) : await readFile(fileStem, format, "avatar");
   if (!bytes) {
     return NextResponse.json({ ok: false, error: "عکس پیدا نشد" }, { status: 404 });
   }

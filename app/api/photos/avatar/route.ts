@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "node:crypto";
-import fs from "node:fs/promises";
 import { encodeImage, AVATAR_MAX_EDGE } from "@/lib/imagePipeline";
-import { ensureAvatarDir, avatarPaths, removeAvatarFiles } from "@/lib/avatarStore";
+import { isPresetStem } from "@/lib/avatarStore";
+import { saveFile, storageRefusal, trashFile } from "@/lib/storage/files";
 import { requireRole } from "@/lib/session";
 import { avatarUserInOrg, setAvatar, readAvatarStem } from "@/lib/repo/avatars";
 import { OWNER_ROLES } from "@/lib/roles";
@@ -58,11 +58,16 @@ export async function POST(req: NextRequest) {
   // A random stem, never the user id and never the username: the filename must not be
   // guessable from the row, and a username is often someone's name in Latin letters.
   const stem = crypto.randomUUID();
-  await ensureAvatarDir();
-  await Promise.all([
-    fs.writeFile(avatarPaths(stem, "avif"), encoded.avif),
-    fs.writeFile(avatarPaths(stem, "webp"), encoded.webp),
-  ]);
+  try {
+    await saveFile(guard.session.organizationId, "avatar", stem, [
+      { ext: "avif", body: encoded.avif, contentType: "image/avif" },
+      { ext: "webp", body: encoded.webp, contentType: "image/webp" },
+    ]);
+  } catch (e) {
+    const r = storageRefusal(e);
+    if (r) return NextResponse.json({ ok: false, error: r.error }, { status: r.status });
+    throw e;
+  }
 
   // The row is written here rather than by a second client PATCH: one request, one outcome,
   // and no window in which the bytes exist but nothing points at them.
@@ -73,10 +78,12 @@ export async function POST(req: NextRequest) {
   const previousStem = await readAvatarStem(userId, guard.session.organizationId);
   await setAvatar(userId, guard.session.organizationId, `/api/users/${userId}/avatar`, stem);
 
-  // Only now that the row points at the new files is it safe to drop the old ones. A
-  // re-upload used to strand two files per upload, forever. Failures here are swallowed by
-  // removeAvatarFiles: a stranded file is untidy, and must not fail a good upload.
-  await removeAvatarFiles(previousStem);
+  // Only now that the row points at the new files is it safe to drop the old ones: they go to the
+  // 30-day trash (a re-upload used to strand two files per upload, forever). A preset is shared by
+  // everyone using it and is never removed.
+  if (previousStem && !isPresetStem(previousStem)) {
+    await trashFile(previousStem, "avatar", guard.session.user.id, { table: "users", user_id: userId }).catch(() => {});
+  }
 
   return NextResponse.json({ ok: true, avatar_url: `/api/users/${userId}/avatar` });
 }
