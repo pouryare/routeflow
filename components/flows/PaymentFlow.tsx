@@ -1,5 +1,7 @@
 "use client";
 
+import { useMyPosition } from "@/components/MyPositionProvider";
+import { withPlace } from "@/lib/entryPlace";
 import { useEffect, useMemo, useState } from "react";
 import TapFlow, { type CustomStepApi } from "@/components/tapflow/TapFlow";
 import DateStep from "@/components/tapflow/DateStep";
@@ -67,9 +69,10 @@ export default function PaymentFlow({
   }, [customers, customerId, method, today, lastMethod]);
 
   const toast = useToast();
+  const { position } = useMyPosition();
   const { state, setState, onSaved, restart } = useFlowHost(paymentFlow, ctx, {
     send: async (st) => {
-      const req = paymentRequest(ctx, st);
+      const req = withPlace(paymentRequest(ctx, st), position);
       writeLastMethod("payment", st.values.method);
       /* With no signal a receipt or a cheque is a FACT that already happened: it goes into the device
          outbox and is sent when the connection returns. */

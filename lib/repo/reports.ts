@@ -454,8 +454,10 @@ export async function recentExpenses(organizationId: number, limit = 30): Promis
     .prepare(
       `SELECT j.id AS journalId, j.posted_at AS postedAt, a.id AS accountId, a.name_fa AS categoryFa,
               e.amount_toman AS amountToman, j.memo AS memo, u.display_name AS enteredBy,
-              EXISTS (SELECT 1 FROM expense_receipts x WHERE x.journal_id = j.id AND x.organization_id = j.organization_id) AS hasReceipt
+              EXISTS (SELECT 1 FROM expense_receipts x WHERE x.journal_id = j.id AND x.organization_id = j.organization_id) AS hasReceipt,
+              pl.lat AS placeLat, pl.lng AS placeLng
          FROM journals j
+         LEFT JOIN entry_places pl ON pl.organization_id = j.organization_id AND pl.kind = 'expense' AND pl.ref_id = j.id
          JOIN ledger_entries e ON e.journal_id = j.id AND e.side = 'D'
          JOIN accounts a ON a.id = e.account_id AND a.type = 'EXPENSE'
          LEFT JOIN users u ON u.id = j.created_by
@@ -464,8 +466,11 @@ export async function recentExpenses(organizationId: number, limit = 30): Promis
         ORDER BY j.posted_at DESC, j.id DESC
         LIMIT ?`
     )
-    .all(organizationId, limit) as (Omit<RecentExpense, "hasReceipt"> & { hasReceipt: unknown })[];
-  return rows.map((r) => ({ ...r, journalId: Number(r.journalId), accountId: Number(r.accountId), amountToman: Number(r.amountToman), hasReceipt: !!r.hasReceipt }));
+    .all(organizationId, limit) as (Omit<RecentExpense, "hasReceipt" | "place"> & { hasReceipt: unknown; placeLat: number | null; placeLng: number | null })[];
+  return rows.map(({ placeLat, placeLng, ...r }) => ({
+    ...r, journalId: Number(r.journalId), accountId: Number(r.accountId), amountToman: Number(r.amountToman), hasReceipt: !!r.hasReceipt,
+    place: placeLat === null || placeLng === null ? null : { lat: Number(placeLat), lng: Number(placeLng) },
+  }));
 }
 
 /** Who entered what. Accountability, not a second set of books: a group_manager may enter

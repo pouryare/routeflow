@@ -462,6 +462,17 @@ export interface DriverCommissionRates {
   valid_from: string;
 }
 
+export interface EntryPlaces {
+  accuracy_m: number | null;
+  created_at: string;
+  id: Generated<number>;
+  kind: string;
+  lat: number;
+  lng: number;
+  organization_id: number;
+  ref_id: number;
+}
+
 export interface Events {
   actor_user_id: number | null;
   created_at: string;
@@ -1652,6 +1663,7 @@ export interface DB {
   districts: Districts;
   driver_commission_payments: DriverCommissionPayments;
   driver_commission_rates: DriverCommissionRates;
+  entry_places: EntryPlaces;
   events: Events;
   expense_receipts: ExpenseReceipts;
   facilities: Facilities;

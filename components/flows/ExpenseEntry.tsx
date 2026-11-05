@@ -10,6 +10,8 @@ import FilterChips from "@/components/mobile/FilterChips";
 import { autoOpenFlow, currentSearch } from "@/lib/flows/autoOpen";
 import ExpenseFlow, { type ExpenseCategory, type ExpenseRepeat } from "./ExpenseFlow";
 import BooksButton from "@/components/accounting/BooksButton";
+import Link from "next/link";
+import { placeHref } from "@/lib/entryPlace";
 
 const BTN =
   "inline-flex min-h-[44px] items-center justify-center gap-[var(--space-2)] rounded-[var(--radius-md)] border border-[var(--border)] px-[var(--space-4)] text-[length:var(--text-sm)] text-[var(--text)]";
@@ -84,7 +86,15 @@ export default function ExpenseEntry({ categories, suppliers, recent = [], canSe
                         </>
                       ) : null}
                     </p>
-                    {canSeeBooks ? <BooksButton doc="expense" id={r.journalId} /> : null}
+                    <span className="flex flex-wrap items-center gap-[var(--space-2)]">
+                      {r.place ? (
+                        <Link href={placeHref(r.place)} className="inline-flex min-h-[44px] items-center gap-[var(--space-1)] text-[length:var(--text-xs)] text-[var(--text-muted)]">
+                          <Icon name="map-pin" size="sm" />
+                          جای ثبت
+                        </Link>
+                      ) : null}
+                      {canSeeBooks ? <BooksButton doc="expense" id={r.journalId} /> : null}
+                    </span>
                   </div>
                   <button
                     type="button"

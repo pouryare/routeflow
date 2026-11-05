@@ -138,6 +138,8 @@ export interface RecentExpense {
   memo: string | null;
   hasReceipt: boolean;
   enteredBy: string | null;
+  /** Z9: where the phone was when it was entered. */
+  place?: { lat: number; lng: number } | null;
 }
 
 /** Z7: an expense the owner should look at again: no receipt photo, or nothing written about it

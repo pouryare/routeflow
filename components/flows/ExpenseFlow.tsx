@@ -1,5 +1,7 @@
 "use client";
 
+import { useMyPosition } from "@/components/MyPositionProvider";
+import { withPlace } from "@/lib/entryPlace";
 import { Button } from "@heroui/react";
 import { FileTrigger } from "react-aria-components";
 import { SkipButton } from "@/components/tapflow/Answer";
@@ -66,13 +68,14 @@ export default function ExpenseFlow({
   /* The receipt picture lives here, not in the flow state: a File is not an answer. It is taken on
      the photo step and sent to the new expense once the expense itself is saved. */
   const receipt = useRef<File | null>(null);
+  const { position } = useMyPosition();
   const { state, setState, onSaved, restart } = useFlowHost(expenseFlow, ctx, {
     send: async (st) => {
       writeLastMethod("expense", st.values.method);
       const res = await fetch("/api/accounting/expenses", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(expenseRequest(ctx, st)),
+        body: JSON.stringify(withPlace({ body: expenseRequest(ctx, st) }, position).body),
       });
       const json = (await res.json().catch(() => ({}))) as { error?: string; id?: number };
       if (!res.ok) return { ok: false, error: json.error };

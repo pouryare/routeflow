@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { parsePlace } from "@/lib/entryPlace";
+import { entryPlacesFor, saveEntryPlace } from "@/lib/repo/entryPlaces";
 import { isId } from "@/lib/inputChecks";
 import { canReachGroup, requireRole } from "@/lib/session";
 import {
@@ -26,21 +28,17 @@ export async function GET(req: NextRequest) {
   const customer_id = customerId ? Number(customerId) : undefined;
   // Owners and the platform key see the organisation's receipts; a group manager their group's;
   // a salesperson the ones they took or whose customer they sold to.
-  if (isOwner(session.role)) {
-    return NextResponse.json({
-      ok: true,
-      payments: await listPayments(session.organizationId, customer_id ? { customer_id } : undefined),
-    });
-  }
-  return NextResponse.json({
-    ok: true,
-    payments: await listPaymentsScoped(session.organizationId, {
-      customer_id,
-      ...(session.role === "group_manager"
-        ? { groupIds: session.groupId === null ? [] : [session.groupId] }
-        : { salespersonId: session.user.id }),
-    }),
-  });
+  const payments = isOwner(session.role)
+    ? await listPayments(session.organizationId, customer_id ? { customer_id } : undefined)
+    : await listPaymentsScoped(session.organizationId, {
+        customer_id,
+        ...(session.role === "group_manager"
+          ? { groupIds: session.groupId === null ? [] : [session.groupId] }
+          : { salespersonId: session.user.id }),
+      });
+  // Z9: where each was taken, when the phone said.
+  const places = await entryPlacesFor(session.organizationId, "payment", payments.map((p) => p.id));
+  return NextResponse.json({ ok: true, payments: payments.map((p) => ({ ...p, place: places.get(p.id) ?? null })) });
 }
 
 export async function POST(req: NextRequest) {
@@ -55,6 +53,7 @@ export async function POST(req: NextRequest) {
     reference?: string | null;
     note?: string | null;
     allocations?: AllocationInput[];
+    place?: unknown;
   } | null;
 
   if (
@@ -85,6 +84,7 @@ export async function POST(req: NextRequest) {
       note: body.note ?? null,
       allocations: body.allocations,
     });
+    await saveEntryPlace(guard.session.organizationId, "payment", id, parsePlace(body.place));
     return NextResponse.json({ ok: true, id }, { status: 201 });
   } catch (e) {
     if (e instanceof PaymentError) {

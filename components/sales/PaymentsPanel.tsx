@@ -1,5 +1,7 @@
 "use client";
 
+import { placeHref } from "@/lib/entryPlace";
+import Link from "next/link";
 import BooksButton from "@/components/accounting/BooksButton";
 import CardTable from "@/components/CardTable";
 import { FieldInput } from "@/components/FieldInput";
@@ -377,7 +379,15 @@ export default function PaymentsPanel({ customers, canSeeBooks = false }: { cust
                           ) : null}
                         </td>
                         <td className="p-2">{METHOD_LABEL[p.method] ?? p.method}</td>
-                        <td className="p-2">{faJalaliDateTime(p.received_at)}</td>
+                        <td className="p-2">
+                          {faJalaliDateTime(p.received_at)}
+                          {p.place ? (
+                            <Link href={placeHref(p.place)} aria-label="جای ثبت روی نقشه" title="جای ثبت روی نقشه"
+                              className="ms-1 inline-flex min-h-11 min-w-11 items-center justify-center align-middle text-text-muted hover:text-accent">
+                              <Icon name="map-pin" size="sm" />
+                            </Link>
+                          ) : null}
+                        </td>
                         <td className="p-2 text-left">
                           {/* B3: a voided payment still has its books (the receipt and its reversal). */}
                           {canSeeBooks && p.voided_at ? <BooksButton doc="payment" id={p.id} /> : null}
