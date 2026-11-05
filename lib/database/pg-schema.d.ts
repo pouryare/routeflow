@@ -903,6 +903,7 @@ export interface Organizations {
   created_at: string;
   discount_auto_pass_pct: Generated<number>;
   discount_commission_pct: Generated<number>;
+  effects: Generated<string>;
   id: Generated<number>;
   legal_form: Generated<string>;
   name: string;

@@ -5501,3 +5501,10 @@ html[data-hide-money="1"] .odo { filter: blur(7px); }
 .lightcard::before { content: ""; position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity 200ms ease;
   background: radial-gradient(160px circle at var(--lx, 50%) var(--ly, 50%), color-mix(in srgb, var(--accent) 18%, transparent), transparent 70%); }
 .lightcard:hover::before, .lightcard:active::before { opacity: 1; }
+
+/* Effects off (company switch, own switch, reduced motion or a weak phone: components/FxSync.tsx sets this). */
+html[data-fx="off"] .coin__face { animation: none; }
+html[data-fx="off"] .foldbill__inner::after { display: none; }
+html[data-fx="off"] .foldbill { filter: none !important; }
+html[data-fx="off"] .lightcard::before { display: none; }
+html[data-fx="off"] .photoacc__item { transition: none; }

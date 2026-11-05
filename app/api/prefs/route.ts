@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireRole } from "@/lib/session";
 import { getPrefs, setPrefs, type BoardPrefs } from "@/lib/repo/prefs";
 import { soundSkinFor } from "@/lib/repo/soundSkin";
+import { effectsFor } from "@/lib/repo/effects";
 
 /** Self-service UI prefs. Every authenticated non-platform role may read and write their
  *  own; there is no cross-user access here. GET also carries the company's sound skin (F117),
@@ -15,6 +16,7 @@ export async function GET(req: NextRequest) {
     ok: true,
     prefs: await getPrefs(guard.session.user.id),
     soundSkin: await soundSkinFor(guard.session.organizationId),
+    effects: await effectsFor(guard.session.organizationId),
   });
 }
 

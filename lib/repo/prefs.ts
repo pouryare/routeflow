@@ -11,6 +11,8 @@ export interface BoardPrefs {
   whats_new_seen?: string;
   /** F117: this person's sound switch (lib/sound.ts). Unset is the default, on. */
   sound?: "on" | "off";
+  /** This person's own switch for decorative effects (lib/fx.ts). Unset follows the company and the phone. */
+  effects?: "on" | "off";
   /** The customers this person hearted (the CRM list's «دلخواه‌ها»). Whole ids only, newest last. */
   favourite_customers?: number[];
 }
@@ -27,6 +29,7 @@ const ALLOWED: Record<Exclude<keyof BoardPrefs, "favourite_customers">, readonly
   board_default_view: ["status", "time", "workflow"],
   whats_new_seen: WHATS_NEW_VERSIONS,
   sound: ["on", "off"],
+  effects: ["on", "off"],
 };
 
 export async function getPrefs(userId: number): Promise<BoardPrefs> {
