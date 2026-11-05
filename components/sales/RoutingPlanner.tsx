@@ -6,6 +6,7 @@ import { friendlyError } from "@/lib/userMessage";
 import { useState } from "react";
 import { faNum } from "@/lib/format";
 import { Icon } from "@/components/meridian/Icon";
+import { useUndoableAction } from "@/components/tapflow/useUndoableAction";
 
 interface Assignment {
   vehicle_key: number;
@@ -34,6 +35,8 @@ export default function RoutingPlanner({ vehicleNames }: { vehicleNames: Record<
   const [runIds, setRunIds] = useState<number[]>([]);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  // FB2: commit and freeze are held for the 5-second undo instead of firing at once.
+  const { run: runUndoable, pending } = useUndoableAction();
 
   async function build() {
     setBusy(true);
@@ -53,31 +56,36 @@ export default function RoutingPlanner({ vehicleNames }: { vehicleNames: Record<
     }
   }
 
-  async function commit() {
+  function commit() {
     if (!plan) return;
-    setBusy(true);
-    try {
-      const res = await fetch("/api/sales/routing/commit", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ plan }),
-      });
-      const j = await res.json();
-      if (res.ok) setRunIds(j.run_ids);
-      else setMsg(friendlyError(j.error, "مسیرها قطعی نشدند؛ دوباره تلاش کنید"));
-    } finally {
-      setBusy(false);
-    }
+    runUndoable({
+      message: "مسیرها تثبیت شد",
+      send: async () => {
+        const res = await fetch("/api/sales/routing/commit", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ plan }),
+        });
+        const j = await res.json().catch(() => ({}));
+        if (!res.ok) return { ok: false, error: j.error };
+        setRunIds(j.run_ids);
+        return { ok: true };
+      },
+      failure: "مسیرها قطعی نشدند؛ دوباره تلاش کنید",
+    });
   }
 
-  async function freeze(runId: number) {
-    setBusy(true);
-    try {
-      await fetch(`/api/sales/runs/${runId}/freeze`, { method: "POST" });
-      setRunIds((ids) => ids.filter((i) => i !== runId));
-    } finally {
-      setBusy(false);
-    }
+  function freeze(runId: number) {
+    runUndoable({
+      message: "مسیر قفل شد",
+      send: async () => {
+        const res = await fetch(`/api/sales/runs/${runId}/freeze`, { method: "POST" });
+        if (!res.ok) return { ok: false, error: ((await res.json().catch(() => ({}))) as { error?: string }).error };
+        setRunIds((ids) => ids.filter((i) => i !== runId));
+        return { ok: true };
+      },
+      failure: "مسیر قفل نشد؛ دوباره تلاش کنید",
+    });
   }
 
   return (
@@ -86,7 +94,7 @@ export default function RoutingPlanner({ vehicleNames }: { vehicleNames: Record<
         <JalaliDateInput value={date} onChange={setDate} required aria-label="تاریخ مسیریابی" />
         <button
           type="button"
-          disabled={busy}
+          disabled={busy || pending}
           onClick={() => void build()}
           className="rounded-[var(--radius-md)] border border-[var(--border)] px-[var(--space-3)] py-[var(--space-1)] hover:bg-[var(--surface-2)] disabled:opacity-50"
         >
@@ -96,8 +104,8 @@ export default function RoutingPlanner({ vehicleNames }: { vehicleNames: Record<
         {plan && (
           <button
             type="button"
-            disabled={busy}
-            onClick={() => void commit()}
+            disabled={busy || pending}
+            onClick={commit}
             className="rounded-[var(--radius-md)] bg-[var(--accent)] px-[var(--space-3)] py-[var(--space-1)] text-white disabled:opacity-50"
           >
             <Icon name="pin" size="md" />
@@ -155,8 +163,8 @@ export default function RoutingPlanner({ vehicleNames }: { vehicleNames: Record<
               {runIds[i] !== undefined && (
                 <button
                   type="button"
-                  disabled={busy}
-                  onClick={() => void freeze(runIds[i])}
+                  disabled={busy || pending}
+                  onClick={() => freeze(runIds[i])}
                   className="mt-[var(--space-2)] rounded-[var(--radius-md)] border border-[var(--border)] px-[var(--space-2)] py-[var(--space-1)] text-[length:var(--text-xs)]"
                 >
                   <Icon name="check" size="sm" />
