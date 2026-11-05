@@ -190,3 +190,6 @@ Example: a driver starts «ثبت چک». The run shows a demo stop «سوپرم
 10. **Fresh after an update.** When a release changes a screen, the what's-new card offers «ببینید چه عوض شد» and runs a 2-step tour of just the change.
 11. **Offline-proof.** Tutorials, demo data and voice clips ship in the app bundle, so a driver in a basement can still learn.
 12. **Tutorial health for the owner.** The owner sees which steps people skip or quit on most. A step everyone quits is a confusing screen, and that's worth fixing in the screen itself.
+
+## 13. Voice, decided 2026-11-05
+Owner chose ElevenLabs **v4** with the **Jessica** voice, reading the diacritic `say` text of each step (idea I3). Free voices tried first: Piper Gyro (fast, free), Kamtera (not loaded: pickle files), Chatterbox Persian (CC BY-NC), Aava (garbled, 4 minutes a sentence on CPU), MOSS (not run). Decision 10.19: the app is for the owner's own use, so licence limits on commercial use no longer block a choice. Clips are made once by `scripts/tutorial-voice.mjs` with `ELEVENLABS_API_KEY` in the environment; the free 10,000 credits cover about a fifth of the text, so a paid month or a priority order is needed.

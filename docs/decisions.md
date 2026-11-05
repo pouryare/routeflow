@@ -378,3 +378,6 @@ Swipe actions 1 and 2, text field, send 1 and 2, slider, rating, checkbox 1 and 
 | Bell number | Yes, it pops; no preview bubble |
 | Send clip 1, swipe to reply, undo send, voice message | Later, with chat (roadmap M1) |
 | Everything else in the clips | No (decoration, or already built: swipe delete and archive, volume, card swipe, tri-state, pop burst, done check, photo select, stacked toasts, swipe dismiss, copied) |
+
+### 10.19 Own use only, not for sale (2026-11-05, owner decision)
+The owner no longer plans to sell RouteFlow: for now it is for his own company only. So a library or service whose licence forbids commercial use or asks for attribution is allowed (for example the non-commercial Chatterbox Persian voice and ElevenLabs' free tier), and the AGPL tour libraries are no longer ruled out for licence reasons alone. Paid foreign services stay a risk for access and payment from Iran, so the owner is asked before any recurring cost. If the plan to sell returns, re-check every licence taken on under this decision. Tutorial voice: ElevenLabs **v4**, voice **Jessica**, always from the diacritic `say` text; clips made at build time, so the server never calls ElevenLabs and the key is never stored in the repo.
