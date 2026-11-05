@@ -21,7 +21,7 @@ export default function CreditDeckEntry({ approvals }: { approvals: PendingAppro
     undoable.run({
       message: `سفارش ${a.order_no} · ${verdict === "approved" ? "اعتبار تأیید شد" : "درخواست رد شد"}`,
       send: async () => {
-        const res = await fetch(`/api/admin/credit-approvals/${a.id}/decide`, {
+        const res = await fetch(`/api/sales/credit-approvals/${a.id}/decide`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(creditRequest(verdict)),

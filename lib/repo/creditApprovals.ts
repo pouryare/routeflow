@@ -61,15 +61,25 @@ export async function requestApproval(
   );
 }
 
+/** UIB-A3: credit approval lives under /api/sales (proxy.ts closes /api/admin to group managers),
+ *  and a group manager reaches only their own group's requests; an owner reaches all of them. */
+export const creditScopeOf = (s: { role: string; groupId: number | null }): number | null | undefined =>
+  s.role === "group_manager" ? s.groupId : undefined;
+
 export async function decide(
   organizationId: number,
   id: number,
   verdict: "approved" | "rejected",
   decidedBy: number,
-  reason?: string
+  reason?: string,
+  /** A group manager's own group: they decide only their group's orders (UIB-A3). Left out for an owner. */
+  scopeGroupId?: number | null
 ): Promise<void> {
   const row = await creditApprovalsRepo.get(organizationId, id);
   if (!row) throw new CreditApprovalError("درخواست پیدا نشد");
+  if (scopeGroupId !== undefined && (await orderGroupOf(organizationId, row.order_id)) !== scopeGroupId) {
+    throw new CreditApprovalError("درخواست پیدا نشد");
+  }
   if (row.status !== "pending") {
     throw new CreditApprovalError("این درخواست قبلاً تعیین‌تکلیف شده است");
   }
@@ -115,13 +125,25 @@ registerOrderEffectHandlers({
   },
 });
 
+async function orderGroupOf(organizationId: number, orderId: number): Promise<number | null> {
+  const r = await getDb()
+    .prepare("SELECT group_id FROM orders WHERE id = ? AND organization_id = ?")
+    .get(orderId, organizationId) as { group_id: number | null } | undefined;
+  return r ? (r.group_id === null ? null : Number(r.group_id)) : null;
+}
+
 export async function listApprovals(
   organizationId: number,
-  status?: CreditApprovalRow["status"]
+  status?: CreditApprovalRow["status"],
+  scopeGroupId?: number | null
 ): Promise<CreditApprovalRow[]> {
-  return status
+  const rows = status
     ? await creditApprovalsRepo.list(organizationId, { status } as Partial<CreditApprovalRow>)
     : await creditApprovalsRepo.list(organizationId);
+  if (scopeGroupId === undefined) return rows;
+  const out: CreditApprovalRow[] = [];
+  for (const r of rows) if ((await orderGroupOf(organizationId, r.order_id)) === scopeGroupId) out.push(r);
+  return out;
 }
 
 export interface PendingApprovalCard {
@@ -136,7 +158,9 @@ export interface PendingApprovalCard {
 
 /** The pending requests with the words a decision card needs (customer, order number), oldest
  *  first. Tenant-scoped through the approval row; the joins only add names. */
-export async function pendingForDeck(organizationId: number): Promise<PendingApprovalCard[]> {
+/** `scopeGroupId`: a group manager sees only their own group's requests (UIB-A3). */
+export async function pendingForDeck(organizationId: number, scopeGroupId?: number | null): Promise<PendingApprovalCard[]> {
+  const scoped = scopeGroupId !== undefined;
   return (await getDb()
     .prepare(
       `SELECT ca.id, o.order_no, c.business_name AS customer_name, ca.customer_balance_toman,
@@ -144,10 +168,10 @@ export async function pendingForDeck(organizationId: number): Promise<PendingApp
          FROM credit_approvals ca
          JOIN orders o ON o.id = ca.order_id
          JOIN customers c ON c.id = o.customer_id
-        WHERE ca.organization_id = ? AND ca.status = 'pending'
+        WHERE ca.organization_id = ? AND ca.status = 'pending'${scoped ? " AND o.group_id IS NOT DISTINCT FROM ?" : ""}
         ORDER BY ca.requested_at`
     )
-    .all(organizationId))
+    .all(...((scoped ? [organizationId, scopeGroupId] : [organizationId]) as never[])))
     // Plain objects: a database row has a null prototype and cannot cross into a client component.
     .map((r) => ({ ...r })) as unknown as PendingApprovalCard[];
 }
