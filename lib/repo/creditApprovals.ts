@@ -1,4 +1,5 @@
 import { getDb } from "@/lib/db";
+import { isOwner, type Role } from "@/lib/roles";
 import { makeRepo } from "./base";
 import { advanceOrder, registerOrderEffectHandlers } from "./orders";
 
@@ -63,8 +64,8 @@ export async function requestApproval(
 
 /** UIB-A3: credit approval lives under /api/sales (proxy.ts closes /api/admin to group managers),
  *  and a group manager reaches only their own group's requests; an owner reaches all of them. */
-export const creditScopeOf = (s: { role: string; groupId: number | null }): number | null | undefined =>
-  s.role === "group_manager" ? s.groupId : undefined;
+export const creditScopeOf = (s: { role: Role; groupId: number | null }): number | null | undefined =>
+  isOwner(s.role) ? undefined : s.groupId;
 
 export async function decide(
   organizationId: number,

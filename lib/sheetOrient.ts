@@ -2,7 +2,7 @@
  *  choice per person on this device, shared by every detail sheet, so moving one moves them all. */
 export type SheetOrient = "side" | "bottom";
 
-export const SHEET_ORIENT_KEY = "rf_detail_sheet_orient";
+const SHEET_ORIENT_KEY = "rf_detail_sheet_orient";
 export const DEFAULT_SHEET_ORIENT: SheetOrient = "bottom";
 
 export function parseSheetOrient(raw: string | null | undefined): SheetOrient {

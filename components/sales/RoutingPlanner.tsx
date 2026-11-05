@@ -29,6 +29,28 @@ interface Plan {
   weather?: WeatherBlock;
 }
 
+type Result = { ok: boolean; error?: string };
+const errorOf = async (res: Response) => ((await res.json().catch(() => ({}))) as { error?: string }).error;
+
+/** The held writes behind «تثبیت» and the freeze button (FB2): they run when the undo window closes. */
+async function commitPlan(plan: Plan, setRunIds: (ids: number[]) => void): Promise<Result> {
+  const res = await fetch("/api/sales/routing/commit", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ plan }),
+  });
+  if (!res.ok) return { ok: false, error: await errorOf(res) };
+  setRunIds(((await res.json()) as { run_ids: number[] }).run_ids);
+  return { ok: true };
+}
+
+async function freezeRun(runId: number, setRunIds: (f: (ids: number[]) => number[]) => void): Promise<Result> {
+  const res = await fetch(`/api/sales/runs/${runId}/freeze`, { method: "POST" });
+  if (!res.ok) return { ok: false, error: await errorOf(res) };
+  setRunIds((ids) => ids.filter((i) => i !== runId));
+  return { ok: true };
+}
+
 export default function RoutingPlanner({ vehicleNames }: { vehicleNames: Record<number, string> }) {
   const [date, setDate] = useState(() => tehranTodayIso());
   const [plan, setPlan] = useState<Plan | null>(null);
@@ -58,34 +80,10 @@ export default function RoutingPlanner({ vehicleNames }: { vehicleNames: Record<
 
   function commit() {
     if (!plan) return;
-    runUndoable({
-      message: "مسیرها تثبیت شد",
-      send: async () => {
-        const res = await fetch("/api/sales/routing/commit", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ plan }),
-        });
-        const j = await res.json().catch(() => ({}));
-        if (!res.ok) return { ok: false, error: j.error };
-        setRunIds(j.run_ids);
-        return { ok: true };
-      },
-      failure: "مسیرها قطعی نشدند؛ دوباره تلاش کنید",
-    });
+    runUndoable({ message: "مسیرها تثبیت شد", send: () => commitPlan(plan, setRunIds), failure: "مسیرها قطعی نشدند؛ دوباره تلاش کنید" });
   }
-
   function freeze(runId: number) {
-    runUndoable({
-      message: "مسیر قفل شد",
-      send: async () => {
-        const res = await fetch(`/api/sales/runs/${runId}/freeze`, { method: "POST" });
-        if (!res.ok) return { ok: false, error: ((await res.json().catch(() => ({}))) as { error?: string }).error };
-        setRunIds((ids) => ids.filter((i) => i !== runId));
-        return { ok: true };
-      },
-      failure: "مسیر قفل نشد؛ دوباره تلاش کنید",
-    });
+    runUndoable({ message: "مسیر قفل شد", send: () => freezeRun(runId, setRunIds), failure: "مسیر قفل نشد؛ دوباره تلاش کنید" });
   }
 
   return (
