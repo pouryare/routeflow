@@ -5495,3 +5495,9 @@ html[data-hide-money="1"] .odo { filter: blur(7px); }
 .photoacc__item picture, .photoacc__item img { display: block; width: 100%; height: 100%; }
 .photoacc__item img { object-fit: cover; }
 @media (prefers-reduced-motion: reduce) { .photoacc__item { transition: none; } }
+
+/* Light card: a soft glow under the finger on the «what's new» card. Decoration: off when effects are off. */
+.lightcard { position: relative; overflow: hidden; }
+.lightcard::before { content: ""; position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity 200ms ease;
+  background: radial-gradient(160px circle at var(--lx, 50%) var(--ly, 50%), color-mix(in srgb, var(--accent) 18%, transparent), transparent 70%); }
+.lightcard:hover::before, .lightcard:active::before { opacity: 1; }
