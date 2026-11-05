@@ -22,7 +22,8 @@
     "perf:smoke": "bash scripts/perf/ci-smoke.sh",
     "db:pg:migrate": "node-pg-migrate up -m db/migrations",
     "db:pg:types": "kysely-codegen",
-    "db:pg:lint": "squawk db/migrations/*.sql"
+    "db:pg:lint": "squawk db/migrations/*.sql",
+    "voice:tutorials": "node --experimental-strip-types --no-warnings --import ./scripts/_ts-register.mjs scripts/tutorial-voice.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1162.0",
