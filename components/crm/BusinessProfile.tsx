@@ -20,6 +20,7 @@ import { isWorkingHours } from "@/lib/crm/hours";
 import { normPhone, sanitizePhoneInput } from "@/lib/crm/phone";
 import { useToast } from "@/components/ToastProvider";
 import CustomerBento from "@/components/meridian/CustomerBento";
+import CustomerName from "@/components/CustomerName";
 import CustomerPriceHistory from "@/components/PriceHistoryList";
 import BusinessDetails from "./BusinessDetails";
 import CustomerOpenItems from "./CustomerOpenItems";
@@ -122,6 +123,8 @@ export default function BusinessProfile({ initial, initialTimeline, canOrder }: 
         <span>مصرف فعلی · {usesNames(profile).join("، ") || "ثبت نشده"}</span>
         <span>زمان بازدید · {isOneOf(["morning", "afternoon", "evening", "any", "unknown"], profile.business.visit_window ?? undefined) ? VISIT_WINDOW_LABEL[profile.business.visit_window as "morning"] : "ثبت نشده"}</span>
         <span>یادداشت · {profile.business.visit_note || "ثبت نشده"}</span>
+        {profile.referrer && <span>معرف · <CustomerName id={profile.referrer.id} name={profile.referrer.name} /></span>}
+        {(profile.referred?.length ?? 0) > 0 && <span>معرفی کرده · {profile.referred!.map((r, i) => <span key={r.id}>{i > 0 && "، "}<CustomerName id={r.id} name={r.name} /></span>)}</span>}
       </div>
       {profile.canWrite && <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn ghost" style={TOUCH} disabled={busy} onClick={() => {
         const ctx: FlowContext = { ...EMPTY_CONTEXT, products: profile.products, vars: { name: profile.business.business_name } };

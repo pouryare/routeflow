@@ -4,7 +4,8 @@ import { redirect } from "next/navigation";
 import { COOKIE_NAME } from "@/lib/auth";
 import { getSessionFromCookies } from "@/lib/session";
 import { MANAGE_ROLES } from "@/lib/roles";
-import { leadSourceReport, REVENUE_WINDOW_DAYS } from "@/lib/repo/leadSources";
+import { leadSourceReport, topReferrers, REVENUE_WINDOW_DAYS } from "@/lib/repo/leadSources";
+import CustomerName from "@/components/CustomerName";
 import PageHeader from "@/components/meridian/PageHeader";
 import { faNum } from "@/lib/format";
 
@@ -19,6 +20,7 @@ export default async function LeadSourcesPage() {
   if (!MANAGE_ROLES.includes(session.role)) redirect("/sales");
 
   const rows = await leadSourceReport(session);
+  const referrers = await topReferrers(session);
   const totals = rows.reduce((t, r) => ({ leads: t.leads + r.leads, converted: t.converted + r.converted }), { leads: 0, converted: 0 });
 
   return (
@@ -64,6 +66,27 @@ export default async function LeadSourcesPage() {
                 «مشتری شد» یعنی دست‌کم یک سفارش تحویل‌شده دارد. هزینهٔ هر منبع هنوز ثبت نمی‌شود، پس بازده هزینه اینجا نیست.
               </p>
             </>
+          )}
+        </div>
+      </section>
+      <section className="kblock" dir="rtl">
+        <div className="bhead">
+          <h2>بیشترین معرفی‌ها</h2>
+        </div>
+        <div className="kblock__body">
+          {referrers.length === 0 ? (
+            <p className="text-[length:var(--text-sm)] text-[var(--text-muted)]">هنوز کسی مشتری تازه‌ای معرفی نکرده. معرف را هنگام ثبت سرنخ انتخاب کنید.</p>
+          ) : (
+            <ul className="m-0 flex list-none flex-col gap-[var(--space-2)] p-0 text-[length:var(--text-sm)]">
+              {referrers.map((r) => (
+                <li key={r.id} className="flex items-baseline justify-between gap-[var(--space-2)] border-b border-border pb-[var(--space-2)]">
+                  <CustomerName id={r.id} name={r.name} />
+                  <span className="tabular-nums text-text-muted">
+                    {faNum(r.referred)} معرفی · {faNum(r.converted)} مشتری شد
+                  </span>
+                </li>
+              ))}
+            </ul>
           )}
         </div>
       </section>

@@ -65,3 +65,28 @@ export async function leadSourceReport(session: Session): Promise<SourceRow[]> {
     }))
     .sort((a, b) => b.revenue90 - a.revenue90 || b.leads - a.leads);
 }
+
+export interface ReferrerRow {
+  id: number;
+  name: string;
+  referred: number;
+  converted: number;
+}
+
+/** S17: the customers who sent the most others, in the same scope as the report. «converted» is how
+ *  many of the referred have a delivered order. Top 10. */
+export async function topReferrers(session: Session): Promise<ReferrerRow[]> {
+  const f = crmFilter(session, "c");
+  const fulfilled = sqlStatusList(FULFILLED_ORDER_STATUSES);
+  return (await getDb()
+    .prepare(
+      `SELECT r.id, r.business_name AS name, COUNT(*) AS referred,
+              SUM(CASE WHEN EXISTS (SELECT 1 FROM orders o WHERE o.customer_id = c.id AND o.status IN (${fulfilled})) THEN 1 ELSE 0 END) AS converted
+         FROM customers c JOIN customers r ON r.id = c.referred_by_customer_id AND r.organization_id = c.organization_id
+        WHERE c.merged_into_id IS NULL${f.sql}
+        GROUP BY r.id, r.business_name
+        ORDER BY referred DESC, converted DESC, r.id
+        LIMIT 10`
+    )
+    .all(...f.params)).map((r) => ({ id: Number(r.id), name: String(r.name), referred: Number(r.referred), converted: Number(r.converted) }));
+}
