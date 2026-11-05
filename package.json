@@ -25,6 +25,7 @@
     "db:pg:lint": "squawk db/migrations/*.sql"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1162.0",
     "@heroui/react": "^3.2.6",
     "@heroui/styles": "^3.2.6",
     "@internationalized/date": "^3.12.4",

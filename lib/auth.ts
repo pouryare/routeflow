@@ -132,6 +132,26 @@ export function deriveKey(purpose: string): Buffer {
   return Buffer.from(crypto.hkdfSync("sha256", secret(), "routeflow", purpose, 32));
 }
 
+/** Encrypt a short secret for storage (AES-256-GCM under deriveKey(purpose)): TOTP secrets, storage keys. */
+export function sealSecret(purpose: string, plain: string): string {
+  const iv = crypto.randomBytes(12);
+  const cipher = crypto.createCipheriv("aes-256-gcm", deriveKey(purpose), iv);
+  const body = Buffer.concat([cipher.update(plain, "utf8"), cipher.final()]);
+  return [iv, cipher.getAuthTag(), body].map((b) => b.toString("base64url")).join(".");
+}
+
+/** The secret sealSecret stored, or null when SESSION_SECRET changed or the value is damaged. */
+export function openSecret(purpose: string, sealed: string): string | null {
+  try {
+    const [iv, tag, body] = sealed.split(".").map((p) => Buffer.from(p, "base64url"));
+    const decipher = crypto.createDecipheriv("aes-256-gcm", deriveKey(purpose), iv);
+    decipher.setAuthTag(tag);
+    return Buffer.concat([decipher.update(body), decipher.final()]).toString("utf8");
+  } catch {
+    return null;
+  }
+}
+
 export function verifySessionToken(token: string | undefined | null): boolean {
   return parseSessionToken(token) !== null;
 }

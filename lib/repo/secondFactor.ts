@@ -6,29 +6,14 @@
 
 import crypto from "node:crypto";
 import { getDb } from "@/lib/db";
-import { deriveKey } from "@/lib/auth";
+import { openSecret, sealSecret } from "@/lib/auth";
 import { newTotpSecret, otpauthUri, verifyTotp } from "@/lib/totp";
 
 const KEY_PURPOSE = "totp-secret";
 const RECOVERY_CODE_COUNT = 8;
 
-function seal(plain: string): string {
-  const iv = crypto.randomBytes(12);
-  const cipher = crypto.createCipheriv("aes-256-gcm", deriveKey(KEY_PURPOSE), iv);
-  const body = Buffer.concat([cipher.update(plain, "utf8"), cipher.final()]);
-  return [iv, cipher.getAuthTag(), body].map((b) => b.toString("base64url")).join(".");
-}
-
-function open(sealed: string): string | null {
-  try {
-    const [iv, tag, body] = sealed.split(".").map((p) => Buffer.from(p, "base64url"));
-    const decipher = crypto.createDecipheriv("aes-256-gcm", deriveKey(KEY_PURPOSE), iv);
-    decipher.setAuthTag(tag);
-    return Buffer.concat([decipher.update(body), decipher.final()]).toString("utf8");
-  } catch {
-    return null; // a changed SESSION_SECRET or a damaged value reads as "no usable secret"
-  }
-}
+const seal = (plain: string) => sealSecret(KEY_PURPOSE, plain);
+const open = (sealed: string) => openSecret(KEY_PURPOSE, sealed);
 
 interface Row {
   totp_secret: string | null;
