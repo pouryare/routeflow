@@ -49,7 +49,8 @@ export function proxy(req: NextRequest) {
     req.headers.get("x-sweep-token") === sweepToken &&
     (pathname === "/api/rules/run" ||
       pathname === "/api/analysis/refresh" ||
-      pathname === "/api/predict/refresh")
+      pathname === "/api/predict/refresh" ||
+      pathname === "/api/storages/sweep")
   ) {
     return NextResponse.next();
   }

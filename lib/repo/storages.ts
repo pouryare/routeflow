@@ -352,3 +352,80 @@ export async function listMoves(orgId: number): Promise<MoveRow[]> {
 export async function getMove(orgId: number, id: number): Promise<MoveRow | undefined> {
   return (await db().prepare("SELECT * FROM storage_moves WHERE id = ? AND organization_id = ?").get(id, orgId)) as MoveRow | undefined;
 }
+
+// ---- trash (decision 12) ----
+
+export interface TrashRow {
+  id: number;
+  stem: string;
+  file_kind: FileKind;
+  variants: string;
+  bytes: number;
+  deleted_at: string;
+  deleted_by_name: string | null;
+  trash_ref: string | null;
+}
+
+export async function listTrash(orgId: number): Promise<TrashRow[]> {
+  return (await db()
+    .prepare(
+      `SELECT f.id, f.stem, f.file_kind, f.variants, f.bytes, f.deleted_at, u.display_name AS deleted_by_name, f.trash_ref
+         FROM stored_files f LEFT JOIN users u ON u.id = f.deleted_by
+        WHERE f.organization_id = ? AND f.deleted_at IS NOT NULL ORDER BY f.deleted_at DESC LIMIT 300`
+    )
+    .all(orgId)) as unknown as TrashRow[];
+}
+
+export async function trashedFile(orgId: number, id: number): Promise<StoredFileRow | undefined> {
+  return (await db()
+    .prepare("SELECT * FROM stored_files WHERE id = ? AND organization_id = ? AND deleted_at IS NOT NULL")
+    .get(id, orgId)) as StoredFileRow | undefined;
+}
+
+export async function untrash(orgId: number, id: number): Promise<void> {
+  await db()
+    .prepare("UPDATE stored_files SET deleted_at = NULL, deleted_by = NULL, trash_ref = NULL WHERE id = ? AND organization_id = ?")
+    .run(id, orgId);
+}
+
+// ---- the platform owner's list (decision 19) ----
+
+export interface ProblemRow {
+  organization_id: number;
+  company: string;
+  storage_id: number | null;
+  storage_name: string | null;
+  problem: "no_storage" | "check_failed" | "near_full" | "held" | "file_missing";
+  detail: string | null;
+  since: string | null;
+}
+
+/** Every company's storage problems. Called under the "all" scope by the platform owner only. */
+export async function allStorageProblems(): Promise<ProblemRow[]> {
+  const weekAgo = new Date(Date.now() - 7 * 86_400_000).toISOString();
+  const hourAgo = new Date(Date.now() - 3_600_000).toISOString();
+  return (await db()
+    .prepare(
+      `SELECT o.id AS organization_id, o.name AS company, NULL::bigint AS storage_id, NULL AS storage_name, 'no_storage' AS problem,
+              NULL AS detail, NULL AS since
+         FROM organizations o WHERE NOT EXISTS (SELECT 1 FROM storage_rules r WHERE r.organization_id = o.id)
+       UNION ALL
+       SELECT s.organization_id, o.name, s.id, s.name, 'check_failed', s.last_check_error, s.last_check_at
+         FROM storages s JOIN organizations o ON o.id = s.organization_id
+        WHERE s.state <> 'removed' AND s.last_check_error IS NOT NULL
+       UNION ALL
+       SELECT s.organization_id, o.name, s.id, s.name, 'near_full', s.used_bytes || ' / ' || s.plan_bytes, s.near_full_at
+         FROM storages s JOIN organizations o ON o.id = s.organization_id
+        WHERE s.state <> 'removed' AND s.near_full_at IS NOT NULL
+       UNION ALL
+       SELECT f.organization_id, o.name, NULL, NULL, 'held', COUNT(*)::text, MIN(f.held_since)
+         FROM stored_files f JOIN organizations o ON o.id = f.organization_id
+        WHERE f.upload_state = 'held' AND f.held_since < ? GROUP BY f.organization_id, o.name
+       UNION ALL
+       SELECT e.organization_id, o.name, e.storage_id, s.name, 'file_missing', COUNT(*)::text, MAX(e.created_at)
+         FROM storage_events e JOIN organizations o ON o.id = e.organization_id LEFT JOIN storages s ON s.id = e.storage_id
+        WHERE e.kind = 'file_missing' AND e.created_at >= ? GROUP BY e.organization_id, o.name, e.storage_id, s.name
+       ORDER BY company, problem`
+    )
+    .all(hourAgo, weekAgo)) as unknown as ProblemRow[];
+}
