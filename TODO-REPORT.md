@@ -271,7 +271,7 @@ _Condensed 2026-10-23, updated 2026-10-30. Each finished piece of work is one li
 - [ ] Sheets, not checked on a real phone: the keyboard cap (iPhone Safari moves the visual viewport differently), iPhone haptics (web-haptics' hidden-switch hack), and swipe direction in the photo viewer (the library swipes left-to-right for next, not mirrored for RTL). Not done: page-shrink behind sheets (owner skipped); other forms in sheets are not marked `dirty` yet
 
 ## Next steps
--5. Owner answers the six tutorial questions (`docs/plans/tutorials-2026-11-05.md` section 9); then build the tutorial layer and the 0.1 first-steps lists as one batch
+-5. Tutorials (decided 2026-11-05, `docs/plans/tutorials-2026-11-05.md` section 10): owner picks which section-12 ideas go in 0.1; then build our layer + driver.js spotlight, demo data in the page with pretend saves, bar tour then just-in-time, ~75 tutorials drafted by the agent, before 0.1
 -4. Owner tries the 2026-11-05 motions on a phone (PR #45) and names any that feel too much; then add national code, IBAN and postal code fields with the live check when those fields are built
 -3. Owner, with an Arvan account: add a real bucket at «فضای ذخیره‌سازی», take a photo, and try the panel API for the plan total (`docs/storage.md` 8a)
 -2. Owner: buy the VPS, then on it `sudo routeflow install <tarball>` from a manual Release run, `routeflow secrets backup` into the private repo, the `deploy` user and GitHub `production` settings (`docs/release-and-deploy.md`), the monitor on the Pi; then tag `v0.1.0`
