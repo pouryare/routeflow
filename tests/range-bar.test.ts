@@ -1,6 +1,6 @@
 // Covers the model behind components/mobile/RangeBar (and the orders amount filter that uses it).
 import { describe, it, expect } from "vitest";
-import { niceStep, parseRange, inRange, boundsOf } from "@/lib/rangeBar";
+import { niceStep, parseRange, inRange, boundsOf, histogram, countIn } from "@/lib/rangeBar";
 
 describe("range bar model", () => {
   it("steps are 1, 2 or 5 times a power of ten", () => {
@@ -29,6 +29,12 @@ describe("range bar model", () => {
     const b = boundsOf([1_230_000, 48_700_000])!;
     expect(b.min).toBeLessThanOrEqual(1_230_000);
     expect(b.max).toBeGreaterThanOrEqual(48_700_000);
+  });
+  it("counts amounts per slice for the bars, and inside a range for the live count", () => {
+    const b = { min: 0, max: 100 };
+    expect(histogram([0, 10, 49, 50, 100, 200], b, 4)).toEqual([2, 1, 1, 1]);
+    expect(histogram([1, 2], { min: 5, max: 5 }, 3)).toEqual([0, 0, 0]);
+    expect(countIn([5, 10, 20, 30], [10, 20])).toBe(2);
   });
 });
 // also AmountSlider (components/mobile/AmountSlider): its value is the discount percent, 0 to 30.

@@ -21,3 +21,12 @@ export function chequeBulk<T extends { id: number; status: ChequeStatus }>(
   const ids = picked.filter((c) => CHEQUE_TRANSITIONS[c.status].includes(to)).map((c) => c.id);
   return { ids, skipped: picked.length - ids.length };
 }
+
+/** Drag select: the first tick a finger lands on decides whether the drag adds or removes (`on`), and
+ *  every tick it passes over is set to that, never flipped back and forth. */
+export function paintId(selected: ReadonlySet<number>, id: number, on: boolean): Set<number> {
+  const next = new Set(selected);
+  if (on) next.add(id);
+  else next.delete(id);
+  return next;
+}

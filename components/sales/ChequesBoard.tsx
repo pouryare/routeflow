@@ -3,6 +3,7 @@
 import BooksButton from "@/components/accounting/BooksButton";
 import { FieldInput } from "@/components/FieldInput";
 import { chequeBulk, toggleId } from "@/lib/selection";
+import { useDragSelect } from "@/lib/useDragSelect";
 import DecisionDeck from "@/components/mobile/DecisionDeck";
 import { CHEQUE_CHOICES, chequeRequest, chequesDue } from "@/lib/decisions";
 import { addDaysIso } from "@/lib/flows/dates";
@@ -176,6 +177,8 @@ export default function ChequesBoard({ customers, canSeeBooks = false }: { custo
   /* Selection mode: a long press on a card (or «انتخاب چند چک») starts it; a tap then toggles a card
      and the bar moves all the picked cheques one step in a single undoable action. */
   const [picked, setPicked] = useState<Set<number> | null>(null);
+  // Once picking, a finger can slide down the tick boxes to pick (or drop) many at once.
+  const tick = useDragSelect(picked ?? new Set(), setPicked);
   const bulk = (to: ChequeStatus) => {
     const { ids, skipped } = chequeBulk(cheques ?? [], picked ?? new Set(), to);
     if (ids.length === 0) {
@@ -332,10 +335,15 @@ export default function ChequesBoard({ customers, canSeeBooks = false }: { custo
                   >
                   <div className="p-2" onClick={picked ? () => setPicked(toggleId(picked, c.id)) : undefined}>
                   {picked && (
-                    <span className="mb-1 inline-flex items-center gap-1 text-xs text-accent" aria-live="polite">
+                    <button
+                      type="button"
+                      aria-pressed={picked.has(c.id)}
+                      className="picktick mb-1 inline-flex min-h-11 items-center gap-1 text-xs text-accent"
+                      {...tick(c.id)}
+                    >
                       <Icon name={picked.has(c.id) ? "check" : "plus"} size="sm" />
-                      {picked.has(c.id) ? "انتخاب شده" : "برای انتخاب لمس کنید"}
-                    </span>
+                      {picked.has(c.id) ? "انتخاب شده" : "برای انتخاب لمس کنید یا بکشید"}
+                    </button>
                   )}
                   <div className="flex justify-between">
                     <span>{customerName(c.customer_id)}</span>

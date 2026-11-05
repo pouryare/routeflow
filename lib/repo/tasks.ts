@@ -1,5 +1,5 @@
 import { makeRepo } from "./base";
-import { canSnooze, snoozedDue, type SnoozeChoice } from "@/lib/taskSnooze";
+import { canSnooze, pickedSnoozeDue, snoozedDue, type SnoozeChoice } from "@/lib/taskSnooze";
 import { resolveRuleRunsFor } from "./rules";
 import { tryEmitEvent } from "./events";
 import {
@@ -298,13 +298,19 @@ export async function dismissTask(organizationId: number, id: number): Promise<v
   }
 }
 
-/** F142: put an open task off by an hour or to 09:00 tomorrow. Refused for critical and high
- *  priority work and after three snoozes. Returns the new due time. */
-export async function snoozeTask(organizationId: number, id: number, choice: SnoozeChoice, nowIso = new Date().toISOString()): Promise<string> {
+/** F142: put an open task off by one of the set times, or to a day and hour the person picked. Refused for
+ *  critical and high priority work and after three snoozes. Returns the new due time. */
+export async function snoozeTask(
+  organizationId: number,
+  id: number,
+  choice: SnoozeChoice | { day: unknown; hour: unknown },
+  nowIso = new Date().toISOString(),
+): Promise<string> {
   const row = await tasksRepo.get(organizationId, id);
   if (!row) throw new TaskError("کار پیدا نشد");
   if (!canSnooze(row)) throw new TaskError("این کار را نمی‌شود عقب انداخت؛ انجامش دهید یا حذفش کنید");
-  const due = snoozedDue(choice, nowIso);
+  const due = typeof choice === "string" ? snoozedDue(choice, nowIso) : pickedSnoozeDue(choice.day, choice.hour, nowIso);
+  if (!due) throw new TaskError("این زمان گذشته یا بیش از ۶۰ روز دیگر است");
   await tasksRepo.patch(organizationId, id, { due_at: due, snooze_count: row.snooze_count + 1 });
   return due;
 }

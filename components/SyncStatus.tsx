@@ -7,12 +7,13 @@
  *  Browser code -- not unit-tested. Mounted once per app surface.
  */
 
-import { useEffect, useState, useCallback, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState, useCallback, useSyncExternalStore } from "react";
 import { Icon } from "@/components/meridian/Icon";
 import { getSyncEngine } from "@/lib/offline/syncEngine";
 import { OFFLINE_OPS } from "@/lib/offline/safety";
 import { faNum } from "@/lib/format";
 import type { OutboxRecord, OutboxStatus } from "@/lib/offline/outbox";
+import { flyTo } from "@/lib/flyTo";
 
 /** What each outbox state is called. The list printed the raw status («held»,
  *  «conflict») to Persian readers before this map. */
@@ -122,6 +123,13 @@ export default function SyncStatus() {
 
   const badge = syncBadge({ online, pending, trouble });
 
+  /* Work just saved into the queue flies from where it was tapped into this island (owner, 2026-11-05). */
+  const lastPending = useRef(pending);
+  useEffect(() => {
+    if (pending > lastPending.current) void flyTo("sync");
+    lastPending.current = pending;
+  }, [pending]);
+
   async function undo(id: string) {
     await getSyncEngine().outbox.undo(id);
     await refresh();
@@ -148,6 +156,7 @@ export default function SyncStatus() {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
+        data-fly-target="sync"
         className="flex items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 py-1 shadow-sm"
       >
         <Icon name="refresh" size="md" />

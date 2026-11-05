@@ -1,6 +1,8 @@
 "use client";
 
 import { FieldInput } from "@/components/FieldInput";
+import CharCount from "@/components/CharCount";
+import { TASK_TITLE_MAX } from "@/lib/charCount";
 import JalaliDateInput from "@/components/meridian/JalaliDateInput";
 import { Icon } from "@/components/meridian/Icon";
 import { useState } from "react";
@@ -29,6 +31,7 @@ export default function AddReminder({
 
   async function submit() {
     if (!dueDate || !message.trim()) return;
+    if (entityType === "customer" && Array.from(message.trim()).length > TASK_TITLE_MAX) return;
     setSaving(true);
     try {
       // A customer reminder is a task (kind='reminder') so it shows in the member's
@@ -87,7 +90,7 @@ export default function AddReminder({
             onChange={(e) => setMessage(e.target.value)}
            
             className="text-[length:var(--text-sm)] text-text w-full"
-          /></label>
+          />{entityType === "customer" ? <CharCount text={message} max={TASK_TITLE_MAX} /> : null}</label>
           <div className="flex gap-2">
             <button
               onClick={submit}

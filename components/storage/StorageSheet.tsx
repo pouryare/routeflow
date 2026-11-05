@@ -5,6 +5,7 @@ import { ToggleButton } from "@heroui/react";
 import BottomSheet from "@/components/mobile/BottomSheet";
 import { GoButton } from "@/components/tapflow/Answer";
 import { FieldInput } from "@/components/FieldInput";
+import { FieldPassword } from "@/components/PasswordRoll";
 import { Icon } from "@/components/meridian/Icon";
 import { friendlyError } from "@/lib/userMessage";
 import { faNum } from "@/lib/format";
@@ -167,7 +168,7 @@ export default function StorageSheet({ open, onClose, onSaved, editing, others, 
               label="کلید مخفی (Secret key)"
               hint={editing?.secret_last4 ? `کلید فعلی: ••••${editing.secret_last4}. برای عوض کردن کلید، کلید تازه را بنویسید؛ خالی بماند همان می‌ماند.` : undefined}
             >
-              <FieldInput dir="ltr" type="password" value={secret} onChange={(e) => setSecret(e.target.value)} autoComplete="new-password" />
+              <FieldPassword label="کلید مخفی" value={secret} onChange={(e) => setSecret(e.target.value)} autoComplete="new-password" />
             </Field>
           </>
         )}

@@ -5411,10 +5411,14 @@ span.burst { display: inline-flex; }
   .chart-pill, .bars rect { transition: none; }
 }
 
-/* Stars (StarRating): the ones you just filled pop in one after another, left of the chosen one first. */
+/* Stars (StarRating): the ones you just filled hop one after another, first star first;
+   a full five also spins the last star (and bursts, lib/burst.ts). */
 @media (prefers-reduced-motion: no-preference) {
-  @keyframes star-pop { 50% { transform: scale(1.3) rotate(-8deg); } }
-  .star[aria-checked="true"] svg, .star.text-warn svg { animation: star-pop 320ms var(--ease-out, ease-out) calc(var(--star-i) * 45ms) both; }
+  @keyframes star-hop { 40% { transform: translateY(-7px) scale(1.15); } 70% { transform: translateY(1px) scale(0.97); } }
+  @keyframes star-spin { 60% { transform: scale(1.35) rotate(200deg); } 100% { transform: rotate(360deg); } }
+  .star[aria-checked="true"] svg, .star.text-warn svg { animation: star-hop 360ms var(--ease-out, ease-out) calc(var(--star-i) * 60ms) both; }
+  .star[data-burst] svg { animation: star-spin 520ms var(--ease-out, ease-out) calc(var(--star-i) * 60ms) both; }
+  html[data-fx="off"] .star svg { animation: none; }
   /* A chip you pick swells a little, like it was pulled toward your finger. */
   .meridian .choicechip.on { animation: chip-swell 260ms var(--spring-pop, ease-out); }
   @keyframes chip-swell { 40% { transform: scale(1.07); } }
@@ -5559,3 +5563,168 @@ html[data-fx="off"] .photoacc__item { transition: none; }
 .photocmp__top { clip-path: inset(0 0 0 var(--at)); }
 .photocmp__line { position: absolute; top: 0; bottom: 0; left: var(--at); width: 3px; margin-left: -1.5px; background: #fff; box-shadow: 0 0 6px rgb(0 0 0 / 0.5); pointer-events: none; }
 .photocmp__range { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: ew-resize; }
+
+/* ---- Motions from the 2026-11-05 clips (docs/decisions.md 10.17, 10.18) ---- */
+
+/* Fly-to (lib/flyTo.ts): the dot that carries a message into the bell, work into the sync icon, an order into its tab. */
+.flydot { position: fixed; top: 0; left: 0; z-index: 69; width: 14px; height: 14px; border-radius: 999px; pointer-events: none;
+  background: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 30%, transparent); }
+@keyframes landed-pop { 0% { transform: scale(1); } 40% { transform: scale(1.22); } 100% { transform: scale(1); } }
+[data-landed] { animation: landed-pop 380ms var(--spring-pop, cubic-bezier(.34,1.56,.64,1)); }
+html[data-fx="off"] [data-landed] { animation: none; }
+@media (prefers-reduced-motion: reduce) { [data-landed] { animation: none; } }
+
+/* Hold to confirm: the full ring becomes a check (HoldButton). */
+.holdbtn__done { display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 999px; background: var(--crit); color: #fff; }
+
+/* Slide to confirm (SlideConfirm): the knob rides on --p (0 to 1) from the reading start to the end. */
+.slideconfirm { --knob: 52px; position: relative; display: flex; align-items: center; width: 100%; min-height: var(--knob); padding: 0;
+  border-radius: 999px; border: 1px solid var(--accent); background: color-mix(in srgb, var(--accent) 10%, var(--surface)); overflow: hidden;
+  color: var(--text); font: inherit; cursor: grab; user-select: none; -webkit-user-select: none; }
+.slideconfirm:disabled { opacity: .5; cursor: not-allowed; }
+.slideconfirm:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.slideconfirm__fill { position: absolute; inset-block: 0; inset-inline-start: 0; width: calc(var(--knob) + (100% - var(--knob)) * var(--p)); background: var(--accent); border-radius: 999px; }
+.slideconfirm__label { position: relative; flex: 1; display: flex; flex-direction: column; align-items: center; padding-inline: var(--knob); font-weight: 600; font-size: var(--text-sm);
+  opacity: calc(1 - var(--p) * 1.4); }
+.slideconfirm__label small { font-weight: 400; color: var(--text-muted); font-size: var(--text-xs); }
+.slideconfirm__knob { position: absolute; inset-block: 3px; inset-inline-start: 3px; width: calc(var(--knob) - 6px); display: grid; place-items: center; border-radius: 999px;
+  background: var(--surface); color: var(--accent); box-shadow: var(--elev-2, 0 2px 6px rgb(0 0 0 / .2));
+  transform: translateX(calc((100cqw - var(--knob)) * var(--p) * var(--dirx, -1))); }
+.slideconfirm { container-type: inline-size; }
+.slideconfirm:not(:active) .slideconfirm__knob, .slideconfirm:not(:active) .slideconfirm__fill { transition: transform 280ms var(--spring-pop, ease), width 280ms var(--spring-pop, ease); }
+[dir="ltr"] .slideconfirm, .slideconfirm:dir(ltr) { --dirx: 1; }
+.slideconfirm[data-done] { border-color: var(--good, var(--accent)); }
+.slideconfirm[data-done] .slideconfirm__fill { background: var(--good, var(--accent)); }
+.slideconfirm[data-done] .slideconfirm__label { opacity: 1; color: #fff; }
+html[data-fx="off"] .slideconfirm__knob, html[data-fx="off"] .slideconfirm__fill { transition: none !important; }
+
+/* Live shape check under a phone field (FieldShapeHint). */
+.fieldshape { display: flex; align-items: center; gap: 4px; min-height: 18px; margin: 2px 0 0; font-size: var(--text-xs); }
+.fieldshape[data-tone="bad"] { color: var(--crit, var(--danger)); }
+.fieldshape[data-tone="ok"] { color: var(--good, var(--accent)); }
+
+/* Letter counter (CharCount): a ring that fills, red past the limit, with the count beside it. */
+.charcount { display: inline-flex; align-items: center; gap: 4px; align-self: flex-end; font-size: var(--text-xs); color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.charcount svg { transform: rotate(-90deg); }
+.charcount__track, .charcount__fill { fill: none; stroke-width: 2.5; }
+.charcount__track { stroke: var(--border); }
+.charcount__fill { stroke: var(--accent); transition: stroke-dashoffset 160ms var(--ease-out); }
+.charcount[data-over] { color: var(--crit, var(--danger)); }
+.charcount[data-over] .charcount__fill { stroke: var(--crit, var(--danger)); }
+
+/* A photo on its way up (UploadTile): dimmed picture, % ring, check at the end, red with «دوباره» on failure. */
+.uploadtile { position: relative; width: 96px; height: 96px; border-radius: var(--radius-sm); overflow: hidden; border: 1px solid var(--border); }
+.uploadtile img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.uploadtile__veil { position: absolute; inset: 0; display: grid; place-items: center; background: rgb(0 0 0 / .45); color: #fff; }
+.uploadtile[data-state="done"] .uploadtile__veil { background: rgb(0 0 0 / .25); transition: background 300ms ease; }
+.uploadtile__ring { position: relative; display: grid; place-items: center; width: 48px; height: 48px; }
+.uploadtile__ring svg { position: absolute; inset: 0; transform: rotate(-90deg); }
+.uploadtile__ring b { font-size: var(--text-xs); font-variant-numeric: tabular-nums; }
+.uploadtile__track, .uploadtile__fill { fill: none; stroke-width: 4; }
+.uploadtile__track { stroke: rgb(255 255 255 / .3); }
+.uploadtile__fill { stroke: #fff; transition: stroke-dashoffset 200ms var(--ease-out); }
+.uploadtile[data-state="failed"] { border-color: var(--crit, var(--danger)); }
+.uploadtile[data-state="failed"] .uploadtile__veil { background: color-mix(in srgb, var(--crit, #c00) 55%, transparent); }
+.uploadtile__retry { display: inline-flex; align-items: center; gap: 4px; min-height: 44px; padding: 0 12px; border-radius: 999px; border: 0; background: #fff; color: var(--crit, #c00); font: inherit; font-weight: 600; }
+.uploadtile__drop { position: absolute; top: 2px; inset-inline-end: 2px; width: 44px; height: 44px; display: grid; place-items: center; border: 0; background: transparent; color: #fff; }
+
+/* AmountSlider: the number above the thumb while held, notches, and the small stretch past the ends. */
+.amountslider { transform: translateX(var(--stretch, 0px)); transition: transform 220ms cubic-bezier(0.34, 1.56, 0.64, 1); }
+.amountslider[data-held] { transition: none; }
+.amountslider__tick {
+  position: absolute; top: 50%; width: 2px; height: 10px; translate: -1px -50%;
+  border-radius: 1px; background: var(--border-strong, var(--text-muted)); opacity: 0.5; pointer-events: none;
+}
+.amountslider__bubble {
+  position: absolute; bottom: calc(100% + 8px); left: 50%; translate: -50% 0;
+  padding: 2px 8px; border-radius: 999px; white-space: nowrap;
+  background: var(--text); color: var(--bg); font-size: var(--text-xs); font-weight: 600;
+  pointer-events: none; animation: amountslider-bubble 160ms ease-out;
+}
+@keyframes amountslider-bubble { from { opacity: 0; scale: 0.6; } }
+html[data-fx="off"] .amountslider__bubble { animation: none; }
+@media (prefers-reduced-motion: reduce) { .amountslider__bubble { animation: none; } .amountslider { transition: none; } }
+
+/* RangeBar count bars: how many orders sit at each amount, lit inside the chosen range. */
+.rangebar__bars { position: absolute; inset-inline: 0; bottom: calc(100% + 8px); display: flex; align-items: flex-end; gap: 2px; height: 28px; pointer-events: none; }
+.rangebar__bars > span { flex: 1; min-width: 0; border-radius: 2px 2px 0 0; background: var(--border-strong); transition: background-color 150ms; }
+.rangebar__bars > span[data-lit] { background: var(--accent); opacity: 0.55; }
+
+/* Rating tags (lead visit, step "tags"): after the stars, the matching tags pop in one after another. */
+@media (prefers-reduced-motion: no-preference) {
+  .tf-popin > * { animation: tf-popin 300ms var(--spring-pop, ease-out) both; }
+  .tf-popin > :nth-child(2) { animation-delay: 50ms; } .tf-popin > :nth-child(3) { animation-delay: 100ms; }
+  .tf-popin > :nth-child(4) { animation-delay: 150ms; } .tf-popin > :nth-child(5) { animation-delay: 200ms; }
+  .tf-popin > :nth-child(n + 6) { animation-delay: 250ms; }
+  @keyframes tf-popin { from { opacity: 0; transform: scale(0.7) translateY(6px); } }
+  html[data-fx="off"] .tf-popin > * { animation: none; }
+}
+
+/* SwipeRow stops (snooze on a task): the time under the row swaps with a small pop at each stop. */
+.swiperow__stop { display: inline-block; animation: swiperow-stop 180ms var(--spring-pop, ease-out); }
+@keyframes swiperow-stop { from { transform: scale(0.7); opacity: 0.4; } }
+html[data-fx="off"] .swiperow__stop { animation: none; }
+@media (prefers-reduced-motion: reduce) { .swiperow__stop { animation: none; } }
+
+/* Done tasks (Pocket, TaskRow): a line strikes through the finished one, then it folds into «N انجام‌شده». */
+.strikerow { position: relative; }
+.strikerow :is(span, div) { color: var(--text-faint); }
+.strikerow::after {
+  content: ""; position: absolute; inset-inline: 0; top: 50%; height: 2px; border-radius: 1px;
+  background: var(--text-faint); transform-origin: right; animation: strike-draw 320ms ease-out both; pointer-events: none;
+}
+@keyframes strike-draw { from { transform: scaleX(0); } }
+.donefold { margin-top: 10px; }
+.donefold__btn {
+  display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 4px;
+  background: none; border: 0; color: var(--muted, var(--text-muted)); font-size: 12px; font-weight: 600; cursor: pointer;
+}
+.donefold__chev { transition: transform 180ms ease; }
+.donefold__btn[aria-expanded="true"] .donefold__chev { transform: rotate(180deg); }
+.donefold__n { display: inline-block; animation: donefold-pop 260ms var(--spring-pop, ease-out); }
+@keyframes donefold-pop { 40% { transform: scale(1.15); } }
+.donefold__list > * { text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--text-faint) 60%, transparent); opacity: 0.75; }
+html[data-fx="off"] .strikerow::after, html[data-fx="off"] .donefold__n { animation: none; }
+@media (prefers-reduced-motion: reduce) { .strikerow::after, .donefold__n { animation: none; } }
+
+/* Drag select (lib/useDragSelect): the tick boxes keep the finger, so sliding over them picks instead of scrolling. */
+.picktick { touch-action: none; user-select: none; -webkit-user-select: none; }
+
+/* Password eye (components/PasswordRoll.tsx): opening it rolls the letters in from a dot, one after another. */
+.pwfield { position: relative; display: flex; align-items: center; }
+.pwfield > .fieldinput { flex: 1; min-width: 0; padding-right: 44px; }
+.pwfield__eye {
+  position: absolute; right: 0; top: 50%; translate: 0 -50%; width: 44px; height: 44px;
+  display: grid; place-items: center; background: none; border: 0; color: var(--text-muted); cursor: pointer;
+}
+.pwfield[data-rolling] input { color: transparent; caret-color: var(--text); }
+.pwroll {
+  position: absolute; top: 50%; translate: 0 -50%; display: flex; pointer-events: none;
+  color: var(--text); white-space: pre;
+}
+.pwroll__ch { display: inline-block; animation: pwroll-in 240ms ease-out calc(var(--i) * 35ms) backwards; }
+@keyframes pwroll-in { 0% { transform: translateY(70%) scale(0.4); opacity: 0; } 60% { transform: translateY(-15%); opacity: 1; } }
+html[data-fx="off"] .pwroll { display: none; }
+html[data-fx="off"] .pwfield[data-rolling] input { color: inherit; }
+@media (prefers-reduced-motion: reduce) { .pwroll { display: none; } .pwfield[data-rolling] input { color: inherit; } }
+
+/* SwipeRow peek hint (lib/peekHint.ts): the first row of a list slides aside once to show it can be swiped. */
+.swiperow__face--peek-start { animation: swiperow-peek 900ms cubic-bezier(0.34, 1.3, 0.64, 1) both; --peek: 56px; }
+.swiperow__face--peek-end { animation: swiperow-peek 900ms cubic-bezier(0.34, 1.3, 0.64, 1) both; --peek: -56px; }
+@keyframes swiperow-peek { 0%, 100% { transform: translateX(0); } 35%, 60% { transform: translateX(var(--peek)); } }
+
+/* Undo countdown: on a toast with an undo, a ring around ✕ empties over its lifetime (ACTION_LIFETIME_MS,
+   --undo-ms), and stops while the toast is hovered, focused, touched, or the tab is hidden. */
+.app-toasts [data-slot="toast"]:has([data-undo-ring]) [data-slot="toast-close"] { position: relative; }
+.app-toasts [data-slot="toast"]:has([data-undo-ring]) [data-slot="toast-close"]::before {
+  content: ""; position: absolute; inset: -3px; border-radius: 50%; pointer-events: none;
+  background: conic-gradient(var(--accent) calc(var(--undo-left, 1) * 360deg), transparent 0);
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 2.5px), #000 calc(100% - 2px));
+          mask: radial-gradient(farthest-side, transparent calc(100% - 2.5px), #000 calc(100% - 2px));
+  animation: undo-ring var(--undo-ms, 5000ms) linear forwards;
+}
+@property --undo-left { syntax: "<number>"; inherits: false; initial-value: 1; }
+@keyframes undo-ring { to { --undo-left: 0; } }
+.app-toasts [data-slot="toast"]:is(:hover, :focus-within) [data-slot="toast-close"]::before,
+html[data-toasts-paused] .app-toasts [data-slot="toast-close"]::before { animation-play-state: paused; }
+.app-toasts [data-slot="toast"]:has([data-pending]) [data-slot="toast-close"]::before { display: none; }

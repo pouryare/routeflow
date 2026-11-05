@@ -926,6 +926,7 @@ export interface Organizations {
   name: string;
   order_prefix: string | null;
   plan: Generated<string>;
+  rating_tags_json: string | null;
   receipt_footer: string | null;
   slug: string;
   sound_skin: Generated<string>;

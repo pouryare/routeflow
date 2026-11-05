@@ -45,7 +45,7 @@ export default function BottomNav({ primary, more, account }: BottomTabs) {
     <>
       <nav ref={nav} className="bottomnav" aria-label="ناوبری اصلی">
         {primary.map((t) => (
-          <Link key={t.href} href={t.href} className="bottomnav__item" aria-current={t.href === current ? "page" : undefined} onClick={() => playSound("nav.tab")}>
+          <Link key={t.href} href={t.href} data-fly-target={t.href} className="bottomnav__item" aria-current={t.href === current ? "page" : undefined} onClick={() => playSound("nav.tab")}>
             <span className="bottomnav__icon"><Icon name={TAB_ICON[t.href] ?? "dot"} size="md" /></span>
             <span>{t.label}</span>
           </Link>

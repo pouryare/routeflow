@@ -13,6 +13,8 @@ import dynamic from "next/dynamic";
 import PhotoCropSheet from "@/components/mobile/PhotoCropSheet";
 import { photoProblem } from "@/lib/photoCrop";
 import { useDropFile } from "@/lib/useDropFile";
+import { postWithProgress } from "@/lib/uploadProgress";
+import UploadTile from "@/components/UploadTile";
 
 // Cast back to the generic component: dynamic() drops the type parameter.
 import PhotoBrowser from "@/components/PhotoBrowser";
@@ -65,26 +67,38 @@ export default function PhotoGallery({
 
   const drop = useDropFile(choose);
 
+  /* The photo being sent, shown as a tile with a % ring; it stays, red with «دوباره», if sending fails. */
+  const [sending, setSending] = useState<{ file: File; src: string; percent: number; state: "sending" | "done" | "failed" } | null>(null);
+
   async function handleFile(file: File) {
     setUploading(true);
-    try {
-      const fd = new FormData();
-      fd.append("file", file);
-      fd.append("entity_type", entityType);
-      fd.append("entity_id", String(entityId));
-      const res = await fetch("/api/photos", { method: "POST", body: fd });
-      if (!res.ok) {
-        const data = await res.json().catch(() => null);
-        throw new Error(friendlyError(data?.error, "عکس بارگذاری نشد؛ دوباره تلاش کنید"));
-      }
+    const src = sending?.file === file ? sending.src : URL.createObjectURL(file);
+    setSending({ file, src, percent: 0, state: "sending" });
+    const fd = new FormData();
+    fd.append("file", file);
+    fd.append("entity_type", entityType);
+    fd.append("entity_id", String(entityId));
+    const res = await postWithProgress("/api/photos", fd, (percent) => setSending((s) => s && { ...s, percent }));
+    setUploading(false);
+    if (inputRef.current) inputRef.current.value = "";
+    if (res.status >= 200 && res.status < 300) {
+      setSending((s) => s && { ...s, percent: 100, state: "done" });
       toast("عکس اضافه شد.", "success");
-      load();
-    } catch (e) {
-      toast(e instanceof Error ? e.message : "عکس بارگذاری نشد؛ دوباره تلاش کنید", "error");
-    } finally {
-      setUploading(false);
-      if (inputRef.current) inputRef.current.value = "";
+      await load();
+      window.setTimeout(() => {
+        URL.revokeObjectURL(src);
+        setSending((s) => (s?.src === src ? null : s));
+      }, 700);
+      return;
     }
+    setSending((s) => s && { ...s, state: "failed" });
+    const err = (res.json as { error?: string } | null)?.error;
+    toast(res.status === 0 ? "عکس بارگذاری نشد؛ اینترنت را بررسی کنید و «دوباره» را بزنید" : friendlyError(err, "عکس بارگذاری نشد؛ دوباره تلاش کنید"), "error");
+  }
+
+  function dismissSending() {
+    if (sending) URL.revokeObjectURL(sending.src);
+    setSending(null);
   }
 
   const undoable = useUndoableAction();
@@ -125,6 +139,12 @@ export default function PhotoGallery({
           />
         </label>
       </div>
+
+      {sending ? (
+        <div className="mb-2">
+          <UploadTile src={sending.src} percent={sending.percent} state={sending.state} onRetry={() => void handleFile(sending.file)} onDismiss={dismissSending} />
+        </div>
+      ) : null}
 
       {photos === null ? (
         <>

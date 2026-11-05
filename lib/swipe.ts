@@ -19,6 +19,8 @@ export type SwipeResult =
   | { state: "commit"; side: "start" | "end" };
 
 export const SWIPE_DEFAULTS = { threshold: 72, commit: 140 } as const;
+/** For a light action that flips back just as easily (mark read / unread): half the distance. */
+export const SWIPE_SHORT = { threshold: 36, commit: 72 } as const;
 
 /** How long a finger must stay still on a row before it counts as a long press (selection). */
 export const LONG_PRESS_MS = 450;
@@ -30,4 +32,14 @@ export function decide({ dx, dy = 0 }: { dx: number; dy?: number }, cfg: SwipeCo
   // Dragging right is the start side in RTL and the end side in LTR.
   const side: "start" | "end" = (dx > 0) === cfg.rtl ? "start" : "end";
   return distance >= cfg.commit ? { state: "commit", side } : { state: "reveal", side };
+}
+
+/** For a swipe with several results along one drag (snooze times): the last stop a drag of `px` reached,
+ *  or -1 before the first. */
+export function stopAt(stops: readonly { at: number }[], px: number): number {
+  let i = -1;
+  stops.forEach((s, k) => {
+    if (Math.abs(px) >= s.at) i = k;
+  });
+  return i;
 }

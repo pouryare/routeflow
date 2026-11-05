@@ -18,6 +18,8 @@ import NotificationCenter from "./NotificationCenter";
 import { Icon } from "@/components/meridian/Icon";
 import { playSound } from "@/lib/sound";
 import { unreadRose } from "@/lib/unreadRose";
+import { useToast } from "@/components/ToastProvider";
+import { replay } from "@/lib/burst";
 
 export default function NotificationBell({
   placement = "floating",
@@ -27,6 +29,13 @@ export default function NotificationBell({
   placement?: "header" | "floating";
 } = {}) {
   const [unread, setUnread] = useState(0);
+  /* The number the badge shows. It trails `unread` when news arrives: the news shows as a
+     message first, which flies into the bell when it closes, and only then does the number rise
+     (owner, 2026-11-05). */
+  const [shown, setShown] = useState(0);
+  const latestTitle = useRef<string | null>(null);
+  const toast = useToast();
+  const badge = useRef<HTMLSpanElement>(null);
   const [open, setOpen] = useState(false);
   const [authed, setAuthed] = useState(true);
   /* A new notification swings the bell once and plays its sound; the 60 s poll is how it learns. */
@@ -34,14 +43,23 @@ export default function NotificationBell({
   const [swing, setSwing] = useState(false);
   useEffect(() => {
     if (unreadRose(lastUnread.current, unread)) {
-      setSwing(true);
-      playSound("notify.new");
-      const h = window.setTimeout(() => setSwing(false), 900);
+      const target = unread;
+      const land = () => {
+        setShown(target);
+        setSwing(true);
+        playSound("notify.new");
+        window.setTimeout(() => setSwing(false), 900);
+        // The number pops as it rises (owner, 2026-11-05); the badge renders on this same update, so wait a frame.
+        requestAnimationFrame(() => badge.current && replay(badge.current, "data-landed", 420));
+      };
       lastUnread.current = unread;
-      return () => window.clearTimeout(h);
+      if (latestTitle.current) toast(latestTitle.current, "info", undefined, { flyTo: "bell", onLanded: land });
+      else land();
+      return;
     }
     lastUnread.current = unread;
-  }, [unread]);
+    setShown(unread);
+  }, [unread, toast]);
 
   // Poll the unread count on an interval so the badge stays live without a socket.
   useEffect(() => {
@@ -56,7 +74,8 @@ export default function NotificationBell({
           return;
         }
         if (res.ok) {
-          const j = await res.json();
+          const j = (await res.json()) as { unread?: number; groups?: { title_fa: string; unread_count: number }[] };
+          latestTitle.current = j.groups?.find((g) => g.unread_count > 0)?.title_fa ?? null;
           setUnread(j.unread ?? 0);
         }
       } catch {
@@ -94,6 +113,7 @@ export default function NotificationBell({
           variant="ghost"
           isIconOnly
           aria-label="اعلان‌ها"
+          data-fly-target="bell"
           className={
             inHeader
               ? "relative rounded-full text-[var(--muted)] hover:text-[var(--ink)]"
@@ -101,9 +121,9 @@ export default function NotificationBell({
           }
         >
           <Icon name="bell" size={inHeader ? "md" : "lg"} className={swing ? "bell-swing" : undefined} />
-          {unread > 0 && (
-            <span className="absolute top-0 right-0 grid min-w-[1.15rem] place-items-center rounded-full bg-[var(--accent)] px-1 text-[length:var(--text-xs)] font-bold text-[var(--accent-ink)]">
-              {unread > 9 ? "۹+" : faNum(unread)}
+          {shown > 0 && (
+            <span ref={badge} className="absolute top-0 right-0 grid min-w-[1.15rem] place-items-center rounded-full bg-[var(--accent)] px-1 text-[length:var(--text-xs)] font-bold text-[var(--accent-ink)]">
+              {shown > 9 ? "۹+" : faNum(shown)}
             </span>
           )}
         </Button>

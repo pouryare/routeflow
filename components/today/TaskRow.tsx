@@ -9,7 +9,7 @@ import OutcomeFlow from "@/components/flows/OutcomeFlow";
 import { useHeldSave } from "@/components/crm/useHeldSave";
 import { useToast } from "@/components/ToastProvider";
 import { friendlyError } from "@/lib/userMessage";
-import SnoozeChoices from "./SnoozeChoices";
+import SnoozeChoices, { useSnoozeSwipe } from "./SnoozeChoices";
 
 interface ObjectionCard {
   title_fa: string;
@@ -29,6 +29,9 @@ export default function TaskRow({ taskId, label, sub, customerId, snoozable = fa
      .rowcollapse) and sends after the 5 s undo window, so «بازگردانی ثبت» is a local unfold
      and there is no "are you sure?" tap in front of it. */
   const [gone, setGone] = useState(false);
+  const [struck, setStruck] = useState(false);
+  /* Snoozable work swipes toward the end to put it off; deleting keeps its button. */
+  const snoozer = useSnoozeSwipe(taskId, () => router.refresh());
 
   async function patch(body: Record<string, unknown>) {
     const res = await fetch(`/api/tasks/${taskId}`, {
@@ -44,10 +47,13 @@ export default function TaskRow({ taskId, label, sub, customerId, snoozable = fa
   async function decide(code: string | null): Promise<{ ok: boolean; error?: string }> {
     const { res, j } = await patch(code ? { status: "done", outcome_code: code } : { status: "done" });
     if (!res.ok) return { ok: false, error: j.error };
-    // Folds the finished row away, then lets the refreshed list drop it.
+    // Strikes the finished row through, folds it away a moment later, then lets the refreshed list drop it.
     const leave = () => {
-      setGone(true);
-      router.refresh();
+      setStruck(true);
+      window.setTimeout(() => {
+        setGone(true);
+        router.refresh();
+      }, 700);
     };
     if (j.objection_card) {
       // Phase 8: show the coaching card in the call, then refresh the list.
@@ -82,12 +88,13 @@ export default function TaskRow({ taskId, label, sub, customerId, snoozable = fa
   const openOutcome = () => (customerId ? setFlow({ open: true }) : setOutcome((o) => ({ key: o.key + 1, open: true })));
 
   return (
-    <li className="rowcollapse border-b border-[var(--border)]" data-gone={gone ? "" : undefined} inert={gone}>
+    <li className={`rowcollapse border-b border-[var(--border)]${struck ? " strikerow" : ""}`} data-gone={gone ? "" : undefined} inert={gone || struck}>
     <div className="rowcollapse__inner">
     <SwipeRow
+      peek="tasks"
       ownButtons={false}
       start={{ label: "ثبت نتیجه", icon: "check", run: openOutcome }}
-      end={{ label: "حذف این کار", icon: "trash", tone: "bad", run: remove }}
+      end={snoozable ? snoozer.swipe : { label: "حذف این کار", icon: "trash", tone: "bad", run: remove }}
     >
     <div className="flex flex-col gap-[var(--space-1)] py-[var(--space-2)]">
       <span className="text-[var(--text)]">
@@ -110,7 +117,7 @@ export default function TaskRow({ taskId, label, sub, customerId, snoozable = fa
             ثبت نتیجهٔ این کار
           </button>
         )}
-        {snoozable && <SnoozeChoices taskId={taskId} onDone={() => router.refresh()} />}
+        {snoozable && <SnoozeChoices taskId={taskId} onDone={() => router.refresh()} onPickOpen={snoozer.openPicker} />}
         <button
           type="button"
           onClick={remove}
@@ -131,11 +138,12 @@ export default function TaskRow({ taskId, label, sub, customerId, snoozable = fa
     </div>
     {/* The sheets sit outside the swipe face: events from a portal bubble through React's tree,
         and a drag inside a sheet must not move the row. */}
+      {snoozable && snoozer.picker}
       {customerId && flow ? (
         <AfterCallFlow customerId={customerId} taskId={taskId} open={flow.open}
           onHide={() => setFlow({ open: false })}
           onReopen={() => setFlow({ open: true })}
-          onFinished={() => { setFlow(null); router.refresh(); }} />
+          onFinished={() => { setFlow(null); setStruck(true); window.setTimeout(() => router.refresh(), 700); }} />
       ) : null}
       {outcome.key > 0 && (
         <OutcomeFlow

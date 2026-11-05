@@ -92,6 +92,7 @@ const boughtNow = [
   { step: "detail_status", option: "buy" },
   { step: "sold", option: "now" },
   { step: "rate", option: "stars", value: "5,4,5" },
+  { step: "tags", option: "ok", value: "مشتری زیاد" },
   { step: "skip", option: "WAITING_ON_THEM" },
 ];
 const boughtLater = boughtNow.map((a) => (a.option === "now" ? { ...a, option: "office" } : a));
@@ -168,6 +169,7 @@ describe("the follow-ups that already worked still work", () => {
         { step: "what_happened", option: "ok" },
         { step: "detail_status", option: "partial" },
         { step: "rate", option: "stars", value: "3,3,3" },
+        { step: "tags", option: "ok", value: "" },
         { step: "skip", option: "WAITING_ON_THEM" },
       ], DRIVER()),
       ctx(locOnRun)
@@ -185,6 +187,7 @@ describe("the follow-ups that already worked still work", () => {
         { step: "why_failed", option: "noowner" },
         { step: "reminder", option: "tomorrow" },
         { step: "rate", option: "stars", value: "2,2,4" },
+        { step: "tags", option: "ok", value: "" },
         { step: "skip", option: "WAITING_ON_THEM" },
       ], DRIVER()),
       ctx(locOnRun)
@@ -205,6 +208,7 @@ describe("the follow-ups that already worked still work", () => {
         { step: "detail_status", option: "buy" },
         { step: "sold", option: "now" },
         { step: "rate", option: "stars", value: "4,4,4" },
+        { step: "tags", option: "ok", value: "" },
         { step: "skip", option: "WAITING_ON_THEM" },
       ], DRIVER()),
       ctx(locOnRun)
