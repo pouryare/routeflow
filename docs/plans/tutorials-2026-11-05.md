@@ -148,7 +148,7 @@ Quickest to a first tour (a day), but it decides the scrolling, buttons and flow
 | I9 | «تمرین»: **repeat a finished tutorial on fresh demo data with no hints, no timer** | 2026-11-05 |
 | I10 | Change tours: **a changed line in the what's-new card gets «ببینید چه عوض شد», one tap runs a 1 to 3 step tour of the change** | 2026-11-05 |
 | I11 | Offline: **everything on every phone** (text, demo data and all roles' voice clips, about 8 to 10 MB), downloaded once in the background | 2026-11-05 |
-| I12 | _waiting_ | |
+| I12 | Stats: **owner sees per step how many started, skipped and quit, with no names** | 2026-11-05 |
 
 ## 11. Owner's direction (2026-11-05): many tutorials, practice on demo data in the page
 
