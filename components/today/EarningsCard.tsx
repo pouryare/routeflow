@@ -5,6 +5,7 @@ import type { EarningsSoFar } from "@/lib/repo/earningsSoFar";
 import { faNum } from "@/lib/format";
 import CountUp from "@/components/meridian/CountUp";
 import { faJalaliDate } from "@/lib/jalali";
+import EarningsCoin from "@/components/today/EarningsCoin";
 
 /** F19: this month's commission so far, on the seller's briefing. The figures come from the
  *  commission engine; the link opens the full statement with every order behind them. */
@@ -13,7 +14,10 @@ export default function EarningsCard({ e }: { e: EarningsSoFar }) {
     <section className="card mb-3 p-[var(--space-4)]">
       <div className="flex items-center justify-between gap-2">
         <h2 className="sechead__title">پورسانت این ماه تا امروز</h2>
-        <HideMoneyButton />
+        <span className="inline-flex items-center gap-[var(--space-2)]">
+          <EarningsCoin accrued={e.accrued_toman} />
+          <HideMoneyButton />
+        </span>
       </div>
       <p className="m-0 mt-[var(--space-1)] text-[length:var(--text-xs)] text-[var(--text-muted)]">
         از {faJalaliDate(e.from)} · {faNum(e.orders)} سفارش تحویل‌شده · {faNum(e.kg)} کیلو

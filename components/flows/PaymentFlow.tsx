@@ -143,7 +143,7 @@ export default function PaymentFlow({
       onSaved={onSaved}
       onClose={onClose}
       renderCustom={renderCustom}
-      done={<FlowDone key={state.answers.length} chips={paymentChips(viewCtx, state)} onReturn={onClose} />}
+      done={<FlowDone key={state.answers.length} chips={paymentChips(viewCtx, state)} coin={paymentRequest(viewCtx, state).body.method === "CASH"} onReturn={onClose} />}
     />
   );
 }

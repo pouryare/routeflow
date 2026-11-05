@@ -9,6 +9,8 @@ import { usePostAction } from "@/lib/usePostAction";
 import { tehranTodayIso } from "@/lib/jalali";
 import { useMemo, useState } from "react";
 import { Icon } from "@/components/meridian/Icon";
+import BusyIcon from "@/components/meridian/BusyIcon";
+import { useDoneFlash } from "@/lib/useDoneFlash";
 import { useRouter } from "next/navigation";
 import JalaliDatePicker from "@/components/JalaliDatePicker";
 import { toNumber, toToman } from "@/lib/money";
@@ -91,6 +93,7 @@ export default function CommissionEditor({
 }) {
   const router = useRouter();
   const { busy, message, send } = usePostAction("تنظیمات پورسانت ثبت نشد؛ دوباره تلاش کنید");
+  const [payDone, flashPay] = useDoneFlash();
   const [rateKind, setRateKind] = useState<Kind>("sales");
   const [payKind, setPayKind] = useState<Kind>("sales");
 
@@ -280,7 +283,10 @@ export default function CommissionEditor({
               { kind: payKind, [idFieldFor(payKind)]: Number(paySeller), amount_toman: parsedPay, paid_on: payOn },
               "پرداخت ثبت شد"
             );
-            if (ok) setPayAmount("");
+            if (ok) {
+              setPayAmount("");
+              flashPay();
+            }
           }}
         >
           <div>
@@ -309,8 +315,8 @@ export default function CommissionEditor({
           <JalaliDatePicker id="pay-on" label="تاریخ پرداخت" value={payOn} onChange={setPayOn} />
           <div className="flex items-end">
             <button className={BUTTON} disabled={busy || parsedPay === null || paySeller === ""} type="submit">
-              <Icon name="check" size="md" />
-              ثبت پرداخت
+              <BusyIcon busy={busy} done={payDone} name="check" />
+              {busy ? "در حال ثبت…" : payDone ? "ثبت شد" : "ثبت پرداخت"}
             </button>
           </div>
         </form>

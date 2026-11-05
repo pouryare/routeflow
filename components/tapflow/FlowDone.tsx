@@ -6,12 +6,15 @@ import { faDigits } from "@/lib/crm/vocab";
 import TumbleWords from "./TumbleWords";
 import { SkipButton } from "./Answer";
 import { celebrate } from "@/lib/celebrate";
+import Coin from "@/components/meridian/Coin";
 
 /** The done screen: what was saved, the likeliest next moves, and a return after `seconds`. */
-export default function FlowDone({ chips, next, actions, seconds = 5, onReturn, milestone }: {
+export default function FlowDone({ chips, next, actions, seconds = 5, onReturn, milestone, coin }: {
   chips: string[]; next?: string | null; actions?: ReactNode; seconds?: number; onReturn: () => void;
   /** A milestone (the last stop of a run): the done screen opens with a confetti burst. */
   milestone?: boolean;
+  /** Cash was received: a coin turns over beside the tick. */
+  coin?: boolean;
 }) {
   const [left, setLeft] = useState(seconds);
   const ret = useRef(onReturn);
@@ -28,6 +31,7 @@ export default function FlowDone({ chips, next, actions, seconds = 5, onReturn, 
   return (
     <div className="tf-done">
       <div className="tf-tick"><Icon name="check" /></div>
+      {coin ? <Coin /> : null}
       <p className="tf-q"><TumbleWords text="ثبت شد" /></p>
       <div className="tf-chips">
         {chips.map((c) => <span key={c}>{c}</span>)}

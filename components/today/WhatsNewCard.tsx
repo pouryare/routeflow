@@ -22,7 +22,16 @@ export default function WhatsNewCard({ entry }: { entry: WhatsNewEntry }) {
   }
 
   return (
-    <section className="card mb-3 p-[var(--space-4)]" aria-label="تازه‌های برنامه">
+    <section
+      className="card lightcard mb-3 p-[var(--space-4)]"
+      aria-label="تازه‌های برنامه"
+      onPointerMove={(e) => {
+        // A soft light follows the finger or pointer across the card (CSS reads these two numbers).
+        const r = e.currentTarget.getBoundingClientRect();
+        e.currentTarget.style.setProperty("--lx", `${e.clientX - r.left}px`);
+        e.currentTarget.style.setProperty("--ly", `${e.clientY - r.top}px`);
+      }}
+    >
       <h2 className="sechead__title">تازه‌های برنامه</h2>
       <ul className="m-0 mt-[var(--space-2)] flex list-disc flex-col gap-[var(--space-1)] pr-[var(--space-4)] text-[length:var(--text-sm)] leading-6 text-[var(--text)]">
         {entry.items.map((i, k) => (

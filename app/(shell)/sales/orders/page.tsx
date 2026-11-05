@@ -26,6 +26,8 @@ import PageHeader from "@/components/meridian/PageHeader";
 import ViewTabs, { type ViewTab } from "@/components/meridian/ViewTabs";
 import { oneOf, one, type SearchParams } from "@/lib/viewParam";
 import { canSell, isVanRole } from "@/lib/roles";
+import OrderAmountFilter from "@/components/sales/OrderAmountFilter";
+import { boundsOf, inRange, parseRange } from "@/lib/rangeBar";
 
 export const dynamic = "force-dynamic";
 
@@ -84,9 +86,14 @@ function ListView({
   onARun,
   focused,
   mayOrder,
+  bounds,
+  range,
 }: {
   orders: OrderSummary[];
   onARun: Set<number>;
+  /** Amount bounds of every order this person can see, and the chosen range (null = all). */
+  bounds: { min: number; max: number } | null;
+  range: [number, number] | null;
   focused: { id: number; business_name: string } | null;
   /** canSell: a rep manager reads this list but the order API refuses their sale. */
   mayOrder: boolean;
@@ -126,9 +133,13 @@ function ListView({
         <CardHelp id="card.orders-recent" />
       </div>
 
+      {bounds && <OrderAmountFilter key={range ? range.join("-") : "all"} bounds={bounds} active={range} />}
+
       {orders.length === 0 ? (
         <p style={{ padding: "0 24px 28px", color: "var(--muted)", fontSize: 13.5 }}>
-          {focused
+          {range
+            ? "سفارشی در این بازهٔ مبلغ نیست."
+            : focused
             ? `برای ${focused.business_name} هنوز سفارشی ثبت نشده است.`
             : "اولین سفارش را ثبت کنید. از همان لحظه، بدهی و تاریخ آخرین خرید مشتری‌ها روی نقشه هم به‌روز می‌شود."}
         </p>
@@ -362,7 +373,11 @@ export default async function OrdersPage({
   const orderParam = one(params, "order");
   const customerId = customerParam !== undefined && /^\d+$/.test(customerParam) ? Number(customerParam) : undefined;
 
-  const { focused, orders, onARun } = await ordersListFor(session, { customerId });
+  const { focused, orders: allOrders, onARun } = await ordersListFor(session, { customerId });
+  /* The amount filter belongs to the list view only; the board and journey read every order. */
+  const bounds = boundsOf(allOrders.map((o) => o.total_toman));
+  const range = bounds ? parseRange(one(params, "min"), one(params, "max"), bounds) : null;
+  const orders = view === "" ? allOrders.filter((o) => inRange(o.total_toman, range)) : allOrders;
 
   const mode = one(params, "mode") === "all" ? "all" : "one";
   const askedOrderId = orderParam !== undefined && /^\d+$/.test(orderParam) ? Number(orderParam) : undefined;
@@ -376,7 +391,7 @@ export default async function OrdersPage({
       ) : view === "journey" ? (
         <JourneyView session={session} orders={orders} mode={mode} askedOrderId={askedOrderId} />
       ) : (
-        <ListView orders={orders} onARun={onARun} focused={focused} mayOrder={canSell(session.role)} />
+        <ListView orders={orders} onARun={onARun} focused={focused} mayOrder={canSell(session.role)} bounds={bounds} range={range} />
       )}
     </>
   );

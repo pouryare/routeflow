@@ -3,6 +3,7 @@
 import { Icon } from "@/components/meridian/Icon";
 import { ChipGroup } from "@/components/mobile/ChipGroup";
 import KeypadField from "@/components/mobile/KeypadField";
+import AmountSlider from "@/components/mobile/AmountSlider";
 import { faNum, faToman } from "@/lib/format";
 import { DISCOUNT_REASONS, type DiscountKind, type DiscountReason } from "@/lib/discounts";
 import {
@@ -87,6 +88,9 @@ export default function DiscountSection({
         unit={draft.kind === "percent" ? "٪" : "تومان"}
         decimal={draft.kind === "percent"}
       />
+      {/* A quick coarse pick up to 30 %; anything finer or higher is typed on the keypad above. */}
+      {draft.kind === "percent" && <AmountSlider label="کشیدن برای درصد" min={0} max={30} step={0.5} value={Number(draft.value) || 0}
+        format={(n) => `${faNum(n)}٪`} onChange={(n) => onChange({ ...draft, value: n === 0 ? "" : String(n) })} />}
 
       <ChipGroup
         wrap

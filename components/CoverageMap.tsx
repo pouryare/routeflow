@@ -27,6 +27,7 @@ import CollapsibleSection, { SectionFilterContext } from "./CollapsibleSection";
 import CustomerFilters from "./CustomerFilters";
 import SearchBox from "./SearchBox";
 import LocateControl from "./LocateControl";
+import { canSell } from "@/lib/roles";
 import MyLocationMarker from "./MyLocationMarker";
 import { useMyPosition } from "./MyPositionProvider";
 import GeofenceWatcher from "./GeofenceWatcher";
@@ -1173,7 +1174,7 @@ export default function CoverageMap({
 
           {heatmapOn && <HeatmapLayer customers={filteredCustomers} weightByDebt={heatmapByDebt} beforeId={BASEMAP_LABELS} />}
 
-          <CustomerLayer customers={mapCustomers} colorOf={markerColor} shaped={shapedMarkers} ink={ink} onOpen={openCustomer} />
+          <CustomerLayer customers={mapCustomers} colorOf={markerColor} shaped={shapedMarkers} ink={ink} onOpen={openCustomer} canOrder={canSell(role)} navAppId={navAppId} />
 
           {/* Outside the clusters on purpose: the customer whose panel is open is the one
               thing on this map that must never be swallowed into a bubble. Drawn even with
