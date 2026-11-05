@@ -18,6 +18,8 @@ import { intelFlow } from "@/lib/crm/flows/intel";
 import { startFlow } from "@/lib/crm/flows/machine";
 import { isWorkingHours } from "@/lib/crm/hours";
 import { normPhone, sanitizePhoneInput } from "@/lib/crm/phone";
+import { phoneHint } from "@/lib/fieldShape";
+import FieldShapeHint from "@/components/FieldShapeHint";
 import { useToast } from "@/components/ToastProvider";
 import CustomerBento from "@/components/meridian/CustomerBento";
 import CustomerPriceHistory from "@/components/PriceHistoryList";
@@ -209,7 +211,7 @@ function ProfileEditor({ edit, busy, onClose, onSave, profile }: { edit: Edit; b
     }} style={{ display: "grid", gap: 12 }}>
       {edit.kind === "tags" && <FieldInput autoFocus  aria-label="برچسب‌ها" value={tags} onChange={e => setTags(e.target.value)} placeholder="با ویرگول جدا کنید" />}
       {edit.kind === "business" && (edit.field === "business_type" ? <ChipGroup wrap group={{ id: "business_type", label: "نوع کسب‌وکار", mode: "single", value, onChange: v => setValue(v as string), options: BUSINESS_TYPES.map(t => ({ id: t, label: BUSINESS_TYPE_LABEL[t] })) }} /> : <FieldInput autoFocus  aria-label={title} value={value} required={edit.field === "business_name"} inputMode={isPhone ? "tel" : "text"} dir={isPhone ? "ltr" : "rtl"} aria-invalid={touched && bad} onBlur={() => setTouched(true)} onChange={e => setValue(isPhone ? sanitizePhoneInput(e.target.value) : e.target.value)} />)}
-      {edit.kind === "contact" && <><label>نام<FieldInput  value={name} onChange={e => setName(e.target.value)} /></label><label>تلفن<FieldInput  dir="ltr" inputMode="tel" value={phone} aria-invalid={touched && bad} onBlur={() => setTouched(true)} onChange={e => setPhone(sanitizePhoneInput(e.target.value))} /></label><div><span>سمت</span><ChipGroup wrap group={{ id: "contact_role", label: "سمت", mode: "single", neutral: "__none", value: role, onChange: v => { if (v && v !== "__none") setRole(v as string); }, options: CONTACT_ROLES.map(r => ({ id: r, label: CONTACT_ROLE_LABEL[r] })) }} /></div><CheckField checked={primary} onChange={setPrimary}>مخاطب اصلی</CheckField></>}
+      {edit.kind === "contact" && <><label>نام<FieldInput  value={name} onChange={e => setName(e.target.value)} /></label><label>تلفن<FieldInput  dir="ltr" inputMode="tel" value={phone} aria-invalid={touched && bad} onBlur={() => setTouched(true)} onChange={e => setPhone(sanitizePhoneInput(e.target.value))} /><FieldShapeHint hint={phoneHint(phone)} /></label><div><span>سمت</span><ChipGroup wrap group={{ id: "contact_role", label: "سمت", mode: "single", neutral: "__none", value: role, onChange: v => { if (v && v !== "__none") setRole(v as string); }, options: CONTACT_ROLES.map(r => ({ id: r, label: CONTACT_ROLE_LABEL[r] })) }} /></div><CheckField checked={primary} onChange={setPrimary}>مخاطب اصلی</CheckField></>}
       {touched && bad && <p role="alert">شماره تلفن معتبر نیست</p>}
       <button type="submit" className="sheet-save inline-flex items-center justify-center gap-[var(--space-2)] btn solid" style={TOUCH} disabled={busy || bad}>
       <Icon name={edit.kind === "verify" ? "check" : "save"} size="md" />

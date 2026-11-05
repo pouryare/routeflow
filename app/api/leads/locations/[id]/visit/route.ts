@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isId } from "@/lib/inputChecks";
 import { canReachGroup, orgScopeId, requireRole } from "@/lib/session";
-import { leadVisitFlow } from "@/lib/crm/flows/leadVisit";
+import { leadVisitContext, leadVisitFlow } from "@/lib/crm/flows/leadVisit";
+import { ratingTagsFor } from "@/lib/repo/ratingTags";
 import { applyLeadVisit } from "@/lib/repo/crm/write";
 import { isOnDriversRun } from "@/lib/repo/leadRuns";
 import { readLeadLocation } from "@/lib/repo/leads";
 import { CrmError } from "@/lib/repo/crm/write";
 import { startFlow, viewStep } from "@/lib/crm/flows/machine";
-import type { FlowContext } from "@/lib/crm/flows/types";
 import { isVanRole, PIN_POOL_ROLES } from "@/lib/roles";
 
 /** GET: the location + a flow context for a driver standing in front of it. */
@@ -24,18 +24,12 @@ export async function GET(req: NextRequest, ctx: RouteContext<"/api/leads/locati
     return NextResponse.json({ ok: false, error: "مکان پیدا نشد" }, { status: 404 });
   }
 
-  const flowCtx: FlowContext = {
-    entry: "driver_visit",
-    firstContact: true,
-    attemptNo: 1,
-    maxMisses: 5,
+  const flowCtx = leadVisitContext({
+    name: loc.name,
+    address: loc.address ?? "",
     isManager: !isVanRole(guard.session.role),
-    vars: { name: loc.name, address: loc.address ?? "" },
-    knownContacts: [],
-    products: [],
-    reps: [],
-    recentCustomers: [],
-  };
+    tags: await ratingTagsFor(loc.organization_id ?? guard.session.organizationId),
+  });
   return NextResponse.json({ ok: true, location: loc, ctx: flowCtx, step: viewStep(leadVisitFlow, flowCtx, startFlow(leadVisitFlow, flowCtx)) });
 }
 

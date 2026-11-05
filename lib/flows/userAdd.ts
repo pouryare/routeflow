@@ -55,7 +55,7 @@ export function userAddFlow(roles: readonly Role[]): FlowConfig {
         id: "phonenum",
         kind: "input",
         q: "شمارهٔ تماس",
-        input: { field: "phone", placeholder: "۰۹۱۲…", ltr: true },
+        input: { field: "phone", placeholder: "۰۹۱۲…", ltr: true, shape: "phone" },
         options: [{ id: "ok", label: "ثبت حساب", tone: "rec", save: true }],
       },
     },

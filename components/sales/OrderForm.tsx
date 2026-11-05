@@ -15,6 +15,7 @@ import { Icon } from "@/components/meridian/Icon";
 import BusyIcon from "@/components/meridian/BusyIcon";
 import { useDoneFlash } from "@/lib/useDoneFlash";
 import { celebrate } from "@/lib/celebrate";
+import { flyTo } from "@/lib/flyTo";
 import SmartPicker from "@/components/mobile/SmartPicker";
 import KeypadField from "@/components/mobile/KeypadField";
 import DayChips from "@/components/mobile/DayChips";
@@ -271,6 +272,7 @@ export default function OrderForm({
       }
       flash();
       if (json.first_today) void celebrate();
+      void flyTo("/sales/orders"); // the new order flies into its tab (owner, 2026-11-05)
       router.push(`/sales/orders/${json.id}`);
     } finally {
       setBusy(false);

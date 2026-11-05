@@ -4,8 +4,8 @@ import { roundToman } from "@/lib/money";
 
 /** At the door: was everything handed over, and what was collected.
  *
- *  Common path -- «بله، همه» then «کل مبلغ» -- is two taps, because that is what happens most
- *  days. The stepper only appears when something was short, and starts on what was ordered,
+ *  Common path -- «بله، همه» then «کل مبلغ» -- is a tap and a slide, because that is what happens
+ *  most days. Every answer that records the delivery is a slide to confirm (owner, 2026-11-05). The stepper only appears when something was short, and starts on what was ordered,
  *  so correcting one line is one tap, not retyping every quantity.
  *
  *  The step ids and `put` keys are the contract with `deliveryPayload` below:
@@ -57,8 +57,8 @@ export const deliveryFlow: FlowConfig = {
       q: "پول گرفتید؟",
       sub: "جمع تحویل: {total_label}",
       options: [
-        { id: "full", label: "کل مبلغ", sub: "{total_label}", tone: "rec", save: true, put: { collected: "total" } },
-        { id: "none", label: "چیزی نگرفتم", sub: "به حساب مشتری می‌ماند", save: true, put: { collected: "0" } },
+        { id: "full", label: "کل مبلغ", sub: "{total_label}", tone: "rec", save: true, slide: true, put: { collected: "total" } },
+        { id: "none", label: "چیزی نگرفتم", sub: "به حساب مشتری می‌ماند", save: true, slide: true, put: { collected: "0" } },
         { id: "other", label: "مبلغ دیگر…", next: "amount" },
       ],
     },
@@ -67,7 +67,7 @@ export const deliveryFlow: FlowConfig = {
       kind: "amount",
       q: "چقدر گرفتید؟",
       input: { field: "collected_amount", placeholder: "مبلغ به تومان", ltr: true },
-      options: [{ id: "ok", label: "ثبت", tone: "rec", save: true }],
+      options: [{ id: "ok", label: "ثبت", tone: "rec", save: true, slide: true }],
     },
   },
 };

@@ -2,6 +2,7 @@
 
 import { FieldInput } from "@/components/FieldInput";
 import { PasswordInput } from "@/components/TextInput";
+import { FieldPassword } from "@/components/PasswordRoll";
 import { useUndoableAction } from "@/components/tapflow/useUndoableAction";
 import { labelCells } from "@/lib/tableCards";
 import SmartPicker from "@/components/mobile/SmartPicker";
@@ -462,8 +463,8 @@ export default function AdminUsersPage() {
                       <div className="flex gap-2 text-xs">
                         {resetting?.id === u.id ? (
                           <span className="flex flex-wrap items-center gap-2">
-                            <FieldInput
-                              type="password"
+                            <FieldPassword
+                              label="رمز تازه"
                               autoComplete="new-password"
                               autoFocus
                               value={resetting.pw}

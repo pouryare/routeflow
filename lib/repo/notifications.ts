@@ -471,6 +471,18 @@ export async function markGroupsRead(organizationId: number, userId: number, gro
     .run(now, organizationId, userId, ...groupKeys);
 }
 
+/** Swiping a read group back to unread: its newest item loses its read time, so the group shows one unread. */
+export async function markGroupsUnread(organizationId: number, userId: number, groupKeys: string[]): Promise<void> {
+  for (const key of groupKeys) {
+    await getDb()
+      .prepare(
+        `UPDATE notifications SET read_at = NULL
+          WHERE id = (SELECT max(id) FROM notifications WHERE organization_id = ? AND user_id = ? AND group_key = ?)`
+      )
+      .run(organizationId, userId, key);
+  }
+}
+
 /* -------------------------------------------------------------------------- *
  *  Phase 2: per-user prefs matrix, channel master-switch / quiet-hours,      *
  *  and the telegram deep-link nonce. The settings API (Task 8) and the      *

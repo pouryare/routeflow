@@ -16,7 +16,8 @@ import { FlowError, interpolate, replayAnswers } from "@/lib/crm/flows/machine";
 import type { FlowAnswer, FlowConfig, FlowContext, FlowSet, FlowState } from "@/lib/crm/flows/types";
 import { afterCallFlow } from "@/lib/crm/flows/afterCall";
 import { addLeadFlow, basicsOf, hoursOf, linkOf, pinOf, type PinValue } from "@/lib/crm/flows/addLead";
-import { leadVisitFlow } from "@/lib/crm/flows/leadVisit";
+import { leadVisitContext, leadVisitFlow } from "@/lib/crm/flows/leadVisit";
+import { ratingTagsFor } from "@/lib/repo/ratingTags";
 import type { CustomerLifecycle } from "@/lib/types";
 import { addLeadContext, flowContextFor, getBusiness } from "./businesses";
 import { findDuplicates } from "./dedupe";
@@ -292,18 +293,12 @@ export async function applyLeadVisit(
   // And it must be the caller's company's: an id alone reaches every tenant's pins.
   if (session.role !== "platform_owner" && loc.organization_id !== session.organizationId) throw new CrmError(404, "مکان پیدا نشد");
 
-  const ctx: FlowContext = {
-    entry: "driver_visit",
-    firstContact: true,
-    attemptNo: 1,
-    maxMisses: 5,
+  const ctx = leadVisitContext({
+    name: loc.name,
+    address: loc.address ?? "",
     isManager: !isVanRole(session.role),
-    vars: { name: loc.name, address: loc.address ?? "" },
-    knownContacts: [],
-    products: [],
-    reps: [],
-    recentCustomers: [],
-  };
+    tags: await ratingTagsFor(loc.organization_id),
+  });
   const st = replayOr400(leadVisitFlow, ctx, input.answers);
   const acc = st.acc;
   const org = loc.organization_id;

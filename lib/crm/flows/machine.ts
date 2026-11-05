@@ -49,6 +49,7 @@ export function viewStep(cfg: FlowConfig, ctx: FlowContext, st: FlowState): Reso
       due: o.set?.due,
       saves: o.save === true,
       url: o.url,
+      ...(o.slide ? { slide: o.slide } : {}),
     })),
     choices: step.choices ? dyn(step.choices, ctx, st) : [],
     input: step.input,

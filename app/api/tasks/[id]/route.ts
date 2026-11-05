@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { isId } from "@/lib/inputChecks";
 import { requireRole } from "@/lib/session";
 import { canActOnTask, completeTask, dismissTask, snoozeTask, tasksRepo, taskCustomerType, TaskError } from "@/lib/repo/tasks";
-import { isSnoozeChoice } from "@/lib/taskSnooze";
+import { isSnoozeChoice, type SnoozeChoice } from "@/lib/taskSnooze";
 import { objectionCardFor } from "@/lib/repo/academy";
 import { MANAGE_ROLES } from "@/lib/roles";
 
@@ -29,9 +29,12 @@ export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/tasks/[id]
   try {
     // F142: «later» moves the due time; refused (400) for urgent work or after three snoozes.
     if (b?.snooze !== undefined) {
-      if (!isSnoozeChoice(b.snooze)) return NextResponse.json({ ok: false, error: "زمان عقب‌انداختن نامعتبر است" }, { status: 400 });
+      // A set time by name, or { day: "YYYY-MM-DD", hour } that snoozeTask checks (lib/taskSnooze.ts pickedSnoozeDue).
+      const s = b.snooze;
+      const picked = s && typeof s === "object" ? (s as { day?: unknown; hour?: unknown }) : null;
+      if (!isSnoozeChoice(s) && !picked) return NextResponse.json({ ok: false, error: "زمان عقب‌انداختن نامعتبر است" }, { status: 400 });
       try {
-        return NextResponse.json({ ok: true, due_at: await snoozeTask(org, Number(id), b.snooze) });
+        return NextResponse.json({ ok: true, due_at: await snoozeTask(org, Number(id), picked ? { day: picked.day, hour: picked.hour } : (s as SnoozeChoice)) });
       } catch (e) {
         if (e instanceof TaskError) return NextResponse.json({ ok: false, error: e.message }, { status: 400 });
         throw e;

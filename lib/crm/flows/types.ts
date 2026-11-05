@@ -66,6 +66,9 @@ export interface FlowOption {
   /** Plain strings written into `state.values` when this option is tapped (non-CRM flows). */
   put?: Record<string, string>;
   url?: string;
+  /** A big moment: the answer is a slide to confirm instead of a tap -- always, or once the
+   *  typed amount reaches `over` (lib/slideConfirm.ts). */
+  slide?: true | { over: number };
 }
 
 export interface FlowInput {
@@ -77,6 +80,10 @@ export interface FlowInput {
   decimal?: boolean;
   /** `amount` steps: 0 is a valid answer. */
   allowZero?: boolean;
+  /** A field with one right shape, checked live while typing (lib/fieldShape.ts). */
+  shape?: "phone";
+  /** The most letters the field takes; a counter ring shows under it (lib/charCount.ts). */
+  max?: number;
   /** `amount` steps: the unit printed under the number. Defaults to تومان; a step whose unit
    *  varies per item reads `ctx.vars["<field>_unit"]` instead. */
   unit?: string;
@@ -131,7 +138,7 @@ export const EMPTY_CONTEXT: FlowContext = {
 export interface FlowAnswer { step: string; option: string; value?: string }
 export interface FlowState { stack: string[]; answers: FlowAnswer[]; acc: FlowSet; values: Record<string, string>; saved: boolean }
 
-export interface ResolvedOption { id: string; label: string; sub?: string; tone?: "rec" | "bad"; group?: string; due?: DueSpec; saves: boolean; url?: string }
+export interface ResolvedOption { id: string; label: string; sub?: string; tone?: "rec" | "bad"; group?: string; due?: DueSpec; saves: boolean; url?: string; slide?: true | { over: number } }
 export interface ResolvedStep {
   id: string; kind: StepKind; q: string; sub?: string; options: ResolvedOption[];
   choices: { id: string; label: string }[]; input?: FlowInput; timeStep: boolean; skipable: boolean;

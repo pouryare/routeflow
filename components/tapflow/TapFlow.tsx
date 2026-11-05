@@ -13,6 +13,10 @@ import { nextOpenAt, type WorkingHours } from "@/lib/crm/hours";
 import { useChoiceFeedback } from "./useChoiceFeedback";
 import SuggestChips from "./SuggestChips";
 import AmountStep from "./AmountStep";
+import SlideConfirm from "@/components/mobile/SlideConfirm";
+import FieldShapeHint from "@/components/FieldShapeHint";
+import CharCount from "@/components/CharCount";
+import { phoneHint } from "@/lib/fieldShape";
 import { AnswerButton, SkipButton } from "./Answer";
 import PickStep from "./PickStep";
 import FlowProgress from "./FlowProgress";
@@ -139,7 +143,8 @@ function StepBody({ view, submit, hours, onNavigate, navigateUrl, vars, items, s
     );
   }
 
-  const needsText = view.kind === "input" && !!view.input && !view.input.optional && !text.trim();
+  const tooLong = !!view.input?.max && Array.from(text.trim()).length > view.input.max;
+  const needsText = (view.kind === "input" && !!view.input && !view.input.optional && !text.trim()) || tooLong;
   const subFor = (o: ResolvedOption): string | undefined => {
     if (!o.due || o.due.kind === "pick" || o.due.kind === "none" || !hours?.length) return o.sub;
     const raw = resolveDue(o.due, now);
@@ -156,6 +161,13 @@ function StepBody({ view, submit, hours, onNavigate, navigateUrl, vars, items, s
   const button = (o: ResolvedOption) => {
     const sub = subFor(o);
     const isSelected = feedback.selected === o.id;
+    if (o.slide === true) {
+      return (
+        <SlideConfirm key={o.id} sub={sub} isDisabled={needsText || feedback.selected !== null} onConfirm={() => tap(o)}>
+          {o.label}
+        </SlideConfirm>
+      );
+    }
     return (
       <AnswerButton key={o.id} selected={isSelected} tone={o.tone} isDisabled={needsText || feedback.selected !== null} onPress={() => tap(o)}>
         {o.label}
@@ -186,9 +198,11 @@ function StepBody({ view, submit, hours, onNavigate, navigateUrl, vars, items, s
           aria-label={view.input.placeholder}
         />
       ) : null}
+      {view.input?.shape === "phone" ? <FieldShapeHint hint={phoneHint(text)} /> : null}
+      {view.input?.max ? <CharCount text={text} max={view.input.max} /> : null}
       {view.input?.field === "text" && suggest ? <SuggestChips typed={text} past={suggest} onPick={setText} /> : null}
       {view.kind === "multi" ? (
-        <div className="tf-grid one">
+        <div className={`tf-grid one${view.id === "tags" ? " tf-popin" : ""}`}>
           {view.choices.map((c) => (
             <AnswerButton key={c.id} icon="check" selected={picked.includes(c.id)}
               onPress={() => setPicked((xs) => (xs.includes(c.id) ? xs.filter((x) => x !== c.id) : [...xs, c.id]))}>

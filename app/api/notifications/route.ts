@@ -4,6 +4,7 @@ import {
   listNotificationGroups,
   unreadGroupCount,
   markGroupsRead,
+  markGroupsUnread,
 } from "@/lib/repo/notifications";
 
 const ROLES = ["platform_owner", "owner", "group_manager", "rep_manager", "phone_sales", "field_rep", "delivery_driver"] as const;
@@ -23,7 +24,16 @@ export async function PATCH(req: NextRequest) {
   const guard = await requireRole(req, [...ROLES]);
   if (!guard.ok) return guard.response;
   const { organizationId, user } = guard.session;
-  const body = (await req.json().catch(() => null)) as { read?: unknown } | null;
+  const body = (await req.json().catch(() => null)) as { read?: unknown; unread?: unknown } | null;
+  // { unread: [group_key] }: a short swipe on a read row makes it unread again.
+  const unread = body?.unread;
+  if (unread !== undefined) {
+    if (!Array.isArray(unread) || !unread.every((x) => typeof x === "string")) {
+      return NextResponse.json({ ok: false, error: "درخواست نامعتبر است" }, { status: 400 });
+    }
+    await markGroupsUnread(organizationId, user.id, (unread as string[]).slice(0, 200));
+    return NextResponse.json({ ok: true, unread: await unreadGroupCount(organizationId, user.id) });
+  }
   const read = body?.read;
   const ok = read === "all" || (Array.isArray(read) && read.every((x) => typeof x === "string"));
   if (!ok) return NextResponse.json({ ok: false, error: "درخواست نامعتبر است" }, { status: 400 });

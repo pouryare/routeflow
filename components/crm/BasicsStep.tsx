@@ -9,6 +9,8 @@ import { useToast } from "@/components/ToastProvider";
 import { basicsOf, linkOf, pinOf } from "@/lib/crm/flows/addLead";
 import { FOOD_APP_SOURCES, faDigits } from "@/lib/crm/vocab";
 import { normPhone, sanitizePhoneInput } from "@/lib/crm/phone";
+import { phoneHint } from "@/lib/fieldShape";
+import FieldShapeHint from "@/components/FieldShapeHint";
 import type { DupMatch } from "@/lib/repo/crm/dedupe";
 
 /** Name + phone, with the duplicate check running as the rep types (spec D7).
@@ -78,7 +80,7 @@ export default function BasicsStep({ api, prefillPhone, onOpenExisting, onReques
         onBlur={() => setPhoneTouched(true)}
         placeholder={foodApp ? "تلفن (اگر دارید)" : "0912 ___ ____"} aria-label="تلفن" type="tel" inputMode="tel"
         aria-invalid={invalid} aria-describedby={invalid ? "lead-phone-error" : undefined} />
-      {invalid ? <p id="lead-phone-error" role="alert" className="tf-error">شماره تلفن معتبر وارد کنید؛ فقط رقم و پیش‌شمارهٔ ایران مجاز است.</p> : null}
+      {invalid ? <p id="lead-phone-error" role="alert" className="tf-error">شماره تلفن معتبر وارد کنید؛ فقط رقم و پیش‌شمارهٔ ایران مجاز است.</p> : <FieldShapeHint hint={phoneHint(phone)} />}
       <FieldInput className="ltr" value={instagram} onChange={(e) => { setInstagram(e.target.value); setBranchOf(null); }} placeholder="اینستاگرام: ‎@page (اختیاری)" aria-label="صفحهٔ اینستاگرام" inputMode="url" autoCapitalize="none" />
       {checkFailedShown ? (
         <div className="tf-card block">

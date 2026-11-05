@@ -8,7 +8,7 @@ process.env.ROUTEFLOW_DB_PATH = testDbPath;
 process.env.SESSION_SECRET = "test-secret";
 
 const { getDb } = await import("@/lib/db");
-const { recipientsFor, fanOutNotifications, listNotificationGroups, unreadGroupCount, markGroupsRead } = await import(
+const { recipientsFor, fanOutNotifications, listNotificationGroups, unreadGroupCount, markGroupsRead, markGroupsUnread } = await import(
   "@/lib/repo/notifications"
 );
 const { runEventRules } = await import("@/lib/repo/rules");
@@ -196,6 +196,20 @@ it("markGroupsRead('all') clears the unread count", async () => {
   expect(await unreadGroupCount(1, seller)).toBe(1);
   await markGroupsRead(1, seller, "all");
   expect(await unreadGroupCount(1, seller)).toBe(0);
+});
+
+it("markGroupsUnread brings a read group back as one unread", async () => {
+  await fanOutNotifications(
+    1,
+    { code: "c", action_json: JSON.stringify({ notification_type: "order.confirmed" }) },
+    evRow("order.passReview", ord, {}, owner),
+    null
+  );
+  await markGroupsRead(1, seller, "all");
+  const [grp] = await listNotificationGroups(1, seller);
+  await markGroupsUnread(1, seller, [grp.group_key]);
+  expect(await unreadGroupCount(1, seller)).toBe(1);
+  expect((await listNotificationGroups(1, seller)).find((x) => x.group_key === grp.group_key)?.unread_count).toBe(1);
 });
 
 async function seedNotifyRule(code: string, trigger: string, typeCode: string) {

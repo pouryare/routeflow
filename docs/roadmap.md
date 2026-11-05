@@ -817,6 +817,7 @@ Decided, but each needs something first. The "waits for" part is in the line. Th
 
 ### Messaging, chat and telephony
 
+- **M1. Send motions for chat and SMS (owner, 2026-11-05).** When a message really leaves the phone: the send button flies off like a paper plane and its label flips to «ارسال شد»; «…» typing dots while the other person writes; the sent text rises out of the box into a bubble; read ticks (sending, sent ✓, delivered ✓✓, read in colour); the mic turns into a send arrow as you type; hold the mic to record a voice note, release to send; drag a message sideways to reply with a quote; «بازگردانی» pulls a just-sent message back into the box. Waits for chat phase 1 (FB9) or the SMS receipt (A16). Clips and choices: `docs/decisions.md` 10.17 and 10.18.
 - **FB21. Internal chat phases 2 and 3.** 1:1 and group chats on the same tables, then photos, search and read receipts. Waits for phase 1.
 - **FB20. Attempts list with retry on the status page.** Per message: tries, outcome, time and a retry button. Waits for the batch A delivery log.
 - **FB23. SMS guard.** Iranian numbers only, a cooldown per number, a daily budget, a spike alert and one ledger row per attempt; monitor first, then enforce; owner pause switch. Built together with Farazsms.

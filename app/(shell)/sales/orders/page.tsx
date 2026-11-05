@@ -88,12 +88,15 @@ function ListView({
   mayOrder,
   bounds,
   range,
+  amounts,
 }: {
   orders: OrderSummary[];
   onARun: Set<number>;
   /** Amount bounds of every order this person can see, and the chosen range (null = all). */
   bounds: { min: number; max: number } | null;
   range: [number, number] | null;
+  /** Every order total behind the bounds, for the filter's bars and live count. */
+  amounts: number[];
   focused: { id: number; business_name: string } | null;
   /** canSell: a rep manager reads this list but the order API refuses their sale. */
   mayOrder: boolean;
@@ -133,7 +136,7 @@ function ListView({
         <CardHelp id="card.orders-recent" />
       </div>
 
-      {bounds && <OrderAmountFilter key={range ? range.join("-") : "all"} bounds={bounds} active={range} />}
+      {bounds && <OrderAmountFilter key={range ? range.join("-") : "all"} bounds={bounds} active={range} amounts={amounts} />}
 
       {orders.length === 0 ? (
         <p style={{ padding: "0 24px 28px", color: "var(--muted)", fontSize: 13.5 }}>
@@ -375,7 +378,8 @@ export default async function OrdersPage({
 
   const { focused, orders: allOrders, onARun } = await ordersListFor(session, { customerId });
   /* The amount filter belongs to the list view only; the board and journey read every order. */
-  const bounds = boundsOf(allOrders.map((o) => o.total_toman));
+  const amounts = allOrders.map((o) => o.total_toman);
+  const bounds = boundsOf(amounts);
   const range = bounds ? parseRange(one(params, "min"), one(params, "max"), bounds) : null;
   const orders = view === "" ? allOrders.filter((o) => inRange(o.total_toman, range)) : allOrders;
 
@@ -391,7 +395,7 @@ export default async function OrdersPage({
       ) : view === "journey" ? (
         <JourneyView session={session} orders={orders} mode={mode} askedOrderId={askedOrderId} />
       ) : (
-        <ListView orders={orders} onARun={onARun} focused={focused} mayOrder={canSell(session.role)} bounds={bounds} range={range} />
+        <ListView orders={orders} onARun={onARun} focused={focused} mayOrder={canSell(session.role)} bounds={bounds} range={range} amounts={amounts} />
       )}
     </>
   );

@@ -2,6 +2,7 @@ import type { FlowConfig, FlowContext, FlowState } from "@/lib/crm/flows/types";
 import { faToman } from "@/lib/format";
 import { faJalaliDate } from "@/lib/jalali";
 import { tomanInWords } from "@/lib/amountWords";
+import { LARGE_PAYMENT_TOMAN } from "@/lib/slideConfirm";
 
 /** Money received. Cash for a customer already on screen is two taps: «نقد», then the amount,
  *  which arrives prefilled with what the customer owes and is confirmed with one tap.
@@ -98,7 +99,8 @@ export const paymentFlow: FlowConfig = {
       q: "چقدر دریافت کردید؟",
       sub: "{owed_line}",
       input: { field: "amount", placeholder: "مبلغ به تومان", ltr: true },
-      options: [{ id: "ok", label: "ثبت دریافت", tone: "rec", save: true }],
+      // A large amount is slid, not tapped (owner, 2026-11-05).
+      options: [{ id: "ok", label: "ثبت دریافت", tone: "rec", save: true, slide: { over: LARGE_PAYMENT_TOMAN } }],
     },
   },
 };
