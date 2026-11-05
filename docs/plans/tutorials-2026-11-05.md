@@ -145,7 +145,8 @@ Quickest to a first tour (a day), but it decides the scrolling, buttons and flow
 | I6 | Stuck detector: **no**. Help comes only from the first-time chip, search and the list | 2026-11-05 |
 | I7 | Manager sends a tutorial: **yes, shown on the person's today page with the manager's name; the manager sees sent, seen and done** | 2026-11-05 |
 | I8 | Rewards: **ring on the profile picture, a role badge (such as «استاد مسیر») when the set is done, confetti and a sound once** | 2026-11-05 |
-| I9 | _waiting_ | |
+| I9 | «تمرین»: **repeat a finished tutorial on fresh demo data with no hints, no timer** | 2026-11-05 |
+| I10 | _waiting_ | |
 
 ## 11. Owner's direction (2026-11-05): many tutorials, practice on demo data in the page
 
