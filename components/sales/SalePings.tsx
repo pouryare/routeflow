@@ -8,6 +8,7 @@ import { faDigits, faToman } from "@/lib/format";
 import { buzz } from "@/lib/haptic";
 import { playSound } from "@/lib/sound";
 import type { PingOrder } from "@/lib/salePings";
+import { foldAmounts } from "@/lib/mergeCount";
 
 /** How often the open page asks for new orders, while it is visible. */
 const CHECK_MS = 15_000;
@@ -62,6 +63,25 @@ export default function SalePings() {
   }, [router]);
 
   if (pings.length === 0) return null;
+  /* Two or more at once join into one card with the count and what they add up to
+     («۳ سفارش تازه · جمع …»), which opens the orders list; one stays its own card. */
+  if (pings.length > 1) {
+    const { count, total } = foldAmounts(pings);
+    return (
+      <ul className="pings" aria-live="polite">
+        <li key={`fold-${pings[0].key}`} className="ping">
+          <Link href="/sales/orders" className="ping__link">
+            <Icon name="receipt" size="sm" />
+            <span className="ping__text">
+              <strong>{faDigits(String(count))} سفارش تازه</strong>
+              <span>آخری: {pings[0].customer_name}</span>
+            </span>
+            <span className="ping__amount">جمع {faToman(total)}</span>
+          </Link>
+        </li>
+      </ul>
+    );
+  }
   return (
     <ul className="pings" aria-live="polite">
       {pings.map((p) => (

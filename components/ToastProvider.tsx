@@ -1,11 +1,12 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef } from "react";
 import { Toast, toast } from "@heroui/react";
 import { Icon, type IconName } from "@/components/meridian/Icon";
 import { OUTBOX_HOLD_MS } from "@/lib/offline/constants";
 import { haptic } from "@/lib/haptics";
 import { playSound } from "@/lib/sound";
+import { withCount } from "@/lib/mergeCount";
 
 type ToastVariant = "success" | "error" | "info";
 
@@ -66,6 +67,11 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     return () => document.removeEventListener("visibilitychange", onVisibility);
   }, []);
 
+  /* Plain toasts on screen, by their words: a repeat joins the one already showing (×N) and
+     restarts its clock instead of stacking a copy. Toasts with a button never join -- each
+     undo belongs to its own action. */
+  const open = useRef(new Map<string, { id: string; n: number }>());
+
   const showToast = useCallback<ShowToast>((message, variant = "info", action) => {
     if (variant !== "info") haptic(variant);
     const base = {
@@ -75,7 +81,15 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     };
     playSound(SOUND[variant]);
     if (!action) {
-      toast(message, base);
+      const key = `${variant}|${message}`;
+      const onClose = () => open.current.delete(key);
+      const seen = open.current.get(key);
+      if (seen) {
+        seen.n += 1;
+        seen.id = toast.update(seen.id, withCount(message, seen.n), { ...base, onClose });
+        return;
+      }
+      open.current.set(key, { id: toast(message, { ...base, onClose }), n: 1 });
       return;
     }
     const label = (
