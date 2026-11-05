@@ -1,6 +1,6 @@
 import type { FlowAnswer, FlowConfig, FlowContext, FlowOption } from "@/lib/crm/flows/types";
 import { faNum, faToman } from "@/lib/format";
-import { METHOD_LABEL } from "@/lib/flows/payment";
+import { METHOD_LABEL, rememberedFirst } from "@/lib/flows/payment";
 
 /** Writing down money the business spent: what for, how much, who from, how it was paid.
  *
@@ -54,7 +54,7 @@ export const expenseFlow: FlowConfig = {
       kind: "choice",
       q: "چطور پرداخت شد؟",
       sub: (ctx, s) => `${categoryName(ctx, s)} · ${faToman(Number(s.values.amount))}`,
-      options: EXPENSE_METHODS.map((m): FlowOption => ({ id: m, label: METHOD_LABEL[m], next: "photo", put: { method: m } })),
+      options: (ctx) => rememberedFirst(EXPENSE_METHODS.map((m): FlowOption => ({ id: m, label: METHOD_LABEL[m], next: "photo", put: { method: m } })), ctx.vars.last_method),
     },
     photo: {
       id: "photo",

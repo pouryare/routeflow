@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { EMPTY_CONTEXT, type FlowContext } from "@/lib/crm/flows/types";
-import { startFlow, answerStep, replayAnswers } from "@/lib/crm/flows/machine";
+import { startFlow, answerStep, replayAnswers, viewStep } from "@/lib/crm/flows/machine";
+import { rememberedFirst } from "@/lib/flows/payment";
 import { expenseFlow, expenseRequest, expenseChips, EXPENSE_METHODS, hasPhoto, repeatAnswers, supplierFromMemo } from "@/lib/flows/expense";
 import { assertFlowBudget, assertNoRawEnumLabels } from "./helpers/flowAssert";
 
@@ -83,5 +84,17 @@ describe("repeat an expense (A10)", () => {
 
   it("starts from the top when the old category is gone", () => {
     expect(repeatAnswers(ctx, { accountId: 99, amountToman: 1000, supplier: null })).toEqual([]);
+  });
+});
+
+describe("remember method (Z10)", () => {
+  it("puts the last method first and marks it, and leaves the order alone without one", () => {
+    const remembered = { ...ctx, vars: { ...ctx.vars, last_method: "POS" } };
+    const st = answerStep(expenseFlow, remembered, answerStep(expenseFlow, remembered, answerStep(expenseFlow, remembered, startFlow(expenseFlow, remembered), "pick", "41"), "ok", "1000"), "nosup");
+    const opts = viewStep(expenseFlow, remembered, st).options;
+    expect(opts[0]).toMatchObject({ id: "POS", tone: "rec", sub: "روش قبلی" });
+    expect(opts.map((o) => o.id).sort()).toEqual([...EXPENSE_METHODS].sort());
+    expect(rememberedFirst([{ id: "CASH", label: "نقد" }], undefined)).toEqual([{ id: "CASH", label: "نقد" }]);
+    expect(rememberedFirst([{ id: "CASH", label: "نقد" }], "GONE")).toEqual([{ id: "CASH", label: "نقد" }]);
   });
 });

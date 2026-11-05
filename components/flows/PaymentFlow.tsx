@@ -12,6 +12,7 @@ import { faToman } from "@/lib/format";
 import { tehranTodayIso } from "@/lib/jalali";
 import { useToast } from "@/components/ToastProvider";
 import { QUEUED_MESSAGE, queueIfOffline } from "@/lib/offline/queueIfOffline";
+import { readLastMethod, writeLastMethod } from "@/lib/lastMethod";
 
 export interface PaymentCustomer {
   id: number;
@@ -49,6 +50,7 @@ export default function PaymentFlow({
   onReopen?: () => void;
 }) {
   const today = useMemo(() => tehranTodayIso(), []);
+  const [lastMethod] = useState(() => readLastMethod("payment"));
   const ctx = useMemo<FlowContext>(() => {
     const known = customerId !== undefined ? customers.find((c) => c.id === customerId) : undefined;
     return {
@@ -59,14 +61,16 @@ export default function PaymentFlow({
         received_at: today,
         ...(known ? { customer_id: String(known.id), customer: known.business_name } : {}),
         ...(method ? { method } : {}),
+        ...(lastMethod ? { last_method: lastMethod } : {}),
       },
     };
-  }, [customers, customerId, method, today]);
+  }, [customers, customerId, method, today, lastMethod]);
 
   const toast = useToast();
   const { state, setState, onSaved, restart } = useFlowHost(paymentFlow, ctx, {
     send: async (st) => {
       const req = paymentRequest(ctx, st);
+      writeLastMethod("payment", st.values.method);
       /* With no signal a receipt or a cheque is a FACT that already happened: it goes into the device
          outbox and is sent when the connection returns. */
       if (await queueIfOffline(req.url, req.body)) {

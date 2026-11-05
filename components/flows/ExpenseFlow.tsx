@@ -3,7 +3,7 @@
 import { Button } from "@heroui/react";
 import { FileTrigger } from "react-aria-components";
 import { SkipButton } from "@/components/tapflow/Answer";
-import { useMemo, useRef } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import TapFlow, { type CustomStepApi } from "@/components/tapflow/TapFlow";
 import { Icon } from "@/components/meridian/Icon";
@@ -12,6 +12,7 @@ import { useFlowHost } from "@/components/tapflow/useFlowHost";
 import { EMPTY_CONTEXT, type FlowContext } from "@/lib/crm/flows/types";
 import { expenseChips, expenseFlow, expenseRequest, hasPhoto, repeatAnswers } from "@/lib/flows/expense";
 import { tehranTodayIso } from "@/lib/jalali";
+import { readLastMethod, writeLastMethod } from "@/lib/lastMethod";
 
 export interface ExpenseCategory {
   id: number;
@@ -47,6 +48,7 @@ export default function ExpenseFlow({
   const router = useRouter();
   const today = useMemo(() => tehranTodayIso(), []);
   const repeatSupplier = repeat?.supplier ?? null;
+  const [lastMethod] = useState(() => readLastMethod("expense"));
   const ctx = useMemo<FlowContext>(() => {
     // A repeated expense's supplier is offered even when it is not among the recent names.
     const names = repeatSupplier && !suppliers.includes(repeatSupplier) ? [repeatSupplier, ...suppliers] : suppliers;
@@ -57,15 +59,16 @@ export default function ExpenseFlow({
         category: categories.map((c) => ({ id: c.id, label: c.nameFa })),
         supplier: names.map((s, i) => ({ id: i + 1, label: s })),
       },
-      vars: { today },
+      vars: { today, ...(lastMethod ? { last_method: lastMethod } : {}) },
     };
-  }, [categories, suppliers, today, repeatSupplier]);
+  }, [categories, suppliers, today, repeatSupplier, lastMethod]);
 
   /* The receipt picture lives here, not in the flow state: a File is not an answer. It is taken on
      the photo step and sent to the new expense once the expense itself is saved. */
   const receipt = useRef<File | null>(null);
   const { state, setState, onSaved, restart } = useFlowHost(expenseFlow, ctx, {
     send: async (st) => {
+      writeLastMethod("expense", st.values.method);
       const res = await fetch("/api/accounting/expenses", {
         method: "POST",
         headers: { "Content-Type": "application/json" },

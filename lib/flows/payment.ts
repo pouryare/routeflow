@@ -1,4 +1,4 @@
-import type { FlowConfig, FlowContext, FlowState } from "@/lib/crm/flows/types";
+import type { FlowConfig, FlowContext, FlowOption, FlowState } from "@/lib/crm/flows/types";
 import { faToman } from "@/lib/format";
 import { faJalaliDate } from "@/lib/jalali";
 import { tomanInWords } from "@/lib/amountWords";
@@ -54,13 +54,13 @@ export const paymentFlow: FlowConfig = {
       kind: "choice",
       q: "چطور پرداخت شد؟",
       sub: "{customer}",
-      options: [
+      options: (ctx) => rememberedFirst([
         { id: "CASH", label: METHOD_LABEL.CASH, next: "amount", put: { method: "CASH" } },
         { id: "POS", label: METHOD_LABEL.POS, next: "ref", put: { method: "POS" } },
         { id: "CARD_TO_CARD", label: METHOD_LABEL.CARD_TO_CARD, next: "ref", put: { method: "CARD_TO_CARD" } },
         { id: "CHEQUE", label: METHOD_LABEL.CHEQUE, sub: "شمارهٔ چک و سررسید پرسیده می‌شود", next: "cheque_no", put: { method: "CHEQUE" } },
         { id: "OTHER", label: METHOD_LABEL.OTHER, next: "amount", put: { method: "OTHER" } },
-      ],
+      ], ctx.vars.last_method),
     },
     ref: {
       id: "ref",
@@ -158,4 +158,15 @@ export function paymentChips(ctx: FlowContext, st: FlowState): string[] {
     ...(st.values.reference ? [`پیگیری ${st.values.reference}`] : []),
     `تاریخ: ${faJalaliDate(ctx.vars.received_at)}`,
   ];
+}
+
+/** Remember method (Z10): the method this person used last comes first and is marked, so the usual
+ *  answer is one tap in the same place. Nothing is chosen for them: it is still a tap. An unknown
+ *  or missing `last` leaves the order alone. `ctx.vars.last_method` comes from lib/lastMethod.ts. */
+export function rememberedFirst(options: FlowOption[], last: string | undefined): FlowOption[] {
+  const i = last ? options.findIndex((o) => o.id === last) : -1;
+  if (i < 0) return options;
+  const o = options[i];
+  const marked: FlowOption = { ...o, tone: "rec", sub: o.sub ? `روش قبلی · ${o.sub}` : "روش قبلی" };
+  return [marked, ...options.slice(0, i), ...options.slice(i + 1)];
 }
