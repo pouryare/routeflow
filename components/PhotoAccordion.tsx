@@ -40,8 +40,17 @@ function PhotoAccordion({
 }
 
 /** A customer's or district's photos: an accordion when there are a few, a grid of squares when there are many. */
-export default function PhotoThumbs({ photos, onView }: { photos: { id: number; caption: string | null }[]; onView: (id: number) => void }) {
-  if (photos.length >= 2 && photos.length <= ACCORDION_MAX) return <PhotoAccordion photos={photos} onView={onView} />;
+export default function PhotoThumbs({
+  photos,
+  onView,
+  picked,
+}: {
+  photos: { id: number; caption: string | null }[];
+  onView: (id: number) => void;
+  /** Choosing photos to compare: always a grid (every photo one tap away), with the chosen ones ringed. */
+  picked?: number[];
+}) {
+  if (!picked && photos.length >= 2 && photos.length <= ACCORDION_MAX) return <PhotoAccordion photos={photos} onView={onView} />;
   return (
     <div className="grid grid-cols-4 gap-1.5">
       {photos.map((p) => (
@@ -49,7 +58,8 @@ export default function PhotoThumbs({ photos, onView }: { photos: { id: number; 
           key={p.id}
           type="button"
           onClick={() => onView(p.id)}
-          className="aspect-square overflow-hidden rounded-[var(--radius-sm)] border border-border transition-[border-color] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:border-accent"
+          aria-pressed={picked ? picked.includes(p.id) : undefined}
+          className={`aspect-square overflow-hidden rounded-[var(--radius-sm)] border transition-[border-color] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:border-accent ${picked?.includes(p.id) ? "border-accent ring-2 ring-accent" : "border-border"}`}
         >
           <picture>
             <source srcSet={`/api/photos/${p.id}/file?format=avif`} type="image/avif" />

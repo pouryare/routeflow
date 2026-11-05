@@ -5508,3 +5508,10 @@ html[data-fx="off"] .foldbill__inner::after { display: none; }
 html[data-fx="off"] .foldbill { filter: none !important; }
 html[data-fx="off"] .lightcard::before { display: none; }
 html[data-fx="off"] .photoacc__item { transition: none; }
+
+/* Photo compare: two photos stacked, the top one cut at --at, a line and a real range input on top. */
+.photocmp { position: relative; width: 100%; aspect-ratio: 4 / 3; overflow: hidden; border-radius: var(--radius-md); background: var(--surface); touch-action: pan-y; }
+.photocmp__img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.photocmp__top { clip-path: inset(0 0 0 var(--at)); }
+.photocmp__line { position: absolute; top: 0; bottom: 0; left: var(--at); width: 3px; margin-left: -1.5px; background: #fff; box-shadow: 0 0 6px rgb(0 0 0 / 0.5); pointer-events: none; }
+.photocmp__range { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: ew-resize; }
