@@ -58,5 +58,9 @@ export function useFlowHost(cfg: FlowConfig, ctx: FlowContext, opts: FlowHostOpt
     [cfg, ctx, hold, cancel, toast],
   );
 
-  return { state, setState, onSaved, flush };
+  /** «ثبت بعدی» (Z18): a fresh flow in the same sheet. The held save is not lost: the next save
+   *  sends it at once, and leaving the page sends it too. */
+  const restart = useCallback(() => setState(startFlow(cfg, ctx)), [cfg, ctx]);
+
+  return { state, setState, onSaved, flush, restart };
 }

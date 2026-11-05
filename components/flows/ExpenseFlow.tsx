@@ -64,7 +64,7 @@ export default function ExpenseFlow({
   /* The receipt picture lives here, not in the flow state: a File is not an answer. It is taken on
      the photo step and sent to the new expense once the expense itself is saved. */
   const receipt = useRef<File | null>(null);
-  const { state, setState, onSaved } = useFlowHost(expenseFlow, ctx, {
+  const { state, setState, onSaved, restart } = useFlowHost(expenseFlow, ctx, {
     send: async (st) => {
       const res = await fetch("/api/accounting/expenses", {
         method: "POST",
@@ -124,7 +124,7 @@ export default function ExpenseFlow({
       onState={setState}
       onSaved={onSaved}
       onClose={onClose}
-      done={<FlowDone key={state.answers.length} chips={expenseChips(ctx, state)} onReturn={onClose} />}
+      done={<FlowDone key={state.answers.length} chips={expenseChips(ctx, state)} onReturn={onClose} onAnother={restart} />}
     />
   );
 }

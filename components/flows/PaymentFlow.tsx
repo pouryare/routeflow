@@ -64,7 +64,7 @@ export default function PaymentFlow({
   }, [customers, customerId, method, today]);
 
   const toast = useToast();
-  const { state, setState, onSaved } = useFlowHost(paymentFlow, ctx, {
+  const { state, setState, onSaved, restart } = useFlowHost(paymentFlow, ctx, {
     send: async (st) => {
       const req = paymentRequest(ctx, st);
       /* With no signal a receipt or a cheque is a FACT that already happened: it goes into the device
@@ -143,7 +143,7 @@ export default function PaymentFlow({
       onSaved={onSaved}
       onClose={onClose}
       renderCustom={renderCustom}
-      done={<FlowDone key={state.answers.length} chips={paymentChips(viewCtx, state)} coin={paymentRequest(viewCtx, state).body.method === "CASH"} onReturn={onClose} />}
+      done={<FlowDone key={state.answers.length} chips={paymentChips(viewCtx, state)} coin={paymentRequest(viewCtx, state).body.method === "CASH"} onReturn={onClose} onAnother={restart} />}
     />
   );
 }
