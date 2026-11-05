@@ -1,6 +1,6 @@
 # In-app tutorials («آموزش») for release 0.1
 
-_Plan only, 2026-11-05. No code until the owner answers the questions at the end. Requested by the owner for the first release to real users._
+_Plan, 2026-11-05. **All questions answered (section 10)**; ready to build as one batch before 0.1. Requested by the owner for the first release to real users._
 
 ## 1. The short answer
 
@@ -147,7 +147,7 @@ Quickest to a first tour (a day), but it decides the scrolling, buttons and flow
 | I8 | Rewards: **ring on the profile picture, a role badge (such as «استاد مسیر») when the set is done, confetti and a sound once** | 2026-11-05 |
 | I9 | «تمرین»: **repeat a finished tutorial on fresh demo data with no hints, no timer** | 2026-11-05 |
 | I10 | Change tours: **a changed line in the what's-new card gets «ببینید چه عوض شد», one tap runs a 1 to 3 step tour of the change** | 2026-11-05 |
-| I11 | Offline: **everything on every phone** (text, demo data and all roles' voice clips, about 8 to 10 MB), downloaded once in the background | 2026-11-05 |
+| I11 | Offline (re-asked): **text and demo data always offline; each phone downloads once the voice clips for its person's own role (about 2 to 3 MB)**; other roles' voice plays when online | 2026-11-05 |
 | I12 | Stats: **owner sees per step how many started, skipped and quit, with no names** | 2026-11-05 |
 
 ## 11. Owner's direction (2026-11-05): many tutorials, practice on demo data in the page
