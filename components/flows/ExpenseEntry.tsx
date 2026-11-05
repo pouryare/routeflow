@@ -8,16 +8,18 @@ import { faJalaliDate } from "@/lib/jalali";
 import { supplierFromMemo, type RecentExpense } from "@/lib/flows/expense";
 import { autoOpenFlow, currentSearch } from "@/lib/flows/autoOpen";
 import ExpenseFlow, { type ExpenseCategory, type ExpenseRepeat } from "./ExpenseFlow";
+import BooksButton from "@/components/accounting/BooksButton";
 
 const BTN =
   "inline-flex min-h-[44px] items-center justify-center gap-[var(--space-2)] rounded-[var(--radius-md)] border border-[var(--border)] px-[var(--space-4)] text-[length:var(--text-sm)] text-[var(--text)]";
 
 /** «ثبت هزینه» on the expenses page: rent, fuel, a repair, in a few taps. Below it, the latest
  *  expenses, each with «تکرار این» (A10): the same category, supplier and amount, today's date. */
-export default function ExpenseEntry({ categories, suppliers, recent = [] }: {
+export default function ExpenseEntry({ categories, suppliers, recent = [], canSeeBooks = false }: {
   categories: ExpenseCategory[];
   suppliers: string[];
   recent?: RecentExpense[];
+  canSeeBooks?: boolean;
 }) {
   const [flow, setFlow] = useState<{ key: number; open: boolean; repeat?: ExpenseRepeat }>(() => autoOpenFlow("new", currentSearch()));
   const start = (repeat?: ExpenseRepeat) => setFlow((f) => ({ key: f.key + 1, open: true, repeat }));
@@ -62,6 +64,7 @@ export default function ExpenseEntry({ categories, suppliers, recent = [] }: {
                         </>
                       ) : null}
                     </p>
+                    {canSeeBooks ? <BooksButton doc="expense" id={r.journalId} /> : null}
                   </div>
                   <button
                     type="button"
