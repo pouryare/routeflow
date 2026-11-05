@@ -11,6 +11,7 @@ import { toJalali, jalaliToIsoDate } from "@/lib/jalali";
 import { orderFilter } from "@/lib/session";
 import { orderKg, orderTotalToman } from "@/lib/orderMath";
 import { linesByOrder } from "@/lib/repo/orderLines";
+import { hourBuckets } from "@/lib/hourBuckets";
 
 /* What the dashboard page and its streamed sections read, as functions of the SESSION. The page
  * and the section components used to open the database themselves (`getDb()`, then pass the
@@ -93,4 +94,15 @@ export async function teamTodayFor(session: Session, todayIso: string): Promise<
     orderCount: orders.length,
     peopleCount: byPerson.size,
   };
+}
+
+/** Orders of the last 30 days by Tehran hour, as far as the caller may see them (organisation and group scope),
+ *  for the «ساعت‌های شلوغ» card. Cancelled orders are left out: they did not become a sale. */
+export async function ordersByHourFor(session: Session, todayIso: string): Promise<number[]> {
+  const scope = orderFilter(session);
+  const since = new Date(Date.parse(`${todayIso}T00:00:00Z`) - 29 * 86_400_000).toISOString().slice(0, 10);
+  const rows = (await getDb()
+    .prepare(`SELECT o.created_at FROM orders o WHERE o.order_date >= ? AND o.status <> 'CANCELLED'${scope.sql}`)
+    .all(since, ...scope.params)) as unknown as { created_at: string }[];
+  return hourBuckets(rows.map((r) => r.created_at));
 }

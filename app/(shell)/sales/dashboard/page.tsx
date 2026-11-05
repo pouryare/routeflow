@@ -5,11 +5,12 @@ import { redirect } from "next/navigation";
 import { COOKIE_NAME } from "@/lib/auth";
 import { getSessionFromCookies } from "@/lib/session";
 import { jalaliMonthKey } from "@/lib/dashboard";
-import { dashboardFor } from "@/lib/repo/dashboardView";
+import { dashboardFor, ordersByHourFor } from "@/lib/repo/dashboardView";
 import { faToman, faNum } from "@/lib/format";
-import { faJalaliDate, toJalali, jalaliToIsoDate } from "@/lib/jalali";
+import { faJalaliDate, toJalali, jalaliToIsoDate, tehranTodayIso } from "@/lib/jalali";
 import { movingAverage } from "@/lib/chartScale";
 import BarChart from "@/components/charts/BarChart";
+import HourPulse from "@/components/charts/HourPulse";
 import SplineChart from "@/components/charts/SplineChart";
 import DonutChart from "@/components/charts/DonutChart";
 import CollapsibleSection from "@/components/CollapsibleSection";
@@ -43,6 +44,7 @@ export default async function DashboardPage() {
   if (isVanRole(session.role)) redirect("/driver");
 
   const d = await dashboardFor(session);
+  const hours = await ordersByHourFor(session, tehranTodayIso());
 
   const today = toJalali(new Date().toISOString())!;
   const period = {
@@ -189,6 +191,7 @@ export default async function DashboardPage() {
             colorful
             empty={empty}
           />
+          <HourPulse counts={hours} />
           <BarChart
             title="مشتریان جدید"
             subtitle="بر اساس ماه شمسیٔ اولین سفارش"
