@@ -17,12 +17,11 @@ function PhotoAccordion({
   const [open, setOpen] = useState(0);
   const active = Math.min(open, photos.length - 1);
   return (
-    <div className="photoacc" role="list">
+    <div className="photoacc">
       {photos.map((p, i) => (
         <button
           key={p.id}
           type="button"
-          role="listitem"
           aria-label={p.caption ?? `عکس ${i + 1}`}
           aria-current={i === active ? "true" : undefined}
           className="photoacc__item"
@@ -53,10 +52,11 @@ export default function PhotoThumbs({
   if (!picked && photos.length >= 2 && photos.length <= ACCORDION_MAX) return <PhotoAccordion photos={photos} onView={onView} />;
   return (
     <div className="grid grid-cols-4 gap-1.5">
-      {photos.map((p) => (
+      {photos.map((p, i) => (
         <button
           key={p.id}
           type="button"
+          aria-label={p.caption ?? `عکس ${i + 1}`}
           onClick={() => onView(p.id)}
           aria-pressed={picked ? picked.includes(p.id) : undefined}
           className={`aspect-square overflow-hidden rounded-[var(--radius-sm)] border transition-[border-color] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:border-accent ${picked?.includes(p.id) ? "border-accent ring-2 ring-accent" : "border-border"}`}

@@ -14,10 +14,12 @@ export default function PhotoCompare({ ids, onClose }: { ids: [number, number] |
     <BottomSheet open={ids !== null} title="مقایسهٔ دو عکس" onClose={onClose} closeLabel="بستن مقایسه" bodyClassName="photocmp-sheet">
       {ids && (
         <div className="photocmp" dir="ltr" style={{ "--at": `${at}%` } as React.CSSProperties}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img className="photocmp__img" src={src(ids[0])} alt="عکس اول" />
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img className="photocmp__img photocmp__top" src={src(ids[1])} alt="عکس دوم" />
+          <picture>
+            <img className="photocmp__img" src={src(ids[0])} alt="عکس اول" />
+          </picture>
+          <picture>
+            <img className="photocmp__img photocmp__top" src={src(ids[1])} alt="عکس دوم" />
+          </picture>
           <span className="photocmp__line" aria-hidden="true" />
           <input
             className="photocmp__range"

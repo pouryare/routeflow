@@ -1,5 +1,6 @@
 "use client";
 
+import { Icon } from "@/components/meridian/Icon";
 import { noteSuggestions } from "@/lib/noteSuggest";
 
 /** Up to three of the person's own earlier notes that start with what they have typed; a tap fills the box. */
@@ -13,8 +14,9 @@ export default function SuggestChips({ typed, past, onPick }: { typed: string; p
           key={s}
           type="button"
           onClick={() => onPick(s)}
-          className="touch min-h-11 rounded-[var(--radius-md)] border border-[var(--border)] px-[var(--space-3)] text-start text-[length:var(--text-sm)]"
+          className="touch inline-flex min-h-11 items-center gap-[var(--space-2)] rounded-[var(--radius-md)] border border-[var(--border)] px-[var(--space-3)] text-start text-[length:var(--text-sm)]"
         >
+          <Icon name="edit" size="sm" />
           {s}
         </button>
       ))}
