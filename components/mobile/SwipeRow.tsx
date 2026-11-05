@@ -22,6 +22,28 @@ export interface SwipeAction {
 const TRAVEL = 6;
 const CLICK_GUARD_MS = 60;
 
+/** The one-time swipe hint for the first row of a kind of list: true while the face slides aside. */
+function usePeek(peek: PeekKind | undefined, hasAction: boolean): boolean {
+  const [peeking, setPeeking] = useState(false);
+  useEffect(() => {
+    if (!peek || !hasAction || !stretchAllowed()) return;
+    let store: Storage | null = null;
+    try {
+      store = window.localStorage;
+    } catch {
+      /* blocked storage: no hint */
+    }
+    if (!claimPeek(peek, store)) return;
+    const on = window.setTimeout(() => setPeeking(true), 600);
+    const off = window.setTimeout(() => setPeeking(false), 1500);
+    return () => {
+      window.clearTimeout(on);
+      window.clearTimeout(off);
+    };
+  }, [peek, hasAction]);
+  return peeking;
+}
+
 /** A row that can be dragged sideways to do one thing: `start` is the action on the reading-start
  *  side (right, in Persian), `end` the other. Releasing past the commit distance runs it; a short
  *  drag springs back. Every action also exists as a plain button -- always there for keyboard and
@@ -47,24 +69,8 @@ export default function SwipeRow({ start, end, children, ownButtons = true, onLo
   peek?: PeekKind;
 }) {
   const [dx, setDx] = useState(0);
-  const [peeking, setPeeking] = useState(false);
-  const hasAction = !!(start || end);
-  useEffect(() => {
-    if (!peek || !hasAction || !stretchAllowed()) return;
-    let store: Storage | null = null;
-    try {
-      store = window.localStorage;
-    } catch {
-      /* blocked storage: no hint */
-    }
-    if (!claimPeek(peek, store)) return;
-    const on = window.setTimeout(() => setPeeking(true), 600);
-    const off = window.setTimeout(() => setPeeking(false), 1500);
-    return () => {
-      window.clearTimeout(on);
-      window.clearTimeout(off);
-    };
-  }, [peek, hasAction]);
+  const first = start ?? end;
+  const peeking = usePeek(peek, !!first);
   const press = useRef<{ x: number; y: number; id: number } | null>(null);
   const moved = useRef(false);
   const guard = useRef(false);
@@ -152,10 +158,10 @@ export default function SwipeRow({ start, end, children, ownButtons = true, onLo
     <div className="swiperow">
       {/* The action under the row while dragging: what letting go will do. */}
       {/* The one-time hint: the action under the row shows while the face slides aside and back. */}
-      {peeking && !armed && (start ?? end) && (
-        <div className={`swiperow__under swiperow__under--reveal swiperow__under--${start ? "start" : "end"} swiperow__under--${(start ?? end)!.tone ?? "good"}`} aria-hidden>
-          <Icon name={(start ?? end)!.icon} size="md" />
-          {(start ?? end)!.label}
+      {peeking && !armed && first && (
+        <div className={`swiperow__under swiperow__under--reveal swiperow__under--${start ? "start" : "end"} swiperow__under--${first.tone ?? "good"}`} aria-hidden>
+          <Icon name={first.icon} size="md" />
+          {first.label}
         </div>
       )}
       {armed && (
