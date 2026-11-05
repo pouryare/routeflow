@@ -77,3 +77,14 @@ Applies to any change that adds or moves something a user sees. Bug fixes inside
 6. **Look at your own screen before saying done.** Run the app against a throwaway database (`scripts/preview.sh`, never `data/routeflow.db`), open the changed page in Chromium at 390×844, right to left, as a role that uses it, in light and dark. Take a screenshot and look at it. At minimum check: no sideways scroll, no clipped Persian text, nothing hidden behind the bottom bar, tap targets ≥ 44 px, and the empty state reads well. Fix what you see.
 7. **End-of-batch tour.** The batch PR description ends with a «تور رابط کاربری» section listing each changed screen, where it lives and which roles see it, with a phone-width screenshot when one can be attached.
 8. **No redirects for old addresses yet.** The app has no users, so a renamed or removed page is simply renamed or removed: no redirect stub, no `next.config` redirect. Revisit this once real users exist.
+
+# Always-on: a new or changed page or feature checks its tutorials
+
+Owner rule, 2026-11-05 (plan: `docs/plans/tutorials-2026-11-05.md`). Tutorials are kept in step with the screens, the same way page skeletons are recaptured.
+
+1. **Ask the question on every UI change.** When a page, sheet, flow or main button is added, moved, renamed or removed, check the tutorials that touch it (`data-tour` ids on the screen, steps in the tutorial list) and update, add or remove steps in the same pull request. Say in the PR under «آموزش» which tutorials changed, or in one line why none needed to.
+2. **A new main action gets a tutorial.** Every new main button or flow gets its `data-tour` id and a tutorial (Persian text drafted by the agent, reviewed by the owner in the PR), with demo data for any list it shows. Until the tutorial check exists in CI, list the missing ones in `TODO-REPORT.md`.
+3. **Demo data follows the real shape.** When a list or card changes what it shows, its demo set changes too, so a tutorial never shows a field the real screen no longer has.
+4. **Voice follows the text.** Changed step text means its voice clip is regenerated in the same PR.
+5. **Tell people what changed.** A change people will notice gets a line in the what's-new notes, with a 1 to 3 step change tour when the screen works differently.
+6. **Check it yourself.** Run the changed tutorial at 390×844 right to left, as the role it is for, in light and dark, and look at the screenshot, as for any UI change.

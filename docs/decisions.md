@@ -174,7 +174,7 @@ Lower priority: the hand-written service worker (`public/sw.js`, manual cache ve
 | `sanitize-html` (2.18.1) | Rendering rich notes (F43) | Later, only if notes become HTML; plain text or Markdown needs no sanitiser |
 | BroadcastChannel (browser built-in) | Sign out everywhere across open tabs (F107) | Nothing to install |
 | Zustand (5.0.16) | Client state shared by distant components (chat unread count, an active tour) | Later; React context first |
-| Action-gated tours (driver.js, joyride or HeroUI Popover as the spotlight) | F39 training mode | Later; one tour on the order screen first; check right-to-left behaviour |
+| Action-gated tours: `driver.js` 1.10.2 (MIT, about 8 KB) for the spotlight only, our own layer on HeroUI for everything else | Tutorials for about 75 actions before 0.1 | Decided 2026-11-05, plan in `docs/plans/tutorials-2026-11-05.md`; Shepherd.js and Intro.js rejected (AGPL-3.0) |
 
 **Small-difficulty batch (2026-10-23): no new library.** All 18 entries were built on existing code: the browser's print path for the price list and run notes, the commission engine, the briefing panels, the notification flush and `users.prefs_json`. Nothing was added to `package.json`.
 
