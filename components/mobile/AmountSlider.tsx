@@ -36,7 +36,7 @@ export default function AmountSlider({
 }) {
   const [held, setHeld] = useState(false);
   const [stretch, setStretch] = useState(0);
-  const trackRef = useRef<HTMLDivElement>(null);
+  const trackRef = useRef<HTMLElement | null>(null);
 
   // While held, follow the finger on the whole page: past the ends of the track the slider stretches.
   useEffect(() => {
@@ -80,33 +80,34 @@ export default function AmountSlider({
       }}
       onChangeEnd={(v) => onCommit?.(v as number)}
       className="w-full"
+      // Capture: React Aria's own press handling stops the event before it would bubble here.
+      onPointerDownCapture={(e) => {
+        trackRef.current = (e.currentTarget as HTMLElement).querySelector<HTMLElement>('[data-slot="slider-track"]');
+        setHeld(true);
+      }}
     >
       <div className="mb-[var(--space-1)] flex items-center justify-between text-[length:var(--text-xs)] text-[var(--text-muted)]">
         <span>{label}</span>
         <span className="tabular-nums text-[var(--text)]">{format(value)}</span>
       </div>
-      <div
-        ref={trackRef}
+      <Slider.Track
         className="amountslider"
         data-held={held || undefined}
         style={{ "--stretch": `${stretch}px` } as React.CSSProperties}
-        onPointerDown={() => setHeld(true)}
       >
-        <Slider.Track>
-          <Slider.Fill />
-          {ticks &&
-            tickStops(min, max, step).map((s) => (
-              <span key={s} aria-hidden className="amountslider__tick" style={{ insetInlineStart: `${s * 100}%` }} />
-            ))}
-          <Slider.Thumb>
-            {held && (
-              <span aria-hidden className="amountslider__bubble tabular-nums">
-                {format(shown)}
-              </span>
-            )}
-          </Slider.Thumb>
-        </Slider.Track>
-      </div>
+        <Slider.Fill />
+        {ticks &&
+          tickStops(min, max, step).map((s) => (
+            <span key={s} aria-hidden className="amountslider__tick" style={{ insetInlineStart: `${s * 100}%` }} />
+          ))}
+        <Slider.Thumb>
+          {held && (
+            <span aria-hidden className="amountslider__bubble tabular-nums">
+              {format(shown)}
+            </span>
+          )}
+        </Slider.Thumb>
+      </Slider.Track>
     </Slider>
   );
 }

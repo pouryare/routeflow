@@ -52,7 +52,7 @@ export function TextInput({
 export function PasswordInput({
   label, value, onChange, name, autoComplete, autoFocus, required, placeholder, error, className = "",
 }: Omit<Common, "dir">) {
-  const { shown, rolling, toggle } = usePasswordEye(value);
+  const { shown, rolling, toggle, at, box } = usePasswordEye(value);
   return (
     <TextField
       value={value}
@@ -67,9 +67,9 @@ export function PasswordInput({
       className={`textinput ${placeholder ? "" : "textinput--float "}${className}`.trim()}
     >
       <Label>{label}</Label>
-      <InputGroup fullWidth className="pwfield" data-rolling={rolling || undefined}>
+      <InputGroup ref={box as React.Ref<HTMLDivElement>} fullWidth className="pwfield" data-rolling={rolling || undefined}>
         <InputGroup.Input placeholder={placeholder ?? " "} dir="ltr" />
-        {rolling ? <PasswordRoll text={value} /> : null}
+        {rolling ? <PasswordRoll text={value} at={at} /> : null}
         <InputGroup.Suffix>
           <Button
             isIconOnly

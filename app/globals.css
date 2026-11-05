@@ -5641,7 +5641,7 @@ html[data-fx="off"] .amountslider__bubble { animation: none; }
 @media (prefers-reduced-motion: reduce) { .amountslider__bubble { animation: none; } .amountslider { transition: none; } }
 
 /* RangeBar count bars: how many orders sit at each amount, lit inside the chosen range. */
-.rangebar__bars { display: flex; align-items: flex-end; gap: 2px; height: 28px; margin-bottom: 4px; }
+.rangebar__bars { position: absolute; inset-inline: 0; bottom: calc(100% + 8px); display: flex; align-items: flex-end; gap: 2px; height: 28px; pointer-events: none; }
 .rangebar__bars > span { flex: 1; min-width: 0; border-radius: 2px 2px 0 0; background: var(--border-strong); transition: background-color 150ms; }
 .rangebar__bars > span[data-lit] { background: var(--accent); opacity: 0.55; }
 
@@ -5694,8 +5694,8 @@ html[data-fx="off"] .strikerow::after, html[data-fx="off"] .donefold__n { animat
 }
 .pwfield[data-rolling] input { color: transparent; caret-color: var(--text); }
 .pwroll {
-  position: absolute; left: 12px; top: 50%; translate: 0 -50%; display: flex; pointer-events: none;
-  font: inherit; font-size: var(--text-sm); color: var(--text); white-space: pre;
+  position: absolute; top: 50%; translate: 0 -50%; display: flex; pointer-events: none;
+  color: var(--text); white-space: pre;
 }
 .pwroll__ch { display: inline-block; animation: pwroll-in 240ms ease-out calc(var(--i) * 35ms) backwards; }
 @keyframes pwroll-in { 0% { transform: translateY(70%) scale(0.4); opacity: 0; } 60% { transform: translateY(-15%); opacity: 1; } }

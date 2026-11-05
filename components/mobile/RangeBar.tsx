@@ -38,23 +38,23 @@ export default function RangeBar({
       onChangeEnd={(v) => onCommit(v as [number, number])}
       className="w-full"
     >
-      <div className="mb-[var(--space-1)] flex items-center justify-between gap-[var(--space-2)] text-[length:var(--text-xs)] text-[var(--text-muted)]">
+      <div className={`${bars ? "mb-[40px]" : "mb-[var(--space-1)]"} flex items-center justify-between gap-[var(--space-2)] text-[length:var(--text-xs)] text-[var(--text-muted)]`}>
         <span>{label}</span>
         <span className="tabular-nums text-[var(--text)]">
           {format(value[0])} تا {format(value[1])}
         </span>
       </div>
-      {bars && (
-        <div aria-hidden className="rangebar__bars">
-          {bars.map((n, i) => {
-            const from = bounds.min + (span * i) / bars.length;
-            const to = bounds.min + (span * (i + 1)) / bars.length;
-            const lit = to >= value[0] && from <= value[1];
-            return <span key={i} data-lit={lit || undefined} style={{ height: `${n ? 12 + (88 * n) / tallest : 0}%` }} />;
-          })}
-        </div>
-      )}
       <Slider.Track>
+        {bars && (
+          <div aria-hidden className="rangebar__bars">
+            {bars.map((n, i) => {
+              const from = bounds.min + (span * i) / bars.length;
+              const to = bounds.min + (span * (i + 1)) / bars.length;
+              const lit = to >= value[0] && from <= value[1];
+              return <span key={i} data-lit={lit || undefined} style={{ height: `${n ? 12 + (88 * n) / tallest : 0}%` }} />;
+            })}
+          </div>
+        )}
         <Slider.Fill />
         <Slider.Thumb index={0} />
         <Slider.Thumb index={1} />

@@ -1,12 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { Button } from "@heroui/react";
+import { Button, ToggleButton } from "@heroui/react";
 import { Icon } from "@/components/meridian/Icon";
 import { useToast } from "@/components/ToastProvider";
 import BottomSheet from "@/components/mobile/BottomSheet";
 import DayChips from "@/components/mobile/DayChips";
-import { ChipGroup } from "@/components/mobile/ChipGroup";
 import { friendlyError } from "@/lib/userMessage";
 import { faDigits } from "@/lib/format";
 import { SNOOZE_CHOICES, SNOOZE_HOURS, SNOOZE_PICK_LABEL, SNOOZE_STOPS_PX, type SnoozeChoice } from "@/lib/taskSnooze";
@@ -82,17 +81,19 @@ function SnoozePicker({ open, onClose, onPick, busy }: {
     <BottomSheet open={open} title="عقب انداختن تا…" subtitle="روز و ساعت را انتخاب کنید" onClose={onClose} closeLabel="بستن انتخاب زمان">
       <div className="flex flex-col gap-[var(--space-3)]">
         <DayChips value={day} onChange={setDay} ariaLabel="روز" />
-        <ChipGroup
-          wrap
-          group={{
-            id: "snooze-hour",
-            label: "ساعت",
-            mode: "single",
-            options: SNOOZE_HOURS.map((h) => ({ id: String(h), label: faDigits(`${h}:00`) })),
-            value: hour,
-            onChange: (v) => setHour((v as string) || hour),
-          }}
-        />
+        <div className="filterchips__group filterchips__group--wrap" role="group" aria-label="ساعت">
+          {SNOOZE_HOURS.map((h) => (
+            <ToggleButton
+              key={h}
+              className={`filterchip${hour === String(h) ? " filterchip--on" : ""}`}
+              isSelected={hour === String(h)}
+              onChange={() => setHour(String(h))}
+            >
+              <Icon name="clock" size="sm" />
+              {faDigits(`${h}:00`)}
+            </ToggleButton>
+          ))}
+        </div>
         <Button variant="primary" size="lg" fullWidth isDisabled={!day || busy} onPress={() => onPick(day, Number(hour), "زمانی که انتخاب کردید")}>
           <Icon name="clock" size="md" />
           عقب انداختن

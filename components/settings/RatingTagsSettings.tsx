@@ -69,7 +69,7 @@ export default function RatingTagsSettings({ initial }: { initial: RatingTags })
               />
             )}
             <form
-              className="flex items-end gap-[var(--space-2)]"
+              className="flex items-center gap-[var(--space-2)]"
               onSubmit={(e) => {
                 e.preventDefault();
                 add(key);
