@@ -60,22 +60,10 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
   **Orders list you can search and filter.** `/sales/orders` reads at most 100 orders and takes no filter inputs. Add `FilterChips` for status, payment, rep and day, a count, «load more» past 100, and one paste-many search (paste order numbers or phones, get just those).
 
   </details>
-- **FB2. Undo on the planner.** Commit, freeze and day-lane moves get the 5-second undo toast.
-  <details><summary>Full decision</summary>
-
-  **Undo on the planner.** Commit, freeze and day-lane moves get the 5-second undo toast (`useUndoableAction`); `RoutingPlanner` calls `/routing/commit` and `/runs/{id}/freeze` directly today.
-
-  </details>
-- **FB4. Empty states name what is hidden.** Say what is hidden («۳ مورد به تعویق افتاده») and offer to clear the filter that causes it.
+- **FB4. Empty states name what is hidden.** Say what is hidden («۳ مورد به تعویق افتاده») and offer to clear the filter that causes it. Partly built 2026-11-05: payments and stock lists say how many are hidden and offer «پاک کردن فیلتر»; the action centre and the task board have no filters to name yet.
   <details><summary>Full decision</summary>
 
   **Empty states name what is hidden.** Action centre, tasks and filtered lists say «۳ مورد به تعویق افتاده، فردا ۰۹:۰۰» and offer «پاک کردن فیلتر» when a filter is the cause.
-
-  </details>
-- **FB5. Detail sheets: bottom by default, movable to the side.** Every detail sheet opens at the bottom; one saved choice per person moves them to the side.
-  <details><summary>Full decision</summary>
-
-  **Detail sheets: bottom by default, movable to the side.** Every detail sheet opens at the bottom (phone and desk); the user can move it to the side. Reuse the toggle in `CustomerDetailPanel` (`orient`, saved in `coverage_panel_orient`, icons `panel-bottom` / `panel-side`), flip its default to bottom, apply it to order details, and keep one shared saved choice per person for every detail sheet (decided 2026-10-30).
 
   </details>
 - **FB6. Saved views.** Per person, named filter sets on the orders and customers lists, stored on the server.
@@ -144,12 +132,6 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
   **Bulk results (B7).** Every bulk action on the shared selection bar ends with «N انجام شد، M نشد» and a list of the skipped rows, each with a Persian reason.
 
   </details>
-- **Z3. Hide money (eye in the top bar).** One tap turns every money number into dots.
-  <details><summary>Full decision</summary>
-
-  **Hide money (Z3).** An eye in the top bar turns every money number into dots until tapped again; for everyone, remembered per person on that phone. **Owner-only amounts (Z11):** the owner marks an expense category private; others see the line with dots and owner totals still count it. It must also hide the amount in totals and exports for others.
-
-  </details>
 - **S12. Edit conflict warning.** If a field changed since you opened it, show both values and who/when; keep mine or theirs.
 - **S14. Show a list or selection on the map.** The selection bar and filtered customer lists open the map with only those customers (UI batch D).
 
@@ -185,7 +167,6 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
 - **S6. Fair lead assignment per group.** Per group: pool (default), round robin, or least open work; people on leave are skipped.
 - **S15. Do-not-call and contact preferences.** Three switches per customer (calls, promo messages, service messages) with reason, date and who.
 - **S16. Revive lost leads.** After a wait that depends on the lost reason (price 60 days, already supplied 120, not interested 180), back to the pool with a call-again task.
-- **S17. Referrals shown and rewarded with a thank-you task.** Show the referrer on the customer page, top referrers in the source report, and a thank-you task. Rewards stay in F137.
 
 ### Orders, pricing and promotions
 
@@ -213,18 +194,6 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
   **Merged order timeline: built with chat phase 1.** One feed per order with status changes, notes, edits (who and the one-line summary), payment adjustments and chat messages.
 
   </details>
-- **FB38. Invoice sent stamp.** Record when an invoice was sent and show it on the customer page. First-viewed waits for the tracking page.
-  <details><summary>Full decision</summary>
-
-  **Invoice sent stamp, now.** Record when an invoice was sent (printed or shared) and show it on the customer page. A first-viewed time waits for the tracking page, because it needs a customer-facing link.
-
-  </details>
-- **FB40. Stale draft orders.** An action centre card lists drafts older than N days (default 7); older ones are cancelled automatically with a log line.
-  <details><summary>Full decision</summary>
-
-  **Stale draft orders.** An action centre card lists draft orders older than N days (owner setting, default 7). Drafts older than the limit are cancelled automatically, with a log line for each.
-
-  </details>
 - **D4. Floor price.** A line under cost (or an owner floor per product) needs approval.
   <details><summary>Full decision</summary>
 
@@ -237,22 +206,10 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
   **Quantity price steps (D22).** Up to four steps per product and pack size (starting quantity, price). Order entry applies the step and nudges toward the next one. A step price is a list price, so it needs no discount approval; the floor price (D4) still applies.
 
   </details>
-- **D31. Reopen a cancelled order.** A manager reopens a cancelled order to draft within N days (default 7); must be confirmed again.
-  <details><summary>Full decision</summary>
-
-  **Reopen a cancelled order (D31).** A manager or owner reopens a cancelled order to draft within an owner-set time (default 7 days). It must be confirmed again, so stock and credit are re-checked; logged with who and why; not after delivery.
-
-  </details>
 - **A12. Freeze customer details on the order.** At confirm, copy name, phone and address onto the order so reprints do not change.
   <details><summary>Full decision</summary>
 
   **Freeze customer details on the order (A12).** At confirm, copy name, phone and address (tax IDs once D7 exists) onto the order; `orders` keeps only `customer_id` today, so reprints show the customer's current data. Reprints use the copy. «Forget a person» (D20) clears these copies too.
-
-  </details>
-- **A13. Receipt footer and order number prefix.** Settings for footer text per document and a prefix per company.
-  <details><summary>Full decision</summary>
-
-  **Receipt footer and order number prefix (A13).** A settings card: footer text per document (receipt, delivery note, statement; the receipt footer is fixed in `lib/deliveryReceipt.ts` today) and an order number prefix per company. The next number can only go up.
 
   </details>
 
@@ -277,12 +234,6 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
   <details><summary>Full decision</summary>
 
   **Supplier pay list (D21).** Supplier terms (days) set a due date on each purchase; a list shows what is due, oldest first; ticked rows give a sheet (supplier, Sheba, amount) for the accountant; the payment is recorded with the bank tracking number. No bank file (formats differ, F10).
-
-  </details>
-- **D32. Sell-off product state «تصفیه».** Still sellable, off the buy list; turns inactive when stock hits zero.
-  <details><summary>Full decision</summary>
-
-  **Sell-off product state «تصفیه» (D32).** Still sellable, off the buy list, no reorder warnings; it turns inactive by itself when available stock reaches zero; reps see a chip.
 
   </details>
 - **D8. Warehouse count session.** Start a count for a facility, several phones count, review the toman value of every gap, one confirm.
@@ -330,12 +281,6 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
 
 ### Money: credit, payments and cash
 
-- **UIB-A3. Credit approval for group managers.** The proxy closes credit approval to group managers. Move it to the sales API the way the discount decision was moved.
-  <details><summary>Full decision</summary>
-
-  Credit approval is closed to group managers by `proxy.ts` (its API is under `/api/admin`); move it the way the discount decision was moved to `/api/sales`.
-
-  </details>
 - **T8. Calendar view of cheques by due date.** Phone: agenda grouped by day. Desk: Jalali month grid with daily sums.
   <details><summary>Full decision</summary>
 
@@ -396,28 +341,10 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
   **Money in and out (A5).** A monthly page «ورودی و خروجی پول»: money in (receipts, cheques cashed), money out (suppliers, expenses by category, commission, loans), opening and closing cash and bank, read from the ledger legs of the money accounts. No new tables.
 
   </details>
-- **A7. Money tiles on the owner home.** Cash box, banks, owed to us, we owe, cheques due this week; each tile opens its page.
-  <details><summary>Full decision</summary>
-
-  **Money tiles (A7).** One strip on the owner home: cash box, each bank, owed to us (with the overdue part), we owe (with what is due in 7 days), cheques due this week. Each tile opens its page. A default card for F146.
-
-  </details>
-- **A10. Repeat an expense.** A «تکرار این» button opens the expense form pre-filled.
-  <details><summary>Full decision</summary>
-
-  **Repeat an expense (A10).** A «تکرار این» button on an expense row opens the form pre-filled (category, supplier, amount, new date). Expenses only, not customer payments.
-
-  </details>
 - **B1. Credit note.** A manager makes a credit for goods returned after delivery; applied to open orders or paid back. Suppliers get the same document.
   <details><summary>Full decision</summary>
 
   **Credit note (B1).** A manager makes a credit for goods returned after delivery, with a reason and an amount. It lowers what the customer owes and is applied to open orders or paid back in cash. Suppliers get the same document for goods sent back. Today the `RETURNED` status only ends the undelivered part (`lib/orderStateMachine.ts`); this is the money side of F12 and F80.
-
-  </details>
-- **Z9. Place on money entries.** The phone's GPS spot is saved with cash, cheque and expense entries.
-  <details><summary>Full decision</summary>
-
-  **Place on money entries (Z9).** The phone's GPS spot is saved with cash, cheque and expense entries and shown as a pin; no far-from-customer flag for now. Not checked: whether delivery stops already store a proof location.
 
   </details>
 
@@ -430,12 +357,6 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
 
 ### Accounting, reports and analytics
 
-- **T15. Sales chart bug and calendar days (with T20).** The weekly chart skips empty days, so one empty day shifts every bar. Fill calendar days with 0, show closed days, compare the same weekdays; add sales by weekday, a month-to-date line, and rankings with an «سایر» row.
-  <details><summary>Full decision</summary>
-
-  **Sales chart bug.** `revenue_by_day` in `lib/dashboard.ts` is built only from days that had orders and the sales page takes the first 7 as «this week» and the next 7 as «last week», so one empty day shifts every bar. Build calendar days filled with 0, show Fridays and holidays as closed, compare the same weekdays (T15). With it: sales by weekday, a cumulative month-to-date line against last month, and rankings showing top 10 plus “سایر” instead of silently dropping the rest (T20).
-
-  </details>
 - **D7. Official invoice for some customers.** Per-order choice: tax IDs, VAT per product, invoice number per Jalali year, Moadian export later.
   <details><summary>Full decision</summary>
 
@@ -484,13 +405,7 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
   **Open a date range in a closed month (B2, extends A2).** The owner opens one date range with a reason; it closes again by itself after a set time. Logged. A2 stays one lock for all areas.
 
   </details>
-- **B3. Books behind a document.** A «ثبت‌های حسابداری» button on order, payment, expense and cheque pages for the owner and accountant.
-  <details><summary>Full decision</summary>
-
-  **Books behind a document (B3).** A «ثبت‌های حسابداری» button on order, payment, expense and cheque pages for the owner and the accountant: the debit and credit lines the document made, each linked to its account.
-
-  </details>
-- **Z7. Needs attention.** A filter chip for entries with no photo, note or supplier; the month-close checklist shows the count.
+- **Z7. Needs attention.** A filter chip for entries with no photo, note or supplier; the month-close checklist shows the count. Partly built 2026-11-05: the «نیاز به بررسی» chip on recent expenses; the month-close count waits for A2.
   <details><summary>Full decision</summary>
 
   **Needs attention (Z7).** A filter chip on expense and payment lists for entries with no photo, note or supplier; the month-close checklist (A2) shows the count and the owner accepts or fixes it.
@@ -553,22 +468,10 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
 
 ### Platform, security and administration
 
-- **UIB-A2. Code guard on the remaining sensitive actions.** The rule and the guard exist; each of these needs one line: creating an owner or manager, customer export, changing your own mobile, hard deletes, cancelling or editing a delivered order, authenticator reset, overwrite imports.
+- **UIB-A2. Code guard on the remaining sensitive actions.** The rule and the guard exist; each of these needs one line: creating an owner or manager, customer export, changing your own mobile, hard deletes, cancelling or editing a delivered order, authenticator reset, overwrite imports. Partly built 2026-11-05: the guard is now on creating an owner or manager, returning a delivered order, and the hard deletes of groups and districts; customer export, changing your own mobile and overwrite imports have no route yet.
   <details><summary>Full decision</summary>
 
   The code guard on creating an owner or manager, customer export, changing your own mobile number, hard deletes, cancelling or editing a delivered order, authenticator reset and overwrite imports (the rules and the guard exist; each route needs one line).
-
-  </details>
-- **FB29. Authenticator nudge.** A banner with «فعال‌سازی اکنون» for managers until they enrol. No lock-out.
-  <details><summary>Full decision</summary>
-
-  **Authenticator nudge.** A banner with a «فعال‌سازی اکنون» button for managers and anyone required to use the authenticator, shown until they enrol; no lock-out after a grace period.
-
-  </details>
-- **FB34. Owner access review card.** On the status page: users per role, never signed in, no authenticator, idle 30+ days, recent impersonations.
-  <details><summary>Full decision</summary>
-
-  **Owner access review card on the owner status page.** Users per role, never signed in, no authenticator, no sign-in for 30+ days, recent impersonations; each line opens the list. Reads the existing sign-in log.
 
   </details>
 - **FB41. Log retention with a preview.** Each growing log gets a keep-for-N-days setting; the status page shows what the next purge would delete.
@@ -593,12 +496,6 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
   <details><summary>Full decision</summary>
 
   **Recycle bin (F111): a JSON copy in a trash table**, not a `deleted_at` column; first types reminders, tasks and photos, per-company keep-for-N-days in the log-retention setting. A link to a deleted item shows who deleted it and when, with a restore button for managers (T3, T18).
-
-  </details>
-- **T17. Maintenance banner.** Owner sets start and end; everyone sees a banner; drivers and reps are told to sync first.
-  <details><summary>Full decision</summary>
-
-  **Maintenance banner.** The owner sets a start and end; everyone sees a dismissible Persian banner; drivers and reps are also told to sync offline work before it starts (T17).
 
   </details>
 - **T24. Rate limiter moved to Postgres.** Short and long windows per person and IP.
@@ -673,12 +570,6 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
   **Merge duplicates (Z16).** «ادغام در…» moves all rows of a supplier, product or district to another and retires the old one: owner only, typed-name confirm, a log line. Expense and money categories wait until the ledger question is decided (re-point the label, or post a reversal pair).
 
   </details>
-- **Z19. Safe refresh.** «به‌روزرسانی داده‌ها» refuses while items are waiting to sync, then clears the local copy.
-  <details><summary>Full decision</summary>
-
-  **Safe refresh (Z19).** «به‌روزرسانی داده‌ها» in settings refuses while items are still waiting to sync, then clears the local copy and reloads.
-
-  </details>
 - **S24. «گزارش مشکل برنامه» button.** One line and an optional screenshot with page, role, version, phone and connection attached; a list for the owner.
 
 ### Mobile, input, offline and help
@@ -689,19 +580,7 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
   **Batch C: forms that keep your work.** Drafts that survive a closed tab, an unsaved-changes bar, keyboard handling on phones, optimistic updates (`useOptimistic`) with a rollback.
 
   </details>
-- **Z1. Sums in the keypad.** The shared keypad gets + and − and shows the running total.
-  <details><summary>Full decision</summary>
-
-  **Sums in the keypad (Z1).** The shared keypad (`components/mobile/Keypad.tsx`, `lib/keypad.ts`) gets + and − only (no × ÷) and shows the running total.
-
-  </details>
-- **Z18. Save and add next.** A «ثبت و بعدی» button on expense, payment and customer forms.
-  <details><summary>Full decision</summary>
-
-  **Save and add next (Z18).** A «ثبت و بعدی» button on the expense, payment and customer forms; it keeps the date and the remembered method and account.
-
-  </details>
-- **Z10. Remember method and account.** Per person, only payment method and bank account are remembered.
+- **Z10. Remember method and account.** Per person, only payment method and bank account are remembered. Partly built 2026-11-05: the payment and expense method is remembered per phone and offered first; a bank account is not a step in either flow yet.
   <details><summary>Full decision</summary>
 
   **Remember method and account (Z10).** Per person, only payment method and bank account are remembered; the category always starts empty.
@@ -713,7 +592,7 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
   **Type a sentence (Z12) and paste a bank SMS (Z15).** A plain rule parser, no AI, works offline. «بنزین ۴۵۰ هزار» opens the expense form with the amount and a category guessed from words used before. A pasted card-to-card bank SMS opens the payment form with amount, date and tracking number; start with the 3 or 4 biggest banks, fall back to an empty form.
 
   </details>
-- **Z13. Share a photo into the app, and Z14 icon shortcuts.** A shared photo opens a new expense with it as the receipt; long-press the app icon for record payment, new order, record expense.
+- **Z13. Share a photo into the app.** A shared photo opens a new expense with it as the receipt. (Z14 icon shortcuts built 2026-11-05.)
   <details><summary>Full decision</summary>
 
   **Share a photo into the app (Z13).** `app/manifest.ts` gets a share target; a shared photo opens a new expense with it as the receipt. Expense receipt only for now. **Icon shortcuts (Z14):** long-press the app icon for record payment, new order, record expense, by role.
@@ -728,7 +607,6 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
   **Internal chat, first slice: threads on orders and customers.** See the decision below.<br><br>**Internal chat system (decided 2026-10-30).** A native chat, no outside chat server; the existing-solutions search was skipped on the owner's say-so. Phases: (1) a thread on every order and customer, (2) 1:1 and group chats on the same tables (one conversation table with a subject: customer, order, direct or group), (3) photos, search and read receipts. Decided 2026-10-30: the owner may read any 1:1 or group chat, members see a standing notice («مالک می‌تواند این گفتگو را ببیند») and each owner read is logged. Rules to settle when it is designed: a thread is visible only to people who may see the record, and adding someone grants no access to the record; mentions go through the existing notification preferences and quiet hours; online-only at first, saying so on a failed send; live delivery by server-sent events or polling over Postgres, no Redis.
 
   </details>
-- **S19. Push before a timed task.** One push 10 minutes before (owner can change). Check first that none exists.
 
 ## 2. Waiting for something
 
@@ -875,6 +753,8 @@ Not planned now. The reason is in the line; the full text is in the archive.
 **Built as first slices (2026-10-23, PR #57 and the small-difficulty batch):** F8, F16, F19, F23, F35, F40, F47, F54, F58, F62, F67, F72, F84, F89, F98, F99, F100, F101, F107, F108, F110, F112, F116, F132, F133, F137, F142, F144. Each has a "Built" note in `docs/future-features.md` saying what the slice covers and what it leaves out. The original table of the 22 quick wins and the list of what the small batch left for later are in the archive (section 1 and 1a).
 
 **Built from the 2026-10-28 UI pattern batch A (PR #2):** discount approval on orders, and the authenticator code before 15 sensitive actions. What was left over is UIB-A1 to UIB-A4 above. Full text: archive 1b.
+
+**Built from the small-items batch (2026-11-05):** A7 money tiles on the owner home, A10 repeat an expense, A13 receipt footer and order prefix, B3 books behind a document, D31 reopen a cancelled order, D32 sell-off «تصفیه», FB2 undo on the planner, FB5 detail sheets at the bottom, FB29 authenticator nudge, FB34 owner access review, FB38 invoice sent stamp, FB40 stale draft orders, S17 referrals, S19 push before a timed task, T15 weekly chart on calendar days, T17 maintenance banner, UIB-A3 credit approval scope, Z1 keypad sums, Z3 hide money (found already built), Z9 place on money entries, Z14 icon shortcuts, Z18 save and add next, Z19 safe refresh. Partly built, still listed above with what is left: UIB-A2, FB4, Z7, Z10. T11 was not started: no customer list has a group or rep filter yet. The count and plan are in `plans/small-roadmap-items-2026-11-05.md` in the project files.
 
 **Built from the studies:** S1 (branches no longer shown as duplicates, PR #20). The records F36 (duplicate customers as a decision deck) and F37 (decisions from the mobile-first rollout) are also built work, not ideas.
 
