@@ -5681,3 +5681,6 @@ html[data-fx="off"] .swiperow__stop { animation: none; }
 .donefold__list > * { text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--text-faint) 60%, transparent); opacity: 0.75; }
 html[data-fx="off"] .strikerow::after, html[data-fx="off"] .donefold__n { animation: none; }
 @media (prefers-reduced-motion: reduce) { .strikerow::after, .donefold__n { animation: none; } }
+
+/* Drag select (lib/useDragSelect): the tick boxes keep the finger, so sliding over them picks instead of scrolling. */
+.picktick { touch-action: none; user-select: none; -webkit-user-select: none; }
