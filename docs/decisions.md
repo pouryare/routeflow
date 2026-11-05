@@ -323,3 +323,18 @@ From bencho.dev's 151 UI sounds (`docs/bencho-blocks-and-sounds.md`). No library
 ### 10.15 Company storages on S3 (2026-11-05, owner decision)
 
 Each company brings its own S3 storages (Arvan preset, any S3-compatible endpoint); there is no platform default and uploads are blocked until a company adds one. A company may add several storages: one default, rules by file type, an optional mirror per rule, and a per-storage choice at the plan limit (keep uploading and pay extra, the default, or spill to an overflow storage). Only the company owner and the platform owner edit storages, with a 2FA check; secrets are encrypted at rest and never shown again. Test on save plus daily and weekly checks, 7-day server cache for all files, no app-side encryption, 30-day trash, background moves. Database backups stay on the platform owner's Arvan (10.x of 2026-10-28 unchanged). Library: `@aws-sdk/client-s3` (compared with the MinIO client, s3mini, s3-lite-client and writing our own signing). Full design and all 23 answers: [`docs/storage.md`](storage.md). Not built yet.
+
+### 10.16 Bottom-sheet motions from the «Bottom Sheet Part 1» clip (2026-11-05, owner decision)
+
+From a 12-second clip of six bottom-sheet motions. The owner answered one question per item. No new dependency: our `BottomSheet` on the HeroUI Drawer, the map's own customer sheet, and the pure rules in `lib/sheetStops.ts` (tested).
+
+| Item | Decision | Where it lives |
+|---|---|---|
+| 1. Snap points | A small «peek» stop, only on sheets over a map | The map's customer sheet on a phone (`CustomerDetailPanel`): peek (name only, map free), half (opens here), full. Drag or tap the handle, swipe down a step; down from peek closes. Heights are a share of the map, not the screen |
+| 2. Drag to close | Already built | HeroUI Drawer |
+| 3. Rubber band | Yes, a small stretch | A sheet that cannot grow any more stretches up to 40 px when pulled further, then springs back (`rubberBand`). Off with the effects switch and reduced motion. A quick upward pull no longer closes a sheet (HeroUI read it as a dismissing flick) |
+| 4. Mini player | Not relevant | — |
+| 5. Keyboard lift | Yes, with the visible motion | `.flow-drawer` glides its height to React Aria's `--visual-viewport-height`, so the sheet rides up with the keys. Off with the effects switch and reduced motion. Checked by shrinking the viewport in Chromium; not yet on a real iPhone or a cheap Android |
+| 6. Floating card, rows one by one | No | Sheets stay attached to the bottom edge, rows show at once |
+
+Sounds wired on the way: `sheet.full` (rising to full), `sheet.snap` (stop changed), `sheet.settle` (the stretch springs back).

@@ -3652,6 +3652,37 @@ body {
 /* Lying down, the bento runs three across and the rest flows in columns rather than
    stacking — otherwise a wide panel is one narrow column with a lot of empty air. */
 .meridian .cpanel--bottom .bento--compact { grid-template-columns: 1.5fr 1fr 1fr; gap: 12px; }
+/* On a phone the map's customer sheet rests at three heights (CustomerDetailPanel, lib/sheetStops.ts):
+   peek shows the handle and the shop's name with the map free above, half is where it opens, full
+   is for reading. Height glides between them. Its handle is a real button (.cpanel__grip), 44 px
+   tall, so the drawn bar of .sheet-on-mobile steps aside. */
+@media (max-width: 639px) {
+  .meridian .cpanel.cpanel--peek,
+  .meridian .cpanel.cpanel--half,
+  .meridian .cpanel.cpanel--full { max-height: none; transition: height var(--dur-slow) var(--ease-glide); }
+  /* 140 px keeps the name row clear of the «ثبت» button that floats over the map's corner. */
+  .meridian .cpanel.cpanel--peek { height: calc(140px + env(safe-area-inset-bottom, 0px)); overflow: hidden; }
+  /* In percent of the map, which holds the sheet: the map is a card on the page and the whole
+     screen only in full-screen mode. Full leaves a strip of map so the handle never leaves it. */
+  .meridian .cpanel.cpanel--half { height: 50%; }
+  .meridian .cpanel.cpanel--full { height: calc(100% - 48px); }
+  .meridian .cpanel.sheet-on-mobile::before { display: none; }
+  .meridian .cpanel__grip {
+    position: sticky; top: -16px; z-index: 1; display: block;
+    width: calc(100% + 36px); min-height: 44px; margin: -16px -18px 0;
+    background: var(--surface); border: 0; cursor: ns-resize; touch-action: none;
+  }
+  .meridian .cpanel__grip::before {
+    content: ""; display: block; width: 36px; height: 4px; margin: 0 auto;
+    border-radius: 999px; background: var(--border-strong);
+  }
+  html[data-fx="off"] .meridian .cpanel.cpanel--peek,
+  html[data-fx="off"] .meridian .cpanel.cpanel--half,
+  html[data-fx="off"] .meridian .cpanel.cpanel--full { transition: none; }
+}
+@media (max-width: 639px) and (prefers-reduced-motion: reduce) {
+  .meridian .cpanel.cpanel--peek, .meridian .cpanel.cpanel--half, .meridian .cpanel.cpanel--full { transition: none; }
+}
 .meridian .cpanel--bottom .bento--compact .tile .v { font-size: 24px; }
 @media (max-width: 900px) {
   .meridian .cpanel--side { right: 12px; width: 320px; }
@@ -4458,6 +4489,13 @@ body {
    --visual-viewport-height at the height left above the keyboard; capping by it keeps the sheet,
    bottom-aligned, just above the keys. */
 .meridian .flow-drawer__dialog { max-height: calc(var(--visual-viewport-height, 100dvh) * .92); }
+/* The keyboard lift. React Aria changes --visual-viewport-height in one step as the keyboard opens,
+   which made the sheet jump. The wrapper's height glides to the new value instead, so the sheet
+   (bottom-aligned in it) rides up with the keys and back down when they close. Off with the
+   effects switch and reduced motion: then the sheet jumps, still clear of the keys. */
+.meridian .flow-drawer { transition: height var(--dur-slow) var(--ease-glide); }
+html[data-fx="off"] .meridian .flow-drawer { transition: none; }
+@media (prefers-reduced-motion: reduce) { .meridian .flow-drawer { transition: none; } }
 /* Half and full height for a long list (BottomSheet `expandable`). Height moves on the slide's
    clock; it is one element, and only while the person asked for it. */
 .meridian .flow-drawer__dialog--half,
