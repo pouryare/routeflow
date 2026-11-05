@@ -5660,3 +5660,24 @@ html[data-fx="off"] .amountslider__bubble { animation: none; }
 @keyframes swiperow-stop { from { transform: scale(0.7); opacity: 0.4; } }
 html[data-fx="off"] .swiperow__stop { animation: none; }
 @media (prefers-reduced-motion: reduce) { .swiperow__stop { animation: none; } }
+
+/* Done tasks (Pocket, TaskRow): a line strikes through the finished one, then it folds into «N انجام‌شده». */
+.strikerow { position: relative; }
+.strikerow :is(span, div) { color: var(--text-faint); }
+.strikerow::after {
+  content: ""; position: absolute; inset-inline: 0; top: 50%; height: 2px; border-radius: 1px;
+  background: var(--text-faint); transform-origin: right; animation: strike-draw 320ms ease-out both; pointer-events: none;
+}
+@keyframes strike-draw { from { transform: scaleX(0); } }
+.donefold { margin-top: 10px; }
+.donefold__btn {
+  display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 4px;
+  background: none; border: 0; color: var(--muted, var(--text-muted)); font-size: 12px; font-weight: 600; cursor: pointer;
+}
+.donefold__chev { transition: transform 180ms ease; }
+.donefold__btn[aria-expanded="true"] .donefold__chev { transform: rotate(180deg); }
+.donefold__n { display: inline-block; animation: donefold-pop 260ms var(--spring-pop, ease-out); }
+@keyframes donefold-pop { 40% { transform: scale(1.15); } }
+.donefold__list > * { text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--text-faint) 60%, transparent); opacity: 0.75; }
+html[data-fx="off"] .strikerow::after, html[data-fx="off"] .donefold__n { animation: none; }
+@media (prefers-reduced-motion: reduce) { .strikerow::after, .donefold__n { animation: none; } }

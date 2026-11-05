@@ -2,7 +2,8 @@
 
 import { CardHelp } from "@/components/meridian/CardHelp";
 import { TASK_KIND_TONE } from "@/lib/tasks/labels";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Disclosure } from "@heroui/react";
 import Link from "next/link";
 import { faNum } from "@/lib/format";
 import type { Pocket as PocketData, PocketTeamMember } from "@/lib/repo/pocket";
@@ -66,11 +67,24 @@ export default function Pocket({
   };
   const [flow, setFlow] = useState<{ customerId: number; taskId: number; open: boolean } | null>(null);
 
+  /* A task that was just finished stays in its place struck through for a moment, then folds into the
+     «N انجام‌شده» line (which opens to show the done ones). */
+  const [justDone, setJustDone] = useState<TaskCard[]>([]);
+  const openIds = useRef(new Set<number>());
+  useEffect(() => {
+    openIds.current = new Set([...data.today, ...data.week].map((c) => c.id));
+  }, [data]);
   const refetch = useCallback(async (userId: number | null) => {
     const qs = userId ? `?user_id=${userId}` : "";
     const res = await fetch(`/api/pocket${qs}`);
     const j = (await res.json()) as { ok: boolean; pocket?: PocketData };
-    if (j.ok && j.pocket) setData(j.pocket);
+    if (!j.ok || !j.pocket) return;
+    const moved = j.pocket.done.filter((c) => openIds.current.has(c.id));
+    setData(j.pocket);
+    if (moved.length) {
+      setJustDone(moved);
+      window.setTimeout(() => setJustDone([]), 900);
+    }
   }, []);
 
   function pickScope(id: number | null) {
@@ -297,7 +311,26 @@ export default function Pocket({
         <div className="kblock__body">
           {group("امروز", data.today)}
           {group("این هفته", data.week)}
-          {group("انجام‌شده", data.done)}
+          {justDone.map((c) => (
+            <div key={c.id} className="strikerow">{row(c)}</div>
+          ))}
+          {(() => {
+            const folded = data.done.filter((c) => !justDone.some((j) => j.id === c.id));
+            return folded.length ? (
+              <Disclosure className="donefold">
+                <Disclosure.Heading>
+                  <Disclosure.Trigger className="donefold__btn">
+                    <Icon name="check" size="sm" />
+                    <span key={folded.length} className="donefold__n">{faNum(folded.length)} انجام‌شده</span>
+                    <Icon name="chevron-down" size="sm" className="donefold__chev" />
+                  </Disclosure.Trigger>
+                </Disclosure.Heading>
+                <Disclosure.Content>
+                  <div className="donefold__list">{folded.map(row)}</div>
+                </Disclosure.Content>
+              </Disclosure>
+            ) : null;
+          })()}
           {data.today.length + data.week.length + data.done.length === 0 ? (
             <p style={{ fontSize: 12, color: "var(--muted)", padding: "14px 0" }}>
               هنوز کاری ندارید. با «ثبت یادآوری» یا «ثبت یادداشت» شروع کنید.
