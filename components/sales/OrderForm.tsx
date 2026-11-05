@@ -2,6 +2,8 @@
 
 import { FieldInput } from "@/components/FieldInput";
 import { useEffect, useMemo, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
+import { useToast } from "@/components/ToastProvider";
 import { friendlyError } from "@/lib/userMessage";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -116,6 +118,19 @@ export default function OrderForm({
   const [discount, setDiscount] = useState<DiscountDraft>(emptyDraft);
 
   const [lines, setLines] = useState<Draft[]>([]);
+  const toast = useToast();
+  /* Removing a line crumples it away; the toast brings it back to the same place (undo, not "are you sure?"). */
+  const removeLine = (key: number, name: string) => {
+    const at = lines.findIndex((l) => l.key === key);
+    const gone = lines[at];
+    if (!gone) return;
+    setLines((cur) => cur.filter((l) => l.key !== key));
+    toast(`«${name}» از سفارش برداشته شد`, "success", {
+      label: "بازگردانی قلم",
+      icon: "undo",
+      onClick: () => setLines((cur) => (cur.some((l) => l.key === key) ? cur : [...cur.slice(0, at), gone, ...cur.slice(at)])),
+    });
+  };
   const [pickProduct, setPickProduct] = useState("");
   const [pickPackaging, setPickPackaging] = useState("");
   const [packs, setPacks] = useState("1");
@@ -390,9 +405,12 @@ export default function OrderForm({
 
         {resolved.length > 0 && (
           <ul className="mb-[var(--space-3)] flex list-none flex-col gap-[var(--space-2)] p-0">
+            <AnimatePresence initial={false}>
             {resolved.map((line) => (
-              <li
+              <motion.li
                 key={line.key}
+                layout
+                exit={{ opacity: 0, scale: 0.35, rotate: -14, y: 18, filter: "blur(3px)", transition: { duration: 0.32 } }}
                 className="flex items-center justify-between gap-[var(--space-2)] border-b border-[var(--border)] pb-[var(--space-2)]"
               >
                 <div className="min-w-0">
@@ -410,14 +428,15 @@ export default function OrderForm({
                   <button
                     type="button"
                     aria-label="حذف قلم"
-                    onClick={() => setLines((cur) => cur.filter((l) => l.key !== line.key))}
-                    className="rounded-[var(--radius-sm)] px-[var(--space-2)] py-[var(--space-1)] text-[var(--text-muted)] hover:bg-white/5 hover:text-[var(--crit)]"
+                    onClick={() => removeLine(line.key, line.product.name)}
+                    className="touch inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-[var(--radius-sm)] text-[var(--text-muted)] hover:bg-white/5 hover:text-[var(--crit)]"
                   >
                     <Icon name="trash" size="sm" />
                   </button>
                 </div>
-              </li>
+              </motion.li>
             ))}
+            </AnimatePresence>
           </ul>
         )}
 
