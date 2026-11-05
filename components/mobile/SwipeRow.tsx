@@ -33,9 +33,14 @@ function usePeek(peek: PeekKind | undefined, hasAction: boolean): boolean {
     } catch {
       /* blocked storage: no hint */
     }
-    if (!claimPeek(peek, store)) return;
-    const on = window.setTimeout(() => setPeeking(true), 600);
-    const off = window.setTimeout(() => setPeeking(false), 1500);
+    // Claimed when the timer fires, not before: a mount that is undone at once (React's dev double run)
+    // must not use up the one hint.
+    let off = 0;
+    const on = window.setTimeout(() => {
+      if (!claimPeek(peek, store)) return;
+      setPeeking(true);
+      off = window.setTimeout(() => setPeeking(false), 900);
+    }, 600);
     return () => {
       window.clearTimeout(on);
       window.clearTimeout(off);
