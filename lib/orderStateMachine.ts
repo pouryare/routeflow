@@ -48,7 +48,8 @@ export type OrderAction =
   | "retryDelivery"
   | "settle"
   | "cancel"
-  | "returnOrder";
+  | "returnOrder"
+  | "reopen";
 
 export type OrderRole = "phone_sales" | "group_manager" | "owner"
                      | "field_rep" | "delivery_driver" | "system";
@@ -134,7 +135,24 @@ export const ORDER_TRANSITIONS: readonly OrderTransition[] = [
 
   { from: "PARTIALLY_DELIVERED", action: "settle", to: "CLOSED", roles: ["system", "group_manager", "owner"], effects: ["spawnBackorder"] },
   { from: "PARTIALLY_DELIVERED", action: "returnOrder", to: "RETURNED", roles: ["group_manager", "owner"] },
+
+  /* D31: a manager takes a cancellation back within REOPEN_DAYS, with a reason. The order goes
+   * back to draft and must be submitted and confirmed again, so stock and credit are checked
+   * afresh; nothing is reserved here. advanceOrder refuses it after the window or for an order
+   * that was ever delivered. */
+  { from: "CANCELLED", action: "reopen", to: "DRAFT", roles: ["group_manager", "owner"] },
 ] as const;
+
+/** D31: how long after a cancellation it can be taken back.
+ *  shortcut: fixed at 7 days, the owner's default; becomes an owner setting with the D30 thresholds card. */
+export const REOPEN_DAYS = 7;
+
+/** Whether a cancellation at `cancelledAt` can still be reopened at `nowIso`. */
+export function withinReopenWindow(cancelledAt: string | null, nowIso: string, days = REOPEN_DAYS): boolean {
+  if (!cancelledAt) return false;
+  const age = Date.parse(nowIso) - Date.parse(cancelledAt);
+  return Number.isFinite(age) && age >= 0 && age <= days * 86_400_000;
+}
 
 /** The transition for a (from, action) pair, or undefined if the move is illegal. */
 export function orderTransition(
