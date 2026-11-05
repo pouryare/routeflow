@@ -133,7 +133,8 @@ Quickest to a first tour (a day), but it decides the scrolling, buttons and flow
 | 1 | **Own layer + driver.js for the spotlight only** (option A) | 2026-11-05 |
 | 2 | **Real taps where safe; steps that save money or send a message only point and explain** | 2026-11-05 |
 | 3 | Owner chose a third way: **demo data inside the real page while a tutorial runs**, swapped to real data with no reload (section 11). A separate training company is not needed | 2026-11-05 |
-| 4 | _waiting_ | |
+| 4 (was 6) | **Bottom-bar tour on first sign-in, then each tutorial offers itself the first time a screen or sheet is opened**, plus the replay list | 2026-11-05 |
+| 5 | _waiting_ | |
 
 ## 11. Owner's direction (2026-11-05): many tutorials, practice on demo data in the page
 
