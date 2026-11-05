@@ -107,6 +107,22 @@ One commit each, one draft PR, per the batch rule:
 7. Daily check, weekly spot-check and usage correction sweeps; notices; log; platform owner page.
 8. Test Arvan's panel API with a real account; if it returns the plan total, the optional panel key.
 
+## 8a. As built (2026-11-05)
+
+What differs from the plan above, and where things live:
+
+- **Code.** `lib/storage/` (drivers `s3.ts` and `local.ts`, `endpoint.ts` SSRF guard, `files.ts` save/read/trash, `maintenance.ts` jobs and sweeps, `cache.ts`, `input.ts`, `view.ts`), SQL in `lib/repo/storages.ts`, routes under `app/api/storages/`, page `app/(shell)/sales/admin/storage/` with `components/storage/`.
+- **Tables.** Six, not five: `storages`, `storage_rules`, `stored_files`, `storage_moves`, `storage_jobs`, `storage_events` (migration `1762300000000_company-storages.sql`).
+- **No backfill.** Files from before storages have no `stored_files` row; in development they are read from and deleted on the old flat disk folder directly. Production has no such files (all data is dummy).
+- **Dev disk.** The `local` kind is offered only when `NODE_ENV` is development or test, or `ROUTEFLOW_DEV_STORAGE=1`.
+- **Trash.** A deleted photo can be put back. A replaced receipt or avatar shows in the trash but cannot be put back (nothing points at it any more); it is erased after 30 days like the rest.
+- **Timers.** The installer (`deploy/routeflow`) adds `routeflow-storage@` with three timers: jobs every 5 minutes, the daily check at 04:30 Tehran, the weekly spot-check Friday 05:00 Tehran. They call `/api/storages/sweep` with the `SWEEP_TOKEN` secret.
+- **Platform owner list.** At the top of the same page for the platform owner. Acting as all companies, the page shows only that list and asks to pick a company to edit its storages.
+- **Field phones.** Upload buttons are not disabled ahead of time yet: the save is refused with «فضای ذخیره‌سازی تنظیم نشده؛ به مالک شرکت بگویید» and the phone shows that message. `/api/storages/status` is ready for disabling them later.
+- **Step 8, Arvan panel API: not tested.** No Arvan account was available in the build session. Arvan's panel has its own API key, separate from the S3 keys, and a storage usage report may exist there (`storage.arvanapis.ir`, unconfirmed), but whether it returns a plan's total size is unverified, so the plan size stays typed by the owner (decision 16). To test: create a panel API key, call the object storage usage endpoint, and see whether a total appears. If it does, add an optional «کلید پنل آروان» field later.
+- **Bencho blocks.** The accordion idea for the setup guide is a plain `<details>`. No count-up for usage: the page is opened rarely and the number must read at once.
+- **A shared fix.** The floating «+ ثبت» button now hides on any page with a `StickyAction` (`app/globals.css`), as it already did for pages with a primary bar; it was covering «افزودن فضا».
+
 ## 9. Not in this design
 
 Per-company data exports into the company bucket (offered, not chosen). App-side encryption (decision 10). Signed or public links. Splitting write and read keys. Pools of keys used in turn. Google Drive.
