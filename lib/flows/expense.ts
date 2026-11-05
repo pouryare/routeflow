@@ -139,3 +139,7 @@ export interface RecentExpense {
   hasReceipt: boolean;
   enteredBy: string | null;
 }
+
+/** Z7: an expense the owner should look at again: no receipt photo, or nothing written about it
+ *  (no note and so no supplier, which is kept in the note). */
+export const needsReview = (r: Pick<RecentExpense, "hasReceipt" | "memo">): boolean => !r.hasReceipt || !r.memo?.trim();

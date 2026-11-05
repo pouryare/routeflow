@@ -98,3 +98,13 @@ describe("remember method (Z10)", () => {
     expect(rememberedFirst([{ id: "CASH", label: "نقد" }], "GONE")).toEqual([{ id: "CASH", label: "نقد" }]);
   });
 });
+
+describe("needs review (Z7)", () => {
+  it("flags an expense with no receipt or nothing written", async () => {
+    const { needsReview } = await import("@/lib/flows/expense");
+    expect(needsReview({ hasReceipt: true, memo: "تأمین‌کننده: نفت" })).toBe(false);
+    expect(needsReview({ hasReceipt: false, memo: "اجاره" })).toBe(true);
+    expect(needsReview({ hasReceipt: true, memo: "  " })).toBe(true);
+    expect(needsReview({ hasReceipt: true, memo: null })).toBe(true);
+  });
+});
