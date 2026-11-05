@@ -4,6 +4,7 @@ import { MAX_STARS } from "@/lib/leadScore";
 import { faNum } from "@/lib/format";
 import { Icon } from "@/components/meridian/Icon";
 import { burst } from "@/lib/burst";
+import { buzz } from "@/lib/haptic";
 
 /** A row of stars for one criterion.
  *
@@ -38,7 +39,9 @@ export default function StarRating({
             aria-label={`${label}: ${faNum(star)} از ${faNum(MAX_STARS)}`}
             disabled={disabled}
             onClick={(e) => {
-              if (value !== star) burst(e.currentTarget);
+              // Every new score hops (CSS); only a full five spins and bursts, so the top mark feels like one.
+              if (value !== star && star === MAX_STARS) burst(e.currentTarget);
+              else if (value !== star) buzz(8);
               onChange(value === star ? null : star);
             }}
             style={{ "--star-i": i } as React.CSSProperties}

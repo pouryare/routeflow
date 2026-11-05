@@ -5406,10 +5406,14 @@ span.burst { display: inline-flex; }
   .chart-pill, .bars rect { transition: none; }
 }
 
-/* Stars (StarRating): the ones you just filled pop in one after another, left of the chosen one first. */
+/* Stars (StarRating): the ones you just filled hop one after another, first star first;
+   a full five also spins the last star (and bursts, lib/burst.ts). */
 @media (prefers-reduced-motion: no-preference) {
-  @keyframes star-pop { 50% { transform: scale(1.3) rotate(-8deg); } }
-  .star[aria-checked="true"] svg, .star.text-warn svg { animation: star-pop 320ms var(--ease-out, ease-out) calc(var(--star-i) * 45ms) both; }
+  @keyframes star-hop { 40% { transform: translateY(-7px) scale(1.15); } 70% { transform: translateY(1px) scale(0.97); } }
+  @keyframes star-spin { 60% { transform: scale(1.35) rotate(200deg); } 100% { transform: rotate(360deg); } }
+  .star[aria-checked="true"] svg, .star.text-warn svg { animation: star-hop 360ms var(--ease-out, ease-out) calc(var(--star-i) * 60ms) both; }
+  .star[data-burst] svg { animation: star-spin 520ms var(--ease-out, ease-out) calc(var(--star-i) * 60ms) both; }
+  html[data-fx="off"] .star svg { animation: none; }
   /* A chip you pick swells a little, like it was pulled toward your finger. */
   .meridian .choicechip.on { animation: chip-swell 260ms var(--spring-pop, ease-out); }
   @keyframes chip-swell { 40% { transform: scale(1.07); } }
