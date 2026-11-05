@@ -13,6 +13,7 @@ import { nextOpenAt, type WorkingHours } from "@/lib/crm/hours";
 import { useChoiceFeedback } from "./useChoiceFeedback";
 import SuggestChips from "./SuggestChips";
 import AmountStep from "./AmountStep";
+import SlideConfirm from "@/components/mobile/SlideConfirm";
 import { AnswerButton, SkipButton } from "./Answer";
 import PickStep from "./PickStep";
 import FlowProgress from "./FlowProgress";
@@ -156,6 +157,13 @@ function StepBody({ view, submit, hours, onNavigate, navigateUrl, vars, items, s
   const button = (o: ResolvedOption) => {
     const sub = subFor(o);
     const isSelected = feedback.selected === o.id;
+    if (o.slide === true) {
+      return (
+        <SlideConfirm key={o.id} sub={sub} isDisabled={needsText || feedback.selected !== null} onConfirm={() => tap(o)}>
+          {o.label}
+        </SlideConfirm>
+      );
+    }
     return (
       <AnswerButton key={o.id} selected={isSelected} tone={o.tone} isDisabled={needsText || feedback.selected !== null} onPress={() => tap(o)}>
         {o.label}
