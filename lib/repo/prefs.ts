@@ -11,13 +11,28 @@ export interface BoardPrefs {
   whats_new_seen?: string;
   /** F117: this person's sound switch (lib/sound.ts). Unset is the default, on. */
   sound?: "on" | "off";
+  /** How loud the sounds are, in percent (20 to 100, steps of 10). Unset is full. */
+  sound_volume?: number;
+  /** This person's own switch for decorative effects (lib/fx.ts). Unset follows the company and the phone. */
+  effects?: "on" | "off";
+  /** The customers this person hearted (the CRM list's «دلخواه‌ها»). Whole ids only, newest last. */
+  favourite_customers?: number[];
 }
 
-const ALLOWED: Record<keyof BoardPrefs, readonly string[]> = {
+/** The most favourites one person can keep: a list, not a database. */
+const MAX_FAVOURITES = 500;
+
+function validFavourites(v: unknown): v is number[] {
+  return Array.isArray(v) && v.length <= MAX_FAVOURITES && v.every((n) => Number.isInteger(n) && n > 0);
+}
+
+const ALLOWED: Record<Exclude<keyof BoardPrefs, "favourite_customers">, readonly string[]> = {
   board_mobile_mode: ["pager", "stack"],
   board_default_view: ["status", "time", "workflow"],
   whats_new_seen: WHATS_NEW_VERSIONS,
   sound: ["on", "off"],
+  sound_volume: ["20", "30", "40", "50", "60", "70", "80", "90", "100"],
+  effects: ["on", "off"],
 };
 
 export async function getPrefs(userId: number): Promise<BoardPrefs> {
@@ -36,6 +51,10 @@ export async function getPrefs(userId: number): Promise<BoardPrefs> {
 
 export async function setPrefs(userId: number, partial: BoardPrefs): Promise<BoardPrefs> {
   for (const [k, v] of Object.entries(partial)) {
+    if (k === "favourite_customers") {
+      if (!validFavourites(v)) throw new Error("prefs: bad value for favourite_customers");
+      continue;
+    }
     const allowed = (ALLOWED as Record<string, readonly string[] | undefined>)[k];
     if (!allowed) throw new Error(`prefs: unknown key ${k}`);
     if (!allowed.includes(String(v))) throw new Error(`prefs: bad value for ${k}: ${String(v)}`);

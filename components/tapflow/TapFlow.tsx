@@ -11,6 +11,7 @@ import type { FlowConfig, FlowContext, FlowState, ResolvedOption, ResolvedStep }
 import { labelDue, resolveDue } from "@/lib/crm/due";
 import { nextOpenAt, type WorkingHours } from "@/lib/crm/hours";
 import { useChoiceFeedback } from "./useChoiceFeedback";
+import SuggestChips from "./SuggestChips";
 import AmountStep from "./AmountStep";
 import { AnswerButton, SkipButton } from "./Answer";
 import PickStep from "./PickStep";
@@ -40,6 +41,8 @@ export interface TapFlowProps {
   onNavigate?: (url: string) => void;
   /** URL passed to onNavigate when the navigate step option is tapped. */
   navigateUrl?: string;
+  /** The person's own earlier wording; on a free-text step it is offered as the rest of what they type. */
+  suggest?: string[];
 }
 
 /** Steps the host renders itself via `renderCustom`, rather than TapFlow's own body.
@@ -82,7 +85,7 @@ export default function TapFlow(p: TapFlowProps) {
               {view.sub ? <p className="tf-sub">{view.sub}</p> : null}
               {CUSTOM.has(view.kind)
                 ? p.renderCustom?.({ step: view, state: p.state, submit })
-                : <StepBody key={`${view.id}-${p.state.answers.length}`} view={view} submit={submit} hours={p.hours} onNavigate={navigate} navigateUrl={p.navigateUrl} vars={p.ctx.vars} items={p.ctx.items ?? []} />}
+                : <StepBody key={`${view.id}-${p.state.answers.length}`} view={view} submit={submit} hours={p.hours} onNavigate={navigate} navigateUrl={p.navigateUrl} vars={p.ctx.vars} items={p.ctx.items ?? []} suggest={p.suggest} />}
               {view && (view.skipable || view.timeStep) ? (
                   <Button variant="ghost" className="flow-drawer__skip" onPress={() => submit(SKIP)}>
                     <Icon name="arrow-left" size="md" />
@@ -95,7 +98,7 @@ export default function TapFlow(p: TapFlowProps) {
   );
 }
 
-function StepBody({ view, submit, hours, onNavigate, navigateUrl, vars, items }: { view: ResolvedStep; submit: (id: string, value?: string) => void; hours?: WorkingHours; onNavigate?: (url: string) => void; navigateUrl?: string; vars: Record<string, string>; items: FlowItem[] }) {
+function StepBody({ view, submit, hours, onNavigate, navigateUrl, vars, items, suggest }: { suggest?: string[]; view: ResolvedStep; submit: (id: string, value?: string) => void; hours?: WorkingHours; onNavigate?: (url: string) => void; navigateUrl?: string; vars: Record<string, string>; items: FlowItem[] }) {
   const [text, setText] = useState("");
   const [picked, setPicked] = useState<string[]>([]);
   const [pickFor, setPickFor] = useState<string | null>(null);
@@ -183,6 +186,7 @@ function StepBody({ view, submit, hours, onNavigate, navigateUrl, vars, items }:
           aria-label={view.input.placeholder}
         />
       ) : null}
+      {view.input?.field === "text" && suggest ? <SuggestChips typed={text} past={suggest} onPick={setText} /> : null}
       {view.kind === "multi" ? (
         <div className="tf-grid one">
           {view.choices.map((c) => (

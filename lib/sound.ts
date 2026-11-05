@@ -163,17 +163,21 @@ export function soundOn(choice: SoundSwitch, reducedMotion: boolean): boolean {
 /* ---------- Settings, kept for the next page load ---------- */
 
 const STORE_KEY = "routeflow-sound";
-let settings: { choice: SoundSwitch; skin: Skin | null } = { choice: null, skin: null };
+/** Loudness as a percent of the full level; 100 is how the app always sounded. */
+export const VOLUMES = [20, 30, 40, 50, 60, 70, 80, 90, 100] as const;
+const validVolume = (v: unknown): v is number => typeof v === "number" && (VOLUMES as readonly number[]).includes(v);
+let settings: { choice: SoundSwitch; skin: Skin | null; volume: number } = { choice: null, skin: null, volume: 100 };
 let loaded = false;
 
 function load() {
   if (loaded || typeof window === "undefined") return;
   loaded = true;
   try {
-    const raw = JSON.parse(localStorage.getItem(STORE_KEY) ?? "null") as { choice?: unknown; skin?: unknown } | null;
+    const raw = JSON.parse(localStorage.getItem(STORE_KEY) ?? "null") as { choice?: unknown; skin?: unknown; volume?: unknown } | null;
     settings = {
       choice: raw?.choice === "on" || raw?.choice === "off" ? raw.choice : null,
       skin: isSkin(raw?.skin) ? raw.skin : null,
+      volume: validVolume(raw?.volume) ? raw.volume : 100,
     };
   } catch {
     /* private mode or a bad value: the defaults stand */
@@ -189,9 +193,10 @@ export function configureSound(next: Partial<typeof settings>): void {
   } catch {
     /* not saved for the next load; this page still uses it */
   }
+  if (master) master.gain.value = MASTER_GAIN * (settings.volume / 100);
 }
 
-function soundSettings(): { choice: SoundSwitch; skin: Skin | null } {
+function soundSettings(): typeof settings {
   load();
   return settings;
 }
@@ -200,6 +205,8 @@ function soundSettings(): { choice: SoundSwitch; skin: Skin | null } {
 
 let ctx: AudioContext | null = null;
 let out: AudioNode | null = null;
+let master: GainNode | null = null;
+const MASTER_GAIN = 1.6;
 let noise: AudioBuffer | null = null;
 let lastAt = -Infinity;
 
@@ -214,10 +221,10 @@ function unlock() {
     const session = (navigator as Navigator & { audioSession?: { type: string } }).audioSession;
     if (session) session.type = "ambient";
     ctx = new AC();
-    const master = ctx.createGain();
+    master = ctx.createGain();
     // The recipes are mixed quiet (peaks near 0.05) so a stack of them stays clean; this lifts them
     // to a phone-speaker level and the compressor catches the rare pile-up.
-    master.gain.value = 1.6;
+    master.gain.value = MASTER_GAIN * (soundSettings().volume / 100);
     const limiter = ctx.createDynamicsCompressor();
     limiter.threshold.value = -12;
     master.connect(limiter).connect(ctx.destination);

@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { Icon } from "@/components/meridian/Icon";
+import RunPill from "@/components/driver/RunPill";
+import { runPillOf } from "@/lib/runPill";
 import { useRouter } from "next/navigation";
 import type { RunDetail, RunStop } from "@/lib/delivery";
 import { faToman, faNum } from "@/lib/format";
@@ -63,6 +65,7 @@ export default function DriverRun({
   const [waved, setWaved] = useState<ReadonlySet<number>>(new Set());
   const [launch, setLaunch] = useState<{ id: number; n: number } | null>(null);
   const here = useMemo(() => (position ? { lat: position.lat, lng: position.lng } : null), [position]);
+  const pill = useMemo(() => runPillOf(run.stops), [run.stops]);
   const atDoor = useMemo(() => stopAtDoor(run.stops, here, waved), [run.stops, here, waved]);
 
   // Both read through useSyncExternalStore: they are external state, and setting them
@@ -90,6 +93,8 @@ export default function DriverRun({
         <Tile label="دریافتی امروز" value={faToman(run.collected_toman)} />
         <Tile label="مانده وصول" value={faToman(run.to_collect_toman)} />
       </div>
+
+      {pill && <RunPill pill={pill} onOpen={(id) => setLaunch((l) => ({ id, n: (l?.n ?? 0) + 1 }))} />}
 
       {(!online || pending > 0) && (
         <p className="m-0 rounded-[var(--radius-md)] border border-[var(--warn)] p-[var(--space-3)] text-[length:var(--text-xs)] leading-5 text-[var(--warn)]">

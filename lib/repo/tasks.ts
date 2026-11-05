@@ -189,6 +189,16 @@ export async function listTasks(
     .all(...(params as never[])) as unknown as TaskRow[];
 }
 
+/** The titles this person wrote for notes or reminders, newest first (repeats kept, so the most used
+ *  can be ranked). Their own only: nobody sees another person's wording. */
+export async function ownTitles(organizationId: number, userId: number, kind: "note" | "reminder"): Promise<string[]> {
+  const rows = await tasksRepo
+    .db()
+    .prepare("SELECT title FROM tasks WHERE organization_id = ? AND created_by = ? AND kind = ? ORDER BY created_at DESC LIMIT 200")
+    .all(organizationId, userId, kind) as unknown as { title: string }[];
+  return rows.map((r) => r.title);
+}
+
 /** Complete a task with an optional outcome; resolves any rule_runs tied to the same
  *  entity so the rule can fire again later. */
 /** Whether this person may complete, dismiss or move this task.

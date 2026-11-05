@@ -1,6 +1,6 @@
 # Bencho: blocks to borrow and sounds to use
 
-Source: https://bencho.dev (read 2026-10-30). A gallery of about 150 live React UI pieces ("blocks") and 151 UI sounds that the browser makes itself. For coding agents: read this before building any motion, gesture or sound feature.
+Source: https://bencho.dev (read 2026-10-30). A gallery of about 150 live React UI pieces ("blocks") and 151 UI sounds that the browser makes itself. For coding agents: read this before building any motion, gesture or sound feature, and (owner rule 2026-11-05, in `CLAUDE.md`) before designing the interaction of any new feature or page: check here for a fitting block first, then build on HeroUI.
 
 ## Rules (owner decision, 2026-10-30)
 
