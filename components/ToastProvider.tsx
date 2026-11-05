@@ -7,6 +7,7 @@ import { OUTBOX_HOLD_MS } from "@/lib/offline/constants";
 import { haptic } from "@/lib/haptics";
 import { playSound } from "@/lib/sound";
 import { withCount } from "@/lib/mergeCount";
+import { flyTo } from "@/lib/flyTo";
 
 type ToastVariant = "success" | "error" | "info";
 
@@ -25,7 +26,20 @@ export interface ToastAction {
   icon?: IconName;
 }
 
-type ShowToast = (message: string, variant?: ToastVariant, action?: ToastAction) => void;
+/** `flyTo` names a `data-fly-target`: when the toast closes it shrinks to a dot and flies there
+ *  (lib/flyTo.ts); `onLanded` runs when it lands, or at once when nothing flies. */
+export interface ToastFly {
+  flyTo: string;
+  onLanded?: () => void;
+}
+
+type ShowToast = (message: string, variant?: ToastVariant, action?: ToastAction, fly?: ToastFly) => void;
+
+/** The toast on screen, as a box to fly from: the newest is on top of HeroUI's stack. */
+function toastBox(): DOMRect | null {
+  const el = document.querySelector(".app-toasts")?.firstElementChild;
+  return el ? el.getBoundingClientRect() : null;
+}
 const ToastContext = createContext<ShowToast | null>(null);
 
 /** Named, never typed: a named Lucide icon is one drawing on every platform, where the
@@ -72,7 +86,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
      undo belongs to its own action. */
   const open = useRef(new Map<string, { id: string; n: number }>());
 
-  const showToast = useCallback<ShowToast>((message, variant = "info", action) => {
+  const showToast = useCallback<ShowToast>((message, variant = "info", action, fly) => {
     if (variant !== "info") haptic(variant);
     const base = {
       variant: HERO_VARIANT[variant],
@@ -82,7 +96,10 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     playSound(SOUND[variant]);
     if (!action) {
       const key = `${variant}|${message}`;
-      const onClose = () => open.current.delete(key);
+      const onClose = () => {
+        open.current.delete(key);
+        if (fly) void flyTo(fly.flyTo, toastBox()).then(() => fly.onLanded?.());
+      };
       const seen = open.current.get(key);
       if (seen) {
         seen.n += 1;
