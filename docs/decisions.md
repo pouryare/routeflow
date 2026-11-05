@@ -338,3 +338,43 @@ From a 12-second clip of six bottom-sheet motions. The owner answered one questi
 | 6. Floating card, rows one by one | No | Sheets stay attached to the bottom edge, rows show at once |
 
 Sounds wired on the way: `sheet.full` (rising to full), `sheet.snap` (stop changed), `sheet.settle` (the stretch springs back).
+
+### 10.17 Notification and button motions from the «Notifications Part 2» and «Button Part 2» clips (2026-11-05, owner decision)
+
+Two 12-second clips of six motions each. One question per item; write-up in the project thread. Every motion obeys `lib/fx.ts` (effects switch, reduced motion, weak phones) and every sound goes through `playSound`.
+
+| Item | Decision |
+|---|---|
+| Gooey drop, flip down, snackbar push, shine sweep | No (decoration; our messages sit at the top, so nothing is pushed) |
+| Fly to inbox | Yes, everywhere: a closing message shrinks and flies into the bell (the count rises after it lands), work saved offline flies into the sync icon, a new order flies into its list |
+| Merge counter | Yes, with the total: matching messages join into one card, «پرداخت دریافت شد ×۳، جمع ۳۶ میلیون»; also the sale pings on /sales |
+| Chat head, paper plane | Later, with chat or the SMS receipt (roadmap M1) |
+| Hold to confirm | Yes: when the ring is full it turns into a ✓ with a short buzz |
+| Slide to confirm | Yes, at three big moments: the driver's «تحویل شد», a large payment, closing a month; each keeps a plain button |
+| Confetti, copy feedback | Already built |
+
+### 10.18 Motions from eleven «ui motion» clips (2026-11-05, owner decision)
+
+Swipe actions 1 and 2, text field, send 1 and 2, slider, rating, checkbox 1 and 2, notifications 1; the bottom-sheet clip was already decided (10.16). Write-up: [Motion videos round 2](https://claude.ai/artifact/6YpwMXMcypyj7Ws2DQ36v5). The owner answered all 17 open items one by one.
+
+| Item | Decision |
+|---|---|
+| Live validation | Yes, only on fields with one right shape: phone, national code, IBAN, postal code. A red hint while wrong, a ✓ when right |
+| Character counter | Yes, a ring plus the number («۶۲/۷۰») where a limit exists (SMS text, short notes) |
+| Photo upload | Yes, a % ring on the photo then ✓; a failed upload turns red with «دوباره» |
+| Value bubble on sliders | Yes, only while dragging |
+| Amount filter | Yes, little bars of how many orders sit at each amount, plus a live count («۴۲ سفارش در این بازه») |
+| Snap ticks | Yes, 5% steps with the `notch` sound and a buzz; the keypad stays for exact values |
+| Rating tags | Yes, tags pop in after the stars; the company owner edits the list |
+| Snooze | Yes, swipe a task: 1 hour, 3 hours, tomorrow 9:00, and a last stop that opens the date and time picker; a plain button does the same |
+| Done tasks | Struck through, then folded into a «۳ انجام‌شده» line that opens |
+| Drag select | Yes, on the tick boxes once select mode is on |
+| Mark as read | Yes, a short swipe on a notification (again to make it unread) |
+| Password eye | Yes, on every password box, dots turn into letters one by one |
+| Slider end | Yes, a small rubber stretch |
+| Star bounce | Yes, stars hop in turn; spin and burst only on 5 |
+| Peek hint | Yes, once per kind of list (orders, tasks, notifications) |
+| Undo countdown | Yes, a ring round the ✕ that pauses while touched |
+| Bell number | Yes, it pops; no preview bubble |
+| Send clip 1, swipe to reply, undo send, voice message | Later, with chat (roadmap M1) |
+| Everything else in the clips | No (decoration, or already built: swipe delete and archive, volume, card swipe, tri-state, pop burst, done check, photo select, stacked toasts, swipe dismiss, copied) |
