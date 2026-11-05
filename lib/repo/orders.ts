@@ -4,6 +4,8 @@ import {
   orderTransition,
   ORDER_STATUS_LABEL,
   legalOrderActions,
+  REOPEN_DAYS,
+  withinReopenWindow,
   type OrderStatus,
   type OrderAction,
   type OrderRole,
@@ -226,6 +228,21 @@ export async function advanceOrder(
         .prepare("SELECT 1 FROM order_discounts WHERE order_id = ? AND status = 'pending' LIMIT 1")
         .get(orderId);
       if (waiting) throw new OrderError("تخفیف این سفارش هنوز تأیید نشده است");
+    }
+
+    if (action === "reopen") {
+      if (!opts.note?.trim()) throw new OrderError("برای بازگشایی سفارش، دلیل را بنویسید");
+      const hist = await conn
+        .prepare(
+          `SELECT MAX(CASE WHEN to_status = 'CANCELLED' THEN created_at END) AS cancelled_at,
+                  MAX(CASE WHEN to_status IN ('DELIVERED','PARTIALLY_DELIVERED') THEN 1 ELSE 0 END) AS delivered
+             FROM order_events WHERE order_id = ? AND organization_id = ?`
+        )
+        .get(orderId, organizationId) as { cancelled_at: string | null; delivered: number | null } | undefined;
+      if (Number(hist?.delivered ?? 0) > 0) throw new OrderError("سفارشی که تحویل شده بود بازگشایی نمی‌شود");
+      if (!withinReopenWindow(hist?.cancelled_at ?? null, new Date().toISOString())) {
+        throw new OrderError(`بازگشایی فقط تا ${REOPEN_DAYS.toLocaleString("fa-IR")} روز پس از لغو ممکن است`);
+      }
     }
 
     for (const effect of t.effects ?? []) {

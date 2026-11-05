@@ -157,6 +157,17 @@ export class IdbOutboxStore implements OutboxStore {
     }
   }
 
+  /** Z19 safe refresh: drop every snapshot row (never the outbox), so the next pull starts over. */
+  async clearSnapshot(): Promise<void> {
+    const db = await this.db();
+    if (!db) return;
+    try {
+      await tx(db, SNAPSHOT, "readwrite", (s) => s.clear());
+    } catch {
+      this.memoryOnly = true;
+    }
+  }
+
   async readSnapshot(table: string): Promise<Record<string, unknown>[]> {
     const db = await this.db();
     if (!db) return [];

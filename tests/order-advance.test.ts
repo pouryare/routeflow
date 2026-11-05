@@ -181,3 +181,16 @@ describe("advanceOrder", () => {
     expect(open.n).toBe(0);
   });
 });
+
+describe("reopen a cancelled order (D31)", () => {
+  it("needs a reason, goes back to draft, and is refused after the window", async () => {
+    const id = await makeOrder("DRAFT");
+    const owner = { id: user, role: "owner" as const };
+    await advanceOrder(1, id, "cancel", owner);
+    await expect(advanceOrder(1, id, "reopen", owner)).rejects.toThrow(OrderError);
+    expect(await advanceOrder(1, id, "reopen", owner, { note: "مشتری دوباره خواست" })).toBe("DRAFT");
+    await advanceOrder(1, id, "cancel", owner);
+    await getDb().prepare("UPDATE order_events SET created_at = '2020-01-01T00:00:00.000Z' WHERE order_id = ?").run(id);
+    await expect(advanceOrder(1, id, "reopen", owner, { note: "دیر" })).rejects.toThrow(OrderError);
+  });
+});

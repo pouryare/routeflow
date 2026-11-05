@@ -8,11 +8,20 @@ import { useUndoableAction } from "@/components/tapflow/useUndoableAction";
 import OrderActionFlow from "@/components/flows/OrderActionFlow";
 import {
   legalOrderActions,
+  withinReopenWindow,
   ORDER_STATUS_LABEL,
   type OrderStatus,
   type OrderAction,
   type OrderRole,
 } from "@/lib/orderStateMachine";
+
+/** D31: «بازگشایی» shows only while the server would let it through: within the window after the
+ *  last cancellation, and never for an order that was delivered. */
+function canStillReopen(events: { to_status: string; created_at: string }[]): boolean {
+  if (events.some((e) => e.to_status === "DELIVERED" || e.to_status === "PARTIALLY_DELIVERED")) return false;
+  const cancelled = events.filter((e) => e.to_status === "CANCELLED").map((e) => e.created_at).sort().at(-1) ?? null;
+  return withinReopenWindow(cancelled, new Date().toISOString());
+}
 
 interface OrderEvent {
   id: number;
@@ -55,7 +64,9 @@ export default function OrderStatusPanel({
     };
   }, [orderId, status]);
 
-  const actions = legalOrderActions(status as OrderStatus, role).filter((a) => a !== "flagCredit");
+  const actions = legalOrderActions(status as OrderStatus, role).filter(
+    (a) => a !== "flagCredit" && (a !== "reopen" || canStillReopen(events)),
+  );
 
   function run(action: OrderAction) {
     if (needsAsk(action)) {

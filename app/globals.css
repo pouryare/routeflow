@@ -5030,6 +5030,11 @@ html[data-fx="off"] .meridian .flow-drawer { transition: none; }
 .meridian .keypad__key:active { background: var(--accent-soft); color: var(--accent-soft-foreground); transform: scale(.97); }
 @media (prefers-reduced-motion: reduce) { .meridian .keypad__key { transition: none; } .meridian .keypad__key:active { transform: none; } }
 .meridian .keypad__key:focus-visible, .meridian .keypad__chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* Z1: + and − sit in a fifth row (− then a wide +, in the ltr grid); the sum so far reads above the total. */
+.meridian .keypad__readout { flex-wrap: wrap; }
+.meridian .keypad__readout .keypad__sum { flex-basis: 100%; text-align: center; font-size: 14px; color: var(--muted); overflow-wrap: anywhere; }
+.meridian .keypad__op { min-height: 48px; background: var(--accent-soft); color: var(--accent-soft-foreground); }
+.meridian .keypad__op--wide { grid-column: span 2; }
 .meridian .daychips { display: grid; gap: 8px; }
 .meridian .daychips__row { display: flex; flex-wrap: wrap; gap: 8px; }
 .meridian .daychips__row--strip { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; scroll-snap-type: x proximity; }

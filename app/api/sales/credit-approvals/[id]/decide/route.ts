@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isId } from "@/lib/inputChecks";
 import { requireRole } from "@/lib/session";
-import { decide, CreditApprovalError } from "@/lib/repo/creditApprovals";
+import { creditScopeOf, decide, CreditApprovalError } from "@/lib/repo/creditApprovals";
 import { MANAGE_ROLES } from "@/lib/roles";
 import { guardStepUp } from "@/lib/repo/stepUp";
 
 export async function POST(
   req: NextRequest,
-  ctx: RouteContext<"/api/admin/credit-approvals/[id]/decide">
+  ctx: RouteContext<"/api/sales/credit-approvals/[id]/decide">
 ) {
   const guard = await requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
@@ -25,7 +25,7 @@ export async function POST(
   }
 
   try {
-    await decide(guard.session.organizationId, Number(id), body.verdict, guard.session.user.id, body.reason);
+    await decide(guard.session.organizationId, Number(id), body.verdict, guard.session.user.id, body.reason, creditScopeOf(guard.session));
     return NextResponse.json({ ok: true });
   } catch (e) {
     if (e instanceof CreditApprovalError) {

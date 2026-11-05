@@ -11,8 +11,8 @@ process.env.ROUTEFLOW_DB_PATH = testDbPath;
 process.env.SESSION_SECRET = "test-secret";
 
 const { getDb } = await import("@/lib/db");
-const { GET, POST } = await import("@/app/api/admin/credit-approvals/route");
-const { POST: DECIDE } = await import("@/app/api/admin/credit-approvals/[id]/decide/route");
+const { GET, POST } = await import("@/app/api/sales/credit-approvals/route");
+const { POST: DECIDE } = await import("@/app/api/sales/credit-approvals/[id]/decide/route");
 const { NextRequest } = await import("next/server");
 const { createSessionToken, COOKIE_NAME } = await import("@/lib/auth");
 
@@ -81,12 +81,12 @@ function jreq(url: string, opts: { method?: string; body?: string; uid?: number;
 }
 const ctx = (id: number | string) => ({ params: Promise.resolve({ id: String(id) }) }) as never;
 
-describe("/api/admin/credit-approvals", () => {
+describe("/api/sales/credit-approvals", () => {
   let approvalId = 0;
 
   it("a salesperson can request an approval", async () => {
     const res = await POST(
-      jreq("/api/admin/credit-approvals", {
+      jreq("/api/sales/credit-approvals", {
         method: "POST",
         uid: sellerId,
         role: "phone_sales",
@@ -103,11 +103,11 @@ describe("/api/admin/credit-approvals", () => {
   });
 
   it("a manager lists and decides it", async () => {
-    const list = await (await GET(jreq("/api/admin/credit-approvals?status=pending"))).json();
+    const list = await (await GET(jreq("/api/sales/credit-approvals?status=pending"))).json();
     expect(list.approvals.map((a: { id: number }) => a.id)).toContain(approvalId);
 
     const res = await DECIDE(
-      jreq(`/api/admin/credit-approvals/${approvalId}/decide`, {
+      jreq(`/api/sales/credit-approvals/${approvalId}/decide`, {
         method: "POST",
         body: JSON.stringify({ verdict: "approved", reason: "ok" }),
       }),
@@ -118,7 +118,7 @@ describe("/api/admin/credit-approvals", () => {
 
   it("a second decision on the same request is 409", async () => {
     const res = await DECIDE(
-      jreq(`/api/admin/credit-approvals/${approvalId}/decide`, {
+      jreq(`/api/sales/credit-approvals/${approvalId}/decide`, {
         method: "POST",
         body: JSON.stringify({ verdict: "rejected" }),
       }),
@@ -129,7 +129,7 @@ describe("/api/admin/credit-approvals", () => {
 
   it("a salesperson cannot decide", async () => {
     const res = await DECIDE(
-      jreq(`/api/admin/credit-approvals/${approvalId}/decide`, {
+      jreq(`/api/sales/credit-approvals/${approvalId}/decide`, {
         method: "POST",
         uid: sellerId,
         role: "phone_sales",
@@ -142,7 +142,7 @@ describe("/api/admin/credit-approvals", () => {
 
   it("cannot decide another organisation's approval", async () => {
     const res = await DECIDE(
-      jreq(`/api/admin/credit-approvals/${otherApprovalId}/decide`, {
+      jreq(`/api/sales/credit-approvals/${otherApprovalId}/decide`, {
         method: "POST",
         body: JSON.stringify({ verdict: "approved" }),
       }),

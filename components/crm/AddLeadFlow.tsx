@@ -135,7 +135,7 @@ export default function AddLeadFlow({
       onClose={onHide}
       hours={hoursOf(v)}
       renderCustom={renderCustom}
-      done={<FlowDone key={state.answers.length} chips={chips} next={nextLabelFor(ctx, state)} actions={actions} onReturn={onHide} />}
+      done={<FlowDone key={state.answers.length} chips={chips} next={nextLabelFor(ctx, state)} actions={actions} onReturn={onHide} onAnother={() => { created.current = null; setState(startFlow(addLeadFlow, ctx)); }} />}
     />
   );
 }

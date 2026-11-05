@@ -1,4 +1,5 @@
 import CardTable from "@/components/CardTable";
+import BooksButton from "@/components/accounting/BooksButton";
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { redirect, notFound } from "next/navigation";
@@ -17,7 +18,7 @@ import BentoStrip, {
   BentoTile,
   BentoGauge,
 } from "@/components/BentoStrip";
-import { isVanRole, MANAGE_ROLES } from "@/lib/roles";
+import { isVanRole, isOwner, MANAGE_ROLES } from "@/lib/roles";
 import ComplaintFromOrder from "@/components/flows/ComplaintFromOrder";
 import OrderPriorityToggle from "@/components/sales/OrderPriorityToggle";
 import PriorityTag from "@/components/sales/PriorityTag";
@@ -105,6 +106,7 @@ export default async function OrderDetailPage({
           }
         >
           {order.status === "DRAFT" && <ConfirmOrderButton orderId={order.id} />}
+          {isOwner(session.role) && <BooksButton doc="order" id={order.id} />}
           {MANAGE_ROLES.includes(session.role) && canSetPriority(order.status) ? (
             <OrderPriorityToggle orderId={order.id} priority={order.priority} />
           ) : (

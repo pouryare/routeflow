@@ -1,5 +1,6 @@
 "use client";
 
+import { DEFAULT_SHEET_ORIENT, readSheetOrient, saveSheetOrient, type SheetOrient } from "@/lib/sheetOrient";
 import { useEscapeKey } from "@/lib/useEscapeKey";
 import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { useHydrated } from "@/lib/useHydrated";
@@ -43,16 +44,6 @@ function customerLink(id: number): string {
 
 /** Kept in step with the .customer-panel-exit duration in globals.css. */
 const EXIT_MS = 180;
-
-function readSavedOrient(): "side" | "bottom" | null {
-  try {
-    const saved = localStorage.getItem("coverage_panel_orient");
-    return saved === "bottom" || saved === "side" ? saved : null;
-  } catch {
-    // Private-window storage denial; the default orientation is still correct.
-    return null;
-  }
-}
 
 function debtTier(c: CustomerRow): { label: string; color: string; amount: number } | null {
   const d = c.debt;
@@ -236,26 +227,18 @@ export default function CustomerDetailPanel({
      keeps its height — and on a laptop the second is often the better trade when the
      shops are spread east-west. Remembered, because it is a preference about the screen,
      not about the customer. */
-  const [orient, setOrient] = useState<"side" | "bottom">("side");
+  const [orient, setOrient] = useState<SheetOrient>(DEFAULT_SHEET_ORIENT);
   const hydrated = useHydrated();
   const [orientRestored, setOrientRestored] = useState(false);
   if (hydrated && !orientRestored) {
     // First render after hydration: localStorage does not exist on the server.
     setOrientRestored(true);
-    const saved = readSavedOrient();
-    /* No saved preference on a phone: start as the wide bottom panel, which is the only shape that
-       leaves the map usable at that width. A saved choice always wins. */
-    if (saved) setOrient(saved);
-    else if (window.matchMedia("(max-width: 767px)").matches) setOrient("bottom");
+    setOrient(readSheetOrient());
   }
   function flip() {
     const next = orient === "side" ? "bottom" : "side";
     setOrient(next);
-    try {
-      localStorage.setItem("coverage_panel_orient", next);
-    } catch {
-      /* see above */
-    }
+    saveSheetOrient(next);
   }
 
   return (

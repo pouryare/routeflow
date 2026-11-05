@@ -6,7 +6,7 @@ import FlowDone from "@/components/tapflow/FlowDone";
 import { useFlowHost } from "@/components/tapflow/useFlowHost";
 import { EMPTY_CONTEXT, type FlowContext } from "@/lib/crm/flows/types";
 import type { OrderAction } from "@/lib/orderStateMachine";
-import { ACTION_LABEL, CONFIRM_ONLY, CONSEQUENCE, REASON_DOMAIN, actionBody, actionSummary, orderActionFlow } from "@/lib/flows/orderAction";
+import { ACTION_LABEL, CONFIRM_ONLY, CONSEQUENCE, NOTE_ONLY, REASON_DOMAIN, actionBody, actionSummary, orderActionFlow } from "@/lib/flows/orderAction";
 
 const FAILURE = "وضعیت سفارش تغییر نکرد. اینترنت را بررسی کنید و دوباره تلاش کنید.";
 
@@ -56,7 +56,7 @@ export default function OrderActionFlow({
         action,
         action_label: ACTION_LABEL[action],
         consequence: CONSEQUENCE[action] ?? "",
-        mode: CONFIRM_ONLY.includes(action) ? "confirm" : "reason",
+        mode: CONFIRM_ONLY.includes(action) ? "confirm" : NOTE_ONLY.includes(action) ? "note" : "reason",
         reasons: !domain || reasons !== null ? "ready" : "loading",
       },
     }),

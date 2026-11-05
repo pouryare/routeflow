@@ -1,21 +1,31 @@
 "use client";
 
+import { useMyPosition } from "@/components/MyPositionProvider";
+import { withPlace } from "@/lib/entryPlace";
 import { Button } from "@heroui/react";
 import { FileTrigger } from "react-aria-components";
 import { SkipButton } from "@/components/tapflow/Answer";
-import { useMemo, useRef } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import TapFlow, { type CustomStepApi } from "@/components/tapflow/TapFlow";
 import { Icon } from "@/components/meridian/Icon";
 import FlowDone from "@/components/tapflow/FlowDone";
 import { useFlowHost } from "@/components/tapflow/useFlowHost";
 import { EMPTY_CONTEXT, type FlowContext } from "@/lib/crm/flows/types";
-import { expenseChips, expenseFlow, expenseRequest, hasPhoto } from "@/lib/flows/expense";
+import { expenseChips, expenseFlow, expenseRequest, hasPhoto, repeatAnswers } from "@/lib/flows/expense";
 import { tehranTodayIso } from "@/lib/jalali";
+import { readLastMethod, writeLastMethod } from "@/lib/lastMethod";
 
 export interface ExpenseCategory {
   id: number;
   nameFa: string;
+}
+
+/** An earlier expense to enter again (A10): same category, amount and supplier, today's date. */
+export interface ExpenseRepeat {
+  accountId: number;
+  amountToman: number;
+  supplier: string | null;
 }
 
 const FAILURE = "هزینه ثبت نشد. اینترنت را بررسی کنید و دوباره تلاش کنید.";
@@ -27,8 +37,10 @@ export default function ExpenseFlow({
   suppliers,
   onClose,
   onReopen,
+  repeat,
 }: {
   open: boolean;
+  repeat?: ExpenseRepeat;
   categories: ExpenseCategory[];
   /** Recent supplier names, offered as answers. */
   suppliers: string[];
@@ -37,28 +49,33 @@ export default function ExpenseFlow({
 }) {
   const router = useRouter();
   const today = useMemo(() => tehranTodayIso(), []);
-  const ctx = useMemo<FlowContext>(
-    () => ({
+  const repeatSupplier = repeat?.supplier ?? null;
+  const [lastMethod] = useState(() => readLastMethod("expense"));
+  const ctx = useMemo<FlowContext>(() => {
+    // A repeated expense's supplier is offered even when it is not among the recent names.
+    const names = repeatSupplier && !suppliers.includes(repeatSupplier) ? [repeatSupplier, ...suppliers] : suppliers;
+    return {
       ...EMPTY_CONTEXT,
       entry: "expense",
       lists: {
         category: categories.map((c) => ({ id: c.id, label: c.nameFa })),
-        supplier: suppliers.map((s, i) => ({ id: i + 1, label: s })),
+        supplier: names.map((s, i) => ({ id: i + 1, label: s })),
       },
-      vars: { today },
-    }),
-    [categories, suppliers, today],
-  );
+      vars: { today, ...(lastMethod ? { last_method: lastMethod } : {}) },
+    };
+  }, [categories, suppliers, today, repeatSupplier, lastMethod]);
 
   /* The receipt picture lives here, not in the flow state: a File is not an answer. It is taken on
      the photo step and sent to the new expense once the expense itself is saved. */
   const receipt = useRef<File | null>(null);
-  const { state, setState, onSaved } = useFlowHost(expenseFlow, ctx, {
+  const { position } = useMyPosition();
+  const { state, setState, onSaved, restart } = useFlowHost(expenseFlow, ctx, {
     send: async (st) => {
+      writeLastMethod("expense", st.values.method);
       const res = await fetch("/api/accounting/expenses", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(expenseRequest(ctx, st)),
+        body: JSON.stringify(withPlace({ body: expenseRequest(ctx, st) }, position).body),
       });
       const json = (await res.json().catch(() => ({}))) as { error?: string; id?: number };
       if (!res.ok) return { ok: false, error: json.error };
@@ -76,6 +93,7 @@ export default function ExpenseFlow({
     failure: FAILURE,
     onFinished: () => router.refresh(),
     onReopen,
+    start: repeat ? repeatAnswers(ctx, repeat) : undefined,
   });
 
   const renderCustom = (api: CustomStepApi) =>
@@ -112,7 +130,7 @@ export default function ExpenseFlow({
       onState={setState}
       onSaved={onSaved}
       onClose={onClose}
-      done={<FlowDone key={state.answers.length} chips={expenseChips(ctx, state)} onReturn={onClose} />}
+      done={<FlowDone key={state.answers.length} chips={expenseChips(ctx, state)} onReturn={onClose} onAnother={restart} />}
     />
   );
 }

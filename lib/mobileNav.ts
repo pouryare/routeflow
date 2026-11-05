@@ -84,6 +84,14 @@ export const QUICK_ACTIONS: QuickAction[] = [
   { id: "complaint", label: "ثبت شکایت", icon: "warn", href: "/sales/complaints?new=1", requires: "/sales/complaints" },
 ];
 
+/** Long-press shortcuts on the installed app icon (Z14, app/manifest.ts): record payment, new
+ *  order, record expense. Each opens the page's own tap flow, like the «+ ثبت» sheet. */
+export const APP_SHORTCUTS: { label: string; href: string }[] = [
+  { label: "ثبت دریافت", href: "/sales/payments?new=1" },
+  { label: "سفارش تازه", href: "/sales/orders/new?quick=1" },
+  { label: "ثبت هزینه", href: "/accounting/expenses?new=1" },
+];
+
 export function quickActionsFor(session: { role: Role }): QuickAction[] {
   // A shareholder's login is the one read-only page; every action here writes.
   if (isVanRole(session.role) || session.role === "shareholder") return [];

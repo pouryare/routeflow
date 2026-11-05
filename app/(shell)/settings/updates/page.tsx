@@ -5,6 +5,8 @@ import { getSessionFromCookies } from "@/lib/session";
 import PageHeader from "@/components/meridian/PageHeader";
 import { notesFor } from "@/lib/whatsNew";
 import { faJalaliDate } from "@/lib/jalali";
+import SafeRefresh from "@/components/meridian/SafeRefresh";
+import { hasSyncClient } from "@/lib/roles";
 
 export const dynamic = "force-dynamic";
 
@@ -18,6 +20,7 @@ export default async function UpdatesPage() {
     <>
       <PageHeader route="/settings/updates" />
       <div className="flex flex-col gap-[var(--space-4)]">
+        {hasSyncClient(session.role) ? <SafeRefresh /> : null}
         {entries.length === 0 ? (
           <p className="text-[length:var(--text-sm)] text-[var(--text-muted)]">هنوز تغییری برای نقش شما ثبت نشده است.</p>
         ) : (

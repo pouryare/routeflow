@@ -59,6 +59,8 @@ describe("products", () => {
         "shelf_life_days",
         // Phase 5 (Routing): m³ per base unit, for vehicle volume capacity.
         "volume_m3_per_base_unit",
+        // D32: «تصفیه», cleared out and switched off at zero stock.
+        "sell_off",
       ].sort()
     );
   });

@@ -1,5 +1,7 @@
 "use client";
 
+import { useMyPosition } from "@/components/MyPositionProvider";
+import { withPlace } from "@/lib/entryPlace";
 import { useEffect, useMemo, useState } from "react";
 import TapFlow, { type CustomStepApi } from "@/components/tapflow/TapFlow";
 import DateStep from "@/components/tapflow/DateStep";
@@ -12,6 +14,7 @@ import { faToman } from "@/lib/format";
 import { tehranTodayIso } from "@/lib/jalali";
 import { useToast } from "@/components/ToastProvider";
 import { QUEUED_MESSAGE, queueIfOffline } from "@/lib/offline/queueIfOffline";
+import { readLastMethod, writeLastMethod } from "@/lib/lastMethod";
 
 export interface PaymentCustomer {
   id: number;
@@ -49,6 +52,7 @@ export default function PaymentFlow({
   onReopen?: () => void;
 }) {
   const today = useMemo(() => tehranTodayIso(), []);
+  const [lastMethod] = useState(() => readLastMethod("payment"));
   const ctx = useMemo<FlowContext>(() => {
     const known = customerId !== undefined ? customers.find((c) => c.id === customerId) : undefined;
     return {
@@ -59,14 +63,17 @@ export default function PaymentFlow({
         received_at: today,
         ...(known ? { customer_id: String(known.id), customer: known.business_name } : {}),
         ...(method ? { method } : {}),
+        ...(lastMethod ? { last_method: lastMethod } : {}),
       },
     };
-  }, [customers, customerId, method, today]);
+  }, [customers, customerId, method, today, lastMethod]);
 
   const toast = useToast();
-  const { state, setState, onSaved } = useFlowHost(paymentFlow, ctx, {
+  const { position } = useMyPosition();
+  const { state, setState, onSaved, restart } = useFlowHost(paymentFlow, ctx, {
     send: async (st) => {
-      const req = paymentRequest(ctx, st);
+      const req = withPlace(paymentRequest(ctx, st), position);
+      writeLastMethod("payment", st.values.method);
       /* With no signal a receipt or a cheque is a FACT that already happened: it goes into the device
          outbox and is sent when the connection returns. */
       if (await queueIfOffline(req.url, req.body)) {
@@ -143,7 +150,7 @@ export default function PaymentFlow({
       onSaved={onSaved}
       onClose={onClose}
       renderCustom={renderCustom}
-      done={<FlowDone key={state.answers.length} chips={paymentChips(viewCtx, state)} coin={paymentRequest(viewCtx, state).body.method === "CASH"} onReturn={onClose} />}
+      done={<FlowDone key={state.answers.length} chips={paymentChips(viewCtx, state)} coin={paymentRequest(viewCtx, state).body.method === "CASH"} onReturn={onClose} onAnother={restart} />}
     />
   );
 }

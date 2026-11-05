@@ -5,6 +5,7 @@ import { Icon } from "@/components/meridian/Icon";
 import { drawReceipt, type ReceiptData } from "@/lib/receiptLayout";
 import { DOTS_58MM, packRaster, receiptBytes, chunk } from "@/lib/escpos";
 import { receiptPdf } from "@/lib/receiptPdf";
+import type { InvoiceVia } from "@/lib/invoiceSent";
 
 /** Known BLE service/characteristic pairs for 58mm ESC/POS printers.
  *
@@ -81,7 +82,8 @@ function readStoredTransport(): Transport | null {
  *  printer's native dot count it prints one-to-one, where a PDF has to be re-rasterised
  *  by whatever opens it and the receiving app picks the scale.
  */
-export default function ReceiptPrinter({ data }: { data: ReceiptData }) {
+/** `onSent` hears each time the receipt actually left the phone (FB38 stamps the first one). */
+export default function ReceiptPrinter({ data, onSent }: { data: ReceiptData; onSent?: (via: InvoiceVia) => void }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const heightRef = useRef(0);
   const [status, setStatus] = useState<string | null>(null);
@@ -209,6 +211,7 @@ export default function ReceiptPrinter({ data }: { data: ReceiptData }) {
 
       device.gatt!.disconnect();
       remember("bluetooth");
+      onSent?.("bluetooth");
       setStatus("چاپ شد");
     } catch (e) {
       setStatus(e instanceof Error ? e.message : "رسید چاپ نشد؛ اتصال پرینتر را بررسی کنید و دوباره تلاش کنید");
@@ -236,6 +239,7 @@ export default function ReceiptPrinter({ data }: { data: ReceiptData }) {
       if (navigator.canShare?.({ files: [file] })) {
         await navigator.share({ files: [file], title: `رسید ${data.orderNo}` });
         remember("share");
+        onSent?.("share");
       } else {
         download(blob, `receipt-${data.orderNo}.png`);
       }
@@ -269,6 +273,7 @@ export default function ReceiptPrinter({ data }: { data: ReceiptData }) {
       const pdf = await receiptPdf(packed, DOTS_58MM, image.height);
       download(new Blob([pdf as BlobPart], { type: "application/pdf" }), `receipt-${data.orderNo}.pdf`);
       remember("pdf");
+      onSent?.("pdf");
     } catch (e) {
       setStatus(e instanceof Error ? e.message : "فایل PDF رسید ساخته نشد؛ دوباره تلاش کنید");
     } finally {
@@ -285,7 +290,7 @@ export default function ReceiptPrinter({ data }: { data: ReceiptData }) {
     { key: "bluetooth", label: "چاپ بلوتوث", run: printOverBluetooth, show: can.bluetooth },
     { key: "share", label: "ارسال به پرینتر", run: shareImage, show: can.share },
     { key: "pdf", label: "PDF", run: downloadPdf, show: true },
-    { key: "print", label: "چاپ", run: () => { remember("print"); window.print(); }, show: true },
+    { key: "print", label: "چاپ", run: () => { remember("print"); onSent?.("print"); window.print(); }, show: true },
   ];
   const visible = options.filter((o) => o.show);
 

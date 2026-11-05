@@ -18,7 +18,7 @@ import {
   PRICED_ORDER_STATUSES,
   sqlStatusList,
 } from "./orderStateMachine";
-import { jalaliMonthKey, JALALI_MONTHS, JALALI_WEEKDAYS } from "./jalali";
+import { jalaliMonthKey, JALALI_MONTHS, JALALI_WEEKDAYS, tehranTodayIso } from "./jalali";
 import { round } from "@/lib/database/dialect";
 
 export interface Series {
@@ -63,6 +63,19 @@ export interface SalesDashboard {
    *  both. Null rather than 0 when nothing qualifies -- 0 days would read as same-day
    *  delivery being the norm, which "no data yet" is not the same claim as. */
   avg_lead_days: number | null;
+}
+
+/** The last `n` calendar days up to `endIso`, newest first, a day with no sales as 0 (T15). Built
+ *  from the calendar and not from the days that had orders: with only the order days, one empty
+ *  day shifted every bar, and "this week" against "last week" compared different weekdays. Dates
+ *  are stepped at UTC midnight so no timezone can skip or repeat a day. */
+export function calendarDays(byDay: Map<string, number>, endIso: string, n: number): Series[] {
+  const [y, m, d] = endIso.slice(0, 10).split("-").map(Number);
+  const end = Date.UTC(y, m - 1, d);
+  return Array.from({ length: n }, (_, i) => {
+    const key = new Date(end - i * 86_400_000).toISOString().slice(0, 10);
+    return { key, label: key, value: byDay.get(key) ?? 0 };
+  });
 }
 
 /** «1405-06» -- the Persian year and month an ISO date falls in.
@@ -298,10 +311,7 @@ export async function salesDashboard(db: Db, session: Session): Promise<SalesDas
     },
     customer_count: debt.n,
     // Chronological, newest first -- LineChart draws index 0 at the right edge.
-    revenue_by_day: [...byDay.entries()]
-      .sort((a, b) => b[0].localeCompare(a[0]))
-      .slice(0, 30)
-      .map(([key, value]) => ({ key, label: key, value })),
+    revenue_by_day: calendarDays(byDay, tehranTodayIso(), 30),
     revenue_by_month: [...byMonth.entries()]
       .sort((a, b) => b[0].localeCompare(a[0]))
       .slice(0, 12)

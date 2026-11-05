@@ -6,7 +6,7 @@ import { getSessionFromCookies } from "@/lib/session";
 import ChequesBoard from "@/components/sales/ChequesBoard";
 import PageHeader from "@/components/meridian/PageHeader";
 
-import { MANAGE_ROLES } from "@/lib/roles";
+import { MANAGE_ROLES, isOwner } from "@/lib/roles";
 export const dynamic = "force-dynamic";
 
 export default async function ChequesPage() {
@@ -24,7 +24,7 @@ export default async function ChequesPage() {
   return (
     <>
       <PageHeader route="/sales/cheques" />
-      <ChequesBoard customers={customers} />
+      <ChequesBoard customers={customers} canSeeBooks={isOwner(session.role)} />
     </>
   );
 }

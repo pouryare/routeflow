@@ -4,6 +4,7 @@ import { faJalaliDate } from "@/lib/jalali";
 import { roundToman } from "@/lib/money";
 import { tomanInWords } from "@/lib/amountWords";
 import type { ReceiptData } from "@/lib/receiptLayout";
+import { DEFAULT_RECEIPT_FOOTER } from "@/lib/documentSettings";
 
 /** The paper handed over at the door.
  *
@@ -17,6 +18,8 @@ export function buildReceipt(opts: {
   runDate: string;
   driverName: string;
   businessName: string;
+  /** The company's own last line (A13); the default thanks when it has none. */
+  footer?: string | null;
 }): ReceiptData {
   const { stop, packs, collectedToman } = opts;
   const rows = stop.lines.map((line) => ({ line, n: packs[line.id] ?? 0 }));
@@ -40,6 +43,6 @@ export function buildReceipt(opts: {
     paidLabel: faToman(collectedToman),
     dueLabel: collectedToman < total ? faToman(total - collectedToman) : null,
     driverName: opts.driverName,
-    footer: "با تشکر از خرید شما",
+    footer: opts.footer || DEFAULT_RECEIPT_FOOTER,
   };
 }

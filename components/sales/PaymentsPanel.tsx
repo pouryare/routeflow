@@ -1,11 +1,15 @@
 "use client";
 
+import { placeHref } from "@/lib/entryPlace";
+import Link from "next/link";
+import BooksButton from "@/components/accounting/BooksButton";
 import CardTable from "@/components/CardTable";
 import { FieldInput } from "@/components/FieldInput";
 import { tehranTodayIso, faJalaliDateTime } from "@/lib/jalali";
 import { useRunAfterMount } from "@/lib/useRunAfterMount";
 import { friendlyError } from "@/lib/userMessage";
 import FilterChips from "@/components/mobile/FilterChips";
+import FilteredEmpty from "@/components/FilteredEmpty";
 import { PERIODS, PERIOD_LABEL, periodRange, type Period } from "@/lib/periods";
 import { Icon } from "@/components/meridian/Icon";
 import BusyIcon from "@/components/meridian/BusyIcon";
@@ -26,7 +30,7 @@ import { ChipGroup } from "@/components/mobile/ChipGroup";
 
 const PAGE_SIZE = 25;
 
-export default function PaymentsPanel({ customers }: { customers: Customer[] }) {
+export default function PaymentsPanel({ customers, canSeeBooks = false }: { customers: Customer[]; canSeeBooks?: boolean }) {
   const [payments, setPayments] = useState<Payment[] | null>(null);
   const [customerId, setCustomerId] = useState(() => {
     if (typeof window === "undefined") return "";
@@ -339,7 +343,11 @@ export default function PaymentsPanel({ customers }: { customers: Customer[] }) 
         {payments === null ? (
           <p className="text-sm text-text-muted">در حال بارگذاری…</p>
         ) : filtered.length === 0 ? (
-          <p className="text-sm text-text-muted">دریافتی با این فیلترها یافت نشد.</p>
+          <FilteredEmpty
+            title="دریافتی با این فیلترها یافت نشد."
+            hidden={live.length}
+            onClear={() => { choosePeriod(""); setFMethod(""); setFVoided("hide"); }}
+          />
         ) : (
           <>
             {months.map(([key, rows]) => (
@@ -371,8 +379,18 @@ export default function PaymentsPanel({ customers }: { customers: Customer[] }) 
                           ) : null}
                         </td>
                         <td className="p-2">{METHOD_LABEL[p.method] ?? p.method}</td>
-                        <td className="p-2">{faJalaliDateTime(p.received_at)}</td>
+                        <td className="p-2">
+                          {faJalaliDateTime(p.received_at)}
+                          {p.place ? (
+                            <Link href={placeHref(p.place)} aria-label="جای ثبت روی نقشه" title="جای ثبت روی نقشه"
+                              className="ms-1 inline-flex min-h-11 min-w-11 items-center justify-center align-middle text-text-muted hover:text-accent">
+                              <Icon name="map-pin" size="sm" />
+                            </Link>
+                          ) : null}
+                        </td>
                         <td className="p-2 text-left">
+                          {/* B3: a voided payment still has its books (the receipt and its reversal). */}
+                          {canSeeBooks && p.voided_at ? <BooksButton doc="payment" id={p.id} /> : null}
                           {p.voided_at ? null : (
                             <span className="flex items-center justify-end gap-2">
                               <button
@@ -391,6 +409,7 @@ export default function PaymentsPanel({ customers }: { customers: Customer[] }) 
                                 <Icon name="link" size="sm" />
                                 تخصیص
                               </button>
+                              {canSeeBooks ? <BooksButton doc="payment" id={p.id} /> : null}
                             </span>
                           )}
                         </td>

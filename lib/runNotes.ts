@@ -25,7 +25,7 @@ export interface RunNotes {
   notes: ReceiptData[];
 }
 
-export function runNotes(run: RunDetail, businessName: string, vehicle: string | null = null): RunNotes {
+export function runNotes(run: RunDetail, businessName: string, vehicle: string | null = null, footer: string | null = null): RunNotes {
   const pending = run.stops.filter((s) => s.status === "pending");
   const notes = pending.map((stop) =>
     buildReceipt({
@@ -35,6 +35,7 @@ export function runNotes(run: RunDetail, businessName: string, vehicle: string |
       runDate: run.run_date,
       driverName: run.driver_name,
       businessName,
+      footer,
     }),
   );
   return {

@@ -86,7 +86,12 @@ export default function CustomerBento({
           ) : (
             data!.recent.map((o) => (
               <Link key={o.id} href={`/sales/orders/${o.id}`} className="ordline">
-                <span>{faNum(Number(o.order_no.split("-")[1] ?? 0))}#</span>
+                <span>
+                  {faNum(Number(o.order_no.split("-")[1] ?? 0))}#
+                  {o.invoice_sent_at ? (
+                    <small style={{ color: "var(--muted)", marginInlineStart: 6 }}>رسید {faJalaliDate(o.invoice_sent_at)}</small>
+                  ) : null}
+                </span>
                 <span className="mono">{faNum(o.total_toman)}</span>
               </Link>
             ))

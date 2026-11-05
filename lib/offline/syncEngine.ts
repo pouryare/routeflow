@@ -28,6 +28,10 @@ interface PullResponse {
 const WATERMARK_KEY = "routeflow.sync.watermark";
 const LAST_SYNC_KEY = "routeflow.sync.last";
 
+/** Records not yet accepted by the server: held, queued, sending, refused or in conflict. Only an
+ *  applied one is safe to lose with the local copy. */
+export const unsentCount = (records: readonly { status: string }[]): number => records.filter((r) => r.status !== "applied").length;
+
 export class SyncEngine extends EventTarget {
   readonly store = new IdbOutboxStore();
   readonly outbox = new Outbox(this.store);
@@ -142,6 +146,21 @@ export class SyncEngine extends EventTarget {
       this.running = false;
       this.emitChange();
     }
+  }
+
+  /** Z19 safe refresh: refuse while anything still waits to be sent (returns how many), otherwise
+   *  clear the phone's copy and the pull watermark so the next pull fetches everything again. */
+  async clearLocalCopy(): Promise<{ ok: true } | { ok: false; unsent: number }> {
+    const unsent = unsentCount(await this.outbox.list());
+    if (unsent > 0) return { ok: false, unsent };
+    await this.store.clearSnapshot();
+    try {
+      localStorage.removeItem(WATERMARK_KEY);
+      localStorage.removeItem(LAST_SYNC_KEY);
+    } catch {
+      /* the watermark could not be read either */
+    }
+    return { ok: true };
   }
 
   lastSyncedAt(): string | null {

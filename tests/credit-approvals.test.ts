@@ -8,7 +8,7 @@ process.env.ROUTEFLOW_DB_PATH = testDbPath;
 process.env.SESSION_SECRET = "test-secret";
 
 const { getDb, TENANT_TABLES } = await import("@/lib/db");
-const { requestApproval, decide, listApprovals, CreditApprovalError } =
+const { requestApproval, decide, listApprovals, creditScopeOf, CreditApprovalError } =
   await import("@/lib/repo/creditApprovals");
 
 afterAll(() => {
@@ -109,5 +109,17 @@ describe("credit_approvals", () => {
     });
     await expect((async () => await decide(11, id, "approved", uId))()).rejects.toThrow(CreditApprovalError);
     expect(await listApprovals(11)).toEqual([]);
+  });
+
+  it("a group manager decides only their own group's request (UIB-A3)", async () => {
+    const { custId, uId, orderId } = await seed(9, "G1");
+    for (const g of [7, 8]) await getDb().prepare("INSERT INTO groups (id, name, slug, created_at, organization_id) VALUES (?, ?, ?, '2026-01-01', 9) ON CONFLICT DO NOTHING").run(g, `g${g}`, `g${g}`);
+    await getDb().prepare("UPDATE orders SET group_id = 7 WHERE id = ?").run(orderId);
+    const id = await requestApproval(9, { order_id: orderId, requested_by: uId, customer_id: custId, customer_balance_toman: 1, credit_limit_toman: 0 });
+    expect((await listApprovals(9, "pending", 8)).map((a) => a.id)).not.toContain(id);
+    await expect((async () => await decide(9, id, "approved", uId, undefined, 8))()).rejects.toThrow(CreditApprovalError);
+    expect((await listApprovals(9, "pending", 7)).map((a) => a.id)).toContain(id);
+    expect(creditScopeOf({ role: "owner", groupId: null })).toBeUndefined();
+    expect(creditScopeOf({ role: "group_manager", groupId: 7 })).toBe(7);
   });
 });

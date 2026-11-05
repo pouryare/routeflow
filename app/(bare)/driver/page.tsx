@@ -1,4 +1,9 @@
 import { tehranTodayIso, faJalaliLong, faJalaliDate, toJalali, jalaliToIsoDate } from "@/lib/jalali";
+import MaintenanceBanner from "@/components/meridian/MaintenanceBanner";
+import { maintenanceFor } from "@/lib/repo/maintenance";
+import { documentSettingsFor } from "@/lib/repo/documentSettings";
+import { organizationName } from "@/lib/repo/organizations";
+import { maintenancePhase } from "@/lib/maintenance";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { COOKIE_NAME } from "@/lib/auth";
@@ -79,10 +84,15 @@ export default async function DriverPage() {
   const j = toJalali(new Date().toISOString())!;
   const period = { from: jalaliToIsoDate(j.jy, j.jm, 1), to: jalaliToIsoDate(j.jy, j.jm, j.jd) };
   const { run, leadRun, commission } = await driverHomeData(session, today, period);
+  const maintenance = await maintenanceFor(session.organizationId);
+  const docs = await documentSettingsFor(session.organizationId);
+  const businessName = (await organizationName(session.organizationId)) ?? "فروش و پخش";
+  const phase = maintenancePhase(maintenance, new Date().toISOString());
 
   return (
     <main className="mx-auto min-h-screen w-full max-w-2xl px-[var(--space-4)] py-[var(--space-5)]">
       <SyncStatus />
+      {maintenance && phase !== "none" ? <MaintenanceBanner m={maintenance} phase={phase} syncFirst /> : null}
       <VerifyVisits />
       <header className="mb-[var(--space-4)] flex items-start justify-between gap-[var(--space-3)]">
         <div>
@@ -132,7 +142,8 @@ export default async function DriverPage() {
             <DriverRun
               run={plain([run])[0]}
               driverName={session.user.display_name}
-              businessName="فروش و پخش"
+              businessName={businessName}
+              receiptFooter={docs.receiptFooter}
             />
           )}
 

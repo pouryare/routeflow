@@ -9,8 +9,10 @@ import { celebrate } from "@/lib/celebrate";
 import Coin from "@/components/meridian/Coin";
 
 /** The done screen: what was saved, the likeliest next moves, and a return after `seconds`. */
-export default function FlowDone({ chips, next, actions, seconds = 5, onReturn, milestone, coin }: {
+export default function FlowDone({ chips, next, actions, seconds = 5, onReturn, onAnother, milestone, coin }: {
   chips: string[]; next?: string | null; actions?: ReactNode; seconds?: number; onReturn: () => void;
+  /** «ثبت بعدی» (Z18): start a fresh one of the same at once instead of going back to the list. */
+  onAnother?: () => void;
   /** A milestone (the last stop of a run): the done screen opens with a confetti burst. */
   milestone?: boolean;
   /** Cash was received: a coin turns over beside the tick. */
@@ -37,7 +39,17 @@ export default function FlowDone({ chips, next, actions, seconds = 5, onReturn, 
         {chips.map((c) => <span key={c}>{c}</span>)}
         {next ? <span className="nx">{next}</span> : null}
       </div>
-      {actions ? <div className="tf-acts">{actions}</div> : null}
+      {actions || onAnother ? (
+        <div className="tf-acts">
+          {actions}
+          {onAnother ? (
+            <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn solid" onClick={() => { fired.current = true; onAnother(); }}>
+              <Icon name="plus" size="md" />
+              ثبت بعدی
+            </button>
+          ) : null}
+        </div>
+      ) : null}
       <p className="tf-sub">برگشت به فهرست در {faDigits(String(Math.max(left, 0)))}…</p>
       <SkipButton icon="undo" onPress={go}>همین حالا برگرد</SkipButton>
     </div>
