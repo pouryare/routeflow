@@ -95,6 +95,7 @@ export default function Pocket({
   const row = (c: TaskCard) => (
     <SwipeRow
       key={c.id}
+      peek="tasks"
       ownButtons={false}
       start={
         c.customer && c.status === "open" && c.kind !== "order" && c.kind !== "delivery_retry"

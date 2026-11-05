@@ -91,6 +91,7 @@ export default function TaskRow({ taskId, label, sub, customerId, snoozable = fa
     <li className={`rowcollapse border-b border-[var(--border)]${struck ? " strikerow" : ""}`} data-gone={gone ? "" : undefined} inert={gone || struck}>
     <div className="rowcollapse__inner">
     <SwipeRow
+      peek="tasks"
       ownButtons={false}
       start={{ label: "ثبت نتیجه", icon: "check", run: openOutcome }}
       end={snoozable ? snoozer.swipe : { label: "حذف این کار", icon: "trash", tone: "bad", run: remove }}

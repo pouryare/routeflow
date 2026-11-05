@@ -1,6 +1,8 @@
 "use client";
 
-import { useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { claimPeek, type PeekKind } from "@/lib/peekHint";
+import { stretchAllowed } from "@/lib/sheetStops";
 import { Icon, type IconName } from "@/components/meridian/Icon";
 import { decide, LONG_PRESS_MS, stopAt, SWIPE_DEFAULTS, SWIPE_SHORT } from "@/lib/swipe";
 import { buzz } from "@/lib/haptic";
@@ -31,7 +33,7 @@ const CLICK_GUARD_MS = 60;
  *  still finger is a tap, a short click guard after release. `touch-action: pan-y` lets the page
  *  keep scrolling vertically. Do not nest it in a sheet: the sheet's swipe-down listens on the
  *  same touches. */
-export default function SwipeRow({ start, end, children, ownButtons = true, onLongPress, short = false }: {
+export default function SwipeRow({ start, end, children, ownButtons = true, onLongPress, short = false, peek }: {
   start?: SwipeAction;
   end?: SwipeAction;
   children: ReactNode;
@@ -41,8 +43,28 @@ export default function SwipeRow({ start, end, children, ownButtons = true, onLo
   onLongPress?: () => void;
   /** A light, undoable action (mark read): half the usual distance commits it. */
   short?: boolean;
+  /** The list this row belongs to: the first row of each kind slides open a little once (lib/peekHint.ts). */
+  peek?: PeekKind;
 }) {
   const [dx, setDx] = useState(0);
+  const [peeking, setPeeking] = useState(false);
+  const hasAction = !!(start || end);
+  useEffect(() => {
+    if (!peek || !hasAction || !stretchAllowed()) return;
+    let store: Storage | null = null;
+    try {
+      store = window.localStorage;
+    } catch {
+      /* blocked storage: no hint */
+    }
+    if (!claimPeek(peek, store)) return;
+    const on = window.setTimeout(() => setPeeking(true), 600);
+    const off = window.setTimeout(() => setPeeking(false), 1500);
+    return () => {
+      window.clearTimeout(on);
+      window.clearTimeout(off);
+    };
+  }, [peek, hasAction]);
   const press = useRef<{ x: number; y: number; id: number } | null>(null);
   const moved = useRef(false);
   const guard = useRef(false);
@@ -129,6 +151,13 @@ export default function SwipeRow({ start, end, children, ownButtons = true, onLo
   return (
     <div className="swiperow">
       {/* The action under the row while dragging: what letting go will do. */}
+      {/* The one-time hint: the action under the row shows while the face slides aside and back. */}
+      {peeking && !armed && (start ?? end) && (
+        <div className={`swiperow__under swiperow__under--reveal swiperow__under--${start ? "start" : "end"} swiperow__under--${(start ?? end)!.tone ?? "good"}`} aria-hidden>
+          <Icon name={(start ?? end)!.icon} size="md" />
+          {(start ?? end)!.label}
+        </div>
+      )}
       {armed && (
         <div className={`swiperow__under swiperow__under--${live.state === "commit" ? "commit" : "reveal"} swiperow__under--${live.state !== "idle" ? live.side : "start"} swiperow__under--${armed.tone ?? "good"}`} aria-hidden>
           <Icon name={armed.icon} size="md" />
@@ -136,7 +165,7 @@ export default function SwipeRow({ start, end, children, ownButtons = true, onLo
         </div>
       )}
       <div
-        className="swiperow__face"
+        className={`swiperow__face${peeking ? ` swiperow__face--peek-${start ? "start" : "end"}` : ""}`}
         style={{ transform: dx ? `translateX(${dx}px)` : undefined, transition: dx ? "none" : "transform .18s ease" }}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}

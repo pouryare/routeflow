@@ -252,6 +252,7 @@ export default function OrderPipeline({ orders }: { orders: PipelineOrder[] }) {
                   <LeavingRow key={o.id}>
                   <Pocketed papers={docs.papers} tone={docs.tone} fan>
                   <SwipeRow
+                    peek="orders"
                     ownButtons={false}
                     start={narrow && movable ? { label: "تأیید سفارش", icon: "check", run: () => swipeConfirm(o) } : undefined}
                   >

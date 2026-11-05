@@ -104,6 +104,7 @@ export default function NotificationCenter({ onUnread }: { onUnread: (n: number)
             {/* A short swipe either way flips read and unread; tapping the row still opens and reads it. */}
             <SwipeRow
               short
+              peek="notifications"
               start={g.unread_count ? { label: "خوانده شد", icon: "check", run: () => void markGroup(g.group_key) } : { label: "نخوانده", icon: "bell", run: () => void markGroup(g.group_key, true) }}
             >
             <Button
