@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { namesDemoRecord } from "@/lib/tutorials/pretend";
 import { COOKIE_NAME, parseSessionToken } from "./lib/auth";
 import { isShareholderPath, isVanRole, MANAGE_ROLES, OWNER_ROLES } from "@/lib/roles";
 
@@ -53,6 +54,12 @@ export function proxy(req: NextRequest) {
       pathname === "/api/storages/sweep")
   ) {
     return NextResponse.next();
+  }
+
+  // A tutorial's demo record (`demo-…` or a negative id) never reaches a route, even if a practice
+  // save slipped past the browser's pretend layer (lib/tutorials/pretend.ts).
+  if (namesDemoRecord(pathname)) {
+    return NextResponse.json({ ok: false, error: "این یک نمونهٔ آموزشی است و ذخیره نمی‌شود" }, { status: 400 });
   }
 
   const claims = parseSessionToken(req.cookies.get(COOKIE_NAME)?.value);
@@ -230,6 +237,8 @@ export function proxy(req: NextRequest) {
     pathname === "/api/logout" ||
     pathname === "/api/me" ||
     pathname === "/api/prefs" ||
+    // Tutorials: the person's own progress, step counts and what a manager sent them.
+    pathname.startsWith("/api/tutorials") ||
     pathname.startsWith("/api/crm/driver-visits") ||
     pathname === "/start" ||
     pathname === "/api/today" ||

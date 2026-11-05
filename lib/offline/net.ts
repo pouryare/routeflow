@@ -9,6 +9,7 @@
 import { Outbox } from "./outbox";
 import type { OfflineOp } from "./safety";
 import { measureSkew } from "./clock";
+import { isPretending, pretendBody } from "@/lib/tutorials/pretend";
 
 let skewMs = 0;
 export function currentSkew(): number {
@@ -47,6 +48,8 @@ export async function postJSON<T = unknown>(
   body: Record<string, unknown>,
   outbox?: Outbox
 ): Promise<PostResult<T>> {
+  // A tutorial's practice save never leaves the phone, and is never stored for later either.
+  if (isPretending()) return { ok: true, status: 200, data: pretendBody(Date.now()) as T };
   const op = matchOfflineOp(url);
   const offline = typeof navigator !== "undefined" && navigator.onLine === false;
 

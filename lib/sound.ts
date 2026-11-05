@@ -185,6 +185,13 @@ function load() {
   }
 }
 
+/** This person's own sound switch and volume, for the tutorial voice (components/tutorials/voice.ts):
+ *  the voice is speech, not decoration, so it follows only the switch, not reduced motion. */
+export function soundChoice(): { choice: SoundSwitch; volume: number } {
+  load();
+  return { choice: settings.choice, volume: settings.volume };
+}
+
 /** Called by SoundSync with what the server says, and by the settings page after a change. */
 export function configureSound(next: Partial<typeof settings>): void {
   load();

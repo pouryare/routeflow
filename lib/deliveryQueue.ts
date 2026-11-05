@@ -71,6 +71,8 @@ export function queueSize(): number {
 }
 
 export function enqueue(item: QueuedDelivery): void {
+  // A practice delivery inside a tutorial (a demo stop has a negative id) is never stored.
+  if (item.stopId < 0) return;
   const items = read();
   // One entry per stop. A driver correcting what they typed before it sends should
   // replace the pending record, not stack a second one behind it.

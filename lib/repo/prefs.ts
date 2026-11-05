@@ -1,5 +1,8 @@
 import { getDb } from "@/lib/db";
 import { WHATS_NEW_VERSIONS } from "@/lib/whatsNew";
+import type { TutorialProgress } from "@/lib/tutorials/types";
+import { isProgress } from "@/lib/tutorials/engine";
+import { TUTORIAL_IDS } from "@/lib/tutorials/catalog";
 
 /** Per-member UI preferences for the Board & Pocket. Stored server-side (a blob on
  *  `users`) so a member's board choice follows them across devices. Merge-patched;
@@ -17,6 +20,8 @@ export interface BoardPrefs {
   effects?: "on" | "off";
   /** The customers this person hearted (the CRM list's «دلخواه‌ها»). Whole ids only, newest last. */
   favourite_customers?: number[];
+  /** Tutorials this person finished, when the chip asked, and which badge already played. */
+  tutorials?: TutorialProgress;
 }
 
 /** The most favourites one person can keep: a list, not a database. */
@@ -26,7 +31,7 @@ function validFavourites(v: unknown): v is number[] {
   return Array.isArray(v) && v.length <= MAX_FAVOURITES && v.every((n) => Number.isInteger(n) && n > 0);
 }
 
-const ALLOWED: Record<Exclude<keyof BoardPrefs, "favourite_customers">, readonly string[]> = {
+const ALLOWED: Record<Exclude<keyof BoardPrefs, "favourite_customers" | "tutorials">, readonly string[]> = {
   board_mobile_mode: ["pager", "stack"],
   board_default_view: ["status", "time", "workflow"],
   whats_new_seen: WHATS_NEW_VERSIONS,
@@ -53,6 +58,10 @@ export async function setPrefs(userId: number, partial: BoardPrefs): Promise<Boa
   for (const [k, v] of Object.entries(partial)) {
     if (k === "favourite_customers") {
       if (!validFavourites(v)) throw new Error("prefs: bad value for favourite_customers");
+      continue;
+    }
+    if (k === "tutorials") {
+      if (!isProgress(v, TUTORIAL_IDS)) throw new Error("prefs: bad value for tutorials");
       continue;
     }
     const allowed = (ALLOWED as Record<string, readonly string[] | undefined>)[k];
