@@ -16,6 +16,10 @@ const PATHS = {
   rules: "/api/rules/run",
   analysis: "/api/analysis/refresh",
   predict: "/api/predict/refresh",
+  // Company storages (docs/storage.md): queued jobs, the daily check and purge, the weekly spot-check.
+  "storage-jobs": "/api/storages/sweep?task=jobs",
+  "storage-daily": "/api/storages/sweep?task=daily",
+  "storage-weekly": "/api/storages/sweep?task=weekly",
 };
 
 const which = process.argv[2];

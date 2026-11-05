@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import fs from "node:fs/promises";
 import { findPhoto } from "@/lib/repo/photosAdmin";
-import { photoFilePath } from "@/lib/photos";
+import { readFile } from "@/lib/storage/files";
 import { canReachEntity, requireRole } from "@/lib/session";
 import { MANAGE_ROLES } from "@/lib/roles";
 
@@ -26,15 +25,12 @@ export async function GET(req: NextRequest, ctx: RouteContext<"/api/photos/[id]/
     return NextResponse.json({ ok: false, error: "عکس پیدا نشد" }, { status: 404 });
   }
 
-  try {
-    const buffer = await fs.readFile(photoFilePath(row.file_stem, format));
-    return new NextResponse(new Uint8Array(buffer), {
-      headers: {
-        "Content-Type": format === "avif" ? "image/avif" : "image/webp",
-        "Cache-Control": "private, max-age=31536000, immutable",
-      },
-    });
-  } catch {
-    return NextResponse.json({ ok: false, error: "فایل تصویر پیدا نشد" }, { status: 404 });
-  }
+  const buffer = await readFile(row.file_stem, format, (row.entity_type as string) === "payment" ? "receipt" : "photo");
+  if (!buffer) return NextResponse.json({ ok: false, error: "فایل تصویر پیدا نشد" }, { status: 404 });
+  return new NextResponse(new Uint8Array(buffer), {
+    headers: {
+      "Content-Type": format === "avif" ? "image/avif" : "image/webp",
+      "Cache-Control": "private, max-age=31536000, immutable",
+    },
+  });
 }

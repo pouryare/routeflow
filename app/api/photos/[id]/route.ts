@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import fs from "node:fs/promises";
 import { deletePhoto, findPhoto } from "@/lib/repo/photosAdmin";
-import { photoFilePath } from "@/lib/photos";
+import { trashFile } from "@/lib/storage/files";
 import { canReachEntity, requireRole } from "@/lib/session";
 import { MANAGE_ROLES } from "@/lib/roles";
 
@@ -22,9 +21,9 @@ export async function DELETE(req: NextRequest, ctx: RouteContext<"/api/photos/[i
     return NextResponse.json({ ok: false, error: "عکس پیدا نشد" }, { status: 404 });
   }
   await deletePhoto(photoId);
-  await Promise.all([
-    fs.unlink(photoFilePath(row.file_stem, "avif")).catch(() => {}),
-    fs.unlink(photoFilePath(row.file_stem, "webp")).catch(() => {}),
-  ]);
+  // To the 30-day trash, with what restoring needs to put the photo back (docs/storage.md, decision 12).
+  await trashFile(row.file_stem, (row.entity_type as string) === "payment" ? "receipt" : "photo", guard.session.user.id, {
+    table: "photos", entity_type: row.entity_type, entity_id: row.entity_id, caption: row.caption, taken_at: row.taken_at,
+  });
   return NextResponse.json({ ok: true });
 }

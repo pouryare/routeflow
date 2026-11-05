@@ -1356,6 +1356,97 @@ export interface StockReservations {
   released_at: string | null;
 }
 
+export interface StorageEvents {
+  created_at: string;
+  detail: string | null;
+  id: Generated<number>;
+  kind: string;
+  organization_id: number;
+  storage_id: number | null;
+  user_id: number | null;
+}
+
+export interface StorageJobs {
+  attempts: Generated<number>;
+  created_at: string;
+  id: Generated<number>;
+  kind: string;
+  last_error: string | null;
+  move_id: number | null;
+  next_try_at: string;
+  organization_id: number;
+  stored_file_id: number;
+}
+
+export interface StorageMoves {
+  created_at: string;
+  done: Generated<number>;
+  failed: Generated<number>;
+  finished_at: string | null;
+  from_storage_id: number | null;
+  id: Generated<number>;
+  organization_id: number;
+  reason: string;
+  started_by: number | null;
+  state: Generated<string>;
+  to_storage_id: number;
+  total: Generated<number>;
+}
+
+export interface StorageRules {
+  file_kind: string;
+  mirror_storage_id: number | null;
+  organization_id: number;
+  storage_id: number;
+}
+
+export interface Storages {
+  access_key_id: string | null;
+  at_limit: Generated<string>;
+  bucket: string | null;
+  created_at: string;
+  created_by: number | null;
+  endpoint: string | null;
+  file_count: Generated<number>;
+  id: Generated<number>;
+  kind: string;
+  last_check_at: string | null;
+  last_check_error: string | null;
+  name: string;
+  near_full_at: string | null;
+  organization_id: number;
+  overflow_storage_id: number | null;
+  path_prefix: Generated<string>;
+  plan_bytes: number | null;
+  region: string | null;
+  secret_enc: string | null;
+  secret_last4: string | null;
+  state: Generated<string>;
+  updated_at: string;
+  used_bytes: Generated<number>;
+  warn_percent: Generated<number>;
+}
+
+export interface StoredFiles {
+  bytes: Generated<number>;
+  created_at: string;
+  deleted_at: string | null;
+  deleted_by: number | null;
+  file_kind: string;
+  held_since: string | null;
+  id: Generated<number>;
+  last_move_id: number | null;
+  mirror_state: Generated<string>;
+  mirror_storage_id: number | null;
+  month: string;
+  organization_id: number;
+  stem: string;
+  storage_id: number | null;
+  trash_ref: string | null;
+  upload_state: Generated<string>;
+  variants: string;
+}
+
 export interface Suppliers {
   active: Generated<number>;
   created_at: string;
@@ -1619,6 +1710,12 @@ export interface DB {
   shareholdings: Shareholdings;
   stock_movements: StockMovements;
   stock_reservations: StockReservations;
+  storage_events: StorageEvents;
+  storage_jobs: StorageJobs;
+  storage_moves: StorageMoves;
+  storage_rules: StorageRules;
+  storages: Storages;
+  stored_files: StoredFiles;
   suppliers: Suppliers;
   sync_mutations: SyncMutations;
   targets: Targets;

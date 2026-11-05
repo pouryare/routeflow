@@ -29,6 +29,7 @@ import c_sales_admin_groups from "./sales-admin-groups.json";
 import c_sales_admin_holidays from "./sales-admin-holidays.json";
 import c_sales_admin_logins from "./sales-admin-logins.json";
 import c_sales_admin_status from "./sales-admin-status.json";
+import c_sales_admin_storage from "./sales-admin-storage.json";
 import c_sales_admin_users from "./sales-admin-users.json";
 import c_sales_batches from "./sales-batches.json";
 import c_sales_cheques from "./sales-cheques.json";
@@ -84,6 +85,7 @@ export const CAPTURES: Record<string, Capture> = {
   "/sales/admin/holidays": c_sales_admin_holidays as Capture,
   "/sales/admin/logins": c_sales_admin_logins as Capture,
   "/sales/admin/status": c_sales_admin_status as Capture,
+  "/sales/admin/storage": c_sales_admin_storage as Capture,
   "/sales/admin/users": c_sales_admin_users as Capture,
   "/sales/batches": c_sales_batches as Capture,
   "/sales/cheques": c_sales_cheques as Capture,

@@ -100,4 +100,11 @@ export const TENANT_TABLES = [
   "sales",
   "suppliers",
   "login_events",
+  /* Company storages (docs/storage.md). */
+  "storages",
+  "storage_rules",
+  "stored_files",
+  "storage_moves",
+  "storage_jobs",
+  "storage_events",
 ] as const satisfies readonly string[];

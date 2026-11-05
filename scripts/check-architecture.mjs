@@ -137,7 +137,7 @@ export function unscopedTenantSelects(files, tenants) {
       if (!from.some((t) => tenants.includes(t))) continue;
       if (/organization_id/.test(sql)) continue;
       if (/\$\{[\w.]*(sql|scope|filter|Filter|clause|where)\b[\w.()]*\}/.test(sql)) continue; // scope fragment
-      if (/\bWHERE[^]*?\b(\w+\.)?(id|\w+_id|uuid|code|slug|username)\s*(=\s*\?|IN\s*\()/i.test(sql) && !/\bOR\b/i.test(sql)) continue; // keyed lookup
+      if (/\bWHERE[^]*?\b(\w+\.)?(id|\w+_id|uuid|code|slug|username|stem)\s*(=\s*\?|IN\s*\()/i.test(sql) && !/\bOR\b/i.test(sql)) continue; // keyed lookup (stem: a random, globally unique file name)
       // A WHERE assembled from a clauses/where array: scoped when the lines just above build it
       // from the organisation.
       if (/\$\{(clauses|where)\.join/.test(sql)) {

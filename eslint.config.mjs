@@ -50,8 +50,10 @@ const eslintConfig = defineConfig([
      * would cost a request to resize something already the right size. Set here rather
      * than with an in-source `eslint-disable`, which tests/no-lint-suppressions.test.ts
      * bans outright -- lint stays clean because the code is right, not because the linter
-     * was told to look away. */
-    files: ["components/meridian/Avatar.tsx", "app/(shell)/sales/admin/users/page.tsx"],
+     * was told to look away.
+     * The storage trash shows private, owner-only previews that must not enter the optimiser's
+     * shared cache. */
+    files: ["components/meridian/Avatar.tsx", "app/(shell)/sales/admin/users/page.tsx", "components/storage/StorageTrash.tsx"],
     rules: { "@next/next/no-img-element": "off" },
   },
 ]);

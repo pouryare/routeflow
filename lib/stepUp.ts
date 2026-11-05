@@ -29,12 +29,17 @@ export const STEP_UP_ACTIONS = {
   second_factor_off: { label: "غیرفعال یا بازنشانی برنامهٔ احراز هویت", critical: true },
   create_manager: { label: "ساخت مالک یا مدیر", critical: true },
   import_overwrite: { label: "بازنویسی داده با درون‌ریزی", critical: true },
+  // `always`: asked even when the company has not switched step-up on (docs/storage.md, decision 4).
+  storage_change: { label: "تغییر فضای ذخیره‌سازی", critical: false, always: true },
 } as const;
 
 export type StepUpAction = keyof typeof STEP_UP_ACTIONS;
 
 export const isStepUpAction = (v: unknown): v is StepUpAction =>
   typeof v === "string" && Object.prototype.hasOwnProperty.call(STEP_UP_ACTIONS, v);
+
+/** Asked even when the company switch is off. */
+export const alwaysAsked = (action: StepUpAction): boolean => "always" in STEP_UP_ACTIONS[action];
 
 /** Whether `role` is asked for a code before `action`. */
 export function needsStepUp(role: string, action: StepUpAction): boolean {

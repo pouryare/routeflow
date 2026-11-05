@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isId } from "@/lib/inputChecks";
 import crypto from "node:crypto";
-import fs from "node:fs/promises";
 import { requireRole } from "@/lib/session";
 import { OWNER_ROLES, type Role } from "@/lib/roles";
 import { encodeImage, PHOTO_MAX_EDGE } from "@/lib/imagePipeline";
-import { ensurePhotosDir, photoFilePath } from "@/lib/photos";
+import { discardFile, readFile, saveFile, storageRefusal, trashFile } from "@/lib/storage/files";
 import { isOwnExpense, receiptFor, saveReceipt } from "@/lib/repo/expenseReceipts";
 
 /* The same people who may record an expense may attach and read its receipt. */
@@ -37,20 +36,25 @@ export async function POST(req: NextRequest, ctx: RouteContext<"/api/accounting/
     return NextResponse.json({ ok: false, error: "فایل تصویر قابل پردازش نیست" }, { status: 422 });
   }
   const stem = crypto.randomUUID();
-  ensurePhotosDir();
-  await fs.writeFile(photoFilePath(stem, "avif"), encoded.avif);
-  await fs.writeFile(photoFilePath(stem, "webp"), encoded.webp);
   try {
-    const { replaced } = await saveReceipt(guard.session.organizationId, journalId, guard.session.user.id, stem);
-    if (replaced) {
-      await fs.rm(photoFilePath(replaced, "avif"), { force: true });
-      await fs.rm(photoFilePath(replaced, "webp"), { force: true });
-    }
+    await saveFile(guard.session.organizationId, "receipt", stem, [
+      { ext: "avif", body: encoded.avif, contentType: "image/avif" },
+      { ext: "webp", body: encoded.webp, contentType: "image/webp" },
+    ]);
+  } catch (e) {
+    const r = storageRefusal(e);
+    if (r) return NextResponse.json({ ok: false, error: r.error }, { status: r.status });
+    throw e;
+  }
+  let replaced: string | null;
+  try {
+    ({ replaced } = await saveReceipt(guard.session.organizationId, journalId, guard.session.user.id, stem));
   } catch {
-    await fs.rm(photoFilePath(stem, "avif"), { force: true });
-    await fs.rm(photoFilePath(stem, "webp"), { force: true });
+    await discardFile(stem);
     return NextResponse.json({ ok: false, error: "هزینه پیدا نشد" }, { status: 404 });
   }
+  // The replaced receipt goes to the 30-day trash rather than straight out of the bucket.
+  await trashFile(replaced, "receipt", guard.session.user.id, { table: "expense_receipts", journal_id: journalId });
   return NextResponse.json({ ok: true }, { status: 201 });
 }
 
@@ -63,7 +67,7 @@ export async function GET(req: NextRequest, ctx: RouteContext<"/api/accounting/e
   const r = Number.isInteger(journalId) ? await receiptFor(guard.session.organizationId, journalId) : null;
   if (!r) return NextResponse.json({ ok: false, error: "رسیدی ثبت نشده است" }, { status: 404 });
   const format = req.nextUrl.searchParams.get("format") === "avif" ? "avif" : "webp";
-  const bytes = await fs.readFile(photoFilePath(r.file_stem, format)).catch(() => null);
+  const bytes = await readFile(r.file_stem, format, "receipt");
   if (!bytes) return NextResponse.json({ ok: false, error: "فایل رسید پیدا نشد" }, { status: 404 });
   return new NextResponse(new Uint8Array(bytes), { headers: { "Content-Type": `image/${format}`, "Cache-Control": "private, max-age=3600" } });
 }

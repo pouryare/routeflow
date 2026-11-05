@@ -169,6 +169,8 @@ export function appTabs(session: { role: Role }): AppTab[] {
     { href: "/sales/admin/discounts", label: "تخفیف‌ها", group: "org", ready: isOwner(r) },
     { href: "/sales/admin/logins", label: "گزارش ورودها", group: "org", ready: isOwner(r) },
     { href: "/sales/admin/status", label: "وضعیت سامانه", group: "org", ready: isOwner(r) },
+    // Company storages (docs/storage.md): where the company's photos and receipts are kept.
+    { href: "/sales/admin/storage", label: "فضای ذخیره‌سازی", group: "org", ready: isOwner(r) },
     // The lunar holidays nothing offline can compute (Eid, Tasua, Ashura). The page existed
     // with no link to it; isOwner mirrors the gate in sales/admin/layout.tsx.
     { href: "/sales/admin/holidays", label: "تعطیلات", group: "org", ready: isOwner(r) },

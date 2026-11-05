@@ -498,6 +498,57 @@ WantedBy=timers.target
 UNIT
 }
 
+# Company storages (docs/storage.md): queued jobs every 5 minutes, the daily check and trash purge, the
+# weekly spot-check. Each calls the app on localhost with SWEEP_TOKEN (scripts/run-sweeps.mjs).
+write_storage_timers() {
+  cat > /etc/systemd/system/routeflow-storage@.service <<UNIT
+# Written by 'routeflow install'.
+[Unit]
+Description=RouteFlow storage sweep (%i)
+After=$SERVICE.service
+
+[Service]
+Type=oneshot
+User=$APP_USER
+WorkingDirectory=$ROOT/current
+LoadCredentialEncrypted=secrets:$SECRETS
+Environment=SWEEP_BASE_URL=http://127.0.0.1:$APP_PORT
+ExecStart=$ROOT/current/node/bin/node --env-file=%d/secrets scripts/run-sweeps.mjs storage-%i
+UNIT
+  local name when
+  for name in jobs daily weekly; do
+    case $name in
+      jobs) when='*:0/5' ;;
+      daily) when='*-*-* 04:30:00 Asia/Tehran' ;;
+      weekly) when='Fri *-*-* 05:00:00 Asia/Tehran' ;;
+    esac
+    cat > /etc/systemd/system/routeflow-storage-$name.timer <<UNIT
+# Written by 'routeflow install'.
+[Unit]
+Description=RouteFlow storage sweep ($name)
+
+[Timer]
+OnCalendar=$when
+Unit=routeflow-storage@$name.service
+
+[Install]
+WantedBy=timers.target
+UNIT
+  done
+}
+
+# The shared token the sweep timers send; made once, kept with the other secrets.
+ensure_sweep_token() {
+  [ -n "$(secret_value SWEEP_TOKEN)" ] && return 0
+  local t
+  t=$(secret_tmp)
+  secrets_read >"$t/old"
+  printf 'SWEEP_TOKEN=%s\n' "$(head -c 48 /dev/urandom | base64 | tr -d '/+=\n' | head -c 48)" >"$t/new"
+  merge_env "$t/old" "$t/new" >"$t/all"
+  secrets_write "$t/all"
+  rm -rf "$t"
+}
+
 write_caddy() {
   # A file of its own, imported once, so another site in the Caddyfile is never touched.
   cat > /etc/caddy/routeflow.caddy <<CADDY
@@ -569,7 +620,7 @@ APT
     bash "$tmp/db/server/install.sh" --no-migrate
   rm -rf "$tmp"
   secrets_absorb
-  install -d -o "$APP_USER" -g "$APP_USER" "$ROOT" "$ROOT/data" "$ROOT/data/photos" "$ROOT/data/map"
+  install -d -o "$APP_USER" -g "$APP_USER" "$ROOT" "$ROOT/data" "$ROOT/data/photos" "$ROOT/data/map" "$ROOT/data/cache" "$ROOT/data/held"
 
   say "App service"
   write_app_unit
@@ -577,9 +628,12 @@ APT
   sed -i "s|^WorkingDirectory=.*|WorkingDirectory=$ROOT/current|; s|^ExecStart=/usr/bin/node |ExecStart=$ROOT/current/node/bin/node --env-file=%d/secrets |; /^LoadCredentialEncrypted=/d; /^EnvironmentFile=/a LoadCredentialEncrypted=secrets:$SECRETS" \
     /etc/systemd/system/routeflow-backup@.service /etc/systemd/system/routeflow-restore-drill.service 2>/dev/null || true
   write_upgrade_timer
+  ensure_sweep_token
+  write_storage_timers
   systemctl daemon-reload
   systemctl enable "$SERVICE" >/dev/null
   systemctl enable --now routeflow-upgrade.timer >/dev/null
+  systemctl enable --now routeflow-storage-jobs.timer routeflow-storage-daily.timer routeflow-storage-weekly.timer >/dev/null
   install -d -o "$APP_USER" -g "$APP_USER" -m 775 "$ROOT/incoming"
   # The key-only user GitHub copies releases as (docs/release-and-deploy.md) may write here, nothing more.
   if id deploy >/dev/null 2>&1; then usermod -aG "$APP_USER" deploy; fi

@@ -7,7 +7,7 @@ import { deriveKey } from "@/lib/auth";
 import { getDb } from "@/lib/db";
 import type { Session } from "@/lib/session";
 import { secondFactorRequired } from "./secondFactor";
-import { STEP_UP_ACTIONS, TRUST_COOKIE, mintTrust, needsStepUp, readTrust, type StepUpAction } from "@/lib/stepUp";
+import { STEP_UP_ACTIONS, TRUST_COOKIE, alwaysAsked, mintTrust, needsStepUp, readTrust, type StepUpAction } from "@/lib/stepUp";
 
 const KEY_PURPOSE = "step-up-trust";
 const trustKey = () => deriveKey(KEY_PURPOSE);
@@ -32,7 +32,7 @@ async function tokenVersionOf(userId: number): Promise<number> {
 /** Null when the caller may go ahead; otherwise the 403 to return. */
 export async function guardStepUp(req: NextRequest, session: Session, action: StepUpAction): Promise<NextResponse | null> {
   if (!needsStepUp(session.role, action)) return null;
-  if (!await stepUpRequiredFor(session.organizationId)) return null;
+  if (!alwaysAsked(action) && !await stepUpRequiredFor(session.organizationId)) return null;
   const person = verifierOf(session);
   if (readTrust(trustKey(), req.cookies.get(TRUST_COOKIE)?.value, person, await tokenVersionOf(person))) return null;
   const meta = STEP_UP_ACTIONS[action];

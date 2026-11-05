@@ -44,6 +44,9 @@ next-env.d.ts
 # runtime database and uploaded photos (generated, not source -- real customer/business data)
 /data/routeflow.db*
 /data/photos/*
+# company files: the read cache and uploads held while a storage is down (docs/storage.md)
+/data/cache/
+/data/held/
 
 # local database/photo backups (see scripts/backup.mjs) -- these belong on a
 # separate disk/host to protect against this machine's own failure, not in git
