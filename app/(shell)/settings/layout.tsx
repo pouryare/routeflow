@@ -18,6 +18,7 @@ const NAV = [
   { href: "/settings/security", label: "امنیت و ورود" },
   { href: "/settings/sound", label: "صدا" },
   { href: "/settings/updates", label: "تازه‌های برنامه" },
+  { href: "/settings/tutorials", label: "آموزش برنامه" },
 ];
 
 export default function SettingsLayout({ children }: { children: ReactNode }) {

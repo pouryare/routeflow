@@ -13,7 +13,7 @@ import { driverHomeData } from "@/lib/repo/driverHome";
 import { driverDaySections } from "@/lib/driverDay";
 import { faToman, faNum } from "@/lib/format";
 import CountUp from "@/components/meridian/CountUp";
-import DriverRun from "@/components/driver/DriverRun";
+import DriverRunSlot from "@/components/driver/DriverRunSlot";
 import DriverDaySection from "@/components/driver/DriverDaySection";
 import SyncStatus from "@/components/SyncStatus";
 import VerifyVisits from "@/components/driver/VerifyVisits";
@@ -23,6 +23,7 @@ import SectionHead from "@/components/meridian/SectionHead";
 import { isVanRole } from "@/lib/roles";
 import NotAVanNotice from "@/components/meridian/NotAVanNotice";
 import DriverLinks from "@/components/driver/DriverLinks";
+import FirstStepsCard from "@/components/tutorials/FirstStepsCard";
 import { driverLinks } from "@/lib/driverLinks";
 
 export const dynamic = "force-dynamic";
@@ -117,6 +118,7 @@ export default async function DriverPage() {
         </form>
       </header>
       <DriverLinks links={driverLinks(session)} />
+      <FirstStepsCard />
 
       {/* ── Section 1: deliveries ─────────────────────────────────────────── */}
       {sections.includes("deliveries") && (
@@ -130,22 +132,12 @@ export default async function DriverPage() {
             </p>
           )}
 
-          {!run || run.stops.length === 0 ? (
-            /* An EMPTY section, not a missing one. A driver must never read this as
-               "there are no deliveries" when the truth is that the section did not
-               render. */
-            <p className="rounded-[var(--radius-lg)] border border-dashed border-[var(--border)] p-[var(--space-6)] text-center text-[length:var(--text-sm)] leading-7 text-[var(--text-faint)]">
-              امروز مسیری برای شما ثبت نشده است. وقتی مدیر سفارش‌ها را به مسیر شما اضافه کند،
-              همین‌جا نمایش داده می‌شود.
-            </p>
-          ) : (
-            <DriverRun
-              run={plain([run])[0]}
-              driverName={session.user.display_name}
-              businessName={businessName}
-              receiptFooter={docs.receiptFooter}
-            />
-          )}
+          <DriverRunSlot
+            run={run ? plain([run])[0] : null}
+            driverName={session.user.display_name}
+            businessName={businessName}
+            receiptFooter={docs.receiptFooter}
+          />
 
           {commission.kg > 0 && (
             <div className="mt-[var(--space-4)] flex items-center justify-between gap-[var(--space-3)] rounded-[var(--radius-lg)] border border-[var(--border)] p-[var(--space-4)]">

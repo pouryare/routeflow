@@ -45,13 +45,13 @@ export default function BottomNav({ primary, more, account }: BottomTabs) {
     <>
       <nav ref={nav} className="bottomnav" aria-label="ناوبری اصلی">
         {primary.map((t) => (
-          <Link key={t.href} href={t.href} data-fly-target={t.href} className="bottomnav__item" aria-current={t.href === current ? "page" : undefined} onClick={() => playSound("nav.tab")}>
+          <Link key={t.href} href={t.href} data-fly-target={t.href} data-tour={`nav:${t.href}`} className="bottomnav__item" aria-current={t.href === current ? "page" : undefined} onClick={() => playSound("nav.tab")}>
             <span className="bottomnav__icon"><Icon name={TAB_ICON[t.href] ?? "dot"} size="md" /></span>
             <span>{t.label}</span>
           </Link>
         ))}
         {(more.length > 0 || account.length > 0) && (
-          <button type="button" className="bottomnav__item" aria-haspopup="dialog" aria-current={inMore ? "page" : undefined} onClick={() => setMoreOpen(true)}>
+          <button type="button" data-tour="nav:more" className="bottomnav__item" aria-haspopup="dialog" aria-current={inMore ? "page" : undefined} onClick={() => setMoreOpen(true)}>
             <span className="bottomnav__icon"><Icon name="menu" size="md" /></span>
             <span>بیشتر</span>
           </button>

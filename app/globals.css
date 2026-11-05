@@ -5728,3 +5728,76 @@ html[data-fx="off"] .pwfield[data-rolling] input { color: inherit; }
 .app-toasts [data-slot="toast"]:is(:hover, :focus-within) [data-slot="toast-close"]::before,
 html[data-toasts-paused] .app-toasts [data-slot="toast-close"]::before { animation-play-state: paused; }
 .app-toasts [data-slot="toast"]:has([data-pending]) [data-slot="toast-close"]::before { display: none; }
+
+/* Tutorials (components/tutorials, docs/plans/tutorials-2026-11-05.md). The card sits in the thumb zone
+   above the bottom bar, or at the top when the button it points at is low on the screen. It stays
+   clickable through driver.js's dim, which turns pointer events off on everything else. */
+.tourcard-wrap {
+  /* Above HeroUI's sheets (their backdrop is 100000), so the card still shows over an open sheet. */
+  position: fixed; inset-inline: 0; z-index: 200002; display: flex; justify-content: center;
+  padding: 0 16px; pointer-events: none;
+  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+}
+@media (max-width: 767px) { .meridian .app ~ .tourcard-wrap, .meridian:has(.bottomnav) .tourcard-wrap { bottom: calc(100px + env(safe-area-inset-bottom, 0px)); } }
+.tourcard-wrap[data-at="top"] { bottom: auto; top: calc(12px + env(safe-area-inset-top, 0px)); }
+.driver-active .tourcard-wrap, .driver-active .tourcard-wrap *, .driver-active .tourchip, .driver-active .tourchip * { pointer-events: auto; }
+.tourcard { pointer-events: auto; width: 100%; max-width: 480px; box-shadow: 0 10px 30px rgb(0 0 0 / 0.28); border: 1px solid var(--accent); }
+.tourcard__head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.tourcard__title { font-weight: 700; font-size: var(--text-sm); color: var(--accent-soft-foreground, var(--accent)); }
+.tourcard__count { font-size: var(--text-xs); color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.tourcard__text { margin: 0; font-size: var(--text-base); line-height: 1.9; color: var(--text); }
+.tourcard__text--muted { color: var(--text-muted); }
+.tourcard__note { margin: 6px 0 0; font-size: var(--text-xs); color: var(--warn); }
+.tourcard__foot { display: flex; flex-wrap: wrap; gap: 8px; }
+.tourcard__foot > button { min-height: 44px; }
+.tourcard__go { flex: 1; }
+/* driver.js's dim takes the app's ink, not black, so it reads the same in dark mode. */
+.driver-overlay path { fill: var(--foreground, #000); }
+html[data-theme="dark"] .driver-overlay path { fill: #000; }
+
+/* The pointing hand (idea I4): glides to the button and taps; in the ghost demo it presses it. */
+.tourhand {
+  position: fixed; z-index: 200003; pointer-events: none; color: var(--accent);
+  transform: translate(-30%, -10%) rotate(-30deg); filter: drop-shadow(0 2px 3px rgb(0 0 0 / 0.35));
+  transition: left 600ms var(--ease-glide, ease), top 600ms var(--ease-glide, ease);
+  animation: tourhand-tap 1.4s ease-in-out infinite;
+}
+.tourhand::after {
+  content: ""; position: absolute; inset: -10px; border-radius: 50%; border: 2px solid var(--accent);
+  animation: tourhand-ring 1.4s ease-out infinite; opacity: 0;
+}
+@keyframes tourhand-tap { 0%, 60%, 100% { transform: translate(-30%, -10%) rotate(-30deg) scale(1); } 30% { transform: translate(-30%, -4%) rotate(-30deg) scale(0.88); } }
+@keyframes tourhand-ring { 0% { opacity: 0.8; transform: scale(0.4); } 100% { opacity: 0; transform: scale(1.6); } }
+html[data-fx="off"] .tourhand { display: none; }
+/* The pulse on the button a step is about (idea I4); inside a sheet it replaces the dim, which sits under sheets. */
+[data-tour-pulse] { outline: 3px solid var(--accent); outline-offset: 3px; border-radius: 12px; animation: tour-pulse 1.4s ease-in-out infinite; }
+@keyframes tour-pulse { 0%, 100% { outline-color: var(--accent); } 50% { outline-color: transparent; } }
+@media (prefers-reduced-motion: reduce) { [data-tour-pulse] { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .tourhand, .tourhand::after { animation: none; transition: none; } }
+
+/* The just-in-time offer (idea I1). */
+.tourchip {
+  position: fixed; inset-inline: 16px; z-index: 69; margin-inline: auto; max-width: 480px;
+  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: var(--radius-lg);
+  background: var(--surface); border: 1px solid var(--accent); box-shadow: 0 6px 18px rgb(0 0 0 / 0.18);
+}
+@media (max-width: 767px) { .meridian:has(.bottomnav) .tourchip { bottom: calc(100px + env(safe-area-inset-bottom, 0px)); } }
+.tourchip__text { flex: 1; min-width: 0; font-size: var(--text-sm); color: var(--text); display: inline-flex; align-items: center; gap: 6px; }
+.tourchip > button { min-height: 44px; }
+
+/* «آموزش‌ها» list. */
+.tutcard__head { display: flex; justify-content: space-between; align-items: center; font-weight: 700; }
+.tutcard__count { font-weight: 400; font-size: var(--text-xs); color: var(--text-muted); }
+.tutlist { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.tutrow { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-top: 1px solid var(--border); }
+.tutrow:first-child { border-top: 0; }
+.tutrow__tick { display: inline-flex; width: 28px; height: 28px; border-radius: 50%; align-items: center; justify-content: center; border: 1px solid var(--border-strong); color: var(--text-faint); flex: none; }
+.tutrow__tick.on { background: var(--success); border-color: var(--success); color: var(--success-foreground, #fff); }
+.tutrow__title { flex: 1; min-width: 0; font-size: var(--text-sm); color: var(--text); display: flex; flex-direction: column; }
+.tutrow__title small { color: var(--text-muted); font-size: var(--text-xs); }
+.tutrow__actions { display: flex; gap: 6px; flex: none; }
+.tutrow__actions > button { min-height: 44px; }
+.tutcard__all { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; font-size: var(--text-sm); color: var(--accent); text-decoration: none; }
+.tutbadge { display: inline-flex; align-items: center; gap: 6px; margin: 0 0 12px; padding: 6px 12px; border-radius: 999px; background: var(--accent-soft, var(--surface-secondary)); color: var(--accent-soft-foreground, var(--accent)); font-size: var(--text-sm); font-weight: 600; }
+.meridian .tourcard__head, .meridian .tutcard__head { flex-direction: row; }

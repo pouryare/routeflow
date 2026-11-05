@@ -19,6 +19,7 @@ export default function SlideConfirm({
   onConfirm,
   isDisabled,
   heavy,
+  tour,
 }: {
   /** What sliding does («تحویل شد · کل مبلغ»). */
   children: ReactNode;
@@ -27,6 +28,8 @@ export default function SlideConfirm({
   isDisabled?: boolean;
   /** Money: plays the heavy «thump» instead of the plain done sound. */
   heavy?: boolean;
+  /** `data-tour` id, so a tutorial can point at this slide (components/tutorials). */
+  tour?: string;
 }) {
   const track = useRef<HTMLButtonElement>(null);
   const from = useRef<{ x: number; travel: number; rtl: boolean } | null>(null);
@@ -35,6 +38,8 @@ export default function SlideConfirm({
 
   const finish = () => {
     if (done) return;
+    // A finished slide is not always a click (a finger that travelled), so a tutorial waiting on it is told.
+    if (tour) window.dispatchEvent(new CustomEvent("rf-tour", { detail: tour }));
     setP(1);
     setDone(true);
     buzz(heavy ? [20, 40, 30] : 18);
@@ -44,6 +49,7 @@ export default function SlideConfirm({
 
   return (
     <button
+      data-tour={tour}
       ref={track}
       type="button"
       className="slideconfirm"

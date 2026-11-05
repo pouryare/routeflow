@@ -18,8 +18,11 @@ export function AnswerButton({
   repeat,
   ariaLabel,
   className = "",
+  tour,
   children,
 }: {
+  /** `data-tour` id, so a tutorial can point at this answer (components/tutorials). */
+  tour?: string;
   icon?: IconName;
   /** Given: the button shows whether it is the current choice. Omitted: a plain answer. */
   selected?: boolean;
@@ -42,13 +45,13 @@ export function AnswerButton({
   );
   if (selected === undefined) {
     return (
-      <Button variant="secondary" className={cls} isDisabled={isDisabled} aria-label={ariaLabel} {...(repeat ? held : { onPress })}>
+      <Button variant="secondary" className={cls} isDisabled={isDisabled} aria-label={ariaLabel} data-tour={tour} {...(repeat ? held : { onPress })}>
         {body}
       </Button>
     );
   }
   return (
-    <ToggleButton className={cls} isSelected={selected} isDisabled={isDisabled} onChange={onPress} aria-label={ariaLabel}>
+    <ToggleButton className={cls} isSelected={selected} isDisabled={isDisabled} onChange={onPress} aria-label={ariaLabel} data-tour={tour}>
       {body}
     </ToggleButton>
   );
