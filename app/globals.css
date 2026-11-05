@@ -5635,3 +5635,8 @@ html[data-fx="off"] .slideconfirm__knob, html[data-fx="off"] .slideconfirm__fill
 @keyframes amountslider-bubble { from { opacity: 0; scale: 0.6; } }
 html[data-fx="off"] .amountslider__bubble { animation: none; }
 @media (prefers-reduced-motion: reduce) { .amountslider__bubble { animation: none; } .amountslider { transition: none; } }
+
+/* RangeBar count bars: how many orders sit at each amount, lit inside the chosen range. */
+.rangebar__bars { display: flex; align-items: flex-end; gap: 2px; height: 28px; margin-bottom: 4px; }
+.rangebar__bars > span { flex: 1; min-width: 0; border-radius: 2px 2px 0 0; background: var(--border-strong); transition: background-color 150ms; }
+.rangebar__bars > span[data-lit] { background: var(--accent); opacity: 0.55; }

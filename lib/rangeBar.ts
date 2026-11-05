@@ -40,3 +40,19 @@ export function boundsOf(values: number[]): Bounds | null {
   const step = niceStep(hi - lo);
   return { min: Math.floor(lo / step) * step, max: Math.ceil(hi / step) * step };
 }
+
+/** How many of `values` fall in each of `bins` equal slices of `bounds` (the small bars under the range bar). */
+export function histogram(values: number[], bounds: Bounds, bins = 24): number[] {
+  const out = new Array<number>(bins).fill(0);
+  const span = bounds.max - bounds.min;
+  if (!(span > 0) || bins < 1) return out;
+  for (const v of values) {
+    if (v < bounds.min || v > bounds.max) continue;
+    out[Math.min(bins - 1, Math.floor(((v - bounds.min) / span) * bins))]++;
+  }
+  return out;
+}
+
+/** How many of `values` sit inside `range`, ends included (the live «N سفارش در این بازه»). */
+export const countIn = (values: number[], range: [number, number]): number =>
+  values.reduce((n, v) => (v >= range[0] && v <= range[1] ? n + 1 : n), 0);
