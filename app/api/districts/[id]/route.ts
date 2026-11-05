@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { guardStepUp } from "@/lib/repo/stepUp";
 import { deleteDistrict, findDistrict, updateDistrict } from "@/lib/repo/districtsAdmin";
 import { canReachGroup, requireRole } from "@/lib/session";
 import { MANAGE_ROLES } from "@/lib/roles";
@@ -54,6 +55,8 @@ export async function DELETE(req: NextRequest, ctx: RouteContext<"/api/districts
       { status: 403 }
     );
   }
+  const stepUp = await guardStepUp(req, guard.session, "hard_delete");
+  if (stepUp) return stepUp;
   await deleteDistrict(districtId);
   return NextResponse.json({ ok: true });
 }
