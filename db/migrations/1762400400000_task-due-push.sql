@@ -3,8 +3,9 @@
 -- S19: one push to the assignee a few minutes before a task with a set time (default 10). The owner
 -- changes the minutes; each person can switch the type off in their notification settings.
 -- squawk-ignore-file ban-drop-column
-
-ALTER TABLE organizations ADD COLUMN task_push_minutes integer NOT NULL DEFAULT 10;
+SET lock_timeout = '3s';
+SET statement_timeout = '30s';
+ALTER TABLE organizations ADD COLUMN task_push_minutes bigint NOT NULL DEFAULT 10;
 
 INSERT INTO notification_types (organization_id, code, name_fa, category, directedness, priority, group_scope, active, created_at, updated_at, default_push, default_telegram)
 VALUES (NULL, 'task.due_soon', 'کار ساعت‌دار نزدیک است', 'task', 'directed', 'HIGH', 'entity', 1, '2026-11-05T00:00:00.000Z', '2026-11-05T00:00:00.000Z', 1, 0);
