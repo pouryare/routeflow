@@ -131,4 +131,5 @@ Quickest to a first tour (a day), but it decides the scrolling, buttons and flow
 | # | Answer | Date |
 |---|---|---|
 | 1 | **Own layer + driver.js for the spotlight only** (option A) | 2026-11-05 |
-| 2 | _waiting_ | |
+| 2 | **Real taps where safe; steps that save money or send a message only point and explain** | 2026-11-05 |
+| 3 | _waiting_ | |
