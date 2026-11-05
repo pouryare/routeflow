@@ -141,7 +141,8 @@ Quickest to a first tour (a day), but it decides the scrolling, buttons and flow
 | I2 | «چطور…؟»: **tutorials are found from the app's main search and the (i) panel**; one tap starts one | 2026-11-05 |
 | I3 | Voice: **try a free offline Persian voice engine at build time (Piper or similar, licence and quality checked first)**; clips regenerate when text changes; dropped if it sounds bad | 2026-11-05 |
 | I4 | Pointer: **soft pulse on the button plus a small hand that glides to it and taps**; off when effects are off | 2026-11-05 |
-| I5 | _waiting_ | |
+| I5 | Ghost demo: **for jobs of 3 or more taps the hand plays the whole job once on demo data, then «حالا شما»**; short jobs skip it | 2026-11-05 |
+| I6 | _waiting_ | |
 
 ## 11. Owner's direction (2026-11-05): many tutorials, practice on demo data in the page
 
