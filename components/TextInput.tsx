@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, type HTMLAttributes } from "react";
+import type { HTMLAttributes } from "react";
 import { Button, FieldError, InputGroup, Input, Label, TextField } from "@heroui/react";
 import { Icon } from "@/components/meridian/Icon";
+import { PasswordRoll, usePasswordEye } from "@/components/PasswordRoll";
 
 type Common = {
   label: string;
@@ -46,11 +47,12 @@ export function TextInput({
 }
 
 /** A password field with a 44 px show/hide button at its end, so a password typed on a phone
- *  keyboard can be checked before it is sent. Left to right, like every password. */
+ *  keyboard can be checked before it is sent; opening it rolls the letters in one by one
+ *  (components/PasswordRoll.tsx). Left to right, like every password. */
 export function PasswordInput({
   label, value, onChange, name, autoComplete, autoFocus, required, placeholder, error, className = "",
 }: Omit<Common, "dir">) {
-  const [shown, setShown] = useState(false);
+  const { shown, rolling, toggle } = usePasswordEye(value);
   return (
     <TextField
       value={value}
@@ -65,15 +67,16 @@ export function PasswordInput({
       className={`textinput ${placeholder ? "" : "textinput--float "}${className}`.trim()}
     >
       <Label>{label}</Label>
-      <InputGroup fullWidth>
+      <InputGroup fullWidth className="pwfield" data-rolling={rolling || undefined}>
         <InputGroup.Input placeholder={placeholder ?? " "} dir="ltr" />
+        {rolling ? <PasswordRoll text={value} /> : null}
         <InputGroup.Suffix>
           <Button
             isIconOnly
             variant="ghost"
             size="sm"
             aria-label={shown ? "پنهان کردن رمز" : "نمایش رمز"}
-            onPress={() => setShown((v) => !v)}
+            onPress={toggle}
           >
             <Icon name={shown ? "eye-off" : "eye"} size="sm" />
           </Button>

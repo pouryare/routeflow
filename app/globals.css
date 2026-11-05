@@ -5684,3 +5684,21 @@ html[data-fx="off"] .strikerow::after, html[data-fx="off"] .donefold__n { animat
 
 /* Drag select (lib/useDragSelect): the tick boxes keep the finger, so sliding over them picks instead of scrolling. */
 .picktick { touch-action: none; user-select: none; -webkit-user-select: none; }
+
+/* Password eye (components/PasswordRoll.tsx): opening it rolls the letters in from a dot, one after another. */
+.pwfield { position: relative; display: flex; align-items: center; }
+.pwfield > .fieldinput { flex: 1; min-width: 0; padding-right: 44px; }
+.pwfield__eye {
+  position: absolute; right: 0; top: 50%; translate: 0 -50%; width: 44px; height: 44px;
+  display: grid; place-items: center; background: none; border: 0; color: var(--text-muted); cursor: pointer;
+}
+.pwfield[data-rolling] input { color: transparent; caret-color: var(--text); }
+.pwroll {
+  position: absolute; left: 12px; top: 50%; translate: 0 -50%; display: flex; pointer-events: none;
+  font: inherit; font-size: var(--text-sm); color: var(--text); white-space: pre;
+}
+.pwroll__ch { display: inline-block; animation: pwroll-in 240ms ease-out calc(var(--i) * 35ms) both; }
+@keyframes pwroll-in { 0% { transform: translateY(70%) scale(0.4); opacity: 0; } 60% { transform: translateY(-15%); opacity: 1; } }
+html[data-fx="off"] .pwroll { display: none; }
+html[data-fx="off"] .pwfield[data-rolling] input { color: inherit; }
+@media (prefers-reduced-motion: reduce) { .pwroll { display: none; } .pwfield[data-rolling] input { color: inherit; } }
