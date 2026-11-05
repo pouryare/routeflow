@@ -143,7 +143,7 @@ export const leadVisitFlow: FlowConfig = {
       id: "tags", kind: "multi", q: "چه چیزی دیدید؟",
       sub: "برچسب‌های مناسب را بزنید · اختیاری",
       choices: visitTags,
-      options: [{ id: "ok", label: "ادامه", tone: "rec", next: "skip" }],
+      options: [{ id: "ok", label: "ثبت برچسب‌ها", tone: "rec", next: "skip" }],
     },
 
     skip: SKIP_STEP,

@@ -88,7 +88,7 @@ export default function RatingTagsSettings({ initial }: { initial: RatingTags })
                 className="touch inline-flex min-h-11 shrink-0 items-center gap-[var(--space-1)] rounded-[var(--radius-md)] border border-[var(--border)] px-[var(--space-3)] text-[length:var(--text-sm)] disabled:opacity-40"
               >
                 <Icon name="plus" size="sm" />
-                افزودن
+                افزودن برچسب
               </button>
             </form>
           </section>

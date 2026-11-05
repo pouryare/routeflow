@@ -17,7 +17,6 @@ export default function UploadTile({ src, percent, state, onRetry, onDismiss }: 
   const len = 2 * Math.PI * r;
   return (
     <div className="uploadtile" data-state={state}>
-      {/* eslint-disable-next-line @next/next/no-img-element -- a local object URL of the photo being sent */}
       <img src={src} alt="" />
       <div className="uploadtile__veil" role="status" aria-live="polite">
         {state === "failed" ? (

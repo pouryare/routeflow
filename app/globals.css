@@ -5562,7 +5562,7 @@ html[data-fx="off"] .photoacc__item { transition: none; }
 /* ---- Motions from the 2026-11-05 clips (docs/decisions.md 10.17, 10.18) ---- */
 
 /* Fly-to (lib/flyTo.ts): the dot that carries a message into the bell, work into the sync icon, an order into its tab. */
-.flydot { position: fixed; top: 0; left: 0; z-index: 90; width: 14px; height: 14px; border-radius: 999px; pointer-events: none;
+.flydot { position: fixed; top: 0; left: 0; z-index: 69; width: 14px; height: 14px; border-radius: 999px; pointer-events: none;
   background: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 30%, transparent); }
 @keyframes landed-pop { 0% { transform: scale(1); } 40% { transform: scale(1.22); } 100% { transform: scale(1); } }
 [data-landed] { animation: landed-pop 380ms var(--spring-pop, cubic-bezier(.34,1.56,.64,1)); }
@@ -5697,7 +5697,7 @@ html[data-fx="off"] .strikerow::after, html[data-fx="off"] .donefold__n { animat
   position: absolute; left: 12px; top: 50%; translate: 0 -50%; display: flex; pointer-events: none;
   font: inherit; font-size: var(--text-sm); color: var(--text); white-space: pre;
 }
-.pwroll__ch { display: inline-block; animation: pwroll-in 240ms ease-out calc(var(--i) * 35ms) both; }
+.pwroll__ch { display: inline-block; animation: pwroll-in 240ms ease-out calc(var(--i) * 35ms) backwards; }
 @keyframes pwroll-in { 0% { transform: translateY(70%) scale(0.4); opacity: 0; } 60% { transform: translateY(-15%); opacity: 1; } }
 html[data-fx="off"] .pwroll { display: none; }
 html[data-fx="off"] .pwfield[data-rolling] input { color: inherit; }
