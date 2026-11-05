@@ -6,6 +6,7 @@ import SectionHead from "@/components/meridian/SectionHead";
 import { faNum } from "@/lib/format";
 import { faJalaliDate } from "@/lib/jalali";
 import { supplierFromMemo, type RecentExpense } from "@/lib/flows/expense";
+import { autoOpenFlow, currentSearch } from "@/lib/flows/autoOpen";
 import ExpenseFlow, { type ExpenseCategory, type ExpenseRepeat } from "./ExpenseFlow";
 
 const BTN =
@@ -18,7 +19,7 @@ export default function ExpenseEntry({ categories, suppliers, recent = [] }: {
   suppliers: string[];
   recent?: RecentExpense[];
 }) {
-  const [flow, setFlow] = useState<{ key: number; open: boolean; repeat?: ExpenseRepeat }>({ key: 0, open: false });
+  const [flow, setFlow] = useState<{ key: number; open: boolean; repeat?: ExpenseRepeat }>(() => autoOpenFlow("new", currentSearch()));
   const start = (repeat?: ExpenseRepeat) => setFlow((f) => ({ key: f.key + 1, open: true, repeat }));
   return (
     <>
