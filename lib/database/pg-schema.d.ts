@@ -906,6 +906,9 @@ export interface Organizations {
   effects: Generated<string>;
   id: Generated<number>;
   legal_form: Generated<string>;
+  maintenance_from: string | null;
+  maintenance_note: string | null;
+  maintenance_to: string | null;
   name: string;
   plan: Generated<string>;
   slug: string;

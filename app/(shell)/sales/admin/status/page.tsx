@@ -6,6 +6,8 @@ import PageHeader from "@/components/meridian/PageHeader";
 import { statusFacts } from "@/lib/repo/systemStatus";
 import { statusLines, type Tone } from "@/lib/systemStatus";
 import { faJalaliDateTime } from "@/lib/jalali";
+import MaintenanceForm from "@/components/meridian/MaintenanceForm";
+import { maintenanceFor } from "@/lib/repo/maintenance";
 
 export const dynamic = "force-dynamic";
 
@@ -22,6 +24,7 @@ export default async function StatusPage() {
   const session = await getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
   if (!session) redirect("/login");
   const lines = statusLines(await statusFacts(session.organizationId));
+  const maintenance = await maintenanceFor(session.organizationId);
 
   return (
     <>
@@ -42,6 +45,9 @@ export default async function StatusPage() {
           ))}
         </ul>
       </section>
+      <div className="mt-[var(--space-4)]">
+        <MaintenanceForm current={maintenance} />
+      </div>
     </>
   );
 }
