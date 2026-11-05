@@ -12,7 +12,7 @@ const ORDER: SheetStop[] = ["peek", "half", "full"];
 /** A finger that moved less than this was a tap, not a drag. */
 export const TAP_PX = 8;
 /** A drag this long moves the sheet one stop. */
-export const STEP_PX = 40;
+const STEP_PX = 40;
 
 /** Where the sheet goes after the handle is let go, `dy` px below where it was pressed (negative
  *  is up). A tap goes up one stop, and from full back to half. */
