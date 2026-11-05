@@ -5618,3 +5618,20 @@ html[data-fx="off"] .slideconfirm__knob, html[data-fx="off"] .slideconfirm__fill
 .uploadtile[data-state="failed"] .uploadtile__veil { background: color-mix(in srgb, var(--crit, #c00) 55%, transparent); }
 .uploadtile__retry { display: inline-flex; align-items: center; gap: 4px; min-height: 44px; padding: 0 12px; border-radius: 999px; border: 0; background: #fff; color: var(--crit, #c00); font: inherit; font-weight: 600; }
 .uploadtile__drop { position: absolute; top: 2px; inset-inline-end: 2px; width: 44px; height: 44px; display: grid; place-items: center; border: 0; background: transparent; color: #fff; }
+
+/* AmountSlider: the number above the thumb while held, notches, and the small stretch past the ends. */
+.amountslider { transform: translateX(var(--stretch, 0px)); transition: transform 220ms cubic-bezier(0.34, 1.56, 0.64, 1); }
+.amountslider[data-held] { transition: none; }
+.amountslider__tick {
+  position: absolute; top: 50%; width: 2px; height: 10px; translate: -1px -50%;
+  border-radius: 1px; background: var(--border-strong, var(--text-muted)); opacity: 0.5; pointer-events: none;
+}
+.amountslider__bubble {
+  position: absolute; bottom: calc(100% + 8px); left: 50%; translate: -50% 0;
+  padding: 2px 8px; border-radius: 999px; white-space: nowrap;
+  background: var(--text); color: var(--bg); font-size: var(--text-xs); font-weight: 600;
+  pointer-events: none; animation: amountslider-bubble 160ms ease-out;
+}
+@keyframes amountslider-bubble { from { opacity: 0; scale: 0.6; } }
+html[data-fx="off"] .amountslider__bubble { animation: none; }
+@media (prefers-reduced-motion: reduce) { .amountslider__bubble { animation: none; } .amountslider { transition: none; } }
