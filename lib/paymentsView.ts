@@ -26,6 +26,8 @@ export interface Payment {
   note: string | null;
   voided_at: string | null;
   void_reason?: string | null;
+  /** Z9: where the phone was when it was taken, when it said. */
+  place?: { lat: number; lng: number } | null;
 }
 
 export interface OpenOrder {

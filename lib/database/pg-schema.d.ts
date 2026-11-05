@@ -462,6 +462,17 @@ export interface DriverCommissionRates {
   valid_from: string;
 }
 
+export interface EntryPlaces {
+  accuracy_m: number | null;
+  created_at: string;
+  id: Generated<number>;
+  kind: string;
+  lat: number;
+  lng: number;
+  organization_id: number;
+  ref_id: number;
+}
+
 export interface Events {
   actor_user_id: number | null;
   created_at: string;
@@ -877,6 +888,8 @@ export interface Orders {
   discount_toman: Generated<number>;
   group_id: number | null;
   id: Generated<number>;
+  invoice_sent_at: string | null;
+  invoice_sent_via: string | null;
   kg_total: number | null;
   notes: string | null;
   offline: Generated<number>;
@@ -901,17 +914,24 @@ export interface Organizations {
   contact_name: string | null;
   contact_phone: string | null;
   created_at: string;
+  delivery_note_footer: string | null;
   discount_auto_pass_pct: Generated<number>;
   discount_commission_pct: Generated<number>;
   effects: Generated<string>;
   id: Generated<number>;
   legal_form: Generated<string>;
+  maintenance_from: string | null;
+  maintenance_note: string | null;
+  maintenance_to: string | null;
   name: string;
+  order_prefix: string | null;
   plan: Generated<string>;
   rating_tags_json: string | null;
+  receipt_footer: string | null;
   slug: string;
   sound_skin: Generated<string>;
   step_up_required: Generated<boolean>;
+  task_push_minutes: Generated<number>;
 }
 
 export interface Packagings {
@@ -1014,6 +1034,7 @@ export interface Products {
   notes: string | null;
   organization_id: number | null;
   reorder_point: number | null;
+  sell_off: Generated<number>;
   shelf_life_days: number | null;
   sku: string | null;
   sync_xid: string | null;
@@ -1643,6 +1664,7 @@ export interface DB {
   districts: Districts;
   driver_commission_payments: DriverCommissionPayments;
   driver_commission_rates: DriverCommissionRates;
+  entry_places: EntryPlaces;
   events: Events;
   expense_receipts: ExpenseReceipts;
   facilities: Facilities;

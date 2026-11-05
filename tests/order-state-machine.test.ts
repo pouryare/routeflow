@@ -8,6 +8,7 @@ import {
   ORDER_STATUS_TONE,
   TERMINAL_ORDER_STATUSES,
   isTerminalOrderStatus,
+  withinReopenWindow,
   ORDER_STATUSES,
   type OrderStatus,
 } from "@/lib/orderStateMachine";
@@ -97,7 +98,9 @@ describe("ORDER_TRANSITIONS", () => {
   it("treats CLOSED, CANCELLED and RETURNED as terminal and nothing else", () => {
     expect([...TERMINAL_ORDER_STATUSES].sort()).toEqual(["CANCELLED", "CLOSED", "RETURNED"]);
     for (const s of ORDER_STATUSES) {
-      const hasOut = ORDER_TRANSITIONS.some((t) => t.from === s);
+      // «بازگشایی» (D31) is a manager taking a cancellation back, not a lifecycle step: CANCELLED
+      // stays terminal for sync and reports.
+      const hasOut = ORDER_TRANSITIONS.some((t) => t.from === s && t.action !== "reopen");
       expect(isTerminalOrderStatus(s)).toBe(!hasOut);
     }
   });
@@ -133,5 +136,18 @@ describe("platform_owner", () => {
       expect(canAdvanceOrder(t.from, t.action, ["platform_owner"] as never), `${t.from} ${t.action}`).toBe(ownerMay);
     }
     expect(legalOrderActions("CONFIRMED", ["platform_owner"] as never)).toEqual(legalOrderActions("CONFIRMED", "owner"));
+  });
+});
+
+describe("reopen a cancelled order (D31)", () => {
+  it("goes back to draft for a manager or owner only", () => {
+    expect(orderTransition("CANCELLED", "reopen")).toMatchObject({ to: "DRAFT", roles: ["group_manager", "owner"] });
+  });
+
+  it("is open for 7 days after the cancellation", () => {
+    const cancelled = "2026-11-01T10:00:00.000Z";
+    expect(withinReopenWindow(cancelled, "2026-11-08T09:59:00.000Z")).toBe(true);
+    expect(withinReopenWindow(cancelled, "2026-11-08T10:01:00.000Z")).toBe(false);
+    expect(withinReopenWindow(null, "2026-11-02T00:00:00.000Z")).toBe(false);
   });
 });

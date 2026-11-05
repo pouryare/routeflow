@@ -4,6 +4,7 @@ import { productInOrg } from "@/lib/repo/catalogueAdmin";
 import { setThresholds } from "@/lib/repo/routeAdapters";
 import { OWNER_ROLES } from "@/lib/roles";
 import { logProductChange, productThresholds, thresholdText } from "@/lib/repo/productLog";
+import { setSellOff } from "@/lib/repo/sellOff";
 
 /** Owner only, same split as every other write in the catalogue: everyone who sells
  *  reads a reorder gauge, only the owner decides where its lines sit. */
@@ -24,6 +25,7 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
   const body = (await req.json().catch(() => null)) as {
     reorder_point?: unknown;
     target_stock?: unknown;
+    sell_off?: unknown;
   } | null;
 
   const input: { reorder_point?: number | null; target_stock?: number | null } = {};
@@ -32,6 +34,13 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
   }
   if (body && "target_stock" in body) {
     input.target_stock = body.target_stock === null ? null : Number(body.target_stock);
+  }
+
+  /* D32 «تصفیه» rides the same owner-only stock-policy write: it is a decision about whether to buy more. */
+  if (typeof body?.sell_off === "boolean") {
+    await setSellOff(productId, body.sell_off);
+    await logProductChange(productId, "sell_off", { new: body.sell_off ? "تصفیه" : "عادی" }, { id: guard.session.user.id, name: guard.session.user.display_name, impersonatedBy: guard.session.actorId ?? null });
+    if (!("reorder_point" in body) && !("target_stock" in body)) return NextResponse.json({ ok: true });
   }
 
   try {

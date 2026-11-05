@@ -106,6 +106,19 @@ describe("createOrder", () => {
     expect(b.order_no).toBe("1405-00002");
   });
 
+  it("puts the company prefix in front of new numbers and counts on under it (A13)", async () => {
+    await createOrder(getDb(), draftInput());
+    await getDb().prepare("UPDATE organizations SET order_prefix = 'RF' WHERE id = 1").run();
+    try {
+      const a = await createOrder(getDb(), draftInput());
+      const b = await createOrder(getDb(), draftInput());
+      expect([a.order_no, b.order_no]).toEqual(["RF1405-00001", "RF1405-00002"]);
+      expect(a.order_no.split("-")[1]).toBe("00001");
+    } finally {
+      await getDb().prepare("UPDATE organizations SET order_prefix = NULL WHERE id = 1").run();
+    }
+  });
+
   it("stamps the group from the customer", async () => {
     const order = await createOrder(getDb(), draftInput());
     const row = await getDb().prepare("SELECT group_id FROM orders WHERE id = ?").get(order.id) as {

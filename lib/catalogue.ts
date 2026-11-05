@@ -32,6 +32,8 @@ export interface ProductRow {
    *  lib/purchases.ts's advancedStockPosition for what a null one means on screen. */
   reorder_point: number | null;
   target_stock: number | null;
+  /** D32 «تصفیه»: sold as usual, never bought again. */
+  sell_off?: number;
 }
 
 export interface PackagingRow {

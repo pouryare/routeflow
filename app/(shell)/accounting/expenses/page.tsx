@@ -1,8 +1,12 @@
 import PageHeader from "@/components/meridian/PageHeader";
+import { cookies } from "next/headers";
+import { COOKIE_NAME } from "@/lib/auth";
+import { getSessionFromCookies } from "@/lib/session";
+import { isOwner } from "@/lib/roles";
 import SectionHead from "@/components/meridian/SectionHead";
 import AcctTable, { CELL, NUM } from "@/components/accounting/AcctTable";
 import { requireAccounting } from "@/lib/accountingGate";
-import { expensesByCategory, expensesByEnterer } from "@/lib/repo/reports";
+import { expensesByCategory, expensesByEnterer, recentExpenses } from "@/lib/repo/reports";
 import { faNum } from "@/lib/format";
 import ExpenseEntry from "@/components/flows/ExpenseEntry";
 import { expenseCategories } from "@/lib/repo/ledgerPostings";
@@ -19,6 +23,12 @@ export const dynamic = "force-dynamic";
  *  The second table exists because a group_manager can enter expenses: the money is
  *  pooled, so without naming the entrant nobody can answer "who spent this?". That is
  *  accountability, not a second set of books — the amounts are the same sums. */
+/** B3: the books button is the owner's; a group_manager reads this page but not the ledger. */
+async function viewerIsOwner(): Promise<boolean> {
+  const session = await getSessionFromCookies((await cookies()).get(COOKIE_NAME)?.value);
+  return !!session && isOwner(session.role);
+}
+
 export default async function ExpensesPage() {
   const organizationId = await requireAccounting("/accounting/expenses");
   const byCategory = await expensesByCategory(organizationId) as {
@@ -36,6 +46,7 @@ export default async function ExpensesPage() {
      pass from a server component to a client one. */
   const categories = (await expenseCategories()).map((c) => ({ id: c.id, nameFa: c.nameFa }));
   const suppliers = (await listSuppliers(organizationId)).map((x) => x.name);
+  const recent = (await recentExpenses(organizationId)).map((r) => ({ ...r }));
 
   const total = byCategory.reduce((s, r) => s + r.amountToman, 0);
 
@@ -51,9 +62,7 @@ export default async function ExpensesPage() {
         }
       />
 
-      <div className="mb-4 flex">
-        <ExpenseEntry categories={categories} suppliers={suppliers} />
-      </div>
+      <ExpenseEntry categories={categories} suppliers={suppliers} recent={recent} canSeeBooks={await viewerIsOwner()} />
 
       <section className="mb-6">
         <SectionHead title="بر اساس حساب" as="h3" />

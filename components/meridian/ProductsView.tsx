@@ -17,6 +17,7 @@ export interface ProductRow {
   base_unit: string;
   kg_per_base_unit: number;
   active: number;
+  sell_off?: number;
   packagings: ProductPack[];
 }
 
@@ -105,6 +106,7 @@ export default function ProductsView({ products }: { products: ProductRow[] }) {
                   <h2>
                     {p.name}
                     {p.active === 0 && <span className="off">غیرفعال</span>}
+                    {p.active !== 0 && p.sell_off ? <span className="off">تصفیه</span> : null}
                   </h2>
                   <span className="prow__unit mono">
                     هر {p.base_unit} = {faNum(p.kg_per_base_unit)} کیلوگرم

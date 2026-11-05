@@ -1,5 +1,6 @@
 "use client";
 
+import BooksButton from "@/components/accounting/BooksButton";
 import { FieldInput } from "@/components/FieldInput";
 import { chequeBulk, toggleId } from "@/lib/selection";
 import { useDragSelect } from "@/lib/useDragSelect";
@@ -38,7 +39,7 @@ interface Cheque {
 
 const COLUMNS: ChequeStatus[] = ["in_hand", "deposited", "bounced"];
 
-export default function ChequesBoard({ customers }: { customers: Customer[] }) {
+export default function ChequesBoard({ customers, canSeeBooks = false }: { customers: Customer[]; canSeeBooks?: boolean }) {
   const [cheques, setCheques] = useState<Cheque[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   /* Phone entry is the tap flow, remounted per opening; the form below stays from md up. */
@@ -363,6 +364,7 @@ export default function ChequesBoard({ customers }: { customers: Customer[] }) {
                         {`تغییر وضعیت به «${CHEQUE_STATUS_LABEL[to]}»`}
                       </button>
                     ))}
+                    {canSeeBooks ? <BooksButton doc="cheque" id={c.id} /> : null}
                   </div>
                   </div>
                   </SwipeRow>

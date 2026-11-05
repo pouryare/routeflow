@@ -57,6 +57,7 @@ export const EVENTS = {
   "secure.passed": { sound: "latch" }, // authenticator code accepted
   "secure.saved": { sound: "vault" }, // bank details, documents
   "reminder.due": { sound: "bell" },
+  "task.due_soon": { sound: "bell" },
   "followup.nudge": { sound: "prod" },
   "alert.critical": { sound: "knell" }, // sync lost with unsent work
   "sync.failed": { sound: "groan" },

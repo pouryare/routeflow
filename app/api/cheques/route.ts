@@ -1,4 +1,6 @@
 import { boundedText, isDayWithin, isQuantity, isTimestampWithin } from "@/lib/inputChecks";
+import { parsePlace } from "@/lib/entryPlace";
+import { saveEntryPlace } from "@/lib/repo/entryPlaces";
 import { isToman } from "@/lib/money";
 import { NextRequest, NextResponse } from "next/server";
 import { requireRole } from "@/lib/session";
@@ -74,6 +76,7 @@ export async function POST(req: NextRequest) {
       received_by: guard.session.user.id,
       note: chequeNote,
     });
+    await saveEntryPlace(guard.session.organizationId, "payment", out.payment_id, parsePlace((body as { place?: unknown }).place));
     return NextResponse.json({ ok: true, ...out }, { status: 201 });
   } catch (e) {
     if (e instanceof ChequeError || e instanceof PaymentError) {

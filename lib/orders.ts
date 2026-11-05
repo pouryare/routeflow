@@ -123,7 +123,9 @@ export interface OrderDetail {
  *  before the read so two concurrent writers cannot both see the same maximum. */
 async function nextOrderNo(db: Db, orderDate: string, organizationId: number): Promise<string> {
   const jy = toJalali(orderDate)?.jy ?? toJalali(new Date().toISOString())!.jy;
-  const prefix = `${jy}-`;
+  const org = await db.prepare("SELECT order_prefix FROM organizations WHERE id = ?").get(organizationId) as { order_prefix: string | null } | undefined;
+  // A13: the company prefix goes in front, `RF1405-00042`; each prefix counts on from its own maximum.
+  const prefix = `${org?.order_prefix ?? ""}${jy}-`;
   // Scoped to this organisation: order_no is unique per (organization_id, order_no) now,
   // not globally, so the next number has to be the max within this organisation too --
   // otherwise a second tenant's numbering would start wherever the first tenant's had
@@ -134,7 +136,7 @@ async function nextOrderNo(db: Db, orderDate: string, organizationId: number): P
     .get(`${prefix}%`, organizationId) as { latest: string | null };
 
   const previous = row.latest ? Number(row.latest.slice(prefix.length)) : 0;
-  return formatOrderNo(jy, previous + 1);
+  return `${org?.order_prefix ?? ""}${formatOrderNo(jy, previous + 1)}`;
 }
 
 /** Resolves everything a line needs to be frozen, or refuses.

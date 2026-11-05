@@ -18,7 +18,7 @@ export default async function RunNotesPage({ params }: { params: Promise<{ id: s
   const id = Number((await params).id);
   const found = Number.isInteger(id) ? await runForNotes(session, id) : null;
   if (!found) notFound();
-  const { cover, notes } = runNotes(found.run, found.businessName, found.vehicle);
+  const { cover, notes } = runNotes(found.run, found.businessName, found.vehicle, found.footer);
 
   return (
     <main dir="rtl" className="print-report run-notes" style={{ maxWidth: 720, margin: "0 auto", padding: 16 }}>
@@ -68,6 +68,7 @@ export default async function RunNotesPage({ params }: { params: Promise<{ id: s
           </p>
           <p>قابل دریافت: {n.dueLabel ?? n.totalLabel}</p>
           <p>نام و امضای تحویل‌گیرنده: ____________</p>
+          {found.footer ? <p><small>{n.footer}</small></p> : null}
         </section>
       ))}
     </main>

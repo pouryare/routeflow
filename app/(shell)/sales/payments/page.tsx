@@ -5,7 +5,7 @@ import { customersFor } from "@/lib/repo/sessionReads";
 import { getSessionFromCookies } from "@/lib/session";
 import PaymentsPanel from "@/components/sales/PaymentsPanel";
 import PageHeader from "@/components/meridian/PageHeader";
-import { isVanRole } from "@/lib/roles";
+import { isVanRole, isOwner } from "@/lib/roles";
 
 export const dynamic = "force-dynamic";
 
@@ -24,7 +24,7 @@ export default async function PaymentsPage() {
   return (
     <>
       <PageHeader route="/sales/payments" />
-      <PaymentsPanel customers={customers} />
+      <PaymentsPanel customers={customers} canSeeBooks={isOwner(session.role)} />
     </>
   );
 }

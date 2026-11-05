@@ -184,5 +184,19 @@ export async function convertOnDelivery(conn: Db, orgId: number, orderId: number
                 VALUES (?, ?, ?, 'order', ?, ?, 'verified', ?, ?)`)
     .run(orgId, o.customer_id, actorId, `سفارش ${orderId} تحویل شد`, n >= 2 ? "repeat_customer" : "first_order", at, at);
   await conn.prepare("UPDATE customers SET first_order_at = COALESCE(first_order_at, ?) WHERE id = ? AND organization_id = ?").run(at, o.customer_id, orgId);
+  if (n === 1) await thankReferrer(conn, orgId, o.customer_id, at);
   await recomputeState(conn, o.customer_id);
+}
+
+/** S17: a referred customer's first delivery gives the referrer's owner a thank-you call. Once per
+ *  referred customer: the first delivered SALE happens once. Rewards stay a separate decision (F137). */
+async function thankReferrer(conn: Db, orgId: number, customerId: number, at: string): Promise<void> {
+  const r = await conn.prepare(`SELECT r.id, r.business_name AS referrer, c.business_name AS customer, r.owner_user_id, r.group_id
+      FROM customers c JOIN customers r ON r.id = c.referred_by_customer_id AND r.organization_id = c.organization_id
+     WHERE c.id = ? AND c.organization_id = ?`).get(customerId, orgId) as
+    { id: number; referrer: string; customer: string; owner_user_id: number | null; group_id: number | null } | undefined;
+  if (!r) return;
+  await conn.prepare(`INSERT INTO tasks (organization_id, assignee_user_id, role_hint, group_id, kind, title, entity_type, entity_id, due_at, priority, status, created_at)
+      VALUES (?, ?, ?, ?, 'call', ?, 'customer', ?, ?, 'NORMAL', 'open', ?)`)
+    .run(orgId, r.owner_user_id, r.owner_user_id ? null : "group_manager", r.group_id, `تشکر از ${r.referrer} بابت معرفی ${r.customer}`, r.id, at, at);
 }

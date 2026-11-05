@@ -56,6 +56,7 @@ export default function DeliveryFlow({
   runDate,
   driverName,
   businessName,
+  receiptFooter = null,
   onRecorded,
   onPrint,
   onClose,
@@ -67,6 +68,7 @@ export default function DeliveryFlow({
   runDate: string;
   driverName: string;
   businessName: string;
+  receiptFooter?: string | null;
   onRecorded: () => void;
   onPrint: (data: ReceiptData) => void;
   onClose: () => void;
@@ -120,6 +122,7 @@ export default function DeliveryFlow({
         runDate,
         driverName,
         businessName,
+        footer: receiptFooter,
       }),
     );
     onClose();

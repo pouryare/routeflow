@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { press, quickAmounts, valueOf, keyFromEvent, MAX_DIGITS } from "@/lib/keypad";
+import { press, quickAmounts, valueOf, keyFromEvent, MAX_DIGITS, pressOp, pressInSum, sumLine, sumTotal } from "@/lib/keypad";
 
 describe("keypad", () => {
   it("builds a number digit by digit and backspaces", () => {
@@ -84,5 +84,26 @@ describe("how the keypad reads on screen", () => {
     expect(display("2.")).toBe("۲٫");
     expect(display("2.0")).toBe("۲٫۰");
     expect(display("0.50")).toBe("۰٫۵۰");
+  });
+});
+
+describe("sums in the keypad (Z1)", () => {
+  it("adds and takes away, and the field always holds the running total", () => {
+    let s = pressOp(null, "120000", "+");
+    expect(sumTotal(s)).toBe(120000);
+    for (const k of ["3", "5", "000"] as const) s = pressInSum(s, k)!;
+    expect(sumTotal(s)).toBe(155000);
+    s = pressOp(s, "155000", "−");
+    s = pressInSum(s, "5")!;
+    s = pressInSum(s, "000")!;
+    expect(sumTotal(s)).toBe(150000);
+    expect(sumLine(s)).toBe("۱۲۰٬۰۰۰ + ۳۵٬۰۰۰ − ۵٬۰۰۰");
+  });
+
+  it("a second operator only swaps the first, and backspace on an empty term ends the sum", () => {
+    const s = pressOp(pressOp(null, "100", "+"), "100", "−");
+    expect(s.sign).toBe(-1);
+    expect(sumTotal(s)).toBe(100);
+    expect(pressInSum(s, "⌫")).toBeNull();
   });
 });

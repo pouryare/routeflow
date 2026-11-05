@@ -30,6 +30,7 @@ export const ACTION_LABEL: Record<OrderAction, string> = {
   settle: "بستن سفارش",
   cancel: "لغو سفارش",
   returnOrder: "ثبت مرجوعی",
+  reopen: "بازگشایی سفارش",
 };
 
 /** Actions that end something, and the list of reasons each one draws from. */
@@ -45,10 +46,13 @@ export const needsReason = (action: OrderAction): boolean => action in REASON_DO
  *  («رد شود؟») instead of why. */
 export const CONFIRM_ONLY: OrderAction[] = ["rejectCredit"];
 
+/** Actions that take back an earlier decision: the sheet asks for a written reason (D31). */
+export const NOTE_ONLY: OrderAction[] = ["reopen"];
+
 /** Every action that must not fire from a single tap: it opens the sheet. The audit that added
  *  the browser dialog on this panel asked for exactly this; the sheet is the ask, and the 5 s undo
  *  follows it. */
-export const needsAsk = (action: OrderAction): boolean => needsReason(action) || CONFIRM_ONLY.includes(action);
+export const needsAsk = (action: OrderAction): boolean => needsReason(action) || CONFIRM_ONLY.includes(action) || NOTE_ONLY.includes(action);
 
 /** What each of those does, said before it is done. */
 export const CONSEQUENCE: Partial<Record<OrderAction, string>> = {
@@ -56,11 +60,12 @@ export const CONSEQUENCE: Partial<Record<OrderAction, string>> = {
   returnOrder: "سفارش به‌عنوان مرجوعی ثبت می‌شود.",
   failDelivery: "تحویل ناموفق ثبت می‌شود.",
   rejectCredit: "سفارش متوقف می‌شود.",
+  reopen: "سفارش به پیش‌نویس برمی‌گردد و باید دوباره تأیید شود.",
 };
 
 export const orderActionFlow: FlowConfig = {
   id: "order_action",
-  start: (ctx) => (ctx.vars.mode === "confirm" ? "sure" : "reason"),
+  start: (ctx) => (ctx.vars.mode === "confirm" ? "sure" : ctx.vars.mode === "note" ? "why" : "reason"),
   budget: { common: 1, longest: 1 },
   steps: {
     sure: {
@@ -69,6 +74,14 @@ export const orderActionFlow: FlowConfig = {
       q: "{action_label}؟",
       sub: "{consequence}",
       options: [{ id: "yes", label: "بله، انجام شود", tone: "bad", save: true }],
+    },
+    why: {
+      id: "why",
+      kind: "input",
+      q: "چرا {action_label}؟",
+      sub: "{consequence}",
+      input: { field: "note", placeholder: "دلیل، مثلاً «مشتری دوباره خواست»" },
+      options: [{ id: "ok", label: "{action_label}", tone: "rec", save: true }],
     },
     reason: {
       id: "reason",
@@ -95,7 +108,7 @@ export const orderActionFlow: FlowConfig = {
 /** The body POST /api/sales/orders/:id/transition expects. */
 export function actionBody(action: OrderAction, st?: Pick<FlowState, "values">) {
   const id = st?.values.reason_code_id;
-  return { action, reason_code_id: id ? Number(id) : null, note: null };
+  return { action, reason_code_id: id ? Number(id) : null, note: st?.values.note?.trim() || null };
 }
 
 /** The toast line: what happened, and why when a reason was given. */

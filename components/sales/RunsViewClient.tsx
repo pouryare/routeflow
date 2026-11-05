@@ -13,6 +13,8 @@ import { useRouter } from "next/navigation";
 import DayLaneBoard, { type PoolOrder, type RealRunLane } from "@/components/sales/DayLaneBoard";
 import type { RunDraft } from "@/lib/repo/runDrafts";
 import type { PlannableOrder } from "@/lib/repo/dayPlan";
+import { useToast } from "@/components/ToastProvider";
+import { useUndoableAction } from "@/components/tapflow/useUndoableAction";
 
 export default function RunsViewClient({
   drafts: initialDrafts,
@@ -26,6 +28,8 @@ export default function RunsViewClient({
   plannable: PlannableOrder[];
 }) {
   const router = useRouter();
+  const toast = useToast();
+  const { run: runUndoable } = useUndoableAction();
   const [drafts] = useState<RunDraft[]>(initialDrafts);
 
   /** lane id -> order ids, plus the inverse lookup the board needs for each card. */
@@ -79,17 +83,23 @@ export default function RunsViewClient({
   );
 
   const post = useCallback(
-    async (url: string, body: unknown) => {
+    async (url: string, body: unknown): Promise<{ ok: boolean; error?: string }> => {
       const res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
-      if (!res.ok) return;
+      if (!res.ok) {
+        const j = (await res.json().catch(() => ({}))) as { error?: string };
+        return { ok: false, error: j.error };
+      }
       router.refresh();
+      return { ok: true };
     },
     [router]
   );
+
+  const draftOf = (lane: string): number | null => (lane === "pool" ? null : Number(lane.replace("draft-", "")));
 
   /** A drop into the pool takes the order OUT; a drop into a lane needs a lane to exist.
    *
@@ -97,15 +107,21 @@ export default function RunsViewClient({
    *  into "draft-new" means: if this user's board has no lane with no orders, adopt the
    *  draft that the button already made. That is why there is no "+ new day" control
    *  anywhere: an empty lane has nothing to show and nothing to decide. */
+  /* FB2: a move shows at once and the toast offers to put the order back where it was. */
   const onDropOrder = useCallback(
     (orderId: number, toLane: string) => {
-      if (toLane === "pool") {
-        void post("/api/runs/drafts/move", { orderId, draftId: null });
-        return;
-      }
-      void post("/api/runs/drafts/move", { orderId, draftId: Number(toLane.replace("draft-", "")) });
+      const from = laneOf(orderId);
+      if (from === toLane) return;
+      void post("/api/runs/drafts/move", { orderId, draftId: draftOf(toLane) }).then((r) => {
+        if (!r.ok) { toast("جابه‌جایی انجام نشد؛ دوباره تلاش کنید.", "error"); return; }
+        toast(toLane === "pool" ? "سفارش از روز برداشته شد" : "سفارش به روز منتقل شد", "success", {
+          label: "بازگردانی",
+          icon: "undo",
+          onClick: () => void post("/api/runs/drafts/move", { orderId, draftId: draftOf(from) }),
+        });
+      });
     },
-    [post]
+    [post, laneOf, toast]
   );
 
   return (
@@ -115,7 +131,13 @@ export default function RunsViewClient({
       runs={runs}
       laneOf={laneOf}
       onDropOrder={onDropOrder}
-      onCommit={(draftId) => void post("/api/runs/drafts/commit", { draftId })}
+      onCommit={(draftId) =>
+        runUndoable({
+          message: "روز قطعی شد",
+          send: () => post("/api/runs/drafts/commit", { draftId }),
+          failure: "روز قطعی نشد؛ دوباره تلاش کنید.",
+        })
+      }
     />
   );
 }

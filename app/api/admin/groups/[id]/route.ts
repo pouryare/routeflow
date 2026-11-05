@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { guardStepUp } from "@/lib/repo/stepUp";
 import { deleteGroup, groupExists, groupMemberCount, updateGroup } from "@/lib/repo/groupsAdmin";
 import { orgScopeId, requireRole } from "@/lib/session";
 import { GROUP_PALETTE } from "../route";
@@ -89,6 +90,8 @@ export async function DELETE(req: NextRequest, ctx: RouteContext<"/api/admin/gro
     );
   }
 
+  const stepUp = await guardStepUp(req, guard.session, "hard_delete");
+  if (stepUp) return stepUp;
   const regrouped = await deleteGroup(groupId, organizationId);
 
   return NextResponse.json({ ok: true, regrouped });

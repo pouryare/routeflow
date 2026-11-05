@@ -29,6 +29,9 @@ export interface Profile {
   onboarding: Onboarding | null;
   /** F47: open cheques (managers only, else null) and open complaints. */
   open: Customer360;
+  /** S17: who sent this customer, and whom this customer sent. */
+  referrer?: { id: number; name: string } | null;
+  referred?: { id: number; name: string }[];
 }
 
 export async function profileFor(session: Session, id: number): Promise<Profile | null> {
@@ -46,6 +49,10 @@ export async function profileFor(session: Session, id: number): Promise<Profile 
   const contacts = plain(await db.prepare(`SELECT id, name, role, phone_norm, whatsapp, is_primary, is_decider, best_time, note
     FROM contacts WHERE customer_id = ? AND organization_id = ? AND active = 1 ORDER BY is_primary DESC, id`).all(id, org)) as unknown as ContactRow[];
   const manager = isCrmManager(session.role);
+  const referrer = (await db.prepare(`SELECT r.id, r.business_name AS name FROM customers c JOIN customers r ON r.id = c.referred_by_customer_id AND r.organization_id = c.organization_id
+    WHERE c.id = ? AND c.organization_id = ?`).get(id, org)) as { id: number; name: string } | undefined;
+  const referred = plain(await db.prepare(`SELECT id, business_name AS name FROM customers WHERE referred_by_customer_id = ? AND organization_id = ? AND merged_into_id IS NULL ORDER BY id DESC LIMIT 20`)
+    .all(id, org)) as { id: number; name: string }[];
   return structuredClone({
     business: { ...business, ...extra },
     tags,
@@ -55,6 +62,8 @@ export async function profileFor(session: Session, id: number): Promise<Profile 
     canWrite: canWriteBusiness(session, business), canManage: manager,
     onboarding: await onboardingFor(org, id),
     open: await customer360(session, org, id),
+    referrer: referrer ?? null,
+    referred,
   });
 }
 

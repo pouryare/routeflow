@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { guardStepUp } from "@/lib/repo/stepUp";
 import { isId } from "@/lib/inputChecks";
 import { requireRole } from "@/lib/session";
 import {
@@ -36,6 +37,12 @@ export async function POST(req: NextRequest, ctx: RouteContext<"/api/sales/order
   } | null;
   if (!body?.action) {
     return NextResponse.json({ ok: false, error: "کنش مشخص نشده" }, { status: 400 });
+  }
+
+  // Undoing a delivery (return) changes books that already moved: the code is asked first.
+  if (body.action === "returnOrder") {
+    const stepUp = await guardStepUp(req, guard.session, "order_change_delivered");
+    if (stepUp) return stepUp;
   }
 
   const role = ORDER_ROLES.includes(guard.session.role as OrderRole)

@@ -60,3 +60,38 @@ export function keyFromEvent(e: { key: string }): Key | "enter" | null {
   if (e.key === "Enter") return "enter";
   return null;
 }
+
+/** Sums in the keypad (Z1): «۱۲۰٬۰۰۰ + ۳۵٬۰۰۰ − ۵٬۰۰۰». Only + and − (the owner chose no × ÷). The
+ *  terms already closed are kept as one running `base`; `entry` is the number being typed now.
+ *  The field itself always receives the total, so every form keeps reading a plain number. */
+export interface Sum {
+  base: number;
+  sign: 1 | -1;
+  entry: string;
+  /** The closed terms as typed, for the readout: «۱۲۰٬۰۰۰ + ۳۵٬۰۰۰». */
+  shown: string;
+}
+
+const num = (v: string): number => (v === "" ? 0 : Number(v));
+
+/** The running total of a sum. */
+export const sumTotal = (s: Sum): number => s.base + s.sign * num(s.entry);
+
+/** Press + or −: the number so far (a plain value, or the running total) becomes a closed term. */
+export function pressOp(current: Sum | null, value: string, op: "+" | "−"): Sum {
+  const sign = op === "+" ? 1 : -1;
+  if (!current) return { base: num(value), sign, entry: "", shown: display(value) };
+  // An operator straight after an operator only changes the operator.
+  if (current.entry === "") return { ...current, sign };
+  return { base: sumTotal(current), sign, entry: "", shown: `${current.shown} ${current.sign === 1 ? "+" : "−"} ${display(current.entry)}` };
+}
+
+/** A key pressed while summing. Backspace on an empty entry gives the sum up: the total so far is
+ *  the plain value again (null). */
+export function pressInSum(s: Sum, key: Key): Sum | null {
+  if (key === "⌫" && s.entry === "") return null;
+  return { ...s, entry: press(s.entry, key) };
+}
+
+/** The readout line above the number while summing: «۱۲۰٬۰۰۰ + ۳۵٬۰۰۰ +». */
+export const sumLine = (s: Sum): string => `${s.shown} ${s.sign === 1 ? "+" : "−"}${s.entry === "" ? "" : ` ${display(s.entry)}`}`;

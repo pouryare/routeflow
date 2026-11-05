@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { parsePlace } from "@/lib/entryPlace";
+import { saveEntryPlace } from "@/lib/repo/entryPlaces";
 import { requireRole } from "@/lib/session";
 import { recordExpense, expenseCategories, LedgerError } from "@/lib/repo/ledgerPostings";
 import { OWNER_ROLES, type Role } from "@/lib/roles";
@@ -57,6 +59,7 @@ export async function POST(req: NextRequest) {
       // A manager's costs are their group's; an owner's are shared and divided by the company's rule.
       groupId: guard.session.role === "group_manager" ? guard.session.groupId : null,
     });
+    await saveEntryPlace(guard.session.organizationId, "expense", id, parsePlace((body as { place?: unknown }).place));
     return NextResponse.json({ ok: true, id }, { status: 201 });
   } catch (e) {
     // A refusal the user can act on -- wrong category, closed period, a CREDIT_NOTE method.

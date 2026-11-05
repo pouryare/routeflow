@@ -8,12 +8,13 @@ import type { Session } from "@/lib/session";
  *  their history is already the data. What had no trace is the rest: a product added, a
  *  packaging added, a reorder line moved. */
 
-export type ProductChange = "created" | "packaging" | "thresholds";
+export type ProductChange = "created" | "packaging" | "thresholds" | "sell_off";
 
 const NOTE: Record<ProductChange, string> = {
   created: "کالا تعریف شد",
   packaging: "بسته‌بندی تازه",
   thresholds: "آستانه‌های انبار تغییر کرد",
+  sell_off: "وضعیت تصفیه تغییر کرد",
 };
 
 export async function logProductChange(

@@ -112,6 +112,7 @@ const TEMPLATES: Record<string, (m: Record<string, unknown>) => { title_fa: stri
       body_fa: [no ? `چک ${no}` : null, due ? `سررسید ${faJalaliDate(due)}` : null].filter(Boolean).join(" — ") || null,
     };
   },
+  "task.due_soon": (m) => ({ title_fa: "کار ساعت‌دار نزدیک است", body_fa: metaStr(m, "title") }),
   "reminder.due": (m) => ({ title_fa: "یادآوری سررسید", body_fa: metaStr(m, "message") }),
 };
 
@@ -198,7 +199,7 @@ export async function recipientsFor(
   const out = new Set<number>();
   const orderId = ctx.entity_type === "order" && ctx.entity_id != null ? ctx.entity_id : null;
 
-  if (typeCode === "task.assigned") {
+  if (typeCode === "task.assigned" || typeCode === "task.due_soon") {
     const a = ctx.meta["assignee_user_id"];
     if (typeof a === "number") out.add(a);
   } else if (typeCode === "order.confirmed" || typeCode === "order.rejected") {

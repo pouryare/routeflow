@@ -17,6 +17,7 @@ import { snapshotRows } from "@/lib/repo/kpiSnapshots";
 import { rankActionCenter, type Bucket, type Candidate, type RankedItem } from "@/lib/analysis/actionCenter";
 import { customerHref } from "@/lib/deepLink";
 import { isVanRole } from "../roles";
+import { AUTO_CANCEL_DAYS, staleDraftsFor } from "@/lib/repo/staleDrafts";
 
 /** Alert categories, in Persian.
  *
@@ -363,6 +364,21 @@ async function churnCandidates(session: Session): Promise<Candidate[]> {
     }));
 }
 
+/** FB40: drafts nobody finished, each with how long until the sweep cancels it. */
+async function staleDraftCandidates(session: Session): Promise<Candidate[]> {
+  return (await staleDraftsFor(session)).map((d) => ({
+    key: `stale_draft:${d.id}`,
+    kind: "stale_draft" as const,
+    title_fa: `پیش‌نویس ماندهٔ ${d.order_no} · ${d.customer_name}`,
+    sub_fa: `${d.age_days.toLocaleString("fa-IR")} روز بدون تغییر؛ ${Math.max(0, AUTO_CANCEL_DAYS - d.age_days).toLocaleString("fa-IR")} روز دیگر خودکار لغو می‌شود`,
+    bucket: "warning" as Bucket,
+    impact: 0.2,
+    probability: 1,
+    urgency: Math.min(1, d.age_days / AUTO_CANCEL_DAYS),
+    href: `/sales/orders/${d.id}`,
+  }));
+}
+
 export async function actionCenterFor(session: Session): Promise<Record<Bucket, RankedItem[]>> {
   if (isVanRole(session.role)) {
     return { critical: [], warning: [], opportunity: [] };
@@ -370,6 +386,7 @@ export async function actionCenterFor(session: Session): Promise<Record<Bucket, 
   const cands: Candidate[] = [
     ...await alertCandidates(session),
     ...await stalledOrderCandidates(session),
+    ...await staleDraftCandidates(session),
     ...await overdueCandidates(session),
     ...await atRiskCandidates(session),
     ...await churnCandidates(session),

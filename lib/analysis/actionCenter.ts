@@ -14,6 +14,7 @@ export interface Candidate {
   kind:
     | "alert"
     | "stalled_order"
+    | "stale_draft"
     | "at_risk_customer"
     | "stockout_risk"
     | "overdue_receivable"

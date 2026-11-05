@@ -271,6 +271,8 @@ export function stockStatus(onHand: number, reorderPoint: number | null, targetS
 export interface AdvancedStockRow extends StockRow {
   reorder_point: number | null;
   target_stock: number | null;
+  /** D32 «تصفیه»: still sold, never bought again. */
+  sell_off: boolean;
   status: StockStatus;
   /** Average base_unit delivered per day over the last VELOCITY_WINDOW_DAYS. */
   daily_rate: number;
@@ -300,8 +302,8 @@ export async function advancedStockPosition(db: Db, organizationId: number | nul
   const base = await stockPosition(db, organizationId);
 
   const thresholds = await db
-    .prepare("SELECT id, reorder_point, target_stock FROM products WHERE active = 1")
-    .all() as unknown as { id: number; reorder_point: number | null; target_stock: number | null }[];
+    .prepare("SELECT id, reorder_point, target_stock, sell_off FROM products WHERE active = 1")
+    .all() as unknown as { id: number; reorder_point: number | null; target_stock: number | null; sell_off: number }[];
   const thresholdById = new Map(thresholds.map((t) => [t.id, t]));
 
   const windowStart = new Date(Date.now() - VELOCITY_WINDOW_DAYS * 86_400_000).toISOString().slice(0, 10);
@@ -363,11 +365,14 @@ export async function advancedStockPosition(db: Db, organizationId: number | nul
     const spark = days.map((d) => byDay?.get(d) ?? 0);
     const dailyRate = spark.reduce((a, b) => a + b, 0) / VELOCITY_WINDOW_DAYS;
 
+    // D32: a product being cleared out is never a reason to buy, so it raises no low or critical warning.
+    const sellOff = Number(t?.sell_off ?? 0) === 1;
     return {
       ...row,
       reorder_point: reorderPoint,
       target_stock: targetStock,
-      status: stockStatus(row.on_hand, reorderPoint, targetStock),
+      sell_off: sellOff,
+      status: sellOff ? "ok" : stockStatus(row.on_hand, reorderPoint, targetStock),
       daily_rate: dailyRate,
       days_left: dailyRate > 0 ? row.on_hand / dailyRate : null,
       spark,

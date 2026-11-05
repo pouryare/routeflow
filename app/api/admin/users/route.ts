@@ -4,7 +4,8 @@ import { groupExists } from "@/lib/repo/groupsAdmin";
 import { insertUser, listUsers } from "@/lib/repo/usersAdmin";
 import { hashPassword } from "@/lib/auth";
 import { requireRole } from "@/lib/session";
-import { OWNER_ROLES } from "@/lib/roles";
+import { MANAGE_ROLES, OWNER_ROLES } from "@/lib/roles";
+import { guardStepUp } from "@/lib/repo/stepUp";
 import { lastSignInByUser } from "@/lib/repo/loginEvents";
 import { isUniqueViolation } from "@/lib/database/errors";
 
@@ -57,6 +58,12 @@ export async function POST(req: NextRequest) {
       { ok: false, error: "این نقش فقط برای بنیان‌گذار سامانه است" },
       { status: 400 }
     );
+  }
+
+  // A new owner or manager can reach everyone's data: the code is asked first.
+  if ((MANAGE_ROLES as readonly string[]).includes(role)) {
+    const stepUp = await guardStepUp(req, guard.session, "create_manager");
+    if (stepUp) return stepUp;
   }
 
   const groupId = Number.isInteger(body?.group_id) ? (body!.group_id as number) : null;

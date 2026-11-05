@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { HelpHint, HelpRow } from "@/components/meridian/HelpHint";
 import { Icon } from "@/components/meridian/Icon";
 import { faNum } from "@/lib/format";
-import { display, keyFromEvent, press, quickAmounts, type Key } from "@/lib/keypad";
+import { display, keyFromEvent, press, pressInSum, pressOp, quickAmounts, sumLine, sumTotal, type Key, type Sum } from "@/lib/keypad";
 
 const ROWS: Key[][] = [
   ["7", "8", "9"],
@@ -39,7 +39,19 @@ export default function Keypad({
   }, []);
 
   const quick = suggested ? quickAmounts(suggested) : [];
-  const tap = (k: Key) => onChange(press(value, k, decimal));
+  /* Z1: + and − on whole amounts (money, counts). The form always receives the running total. */
+  const [sum, setSum] = useState<Sum | null>(null);
+  const tap = (k: Key) => {
+    if (!sum) return onChange(press(value, k, decimal));
+    const next = pressInSum(sum, k);
+    setSum(next);
+    onChange(String(next ? sumTotal(next) : sum.base));
+  };
+  const op = (o: "+" | "−") => {
+    const next = pressOp(sum, value, o);
+    setSum(next);
+    onChange(String(sumTotal(next)));
+  };
 
   return (
     <div
@@ -53,6 +65,11 @@ export default function Keypad({
         if (k === "enter") onEnter?.();
         else tap(k);
       }}
+      onKeyUp={(e) => {
+        if (decimal) return;
+        if (e.key === "+") op("+");
+        else if (e.key === "-") op("−");
+      }}
     >
       <HelpRow>
         <HelpHint title="وارد کردن عدد" label="راهنمای وارد کردن عدد">
@@ -61,13 +78,14 @@ export default function Keypad({
         </HelpHint>
       </HelpRow>
       <div className="keypad__readout" role="status" aria-live="polite">
+        {sum ? <span className="keypad__sum" dir="ltr">{sumLine(sum)} =</span> : null}
         <strong>{display(value)}</strong>
         {unit ? <span>{unit}</span> : null}
       </div>
       {quick.length > 0 && (
         <div className="keypad__quick">
           {quick.map((q) => (
-            <button key={q} type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] keypad__chip" onClick={() => onChange(String(q))}>
+            <button key={q} type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] keypad__chip" onClick={() => { setSum(null); onChange(String(q)); }}>
               <Icon name="check" size="sm" />
               {faNum(q)}
             </button>
@@ -99,6 +117,16 @@ export default function Keypad({
         <button type="button" className="keypad__key" aria-label="پاک کردن یک رقم" onClick={() => tap("⌫")}>
           <Icon name="backspace" size="md" />
         </button>
+        {decimal ? null : (
+          <>
+            <button type="button" className="keypad__key keypad__op" aria-label="منها" onClick={() => op("−")}>
+              <Icon name="minus" size="md" />
+            </button>
+            <button type="button" className="keypad__key keypad__op keypad__op--wide" aria-label="به‌علاوه" onClick={() => op("+")}>
+              <Icon name="plus" size="md" />
+            </button>
+          </>
+        )}
       </div>
     </div>
   );
