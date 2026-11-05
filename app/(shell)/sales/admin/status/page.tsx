@@ -10,6 +10,8 @@ import MaintenanceForm from "@/components/meridian/MaintenanceForm";
 import { maintenanceFor } from "@/lib/repo/maintenance";
 import AccessReviewCard from "@/components/meridian/AccessReviewCard";
 import DocumentSettingsForm from "@/components/meridian/DocumentSettingsForm";
+import TaskPushForm from "@/components/meridian/TaskPushForm";
+import { taskPushMinutes } from "@/lib/repo/taskPush";
 import { documentSettingsFor } from "@/lib/repo/documentSettings";
 import { accessReview } from "@/lib/accessReview";
 import { accessUsers, recentImpersonations } from "@/lib/repo/accessReview";
@@ -33,6 +35,7 @@ export default async function StatusPage() {
   const review = accessReview(await accessUsers(session.organizationId), new Date().toISOString());
   const logins = await recentImpersonations(session.organizationId);
   const docs = await documentSettingsFor(session.organizationId);
+  const pushMinutes = await taskPushMinutes(session.organizationId);
 
   return (
     <>
@@ -61,6 +64,9 @@ export default async function StatusPage() {
       </div>
       <div className="mt-[var(--space-4)]">
         <DocumentSettingsForm current={docs} />
+      </div>
+      <div className="mt-[var(--space-4)]">
+        <TaskPushForm minutes={pushMinutes} />
       </div>
     </>
   );

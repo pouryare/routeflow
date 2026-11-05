@@ -1,4 +1,5 @@
 import type { Db } from "@/lib/database/client";
+import { tasksStartingSoon } from "./taskPush";
 import { getDb } from "@/lib/db";
 import {
   evaluateConditions,
@@ -412,6 +413,9 @@ export async function runSweepRules(organizationId: number, asOfIso: string = ne
         : await db.prepare("SELECT 1 FROM districts WHERE id = ?").get(r.entity_id);
     if (inOrg) await consider("notify_reminder_due", r.entity_type, r.entity_id, { meta: { message: r.message, reminder_id: r.id } });
   }
+
+  // S19: a timed task starting within the lead minutes; once per task (day-long cooldown).
+  for (const t of await tasksStartingSoon(organizationId, asOfIso)) await consider("notify_task_due_soon", "task", t.id, { meta: { title: t.title, assignee_user_id: Number(t.assignee_user_id), due_at: t.due_at } });
 
   // Board & Pocket: templates that spawn a task on a schedule. Same hook, same cooldown
   // idea (last_spawned_on), so /api/rules/run drives it with no extra scheduler.

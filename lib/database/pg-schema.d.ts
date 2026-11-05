@@ -919,6 +919,7 @@ export interface Organizations {
   slug: string;
   sound_skin: Generated<string>;
   step_up_required: Generated<boolean>;
+  task_push_minutes: Generated<number>;
 }
 
 export interface Packagings {
