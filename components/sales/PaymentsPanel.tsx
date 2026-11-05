@@ -6,6 +6,7 @@ import { tehranTodayIso, faJalaliDateTime } from "@/lib/jalali";
 import { useRunAfterMount } from "@/lib/useRunAfterMount";
 import { friendlyError } from "@/lib/userMessage";
 import FilterChips from "@/components/mobile/FilterChips";
+import FilteredEmpty from "@/components/FilteredEmpty";
 import { PERIODS, PERIOD_LABEL, periodRange, type Period } from "@/lib/periods";
 import { Icon } from "@/components/meridian/Icon";
 import BusyIcon from "@/components/meridian/BusyIcon";
@@ -339,7 +340,11 @@ export default function PaymentsPanel({ customers }: { customers: Customer[] }) 
         {payments === null ? (
           <p className="text-sm text-text-muted">در حال بارگذاری…</p>
         ) : filtered.length === 0 ? (
-          <p className="text-sm text-text-muted">دریافتی با این فیلترها یافت نشد.</p>
+          <FilteredEmpty
+            title="دریافتی با این فیلترها یافت نشد."
+            hidden={live.length}
+            onClear={() => { choosePeriod(""); setFMethod(""); setFVoided("hide"); }}
+          />
         ) : (
           <>
             {months.map(([key, rows]) => (

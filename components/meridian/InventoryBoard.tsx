@@ -3,6 +3,7 @@
 import { toNumber } from "@/lib/money";
 import { FieldInput } from "@/components/FieldInput";
 import FilterChips from "@/components/mobile/FilterChips";
+import FilteredEmpty from "@/components/FilteredEmpty";
 import KeypadField from "@/components/mobile/KeypadField";
 import { faJalaliDate } from "@/lib/jalali";
 import { useMemo, useState } from "react";
@@ -161,9 +162,7 @@ export default function InventoryBoard({ rows, canEdit }: { rows: InventoryRow[]
       </div>
 
       {visible.length === 0 ? (
-        <p className="rounded-[var(--radius-lg)] border border-dashed border-[var(--border)] p-[var(--space-6)] text-center text-[length:var(--text-sm)] text-[var(--text-muted)]">
-          کالایی با این جستجو یا فیلتر پیدا نشد.
-        </p>
+        <FilteredEmpty title="کالایی با این جستجو یا فیلتر پیدا نشد." hidden={rows.length} onClear={() => { setQ(""); setFilter("all"); }} />
       ) : (
         <div className="stgrid">
           {visible.map((r) => (
