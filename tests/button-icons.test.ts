@@ -70,6 +70,7 @@ const EXEMPT: { file: string; match: string; reason: string }[] = [
   { file: "components/PhotoAccordion.tsx", match: "photoacc__item", reason: "an accordion photo is the content" },
   { file: "app/(shell)/sales/admin/users/page.tsx", match: "cursor-pointer overflow-hidden rounded-lg", reason: "a photo thumbnail is the content" },
   { file: "components/mobile/KpiCarousel.tsx", match: "kpicarousel__card", reason: "a KPI card is the content" },
+  { file: "components/CustomerDetailPanel.tsx", match: "cpanel__grip", reason: "a sheet's drag handle; its drawn bar is the icon" },
   { file: "components/meridian/ProfileMenu.tsx", match: "pm__trigger", reason: "the person's avatar is the icon" },
   { file: "components/facilities/PlacePicker.tsx", match: "flex min-h-11 w-full items-center", reason: "a place row; the whole row is the tap target" },
   { file: "app/(shell)/accounting/income-statement/page.tsx", match: "/accounting/income-statement", reason: "a period filter chip; the period is the content" },

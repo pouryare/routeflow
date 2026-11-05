@@ -1,7 +1,7 @@
 "use client";
 
 import { useEscapeKey } from "@/lib/useEscapeKey";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { useHydrated } from "@/lib/useHydrated";
 import { useRouter } from "next/navigation";
 import {
@@ -33,6 +33,9 @@ import CustomerBento, { useCustomerSummary } from "@/components/meridian/Custome
 import { Icon } from "@/components/meridian/Icon";
 import { burst } from "@/lib/burst";
 import { faJalaliDateTime } from "@/lib/jalali";
+import { haptic } from "@/lib/haptics";
+import { playSound } from "@/lib/sound";
+import { nextStop, rubberBand, stopBelow, stretchAllowed, TAP_PX, type SheetStop } from "@/lib/sheetStops";
 
 function customerLink(id: number): string {
   return absoluteMapLink({ customerId: id }, "/");
@@ -151,9 +154,66 @@ export default function CustomerDetailPanel({
     return () => mq.removeEventListener("change", apply);
   }, []);
 
+  /* On a phone the sheet rests at three heights over the map (lib/sheetStops.ts): «peek» shows
+     only the shop's name so the map is free above it, «half» is where it opens, «full» is for
+     reading everything. Each customer opens at half. */
+  const [stop, setStop] = useState<SheetStop>("half");
+  const [stopFor, setStopFor] = useState(customer.id);
+  if (stopFor !== customer.id) {
+    setStopFor(customer.id);
+    setStop("half");
+  }
+  const goTo = useCallback((next: SheetStop | "close") => {
+    if (next === "close") return handleClose();
+    if (next === "peek" && panelRef.current) panelRef.current.scrollTop = 0;
+    setStop(next);
+    haptic("selection");
+    playSound(next === "full" ? "sheet.full" : "sheet.snap");
+  }, [handleClose]);
+
   // Through handleClose rather than onClose, so a swipe gets the same exit animation as
-  // the ✕.
-  useSwipeDismiss(panelRef, isSheet ? "down" : "left", handleClose);
+  // the ✕. On a phone a swipe down steps one height lower first, and closes from peek.
+  const swipeDown = useCallback(() => goTo(stopBelow(stop)), [goTo, stop]);
+  useSwipeDismiss(panelRef, isSheet ? "down" : "left", isSheet ? swipeDown : handleClose);
+
+  /* The handle: drag it a stop up or down, or tap it to go up one. At full, pulling further up
+     stretches the sheet a little and lets it spring back (the rubber band). A real button, so a
+     keyboard and a screen reader can move the sheet too. */
+  const grip = useRef<{ y: number; moved: boolean } | null>(null);
+  const dragged = useRef(false);
+  function gripDown(e: ReactPointerEvent<HTMLButtonElement>) {
+    grip.current = { y: e.clientY, moved: false };
+    e.currentTarget.setPointerCapture(e.pointerId);
+  }
+  function gripMove(e: ReactPointerEvent<HTMLButtonElement>) {
+    const g = grip.current;
+    const el = panelRef.current;
+    if (!g || !el) return;
+    const dy = e.clientY - g.y;
+    if (Math.abs(dy) >= TAP_PX) g.moved = true;
+    if (stop === "full" && dy < 0 && stretchAllowed()) {
+      el.style.transition = "none";
+      el.style.height = `calc(100% - 48px + ${rubberBand(-dy)}px)`;
+    }
+  }
+  function gripUp(e: ReactPointerEvent<HTMLButtonElement>) {
+    const g = grip.current;
+    grip.current = null;
+    const el = panelRef.current;
+    if (el?.style.height) {
+      playSound("sheet.settle");
+      el.style.transition = "height var(--dur-slow) var(--spring-snap)";
+      el.style.height = "";
+      el.addEventListener("transitionend", () => { el.style.transition = ""; }, { once: true });
+    }
+    if (!g?.moved) return; // a tap: the click that follows handles it
+    dragged.current = true;
+    goTo(nextStop(stop, e.clientY - g.y));
+  }
+  function gripClick() {
+    if (dragged.current) { dragged.current = false; return; }
+    goTo(nextStop(stop, 0));
+  }
 
   useEscapeKey(handleClose);
 
@@ -203,8 +263,20 @@ export default function CustomerDetailPanel({
       ref={panelRef}
       key={customer.id}
       dir="rtl"
-      className={`${leaving ? "customer-panel-exit" : "customer-panel-enter"} sheet-on-mobile cpanel cpanel--${orient} z-[var(--z-panel)] overflow-y-auto ${elevateClass(statusColor)}`}
+      className={`${leaving ? "customer-panel-exit" : "customer-panel-enter"} sheet-on-mobile cpanel cpanel--${orient}${isSheet ? ` cpanel--${stop}` : ""} z-[var(--z-panel)] overflow-y-auto ${elevateClass(statusColor)}`}
     >
+      {isSheet && (
+        <button
+          type="button"
+          className="cpanel__grip"
+          aria-label={stop === "full" ? "کوچک‌تر کردن برگهٔ مشتری" : "بزرگ‌تر کردن برگهٔ مشتری"}
+          onPointerDown={gripDown}
+          onPointerMove={gripMove}
+          onPointerUp={gripUp}
+          onPointerCancel={gripUp}
+          onClick={gripClick}
+        />
+      )}
       <div className="mb-1 flex items-start justify-between gap-2">
         <h2 className="text-[length:var(--text-md)] font-bold leading-snug text-text">{customer.business_name}</h2>
         {onTogglePin && (

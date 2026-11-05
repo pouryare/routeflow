@@ -1,24 +1,88 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { Button, Drawer } from "@heroui/react";
 import { Icon } from "@/components/meridian/Icon";
 import WidgetBoundary from "@/components/WidgetBoundary";
 import { playSound } from "@/lib/sound";
 import { useBackToClose } from "@/lib/useBackToClose";
 import { haptic } from "@/lib/haptics";
+import { rubberBand, stretchAllowed, TAP_PX } from "@/lib/sheetStops";
 
-/** Every bottom sheet in the app, on a HeroUI bottom Drawer (docs/decisions.md §10): the «بیشتر»
- *  list, the quick actions, the filters, a card's breakdown, the customer sheet and the tap
- *  flows. The Drawer brings the backdrop, Escape, drag-down to dismiss, a focus trap and the
- *  focus return; HeroUIProvider draws it in the `.meridian` root so a transformed ancestor
- *  cannot misplace it. The body sits in `.tapflow` by default so its rows can use the 52 px
- *  answer-button styles.
- *
- *  On top of the Drawer: the phone's back button closes the sheet (useBackToClose), opening
- *  ticks (lib/haptics), a sheet holding unsaved input (`dirty`) asks before any way of closing
- *  drops it, and an `expandable` sheet opens at half height and grows to full when its handle
- *  is pulled up or tapped, or its body is scrolled. */
+/** Pulling a sheet up by its handle or header (native listeners on the dialog, which HeroUI
+ *  captures the pointer on, and whose own props would replace HeroUI's):
+ *  - a half-height sheet grows to full (`onGrow`);
+ *  - a sheet that cannot grow any more stretches a little and springs back on release, the rubber
+ *    band (lib/sheetStops.ts), unless effects are off.
+ *  An upward move never reaches HeroUI, which would otherwise read a quick pull up as a flick and
+ *  close the sheet; its drag down to dismiss is untouched. Returns the handle's ref and the last
+ *  gesture's upward pull, so the handle can tell a tap from a pull. */
+function usePullUp(atMax: boolean, onGrow: () => void) {
+  const latest = useRef({ atMax, onGrow });
+  useEffect(() => { latest.current = { atMax, onGrow }; });
+  const lastPull = useRef(0);
+  const ref = useCallback((handle: HTMLDivElement | null) => {
+    const dialog = handle?.closest<HTMLElement>("[data-slot='drawer-dialog']");
+    if (!dialog) return;
+    let from: number | null = null;
+    let grew = false;
+    let startHeight = 0;
+    let stretched = false;
+    const down = (e: PointerEvent) => {
+      const t = e.target as Element;
+      from = null;
+      lastPull.current = 0;
+      if (!t.closest("[data-slot='drawer-handle'], [data-slot='drawer-header']")) return;
+      if (t.closest("input, textarea, button, [role='button'], select, a")) return;
+      from = e.clientY;
+      grew = false;
+      startHeight = dialog.offsetHeight;
+    };
+    const move = (e: PointerEvent) => {
+      if (from === null) return;
+      const pull = from - e.clientY;
+      lastPull.current = Math.max(lastPull.current, pull);
+      if (pull <= 0 && !stretched) return;
+      e.stopPropagation();
+      if (pull <= TAP_PX) return;
+      if (!dialog.hasPointerCapture(e.pointerId)) dialog.setPointerCapture(e.pointerId);
+      if (!latest.current.atMax) {
+        if (!grew) { grew = true; latest.current.onGrow(); }
+        return;
+      }
+      if (grew || !stretchAllowed()) return;
+      stretched = true;
+      dialog.style.transition = "none";
+      dialog.style.maxHeight = "none";
+      dialog.style.height = `${startHeight + rubberBand(Math.max(0, pull))}px`;
+    };
+    const up = () => {
+      from = null;
+      if (!stretched) return;
+      stretched = false;
+      playSound("sheet.settle");
+      dialog.style.transition = "height 300ms var(--spring-snap)";
+      dialog.style.height = `${startHeight}px`;
+      dialog.addEventListener("transitionend", () => {
+        dialog.style.transition = "";
+        dialog.style.height = "";
+        dialog.style.maxHeight = "";
+      }, { once: true });
+    };
+    dialog.addEventListener("pointerdown", down);
+    dialog.addEventListener("pointermove", move);
+    dialog.addEventListener("pointerup", up);
+    dialog.addEventListener("pointercancel", up);
+    return () => {
+      dialog.removeEventListener("pointerdown", down);
+      dialog.removeEventListener("pointermove", move);
+      dialog.removeEventListener("pointerup", up);
+      dialog.removeEventListener("pointercancel", up);
+    };
+  }, []);
+  return [ref, lastPull] as const;
+}
+
 export default function BottomSheet({
   open,
   title,
@@ -75,10 +139,10 @@ export default function BottomSheet({
   };
   useBackToClose(open, requestClose);
 
-  // Pull the handle up past a short distance to expand; a tap toggles. HeroUI's own drag only
-  // follows the finger downward, so the two never fight over a gesture.
-  const pullFrom = useRef<number | null>(null);
-  const toggle = () => { setExpanded((e) => !e); haptic("selection"); };
+  // Pull the handle or header up to expand, or tap the handle to toggle (usePullUp).
+  const grow = () => { setExpanded(true); haptic("selection"); playSound("sheet.full"); };
+  const toggle = () => { if (expanded) { setExpanded(false); haptic("selection"); playSound("sheet.snap"); } else grow(); };
+  const [pullRef, lastPull] = usePullUp(!expandable || expanded, grow);
 
   const dialogClass = [
     "flow-drawer__dialog",
@@ -99,20 +163,9 @@ export default function BottomSheet({
         <Drawer.Content placement="bottom" className="flow-drawer">
           <Drawer.Dialog className={dialogClass}>
             <Drawer.Handle
+              ref={pullRef}
               className={expandable ? "flow-drawer__grip" : undefined}
-              onPointerDown={expandable ? (e) => { pullFrom.current = e.clientY; } : undefined}
-              onPointerMove={expandable ? (e) => {
-                // Decided within the first 6 px: past 8 px HeroUI captures the pointer on the
-                // dialog and the handle hears nothing more of this gesture.
-                if (pullFrom.current !== null && pullFrom.current - e.clientY > 6) {
-                  pullFrom.current = null;
-                  if (!expanded) toggle();
-                }
-              } : undefined}
-              onPointerUp={expandable ? () => {
-                if (pullFrom.current !== null) toggle();
-                pullFrom.current = null;
-              } : undefined}
+              onPointerUp={expandable ? () => { if (lastPull.current <= TAP_PX) toggle(); } : undefined}
             />
             <Drawer.Header className="flow-drawer__header">
               <Drawer.Heading>{title}</Drawer.Heading>
