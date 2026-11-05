@@ -143,7 +143,8 @@ Quickest to a first tour (a day), but it decides the scrolling, buttons and flow
 | I4 | Pointer: **soft pulse on the button plus a small hand that glides to it and taps**; off when effects are off | 2026-11-05 |
 | I5 | Ghost demo: **for jobs of 3 or more taps the hand plays the whole job once on demo data, then «حالا شما»**; short jobs skip it | 2026-11-05 |
 | I6 | Stuck detector: **no**. Help comes only from the first-time chip, search and the list | 2026-11-05 |
-| I7 | _waiting_ | |
+| I7 | Manager sends a tutorial: **yes, shown on the person's today page with the manager's name; the manager sees sent, seen and done** | 2026-11-05 |
+| I8 | _waiting_ | |
 
 ## 11. Owner's direction (2026-11-05): many tutorials, practice on demo data in the page
 
