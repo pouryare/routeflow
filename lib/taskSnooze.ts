@@ -24,7 +24,7 @@ export const MAX_SNOOZES = 3;
 /** The hours a picked snooze may land on (Tehran wall clock), a working day's span. */
 export const SNOOZE_HOURS = [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20] as const;
 /** A picked snooze no further than this: a task put off longer is better removed. */
-export const SNOOZE_MAX_DAYS = 60;
+const SNOOZE_MAX_DAYS = 60;
 
 /** Where the swipe stops sit, in px dragged: one set time each, then the picker. The first is the swipe's commit. */
 export const SNOOZE_STOPS_PX = [140, 175, 210, 245] as const;

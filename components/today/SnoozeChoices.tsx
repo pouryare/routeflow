@@ -9,13 +9,13 @@ import DayChips from "@/components/mobile/DayChips";
 import { ChipGroup } from "@/components/mobile/ChipGroup";
 import { friendlyError } from "@/lib/userMessage";
 import { faDigits } from "@/lib/format";
-import { SNOOZE_CHOICES, SNOOZE_HOURS, SNOOZE_PICK_LABEL, type SnoozeChoice } from "@/lib/taskSnooze";
+import { SNOOZE_CHOICES, SNOOZE_HOURS, SNOOZE_PICK_LABEL, SNOOZE_STOPS_PX, type SnoozeChoice } from "@/lib/taskSnooze";
 
 type SnoozeBody = SnoozeChoice | { day: string; hour: number };
 
 /** Sends one snooze (PATCH /api/tasks/[id] { snooze }) and says where the task went. Shared by the buttons
  *  below and the task row's swipe. Resolves true when it moved. */
-export function useSnooze(taskId: number, onDone: () => void) {
+function useSnooze(taskId: number, onDone: () => void) {
   const toast = useToast();
   const [busy, setBusy] = useState(false);
   async function snooze(body: SnoozeBody, label: string): Promise<boolean> {
@@ -41,8 +41,36 @@ export function useSnooze(taskId: number, onDone: () => void) {
   return { snooze, busy };
 }
 
+/** A task row's snooze swipe: stops at 1 h, 3 h, tomorrow 9 and «زمان دیگر», which opens the picker. The row
+ *  puts `swipe` on its SwipeRow and renders `picker` outside the swipe face. */
+export function useSnoozeSwipe(taskId: number, onDone: () => void) {
+  const { snooze, busy } = useSnooze(taskId, onDone);
+  const [picking, setPicking] = useState(false);
+  const swipe = {
+    label: "عقب انداختن",
+    icon: "clock" as const,
+    stops: [...SNOOZE_CHOICES.map((c) => c.label), SNOOZE_PICK_LABEL].map((label, i) => ({ at: SNOOZE_STOPS_PX[i], label })),
+    run: (stop?: number) => {
+      const c = stop === undefined ? undefined : SNOOZE_CHOICES[stop];
+      if (c) void snooze(c.id, c.label);
+      else setPicking(true);
+    },
+  };
+  const picker = (
+    <SnoozePicker
+      open={picking}
+      busy={busy}
+      onClose={() => setPicking(false)}
+      onPick={async (day, hour, label) => {
+        if (await snooze({ day, hour }, label)) setPicking(false);
+      }}
+    />
+  );
+  return { swipe, picker, openPicker: () => setPicking(true) };
+}
+
 /** «زمان دیگر»: a day (DayChips) and an hour, then one button. */
-export function SnoozePicker({ open, onClose, onPick, busy }: {
+function SnoozePicker({ open, onClose, onPick, busy }: {
   open: boolean;
   onClose: () => void;
   onPick: (day: string, hour: number, label: string) => void;
