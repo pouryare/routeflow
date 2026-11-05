@@ -76,9 +76,30 @@ export const ACTION_LIFETIME_MS = OUTBOX_HOLD_MS;
  *  `useToast()` keeps its old signature, so none of its callers changed. */
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
-    const onVisibility = () => (document.visibilityState === "hidden" ? toast.pauseAll() : toast.resumeAll());
+    /* Paused clocks also pause the undo ring drawn around ✕ (globals.css, «Undo countdown»): the hidden tab,
+       and a finger resting on a toast, which React Aria's hover pause does not count. */
+    const pause = (on: boolean) => {
+      if (on) toast.pauseAll();
+      else toast.resumeAll();
+      document.documentElement.toggleAttribute("data-toasts-paused", on);
+    };
+    const onVisibility = () => pause(document.visibilityState === "hidden");
+    const onDown = (e: PointerEvent) => {
+      if (e.pointerType === "touch" && (e.target as Element | null)?.closest?.(".app-toasts")) pause(true);
+    };
+    const onUp = (e: PointerEvent) => {
+      if (e.pointerType === "touch" && document.documentElement.hasAttribute("data-toasts-paused")) pause(false);
+    };
     document.addEventListener("visibilitychange", onVisibility);
-    return () => document.removeEventListener("visibilitychange", onVisibility);
+    document.addEventListener("pointerdown", onDown);
+    document.addEventListener("pointerup", onUp);
+    document.addEventListener("pointercancel", onUp);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      document.removeEventListener("pointerdown", onDown);
+      document.removeEventListener("pointerup", onUp);
+      document.removeEventListener("pointercancel", onUp);
+    };
   }, []);
 
   /* Plain toasts on screen, by their words: a repeat joins the one already showing (×N) and
@@ -117,6 +138,8 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     );
     const id = toast(message, {
       ...base,
+      // The mark the undo ring's CSS keys on: a ring around ✕ empties over ACTION_LIFETIME_MS.
+      indicator: <span data-undo-ring>{base.indicator}</span>,
       actionProps: {
         children: label,
         variant: "secondary",
@@ -140,7 +163,12 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       {children}
       {/* At the top, centred: identical in RTL and LTR, and clear of the bottom bar and the
           thumb zone the flows use. */}
-      <Toast.Provider placement="top" maxVisibleToasts={3} className="app-toasts" />
+      <Toast.Provider
+        placement="top"
+        maxVisibleToasts={3}
+        className="app-toasts"
+        style={{ "--undo-ms": `${ACTION_LIFETIME_MS}ms` } as React.CSSProperties}
+      />
     </ToastContext.Provider>
   );
 }
