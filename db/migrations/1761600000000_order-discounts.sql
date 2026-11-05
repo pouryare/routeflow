@@ -1,4 +1,5 @@
 -- Up Migration
+-- rf: expand-only
 -- Discounts on an order, with approval and a commission deduction (owner's decisions, 2026-10-28;
 -- lib/discounts.ts holds the rules).
 --

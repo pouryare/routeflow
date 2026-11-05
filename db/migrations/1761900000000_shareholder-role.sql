@@ -1,4 +1,5 @@
 -- Up Migration
+-- rf: contract
 -- A login for a shareholder who is not staff: users.role may now be 'shareholder'. The account sees only its own page
 -- (/my-share); proxy.ts confines it to that page and its settings, and the page reads only the row linked to it.
 -- squawk-ignore-file ban-drop-constraint, constraint-missing-not-valid, prefer-robust-stmts

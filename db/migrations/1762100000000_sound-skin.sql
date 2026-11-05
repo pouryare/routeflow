@@ -1,4 +1,5 @@
 -- Up Migration
+-- rf: expand-only
 -- F117: the company owner picks how the app's sounds sound for everyone in the company (lib/soundRecipes.ts
 -- SKINS). A constant default: nothing is rewritten. Each person's on/off switch is in users.prefs_json.
 -- squawk-ignore-file ban-drop-column
