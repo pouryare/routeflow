@@ -1,6 +1,9 @@
 import ImpersonationBanner from "@/components/meridian/ImpersonationBanner";
 import RoleBanner from "@/components/meridian/RoleBanner";
 import ActingCompanyBanner from "@/components/meridian/ActingCompanyBanner";
+import AuthenticatorNudge from "@/components/meridian/AuthenticatorNudge";
+import { secondFactorRequired } from "@/lib/repo/secondFactor";
+import { needsStepUp } from "@/lib/stepUp";
 import { organizationName } from "@/lib/repo/organizations";
 import { cookies } from "next/headers";
 import { COOKIE_NAME } from "@/lib/auth";
@@ -47,6 +50,9 @@ export default async function AppHeader() {
   if (!session) return <HeaderSkeleton />;
 
   const tabs = appTabs(session);
+  /* FB29: anyone asked for a code before sensitive actions, and not enrolled, is nudged. Not under
+     Login-As: the code is the real person's, and the owner's own nudge is on their own pages. */
+  const nudge = !session.actorId && needsStepUp(session.role, "user_change") && !await secondFactorRequired(session.user.id);
 
   return (
     <>
@@ -68,6 +74,7 @@ export default async function AppHeader() {
           founder is in a state neither banner alone describes — so they stack rather than
           replace one another. Each renders nothing for a single-role person. */}
       <RoleBanner role={session.role} roles={session.roles} />
+      {nudge ? <AuthenticatorNudge /> : null}
       <div className="top">
         <HoverPill tabs={tabs} groups={APP_GROUPS} />
         <div className="topright">
