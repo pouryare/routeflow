@@ -134,14 +134,36 @@ run_migrations() {
 
 app_port() { echo "${APP_PORT:-3003}"; }
 
-# Waits up to 60 s for /api/health to answer {"ok":true}.
+# Waits up to 60 s for /api/health to answer {"ok":true} with the expected version (any, if none given).
 wait_healthy() {
-  local i
+  local want=${1:-} i body
   for i in $(seq 1 30); do
-    if curl -fsS --max-time 3 "http://127.0.0.1:$(app_port)/api/health" 2>/dev/null | grep -q '"ok":true'; then return 0; fi
+    body=$(curl -fsS --max-time 3 "http://127.0.0.1:$(app_port)/api/health" 2>/dev/null || true)
+    if grep -q '"ok":true' <<<"$body" && { [ -z "$want" ] || grep -qF "\"version\":\"$want\"" <<<"$body"; }; then return 0; fi
     sleep 2
   done
   return 1
+}
+
+# After an upgrade, more than the database ping: the sign-in page renders, a script it links loads,
+# and, when a smoke login is set up (SMOKE_USER in the config, SMOKE_PASSWORD in the secrets), a
+# signed-in list answers. Prints what failed.
+smoke_check() {
+  local base="http://127.0.0.1:$(app_port)" page asset jar ok=0
+  page=$(curl -fsS --max-time 10 "$base/login" 2>/dev/null) && grep -qi '<html' <<<"$page" || { warn "smoke: /login did not render"; return 1; }
+  asset=$(grep -o '/_next/static/[^"]*\.js' <<<"$page" | head -1)
+  [ -n "$asset" ] && curl -fsS --max-time 10 -o /dev/null "$base$asset" || { warn "smoke: $asset did not load"; return 1; }
+  if [ -n "${SMOKE_USER:-}" ] && [ -n "${SMOKE_PASSWORD:-}" ]; then
+    jar=$(mktemp)
+    # The body goes through stdin and JSON.stringify: no password on a command line, no quoting bugs.
+    if SMOKE_USER=$SMOKE_USER SMOKE_PASSWORD=$SMOKE_PASSWORD "$ROOT/current/node/bin/node" -e 'console.log(JSON.stringify({ username: process.env.SMOKE_USER, password: process.env.SMOKE_PASSWORD }))' \
+         | curl -fsS --max-time 10 -c "$jar" -H 'content-type: application/json' --data @- "$base/api/login" -o /dev/null \
+       && curl -fsS --max-time 10 -b "$jar" "$base/api/me" | grep -q '"ok":true' \
+       && curl -fsS --max-time 20 -b "$jar" -o /dev/null "$base/api/customers"; then ok=1; fi
+    rm -f "$jar"
+    [ "$ok" = 1 ] || { warn "smoke: signed-in check as $SMOKE_USER failed (login, /api/me or /api/customers)"; return 1; }
+  fi
+  return 0
 }
 
 switch_to() {
@@ -173,17 +195,17 @@ cmd_upgrade() {
   run_migrations "$ROOT/releases/$version" || die "migrations failed; the live release ($from) was not touched. Read the error above."
   say "Starting $version"
   switch_to "$version"
-  if wait_healthy; then
+  if wait_healthy "$version" && smoke_check; then
     say "$version is live"
     prune_releases
     return 0
   fi
-  warn "$version did not answer /api/health within 60 s"
+  warn "$version failed its checks (health within 60 s, then the smoke check)"
   if [ -z "$from" ]; then die "first install: nothing to go back to. See: routeflow logs"; fi
   if [ "${#pending[@]}" = 0 ] || all_expand_only "$ROOT/releases/$version" "${pending[@]}"; then
     warn "switching back to $from (the new migrations only add, so $from can run on this database)"
     switch_to "$from"
-    wait_healthy && die "back on $from; $version stays unpacked for a look: routeflow logs" || die "$from is not healthy either. See: routeflow logs"
+    wait_healthy "$from" && die "back on $from; $version stays unpacked for a look: routeflow logs" || die "$from is not healthy either. See: routeflow logs"
   fi
   die "NOT switching back: a migration in $version changes existing data or columns, so $from may not run on this database. $version is still live and unhealthy. See: routeflow logs, then decide."
 }
@@ -225,7 +247,7 @@ cmd_rollback() {
   [ -n "$to" ] || die "no earlier release on this machine"
   say "Rolling back $from -> $to (the database is not rolled back)"
   switch_to "$to"
-  wait_healthy && say "$to is live" || die "$to did not become healthy. See: routeflow logs"
+  wait_healthy "$to" && say "$to is live" || die "$to did not become healthy. See: routeflow logs"
 }
 
 cmd_status() {
