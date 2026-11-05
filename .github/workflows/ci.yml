@@ -93,7 +93,7 @@ jobs:
       # companies, the sync triggers are there. Backups are skipped (no pgBackRest in this job).
       - name: Server scripts parse; doctor passes on the migrated template
         run: |
-          bash -n db/server/install.sh deploy/routeflow scripts/release/pack.sh
+          bash -n db/server/install.sh deploy/routeflow deploy/monitor/routeflow-monitor scripts/release/pack.sh
           for f in scripts/pg/*.mjs scripts/_db.mjs; do node --check "$f"; done
           RF_EXPECT_PGBACKREST=0 PG_APP_ROLE=routeflow_app \
             DATABASE_URL=postgres://postgres:ci@localhost:5432/rf_template node scripts/pg/doctor.mjs
