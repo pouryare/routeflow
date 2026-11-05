@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import TapFlow, { type CustomStepApi } from "@/components/tapflow/TapFlow";
 import DateStep from "@/components/tapflow/DateStep";
 import FlowDone from "@/components/tapflow/FlowDone";
@@ -42,6 +42,20 @@ export default function ReminderFlow({
     }),
     [kind, entity, today],
   );
+
+  // The person's own earlier wording, to finish what they type. Failing to load just means no suggestions.
+  const [past, setPast] = useState<string[]>([]);
+  useEffect(() => {
+    if (!open) return;
+    let stopped = false;
+    void fetch(`/api/tasks/suggest?kind=${kind}`)
+      .then((r) => r.json())
+      .then((d: { titles?: string[] }) => !stopped && setPast(d.titles ?? []))
+      .catch(() => undefined);
+    return () => {
+      stopped = true;
+    };
+  }, [open, kind]);
 
   const noun = kind === "note" ? "یادداشت" : "یادآوری";
   const { state, setState, onSaved } = useFlowHost(reminderFlow, ctx, {
@@ -86,6 +100,7 @@ export default function ReminderFlow({
       onSaved={onSaved}
       onClose={onClose}
       renderCustom={renderCustom}
+      suggest={past}
       done={<FlowDone key={state.answers.length} chips={reminderChips(ctx, state)} onReturn={onClose} />}
     />
   );
