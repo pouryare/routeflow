@@ -32,3 +32,13 @@ export function dbReady(): Promise<void> {
   getDb();
   return _pgReady!();
 }
+
+/** True when the database answers a trivial query; for the public health check. */
+export async function dbAnswers(): Promise<boolean> {
+  try {
+    await getDb().prepare("SELECT 1 AS ok").get();
+    return true;
+  } catch {
+    return false;
+  }
+}

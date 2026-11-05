@@ -42,6 +42,7 @@ const PUBLIC_BY_DESIGN: Record<string, string> = {
   "POST login/second-factor/route.ts": "second sign-in step: public like /api/login, it answers only with a valid password-step challenge",
   "POST logout/route.ts": "clearing a cookie needs no session; idempotent",
   "GET map/tiles/[z]/[x]/[y]/route.ts": "basemap tiles: public map data, served cookie-free so the CDN can cache each tile",
+  "GET health/route.ts": "liveness check for the outside monitor and upgrades: answers only ok and the version, no data",
   "DELETE admin/impersonate/route.ts": "ends a Login-As; with no saved owner session it only clears both cookies",
 };
 
