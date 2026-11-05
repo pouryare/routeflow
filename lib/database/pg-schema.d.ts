@@ -877,6 +877,8 @@ export interface Orders {
   discount_toman: Generated<number>;
   group_id: number | null;
   id: Generated<number>;
+  invoice_sent_at: string | null;
+  invoice_sent_via: string | null;
   kg_total: number | null;
   notes: string | null;
   offline: Generated<number>;

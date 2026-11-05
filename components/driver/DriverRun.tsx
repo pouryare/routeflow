@@ -15,6 +15,7 @@ import { useUndoableAction } from "@/components/tapflow/useUndoableAction";
 import { useMyPosition } from "@/components/MyPositionProvider";
 import { stopAtDoor } from "@/lib/arrival";
 import ReceiptPrinter from "@/components/sales/ReceiptPrinter";
+import type { InvoiceVia } from "@/lib/invoiceSent";
 import type { ReceiptData } from "@/lib/receiptLayout";
 import PriorityTag from "@/components/sales/PriorityTag";
 
@@ -32,6 +33,15 @@ const subscribeOnline = (notify: () => void) => {
     window.removeEventListener("offline", notify);
   };
 };
+
+/** FB38: the office sees when the paper went out. Best effort; a lost stamp loses nothing else. */
+function stampSent(stopId: number, via: InvoiceVia) {
+  void fetch(`/api/driver/stops/${stopId}/invoice-sent`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ via }),
+  }).catch(() => {});
+}
 
 /** The round, one stop at a time.
  *
@@ -58,6 +68,7 @@ export default function DriverRun({
   const router = useRouter();
   const [openStop, setOpenStop] = useState<number | null>(null);
   const [receipt, setReceipt] = useState<ReceiptData | null>(null);
+  const [receiptStop, setReceiptStop] = useState<number | null>(null);
   const [folded, setFolded] = useState(false);
 
   /* Arrival: when the driver is within 150 m of a pending stop, a one-line banner offers the
@@ -139,7 +150,7 @@ export default function DriverRun({
             open={openStop === stop.id}
             onToggle={() => setOpenStop(openStop === stop.id ? null : stop.id)}
             onRecorded={() => router.refresh()}
-            onPrint={(data) => { setFolded(false); setReceipt(data); }}
+            onPrint={(data) => { setFolded(false); setReceipt(data); setReceiptStop(stop.id); }}
             runDate={run.run_date}
             driverName={driverName}
             businessName={businessName}
@@ -175,7 +186,7 @@ export default function DriverRun({
           </div>
           <div className="foldbill" data-folded={folded}>
             <div className="foldbill__inner">
-              <ReceiptPrinter data={receipt} />
+              <ReceiptPrinter data={receipt} onSent={(via) => receiptStop !== null && stampSent(receiptStop, via)} />
             </div>
           </div>
         </div>

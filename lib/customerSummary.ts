@@ -34,7 +34,8 @@ export interface CustomerSummary {
   balance: number;
   balance_over_30: number;
   /** Newest first, at most five. */
-  recent: { id: number; order_no: string; total_toman: number; order_date: string }[];
+  /** `invoice_sent_at`: when the receipt first went out (FB38), null when it never did. */
+  recent: { id: number; order_no: string; total_toman: number; order_date: string; invoice_sent_at: string | null }[];
   /** This customer's delivered spend as a fraction of everything the caller can see in
    *  the same window, 0–1. Share of the whole book, NOT of a district: customers carry a
    *  city and an address but no district id, so a "share of منطقه" figure would have to
@@ -49,6 +50,7 @@ interface Row extends LineSnapshot {
   order_no: string;
   order_date: string;
   customer_id: number;
+  invoice_sent_at: string | null;
 }
 
 export async function readCustomerSummary(
@@ -94,7 +96,7 @@ export async function readCustomerSummary(
       .prepare(
         `SELECT ol.packs_ordered, ol.packs_delivered, ol.unit_price_toman, ol.unit_cost_toman,
                 ol.qty_per_pack, ol.kg_per_base_unit,
-                o.id AS order_id, o.order_no, o.order_date, o.customer_id
+                o.id AS order_id, o.order_no, o.order_date, o.customer_id, o.invoice_sent_at
            FROM order_lines ol
            JOIN orders o ON o.id = ol.order_id
           WHERE o.status IN (${sqlStatusList(FULFILLED_ORDER_STATUSES)}) AND o.order_date >= ?${scope.sql}`
@@ -105,7 +107,7 @@ export async function readCustomerSummary(
   let spend = 0;
   let kg = 0;
   let book = 0;
-  const orders = new Map<number, { order_no: string; order_date: string; total: number }>();
+  const orders = new Map<number, { order_no: string; order_date: string; total: number; sent: string | null }>();
 
   for (const l of lines) {
     const total = lineTotalToman(l);
@@ -115,11 +117,11 @@ export async function readCustomerSummary(
     kg += lineKg(l);
     const seen = orders.get(l.order_id);
     if (seen) seen.total += total;
-    else orders.set(l.order_id, { order_no: l.order_no, order_date: l.order_date, total });
+    else orders.set(l.order_id, { order_no: l.order_no, order_date: l.order_date, total, sent: l.invoice_sent_at ?? null });
   }
 
   const recent = [...orders.entries()]
-    .map(([id, o]) => ({ id, order_no: o.order_no, total_toman: o.total, order_date: o.order_date }))
+    .map(([id, o]) => ({ id, order_no: o.order_no, total_toman: o.total, order_date: o.order_date, invoice_sent_at: o.sent }))
     .sort((a, b) => b.order_date.localeCompare(a.order_date) || b.id - a.id)
     .slice(0, 5);
 

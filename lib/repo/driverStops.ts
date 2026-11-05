@@ -87,3 +87,12 @@ export async function runForNotes(session: Session, runId: number) {
   const docs = await documentSettingsFor(session.organizationId);
   return { run, vehicle: row.vehicle, businessName: await organizationName(session.organizationId) ?? "فروش و پخش", footer: docs.deliveryNoteFooter };
 }
+
+/** FB38: stamp the first time this stop's receipt went out. A later print keeps the first stamp. */
+export async function stampInvoiceSent(orderId: number, organizationId: number, via: string): Promise<void> {
+  await getDb()
+    .prepare(
+      "UPDATE orders SET invoice_sent_at = COALESCE(invoice_sent_at, ?), invoice_sent_via = COALESCE(invoice_sent_via, ?) WHERE id = ? AND organization_id = ?"
+    )
+    .run(new Date().toISOString(), via, orderId, organizationId);
+}
