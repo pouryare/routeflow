@@ -68,7 +68,6 @@ export default function StorageTrash({ open, onClose, onRestored }: { open: bool
             {items.map((f) => (
               <li key={f.id} className="flex items-center gap-3 rounded-md border border-border p-2">
                 {f.variants.split(",").includes("webp") ? (
-                  // eslint-disable-next-line @next/next/no-img-element -- a private, per-owner preview; next/image would cache it
                   <img src={`/api/storages/trash/${f.id}`} alt="" className="size-14 shrink-0 rounded object-cover" loading="lazy" />
                 ) : (
                   <span className="flex size-14 shrink-0 items-center justify-center rounded bg-surface-2">
