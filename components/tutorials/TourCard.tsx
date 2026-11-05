@@ -105,7 +105,10 @@ export default function TourCard() {
     if (!step?.target || (step.advance ?? "tap") !== "tap" || mode === "ghost") return;
     const sel = `[data-tour="${step.target}"]`;
     const onTap = (e: Event) => {
-      if ((e.target as Element | null)?.closest?.(sel)) window.setTimeout(next, 250);
+      /* Only a press on a button or link inside the target counts: typing in a pick step's search
+         box must not move the tutorial on. */
+      const hit = (e.target as Element | null)?.closest?.("button, a, [role=button], [role=option], [role=row], label");
+      if (hit?.closest(sel)) window.setTimeout(next, 250);
     };
     const onSlide = (e: Event) => {
       if ((e as CustomEvent<string>).detail === step.target) window.setTimeout(next, 250);
@@ -127,7 +130,11 @@ export default function TourCard() {
     }
     if (!el && step?.target) return;
     const id = window.setTimeout(() => {
-      if (el && (step?.advance ?? "tap") === "tap") el.click();
+      if (el && (step?.advance ?? "tap") === "tap") {
+        // A whole step (a pick list) is the target: the hand presses its first answer.
+        const press = el.matches("button, a, [role=button]") ? el : el.querySelector<HTMLElement>("button:not([disabled]), a");
+        press?.click();
+      }
       next();
     }, 1800);
     return () => window.clearTimeout(id);

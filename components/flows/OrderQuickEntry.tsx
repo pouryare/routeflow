@@ -16,7 +16,7 @@ export default function OrderQuickEntry({ customers, products, initialCustomerId
   const [flow, setFlow] = useState(() => autoOpenFlow("quick", currentSearch()));
   return (
     <div className="md:hidden">
-      <button
+      <button data-tour="open:order_quick"
         type="button"
         onClick={() => setFlow((f) => ({ key: f.key + 1, open: true }))}
         className="inline-flex w-full items-center justify-center gap-[var(--space-2)] rounded-[var(--radius-md)] bg-[var(--accent)] px-[var(--space-4)] py-[var(--space-3)] text-[length:var(--text-base)] font-medium text-accent-ink"

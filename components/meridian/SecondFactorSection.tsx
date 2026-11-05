@@ -113,7 +113,7 @@ export default function SecondFactorSection() {
           </button>
         </div>
       ) : (
-        <button type="button" className={BUTTON} disabled={busy} onClick={() => void act("begin")}>
+        <button type="button" data-tour="2fa:begin" className={BUTTON} disabled={busy} onClick={() => void act("begin")}>
           <Icon name="check" size="md" />
           فعال‌سازی
         </button>

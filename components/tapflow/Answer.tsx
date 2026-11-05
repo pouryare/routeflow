@@ -143,9 +143,9 @@ export function GoButton({ icon = "check", isDisabled, onPress, children }: { ic
 /** An answer that is a page: HeroUI's Link wearing the secondary Button look and the `tf-opt`
  *  card shape, so the «بیشتر» menu rows match the answers around them. Client navigation goes
  *  through HeroUIProvider's RouterProvider. */
-export function AnswerLink({ href, icon, onPress, children }: { href: string; icon?: IconName; onPress?: () => void; children: ReactNode }) {
+export function AnswerLink({ href, icon, onPress, tour, children }: { href: string; icon?: IconName; onPress?: () => void; tour?: string; children: ReactNode }) {
   return (
-    <Link href={href} onPress={onPress} className={`${buttonVariants({ variant: "secondary" })} tf-opt`}>
+    <Link href={href} onPress={onPress} data-tour={tour} className={`${buttonVariants({ variant: "secondary" })} tf-opt`}>
       {icon ? <Icon name={icon} size="md" /> : null}
       {children}
     </Link>

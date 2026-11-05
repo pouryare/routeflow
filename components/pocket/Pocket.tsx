@@ -160,7 +160,7 @@ export default function Pocket({
           </span>
           {c.recur ? <Icon name="repeat" size="sm" label="تکرارشونده" /> : null}
           {c.customer && c.status === "open" && c.kind !== "order" && c.kind !== "delivery_retry" ? (
-            <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn solid" style={{ padding: "2px 10px", fontSize: 11 }}
+            <button data-tour="task-result" type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn solid" style={{ padding: "2px 10px", fontSize: 11 }}
               onClick={() => setFlow({ customerId: c.customer!.id, taskId: c.id, open: true })}>
               <Icon name="check" size="md" />
               ثبت نتیجه
@@ -252,11 +252,11 @@ export default function Pocket({
       ) : null}
 
       <div className="acts" style={{ margin: "14px 0 8px" }}>
-        <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn ghost" onClick={() => openQuick("reminder")}>
+        <button data-tour="pocket:reminder" type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn ghost" onClick={() => openQuick("reminder")}>
           <Icon name="alarm" size="md" />
           ثبت یادآوری
         </button>
-        <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn ghost" onClick={() => openQuick("note")}>
+        <button data-tour="pocket:note" type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn ghost" onClick={() => openQuick("note")}>
           <Icon name="note" size="md" />
           ثبت یادداشت
         </button>

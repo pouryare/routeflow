@@ -116,6 +116,7 @@ function StepBody({ flow, view, submit, hours, onNavigate, navigateUrl, vars, it
     const raw = view.input ? vars[view.input.field] : undefined;
     const unit = (view.input && vars[`${view.input.field}_unit`]) || view.input?.unit;
     return (
+      <div data-tour={`${flow}:${view.id}`}>
       <AmountStep
         prefill={raw ? Number(raw) : null}
         option={view.options[0]}
@@ -125,10 +126,12 @@ function StepBody({ flow, view, submit, hours, onNavigate, navigateUrl, vars, it
         allowZero={view.input?.allowZero}
         submit={submit}
       />
+      </div>
     );
   }
-  if (view.kind === "pick") return <PickStep choices={view.choices} optionId={view.options[0].id} extras={view.options.slice(1)} submit={submit} />;
-  if (view.kind === "stepper") return <StepperStep items={items} option={view.options[0]} submit={submit} />;
+  /* Tutorials point at a whole step of these kinds (`flow:step`) and move on with «ادامه». */
+  if (view.kind === "pick") return <div data-tour={`${flow}:${view.id}`}><PickStep choices={view.choices} optionId={view.options[0].id} extras={view.options.slice(1)} submit={submit} /></div>;
+  if (view.kind === "stepper") return <div data-tour={`${flow}:${view.id}`}><StepperStep items={items} option={view.options[0]} submit={submit} /></div>;
 
   if (pickFor) {
     return (

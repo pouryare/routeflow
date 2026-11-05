@@ -103,7 +103,7 @@ export default function TaskRow({ taskId, label, sub, customerId, snoozable = fa
       </span>
       <div className="flex flex-wrap gap-[var(--space-2)]">
         {customerId ? (
-          <button type="button" className="inline-flex min-h-[44px] items-center justify-center gap-[var(--space-2)] btn solid" onClick={() => setFlow({ open: true })}>
+          <button data-tour="task-result" type="button" className="inline-flex min-h-[44px] items-center justify-center gap-[var(--space-2)] btn solid" onClick={() => setFlow({ open: true })}>
             <Icon name="check" size="md" />
             ثبت نتیجهٔ این کار
           </button>

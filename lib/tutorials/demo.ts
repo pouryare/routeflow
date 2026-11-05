@@ -1,4 +1,5 @@
 import type { RunDetail } from "@/lib/delivery";
+import type { BusinessRow } from "@/lib/repo/crm/businesses";
 
 /** The demo rows a page shows while a tutorial runs (plan section 11). Every id is negative or starts
  *  with `demo-`, so nothing here can ever be saved (lib/tutorials/pretend.ts, proxy.ts). Names say
@@ -57,6 +58,24 @@ const DRIVER_RUN: RunDetail = {
 DRIVER_RUN.to_collect_toman = DRIVER_RUN.stops.reduce((s, x) => s + x.total_toman, 0);
 
 /** Set id → { list key → rows }. A list reads its key with useTutorialData. */
+/** Customers and leads for the CRM list. Phones are the 0900 test range, never a real number. */
+const biz = (id: number, name: string, area: string, temperature: string, stage: string, next: string | null): BusinessRow => ({
+  id, business_name: name, business_type: "cafe", area_label: area, address: `${area}، خیابان نمونه`,
+  phone_norm: `0900000000${-id}`, lat: null, lng: null, location_precision: null, maps_url: null,
+  temperature, sales_stage: stage, contact_status: null, verification: "verified", price_tier: "mid",
+  working_hours_json: null, source_code: null, owner_user_id: null, owner_name: null, group_id: null,
+  organization_id: 0, attempt_count: 1, last_activity_at: null, next_task_id: next ? id : null,
+  next_title: next, next_kind: next ? "call" : null, next_due_at: next ? new Date().toISOString() : null,
+  contact_name: null, contact_role: null, last_order_at: null, closed_at: null,
+});
+
+const CRM_ROWS: BusinessRow[] = [
+  biz(-1, "کافهٔ نمونه", "ونک", "hot", "unknown", "تماس اول"),
+  biz(-2, "رستوران نمونهٔ شمال", "تجریش", "warm", "interested", "ارسال قیمت"),
+  biz(-3, "شیرینی‌فروشی نمونه", "پونک", "cold", "customer", null),
+];
+
 export const DEMO_SETS: Record<string, Record<string, unknown>> = {
   "driver-day": { "driver-run": DRIVER_RUN },
+  crm: { "crm-rows": CRM_ROWS },
 };

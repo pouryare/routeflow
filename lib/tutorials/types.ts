@@ -33,6 +33,8 @@ export type Tutorial = {
   /** A real setup job (add a product, add a staff account): saves go through for real. Never set on a
    *  tutorial that records money or sends a message. Practice runs stay pretend. */
   real?: boolean;
+  /** false: no ghost demo, because a step needs typing or a real choice the hand cannot make. */
+  ghost?: boolean;
   /** Starts by itself on the first sign-in (the bottom-bar tour), instead of offering a chip. */
   autoStart?: boolean;
   steps: readonly TutorialStep[];

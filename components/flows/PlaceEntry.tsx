@@ -9,7 +9,7 @@ export default function PlaceEntry({ onAdded }: { onAdded: () => void }) {
   const [flow, setFlow] = useState({ key: 0, open: false });
   return (
     <div className="md:hidden">
-      <button
+      <button data-tour="open:place"
         type="button"
         onClick={() => setFlow((f) => ({ key: f.key + 1, open: true }))}
         className="inline-flex min-h-[44px] w-full items-center justify-center gap-[var(--space-2)] rounded-[var(--radius-md)] bg-accent px-4 text-[length:var(--text-sm)] font-medium text-accent-ink"

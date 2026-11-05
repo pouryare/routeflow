@@ -48,7 +48,7 @@ export function firstSteps(role: Role, p: TutorialProgress, all: readonly Tutori
 }
 
 /** The ghost hand plays a job once before «حالا شما» when it takes three taps or more (idea I5). */
-export const wantsGhost = (t: Tutorial) => t.steps.filter((s) => s.target && (s.advance ?? "tap") === "tap").length >= 3;
+export const wantsGhost = (t: Tutorial) => t.ghost !== false && t.steps.filter((s) => s.target && (s.advance ?? "tap") === "tap").length >= 3;
 
 /** Persian text as people type it: Arabic ي and ك become ی and ک, the half-space and extra spaces
  *  fold, so «ثبت چك» finds «ثبت چک». */

@@ -48,7 +48,7 @@ export const VAN_TUTORIALS: Tutorial[] = [
       { text: "روی مشتری بزنید.", target: "stop-open" },
       { text: "«ثبت تحویل این مشتری» را بزنید.", target: "stop-deliver" },
       { text: "اگر چیزی کم شد یا مشتری بخشی را پس داد، «نه، کم شد» را بزنید.", target: "delivery:all:no" },
-      { text: "تعداد هر قلم را با دکمه‌های بعلاوه و منها درست کنید. بعد «ادامه» را بزنید.", target: "delivery:short:ok" },
+      { text: "تعداد هر قلم را با دکمه‌های بعلاوه و منها درست کنید، بعد «ادامه» را بزنید.", target: "delivery:short", advance: "next" },
       { text: "دلیل را انتخاب کنید تا مدیر بداند چه شد. بقیه مثل یک تحویل معمولی است." },
     ],
   },
