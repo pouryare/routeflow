@@ -901,6 +901,7 @@ export interface Organizations {
   contact_name: string | null;
   contact_phone: string | null;
   created_at: string;
+  delivery_note_footer: string | null;
   discount_auto_pass_pct: Generated<number>;
   discount_commission_pct: Generated<number>;
   effects: Generated<string>;
@@ -910,7 +911,9 @@ export interface Organizations {
   maintenance_note: string | null;
   maintenance_to: string | null;
   name: string;
+  order_prefix: string | null;
   plan: Generated<string>;
+  receipt_footer: string | null;
   slug: string;
   sound_skin: Generated<string>;
   step_up_required: Generated<boolean>;

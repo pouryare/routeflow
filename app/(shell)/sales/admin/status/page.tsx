@@ -9,6 +9,8 @@ import { faJalaliDateTime } from "@/lib/jalali";
 import MaintenanceForm from "@/components/meridian/MaintenanceForm";
 import { maintenanceFor } from "@/lib/repo/maintenance";
 import AccessReviewCard from "@/components/meridian/AccessReviewCard";
+import DocumentSettingsForm from "@/components/meridian/DocumentSettingsForm";
+import { documentSettingsFor } from "@/lib/repo/documentSettings";
 import { accessReview } from "@/lib/accessReview";
 import { accessUsers, recentImpersonations } from "@/lib/repo/accessReview";
 
@@ -30,6 +32,7 @@ export default async function StatusPage() {
   const maintenance = await maintenanceFor(session.organizationId);
   const review = accessReview(await accessUsers(session.organizationId), new Date().toISOString());
   const logins = await recentImpersonations(session.organizationId);
+  const docs = await documentSettingsFor(session.organizationId);
 
   return (
     <>
@@ -55,6 +58,9 @@ export default async function StatusPage() {
       </div>
       <div className="mt-[var(--space-4)]">
         <MaintenanceForm current={maintenance} />
+      </div>
+      <div className="mt-[var(--space-4)]">
+        <DocumentSettingsForm current={docs} />
       </div>
     </>
   );

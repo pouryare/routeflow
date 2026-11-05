@@ -1,6 +1,8 @@
 import { tehranTodayIso, faJalaliLong, faJalaliDate, toJalali, jalaliToIsoDate } from "@/lib/jalali";
 import MaintenanceBanner from "@/components/meridian/MaintenanceBanner";
 import { maintenanceFor } from "@/lib/repo/maintenance";
+import { documentSettingsFor } from "@/lib/repo/documentSettings";
+import { organizationName } from "@/lib/repo/organizations";
 import { maintenancePhase } from "@/lib/maintenance";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
@@ -83,6 +85,8 @@ export default async function DriverPage() {
   const period = { from: jalaliToIsoDate(j.jy, j.jm, 1), to: jalaliToIsoDate(j.jy, j.jm, j.jd) };
   const { run, leadRun, commission } = await driverHomeData(session, today, period);
   const maintenance = await maintenanceFor(session.organizationId);
+  const docs = await documentSettingsFor(session.organizationId);
+  const businessName = (await organizationName(session.organizationId)) ?? "فروش و پخش";
   const phase = maintenancePhase(maintenance, new Date().toISOString());
 
   return (
@@ -138,7 +142,8 @@ export default async function DriverPage() {
             <DriverRun
               run={plain([run])[0]}
               driverName={session.user.display_name}
-              businessName="فروش و پخش"
+              businessName={businessName}
+              receiptFooter={docs.receiptFooter}
             />
           )}
 

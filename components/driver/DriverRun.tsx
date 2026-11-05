@@ -48,10 +48,12 @@ export default function DriverRun({
   run,
   driverName,
   businessName,
+  receiptFooter = null,
 }: {
   run: RunDetail;
   driverName: string;
   businessName: string;
+  receiptFooter?: string | null;
 }) {
   const router = useRouter();
   const [openStop, setOpenStop] = useState<number | null>(null);
@@ -141,6 +143,7 @@ export default function DriverRun({
             runDate={run.run_date}
             driverName={driverName}
             businessName={businessName}
+            receiptFooter={receiptFooter}
             lastStop={run.stops.every((s) => s.id === stop.id || s.status !== "pending")}
           />
         ))}
@@ -202,6 +205,7 @@ function StopCard({
   runDate,
   driverName,
   businessName,
+  receiptFooter,
   lastStop,
 }: {
   stop: RunStop;
@@ -214,6 +218,7 @@ function StopCard({
   runDate: string;
   driverName: string;
   businessName: string;
+  receiptFooter: string | null;
   lastStop: boolean;
 }) {
   /* The flow remounts per opening (the `key`), which is what gives each visit a fresh set of
@@ -373,6 +378,7 @@ function StopCard({
                     runDate,
                     driverName,
                     businessName,
+                    footer: receiptFooter,
                   }),
                 )
               }
@@ -393,6 +399,7 @@ function StopCard({
           runDate={runDate}
           driverName={driverName}
           businessName={businessName}
+          receiptFooter={receiptFooter}
           onRecorded={onRecorded}
           onPrint={onPrint}
           onClose={() => setFlowOpen(false)}

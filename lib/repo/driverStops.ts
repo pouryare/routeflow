@@ -6,6 +6,7 @@ import { deferStop, readDriverRuns, readRun, recordDelivery } from "@/lib/delive
 import { canReachGroup, type Session } from "@/lib/session";
 import { MANAGE_ROLES } from "@/lib/roles";
 import { organizationName } from "@/lib/repo/organizations";
+import { documentSettingsFor } from "@/lib/repo/documentSettings";
 
 export interface OwnedStop {
   id: number;
@@ -82,5 +83,7 @@ export async function runForNotes(session: Session, runId: number) {
   const allowed = MANAGE_ROLES.includes(session.role) ? await canReachGroup(session, row.group_id) : row.driver_user_id === session.user.id;
   if (!allowed) return null;
   const run = await readRun(db, runId);
-  return run ? { run, vehicle: row.vehicle, businessName: await organizationName(session.organizationId) ?? "فروش و پخش" } : null;
+  if (!run) return null;
+  const docs = await documentSettingsFor(session.organizationId);
+  return { run, vehicle: row.vehicle, businessName: await organizationName(session.organizationId) ?? "فروش و پخش", footer: docs.deliveryNoteFooter };
 }
