@@ -1,4 +1,4 @@
-import type { FlowConfig, FlowContext, FlowOption } from "@/lib/crm/flows/types";
+import type { FlowAnswer, FlowConfig, FlowContext, FlowOption } from "@/lib/crm/flows/types";
 import { faNum, faToman } from "@/lib/format";
 import { METHOD_LABEL } from "@/lib/flows/payment";
 
@@ -97,3 +97,45 @@ export function expenseChips(ctx: FlowContext, st: Vals): string[] {
 /** Did the person take a receipt photo? (The photo step is the last; its answer is recorded.) */
 export const hasPhoto = (st: { answers?: { step: string; option: string }[] }): boolean =>
   (st.answers ?? []).some((a) => a.step === "photo" && a.option === "take");
+
+const PAID_TO = "پرداخت به ";
+
+/** The supplier name `expenseRequest` wrote into the memo, or null for a memo it did not write. */
+export function supplierFromMemo(memo: string | null | undefined): string | null {
+  if (!memo || !memo.startsWith(PAID_TO)) return null;
+  const name = memo.slice(PAID_TO.length).trim();
+  return name || null;
+}
+
+/** «تکرار این» (A10): the answers that bring a new expense to "how was it paid?" with the old
+ *  category, amount and supplier already given. The date is today's (the flow never asks it) and
+ *  the paying method is asked again. Empty when the old category is no longer offered (a retired
+ *  account), so the flow simply starts from the top. `ctx.lists.supplier` must already hold the
+ *  supplier, which ExpenseFlow makes sure of. */
+export function repeatAnswers(
+  ctx: FlowContext,
+  old: { accountId: number; amountToman: number; supplier: string | null },
+): FlowAnswer[] {
+  if (!(ctx.lists?.category ?? []).some((c) => c.id === old.accountId)) return [];
+  if (!(old.amountToman > 0)) return [];
+  const sup = old.supplier ? (ctx.lists?.supplier ?? []).find((s) => s.label === old.supplier) : undefined;
+  return [
+    { step: "category", option: "pick", value: String(old.accountId) },
+    { step: "amount", option: "ok", value: String(Math.round(old.amountToman)) },
+    { step: "supplier", option: sup ? `s${sup.id}` : "nosup" },
+  ];
+}
+
+/** One expense as a row of the «آخرین هزینه‌ها» list (lib/repo/reports.ts recentExpenses): what it
+ *  was for, how much, the memo (where the supplier is kept), whether a receipt photo is attached,
+ *  and who entered it. */
+export interface RecentExpense {
+  journalId: number;
+  postedAt: string;
+  accountId: number;
+  categoryFa: string;
+  amountToman: number;
+  memo: string | null;
+  hasReceipt: boolean;
+  enteredBy: string | null;
+}

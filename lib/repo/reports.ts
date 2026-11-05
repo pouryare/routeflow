@@ -1,5 +1,6 @@
 import { withRunningBalance } from "@/lib/runningBalance";
 import { getDb } from "@/lib/db";
+import type { RecentExpense } from "@/lib/flows/expense";
 
 /**
  * The read layer for the accounting section. Every number a screen shows comes from here.
@@ -445,6 +446,26 @@ export async function expensesByCategory(organizationId: number, filter?: { peri
         ORDER BY amountToman DESC`
     )
     .all(...(args as never[]));
+}
+
+/** The «آخرین هزینه‌ها» rows (A10). Voided expenses (a reversal points at them) are left out. */
+export async function recentExpenses(organizationId: number, limit = 30): Promise<RecentExpense[]> {
+  const rows = await getDb()
+    .prepare(
+      `SELECT j.id AS journalId, j.posted_at AS postedAt, a.id AS accountId, a.name_fa AS categoryFa,
+              e.amount_toman AS amountToman, j.memo AS memo, u.display_name AS enteredBy,
+              EXISTS (SELECT 1 FROM expense_receipts x WHERE x.journal_id = j.id AND x.organization_id = j.organization_id) AS hasReceipt
+         FROM journals j
+         JOIN ledger_entries e ON e.journal_id = j.id AND e.side = 'D'
+         JOIN accounts a ON a.id = e.account_id AND a.type = 'EXPENSE'
+         LEFT JOIN users u ON u.id = j.created_by
+        WHERE j.organization_id = ? AND j.source_type = 'EXPENSE'
+          AND NOT EXISTS (SELECT 1 FROM journals r WHERE r.reverses_journal_id = j.id)
+        ORDER BY j.posted_at DESC, j.id DESC
+        LIMIT ?`
+    )
+    .all(organizationId, limit) as (Omit<RecentExpense, "hasReceipt"> & { hasReceipt: unknown })[];
+  return rows.map((r) => ({ ...r, journalId: Number(r.journalId), accountId: Number(r.accountId), amountToman: Number(r.amountToman), hasReceipt: !!r.hasReceipt }));
 }
 
 /** Who entered what. Accountability, not a second set of books: a group_manager may enter

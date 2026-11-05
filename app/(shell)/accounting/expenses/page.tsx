@@ -2,7 +2,7 @@ import PageHeader from "@/components/meridian/PageHeader";
 import SectionHead from "@/components/meridian/SectionHead";
 import AcctTable, { CELL, NUM } from "@/components/accounting/AcctTable";
 import { requireAccounting } from "@/lib/accountingGate";
-import { expensesByCategory, expensesByEnterer } from "@/lib/repo/reports";
+import { expensesByCategory, expensesByEnterer, recentExpenses } from "@/lib/repo/reports";
 import { faNum } from "@/lib/format";
 import ExpenseEntry from "@/components/flows/ExpenseEntry";
 import { expenseCategories } from "@/lib/repo/ledgerPostings";
@@ -36,6 +36,7 @@ export default async function ExpensesPage() {
      pass from a server component to a client one. */
   const categories = (await expenseCategories()).map((c) => ({ id: c.id, nameFa: c.nameFa }));
   const suppliers = (await listSuppliers(organizationId)).map((x) => x.name);
+  const recent = (await recentExpenses(organizationId)).map((r) => ({ ...r }));
 
   const total = byCategory.reduce((s, r) => s + r.amountToman, 0);
 
@@ -51,9 +52,7 @@ export default async function ExpensesPage() {
         }
       />
 
-      <div className="mb-4 flex">
-        <ExpenseEntry categories={categories} suppliers={suppliers} />
-      </div>
+      <ExpenseEntry categories={categories} suppliers={suppliers} recent={recent} />
 
       <section className="mb-6">
         <SectionHead title="بر اساس حساب" as="h3" />

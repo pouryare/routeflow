@@ -10,12 +10,19 @@ import { Icon } from "@/components/meridian/Icon";
 import FlowDone from "@/components/tapflow/FlowDone";
 import { useFlowHost } from "@/components/tapflow/useFlowHost";
 import { EMPTY_CONTEXT, type FlowContext } from "@/lib/crm/flows/types";
-import { expenseChips, expenseFlow, expenseRequest, hasPhoto } from "@/lib/flows/expense";
+import { expenseChips, expenseFlow, expenseRequest, hasPhoto, repeatAnswers } from "@/lib/flows/expense";
 import { tehranTodayIso } from "@/lib/jalali";
 
 export interface ExpenseCategory {
   id: number;
   nameFa: string;
+}
+
+/** An earlier expense to enter again (A10): same category, amount and supplier, today's date. */
+export interface ExpenseRepeat {
+  accountId: number;
+  amountToman: number;
+  supplier: string | null;
 }
 
 const FAILURE = "هزینه ثبت نشد. اینترنت را بررسی کنید و دوباره تلاش کنید.";
@@ -27,8 +34,10 @@ export default function ExpenseFlow({
   suppliers,
   onClose,
   onReopen,
+  repeat,
 }: {
   open: boolean;
+  repeat?: ExpenseRepeat;
   categories: ExpenseCategory[];
   /** Recent supplier names, offered as answers. */
   suppliers: string[];
@@ -37,18 +46,20 @@ export default function ExpenseFlow({
 }) {
   const router = useRouter();
   const today = useMemo(() => tehranTodayIso(), []);
-  const ctx = useMemo<FlowContext>(
-    () => ({
+  const repeatSupplier = repeat?.supplier ?? null;
+  const ctx = useMemo<FlowContext>(() => {
+    // A repeated expense's supplier is offered even when it is not among the recent names.
+    const names = repeatSupplier && !suppliers.includes(repeatSupplier) ? [repeatSupplier, ...suppliers] : suppliers;
+    return {
       ...EMPTY_CONTEXT,
       entry: "expense",
       lists: {
         category: categories.map((c) => ({ id: c.id, label: c.nameFa })),
-        supplier: suppliers.map((s, i) => ({ id: i + 1, label: s })),
+        supplier: names.map((s, i) => ({ id: i + 1, label: s })),
       },
       vars: { today },
-    }),
-    [categories, suppliers, today],
-  );
+    };
+  }, [categories, suppliers, today, repeatSupplier]);
 
   /* The receipt picture lives here, not in the flow state: a File is not an answer. It is taken on
      the photo step and sent to the new expense once the expense itself is saved. */
@@ -76,6 +87,7 @@ export default function ExpenseFlow({
     failure: FAILURE,
     onFinished: () => router.refresh(),
     onReopen,
+    start: repeat ? repeatAnswers(ctx, repeat) : undefined,
   });
 
   const renderCustom = (api: CustomStepApi) =>

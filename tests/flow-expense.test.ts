@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { EMPTY_CONTEXT, type FlowContext } from "@/lib/crm/flows/types";
-import { startFlow, answerStep } from "@/lib/crm/flows/machine";
-import { expenseFlow, expenseRequest, expenseChips, EXPENSE_METHODS, hasPhoto } from "@/lib/flows/expense";
+import { startFlow, answerStep, replayAnswers } from "@/lib/crm/flows/machine";
+import { expenseFlow, expenseRequest, expenseChips, EXPENSE_METHODS, hasPhoto, repeatAnswers, supplierFromMemo } from "@/lib/flows/expense";
 import { assertFlowBudget, assertNoRawEnumLabels } from "./helpers/flowAssert";
 
 const ctx: FlowContext = {
@@ -64,5 +64,24 @@ describe("expense flow", () => {
     expect(hasPhoto(st)).toBe(true);
     expect(expenseChips(ctx, st)).toContain("با عکس رسید");
     expect(hasPhoto(walk())).toBe(false);
+  });
+});
+
+describe("repeat an expense (A10)", () => {
+  it("reads the supplier back out of the memo the flow wrote", () => {
+    expect(supplierFromMemo("پرداخت به پمپ بنزین مرکزی")).toBe("پمپ بنزین مرکزی");
+    expect(supplierFromMemo("اجارهٔ مهر")).toBeNull();
+    expect(supplierFromMemo(null)).toBeNull();
+  });
+
+  it("opens at the paying method with the old category, amount and supplier, and today's date", () => {
+    const st = replayAnswers(expenseFlow, ctx, repeatAnswers(ctx, { accountId: 41, amountToman: 350000, supplier: "پمپ بنزین مرکزی" }));
+    expect(st.stack.at(-1)).toBe("method");
+    const done = answerStep(expenseFlow, ctx, answerStep(expenseFlow, ctx, st, "CASH"), "none");
+    expect(expenseRequest(ctx, done)).toMatchObject({ account_id: 41, amount_toman: 350000, incurred_at: "2026-10-21", memo: "پرداخت به پمپ بنزین مرکزی" });
+  });
+
+  it("starts from the top when the old category is gone", () => {
+    expect(repeatAnswers(ctx, { accountId: 99, amountToman: 1000, supplier: null })).toEqual([]);
   });
 });
