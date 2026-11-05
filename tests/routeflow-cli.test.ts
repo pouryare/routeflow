@@ -156,3 +156,11 @@ describe("routeflow: secrets stay out of the plain env file", () => {
     expect(lines).toEqual(["SESSION_SECRET=kept=x", "X_TOKEN=1", "Y_KEY=2"]);
   });
 });
+
+describe("routeflow: a tarball still being copied", () => {
+  it("is not picked until its .sha256 has arrived", () => {
+    const t = fakeTarball("0.2.0");
+    fs.rmSync(`${t}.sha256`);
+    expect(run("newest_incoming").out).toBe("");
+  });
+});

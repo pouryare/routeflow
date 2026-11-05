@@ -319,7 +319,8 @@ newest_incoming() {
   local arch best="" bestv="" f v a
   arch=$(machine_arch) || return 0
   for f in "$ROOT"/incoming/routeflow-*-linux-"$arch".tar.gz; do
-    [ -f "$f" ] || continue
+    # A tarball still being copied has no .sha256 yet (the deploy job sends it last).
+    [ -f "$f" ] && [ -f "$f.sha256" ] || continue
     read -r v a < <(parse_tarball_name "$f") || continue
     if [ -z "$bestv" ] || [ "$(printf '%s\n%s\n' "$bestv" "$v" | sort -V | tail -1)" = "$v" ]; then best=$f; bestv=$v; fi
   done
@@ -580,6 +581,8 @@ APT
   systemctl enable "$SERVICE" >/dev/null
   systemctl enable --now routeflow-upgrade.timer >/dev/null
   install -d -o "$APP_USER" -g "$APP_USER" -m 775 "$ROOT/incoming"
+  # The key-only user GitHub copies releases as (docs/release-and-deploy.md) may write here, nothing more.
+  if id deploy >/dev/null 2>&1; then usermod -aG "$APP_USER" deploy; fi
 
   say "Caddy for $DOMAIN"
   write_caddy
