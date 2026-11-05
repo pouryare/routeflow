@@ -134,7 +134,8 @@ Quickest to a first tour (a day), but it decides the scrolling, buttons and flow
 | 2 | **Real taps where safe; steps that save money or send a message only point and explain** | 2026-11-05 |
 | 3 | Owner chose a third way: **demo data inside the real page while a tutorial runs**, swapped to real data with no reload (section 11). A separate training company is not needed | 2026-11-05 |
 | 4 (was 6) | **Bottom-bar tour on first sign-in, then each tutorial offers itself the first time a screen or sheet is opened**, plus the replay list | 2026-11-05 |
-| 5 | _waiting_ | |
+| 5 (was 4) | **All ~75 main actions get a tutorial before 0.1** (owner accepts about 2 to 3 more weeks); the CI gap list must be empty to release | 2026-11-05 |
+| 6 | _waiting_ | |
 
 ## 11. Owner's direction (2026-11-05): many tutorials, practice on demo data in the page
 
