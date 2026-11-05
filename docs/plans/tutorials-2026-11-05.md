@@ -138,7 +138,8 @@ Quickest to a first tour (a day), but it decides the scrolling, buttons and flow
 | 6 (was 5) | **The agent drafts all Persian text in code; the owner reviews it on a phone in the batch PR** | 2026-11-05 |
 | 7 | Owner: discuss the 12 ideas one by one (answers below as I1 to I12), then add a rule: a new or changed page or feature checks whether tutorials need an update, like the skeleton recapture | 2026-11-05 |
 | I1 | Just in time: **a chip «۳۰ ثانیه آموزش؟», asked at most twice** (again the next day after «بعداً»), then only the list and the (i) panel | 2026-11-05 |
-| I2 | _waiting_ | |
+| I2 | «چطور…؟»: **tutorials are found from the app's main search and the (i) panel**; one tap starts one | 2026-11-05 |
+| I3 | _waiting_ | |
 
 ## 11. Owner's direction (2026-11-05): many tutorials, practice on demo data in the page
 
