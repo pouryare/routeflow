@@ -27,7 +27,7 @@ describe("spine schema", () => {
   it("seeds the default rules with a NULL organisation, idempotently", async () => {
     // 5 original spine rules + 8 Phase 1 `notify` rules + 5 Phase 2 `notify` rules
     // (RULE_SEED in lib/db.ts).
-    const EXPECTED_DEFAULT_RULES = 18;
+    const EXPECTED_DEFAULT_RULES = 19;
     const rows = await getDb()
       .prepare("SELECT code FROM rules WHERE organization_id IS NULL")
       .all() as { code: string }[];

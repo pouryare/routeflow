@@ -111,6 +111,9 @@ describe("orders", () => {
         "cost_toman",
         // Approved discount on the whole order (order_discounts holds the request and who pays).
         "discount_toman",
+        // FB38: when the paper was first handed over, and how.
+        "invoice_sent_at",
+        "invoice_sent_via",
         "notes",
         "created_by",
         "created_at",

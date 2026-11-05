@@ -56,7 +56,7 @@ export default function DocumentSettingsForm({ current }: { current: DocumentSet
       {msg ? <p className="m-0 text-[length:var(--text-xs)]" style={{ color: msg.ok ? "var(--good)" : "var(--crit)" }}>{msg.text}</p> : null}
       <button type="button" disabled={busy} onClick={() => void save()} className={`${BTN} self-start bg-[var(--accent)] text-accent-ink`}>
         <Icon name="save" size="md" />
-        ذخیره
+        ذخیرهٔ کاغذها
       </button>
     </section>
   );
