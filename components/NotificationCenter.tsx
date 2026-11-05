@@ -11,6 +11,7 @@ import { useRunAfterMount } from "@/lib/useRunAfterMount";
 import { Icon } from "@/components/meridian/Icon";
 import { useCallback, useState } from "react";
 import { faNum } from "@/lib/format";
+import SwipeRow from "@/components/mobile/SwipeRow";
 
 interface Item {
   id: number;
@@ -66,11 +67,11 @@ export default function NotificationCenter({ onUnread }: { onUnread: (n: number)
       void load();
     }
   }
-  async function markGroup(key: string) {
+  async function markGroup(key: string, unread = false) {
     await fetch("/api/notifications", {
       method: "PATCH",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ read: [key] }),
+      body: JSON.stringify(unread ? { unread: [key] } : { read: [key] }),
     });
     void load();
   }
@@ -100,6 +101,11 @@ export default function NotificationCenter({ onUnread }: { onUnread: (n: number)
       <ul className="m-0 list-none overflow-y-auto p-0">
         {groups.map((g) => (
           <li key={g.group_key} className="border-b border-[var(--border)] last:border-0">
+            {/* A short swipe either way flips read and unread; tapping the row still opens and reads it. */}
+            <SwipeRow
+              short
+              start={g.unread_count ? { label: "خوانده شد", icon: "check", run: () => void markGroup(g.group_key) } : { label: "نخوانده", icon: "bell", run: () => void markGroup(g.group_key, true) }}
+            >
             <Button
               variant="ghost"
               className="notifrow"
@@ -126,6 +132,7 @@ export default function NotificationCenter({ onUnread }: { onUnread: (n: number)
                 )}
               </span>
             </Button>
+            </SwipeRow>
             {open === g.group_key && g.count > 1 && (
               <ul className="m-0 list-none bg-[var(--surface-raised)] p-0">
                 {g.items.map((it) => (

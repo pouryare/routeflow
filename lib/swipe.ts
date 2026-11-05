@@ -19,6 +19,8 @@ export type SwipeResult =
   | { state: "commit"; side: "start" | "end" };
 
 export const SWIPE_DEFAULTS = { threshold: 72, commit: 140 } as const;
+/** For a light action that flips back just as easily (mark read / unread): half the distance. */
+export const SWIPE_SHORT = { threshold: 36, commit: 72 } as const;
 
 /** How long a finger must stay still on a row before it counts as a long press (selection). */
 export const LONG_PRESS_MS = 450;

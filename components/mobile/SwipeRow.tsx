@@ -2,7 +2,7 @@
 
 import { useRef, useState, type ReactNode } from "react";
 import { Icon, type IconName } from "@/components/meridian/Icon";
-import { decide, LONG_PRESS_MS, stopAt, SWIPE_DEFAULTS } from "@/lib/swipe";
+import { decide, LONG_PRESS_MS, stopAt, SWIPE_DEFAULTS, SWIPE_SHORT } from "@/lib/swipe";
 import { buzz } from "@/lib/haptic";
 
 export interface SwipeAction {
@@ -31,7 +31,7 @@ const CLICK_GUARD_MS = 60;
  *  still finger is a tap, a short click guard after release. `touch-action: pan-y` lets the page
  *  keep scrolling vertically. Do not nest it in a sheet: the sheet's swipe-down listens on the
  *  same touches. */
-export default function SwipeRow({ start, end, children, ownButtons = true, onLongPress }: {
+export default function SwipeRow({ start, end, children, ownButtons = true, onLongPress, short = false }: {
   start?: SwipeAction;
   end?: SwipeAction;
   children: ReactNode;
@@ -39,6 +39,8 @@ export default function SwipeRow({ start, end, children, ownButtons = true, onLo
   ownButtons?: boolean;
   /** Holding a still finger on the row for LONG_PRESS_MS (selection mode starts here). */
   onLongPress?: () => void;
+  /** A light, undoable action (mark read): half the usual distance commits it. */
+  short?: boolean;
 }) {
   const [dx, setDx] = useState(0);
   const press = useRef<{ x: number; y: number; id: number } | null>(null);
@@ -50,7 +52,7 @@ export default function SwipeRow({ start, end, children, ownButtons = true, onLo
     hold.current = null;
   };
 
-  const side = (d: number) => decide({ dx: d }, { ...SWIPE_DEFAULTS, rtl: true });
+  const side = (d: number) => decide({ dx: d }, { ...(short ? SWIPE_SHORT : SWIPE_DEFAULTS), rtl: true });
   const live = side(dx);
   const armed = live.state === "idle" ? null : live.side === "start" ? start : end;
   const stop = armed?.stops ? stopAt(armed.stops, dx) : -1;
@@ -90,7 +92,7 @@ export default function SwipeRow({ start, end, children, ownButtons = true, onLo
     const toStart = mx > 0;
     const a = toStart ? start : end;
     if (!a) return setDx(0);
-    const far = a.stops ? a.stops[a.stops.length - 1].at + 30 : 220;
+    const far = a.stops ? a.stops[a.stops.length - 1].at + 30 : short ? 110 : 220;
     const next = Math.max(-far, Math.min(far, mx));
     if (a.stops) {
       const k = stopAt(a.stops, next);
