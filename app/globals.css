@@ -5593,3 +5593,12 @@ html[data-fx="off"] .slideconfirm__knob, html[data-fx="off"] .slideconfirm__fill
 .fieldshape { display: flex; align-items: center; gap: 4px; min-height: 18px; margin: 2px 0 0; font-size: var(--text-xs); }
 .fieldshape[data-tone="bad"] { color: var(--crit, var(--danger)); }
 .fieldshape[data-tone="ok"] { color: var(--good, var(--accent)); }
+
+/* Letter counter (CharCount): a ring that fills, red past the limit, with the count beside it. */
+.charcount { display: inline-flex; align-items: center; gap: 4px; align-self: flex-end; font-size: var(--text-xs); color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.charcount svg { transform: rotate(-90deg); }
+.charcount__track, .charcount__fill { fill: none; stroke-width: 2.5; }
+.charcount__track { stroke: var(--border); }
+.charcount__fill { stroke: var(--accent); transition: stroke-dashoffset 160ms var(--ease-out); }
+.charcount[data-over] { color: var(--crit, var(--danger)); }
+.charcount[data-over] .charcount__fill { stroke: var(--crit, var(--danger)); }

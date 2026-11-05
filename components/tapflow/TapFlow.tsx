@@ -15,6 +15,7 @@ import SuggestChips from "./SuggestChips";
 import AmountStep from "./AmountStep";
 import SlideConfirm from "@/components/mobile/SlideConfirm";
 import FieldShapeHint from "@/components/FieldShapeHint";
+import CharCount from "@/components/CharCount";
 import { phoneHint } from "@/lib/fieldShape";
 import { AnswerButton, SkipButton } from "./Answer";
 import PickStep from "./PickStep";
@@ -142,7 +143,8 @@ function StepBody({ view, submit, hours, onNavigate, navigateUrl, vars, items, s
     );
   }
 
-  const needsText = view.kind === "input" && !!view.input && !view.input.optional && !text.trim();
+  const tooLong = !!view.input?.max && Array.from(text.trim()).length > view.input.max;
+  const needsText = (view.kind === "input" && !!view.input && !view.input.optional && !text.trim()) || tooLong;
   const subFor = (o: ResolvedOption): string | undefined => {
     if (!o.due || o.due.kind === "pick" || o.due.kind === "none" || !hours?.length) return o.sub;
     const raw = resolveDue(o.due, now);
@@ -197,6 +199,7 @@ function StepBody({ view, submit, hours, onNavigate, navigateUrl, vars, items, s
         />
       ) : null}
       {view.input?.shape === "phone" ? <FieldShapeHint hint={phoneHint(text)} /> : null}
+      {view.input?.max ? <CharCount text={text} max={view.input.max} /> : null}
       {view.input?.field === "text" && suggest ? <SuggestChips typed={text} past={suggest} onPick={setText} /> : null}
       {view.kind === "multi" ? (
         <div className="tf-grid one">

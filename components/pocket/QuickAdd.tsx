@@ -1,6 +1,8 @@
 "use client";
 
 import { FieldInput } from "@/components/FieldInput";
+import CharCount from "@/components/CharCount";
+import { TASK_TITLE_MAX } from "@/lib/charCount";
 import JalaliDateInput from "@/components/meridian/JalaliDateInput";
 import { Icon } from "@/components/meridian/Icon";
 import { useState } from "react";
@@ -24,7 +26,7 @@ export default function QuickAdd({
   const toast = useToast();
 
   async function submit() {
-    if (!text.trim() || (kind === "reminder" && !due)) return;
+    if (!text.trim() || (kind === "reminder" && !due) || Array.from(text.trim()).length > TASK_TITLE_MAX) return;
     setSaving(true);
     try {
       const res = await fetch("/api/tasks", {
@@ -85,6 +87,7 @@ export default function QuickAdd({
           padding: "7px 9px",
         }}
       />
+      <CharCount text={text} max={TASK_TITLE_MAX} />
       </label>
       <div style={{ display: "flex", gap: 8 }}>
         <button

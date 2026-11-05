@@ -82,6 +82,8 @@ export interface FlowInput {
   allowZero?: boolean;
   /** A field with one right shape, checked live while typing (lib/fieldShape.ts). */
   shape?: "phone";
+  /** The most letters the field takes; a counter ring shows under it (lib/charCount.ts). */
+  max?: number;
   /** `amount` steps: the unit printed under the number. Defaults to تومان; a step whose unit
    *  varies per item reads `ctx.vars["<field>_unit"]` instead. */
   unit?: string;

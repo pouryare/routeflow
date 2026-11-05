@@ -1,3 +1,4 @@
+import { TASK_TITLE_MAX } from "@/lib/charCount";
 import type { FlowConfig, FlowContext, FlowOption, FlowState } from "@/lib/crm/flows/types";
 import { faJalaliDate } from "@/lib/jalali";
 
@@ -38,7 +39,7 @@ export const reminderFlow: FlowConfig = {
       id: "text",
       kind: "input",
       q: "متن را بنویسید",
-      input: { field: "text", placeholder: "متن", },
+      input: { field: "text", placeholder: "متن", max: TASK_TITLE_MAX },
       options: (ctx: FlowContext): FlowOption[] => [
         { id: "ok", label: isNote(ctx) ? "ثبت یادداشت" : "ثبت یادآوری", tone: "rec", save: true },
       ],
