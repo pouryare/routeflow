@@ -21,6 +21,7 @@ export interface InventoryRow {
   value_toman: number;
   reorder_point: number | null;
   target_stock: number | null;
+  sell_off: boolean;
   status: "crit" | "low" | "ok" | "over";
   daily_rate: number;
   days_left: number | null;
@@ -191,9 +192,15 @@ function ProductCard({ row: r, canEdit, onSaved }: { row: InventoryRow; canEdit:
           <div className="stcard__name">{r.name}</div>
           {r.last_purchase_date && <div className="stcard__pack">آخرین خرید {faJalaliDate(r.last_purchase_date)}</div>}
         </div>
-        <span className="stpill" data-s={r.status}>
-          <i /> {STATUS_LABEL[r.status]}
-        </span>
+        {r.sell_off ? (
+          <span className="stpill" data-s="over">
+            <i /> تصفیه
+          </span>
+        ) : (
+          <span className="stpill" data-s={r.status}>
+            <i /> {STATUS_LABEL[r.status]}
+          </span>
+        )}
       </div>
 
       <div className="stgauge">
@@ -265,9 +272,36 @@ function ProductCard({ row: r, canEdit, onSaved }: { row: InventoryRow; canEdit:
               <b>{r.target_stock !== null ? `${faNum(r.target_stock)} ${r.base_unit}` : "تنظیم‌نشده"}</b>
             )}
           </div>
+          {canEdit ? <SellOffToggle productId={r.product_id} on={r.sell_off} onSaved={onSaved} /> : null}
         </div>
       </details>
     </article>
+  );
+}
+
+/** D32: «تصفیه» on or off. While on, the product is still sold but never suggested for buying, and the
+ *  sweep switches it off once the last of it is gone. */
+function SellOffToggle({ productId, on, onSaved }: { productId: number; on: boolean; onSaved: () => void }) {
+  const [busy, setBusy] = useState(false);
+  async function flip() {
+    setBusy(true);
+    const res = await fetch(`/api/sales/products/${productId}/stock-thresholds`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sell_off: !on }),
+    }).catch(() => null);
+    setBusy(false);
+    if (res?.ok) onSaved();
+  }
+  return (
+    <div className="stmore__row">
+      <span>{on ? "در حال تصفیه؛ پس از تمام شدن، غیرفعال می‌شود" : "تصفیه (دیگر خریده نمی‌شود)"}</span>
+      <button type="button" disabled={busy} aria-pressed={on} onClick={() => void flip()}
+        className="inline-flex min-h-[44px] items-center gap-[var(--space-2)] rounded-[var(--radius-md)] border border-[var(--border)] px-[var(--space-3)] text-[length:var(--text-sm)]">
+        <Icon name={on ? "undo" : "archive"} size="md" />
+        {on ? "برگشت به عادی" : "تصفیه شود"}
+      </button>
+    </div>
   );
 }
 

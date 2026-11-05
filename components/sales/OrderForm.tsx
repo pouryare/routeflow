@@ -52,6 +52,7 @@ interface Product {
   name: string;
   base_unit: string;
   kg_per_base_unit: number;
+  sell_off?: number;
   packagings: Packaging[];
 }
 
@@ -444,7 +445,7 @@ export default function OrderForm({
           <SmartPicker
             scope="order-products"
             label="کالا"
-            items={products.map((p) => ({ id: String(p.id), label: p.name }))}
+            items={products.map((p) => ({ id: String(p.id), label: p.sell_off ? `${p.name} · تصفیه` : p.name }))}
             pinned={pinnedProducts}
             value={pickProduct}
             onChange={(id) => {

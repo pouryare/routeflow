@@ -84,6 +84,7 @@ export default async function StockPage() {
     value_toman: r.value_toman,
     reorder_point: r.reorder_point,
     target_stock: r.target_stock,
+    sell_off: r.sell_off,
     status: r.status,
     daily_rate: r.daily_rate,
     days_left: r.days_left,

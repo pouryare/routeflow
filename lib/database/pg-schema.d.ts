@@ -1019,6 +1019,7 @@ export interface Products {
   notes: string | null;
   organization_id: number | null;
   reorder_point: number | null;
+  sell_off: Generated<number>;
   shelf_life_days: number | null;
   sku: string | null;
   sync_xid: string | null;
