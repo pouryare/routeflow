@@ -154,6 +154,7 @@ so the rest of the file still ratchets down.
 - [ ] Both layouts in the markup, chosen by CSS; fixed-bottom elements clear the bar.
 - [ ] A pure model with a test; a render test for the component.
 - [ ] Persian digits, Shamsi dates, `<Icon>` on every button (or a recorded reason), no bare verbs.
+- [ ] A bencho block checked first (`docs/bencho-blocks-and-sounds.md`), then HeroUI; the PR names the block used or why none fits.
 - [ ] Loading, empty and error states.
 - [ ] `npm run check:mobile` passes; a 375 px screenshot attached to the PR.
 

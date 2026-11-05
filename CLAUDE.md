@@ -56,6 +56,15 @@ Keep it current: move items from Next steps to Done as they finish, add new gaps
 
 UI work follows `docs/mobile-first-principles.md` (and `docs/tap-flow-principles.md` for flows that record what just happened). Run `npm run check:mobile` before committing UI changes; it fails on a new `<select>`, native date, small tap target or confirm dialog, on a mobile component with no test, and on an allowlist entry without a written reason.
 
+# Always-on: new feature or page, look at the bencho blocks first, then HeroUI
+
+Owner rule, 2026-11-05. Before designing the interaction of any new feature, page, form, list, sheet or confirmation:
+
+1. **Bencho blocks first.** Open `docs/bencho-blocks-and-sounds.md` and look for a block that fits the job (a slider for a number, a hold or slide to confirm, a count-up for a total, a fan menu, a scrubbable chart, an accordion for a few photos, a crumple-and-undo delete, and so on). Say in the PR which block you used, or in one line why none fits. Licence is in that doc: the 45 MIT blocks may be a starting point (keep the notice), the Pro ones are ideas only, rebuilt by us. Never paste code from a site with no licence.
+2. **Then HeroUI.** Build the block, or the plain control when no block fits, on a HeroUI part (`@heroui/react`, imported part by part as in `app/globals.css`) and our tokens. A hand-rolled control is the last choice and needs a reason in the PR.
+3. **Not everywhere.** A block earns its place when it makes a real step faster or clearer for a person with a phone in a van or a shop. No block for decoration on a screen people use all day, and nothing that hides a plain button: every gesture keeps a button, every effect obeys `lib/fx.ts` (the effects switch, reduced motion, weak phones), every sound goes through `playSound`.
+4. **Check it yourself.** The owner has no server to run the app. Run it with `scripts/preview.sh` on a throwaway database, drive it with Playwright at 390×844 right to left (a screenshot recipe is in this thread's history and in `docs/mobile-first-principles.md` section 10), look at the picture, and fix what you see before saying done.
+
 # Always-on: a UI feature is not done until a person can reach it and it looks right
 
 Applies to any change that adds or moves something a user sees. Bug fixes inside an existing screen skip step 1.
