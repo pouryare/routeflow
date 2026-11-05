@@ -18,7 +18,7 @@ import { cardFor } from "@/lib/repo/briefingCards";
 import RolePicker from "@/components/today/RolePicker";
 import SweepButton from "@/components/SweepButton";
 import PageHeader from "@/components/meridian/PageHeader";
-import { isVanRole, roleLabel, MANAGE_ROLES } from "@/lib/roles";
+import { isVanRole, isOwner, roleLabel, MANAGE_ROLES } from "@/lib/roles";
 import { earningsSoFar } from "@/lib/repo/earningsSoFar";
 import EarningsCard from "@/components/today/EarningsCard";
 import { weekVsLast } from "@/lib/repo/weekCompare";
@@ -27,6 +27,8 @@ import { tehranTodayIso } from "@/lib/jalali";
 import { unseenFor } from "@/lib/whatsNew";
 import { getPrefs } from "@/lib/repo/prefs";
 import WhatsNewCard from "@/components/today/WhatsNewCard";
+import MoneyTiles from "@/components/today/MoneyTiles";
+import { moneyTilesFor } from "@/lib/repo/moneyTiles";
 
 
 export const dynamic = "force-dynamic";
@@ -81,6 +83,9 @@ export default async function SalesTodayPage() {
         roleLabel={roleLabel(session.role)}
         dateIso={new Date().toISOString()}
       />
+
+      {/* A7: owner only, the same people the accounting pages these tiles open let in. */}
+      {isOwner(session.role) && <MoneyTiles t={await moneyTilesFor(session.organizationId)} />}
 
       {MANAGE_ROLES.includes(session.role) && (
         <div className="mb-3 flex flex-wrap gap-2">
