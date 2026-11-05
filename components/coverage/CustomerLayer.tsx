@@ -6,6 +6,10 @@ import type { GeoJSONSource, MapLayerMouseEvent } from "maplibre-gl";
 import { shapeForColor, type CustomerRow } from "@/lib/types";
 import type { MapInk } from "./mapInk";
 import { MARKER_SHAPES, markerImage } from "./markerImages";
+import { Icon } from "@/components/meridian/Icon";
+import { pinActions } from "@/lib/pinFan";
+import { usePinHold } from "./usePinHold";
+import type { NavAppId } from "@/lib/navApps";
 
 export const CUSTOMER_LAYER = "customers";
 export const CLUSTER_LAYER = "customer-clusters";
@@ -22,6 +26,8 @@ export default function CustomerLayer({
   shaped,
   ink,
   onOpen,
+  canOrder,
+  navAppId,
 }: {
   customers: (CustomerRow & { lat: number; lng: number })[];
   colorOf: (c: CustomerRow) => string;
@@ -29,6 +35,9 @@ export default function CustomerLayer({
   shaped: boolean;
   ink: MapInk;
   onOpen: (c: CustomerRow) => void;
+  /** Whether this person may start an order (the fan only offers what works). */
+  canOrder: boolean;
+  navAppId: NavAppId;
 }) {
   const { current: map } = useMap();
   const [stack, setStack] = useState<{ lat: number; lng: number; members: (CustomerRow & { lat: number; lng: number })[] } | null>(null);
@@ -49,7 +58,10 @@ export default function CustomerLayer({
     };
   }, [map]);
 
+  const [fan, setFan] = useState<(CustomerRow & { lat: number; lng: number }) | null>(null);
+
   const byId = useMemo(() => new Map(customers.map((c) => [c.id, c])), [customers]);
+  const justHeld = usePinHold(map, byId, setFan);
   const data = useMemo<GeoJSON.FeatureCollection<GeoJSON.Point>>(() => ({
     type: "FeatureCollection",
     features: customers.map((c) => {
@@ -66,6 +78,7 @@ export default function CustomerLayer({
   useEffect(() => {
     if (!map) return;
     const onClick = async (e: MapLayerMouseEvent) => {
+      if (justHeld()) return;
       const f = e.features?.[0];
       if (!f) return;
       if (f.layer.id === CUSTOMER_LAYER) {
@@ -91,10 +104,23 @@ export default function CustomerLayer({
       map.off("click", CUSTOMER_LAYER, onClick);
       map.off("click", CLUSTER_LAYER, onClick);
     };
-  }, [map, byId, onOpen]);
+  }, [map, byId, onOpen, justHeld]);
 
   return (
     <>
+      {fan && (
+        <Popup longitude={fan.lng} latitude={fan.lat} offset={18} closeOnClick onClose={() => setFan(null)} maxWidth="260px">
+          <div dir="rtl" className="flex flex-col gap-1" aria-label={`کارهای سریع ${fan.business_name}`}>
+            <strong className="px-2 text-[length:var(--text-sm)] text-text">{fan.business_name}</strong>
+            {pinActions(fan, { canOrder, navAppId }).map((a) => (
+              <a key={a.id} href={a.href} className="touch flex min-h-[44px] items-center gap-2 rounded-[var(--radius-md)] px-2 text-[length:var(--text-sm)] text-text no-underline" onClick={() => setFan(null)}>
+                <Icon name={a.icon} size="sm" />
+                {a.label}
+              </a>
+            ))}
+          </div>
+        </Popup>
+      )}
       <Source id="customers" type="geojson" data={data} cluster clusterRadius={50} clusterMaxZoom={17}>
         <Layer
           id={CLUSTER_LAYER}
