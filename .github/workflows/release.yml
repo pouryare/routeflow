@@ -1,0 +1,82 @@
+name: Release
+
+# A version tag (v0.1.0) builds the app once and publishes one tarball per machine type on the
+# GitHub release: linux-x64 for normal servers, linux-arm64 for ARM machines such as the Pi. Each
+# comes with a .sha256 that `routeflow upgrade` checks before it unpacks anything.
+#
+# "Run workflow" on the Actions tab builds the same tarballs without a tag and keeps them as a
+# workflow artifact for 7 days, to try a build before tagging it.
+on:
+  push:
+    tags: ["v[0-9]+.[0-9]+.[0-9]+"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
+      PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1"
+      # The build reads no data; these only satisfy modules that check them at import.
+      SESSION_SECRET: release-build-not-a-real-secret-0123456789
+      DATABASE_URL: postgres://unused@localhost/unused
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+          check-latest: true
+          cache: npm
+
+      - name: The tag matches package.json
+        if: github.ref_type == 'tag'
+        run: |
+          want="v$(node -p 'require("./package.json").version')"
+          [ "$GITHUB_REF_NAME" = "$want" ] || { echo "tag $GITHUB_REF_NAME but package.json says $want"; exit 1; }
+
+      - run: npm ci
+
+      - name: Every migration is marked expand-only or contract
+        run: node scripts/check-migrations.mjs
+
+      - name: Build
+        run: npx next build
+
+      - name: Pack x64 and arm64
+        run: |
+          bash scripts/release/pack.sh x64
+          bash scripts/release/pack.sh arm64
+          ls -l dist
+
+      - name: The x64 tarball starts and answers /api/health
+        run: |
+          mkdir -p /tmp/rel && tar -xzf dist/routeflow-*-linux-x64.tar.gz -C /tmp/rel --strip-components=1
+          cd /tmp/rel && PORT=3999 HOSTNAME=127.0.0.1 NODE_ENV=production ./node/bin/node server.js > /tmp/rel.log 2>&1 &
+          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:3999/login >/dev/null 2>&1 && break; sleep 1; done
+          # No database here, so health must answer 503 with the version, not crash.
+          code=$(curl -s -o /tmp/health.json -w '%{http_code}' http://127.0.0.1:3999/api/health)
+          cat /tmp/health.json; echo
+          [ "$code" = 503 ] && grep -q "\"version\":\"$(cat /tmp/rel/VERSION)\"" /tmp/health.json || { cat /tmp/rel.log; exit 1; }
+
+      - name: Keep the tarballs (manual runs)
+        if: github.ref_type != 'tag'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: routeflow-release
+          path: dist/*
+          retention-days: 7
+
+      - name: Publish the GitHub release
+        if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" dist/*.tar.gz dist/*.sha256 --title "RouteFlow $GITHUB_REF_NAME" --generate-notes
