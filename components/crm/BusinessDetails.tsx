@@ -5,6 +5,8 @@ import type { Profile } from "@/lib/repo/crm/profile";
 import { BUSINESS_TYPES, BUSINESS_TYPE_LABEL, PRICE_TIERS, PRICE_TIER_LABEL, isOneOf } from "@/lib/crm/vocab";
 import { formatHours, parseHours } from "@/lib/crm/hours";
 import { normPhone, sanitizePhoneInput } from "@/lib/crm/phone";
+import { phoneHint } from "@/lib/fieldShape";
+import FieldShapeHint from "@/components/FieldShapeHint";
 import { Icon } from "@/components/meridian/Icon";
 import CustomerLocation from "./CustomerLocation";
 
@@ -125,6 +127,7 @@ export default function BusinessDetails({ business, canWrite, disabled, onPatch,
             onChange={e => setEdit(cur => cur && { ...cur, value: row.kind === "phone" ? sanitizePhoneInput(e.target.value) : e.target.value })} />
         )}
       </label>
+      {row.kind === "phone" && !error ? <FieldShapeHint hint={phoneHint(value)} /> : null}
       {error && <p role="alert">{error}</p>}
       <div className="edit-actions">
         <button type="submit" className="inline-flex items-center justify-center gap-[var(--space-2)] btn solid" style={TOUCH} disabled={disabled || !!pending || sending}>

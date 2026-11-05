@@ -14,6 +14,8 @@ import { useChoiceFeedback } from "./useChoiceFeedback";
 import SuggestChips from "./SuggestChips";
 import AmountStep from "./AmountStep";
 import SlideConfirm from "@/components/mobile/SlideConfirm";
+import FieldShapeHint from "@/components/FieldShapeHint";
+import { phoneHint } from "@/lib/fieldShape";
 import { AnswerButton, SkipButton } from "./Answer";
 import PickStep from "./PickStep";
 import FlowProgress from "./FlowProgress";
@@ -194,6 +196,7 @@ function StepBody({ view, submit, hours, onNavigate, navigateUrl, vars, items, s
           aria-label={view.input.placeholder}
         />
       ) : null}
+      {view.input?.shape === "phone" ? <FieldShapeHint hint={phoneHint(text)} /> : null}
       {view.input?.field === "text" && suggest ? <SuggestChips typed={text} past={suggest} onPick={setText} /> : null}
       {view.kind === "multi" ? (
         <div className="tf-grid one">

@@ -5588,3 +5588,8 @@ html[data-fx="off"] [data-landed] { animation: none; }
 .slideconfirm[data-done] .slideconfirm__fill { background: var(--good, var(--accent)); }
 .slideconfirm[data-done] .slideconfirm__label { opacity: 1; color: #fff; }
 html[data-fx="off"] .slideconfirm__knob, html[data-fx="off"] .slideconfirm__fill { transition: none !important; }
+
+/* Live shape check under a phone field (FieldShapeHint). */
+.fieldshape { display: flex; align-items: center; gap: 4px; min-height: 18px; margin: 2px 0 0; font-size: var(--text-xs); }
+.fieldshape[data-tone="bad"] { color: var(--crit, var(--danger)); }
+.fieldshape[data-tone="ok"] { color: var(--good, var(--accent)); }

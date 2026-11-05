@@ -80,6 +80,8 @@ export interface FlowInput {
   decimal?: boolean;
   /** `amount` steps: 0 is a valid answer. */
   allowZero?: boolean;
+  /** A field with one right shape, checked live while typing (lib/fieldShape.ts). */
+  shape?: "phone";
   /** `amount` steps: the unit printed under the number. Defaults to تومان; a step whose unit
    *  varies per item reads `ctx.vars["<field>_unit"]` instead. */
   unit?: string;
