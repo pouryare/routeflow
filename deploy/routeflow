@@ -5,6 +5,7 @@
 #   sudo routeflow install routeflow-0.1.0-linux-x64.tar.gz   # fresh Ubuntu or Debian server
 #   sudo routeflow upgrade routeflow-0.2.0-linux-x64.tar.gz   # upgrade now (otherwise: tonight, below)
 #   sudo routeflow rollback | status | backup [full|diff|incr] | restore-drill | restore | logs
+#   sudo routeflow secrets list | set KEY | unset KEY | backup [file] | restore <file>
 #   routeflow upgrade-scheduled                               # the nightly timer: newest tarball in incoming/
 #   sudo routeflow                                            # Whiptail menu
 #
@@ -21,6 +22,7 @@ ROOT=${ROUTEFLOW_ROOT:-/opt/routeflow}
 CONF_DIR=${ROUTEFLOW_CONF_DIR:-/etc/routeflow}
 CONF=$CONF_DIR/routeflow.conf
 ENV_FILE=$CONF_DIR/env
+SECRETS=$CONF_DIR/secrets.cred
 APP_USER=routeflow
 DB_NAME=routeflow
 SERVICE=routeflow
@@ -174,6 +176,106 @@ switch_to() {
   systemctl restart "$SERVICE"
 }
 
+# ---- Secrets ---------------------------------------------------------------------------------------
+# Passwords, keys and tokens live in $SECRETS, encrypted with systemd-creds (this machine's key, and
+# its TPM when it has one), never in a plain file. systemd decrypts it only for the app and the backup
+# units (LoadCredentialEncrypted), which read it with node --env-file. Everything else stays in the
+# plain $ENV_FILE. A copy for rebuilding the server elsewhere is gpg-encrypted with a passphrase
+# (routeflow secrets backup) and kept in the private repo, since this machine's key dies with it.
+
+# A key whose value is a secret: moved out of the plain env file.
+is_secret_key() { [[ $1 =~ ^(DATABASE_URL|SESSION_SECRET)$ || $1 =~ _(TOKEN|PASSWORD|PASS|SECRET|KEY|APIKEY)$ ]]; }
+
+# Splits an env file into its plain lines (comments too) and its secret lines.
+split_env() {
+  local in=$1 plain=$2 secret=$3 line
+  : >"$plain"; : >"$secret"
+  while IFS= read -r line || [ -n "$line" ]; do
+    if [[ $line =~ ^([A-Za-z_][A-Za-z0-9_]*)= ]] && is_secret_key "${BASH_REMATCH[1]}"; then
+      printf '%s\n' "$line" >>"$secret"
+    else
+      printf '%s\n' "$line" >>"$plain"
+    fi
+  done <"$in"
+}
+
+# KEY=value lines of both files, one per key; the second file wins.
+merge_env() { awk 'FNR==NR && /^[A-Za-z_][A-Za-z0-9_]*=/ {k=$0; sub(/=.*/,"",k); seen[k]=1; print; next}
+  FNR!=NR && /^[A-Za-z_][A-Za-z0-9_]*=/ {k=$0; sub(/=.*/,"",k); if (!(k in seen)) print}' "$2" "$1"; }
+
+# A private scratch folder in RAM, so a decrypted copy never reaches the disk.
+secret_tmp() { mktemp -d -p /run routeflow-secrets.XXXXXX; }
+
+secrets_read() { [ -f "$SECRETS" ] && systemd-creds decrypt --name=secrets "$SECRETS" - || true; }
+
+secrets_write() {
+  install -d -m 755 "$CONF_DIR"
+  systemd-creds encrypt --name=secrets "$1" "$SECRETS.new" && chmod 600 "$SECRETS.new" && mv -f "$SECRETS.new" "$SECRETS"
+}
+
+secret_value() { secrets_read | sed -n "s/^$1=//p" | tail -1; }
+
+# Moves any secret lines left in the plain env file (a first install writes them there) into
+# $SECRETS. Values already in $SECRETS win, so a restored copy keeps its SESSION_SECRET.
+secrets_absorb() {
+  local t
+  [ -f "$ENV_FILE" ] || return 0
+  t=$(secret_tmp)
+  split_env "$ENV_FILE" "$t/plain" "$t/new"
+  if [ -s "$t/new" ]; then
+    secrets_read >"$t/old"
+    merge_env "$t/new" "$t/old" >"$t/all"
+    secrets_write "$t/all"
+    install -m 640 -g "$APP_USER" "$t/plain" "$ENV_FILE"
+    say "Moved $(wc -l <"$t/new") secret(s) from $ENV_FILE into $SECRETS"
+  fi
+  rm -rf "$t"
+  # install.sh's copy of the web role's password; it is inside DATABASE_URL now.
+  rm -f "$CONF_DIR/web-role-pass"
+}
+
+cmd_secrets() {
+  need_root secrets
+  local action=${1:-list} key value t out
+  case "$action" in
+    list) secrets_read | sed -n 's/=.*//p' ;;
+    set)
+      key=${2:?usage: routeflow secrets set KEY (the value is asked, never typed on the command line)}
+      [[ $key =~ ^[A-Z][A-Z0-9_]*$ ]] || die "a key is upper case letters, digits and _"
+      if [ -t 0 ]; then read -rsp "Value for $key: " value; echo; else IFS= read -r value; fi
+      [ -n "$value" ] || die "empty value; nothing changed"
+      t=$(secret_tmp)
+      secrets_read >"$t/old"
+      printf '%s=%s\n' "$key" "$value" >"$t/new"
+      merge_env "$t/old" "$t/new" >"$t/all"
+      secrets_write "$t/all"; rm -rf "$t"
+      say "$key saved"
+      systemctl try-restart "$SERVICE" ;;
+    unset)
+      key=${2:?usage: routeflow secrets unset KEY}
+      t=$(secret_tmp)
+      secrets_read | grep -v "^$key=" >"$t/all" || true
+      secrets_write "$t/all"; rm -rf "$t"
+      say "$key removed"
+      systemctl try-restart "$SERVICE" ;;
+    backup)
+      out=${2:-$PWD/routeflow-secrets-$(hostname -s)-$(date +%F).env.asc}
+      [ -f "$SECRETS" ] || die "no secrets yet"
+      say "Choose a passphrase you keep outside this server (a password manager)."
+      secrets_read | gpg --pinentry-mode loopback --symmetric --cipher-algo AES256 --armor -o "$out"
+      chmod 600 "$out"
+      say "Wrote $out. Put it in the private repo; it opens only with that passphrase." ;;
+    restore)
+      [ -f "${2:-}" ] || die "usage: routeflow secrets restore <routeflow-secrets-....env.asc>"
+      t=$(secret_tmp)
+      gpg --pinentry-mode loopback -q -d -o "$t/all" "$2"
+      secrets_write "$t/all"; rm -rf "$t"
+      say "Secrets restored for this machine"
+      systemctl try-restart "$SERVICE" ;;
+    *) die "routeflow secrets list | set KEY | unset KEY | backup [file] | restore <file>" ;;
+  esac
+}
+
 load_conf() { if [ -f "$CONF" ]; then . "$CONF"; fi; }
 
 need_root() { [ "$(id -u)" = 0 ] || die "run as root: sudo routeflow $*"; }
@@ -195,6 +297,7 @@ cmd_upgrade() {
   run_migrations "$ROOT/releases/$version" || die "migrations failed; the live release ($from) was not touched. Read the error above."
   say "Starting $version"
   switch_to "$version"
+  SMOKE_PASSWORD=${SMOKE_PASSWORD:-$(secret_value SMOKE_PASSWORD)}
   if wait_healthy "$version" && smoke_check; then
     say "$version is live"
     prune_releases
@@ -263,9 +366,12 @@ cmd_status() {
   else
     echo "Backup:    no backup status yet"
   fi
-  if [ -n "$live" ] && [ -f "$ENV_FILE" ]; then
+  if [ -n "$live" ] && [ -f "$ENV_FILE" ] && [ "$(id -u)" = 0 ]; then
     echo "Database check:"
-    ( cd "$ROOT/current" && set -a && . "$ENV_FILE" && set +a && as_app env PG_APP_ROLE=routeflow_app "$ROOT/current/node/bin/node" scripts/pg/doctor.mjs ) || true
+    local t; t=$(secret_tmp); secrets_read >"$t/secrets"; chown -R "$APP_USER" "$t"
+    ( cd "$ROOT/current" && set -a && . "$ENV_FILE" && set +a \
+      && as_app env PG_APP_ROLE=routeflow_app "$ROOT/current/node/bin/node" --env-file="$t/secrets" scripts/pg/doctor.mjs ) || true
+    rm -rf "$t"
   fi
 }
 
@@ -351,8 +457,10 @@ Wants=network-online.target
 User=$APP_USER
 WorkingDirectory=$ROOT/current
 EnvironmentFile=$ENV_FILE
+# The secrets, decrypted by systemd into a private folder only this service can read (%d).
+LoadCredentialEncrypted=secrets:$SECRETS
 Environment=NODE_ENV=production PORT=$APP_PORT HOSTNAME=127.0.0.1
-ExecStart=$ROOT/current/node/bin/node server.js
+ExecStart=$ROOT/current/node/bin/node --env-file=%d/secrets server.js
 Restart=on-failure
 RestartSec=3
 # Lets running requests finish on a restart.
@@ -428,7 +536,7 @@ cmd_install() {
   say "Packages"
   apt-get update -q
   DEBIAN_FRONTEND=noninteractive apt-get install -y -q --no-install-recommends \
-    ca-certificates curl tar whiptail ufw unattended-upgrades caddy postgresql-client
+    ca-certificates curl tar gnupg whiptail ufw unattended-upgrades caddy postgresql-client
 
   say "Firewall: SSH, HTTP and HTTPS only"
   ufw allow OpenSSH >/dev/null; ufw allow 80/tcp >/dev/null; ufw allow 443/tcp >/dev/null
@@ -454,15 +562,18 @@ APT
   tmp=$(mktemp -d)
   tar -xzf "$tarball" -C "$tmp" --strip-components=1 --wildcards '*/db/server/*'
   say "Database, roles, backups ($tmp/db/server/install.sh)"
+  # A rebuilt server with restored secrets keeps the web role's password from DATABASE_URL.
+  WEB_PASS=$(secret_value DATABASE_URL | sed -n 's|^postgres://[^:]*:\([^@]*\)@.*|\1|p') \
   APP_DIR=$ROOT OFFSITE_HOST=$OFFSITE_HOST OFFSITE_USER=${OFFSITE_USER:-} OFFSITE_PATH=${OFFSITE_PATH:-} \
     bash "$tmp/db/server/install.sh" --no-migrate
   rm -rf "$tmp"
+  secrets_absorb
   install -d -o "$APP_USER" -g "$APP_USER" "$ROOT" "$ROOT/data" "$ROOT/data/photos" "$ROOT/data/map"
 
   say "App service"
   write_app_unit
-  # The backup units run the scripts of the live release.
-  sed -i "s|^WorkingDirectory=.*|WorkingDirectory=$ROOT/current|; s|^ExecStart=/usr/bin/node |ExecStart=$ROOT/current/node/bin/node |" \
+  # The backup units run the scripts of the live release, with the secrets like the app.
+  sed -i "s|^WorkingDirectory=.*|WorkingDirectory=$ROOT/current|; s|^ExecStart=/usr/bin/node |ExecStart=$ROOT/current/node/bin/node --env-file=%d/secrets |; /^LoadCredentialEncrypted=/d; /^EnvironmentFile=/a LoadCredentialEncrypted=secrets:$SECRETS" \
     /etc/systemd/system/routeflow-backup@.service /etc/systemd/system/routeflow-restore-drill.service 2>/dev/null || true
   write_upgrade_timer
   systemctl daemon-reload
@@ -485,7 +596,7 @@ APT
 menu() {
   command -v whiptail >/dev/null || die "whiptail is not installed; run a command instead (routeflow help)"
   local choice arg
-  choice=$(whiptail --title "RouteFlow $(current_version)" --menu "What do you want to do?" 18 70 9 \
+  choice=$(whiptail --title "RouteFlow $(current_version)" --menu "What do you want to do?" 19 76 10 \
     status "Check the app, database, disk and backups" \
     upgrade "Upgrade to a release tarball now" \
     upgrade-scheduled "Apply the waiting release now instead of tonight" \
@@ -494,6 +605,7 @@ menu() {
     restore-drill "Test that the newest backup restores" \
     logs "Show the latest app log" \
     restore "Replace the database with a backup" \
+    secrets "List the secret names (set them with: routeflow secrets set KEY)" \
     install "Install or re-apply the server setup" \
     3>&1 1>&2 2>&3) || exit 0
   case "$choice" in
@@ -507,7 +619,7 @@ menu() {
   esac
 }
 
-usage() { sed -n '2,9p' "$0" | sed 's/^# \{0,1\}//'; }
+usage() { sed -n '2,10p' "$0" | sed 's/^# \{0,1\}//'; }
 
 main() {
   local cmd=${1:-}
@@ -522,6 +634,7 @@ main() {
     restore-drill) cmd_restore_drill ;;
     restore) cmd_restore "$@" ;;
     logs) cmd_logs "$@" ;;
+    secrets) cmd_secrets "$@" ;;
     help | -h | --help) usage ;;
     "") if [ -t 0 ]; then menu; else usage; fi ;;
     *) usage; exit 2 ;;

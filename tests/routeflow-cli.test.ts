@@ -130,3 +130,29 @@ describe("routeflow: when switching back is safe", () => {
     expect(run(`all_expand_only "${rel}" 1_add 2_drop`).code).not.toBe(0);
   });
 });
+
+describe("routeflow: secrets stay out of the plain env file", () => {
+  it("knows which keys are secrets", () => {
+    for (const k of ["DATABASE_URL", "SESSION_SECRET", "TELEGRAM_BOT_TOKEN", "SMOKE_PASSWORD", "FARAZSMS_APIKEY", "S3_SECRET_KEY"]) {
+      expect(run(`is_secret_key ${k}`).code, k).toBe(0);
+    }
+    for (const k of ["PG_SCOPED", "ROUTEFLOW_PHOTOS_DIR", "COVERAGE_BACKUP_DIR", "KEYBOARD"]) {
+      expect(run(`is_secret_key ${k}`).code, k).not.toBe(0);
+    }
+  });
+
+  it("splits an env file into plain and secret lines", () => {
+    const env = path.join(root, "env");
+    fs.writeFileSync(env, "# note\nDATABASE_URL=postgres://u:p@/db?host=/run\nPG_SCOPED=1\nSESSION_SECRET=abc=\n");
+    expect(run(`split_env "${env}" "${root}/plain" "${root}/secret"`).code).toBe(0);
+    expect(fs.readFileSync(path.join(root, "plain"), "utf8")).toBe("# note\nPG_SCOPED=1\n");
+    expect(fs.readFileSync(path.join(root, "secret"), "utf8")).toBe("DATABASE_URL=postgres://u:p@/db?host=/run\nSESSION_SECRET=abc=\n");
+  });
+
+  it("merges two secret lists with the second one winning, one line per key", () => {
+    fs.writeFileSync(path.join(root, "a"), "SESSION_SECRET=new\nX_TOKEN=1\n");
+    fs.writeFileSync(path.join(root, "b"), "SESSION_SECRET=kept=x\nY_KEY=2\n");
+    const lines = run(`merge_env "${root}/a" "${root}/b"`).out.split("\n").sort();
+    expect(lines).toEqual(["SESSION_SECRET=kept=x", "X_TOKEN=1", "Y_KEY=2"]);
+  });
+});

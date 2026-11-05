@@ -90,11 +90,14 @@ GRANT $APP_ROLE TO "$APP_USER";
 SQL
 # Password for the web role, kept only in $ENV_FILE (mode 640, group $APP_USER). pg_hba gets one
 # scram line for it ahead of the default peer rule; the owner keeps the passwordless socket login.
+# `routeflow install` passes WEB_PASS from its encrypted secrets and then deletes this file.
 WEB_PASS_FILE=/etc/routeflow/web-role-pass
 install -d -m 755 /etc/routeflow
-[ -f "$WEB_PASS_FILE" ] || ( umask 037; head -c 32 /dev/urandom | base64 | tr -d '\n=+/' > "$WEB_PASS_FILE" )
-chgrp "$APP_USER" "$WEB_PASS_FILE"
-WEB_PASS=$(cat "$WEB_PASS_FILE")
+if [ -z "${WEB_PASS:-}" ]; then
+  [ -f "$WEB_PASS_FILE" ] || ( umask 037; head -c 32 /dev/urandom | base64 | tr -d '\n=+/' > "$WEB_PASS_FILE" )
+  chgrp "$APP_USER" "$WEB_PASS_FILE"
+  WEB_PASS=$(cat "$WEB_PASS_FILE")
+fi
 psql_pg -d postgres <<SQL
 DO \$\$ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '$WEB_ROLE') THEN CREATE ROLE $WEB_ROLE LOGIN; END IF;
