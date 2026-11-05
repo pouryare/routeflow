@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { ProgressCircle } from "@heroui/react";
 import { HOLD_MS, holdProgress, startsHold } from "@/lib/holdPress";
+import { Icon } from "@/components/meridian/Icon";
+import { buzz } from "@/lib/haptic";
 
 /** Confirm-by-holding for the actions that cannot be undone: the ring fills while the finger stays
  *  down and the action runs when it is full; letting go early cancels. Space or Enter held on the
@@ -19,6 +21,8 @@ export default function HoldButton({
   holdMs?: number;
 }) {
   const [progress, setProgress] = useState(0);
+  /* When the ring fills it turns into a check for a moment, with a short buzz (owner, 2026-11-05). */
+  const [done, setDone] = useState(false);
   const start = useRef<number | null>(null);
   const frame = useRef(0);
 
@@ -37,6 +41,9 @@ export default function HoldButton({
       setProgress(p);
       if (p >= 1) {
         start.current = null;
+        setDone(true);
+        buzz(15);
+        window.setTimeout(() => setDone(false), 900);
         onConfirm();
         return;
       }
@@ -70,13 +77,17 @@ export default function HoldButton({
       }}
       onBlur={stop}
     >
-      {/* no Icon: the progress ring is this button's icon */}
+      {/* The progress ring is this button's icon, until it fills and becomes a check. */}
+      {done ? (
+        <span className="holdbtn__done" aria-hidden="true"><Icon name="check" size="sm" className="done-check" /></span>
+      ) : (
       <ProgressCircle aria-label="پیشرفت نگه داشتن" value={progress * 100} size="sm" color="danger">
         <ProgressCircle.Track>
           <ProgressCircle.TrackCircle />
           <ProgressCircle.FillCircle />
         </ProgressCircle.Track>
       </ProgressCircle>
+      )}
       <span>{children}</span>
       <span className="text-[length:var(--text-xs)] text-[var(--text-muted)]">نگه دارید</span>
     </button>

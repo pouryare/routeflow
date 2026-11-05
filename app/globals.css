@@ -5564,3 +5564,6 @@ html[data-fx="off"] .photoacc__item { transition: none; }
 [data-landed] { animation: landed-pop 380ms var(--spring-pop, cubic-bezier(.34,1.56,.64,1)); }
 html[data-fx="off"] [data-landed] { animation: none; }
 @media (prefers-reduced-motion: reduce) { [data-landed] { animation: none; } }
+
+/* Hold to confirm: the full ring becomes a check (HoldButton). */
+.holdbtn__done { display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 999px; background: var(--crit); color: #fff; }
