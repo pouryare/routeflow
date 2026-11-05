@@ -8,6 +8,9 @@ import { statusLines, type Tone } from "@/lib/systemStatus";
 import { faJalaliDateTime } from "@/lib/jalali";
 import MaintenanceForm from "@/components/meridian/MaintenanceForm";
 import { maintenanceFor } from "@/lib/repo/maintenance";
+import AccessReviewCard from "@/components/meridian/AccessReviewCard";
+import { accessReview } from "@/lib/accessReview";
+import { accessUsers, recentImpersonations } from "@/lib/repo/accessReview";
 
 export const dynamic = "force-dynamic";
 
@@ -25,6 +28,8 @@ export default async function StatusPage() {
   if (!session) redirect("/login");
   const lines = statusLines(await statusFacts(session.organizationId));
   const maintenance = await maintenanceFor(session.organizationId);
+  const review = accessReview(await accessUsers(session.organizationId), new Date().toISOString());
+  const logins = await recentImpersonations(session.organizationId);
 
   return (
     <>
@@ -45,6 +50,9 @@ export default async function StatusPage() {
           ))}
         </ul>
       </section>
+      <div className="mt-[var(--space-4)]">
+        <AccessReviewCard review={review} logins={logins} />
+      </div>
       <div className="mt-[var(--space-4)]">
         <MaintenanceForm current={maintenance} />
       </div>
