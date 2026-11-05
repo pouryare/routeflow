@@ -8,14 +8,13 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import crypto from "node:crypto";
-import { getDb } from "@/lib/db";
 import { objectKey, isStem, monthOf, type FileKind, type StorageDriver } from "./driver";
 import { localDriver, devStorageAllowed } from "./local";
 import { s3Client, s3Driver, s3ErrorReason, readableWithoutKey, type S3Sender, type S3Settings } from "./s3";
 import { checkEndpoint } from "./endpoint";
 import { cacheGet, cachePut, cacheDrop } from "./cache";
 import {
-  addUsage, claimNearFull, fileByStem, insertStoredFile, listRules, listStorages, logStorageEvent, notifyOwners, queueJob,
+  addUsage, claimNearFull, deleteStoredFile, fileByStem, insertStoredFile, listRules, markTrashed, listStorages, logStorageEvent, notifyOwners, queueJob,
   recentEvent, secretOf, updateStoredFile, type StorageRow, type StoredFileRow,
 } from "@/lib/repo/storages";
 
@@ -34,7 +33,7 @@ export interface Variant {
   contentType: string;
 }
 
-export const HELD_DIR = process.env.ROUTEFLOW_HELD_DIR ?? path.join(process.cwd(), "data", "held");
+const HELD_DIR = process.env.ROUTEFLOW_HELD_DIR ?? path.join(process.cwd(), "data", "held");
 const heldPath = (stem: string, ext: string) => path.join(HELD_DIR, `${stem}.${ext}`);
 
 // ---- drivers ----
@@ -76,13 +75,13 @@ const isFull = (s: StorageRow) => s.plan_bytes != null && s.used_bytes >= s.plan
 
 // ---- choosing a storage ----
 
-export interface Target {
+interface Target {
   storage: StorageRow | null;
   mirror: StorageRow | null;
 }
 
 /** The storage a new file of this kind goes to, from the rules (decision 3). */
-export async function targetFor(orgId: number, kind: FileKind): Promise<Target> {
+async function targetFor(orgId: number, kind: FileKind): Promise<Target> {
   const rules = await listRules(orgId);
   const rule = rules.find((r) => r.file_kind === kind) ?? rules.find((r) => r.file_kind === "*");
   if (!rule) {
@@ -104,7 +103,7 @@ export async function canUpload(orgId: number): Promise<boolean> {
 }
 
 /** At the plan limit (decisions 17 and 22): keep writing, spill to the overflow storage, or hold. */
-export async function applyLimit(orgId: number, storage: StorageRow | null): Promise<{ storage: StorageRow | null; hold: boolean; spilledFrom: StorageRow | null }> {
+async function applyLimit(orgId: number, storage: StorageRow | null): Promise<{ storage: StorageRow | null; hold: boolean; spilledFrom: StorageRow | null }> {
   if (!storage || storage.at_limit === "keep" || !isFull(storage)) return { storage, hold: false, spilledFrom: null };
   const over = storage.overflow_storage_id
     ? (await listStorages(orgId)).find((s) => s.id === storage.overflow_storage_id && s.state === "active")
@@ -270,9 +269,7 @@ export async function trashFile(stem: string | null | undefined, kind: FileKind,
     return;
   }
   if (f.deleted_at) return;
-  await getDb()
-    .prepare("UPDATE stored_files SET deleted_at = ?, deleted_by = ?, trash_ref = ? WHERE id = ?")
-    .run(new Date().toISOString(), userId, ref ? JSON.stringify(ref).slice(0, 1000) : null, f.id);
+  await markTrashed(f.id, userId, ref ? JSON.stringify(ref).slice(0, 1000) : null);
 }
 
 /** Removes every copy of a file for good: its storage, its mirror, the held copy and the cache. */
@@ -330,7 +327,7 @@ export async function discardFile(stem: string): Promise<void> {
   const f = await fileByStem(stem);
   if (!f) return;
   await eraseFile(f);
-  await getDb().prepare("DELETE FROM stored_files WHERE id = ?").run(f.id);
+  await deleteStoredFile(f.id);
 }
 
 /** A route's answer when saveFile refused: 409 with the reason for "no storage yet". */

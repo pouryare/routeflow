@@ -2,43 +2,27 @@
  *  files, mirror copies, moves, removing old copies after a move), the daily check and trash purge,
  *  and the weekly spot-check and usage correction. Run by `/api/storages/sweep`. */
 
-import { getDb } from "@/lib/db";
 import {
-  addUsage, dueJobs, finishJob, getMove, listStorages, logStorageEvent, notifyOwners, queueJob, recentEvent, recordCheck,
-  retryJob, setStorageState, setUsage, updateStoredFile, listRules, replaceRules, type JobRow, type StorageRow,
+  addUsage, clearOverflowTo, countMoveFile, deleteStoredFile, dropMirrorsOn, dueJobs, fileById, filesCountedOn, filesOfMove,
+  filesToMove, finishJob, getMove, heldSince, insertMove, listRules, listStorages, logStorageEvent, markMoveClosed,
+  markMoveFinished, notifyOwners, queueJob, randomStoredFiles, recentEvent, recordCheck, replaceRules, retryJob,
+  setStorageState, setUsage, storageHasLiveFiles, trashedOn, trashOlderThan, updateStoredFile, type JobRow, type StorageRow,
   type StoredFileRow,
 } from "@/lib/repo/storages";
 import { cacheEvict } from "./cache";
 import { contentTypeOf, copyToMirror, driverFor, eraseFile, keyFor, sendHeld, settingsOf, testStorage } from "./files";
 import { s3ErrorReason } from "./s3";
 
-const db = () => getDb();
-const now = () => new Date().toISOString();
 const TRASH_DAYS = 30;
 const MAX_ATTEMPTS = 8;
-
-async function fileById(id: number): Promise<StoredFileRow | undefined> {
-  return (await db().prepare("SELECT * FROM stored_files WHERE id = ?").get(id)) as StoredFileRow | undefined;
-}
 
 // ---- moves (decisions 9 and 18) ----
 
 /** Starts moving every file on `fromId` (null: the dev disk) to `toId`. For a removal the storage
  *  stops taking new files at once and is removed when the move reaches 100%. Returns the move id. */
 export async function startMove(orgId: number, fromId: number | null, toId: number, reason: "default" | "remove", userId: number | null): Promise<number> {
-  const files = (await db()
-    .prepare(
-      `SELECT id FROM stored_files WHERE organization_id = ? AND storage_id IS NOT DISTINCT FROM ? AND deleted_at IS NULL
-         AND upload_state = 'stored'`
-    )
-    .all(orgId, fromId)) as { id: number }[];
-  const r = await db()
-    .prepare(
-      `INSERT INTO storage_moves (organization_id, from_storage_id, to_storage_id, reason, total, started_by, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`
-    )
-    .run(orgId, fromId, toId, reason, files.length, userId, now());
-  const moveId = Number(r.lastInsertRowid);
+  const files = await filesToMove(orgId, fromId);
+  const moveId = await insertMove(orgId, fromId, toId, reason, files.length, userId);
   if (fromId != null) {
     // New files go to the new storage at once: every rule that pointed at the old one now points at the new one.
     const rules = await listRules(orgId);
@@ -54,7 +38,7 @@ export async function startMove(orgId: number, fromId: number | null, toId: numb
     );
     if (reason === "remove") {
       await setStorageState(orgId, fromId, "moving_out");
-      await db().prepare("UPDATE storages SET overflow_storage_id = NULL WHERE organization_id = ? AND overflow_storage_id = ?").run(orgId, fromId);
+      await clearOverflowTo(orgId, fromId);
     }
   }
   for (const f of files) await queueJob(orgId, "move", f.id, moveId);
@@ -64,13 +48,7 @@ export async function startMove(orgId: number, fromId: number | null, toId: numb
 }
 
 async function finishMoveIfDone(orgId: number, moveId: number): Promise<void> {
-  const r = await db()
-    .prepare(
-      `UPDATE storage_moves SET state = 'finished', finished_at = ? WHERE id = ? AND organization_id = ? AND state = 'running'
-         AND done + failed >= total`
-    )
-    .run(now(), moveId, orgId);
-  if (Number(r.changes) === 0) return;
+  if (!await markMoveFinished(orgId, moveId)) return;
   const m = await getMove(orgId, moveId);
   if (!m) return;
   await logStorageEvent(orgId, m.from_storage_id, "move_done", `${m.done} از ${m.total} فایل منتقل شد${m.failed ? `، ${m.failed} فایل نشد` : ""}`);
@@ -82,11 +60,9 @@ async function finishMoveIfDone(orgId: number, moveId: number): Promise<void> {
 export async function closeMove(orgId: number, moveId: number, deleteOld: boolean): Promise<boolean> {
   const m = await getMove(orgId, moveId);
   if (!m || m.state !== "finished") return false;
-  await db().prepare("UPDATE storage_moves SET state = 'closed' WHERE id = ? AND organization_id = ?").run(moveId, orgId);
+  await markMoveClosed(orgId, moveId);
   if (deleteOld && m.from_storage_id != null) {
-    const files = (await db()
-      .prepare("SELECT id FROM stored_files WHERE organization_id = ? AND last_move_id = ?")
-      .all(orgId, moveId)) as { id: number }[];
+    const files = await filesOfMove(orgId, moveId);
     for (const f of files) await queueJob(orgId, "purge", f.id, moveId);
   }
   return true;
@@ -94,26 +70,16 @@ export async function closeMove(orgId: number, moveId: number, deleteOld: boolea
 
 /** Removes a storage that holds nothing (decision 18): no file lives on it and none is moving. */
 export async function removeIfEmpty(orgId: number, storageId: number, userId: number | null): Promise<boolean> {
-  const busy = await db()
-    .prepare(
-      `SELECT 1 FROM stored_files WHERE organization_id = ? AND storage_id = ? AND deleted_at IS NULL LIMIT 1`
-    )
-    .get(orgId, storageId);
-  if (busy) return false;
+  if (await storageHasLiveFiles(orgId, storageId)) return false;
   // Mirror copies on it are simply no longer counted; trashed files on it are erased first.
-  const trashed = (await db()
-    .prepare("SELECT * FROM stored_files WHERE organization_id = ? AND storage_id = ? AND deleted_at IS NOT NULL")
-    .all(orgId, storageId)) as unknown as StoredFileRow[];
-  for (const f of trashed) {
+  for (const f of await trashedOn(orgId, storageId)) {
     await eraseFile(f).catch(() => {});
-    await db().prepare("DELETE FROM stored_files WHERE id = ?").run(f.id);
+    await deleteStoredFile(f.id);
   }
-  await db()
-    .prepare("UPDATE stored_files SET mirror_storage_id = NULL, mirror_state = 'none' WHERE organization_id = ? AND mirror_storage_id = ?")
-    .run(orgId, storageId);
+  await dropMirrorsOn(orgId, storageId);
   const rules = await listRules(orgId);
   await replaceRules(orgId, rules.filter((r) => r.storage_id !== storageId).map((r) => ({ ...r, mirror_storage_id: r.mirror_storage_id === storageId ? null : r.mirror_storage_id })));
-  await db().prepare("UPDATE storages SET overflow_storage_id = NULL WHERE organization_id = ? AND overflow_storage_id = ?").run(orgId, storageId);
+  await clearOverflowTo(orgId, storageId);
   await setStorageState(orgId, storageId, "removed");
   await logStorageEvent(orgId, storageId, "removed", null, userId);
   return true;
@@ -139,7 +105,7 @@ async function moveOne(f: StoredFileRow, moveId: number): Promise<void> {
     if (from) await addUsage(f.organization_id, from.id, -f.bytes, -1);
     await addUsage(f.organization_id, to.id, f.bytes, 1);
   }
-  await db().prepare("UPDATE storage_moves SET done = done + 1 WHERE id = ?").run(moveId);
+  await countMoveFile(moveId, "done");
   await finishMoveIfDone(f.organization_id, moveId);
 }
 
@@ -176,7 +142,7 @@ async function runJob(job: JobRow): Promise<void> {
       await finishJob(job.id);
       if (job.kind === "mirror") await updateStoredFile(f.id, { mirror_state: "failed" });
       if (job.kind === "move" && job.move_id) {
-        await db().prepare("UPDATE storage_moves SET failed = failed + 1 WHERE id = ?").run(job.move_id);
+        await countMoveFile(job.move_id, "failed");
         await finishMoveIfDone(f.organization_id, job.move_id);
       }
       if (job.kind === "upload") await queueJob(f.organization_id, "upload", f.id, null, 6 * 3_600_000); // a held file is never dropped
@@ -196,7 +162,7 @@ export async function runStorageJobs(orgId: number, limit = 200): Promise<number
 // ---- checks ----
 
 /** The save-time test again, on a stored storage (decision 7, daily). */
-export async function checkStorage(orgId: number, s: StorageRow): Promise<string | null> {
+async function checkStorage(orgId: number, s: StorageRow): Promise<string | null> {
   let error: string | null;
   try {
     const r = await testStorage(s.kind, s.kind === "s3" ? settingsOf(s) : null, s.path_prefix);
@@ -218,14 +184,12 @@ export async function checkStorage(orgId: number, s: StorageRow): Promise<string
 /** Erases files in the trash for more than 30 days (decision 12). */
 export async function purgeTrash(orgId: number, at = new Date()): Promise<number> {
   const cutoff = new Date(at.getTime() - TRASH_DAYS * 86_400_000).toISOString();
-  const old = (await db()
-    .prepare("SELECT * FROM stored_files WHERE organization_id = ? AND deleted_at IS NOT NULL AND deleted_at < ? ORDER BY id LIMIT 1000")
-    .all(orgId, cutoff)) as unknown as StoredFileRow[];
+  const old = await trashOlderThan(orgId, cutoff);
   let n = 0;
   for (const f of old) {
     try {
       await eraseFile(f);
-      await db().prepare("DELETE FROM stored_files WHERE id = ?").run(f.id);
+      await deleteStoredFile(f.id);
       n++;
     } catch {
       /* the storage is down: tried again tomorrow */
@@ -238,12 +202,10 @@ export async function purgeTrash(orgId: number, at = new Date()): Promise<number
 /** Files held on the server for over an hour get one notice (decision 5). */
 async function warnHeld(orgId: number): Promise<void> {
   const since = new Date(Date.now() - 3_600_000).toISOString();
-  const row = (await db()
-    .prepare("SELECT COUNT(*) AS n FROM stored_files WHERE organization_id = ? AND upload_state = 'held' AND held_since < ?")
-    .get(orgId, since)) as { n: number };
-  if (Number(row.n) > 0 && !await recentEvent(orgId, null, "held", 24 * 60)) {
-    await logStorageEvent(orgId, null, "held", `${row.n} فایل بیش از یک ساعت روی سرور مانده`);
-    await notifyOwners(orgId, "فایل‌ها به فضای ذخیره‌سازی نرسیده‌اند", `${row.n} فایل بیش از یک ساعت روی سرور مانده است. تنظیمات فضا را بررسی کنید.`, "storage.held");
+  const n = await heldSince(orgId, since);
+  if (n > 0 && !await recentEvent(orgId, null, "held", 24 * 60)) {
+    await logStorageEvent(orgId, null, "held", `${n} فایل بیش از یک ساعت روی سرور مانده`);
+    await notifyOwners(orgId, "فایل‌ها به فضای ذخیره‌سازی نرسیده‌اند", `${n} فایل بیش از یک ساعت روی سرور مانده است. تنظیمات فضا را بررسی کنید.`, "storage.held");
   }
 }
 
@@ -261,12 +223,7 @@ export const evictCache = () => cacheEvict();
 
 /** Decision 21: 100 random files, each copy asked for by HEAD. And the usage numbers recounted. */
 export async function weeklySweep(orgId: number, sample = 100): Promise<{ checked: number; missing: number }> {
-  const files = (await db()
-    .prepare(
-      `SELECT * FROM stored_files WHERE organization_id = ? AND deleted_at IS NULL AND upload_state = 'stored' AND storage_id IS NOT NULL
-        ORDER BY random() LIMIT ?`
-    )
-    .all(orgId, sample)) as unknown as StoredFileRow[];
+  const files = await randomStoredFiles(orgId, sample);
   const all = await listStorages(orgId, true);
   let missing = 0;
   for (const f of files) {
@@ -288,10 +245,7 @@ export async function weeklySweep(orgId: number, sample = 100): Promise<{ checke
     try {
       let bytes = 0;
       for await (const o of driverFor(s).list(s.path_prefix)) if (!o.key.includes("/.check/")) bytes += o.bytes;
-      const count = (await db()
-        .prepare("SELECT COUNT(*) AS n FROM stored_files WHERE organization_id = ? AND deleted_at IS NULL AND (storage_id = ? OR (mirror_storage_id = ? AND mirror_state = 'done'))")
-        .get(orgId, s.id, s.id)) as { n: number };
-      await setUsage(orgId, s.id, bytes, Number(count.n));
+      await setUsage(orgId, s.id, bytes, await filesCountedOn(orgId, s.id));
     } catch {
       /* a storage that cannot be listed keeps its counted numbers */
     }

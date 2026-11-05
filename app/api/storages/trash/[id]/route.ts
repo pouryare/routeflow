@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isId } from "@/lib/inputChecks";
-import { getDb } from "@/lib/db";
 import { canReachEntity } from "@/lib/session";
 import { storageOwner, bad } from "@/lib/storage/routeGuard";
 import { readFile } from "@/lib/storage/files";
-import { logStorageEvent, trashedFile, untrash } from "@/lib/repo/storages";
+import { logStorageEvent, restorePhotoRow, trashedFile, untrash } from "@/lib/repo/storages";
 
 /** The picture of a file in the trash, so the owner can see what they would put back. */
 export async function GET(req: NextRequest, ctx: RouteContext<"/api/storages/trash/[id]">) {
@@ -32,10 +31,7 @@ export async function POST(req: NextRequest, ctx: RouteContext<"/api/storages/tr
   const entityType = ref.entity_type as "customer" | "district";
   const entityId = Number(ref.entity_id);
   if (!await canReachEntity(g.session, entityType, entityId)) return bad("صاحب این عکس دیگر پیدا نمی‌شود", 409);
-  const now = new Date().toISOString();
-  await getDb()
-    .prepare("INSERT INTO photos (entity_type, entity_id, file_stem, caption, taken_at, created_at) VALUES (?, ?, ?, ?, ?, ?)")
-    .run(entityType, entityId, f.stem, (ref.caption as string | null) ?? null, (ref.taken_at as string) ?? now, now);
+  await restorePhotoRow(entityType, entityId, f.stem, (ref.caption as string | null) ?? null, (ref.taken_at as string) ?? new Date().toISOString());
   await untrash(g.org, f.id);
   await logStorageEvent(g.org, f.storage_id, "restored", `${f.file_kind} ${f.stem}`, g.session.user.id);
   return NextResponse.json({ ok: true });

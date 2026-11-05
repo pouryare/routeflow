@@ -4,8 +4,8 @@ import path from "node:path";
 /** The app server's read-through cache of company files (decision 8): kept 7 days after the last
  *  read. Files never change (a new upload gets a new stem), so nothing needs invalidating except a
  *  purge. Each container keeps its own; losing it costs one fetch from the bucket. */
-export const CACHE_DIR = process.env.ROUTEFLOW_FILE_CACHE_DIR ?? path.join(process.cwd(), "data", "cache", "files");
-export const CACHE_DAYS = 7;
+const CACHE_DIR = process.env.ROUTEFLOW_FILE_CACHE_DIR ?? path.join(process.cwd(), "data", "cache", "files");
+const CACHE_DAYS = 7;
 
 const name = (stem: string, ext: string) => path.join(CACHE_DIR, `${stem}.${ext}`);
 

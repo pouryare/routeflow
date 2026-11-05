@@ -429,3 +429,117 @@ export async function allStorageProblems(): Promise<ProblemRow[]> {
     )
     .all(hourAgo, weekAgo)) as unknown as ProblemRow[];
 }
+
+// ---- background work (lib/storage/maintenance.ts and files.ts) ----
+
+export async function fileById(id: number): Promise<StoredFileRow | undefined> {
+  return (await db().prepare("SELECT * FROM stored_files WHERE id = ?").get(id)) as StoredFileRow | undefined;
+}
+
+export async function markTrashed(id: number, userId: number | null, ref: string | null): Promise<void> {
+  await db().prepare("UPDATE stored_files SET deleted_at = ?, deleted_by = ?, trash_ref = ? WHERE id = ?").run(now(), userId, ref, id);
+}
+
+/** Puts a trashed photo's row back as it was (the file itself never left its storage). */
+export async function restorePhotoRow(entityType: string, entityId: number, stem: string, caption: string | null, takenAt: string): Promise<void> {
+  await db()
+    .prepare("INSERT INTO photos (entity_type, entity_id, file_stem, caption, taken_at, created_at) VALUES (?, ?, ?, ?, ?, ?)")
+    .run(entityType, entityId, stem, caption, takenAt, now());
+}
+
+/** Live, uploaded files on one storage (null: the dev disk), to be moved. */
+export async function filesToMove(orgId: number, fromId: number | null): Promise<{ id: number }[]> {
+  return (await db()
+    .prepare(
+      `SELECT id FROM stored_files WHERE organization_id = ? AND storage_id IS NOT DISTINCT FROM ? AND deleted_at IS NULL
+         AND upload_state = 'stored'`
+    )
+    .all(orgId, fromId)) as { id: number }[];
+}
+
+export async function insertMove(orgId: number, fromId: number | null, toId: number, reason: "default" | "remove", total: number, userId: number | null): Promise<number> {
+  const r = await db()
+    .prepare(
+      `INSERT INTO storage_moves (organization_id, from_storage_id, to_storage_id, reason, total, started_by, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`
+    )
+    .run(orgId, fromId, toId, reason, total, userId, now());
+  return Number(r.lastInsertRowid);
+}
+
+/** No storage spills into one that is going away. */
+export async function clearOverflowTo(orgId: number, storageId: number): Promise<void> {
+  await db().prepare("UPDATE storages SET overflow_storage_id = NULL WHERE organization_id = ? AND overflow_storage_id = ?").run(orgId, storageId);
+}
+
+/** Marks a running move finished once every file is done or failed; true when this call did it. */
+export async function markMoveFinished(orgId: number, moveId: number): Promise<boolean> {
+  const r = await db()
+    .prepare(
+      `UPDATE storage_moves SET state = 'finished', finished_at = ? WHERE id = ? AND organization_id = ? AND state = 'running'
+         AND done + failed >= total`
+    )
+    .run(now(), moveId, orgId);
+  return Number(r.changes) > 0;
+}
+
+export async function markMoveClosed(orgId: number, moveId: number): Promise<void> {
+  await db().prepare("UPDATE storage_moves SET state = 'closed' WHERE id = ? AND organization_id = ?").run(moveId, orgId);
+}
+
+export async function countMoveFile(moveId: number, outcome: "done" | "failed"): Promise<void> {
+  await db().prepare(outcome === "done" ? "UPDATE storage_moves SET done = done + 1 WHERE id = ?" : "UPDATE storage_moves SET failed = failed + 1 WHERE id = ?").run(moveId);
+}
+
+export async function filesOfMove(orgId: number, moveId: number): Promise<{ id: number }[]> {
+  return (await db().prepare("SELECT id FROM stored_files WHERE organization_id = ? AND last_move_id = ?").all(orgId, moveId)) as { id: number }[];
+}
+
+export async function storageHasLiveFiles(orgId: number, storageId: number): Promise<boolean> {
+  return !!(await db()
+    .prepare("SELECT 1 FROM stored_files WHERE organization_id = ? AND storage_id = ? AND deleted_at IS NULL LIMIT 1")
+    .get(orgId, storageId));
+}
+
+export async function trashedOn(orgId: number, storageId: number): Promise<StoredFileRow[]> {
+  return (await db()
+    .prepare("SELECT * FROM stored_files WHERE organization_id = ? AND storage_id = ? AND deleted_at IS NOT NULL")
+    .all(orgId, storageId)) as unknown as StoredFileRow[];
+}
+
+/** Mirror copies on a removed storage are simply no longer counted. */
+export async function dropMirrorsOn(orgId: number, storageId: number): Promise<void> {
+  await db()
+    .prepare("UPDATE stored_files SET mirror_storage_id = NULL, mirror_state = 'none' WHERE organization_id = ? AND mirror_storage_id = ?")
+    .run(orgId, storageId);
+}
+
+export async function trashOlderThan(orgId: number, cutoff: string): Promise<StoredFileRow[]> {
+  return (await db()
+    .prepare("SELECT * FROM stored_files WHERE organization_id = ? AND deleted_at IS NOT NULL AND deleted_at < ? ORDER BY id LIMIT 1000")
+    .all(orgId, cutoff)) as unknown as StoredFileRow[];
+}
+
+export async function heldSince(orgId: number, since: string): Promise<number> {
+  const row = (await db()
+    .prepare("SELECT COUNT(*) AS n FROM stored_files WHERE organization_id = ? AND upload_state = 'held' AND held_since < ?")
+    .get(orgId, since)) as { n: number };
+  return Number(row.n);
+}
+
+export async function randomStoredFiles(orgId: number, sample: number): Promise<StoredFileRow[]> {
+  return (await db()
+    .prepare(
+      `SELECT * FROM stored_files WHERE organization_id = ? AND deleted_at IS NULL AND upload_state = 'stored' AND storage_id IS NOT NULL
+        ORDER BY random() LIMIT ?`
+    )
+    .all(orgId, sample)) as unknown as StoredFileRow[];
+}
+
+/** Files that have a copy on this storage, as its main home or a finished mirror. */
+export async function filesCountedOn(orgId: number, storageId: number): Promise<number> {
+  const row = (await db()
+    .prepare("SELECT COUNT(*) AS n FROM stored_files WHERE organization_id = ? AND deleted_at IS NULL AND (storage_id = ? OR (mirror_storage_id = ? AND mirror_state = 'done'))")
+    .get(orgId, storageId, storageId)) as { n: number };
+  return Number(row.n);
+}

@@ -5167,6 +5167,7 @@ body {
    «+ ثبت» button: both live at the bottom edge and the floating one covered the submit button. */
 @media (max-width: 767.98px) {
   .meridian:has([data-has-primary-bar]) .qa-fab { display: none; }
+  .meridian:has(.sticky-action) .qa-fab { display: none; } /* StickyAction is the same kind of bar */
 }
 
 /* reorder-by-drag rows (components/leads/RunPanel): a line where the row would land, the lifted row dimmed */
