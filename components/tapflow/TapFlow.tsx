@@ -202,7 +202,7 @@ function StepBody({ view, submit, hours, onNavigate, navigateUrl, vars, items, s
       {view.input?.max ? <CharCount text={text} max={view.input.max} /> : null}
       {view.input?.field === "text" && suggest ? <SuggestChips typed={text} past={suggest} onPick={setText} /> : null}
       {view.kind === "multi" ? (
-        <div className="tf-grid one">
+        <div className={`tf-grid one${view.id === "tags" ? " tf-popin" : ""}`}>
           {view.choices.map((c) => (
             <AnswerButton key={c.id} icon="check" selected={picked.includes(c.id)}
               onPress={() => setPicked((xs) => (xs.includes(c.id) ? xs.filter((x) => x !== c.id) : [...xs, c.id]))}>

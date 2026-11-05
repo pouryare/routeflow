@@ -5644,3 +5644,13 @@ html[data-fx="off"] .amountslider__bubble { animation: none; }
 .rangebar__bars { display: flex; align-items: flex-end; gap: 2px; height: 28px; margin-bottom: 4px; }
 .rangebar__bars > span { flex: 1; min-width: 0; border-radius: 2px 2px 0 0; background: var(--border-strong); transition: background-color 150ms; }
 .rangebar__bars > span[data-lit] { background: var(--accent); opacity: 0.55; }
+
+/* Rating tags (lead visit, step "tags"): after the stars, the matching tags pop in one after another. */
+@media (prefers-reduced-motion: no-preference) {
+  .tf-popin > * { animation: tf-popin 300ms var(--spring-pop, ease-out) both; }
+  .tf-popin > :nth-child(2) { animation-delay: 50ms; } .tf-popin > :nth-child(3) { animation-delay: 100ms; }
+  .tf-popin > :nth-child(4) { animation-delay: 150ms; } .tf-popin > :nth-child(5) { animation-delay: 200ms; }
+  .tf-popin > :nth-child(n + 6) { animation-delay: 250ms; }
+  @keyframes tf-popin { from { opacity: 0; transform: scale(0.7) translateY(6px); } }
+  html[data-fx="off"] .tf-popin > * { animation: none; }
+}

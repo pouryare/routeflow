@@ -1,5 +1,33 @@
 import { SKIP_STEP, TOMORROW_10 } from "./common";
-import type { FlowConfig } from "./types";
+import type { FlowConfig, FlowContext, FlowProgress } from "./types";
+import { tagsForStars, type RatingTags } from "@/lib/ratingTags";
+
+/** The visit flow's context, built the same way where the flow starts (GET …/visit) and where its answers
+ *  are replayed (applyLeadVisit), so both sides offer the same rating tags. */
+export function leadVisitContext(o: { name: string; address: string; isManager: boolean; tags: RatingTags }): FlowContext {
+  const list = (xs: string[]) => xs.map((label, id) => ({ id, label }));
+  return {
+    entry: "driver_visit",
+    firstContact: true,
+    attemptNo: 1,
+    maxMisses: 5,
+    isManager: o.isManager,
+    vars: { name: o.name, address: o.address },
+    knownContacts: [],
+    products: [],
+    reps: [],
+    recentCustomers: [],
+    lists: { rating_good: list(o.tags.good), rating_low: list(o.tags.low) },
+  };
+}
+
+/** The tags this visit's stars call for, as multi-step choices (the tag itself is the id). */
+function visitTags(ctx: FlowContext, s: FlowProgress): { id: string; label: string }[] {
+  const names = (k: string) => (ctx.lists?.[k] ?? []).map((x) => x.label);
+  const st = s.acc.stars ?? {};
+  return tagsForStars({ good: names("rating_good"), low: names("rating_low") }, [st.potential, st.volume, st.ease])
+    .map((t) => ({ id: t, label: t }));
+}
 
 /** The one Persian word for "the driver was there and someone was there to talk to". */
 const AGAIN = "یادآوری";
@@ -107,7 +135,15 @@ export const leadVisitFlow: FlowConfig = {
     rate: {
       id: "rate", kind: "stars", q: "ارزیابی",
       sub: "پتانسیل فروش و راحتی دسترسی را بزن",
-      options: [{ id: "stars", label: "ارزیابی", next: "skip" }],
+      options: [{ id: "stars", label: "ارزیابی", next: (ctx, s) => (visitTags(ctx, s).length ? "tags" : "skip") }],
+    },
+
+    /** After the stars, the company's tags that match them pop in (lib/ratingTags.ts); any number, or none. */
+    tags: {
+      id: "tags", kind: "multi", q: "چه چیزی دیدید؟",
+      sub: "برچسب‌های مناسب را بزنید · اختیاری",
+      choices: visitTags,
+      options: [{ id: "ok", label: "ادامه", tone: "rec", next: "skip" }],
     },
 
     skip: SKIP_STEP,

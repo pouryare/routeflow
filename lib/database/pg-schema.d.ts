@@ -908,6 +908,7 @@ export interface Organizations {
   legal_form: Generated<string>;
   name: string;
   plan: Generated<string>;
+  rating_tags_json: string | null;
   slug: string;
   sound_skin: Generated<string>;
   step_up_required: Generated<boolean>;

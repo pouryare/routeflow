@@ -167,6 +167,8 @@ export function appTabs(session: { role: Role }): AppTab[] {
     { href: "/sales/admin/users", label: "کاربران", group: "org", ready: isOwner(r) },
     { href: "/sales/admin/groups", label: "گروه‌ها", group: "org", ready: isOwner(r) },
     { href: "/sales/admin/discounts", label: "تخفیف‌ها", group: "org", ready: isOwner(r) },
+    // The tags a driver taps after a lead visit's stars (lib/ratingTags.ts).
+    { href: "/sales/admin/rating-tags", label: "برچسب‌های ارزیابی", group: "org", ready: isOwner(r) },
     { href: "/sales/admin/logins", label: "گزارش ورودها", group: "org", ready: isOwner(r) },
     { href: "/sales/admin/status", label: "وضعیت سامانه", group: "org", ready: isOwner(r) },
     // Company storages (docs/storage.md): where the company's photos and receipts are kept.
