@@ -112,3 +112,15 @@ describe("tutorials: the catalogue", () => {
     }
   });
 });
+
+describe("tutorial voice clips reach a driver", () => {
+  it("a van role may fetch a clip", async () => {
+    process.env.SESSION_SECRET = "test-secret";
+    const { proxy } = await import("@/proxy");
+    const { createSessionToken, COOKIE_NAME } = await import("@/lib/auth");
+    const { NextRequest } = await import("next/server");
+    const token = createSessionToken({ uid: 1, role: "delivery_driver", gid: 2, oid: 1, tv: 0, name: "t" });
+    const res = proxy(new NextRequest("http://localhost/tutorials/voice/van-deliver-0.mp3", { headers: { cookie: `${COOKIE_NAME}=${token}` } }));
+    expect(res.headers.get("location")).toBeNull();
+  });
+});

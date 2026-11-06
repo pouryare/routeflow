@@ -184,7 +184,7 @@ export function homePathFor(role: Role): string {
 /** A shareholder's login is a window onto their own share and nothing else. proxy.ts sends every path
  *  outside this list back to /my-share, so a role the rest of the app has never heard of cannot be the
  *  way into it: the sales shell, the APIs and the books are all out of reach, whatever their own gates say. */
-export const SHAREHOLDER_PATHS = ["/my-share", "/settings", "/password", "/api/logout", "/api/me", "/api/prefs", "/api/notifications", "/api/push/subscribe", "/api/tutorials"];
+export const SHAREHOLDER_PATHS = ["/my-share", "/settings", "/password", "/api/logout", "/api/me", "/api/prefs", "/api/notifications", "/api/push/subscribe", "/api/tutorials", "/tutorials/voice"];
 export const isShareholderPath = (pathname: string) => {
   if (pathname.includes("..") || pathname.includes("\\") || pathname.includes("%")) return false;
   if (SHAREHOLDER_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`))) return true;

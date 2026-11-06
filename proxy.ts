@@ -239,6 +239,7 @@ export function proxy(req: NextRequest) {
     pathname === "/api/prefs" ||
     // Tutorials: the person's own progress, step counts and what a manager sent them.
     pathname.startsWith("/api/tutorials") ||
+    pathname.startsWith("/tutorials/voice/") ||
     pathname.startsWith("/api/crm/driver-visits") ||
     pathname === "/start" ||
     pathname === "/api/today" ||
