@@ -167,7 +167,7 @@ export default function ComplaintsPanel({
         </div>
       )}
 
-      <button
+      <button data-tour="open:complaint"
         type="button"
         onClick={() => setFlow((f) => ({ key: f.key + 1, open: true }))}
         className="inline-flex items-center justify-center gap-[var(--space-2)] rounded bg-accent px-4 py-3 text-base font-medium text-accent-ink md:hidden"

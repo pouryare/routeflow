@@ -9,7 +9,7 @@ export default function StockCountEntry({ rows, facility }: { rows: CountRow[]; 
   const [flow, setFlow] = useState({ key: 0, open: false });
   return (
     <>
-      <button
+      <button data-tour="open:stock_count"
         type="button"
         onClick={() => setFlow((f) => ({ key: f.key + 1, open: true }))}
         className="inline-flex min-h-[44px] items-center justify-center gap-[var(--space-2)] self-start rounded-[var(--radius-md)] border border-[var(--accent)] bg-[var(--accent)] px-[var(--space-4)] text-[length:var(--text-sm)] font-medium text-accent-ink"

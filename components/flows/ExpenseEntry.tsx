@@ -32,7 +32,7 @@ export default function ExpenseEntry({ categories, suppliers, recent = [], canSe
   return (
     <>
       <div className="mb-4 flex">
-        <button type="button" onClick={() => start()} className={`${BTN} self-start`}>
+        <button data-tour="open:expense" type="button" onClick={() => start()} className={`${BTN} self-start`}>
           <Icon name="plus" size="md" />
           ثبت هزینه
         </button>

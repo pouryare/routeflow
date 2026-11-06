@@ -27,6 +27,7 @@ import { tehranTodayIso } from "@/lib/jalali";
 import { unseenFor } from "@/lib/whatsNew";
 import { getPrefs } from "@/lib/repo/prefs";
 import WhatsNewCard from "@/components/today/WhatsNewCard";
+import FirstStepsCard from "@/components/tutorials/FirstStepsCard";
 import MoneyTiles from "@/components/today/MoneyTiles";
 import { moneyTilesFor } from "@/lib/repo/moneyTiles";
 
@@ -98,6 +99,7 @@ export default async function SalesTodayPage() {
       )}
 
       {whatsNew && <WhatsNewCard entry={whatsNew} />}
+      <FirstStepsCard />
 
       <ActionCards cards={await suggestionsFor(session)} />
 

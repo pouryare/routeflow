@@ -101,7 +101,7 @@ export default function DriverRun({
 
   return (
     <div className="flex flex-col gap-[var(--space-3)]">
-      <div className="grid grid-cols-3 gap-[var(--space-2)]">
+      <div className="grid grid-cols-3 gap-[var(--space-2)]" data-tour="run-tiles">
         <Tile label="باقی‌مانده" value={faNum(run.remaining)} />
         <Tile label="دریافتی امروز" value={faToman(run.collected_toman)} />
         <Tile label="مانده وصول" value={faToman(run.to_collect_toman)} />
@@ -276,6 +276,7 @@ function StopCard({
       >
       <button
         type="button"
+        data-tour="stop-open"
         onClick={onToggle}
         className="inline-flex items-center justify-center gap-[var(--space-2)] flex w-full items-start justify-between gap-[var(--space-3)] p-[var(--space-4)] text-right"
       >
@@ -359,6 +360,7 @@ function StopCard({
             {!done && (
               <button
                 type="button"
+                data-tour="stop-deliver"
                 onClick={startFlow}
                 className="inline-flex items-center justify-center gap-[var(--space-2)] flex-1 rounded-[var(--radius-md)] border border-[var(--accent)] bg-[var(--accent)] px-[var(--space-4)] py-[var(--space-3)] text-[length:var(--text-base)] font-medium text-accent-ink"
               >
@@ -369,6 +371,7 @@ function StopCard({
             {!done && (
               <button
                 type="button"
+                data-tour="stop-later"
                 onClick={defer}
                 className="inline-flex min-h-[44px] items-center justify-center gap-[var(--space-2)] rounded-[var(--radius-md)] border border-[var(--border)] px-[var(--space-4)] text-[length:var(--text-sm)] text-[var(--text-muted)]"
               >
@@ -378,6 +381,7 @@ function StopCard({
             )}
             <button
               type="button"
+              data-tour="stop-receipt"
               onClick={() =>
                 onPrint(
                   buildReceipt({

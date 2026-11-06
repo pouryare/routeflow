@@ -13,6 +13,7 @@ export default function DriverLinks({ links }: { links: AccountLink[] }) {
         <Link
           key={l.href}
           href={l.href}
+          data-tour={`link:${l.href}`}
           className="touch inline-flex min-h-11 items-center justify-center gap-[var(--space-2)] rounded-[var(--radius-md)] border border-[var(--border)] px-[var(--space-3)] text-[length:var(--text-sm)] text-[var(--text-muted)] no-underline"
         >
           <Icon name={l.icon} size="sm" />

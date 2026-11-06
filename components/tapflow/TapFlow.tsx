@@ -89,7 +89,7 @@ export default function TapFlow(p: TapFlowProps) {
               {view.sub ? <p className="tf-sub">{view.sub}</p> : null}
               {CUSTOM.has(view.kind)
                 ? p.renderCustom?.({ step: view, state: p.state, submit })
-                : <StepBody key={`${view.id}-${p.state.answers.length}`} view={view} submit={submit} hours={p.hours} onNavigate={navigate} navigateUrl={p.navigateUrl} vars={p.ctx.vars} items={p.ctx.items ?? []} suggest={p.suggest} />}
+                : <StepBody flow={p.config.id} key={`${view.id}-${p.state.answers.length}`} view={view} submit={submit} hours={p.hours} onNavigate={navigate} navigateUrl={p.navigateUrl} vars={p.ctx.vars} items={p.ctx.items ?? []} suggest={p.suggest} />}
               {view && (view.skipable || view.timeStep) ? (
                   <Button variant="ghost" className="flow-drawer__skip" onPress={() => submit(SKIP)}>
                     <Icon name="arrow-left" size="md" />
@@ -102,7 +102,7 @@ export default function TapFlow(p: TapFlowProps) {
   );
 }
 
-function StepBody({ view, submit, hours, onNavigate, navigateUrl, vars, items, suggest }: { suggest?: string[]; view: ResolvedStep; submit: (id: string, value?: string) => void; hours?: WorkingHours; onNavigate?: (url: string) => void; navigateUrl?: string; vars: Record<string, string>; items: FlowItem[] }) {
+function StepBody({ flow, view, submit, hours, onNavigate, navigateUrl, vars, items, suggest }: { flow: string; suggest?: string[]; view: ResolvedStep; submit: (id: string, value?: string) => void; hours?: WorkingHours; onNavigate?: (url: string) => void; navigateUrl?: string; vars: Record<string, string>; items: FlowItem[] }) {
   const [text, setText] = useState("");
   const [picked, setPicked] = useState<string[]>([]);
   const [pickFor, setPickFor] = useState<string | null>(null);
@@ -116,6 +116,7 @@ function StepBody({ view, submit, hours, onNavigate, navigateUrl, vars, items, s
     const raw = view.input ? vars[view.input.field] : undefined;
     const unit = (view.input && vars[`${view.input.field}_unit`]) || view.input?.unit;
     return (
+      <div data-tour={`${flow}:${view.id}`}>
       <AmountStep
         prefill={raw ? Number(raw) : null}
         option={view.options[0]}
@@ -125,10 +126,12 @@ function StepBody({ view, submit, hours, onNavigate, navigateUrl, vars, items, s
         allowZero={view.input?.allowZero}
         submit={submit}
       />
+      </div>
     );
   }
-  if (view.kind === "pick") return <PickStep choices={view.choices} optionId={view.options[0].id} extras={view.options.slice(1)} submit={submit} />;
-  if (view.kind === "stepper") return <StepperStep items={items} option={view.options[0]} submit={submit} />;
+  /* Tutorials point at a whole step of these kinds (`flow:step`) and move on with «ادامه». */
+  if (view.kind === "pick") return <div data-tour={`${flow}:${view.id}`}><PickStep choices={view.choices} optionId={view.options[0].id} extras={view.options.slice(1)} submit={submit} /></div>;
+  if (view.kind === "stepper") return <div data-tour={`${flow}:${view.id}`}><StepperStep items={items} option={view.options[0]} submit={submit} /></div>;
 
   if (pickFor) {
     return (
@@ -163,13 +166,13 @@ function StepBody({ view, submit, hours, onNavigate, navigateUrl, vars, items, s
     const isSelected = feedback.selected === o.id;
     if (o.slide === true) {
       return (
-        <SlideConfirm key={o.id} sub={sub} isDisabled={needsText || feedback.selected !== null} onConfirm={() => tap(o)}>
+        <SlideConfirm key={o.id} tour={`${flow}:${view.id}:${o.id}`} sub={sub} isDisabled={needsText || feedback.selected !== null} onConfirm={() => tap(o)}>
           {o.label}
         </SlideConfirm>
       );
     }
     return (
-      <AnswerButton key={o.id} selected={isSelected} tone={o.tone} isDisabled={needsText || feedback.selected !== null} onPress={() => tap(o)}>
+      <AnswerButton key={o.id} tour={`${flow}:${view.id}:${o.id}`} selected={isSelected} tone={o.tone} isDisabled={needsText || feedback.selected !== null} onPress={() => tap(o)}>
         {o.label}
         {sub ? <small>{sub}</small> : null}
         {isSelected ? <span className="tick" aria-hidden><Icon name="check" size="sm" /></span> : null}

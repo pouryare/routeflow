@@ -16,6 +16,7 @@ const SHELL_CACHE = "shell-v3";
 const TILE_CACHE = "map-tiles-v4";
 const DATA_CACHE = "map-data-v3";
 const GEOMETRY_CACHE = "map-geometry-v3";
+const VOICE_CACHE = "tutorial-voice-v1";
 const OFFLINE_URL = "/offline";
 
 self.addEventListener("install", (event) => {
@@ -30,7 +31,7 @@ self.addEventListener("activate", (event) => {
       .then((keys) =>
         Promise.all(
           keys
-            .filter((k) => ![SHELL_CACHE, TILE_CACHE, DATA_CACHE, GEOMETRY_CACHE].includes(k))
+            .filter((k) => ![SHELL_CACHE, TILE_CACHE, DATA_CACHE, GEOMETRY_CACHE, VOICE_CACHE].includes(k))
             .map((k) => caches.delete(k))
         )
       )
@@ -196,6 +197,14 @@ self.addEventListener("fetch", (event) => {
   const { request } = event;
   if (request.method !== "GET") return;
   const url = new URL(request.url);
+
+  // Tutorial voice clips (idea I11): the app downloads the person's own role once, then they play
+  // with no signal. shortcut: a Range request for a cached clip gets the whole file, which Safari
+  // may refuse; revisit if it shows on iPhones.
+  if (url.pathname.startsWith("/tutorials/voice/") && url.pathname.endsWith(".mp3")) {
+    event.respondWith(cacheFirst(new Request(request.url), VOICE_CACHE));
+    return;
+  }
 
   // The self-hosted basemap (lib/mapTiles.ts) and its sprites. Cached first so a street
   // seen once draws again with no signal; the tile file changes only every few months.

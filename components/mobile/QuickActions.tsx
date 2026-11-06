@@ -18,7 +18,7 @@ export default function QuickActions({ actions }: { actions: QuickAction[] }) {
 
   return (
     <>
-      <button type="button" className="qa-fab" aria-haspopup="dialog" onClick={() => setSheet(true)}>
+      <button data-tour="quick" type="button" className="qa-fab" aria-haspopup="dialog" onClick={() => setSheet(true)}>
         <Icon name="plus" size="md" />
         <span>ثبت</span>
       </button>
@@ -26,10 +26,11 @@ export default function QuickActions({ actions }: { actions: QuickAction[] }) {
         <div className="tf-grid one">
           {actions.map((a) =>
             a.href ? (
-              <AnswerLink key={a.id} href={a.href} icon={a.icon} onPress={() => setSheet(false)}>{a.label}</AnswerLink>
+              <AnswerLink key={a.id} tour={`quick:${a.id}`} href={a.href} icon={a.icon} onPress={() => setSheet(false)}>{a.label}</AnswerLink>
             ) : (
               <AnswerButton
                 key={a.id}
+                tour={`quick:${a.id}`}
                 icon={a.icon}
                 onPress={() => {
                   setSheet(false);

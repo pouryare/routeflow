@@ -278,7 +278,7 @@ export default function AdminUsersPage() {
         </p>
       )}
 
-      <button
+      <button data-tour="open:user_add"
         type="button"
         onClick={() => setAddFlow((f) => ({ key: f.key + 1, open: true }))}
         className="inline-flex min-h-[44px] items-center justify-center gap-[var(--space-2)] rounded-md border border-accent bg-accent px-4 text-sm text-accent-ink md:hidden"

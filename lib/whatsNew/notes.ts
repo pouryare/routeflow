@@ -7,6 +7,8 @@ import type { Role } from "@/lib/roles";
 interface WhatsNewItem {
   text: string;
   roles?: Role[];
+  /** Idea I10: a 1 to 3 step change tour (a tutorial id) the card offers beside the line. */
+  tour?: string;
 }
 
 export interface WhatsNewEntry {
@@ -18,6 +20,13 @@ const MANAGERS: Role[] = ["platform_owner", "owner", "group_manager"];
 const SELLERS: Role[] = ["phone_sales"];
 
 export const WHATS_NEW: WhatsNewEntry[] = [
+  {
+    version: "2026-11-06",
+    items: [
+      { text: "آموزش‌های کوتاه آمده است: از «بیشتر» ← «آموزش برنامه» یا با نوشتن «چطور…» در جستجو، هر کاری را قدم به قدم ببینید و تمرین کنید." },
+      { text: "مدیر می‌تواند یک آموزش را برای همکارش بفرستد و ببیند دیده و انجام شده یا نه.", roles: MANAGERS, tour: "manage-reps" },
+    ],
+  },
   {
     version: "2026-10-23",
     items: [

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Icon } from "@/components/meridian/Icon";
+import { useTutorials } from "@/components/tutorials/TutorialProvider";
 import type { WhatsNewEntry } from "@/lib/whatsNew/notes";
 
 /** F112: what changed since this person last looked, shown once. «دیدم» remembers the version in
@@ -10,6 +11,7 @@ import type { WhatsNewEntry } from "@/lib/whatsNew/notes";
  *  full history stays under settings. */
 export default function WhatsNewCard({ entry }: { entry: WhatsNewEntry }) {
   const [hidden, setHidden] = useState(false);
+  const { start } = useTutorials();
   if (hidden) return null;
 
   function dismiss() {
@@ -35,7 +37,15 @@ export default function WhatsNewCard({ entry }: { entry: WhatsNewEntry }) {
       <h2 className="sechead__title">تازه‌های برنامه</h2>
       <ul className="m-0 mt-[var(--space-2)] flex list-disc flex-col gap-[var(--space-1)] pr-[var(--space-4)] text-[length:var(--text-sm)] leading-6 text-[var(--text)]">
         {entry.items.map((i, k) => (
-          <li key={k}>{i.text}</li>
+          <li key={k}>
+            {i.text}
+            {i.tour ? (
+              <button type="button" className="btn ms-[var(--space-2)] inline-flex min-h-[44px] items-center gap-[var(--space-1)]" onClick={() => start(i.tour!)}>
+                <Icon name="sparkle" size="sm" />
+                ببین
+              </button>
+            ) : null}
+          </li>
         ))}
       </ul>
       <div className="mt-[var(--space-3)] flex flex-wrap gap-[var(--space-2)]">

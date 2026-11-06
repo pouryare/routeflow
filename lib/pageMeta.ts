@@ -396,6 +396,12 @@ export const PAGE_META: Record<string, PageMeta> = {
     help: "page.sound-settings",
     overview: "صدای کوتاه برنامه هنگام ثبت، خطا و زدن دکمه‌ها. هر کس صدای خودش را روشن یا خاموش می‌کند و مالک شرکت نوع صدا را برای همه انتخاب می‌کند.",
   },
+  "/settings/tutorials": {
+    title: "آموزش برنامه",
+    titleEn: "Tutorials",
+    help: "page.tutorials",
+    overview: "آموزش کوتاه هر کار، قدم به قدم روی همین برنامه. هر کدام را می‌توانید دوباره ببینید یا بدون راهنما تمرین کنید؛ تمرین روی اطلاعات نمونه است و چیزی ذخیره نمی‌شود.",
+  },
   "/settings/updates": {
     title: "تازه‌های برنامه",
     titleEn: "What's new",

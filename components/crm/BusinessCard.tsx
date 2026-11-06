@@ -48,7 +48,7 @@ export default function BusinessCard({ row, mode, highlight, favourite, onFavour
       {mode === "business" && row.next_title ? <div className="due">{nextLine}</div> : null}
       <div className="acts">
         {row.phone_norm ? (
-          <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn solid" onClick={() => onCall(row)} aria-label={`تماس با ${formatPhone(row.phone_norm)}`}>
+          <button data-tour="crm:call" type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn solid" onClick={() => onCall(row)} aria-label={`تماس با ${formatPhone(row.phone_norm)}`}>
             <Icon name="phone" size="sm" /> تماس
           </button>
         ) : (

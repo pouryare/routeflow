@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import ServiceWorkerRegister from "@/components/ServiceWorkerRegister";
 import SoundSync from "@/components/SoundSync";
 import FxSync from "@/components/FxSync";
+import TutorialProvider from "@/components/tutorials/TutorialProvider";
 import { ToastProvider } from "@/components/ToastProvider";
 import HeroUIProvider from "@/components/HeroUIProvider";
 import { THEME_INIT_SCRIPT } from "@/lib/theme";
@@ -57,7 +58,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <FxSync />
         <HeroUIProvider>
           <ToastProvider>
-            {children}
+            <TutorialProvider>{children}</TutorialProvider>
           </ToastProvider>
         </HeroUIProvider>
       </body>

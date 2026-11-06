@@ -109,4 +109,6 @@ export const TENANT_TABLES = [
   "storage_events",
   /* Z9: where the phone was when a payment or expense was entered. */
   "entry_places",
+  "tutorial_assignments",
+  "tutorial_counts",
 ] as const satisfies readonly string[];

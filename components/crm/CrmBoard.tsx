@@ -7,6 +7,7 @@ import { Icon } from "@/components/meridian/Icon";
 import BusinessCard from "./BusinessCard";
 import AfterCallFlow from "./AfterCallFlow";
 import AddLeadFlow from "./AddLeadFlow";
+import { useTutorialData } from "@/components/tutorials/TutorialProvider";
 import { useCallReturn } from "./useCallReturn";
 import CustomerSheet from "@/components/meridian/CustomerSheet";
 import { useNavApp } from "@/components/NavAppSetting";
@@ -64,7 +65,9 @@ export default function CrmBoard({ initialRows, initialCounts, initialView, canP
     setAdding(false);
     stopSelecting();
   }
-  const shown = onlyFavs ? rows.filter((r) => favs.includes(r.id)) : rows;
+  // While a CRM tutorial runs the list shows its «نمونه» rows; the real ones come back after.
+  const listed = useTutorialData("crm-rows", rows);
+  const shown = onlyFavs ? listed.filter((r) => favs.includes(r.id)) : listed;
 
   const load = useCallback(async (v: CrmView, query: string) => {
     const j = (await fetch(`/api/crm/businesses?view=${v}&q=${encodeURIComponent(query)}`).then((r) => r.json()).catch(() => null)) as
@@ -134,13 +137,14 @@ export default function CrmBoard({ initialRows, initialCounts, initialView, canP
             onChange={(e) => setQ(e.target.value)}
             placeholder="جستجو نام، تلفن، محله…"
             aria-label="جستجو"
+            data-tour="crm:search"
           />
         </div>
-        <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn solid" onClick={() => setLead({ kind: "lead", open: true, prefillPhone: null })}>
+        <button data-tour="open:add_lead" type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn solid" onClick={() => setLead({ kind: "lead", open: true, prefillPhone: null })}>
         <Icon name="plus" size="md" />
         سرنخ تازه</button>
       </div>
-      <ScrollFade className="crm-views" role="toolbar" aria-label="نمای فهرست">
+      <ScrollFade className="crm-views" role="toolbar" aria-label="نمای فهرست" tour="crm:views">
         {VIEW_ORDER.map((v) => (
           <button key={v} type="button" aria-pressed={view === v} onClick={() => setView(v)}>
             <Icon name="user" size="md" />
@@ -158,7 +162,7 @@ export default function CrmBoard({ initialRows, initialCounts, initialView, canP
           </button>
         ) : null}
       </ScrollFade>
-      <div className="crm-list">
+      <div className="crm-list" data-tour="crm:list">
         {shown.length === 0 ? <p className="tf-sub" style={{ textAlign: "center", padding: 24 }}>در این نما موردی نیست. نما یا عبارت جستجو را تغییر دهید.</p> : null}
         {shown.map((row) => (
           <BusinessCard key={row.id} row={row} favourite={favs.includes(row.id)} onFavourite={(r) => toggleFav(r.id)}

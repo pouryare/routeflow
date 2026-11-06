@@ -84,6 +84,7 @@ export default function CatalogueEditor({
       )}
 
       <form
+        data-tour="product:add"
         className="grid gap-[var(--space-3)] md:grid-cols-4"
         onSubmit={async (e) => {
           e.preventDefault();
@@ -137,7 +138,7 @@ export default function CatalogueEditor({
           />
         </div>
         <div className="md:col-span-4">
-          <button className={BUTTON} disabled={busy} type="submit">
+          <button data-tour="product:save" className={BUTTON} disabled={busy} type="submit">
             <Icon name="plus" size="md" />
             افزودن کالا
           </button>

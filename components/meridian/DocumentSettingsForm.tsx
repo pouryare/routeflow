@@ -36,7 +36,7 @@ export default function DocumentSettingsForm({ current }: { current: DocumentSet
 
   const label = "flex flex-col gap-[var(--space-1)] text-[length:var(--text-sm)]";
   return (
-    <section className="card flex flex-col gap-[var(--space-3)] p-[var(--space-4)]" dir="rtl">
+    <section data-tour="company:docs" className="card flex flex-col gap-[var(--space-3)] p-[var(--space-4)]" dir="rtl">
       <h2 className="sechead__title">برگه‌های چاپی</h2>
       <label className={label}>
         پایین رسید
