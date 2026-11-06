@@ -49,18 +49,21 @@ export default function TutorSection({ people, sent, counts }: { people: Person[
   const status = (s: Sent) => (s.done_at ? "انجام شد" : s.seen_at ? "دیده شد" : "فرستاده شد");
 
   const byTutorial = useMemo(() => {
+    // The bar tour has one id per role but one title, so counts are grouped by title.
     const m = new Map<string, { start: number; done: number; skip: number; quit: number; worst: number }>();
     const quitAt = new Map<string, number>();
     for (const c of counts ?? []) {
-      const e = m.get(c.tutorial_id) ?? { start: 0, done: 0, skip: 0, quit: 0, worst: -1 };
+      const title = tutorialById(c.tutorial_id)?.title;
+      if (!title) continue;
+      const e = m.get(title) ?? { start: 0, done: 0, skip: 0, quit: 0, worst: -1 };
       e[c.event] += c.n;
-      if (c.event === "quit" && c.n > (quitAt.get(c.tutorial_id) ?? 0)) {
-        quitAt.set(c.tutorial_id, c.n);
+      if (c.event === "quit" && c.n > (quitAt.get(title) ?? 0)) {
+        quitAt.set(title, c.n);
         e.worst = c.step;
       }
-      m.set(c.tutorial_id, e);
+      m.set(title, e);
     }
-    return [...m.entries()].filter(([id]) => tutorialById(id));
+    return [...m.entries()];
   }, [counts]);
 
   return (
@@ -109,10 +112,10 @@ export default function TutorSection({ people, sent, counts }: { people: Person[
               <p className="tf-sub">هنوز کسی آموزشی را شروع نکرده است. اینجا فقط تعداد می‌بینید، بدون نام.</p>
             ) : (
               <ul className="tutlist">
-                {byTutorial.map(([id, e]) => (
-                  <li key={id} className="tutrow">
+                {byTutorial.map(([title, e]) => (
+                  <li key={title} className="tutrow">
                     <span className="tutrow__title">
-                      {tutorialById(id)?.title}
+                      {title}
                       <small>
                         شروع {faNum(e.start)} · تمام {faNum(e.done)} · ردکردن {faNum(e.skip)} · نیمه‌رها {faNum(e.quit)}
                         {e.worst >= 0 && e.quit > 0 ? ` (بیشتر در قدم ${faNum(e.worst + 1)})` : ""}
