@@ -7,6 +7,9 @@
 #   sudo routeflow upgrade routeflow-0.2.0-linux-x64.tar.gz   # upgrade now (otherwise: tonight, below)
 #   sudo routeflow rollback | status | backup [full|diff|incr] | restore-drill | restore | logs
 #   sudo routeflow doctor | cdn-ips                           # checks any time | refresh Arvan's address list
+#   sudo routeflow export [file] | import <file> | sql <fix.sql> # the database as a file, and back; a reviewed fix
+#   sudo routeflow rebuild <secrets.tar.asc> [tarball]        # a new server from the secrets copy and the Pi
+#   sudo routeflow support-key add "<ssh key>" 3d | list | remove   # a helper's key that expires by itself
 #   sudo routeflow secrets list | set KEY | unset KEY | backup [file] | restore <file>
 #   routeflow upgrade-scheduled                               # the nightly timer: newest tarball in incoming/
 #   sudo routeflow                                            # Whiptail menu
@@ -261,24 +264,47 @@ cmd_secrets() {
       say "$key removed"
       systemctl try-restart "$SERVICE" ;;
     backup)
-      out=${2:-$PWD/routeflow-secrets-$(hostname -s)-$(date +%F).env.asc}
+      # Everything a rebuilt server needs that is not in the database backups: the secrets, the
+      # install answers, the backup encryption passphrase and the backup machine's SSH key.
+      out=${2:-$PWD/routeflow-secrets-$(hostname -s)-$(date +%F).tar.asc}
       [ -f "$SECRETS" ] || die "no secrets yet"
+      t=$(secret_tmp)
+      secrets_read >"$t/secrets.env"
+      [ -f "$CONF" ] && cp "$CONF" "$t/routeflow.conf"
+      [ -f /etc/pgbackrest/cipher-pass ] && cp /etc/pgbackrest/cipher-pass "$t/cipher-pass"
+      key=$(getent passwd postgres | cut -d: -f6)/.ssh/routeflow_backup
+      [ -f "$key" ] && cp "$key" "$t/routeflow_backup" && cp "$key.pub" "$t/routeflow_backup.pub"
       say "Choose a passphrase you keep outside this server (a password manager)."
-      secrets_read | gpg --pinentry-mode loopback --symmetric --cipher-algo AES256 --armor -o "$out"
-      chmod 600 "$out"
+      tar -C "$t" -c . | gpg --pinentry-mode loopback --symmetric --cipher-algo AES256 --armor -o "$out"
+      rm -rf "$t"; chmod 600 "$out"
       say "Wrote $out. Put it in the private repo; it opens only with that passphrase." ;;
     restore)
-      [ -f "${2:-}" ] || die "usage: routeflow secrets restore <routeflow-secrets-....env.asc>"
+      [ -f "${2:-}" ] || die "usage: routeflow secrets restore <routeflow-secrets-....tar.asc>"
       t=$(secret_tmp)
-      gpg --pinentry-mode loopback -q -d -o "$t/all" "$2"
-      secrets_write "$t/all"; rm -rf "$t"
+      gpg --pinentry-mode loopback -q -d -o "$t/blob" "$2"
+      if tar -tf "$t/blob" >/dev/null 2>&1; then
+        tar -xf "$t/blob" -C "$t"
+        secrets_write "$t/secrets.env"
+        if [ -f "$t/routeflow.conf" ]; then install -d -m 755 "$CONF_DIR"; install -m 644 "$t/routeflow.conf" "$CONF"; fi
+        if [ -f "$t/cipher-pass" ]; then
+          install -d -m 750 /etc/pgbackrest; install -m 600 "$t/cipher-pass" /etc/pgbackrest/cipher-pass
+          if id postgres >/dev/null 2>&1; then chown postgres:postgres /etc/pgbackrest/cipher-pass; fi
+        fi
+        if [ -f "$t/routeflow_backup" ]; then install -d -m 700 /root/.routeflow-restore; cp "$t"/routeflow_backup* /root/.routeflow-restore/; fi
+      else
+        secrets_write "$t/blob"   # an older copy: the secrets alone
+      fi
+      rm -rf "$t"
       say "Secrets restored for this machine"
-      systemctl try-restart "$SERVICE" ;;
+      systemctl try-restart "$SERVICE" 2>/dev/null || true ;;
     *) die "routeflow secrets list | set KEY | unset KEY | backup [file] | restore <file>" ;;
   esac
 }
 
 load_conf() { if [ -f "$CONF" ]; then . "$CONF"; fi; }
+
+# J. An upgrade unpacks about 400 MB and a backup runs first; with less room it would stop halfway.
+enough_disk() { [ "$(df -Pk "$ROOT" 2>/dev/null | awk 'NR==2 {print int($4/1048576)}')" -ge "${MIN_FREE_GB:-3}" ]; }
 
 need_root() { [ "$(id -u)" = 0 ] || die "run as root: sudo routeflow $*"; }
 
@@ -287,6 +313,7 @@ cmd_upgrade() {
   need_root upgrade
   load_conf
   exec 9>"$LOCK"; flock -n 9 || die "another routeflow command is running"
+  enough_disk || die "less than ${MIN_FREE_GB:-3} GB free on $ROOT; nothing was changed. Free space (old releases: routeflow status), then try again."
   from=$(current_version)
   version=$(unpack_release "$tarball")
   say "Release $version unpacked (live: ${from:-none})"
@@ -564,6 +591,10 @@ ensure_sweep_token() {
   rm -rf "$t"
 }
 
+maintenance_page() {
+  printf '%s' '<!doctype html><html lang="fa" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="15"><title>در حال به‌روزرسانی</title><style>body{margin:0;min-height:100vh;display:grid;place-items:center;font-family:system-ui,Tahoma,sans-serif;background:#f6f7f9;color:#1f2937}@media(prefers-color-scheme:dark){body{background:#111827;color:#e5e7eb}}main{text-align:center;padding:24px}h1{font-size:20px;margin:0 0 8px}p{margin:0;opacity:.75}</style></head><body><main><h1>در حال به‌روزرسانی</h1><p>چند لحظه دیگر برمی‌گردیم. این صفحه خودش تازه می‌شود.</p></main></body></html>'
+}
+
 write_caddy() {
   # A file of its own, imported once, so another site in the Caddyfile is never touched.
   cat > /etc/caddy/routeflow.caddy <<CADDY
@@ -577,12 +608,171 @@ $DOMAIN {
 	}
 	reverse_proxy 127.0.0.1:$APP_PORT
 	$(caddy_tls_line)
+	# H. While the app restarts (an upgrade), a short Persian page instead of an error. Never cached,
+	# so Arvan does not keep serving it after the app is back.
+	handle_errors {
+		@down expression \`{err.status_code} in [502, 503, 504]\`
+		handle @down {
+			header Cache-Control "no-store"
+			header Retry-After "20"
+			@api path /api/*
+			respond @api \`{"ok":false,"maintenance":true}\` 503
+			header Content-Type "text/html; charset=utf-8"
+			respond \`$(maintenance_page)\` 503
+		}
+	}
 }
 CADDY
   grep -qxF 'import /etc/caddy/routeflow.caddy' /etc/caddy/Caddyfile 2>/dev/null \
     || printf '\nimport /etc/caddy/routeflow.caddy\n' >> /etc/caddy/Caddyfile
   caddy validate --config /etc/caddy/Caddyfile >/dev/null
   systemctl reload caddy || systemctl restart caddy
+}
+
+# ---- G. Rebuild on a new server ---------------------------------------------------------------------
+# From the off-server copy (routeflow secrets backup) and the backups on the Pi: same secrets, same
+# settings, the newest database the Pi holds.
+cmd_rebuild() {
+  need_root rebuild
+  local bundle=${1:-} tarball=${2:-}
+  [ -f "$bundle" ] || die "usage: routeflow rebuild <routeflow-secrets-....tar.asc> [tarball]"
+  cmd_secrets restore "$bundle"
+  load_conf
+  [ -n "${OFFSITE_HOST:-}" ] || die "no OFFSITE_HOST in the restored settings: the backups that survive are on the Pi, and this copy does not name it"
+  ROUTEFLOW_YES=1 RF_REBUILD=1 cmd_install ${tarball:+"$tarball"}
+  say "Loading the newest database from $OFFSITE_HOST"
+  ROUTEFLOW_YES=1 cmd_restore 2
+  run_migrations "$ROOT/current"
+  systemctl restart "$SERVICE"
+  wait_healthy || die "the restored database is in place but the app is not healthy: routeflow logs"
+  runuser -u postgres -- pgbackrest --stanza=routeflow check || warn "pgbackrest check failed; see routeflow doctor"
+  say "Rebuilt: https://$DOMAIN serves the restored data. Sign in with your usual login."
+}
+
+# ---- L. Temporary access for a helper ---------------------------------------------------------------
+# The key goes into root's authorized_keys with OpenSSH's own expiry-time, so sshd refuses it after
+# the date even if nothing else runs; an hourly timer then removes the line.
+SUPPORT_KEYS=${SUPPORT_KEYS:-/root/.ssh/authorized_keys}
+
+support_expiry() {   # 3d, 12h -> YYYYMMDDHHMM (UTC) that many days or hours from now
+  local n=${1%[dh]} unit=${1: -1}
+  [[ $n =~ ^[0-9]+$ ]] && [ "$n" -gt 0 ] || return 1
+  case "$unit" in d) date -u -d "+$n days" +%Y%m%d%H%M ;; h) date -u -d "+$n hours" +%Y%m%d%H%M ;; *) return 1 ;; esac
+}
+
+support_prune() {   # drop expired routeflow-support lines; prints how many
+  local now line kept=0 dropped=0 tmp
+  [ -f "$SUPPORT_KEYS" ] || { echo 0; return 0; }
+  now=$(date -u +%Y%m%d%H%M); tmp=$(mktemp)
+  while IFS= read -r line || [ -n "$line" ]; do
+    if [[ $line =~ expiry-time=\"([0-9]{12})Z\".*routeflow-support ]] && [ "${BASH_REMATCH[1]}" -le "$now" ]; then
+      dropped=$((dropped + 1)); continue
+    fi
+    printf '%s\n' "$line" >>"$tmp"; kept=$((kept + 1))
+  done <"$SUPPORT_KEYS"
+  cat "$tmp" >"$SUPPORT_KEYS"; rm -f "$tmp"
+  echo "$dropped"
+}
+
+cmd_support_key() {
+  need_root support-key
+  local action=${1:-list} until
+  case "$action" in
+    add)
+      [ -n "${2:-}" ] && [ -n "${3:-}" ] || die "usage: routeflow support-key add \"ssh-ed25519 AAAA... name\" 3d   (or 12h)"
+      [[ $2 =~ ^(ssh-|ecdsa-|sk-)[^\ ]+\ [A-Za-z0-9+/=]+ ]] || die "that does not look like an SSH public key"
+      until=$(support_expiry "$3") || die "how long: a number of days (3d) or hours (12h)"
+      install -d -m 700 "$(dirname "$SUPPORT_KEYS")"
+      printf 'expiry-time="%sZ" %s routeflow-support\n' "$until" "$2" >>"$SUPPORT_KEYS"
+      chmod 600 "$SUPPORT_KEYS"
+      say "Added until $(date -d "${until:0:8} ${until:8:2}:${until:10:2} UTC" '+%Y-%m-%d %H:%M %Z'). Remove sooner: routeflow support-key remove" ;;
+    list) grep -n 'routeflow-support' "$SUPPORT_KEYS" 2>/dev/null | sed -E 's/^([0-9]+):expiry-time="([0-9]{8})([0-9]{4})Z" (\S+) \S+ (.*)/\1  until \2 \3 UTC  \4 \5/' || echo "no helper keys" ;;
+    remove) sed -i '/routeflow-support$/d' "$SUPPORT_KEYS"; say "All helper keys removed" ;;
+    prune) say "$(support_prune) expired helper key(s) removed" ;;
+    *) die "routeflow support-key add <key> <3d|12h> | list | remove" ;;
+  esac
+}
+
+write_support_timer() {
+  cat >/etc/systemd/system/routeflow-support-prune.service <<'UNIT'
+[Unit]
+Description=RouteFlow: remove expired helper SSH keys
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/routeflow support-key prune
+UNIT
+  cat >/etc/systemd/system/routeflow-support-prune.timer <<'UNIT'
+[Unit]
+Description=RouteFlow: remove expired helper SSH keys, hourly
+[Timer]
+OnCalendar=hourly
+Persistent=true
+[Install]
+WantedBy=timers.target
+UNIT
+}
+
+# ---- Database export, import and one-off SQL fixes --------------------------------------------------
+# export: a pg_dump file to send for a look (all companies, personal data included: share it only
+#         over a private channel). import: replaces the live database with such a file; the old one
+#         is kept under another name. sql: runs a reviewed .sql fix in one transaction, after a backup.
+EXPORT_DIR=/var/lib/routeflow/exports
+
+cmd_export() {
+  need_root export
+  local out=${1:-$EXPORT_DIR/routeflow-$(date +%Y%m%d-%H%M).dump}
+  install -d -o "$APP_USER" -g "$APP_USER" -m 750 "$(dirname "$out")"
+  as_app pg_dump -Fc -Z 6 -f "$out" "postgres:///$DB_NAME?host=/var/run/postgresql"
+  say "Wrote $out ($(du -h "$out" | cut -f1)). Send it privately; it holds every company's data."
+}
+
+confirm() {   # confirm WORD message
+  if [ "${ROUTEFLOW_YES:-0}" = 1 ]; then return 0; fi
+  [ -t 0 ] || die "not on a terminal: set ROUTEFLOW_YES=1 to confirm"
+  read -r -p "$2 Type $1 to go on: " answer
+  [ "$answer" = "$1" ] || die "nothing changed"
+}
+
+cmd_import() {
+  need_root import
+  local file=${1:-} stamp old
+  [ -f "$file" ] || die "usage: routeflow import <file.dump>   (made by routeflow export or pg_dump -Fc)"
+  pg_restore -l "$file" >/dev/null 2>&1 || die "$file is not a pg_dump custom-format file"
+  confirm IMPORT "This stops the app and replaces the whole database with $(basename "$file")."
+  stamp=$(date +%Y%m%d_%H%M%S); old="${DB_NAME}_before_import_$stamp"
+  say "Backup first"
+  systemctl start routeflow-backup@incr 2>/dev/null || warn "the backup before import failed; going on, the old database is kept anyway"
+  systemctl stop "$SERVICE" || true
+  runuser -u postgres -- psql -X -q -v ON_ERROR_STOP=1 -d postgres <<SQL
+SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '$DB_NAME' AND pid <> pg_backend_pid();
+ALTER DATABASE "$DB_NAME" RENAME TO "$old";
+CREATE DATABASE "$DB_NAME" OWNER "$APP_USER";
+SQL
+  # As the superuser, so extensions (PostGIS) are created; ownership in the file stays the app's.
+  # Read by root and handed over on stdin: the file can sit anywhere, unreadable to postgres.
+  if ! runuser -u postgres -- pg_restore --exit-on-error -d "$DB_NAME" <"$file"; then
+    warn "the import failed; putting the old database back"
+    runuser -u postgres -- psql -X -q -d postgres -c "DROP DATABASE \"$DB_NAME\"" -c "ALTER DATABASE \"$old\" RENAME TO \"$DB_NAME\""
+    systemctl start "$SERVICE"
+    die "nothing changed"
+  fi
+  run_migrations "$ROOT/current"
+  systemctl start "$SERVICE"
+  wait_healthy || warn "the app is not healthy after the import: routeflow logs"
+  say "Imported. The previous database is kept as $old; drop it once you are happy:"
+  say "  sudo -u postgres dropdb $old"
+}
+
+cmd_sql() {
+  need_root sql
+  local file=${1:-}
+  [ -f "$file" ] || die "usage: routeflow sql <fix.sql>   (runs it in one transaction, after a backup)"
+  echo "---- $file"; cat "$file"; echo "----"
+  confirm APPLY "This runs the SQL above on the live database."
+  systemctl start routeflow-backup@incr 2>/dev/null || die "the backup before the change failed; nothing was run"
+  as_app psql -X -v ON_ERROR_STOP=1 --single-transaction -d "postgres:///$DB_NAME?host=/var/run/postgresql" -f "$file" \
+    || die "the SQL failed and was rolled back; nothing changed"
+  say "Applied. To undo: routeflow restore 1 \"<time just before, UTC>\""
 }
 
 # ---- Running inside Iran: mirror, clock, CDN-only firewall, certificate, doctor, login status ------
@@ -838,6 +1028,10 @@ pair_offsite() {
   local dir key
   dir=$(getent passwd postgres | cut -d: -f6)/.ssh
   install -d -o postgres -g postgres -m 700 "$dir"
+  if [ ! -f "$dir/routeflow_backup" ] && [ -f /root/.routeflow-restore/routeflow_backup ]; then
+    install -o postgres -g postgres -m 600 /root/.routeflow-restore/routeflow_backup "$dir/routeflow_backup"
+    install -o postgres -g postgres -m 644 /root/.routeflow-restore/routeflow_backup.pub "$dir/routeflow_backup.pub"
+  fi
   [ -f "$dir/routeflow_backup" ] || runuser -u postgres -- ssh-keygen -q -t ed25519 -N '' -C "routeflow-backup@$(hostname)" -f "$dir/routeflow_backup"
   runuser -u postgres -- sh -c "ssh-keyscan -H '$OFFSITE_HOST' >> '$dir/known_hosts' 2>/dev/null; sort -u -o '$dir/known_hosts' '$dir/known_hosts'"
   if runuser -u postgres -- ssh -i "$dir/routeflow_backup" -o BatchMode=yes -o ConnectTimeout=10 "$OFFSITE_USER@$OFFSITE_HOST" "test -d '$OFFSITE_PATH'" 2>/dev/null; then
@@ -953,7 +1147,7 @@ APT
     warn "$OFFSITE_HOST does not take the backup key yet: backups stay on this server for now (commands for the Pi at the end)"
     offsite=""
   fi
-  APP_DIR=$ROOT OFFSITE_HOST=$offsite OFFSITE_USER=${OFFSITE_USER:-} OFFSITE_PATH=${OFFSITE_PATH:-} \
+  RF_REBUILD=${RF_REBUILD:-0} APP_DIR=$ROOT OFFSITE_HOST=$offsite OFFSITE_USER=${OFFSITE_USER:-} OFFSITE_PATH=${OFFSITE_PATH:-} \
     bash "$tmp/db/server/install.sh" --no-migrate
   rm -rf "$tmp"
   secrets_absorb
@@ -966,12 +1160,13 @@ APT
     /etc/systemd/system/routeflow-backup@.service /etc/systemd/system/routeflow-restore-drill.service 2>/dev/null || true
   write_upgrade_timer
   write_cdn_timer
+  write_support_timer
   write_motd
   ensure_sweep_token
   write_storage_timers
   systemctl daemon-reload
   systemctl enable "$SERVICE" >/dev/null
-  systemctl enable --now routeflow-upgrade.timer routeflow-cdn-ips.timer >/dev/null
+  systemctl enable --now routeflow-upgrade.timer routeflow-cdn-ips.timer routeflow-support-prune.timer >/dev/null
   systemctl enable --now routeflow-storage-jobs.timer routeflow-storage-daily.timer routeflow-storage-weekly.timer >/dev/null
   install -d -o "$APP_USER" -g "$APP_USER" -m 775 "$ROOT/incoming"
   # The key-only user GitHub copies releases as (docs/release-and-deploy.md) may write here, nothing more.
@@ -998,6 +1193,7 @@ APT
     say "A release is already live ($(current_version)); to change it: routeflow upgrade <tarball>"
   fi
   ln -sfn "$ROOT/current/bin/routeflow" /usr/local/bin/routeflow
+  if [ "${RF_REBUILD:-0}" = 1 ]; then return 0; fi   # routeflow rebuild loads the real database next
   ensure_owner
 
   say "Self-test: a full backup, then restoring it into a scratch copy"
@@ -1042,7 +1238,7 @@ menu() {
   esac
 }
 
-usage() { sed -n '2,12p' "$0" | sed 's/^# \{0,1\}//'; }
+usage() { sed -n '2,15p' "$0" | sed 's/^# \{0,1\}//'; }
 
 main() {
   local cmd=${1:-}
@@ -1056,6 +1252,11 @@ main() {
     status-short) status_short ;;
     doctor) cmd_doctor ;;
     cdn-ips) cmd_cdn_ips ;;
+    rebuild) cmd_rebuild "$@" ;;
+    support-key) cmd_support_key "$@" ;;
+    export) cmd_export "$@" ;;
+    import) cmd_import "$@" ;;
+    sql) cmd_sql "$@" ;;
     backup) cmd_backup "$@" ;;
     restore-drill) cmd_restore_drill ;;
     restore) cmd_restore "$@" ;;

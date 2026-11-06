@@ -148,6 +148,53 @@ Arvan panel, and make the off-site machine accept the backup user's key.
 - **Status on login**: every SSH login shows one line with the version, health, age of the last backup and
   disk use (`routeflow status-short`).
 
+## More safety (owner's pick G to L, 2026-11-06)
+
+- **Rebuild on a new server.**
+  - `routeflow secrets backup` now writes one encrypted bundle. It holds the secrets,
+    `routeflow.conf`, the pgBackRest passphrase (without it the backups cannot be read) and the backup SSH
+    key, so the Pi accepts the new server.
+  - On a fresh VPS, run `sudo routeflow rebuild routeflow-secrets-....tar.asc [tarball]`. It restores
+    that bundle, installs everything, loads the newest database from the Pi, runs any newer migrations
+    and checks pgBackRest. Your usual logins work again, because the users come back with the database.
+  - Not tried end to end yet.
+- **Page during upgrades.** While the app restarts, Caddy answers with a short Persian «در حال
+  به‌روزرسانی» page that reloads itself every 15 seconds, and `/api/*` gets
+  `{"ok":false,"maintenance":true}`. Both use status 503 and `Cache-Control: no-store`, so Arvan never
+  keeps the page. Tried with Caddy 2.6.
+- **PostgreSQL memory sized to the server.** `install.sh` writes `zz-routeflow-memory.conf`:
+  - `shared_buffers` 25% of memory and `effective_cache_size` 75%;
+  - `maintenance_work_mem` memory/16, at most 1 GB;
+  - `work_mem` memory/256, between 4 and 64 MB.
+
+  On 4 GB that is 1 GB, 3 GB, 256 MB and 16 MB. The fixed values in `postgresql.routeflow.conf` were for
+  16 GB (4 GB of `shared_buffers` would fill a 4 GB server). Run the install again after resizing.
+- **Disk check before every upgrade.** With less than 3 GB free on `/opt/routeflow` (`MIN_FREE_GB`),
+  the upgrade stops before it changes anything.
+- **Certificate alert.** The Pi monitor reads the expiry date of the certificate users see once a day.
+  It warns on Telegram from 14 days before.
+- **Helper access that expires.** `routeflow support-key add "ssh-ed25519 AAAA... name" 3d` (or `12h`)
+  adds the key for root with OpenSSH's own `expiry-time`, so sshd refuses it after that time even if
+  nothing else runs. An hourly timer then deletes the line. `routeflow support-key list` and `remove`
+  show and end access early.
+
+## Sending the database for a change, and taking a fix back
+
+- `sudo routeflow export` writes `/var/lib/routeflow/exports/routeflow-<date>.dump` (pg_dump custom
+  format, every company, with grants). It holds personal data, so send it only through a private
+  channel.
+- The usual way back is a fix, not a whole database: a reviewed `fix.sql`, applied with
+  `sudo routeflow sql fix.sql`. It shows the SQL, asks you to type APPLY, takes a backup, and runs the
+  file in one transaction, so any error leaves nothing changed. Orders entered between the export and
+  the fix are kept, which re-importing a changed dump would lose.
+- When a whole database has to go back: `sudo routeflow import <file.dump>`.
+  - It asks you to type IMPORT and takes a backup.
+  - It stops the app and renames the live database to `routeflow_before_import_<time>`. It is kept,
+    not dropped.
+  - It restores the file, runs the migrations and starts the app.
+  - If the restore fails, the old database is put back.
+- On the development side, the file loads into a local database with `pg_restore -d <db> <file>`.
+
 ## Kernel settings
 
 `/etc/sysctl.d/60-routeflow.conf` (written by `routeflow install`, from `write_sysctl` in

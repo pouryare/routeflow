@@ -244,3 +244,29 @@ describe("routeflow: Arvan-only web ports and the certificate", () => {
     );
   });
 });
+
+describe("routeflow: helper keys that expire", () => {
+  it("turns 3d and 12h into an expiry time and refuses anything else", () => {
+    expect(run("support_expiry 3d").out).toMatch(/^\d{12}$/);
+    expect(run("support_expiry 12h").out).toMatch(/^\d{12}$/);
+    expect(run("support_expiry 0d").code).not.toBe(0);
+    expect(run("support_expiry soon").code).not.toBe(0);
+  });
+
+  it("removes only helper keys whose time has passed", () => {
+    const keys = path.join(root, "authorized_keys");
+    fs.writeFileSync(
+      keys,
+      [
+        "ssh-ed25519 AAAAowner owner@laptop",
+        'expiry-time="200001010000Z" ssh-ed25519 AAAAold helper routeflow-support',
+        'expiry-time="299901010000Z" ssh-ed25519 AAAAnew helper routeflow-support',
+      ].join("\n") + "\n",
+    );
+    const r = run(`SUPPORT_KEYS="${keys}"; support_prune`);
+    expect(r.out).toBe("1");
+    expect(fs.readFileSync(keys, "utf8")).toBe(
+      'ssh-ed25519 AAAAowner owner@laptop\nexpiry-time="299901010000Z" ssh-ed25519 AAAAnew helper routeflow-support\n',
+    );
+  });
+});

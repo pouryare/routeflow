@@ -21,12 +21,13 @@ afterEach(() => fs.rmSync(dir, { recursive: true, force: true }));
 const T0 = Date.UTC(2026, 10, 4, 23, 30) / 1000;
 
 /** One tick at `now`, with health answering `ok`; telegram fails when `tgDown`. */
-function tick(now: number, ok: boolean, tgDown = false) {
+function tick(now: number, ok: boolean, tgDown = false, certDays = 90) {
   const stubs = `
     check_health() { HEALTH_OK=${ok ? 1 : 0}; HEALTH_VERSION=0.1.0; }
     telegram_send() { echo "$1" >> "${dir}/tg"; return ${tgDown ? 1 : 0}; }
     sms_send() { echo "$1" >> "${dir}/sms"; }
-    disk_pct() { echo 10; }`;
+    disk_pct() { echo 10; }
+    cert_days_left() { echo ${certDays}; }`;
   const r = spawnSync("bash", ["-c", `. "${SCRIPT}"; ${stubs}; NOW=${now} tick`], {
     env: { ...process.env, ROUTEFLOW_MONITOR_CONF: path.join(dir, "conf"), ROUTEFLOW_MONITOR_STATE: path.join(dir, "state") },
     encoding: "utf8",
@@ -101,5 +102,20 @@ describe("routeflow-monitor: backups, summary and the monthly test", () => {
     tick(first + 60, true);
     expect(sent("tg").filter((m) => m.includes("test"))).toHaveLength(1);
     expect(sent("sms").filter((m) => m.includes("test"))).toHaveLength(1);
+  });
+});
+
+describe("routeflow-monitor: certificate", () => {
+  it("warns once a day when the certificate expires within 14 days", () => {
+    freshBackup(T0);
+    tick(T0, true, false, 10);
+    tick(T0 + 60, true, false, 10);
+    expect(sent("tg").filter((m) => m.includes("expires in 10 days"))).toHaveLength(1);
+  });
+
+  it("says nothing while the certificate has time left", () => {
+    freshBackup(T0);
+    tick(T0, true, false, 60);
+    expect(sent("tg")).toEqual([]);
   });
 });
