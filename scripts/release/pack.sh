@@ -41,7 +41,7 @@ rm -rf "$OUT/node_modules/playwright" "$OUT/node_modules/playwright-core"
 cp -a node_modules/playwright node_modules/playwright-core "$OUT/node_modules/"
 # Committed files only, so a developer's local photos or database can never end up in a release.
 git archive HEAD public content data db/migrations db/server \
-  scripts/pg scripts/_db.mjs scripts/create-user.mjs scripts/disable-second-factor.mjs scripts/run-sweeps.mjs \
+  scripts/pg scripts/_db.mjs scripts/create-user.mjs scripts/disable-second-factor.mjs scripts/reset-login.mjs scripts/run-sweeps.mjs \
   | tar -x -C "$OUT"
 install -D -m 755 deploy/routeflow "$OUT/bin/routeflow"
 install -D -m 755 deploy/monitor/routeflow-monitor "$OUT/bin/routeflow-monitor"

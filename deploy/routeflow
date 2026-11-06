@@ -7,7 +7,8 @@
 #   sudo routeflow upgrade routeflow-0.2.0-linux-x64.tar.gz   # upgrade now (otherwise: tonight, below)
 #   sudo routeflow rollback | status | backup [full|diff|incr] | restore-drill | restore | logs
 #   sudo routeflow doctor | cdn-ips                           # checks any time | refresh Arvan's address list
-#   sudo routeflow export [file] | import <file> | sql <fix.sql> # the database as a file, and back; a reviewed fix
+#   sudo routeflow export [--anonymise] [--encrypt] [file] | import <file> | sql <fix.sql>
+#   sudo routeflow upgrade --check <tarball> | maintenance on|off | reset-login <user>
 #   sudo routeflow rebuild <secrets.tar.asc> [tarball]        # a new server from the secrets copy and the Pi
 #   sudo routeflow support-key add "<ssh key>" 3d | list | remove   # a helper's key that expires by itself
 #   sudo routeflow secrets list | set KEY | unset KEY | backup [file] | restore <file>
@@ -309,6 +310,7 @@ enough_disk() { [ "$(df -Pk "$ROOT" 2>/dev/null | awk 'NR==2 {print int($4/10485
 need_root() { [ "$(id -u)" = 0 ] || die "run as root: sudo routeflow $*"; }
 
 cmd_upgrade() {
+  if [ "${1:-}" = --check ]; then shift; load_conf; cmd_upgrade_check "$@"; return; fi
   local tarball=${1:?usage: routeflow upgrade <routeflow-X.Y.Z-linux-ARCH.tar.gz>} from version pending
   need_root upgrade
   load_conf
@@ -606,6 +608,14 @@ $DOMAIN {
 	request_body {
 		max_size 25MB
 	}
+	# N. routeflow maintenance on: the same page for everyone while work is done by hand.
+	@maintenance file {
+		root $CONF_DIR
+		try_files maintenance.on
+	}
+	header @maintenance Cache-Control "no-store"
+	header @maintenance Content-Type "text/html; charset=utf-8"
+	respond @maintenance \`$(maintenance_page)\` 503
 	reverse_proxy 127.0.0.1:$APP_PORT
 	$(caddy_tls_line)
 	# H. While the app restarts (an upgrade), a short Persian page instead of an error. Never cached,
@@ -696,10 +706,10 @@ cmd_support_key() {
 write_support_timer() {
   cat >/etc/systemd/system/routeflow-support-prune.service <<'UNIT'
 [Unit]
-Description=RouteFlow: remove expired helper SSH keys
+Description=RouteFlow: remove expired helper SSH keys and week-old exports
 [Service]
 Type=oneshot
-ExecStart=/usr/local/bin/routeflow support-key prune
+ExecStart=/usr/local/bin/routeflow tidy
 UNIT
   cat >/etc/systemd/system/routeflow-support-prune.timer <<'UNIT'
 [Unit]
@@ -720,10 +730,40 @@ EXPORT_DIR=/var/lib/routeflow/exports
 
 cmd_export() {
   need_root export
-  local out=${1:-$EXPORT_DIR/routeflow-$(date +%Y%m%d-%H%M).dump}
+  local anon=0 enc=0 out="" tmpdb
+  while [ $# -gt 0 ]; do
+    case "$1" in --anonymise | --anonymize) anon=1 ;; --encrypt) enc=1 ;; *) out=$1 ;; esac
+    shift
+  done
+  out=${out:-$EXPORT_DIR/routeflow-$(date +%Y%m%d-%H%M)$([ "$anon" = 1 ] && echo -anon).dump}
   install -d -o "$APP_USER" -g "$APP_USER" -m 750 "$(dirname "$out")"
-  as_app pg_dump -Fc -Z 6 -f "$out" "postgres:///$DB_NAME?host=/var/run/postgresql"
-  say "Wrote $out ($(du -h "$out" | cut -f1)). Send it privately; it holds every company's data."
+  if [ "$anon" = 1 ]; then
+    # A scratch copy (made as a template of the live one), changed, dumped and dropped: the live
+    # database is never touched.
+    tmpdb="${DB_NAME}_anon_$(date +%s)"
+    say "Copying the database to change people's details in the copy only"
+    as_app pg_dump -Fc "postgres:///$DB_NAME?host=/var/run/postgresql" \
+      | { runuser -u postgres -- createdb -O "$APP_USER" "$tmpdb" && runuser -u postgres -- pg_restore --exit-on-error -d "$tmpdb"; } \
+      || { runuser -u postgres -- dropdb --if-exists "$tmpdb"; die "could not make the scratch copy"; }
+    if ! anonymise_sql | runuser -u postgres -- psql -X -q -v ON_ERROR_STOP=1 -d "$tmpdb"; then
+      runuser -u postgres -- dropdb --if-exists "$tmpdb"; die "could not replace the details; nothing was written"
+    fi
+    runuser -u postgres -- pg_dump -Fc -Z 6 -d "$tmpdb" >"$out"
+    runuser -u postgres -- dropdb "$tmpdb"
+  else
+    as_app pg_dump -Fc -Z 6 -f "$out" "postgres:///$DB_NAME?host=/var/run/postgresql"
+  fi
+  if [ "$enc" = 1 ]; then
+    say "Choose a passphrase; send it separately from the file."
+    gpg --pinentry-mode loopback --symmetric --cipher-algo AES256 -o "$out.gpg" "$out" && rm -f "$out"
+    out=$out.gpg
+  fi
+  chmod 640 "$out"
+  if [ "$anon" = 1 ]; then
+    say "Wrote $out ($(du -h "$out" | cut -f1)): names, phones, addresses and notes replaced. Map points and amounts are real."
+  else
+    say "Wrote $out ($(du -h "$out" | cut -f1)). Send it privately; it holds every company's data."
+  fi
 }
 
 confirm() {   # confirm WORD message
@@ -737,6 +777,12 @@ cmd_import() {
   need_root import
   local file=${1:-} stamp old
   [ -f "$file" ] || die "usage: routeflow import <file.dump>   (made by routeflow export or pg_dump -Fc)"
+  if [[ $file == *.gpg ]]; then
+    install -d -m 700 "$EXPORT_DIR/.import"
+    gpg --pinentry-mode loopback -q -d -o "$EXPORT_DIR/.import/in.dump" "$file" || die "could not open $file"
+    file=$EXPORT_DIR/.import/in.dump
+    trap 'rm -rf "$EXPORT_DIR/.import"' EXIT
+  fi
   pg_restore -l "$file" >/dev/null 2>&1 || die "$file is not a pg_dump custom-format file"
   confirm IMPORT "This stops the app and replaces the whole database with $(basename "$file")."
   stamp=$(date +%Y%m%d_%H%M%S); old="${DB_NAME}_before_import_$stamp"
@@ -773,6 +819,98 @@ cmd_sql() {
   as_app psql -X -v ON_ERROR_STOP=1 --single-transaction -d "postgres:///$DB_NAME?host=/var/run/postgresql" -f "$file" \
     || die "the SQL failed and was rolled back; nothing changed"
   say "Applied. To undo: routeflow restore 1 \"<time just before, UTC>\""
+}
+
+# ---- M. What an upgrade would do, without doing it ---------------------------------------------------
+cmd_upgrade_check() {
+  local tarball=${1:?usage: routeflow upgrade --check <tarball>} version arch tmp name f kind safe=1 n=0
+  read -r version arch < <(parse_tarball_name "$tarball") || die "not a release tarball name: $(basename "$tarball")"
+  [ "$arch" = "$(machine_arch)" ] || die "$(basename "$tarball") is for $arch, this machine is $(machine_arch)"
+  verify_checksum "$tarball" || die "the checksum does not match"
+  tmp=$(mktemp -d); trap 'rm -rf "$tmp"' RETURN
+  tar -xzf "$tarball" -C "$tmp" --strip-components=1 --wildcards '*/db/migrations/*'
+  chmod -R a+rX "$tmp"
+  echo "Release:   $(current_version || true) -> $version"
+  echo "Disk:      $(df -Pk "$ROOT" | awk 'NR==2 {print int($4/1048576)}') GB free (an upgrade needs ${MIN_FREE_GB:-3})"
+  echo "Database changes:"
+  while read -r name; do
+    [ -n "$name" ] || continue
+    f=$tmp/db/migrations/$name.sql; n=$((n + 1))
+    kind=$(head -20 "$f" | sed -n 's/^--[[:space:]]*rf:[[:space:]]*\(expand-only\|contract\).*/\1/p' | head -1)
+    [ "$kind" = expand-only ] || safe=0
+    echo "  $name   ${kind:-unmarked}"
+  done < <(pending_migrations "$tmp")
+  [ "$n" -gt 0 ] || echo "  none"
+  if [ "$safe" = 1 ]; then
+    echo "If it fails its checks, it switches back to the live release by itself."
+  else
+    echo "A change above alters existing data or columns: if it fails, it stops and waits for you (no automatic switch back)."
+  fi
+}
+
+# ---- N. Maintenance page on demand ------------------------------------------------------------------
+MAINT_FLAG=$CONF_DIR/maintenance.on
+
+cmd_maintenance() {
+  need_root maintenance
+  case "${1:-status}" in
+    on) touch "$MAINT_FLAG"; say "Everyone now sees the «در حال به‌روزرسانی» page. Turn off: routeflow maintenance off" ;;
+    off) rm -f "$MAINT_FLAG"; say "The app is open again" ;;
+    status) if [ -f "$MAINT_FLAG" ]; then echo "maintenance: on (since $(date -r "$MAINT_FLAG" '+%F %T'))"; else echo "maintenance: off"; fi ;;
+    *) die "routeflow maintenance on | off | status" ;;
+  esac
+}
+
+# ---- O. Export with people's details replaced -------------------------------------------------------
+# Same input -> same fake value, so duplicates and joins still show. Columns are picked by name.
+# shortcut: by column name, not a reviewed list per table; add a pattern when a new personal column appears.
+anonymise_sql() {
+  cat <<'SQL'
+-- A scratch copy: switch off the triggers (append-only logs, sync stamps) for this session.
+SET session_replication_role = replica;
+DO $$
+DECLARE r record; expr text;
+BEGIN
+  FOR r IN
+    SELECT c.table_name, c.column_name FROM information_schema.columns c
+    JOIN information_schema.tables t ON t.table_schema = c.table_schema AND t.table_name = c.table_name
+    WHERE c.table_schema = 'public' AND t.table_type = 'BASE TABLE'
+      AND c.data_type IN ('text', 'character varying')
+      AND (c.column_name ~ '(phone|mobile|email|address|national_id|instagram|telegram|whatsapp|postal|iban|sheba|card_number|contact_name|owner_name|display_name|full_name|first_name|last_name|business_name|customer_name|^notes?$|_notes?$)'
+           OR (c.column_name = 'name' AND c.table_name IN ('customers', 'contacts', 'suppliers', 'parties', 'shareholdings', 'representative_profiles')))
+  LOOP
+    expr := CASE
+      WHEN r.column_name ~ '(phone|mobile|whatsapp)' THEN format('''09'' || lpad((abs(hashtext(%I)) %% 1000000000)::text, 9, ''0'')', r.column_name)
+      WHEN r.column_name ~ 'email' THEN format('''u'' || left(md5(%I), 8) || ''@example.com''', r.column_name)
+      WHEN r.column_name ~ '(iban|sheba|card_number|national_id|postal)' THEN format('lpad((abs(hashtext(%I)) %% 1000000000)::text, 10, ''0'')', r.column_name)
+      ELSE format('''نمونه '' || left(md5(%I), 6)', r.column_name)
+    END;
+    EXECUTE format('UPDATE %I SET %I = %s WHERE %I IS NOT NULL AND %I <> ''''', r.table_name, r.column_name, expr, r.column_name, r.column_name);
+  END LOOP;
+END $$;
+UPDATE users SET totp_secret = NULL, totp_last_step = NULL;
+DELETE FROM user_recovery_codes;
+SQL
+}
+
+# ---- Q. Exports older than a week go -----------------------------------------------------------------
+cmd_tidy() {
+  need_root tidy
+  local n
+  n=$(find "$EXPORT_DIR" -maxdepth 1 -type f \( -name '*.dump' -o -name '*.dump.gpg' \) -mtime +"${EXPORT_KEEP_DAYS:-7}" -print -delete 2>/dev/null | wc -l)
+  [ "$n" = 0 ] || say "$n export(s) older than ${EXPORT_KEEP_DAYS:-7} days deleted"
+  cmd_support_key prune
+}
+
+# ---- P. The way back in ------------------------------------------------------------------------------
+cmd_reset_login() {
+  need_root reset-login
+  local user=${1:-} pw
+  [ -n "$user" ] || die "usage: routeflow reset-login <username>"
+  pw=${RESET_PASSWORD:-$(new_password)}
+  printf '%s\n' "$pw" | as_app env DATABASE_URL="postgres:///$DB_NAME?host=/var/run/postgresql" \
+    "$ROOT/current/node/bin/node" "$ROOT/current/scripts/reset-login.mjs" "$user"
+  printf '\n  New password for %s (shown once; change it after signing in): %s\n\n' "$user" "$pw"
 }
 
 # ---- Running inside Iran: mirror, clock, CDN-only firewall, certificate, doctor, login status ------
@@ -1238,7 +1376,7 @@ menu() {
   esac
 }
 
-usage() { sed -n '2,15p' "$0" | sed 's/^# \{0,1\}//'; }
+usage() { sed -n '2,16p' "$0" | sed 's/^# \{0,1\}//'; }
 
 main() {
   local cmd=${1:-}
@@ -1257,6 +1395,9 @@ main() {
     export) cmd_export "$@" ;;
     import) cmd_import "$@" ;;
     sql) cmd_sql "$@" ;;
+    maintenance) cmd_maintenance "$@" ;;
+    reset-login) cmd_reset_login "$@" ;;
+    tidy) cmd_tidy ;;
     backup) cmd_backup "$@" ;;
     restore-drill) cmd_restore_drill ;;
     restore) cmd_restore "$@" ;;

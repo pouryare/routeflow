@@ -195,6 +195,30 @@ Arvan panel, and make the off-site machine accept the backup user's key.
   - If the restore fails, the old database is put back.
 - On the development side, the file loads into a local database with `pg_restore -d <db> <file>`.
 
+## Everyday extras (owner's pick M to Q, 2026-11-06)
+
+- **Upgrade preview.** `sudo routeflow upgrade --check <tarball>` changes nothing. It shows the version
+  jump, the free disk space, every database change with its marker, and whether a failed upgrade would
+  switch back by itself.
+- **Maintenance switch.** `sudo routeflow maintenance on` makes Caddy show the «در حال به‌روزرسانی» page
+  (503, never cached) to everyone, with no reload, because it only checks for
+  `/etc/routeflow/maintenance.on`. `off` opens the app again, and `status` says which.
+- **Anonymous export.** `sudo routeflow export --anonymise` dumps the live database into a scratch copy
+  and changes the details there. The live database is never touched.
+  - Phones become `09…` numbers.
+  - Names, shop names, addresses and notes become «نمونه xxxxxx», and emails `u…@example.com`.
+  - Two-step secrets and recovery codes are removed.
+  - The same input always gives the same fake value, so duplicates still show.
+  - Map points, amounts and dates stay real.
+  - Columns are chosen by name, so a new personal column needs its name added in `anonymise_sql`.
+  - Tried on the demo data: 500 customers, all phones replaced with valid `09` numbers.
+- **Login rescue.** `sudo routeflow reset-login <username>` sets a new random password (printed once),
+  turns off two-step sign-in, signs out every session and reactivates the account
+  (`scripts/reset-login.mjs`).
+- **Export tidy-up.** Exports older than 7 days (`EXPORT_KEEP_DAYS`) are deleted by the hourly
+  `routeflow tidy`. `routeflow export --encrypt` locks the file with a passphrase (`.dump.gpg`), and
+  `routeflow import` opens such a file.
+
 ## Kernel settings
 
 `/etc/sysctl.d/60-routeflow.conf` (written by `routeflow install`, from `write_sysctl` in

@@ -270,3 +270,31 @@ describe("routeflow: helper keys that expire", () => {
     );
   });
 });
+
+describe("routeflow: upgrade preview, maintenance and tidy-up", () => {
+  it("lists the database changes a release would make and whether it can switch back", () => {
+    const t = fakeTarball("0.2.0");
+    // Rebuild the tarball with two migrations in it.
+    const dir = path.join(root, "build", `routeflow-0.2.0-linux-${HOST_ARCH}`);
+    fs.mkdirSync(path.join(dir, "db", "migrations"), { recursive: true });
+    fs.writeFileSync(path.join(dir, "db", "migrations", "1_add.sql"), "-- Up Migration\n-- rf: expand-only\n");
+    fs.writeFileSync(path.join(dir, "db", "migrations", "2_drop.sql"), "-- Up Migration\n-- rf: contract\n");
+    execFileSync("tar", ["-czf", t, "-C", path.join(root, "build"), path.basename(dir)]);
+    const sum = execFileSync("sha256sum", [t], { encoding: "utf8" }).split(" ")[0];
+    fs.writeFileSync(`${t}.sha256`, `${sum}  ${path.basename(t)}\n`);
+    // No database here: pending_migrations lists every file as pending.
+    const r = run(`pending_migrations() { ls "$1/db/migrations" | sed 's/\\.sql$//'; }; cmd_upgrade_check "${t}"`);
+    expect(r.code, r.err).toBe(0);
+    expect(r.out).toContain("1_add   expand-only");
+    expect(r.out).toContain("2_drop   contract");
+    expect(r.out).toContain("waits for you");
+  });
+
+  it("anonymising SQL switches triggers off and covers phones, names and two-step secrets", () => {
+    const sql = run("anonymise_sql").out;
+    expect(sql).toContain("SET session_replication_role = replica");
+    expect(sql).toMatch(/phone\|mobile/);
+    expect(sql).toContain("business_name");
+    expect(sql).toContain("totp_secret = NULL");
+  });
+});
