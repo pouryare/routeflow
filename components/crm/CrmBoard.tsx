@@ -144,7 +144,7 @@ export default function CrmBoard({ initialRows, initialCounts, initialView, canP
         <Icon name="plus" size="md" />
         سرنخ تازه</button>
       </div>
-      <ScrollFade className="crm-views" role="toolbar" aria-label="نمای فهرست" data-tour="crm:views">
+      <ScrollFade className="crm-views" role="toolbar" aria-label="نمای فهرست" tour="crm:views">
         {VIEW_ORDER.map((v) => (
           <button key={v} type="button" aria-pressed={view === v} onClick={() => setView(v)}>
             <Icon name="user" size="md" />

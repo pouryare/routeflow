@@ -229,7 +229,8 @@ export const SHELL_TUTORIALS: Tutorial[] = [
     ghost: false,
     keywords: ["کار", "نتیجه", "انجام شد", "تمام"],
     steps: [
-      { text: "کنار هر کار دکمهٔ «ثبت نتیجه» هست. آن را بزنید.", target: "task-result" },
+      /* shortcut: no demo task on «امروز» yet, so this step cannot point at the button; add a demo row when Briefing gets a client slot. */
+      { text: "کنار هر کار دکمهٔ «ثبت نتیجه» هست. آن را بزنید." },
       { text: "به چند سؤال کوتاه جواب دهید: چه شد و قدم بعدی کی است." },
       { text: "کار خط می‌خورد و کار بعدی خودش ساخته می‌شود." },
     ],

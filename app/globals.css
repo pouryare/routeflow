@@ -4948,7 +4948,7 @@ html[data-fx="off"] .meridian .flow-drawer { transition: none; }
   bottom: calc(16px + env(safe-area-inset-bottom, 0px));
 }
 @media (max-width: 767px) { .meridian .app ~ .tourcard-wrap, .meridian:has(.bottomnav) .tourcard-wrap { bottom: calc(100px + env(safe-area-inset-bottom, 0px)); } }
-.tourcard-wrap[data-at="top"] { bottom: auto; top: calc(12px + env(safe-area-inset-top, 0px)); }
+.tourcard-wrap[data-at="top"], .meridian:has(.bottomnav) .tourcard-wrap[data-at="top"] { bottom: auto; top: calc(12px + env(safe-area-inset-top, 0px)); }
 .driver-active .tourcard-wrap, .driver-active .tourcard-wrap *, .driver-active .tourchip, .driver-active .tourchip * { pointer-events: auto; }
 .tourcard { pointer-events: auto; width: 100%; max-width: 480px; box-shadow: 0 10px 30px rgb(0 0 0 / 0.28); border: 1px solid var(--accent); }
 .tourcard__head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }

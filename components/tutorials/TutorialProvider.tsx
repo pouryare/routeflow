@@ -130,8 +130,11 @@ export default function TutorialProvider({ children }: { children: ReactNode }) 
     setOffer(null);
     count(t.id, 0, "start");
     mark(t.id, "seen");
+    // Started from the list or the search, the tutorial first walks to the screen it is about.
+    const first = t.steps[0]?.path ?? t.screen;
+    if (first && !location.pathname.startsWith(first.split("?")[0])) router.push(first);
     setActive({ t, i: 0, mode: mode === "learn" && wantsGhost(t) ? "ghost" : mode });
-  }, []);
+  }, [router]);
 
   const stop = useCallback(
     (how: "done" | "skip" | "quit") => {

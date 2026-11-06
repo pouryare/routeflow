@@ -6,7 +6,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 /** A sideways-scrolling row that darkens the edge(s) with more items beyond it, so a cut-off chip
  *  reads as «scroll for more». The fade appears only on a side that still has content and goes
  *  away at the end. Works in both directions (RTL scrollLeft counts from the right). */
-export default function ScrollFade({ className = "", role, "aria-label": ariaLabel, children }: { className?: string; role?: string; "aria-label"?: string; children: ReactNode }) {
+export default function ScrollFade({ className = "", role, "aria-label": ariaLabel, tour, children }: { className?: string; role?: string; "aria-label"?: string; /** `data-tour` id for tutorials */ tour?: string; children: ReactNode }) {
   const row = useRef<HTMLDivElement>(null);
   const [more, setMore] = useState({ left: false, right: false });
 
@@ -100,7 +100,7 @@ export default function ScrollFade({ className = "", role, "aria-label": ariaLab
 
   return (
     <div className="scrollfade" data-more-left={more.left} data-more-right={more.right}>
-      <div ref={row} className={className} role={role} aria-label={ariaLabel} onScroll={measure}>
+      <div ref={row} className={className} role={role} data-tour={tour} aria-label={ariaLabel} onScroll={measure}>
         {children}
       </div>
       <span className="scrollfade__edge scrollfade__edge--left" aria-hidden="true" />
