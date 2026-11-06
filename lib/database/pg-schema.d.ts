@@ -1551,6 +1551,25 @@ export interface Tasks {
   title: string;
 }
 
+export interface TutorialAssignments {
+  done_at: string | null;
+  id: Generated<number>;
+  organization_id: number;
+  seen_at: string | null;
+  sent_at: string;
+  sent_by: number;
+  tutorial_id: string;
+  user_id: number;
+}
+
+export interface TutorialCounts {
+  event: string;
+  n: Generated<number>;
+  organization_id: number;
+  step: number;
+  tutorial_id: string;
+}
+
 export interface UserRecoveryCodes {
   code_hash: string;
   created_at: string;
@@ -1744,6 +1763,8 @@ export interface DB {
   targets: Targets;
   task_recurrences: TaskRecurrences;
   tasks: Tasks;
+  tutorial_assignments: TutorialAssignments;
+  tutorial_counts: TutorialCounts;
   user_recovery_codes: UserRecoveryCodes;
   user_roles: UserRoles;
   users: Users;
