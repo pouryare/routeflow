@@ -26,6 +26,7 @@ set -euo pipefail
 
 ROOT=${ROUTEFLOW_ROOT:-/opt/routeflow}
 CONF_DIR=${ROUTEFLOW_CONF_DIR:-/etc/routeflow}
+CADDY_DIR=${ROUTEFLOW_CADDY_DIR:-/etc/caddy}
 CONF=$CONF_DIR/routeflow.conf
 ENV_FILE=$CONF_DIR/env
 SECRETS=$CONF_DIR/secrets.cred
@@ -598,8 +599,10 @@ maintenance_page() {
 }
 
 write_caddy() {
-  # A file of its own, imported once, so another site in the Caddyfile is never touched.
-  cat > /etc/caddy/routeflow.caddy <<CADDY
+  # One file per site in $CADDY_DIR/sites/, all pulled in by one glob line, so adding another site
+  # is a new file and this one is never touched. Global options stay in the Caddyfile.
+  mkdir -p "$CADDY_DIR/sites"
+  cat > "$CADDY_DIR/sites/routeflow.caddy" <<CADDY
 # Written by 'routeflow install' from $CONF.
 $DOMAIN {
 	# next start leaves signed-in API JSON uncompressed; this covers every route.
@@ -633,9 +636,12 @@ $DOMAIN {
 	}
 }
 CADDY
-  grep -qxF 'import /etc/caddy/routeflow.caddy' /etc/caddy/Caddyfile 2>/dev/null \
-    || printf '\nimport /etc/caddy/routeflow.caddy\n' >> /etc/caddy/Caddyfile
-  caddy validate --config /etc/caddy/Caddyfile >/dev/null
+  # Older installs imported $CADDY_DIR/routeflow.caddy by name: move to the glob.
+  rm -f "$CADDY_DIR/routeflow.caddy"
+  sed -i '\|^import /etc/caddy/routeflow.caddy$|d' "$CADDY_DIR/Caddyfile" 2>/dev/null || true
+  grep -qxF 'import sites/*.caddy' "$CADDY_DIR/Caddyfile" 2>/dev/null \
+    || printf '\nimport sites/*.caddy\n' >> "$CADDY_DIR/Caddyfile"
+  caddy validate --config "$CADDY_DIR/Caddyfile" >/dev/null
   systemctl reload caddy || systemctl restart caddy
 }
 

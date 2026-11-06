@@ -119,6 +119,13 @@ What it connects on its own: PostgreSQL with the app's own login role, its passw
 certificate, and the nightly upgrade. What it cannot do for you: point the domain at the server in the
 Arvan panel, and make the off-site machine accept the backup user's key.
 
+**One Caddy file per site.** `/etc/caddy/Caddyfile` holds only global options and one line,
+`import sites/*.caddy`. RouteFlow writes `/etc/caddy/sites/routeflow.caddy`. To host another site on the
+same server, add `/etc/caddy/sites/othersite.caddy` with its own `othersite.example.com { ... }` block, run
+`caddy validate --config /etc/caddy/Caddyfile`, then `systemctl reload caddy`. Re-running
+`routeflow install` rewrites only `routeflow.caddy`, never the other files. An older install that imported
+`/etc/caddy/routeflow.caddy` is moved to the new layout on the next install.
+
 ## Running from inside Iran
 
 `routeflow install` also sets up the following (owner's pick, 2026-11-06). Each one can be changed in
