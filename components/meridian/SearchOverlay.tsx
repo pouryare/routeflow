@@ -9,14 +9,17 @@ import { Icon, type IconName } from "@/components/meridian/Icon";
 import type { AppTab } from "@/lib/appNav";
 import { DUR, EASE } from "@/lib/motion";
 import { normalisePersian } from "@/lib/persian";
+import { useTutorials } from "@/components/tutorials/TutorialProvider";
+import { TUTORIALS } from "@/lib/tutorials/catalog";
+import { searchTutorials } from "@/lib/tutorials/engine";
 import {
   MAP_FOCUS_EVENT, MIN_REMOTE_QUERY, RECENT_KEY, moveActive, parseRecent, pushRecent, rankPages,
   type SearchHit, type SearchKind,
 } from "@/lib/searchModel";
 
-const KIND_ICON: Record<SearchKind, IconName> = { page: "link", customer: "building", order: "receipt", user: "user", district: "map-pin", note: "clipboard" };
+const KIND_ICON: Record<SearchKind, IconName> = { page: "link", customer: "building", order: "receipt", user: "user", district: "map-pin", note: "clipboard", tutorial: "sparkle" };
 const SECTION: Record<SearchKind | "recent", string> = {
-  recent: "اخیر", page: "صفحه‌ها", district: "مناطق", customer: "مشتریان", order: "سفارش‌ها", user: "ورود به‌جای کاربر", note: "یادداشت‌ها",
+  recent: "اخیر", page: "صفحه‌ها", district: "مناطق", customer: "مشتریان", order: "سفارش‌ها", user: "ورود به‌جای کاربر", note: "یادداشت‌ها", tutorial: "آموزش",
 };
 
 type Section = { key: SearchKind | "recent"; hits: SearchHit[] };
@@ -68,6 +71,8 @@ function Panel({ onClose, tabs }: { onClose: () => void; tabs: AppTab[] }) {
   /* The user whose account the person is about to act as. Nothing is sent until they tap the
      confirm button below: acting as someone else writes records in that person's name. */
   const [asking, setAsking] = useState<SearchHit | null>(null);
+  /* «چطور…؟»: tutorials the person's role may see, found by their words (idea I2). */
+  const { role, start } = useTutorials();
 
   /* The page behind must not scroll under the overlay. */
   useEffect(() => {
@@ -97,10 +102,16 @@ function Panel({ onClose, tabs }: { onClose: () => void; tabs: AppTab[] }) {
   const fresh = wantsRemote && remote.for === q;
   const loading = wantsRemote && !fresh;
 
+  const tutorialHits: SearchHit[] = useMemo(
+    () => (role && q.trim() ? searchTutorials(q, role, TUTORIALS).slice(0, 4).map((t) => ({ kind: "tutorial" as const, id: `tutorial:${t.id}`, label: `چطور؟ ${t.title}`, sub: "آموزش", href: "/settings/tutorials" })) : []),
+    [role, q],
+  );
+
   const sections: Section[] = useMemo(() => {
     if (!q.trim()) return recent.length ? [{ key: "recent", hits: recent }] : [];
     return ([
       { key: "page", hits: rankPages(tabs, q) },
+      { key: "tutorial", hits: tutorialHits },
       // Districts first among the remote kinds: the code is the shortest thing a rep
       // can type, so "14" should land on the place before on a customer whose name contains 14.
       { key: "district", hits: fresh ? remote.districts : [] },
@@ -110,7 +121,7 @@ function Panel({ onClose, tabs }: { onClose: () => void; tabs: AppTab[] }) {
       // F98: call and visit notes last, after the records themselves.
       { key: "note", hits: fresh ? remote.notes : [] },
     ] as Section[]).filter((s) => s.hits.length > 0);
-  }, [q, recent, remote, fresh, tabs]);
+  }, [q, recent, remote, fresh, tabs, tutorialHits]);
 
   const flat = useMemo(() => sections.flatMap((s) => s.hits), [sections]);
   /* The highlight belongs to one result list; a new list starts with nothing highlighted. */
@@ -136,6 +147,12 @@ function Panel({ onClose, tabs }: { onClose: () => void; tabs: AppTab[] }) {
        is never stored as a recent, so it cannot be re-run by a stray Enter later. */
     if (hit.kind === "user") {
       setAsking(hit);
+      return;
+    }
+    /* A tutorial starts where the person is; it walks to its own screen. Never a recent. */
+    if (hit.kind === "tutorial") {
+      onClose();
+      start(hit.id.slice("tutorial:".length));
       return;
     }
     try { localStorage.setItem(RECENT_KEY, JSON.stringify(pushRecent(recent, hit))); } catch { /* per-viewer nicety only */ }

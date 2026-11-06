@@ -8,7 +8,7 @@ import { normalisePersian } from "@/lib/persian";
  *  same arrangement as HoverPill's pillModel. Safe to import on the server: no DOM. */
 
 /** `user` is Login-As: choosing one acts rather than navigates, and is never a recent. */
-export type SearchKind = "page" | "customer" | "order" | "user" | "district" | "note";
+export type SearchKind = "page" | "customer" | "order" | "user" | "district" | "note" | "tutorial";
 
 export type SearchHit = {
   kind: SearchKind;
