@@ -73,7 +73,7 @@ export default function TutorSection({ people, sent, counts }: { people: Person[
           <Card.Title>فرستادن آموزش به همکار</Card.Title>
         </Card.Header>
         <Card.Content className="flex flex-col gap-[var(--space-3)]">
-          <SmartPicker scope="tutorial-people" label="همکار" items={people.map((p) => ({ id: String(p.id), label: `${p.name} · ${ROLE_LABEL[p.role as Role] ?? p.role}` }))} value={who} onChange={(id) => { setWho(id); setWhich(""); }} placeholder="کدام همکار؟" />
+          <SmartPicker scope="tutorial-people" label="همکار" items={people.map((p) => ({ id: String(p.id), label: `${p.name} · ${ROLE_LABEL[p.role as Role] ?? "همکار"}` }))} value={who} onChange={(id) => { setWho(id); setWhich(""); }} placeholder="کدام همکار؟" />
           {person ? <SmartPicker scope="tutorial-which" label="آموزش" items={options} value={which} onChange={setWhich} placeholder="کدام آموزش؟" /> : null}
           <Button isDisabled={!person || !which || busy} onPress={() => void send()}>
             <Icon name="send" size="md" /> فرستادن
