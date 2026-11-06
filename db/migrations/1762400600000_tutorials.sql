@@ -22,7 +22,7 @@ CREATE INDEX tutorial_assignments_user ON tutorial_assignments (organization_id,
 CREATE TABLE tutorial_counts (
   organization_id bigint NOT NULL REFERENCES organizations(id),
   tutorial_id text NOT NULL CHECK (tutorial_id ~ '^[a-z0-9-]{1,60}$'),
-  step smallint NOT NULL CHECK (step BETWEEN 0 AND 50),
+  step bigint NOT NULL CHECK (step BETWEEN 0 AND 50),
   event text NOT NULL CHECK (event IN ('start', 'skip', 'quit', 'done')),
   n bigint NOT NULL DEFAULT 0 CHECK (n >= 0),
   PRIMARY KEY (organization_id, tutorial_id, step, event)
