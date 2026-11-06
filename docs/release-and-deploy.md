@@ -119,6 +119,35 @@ What it connects on its own: PostgreSQL with the app's own login role, its passw
 certificate, and the nightly upgrade. What it cannot do for you: point the domain at the server in the
 Arvan panel, and make the off-site machine accept the backup user's key.
 
+## Running from inside Iran
+
+`routeflow install` also sets up the following (owner's pick, 2026-11-06). Each one can be changed in
+`/etc/routeflow/routeflow.conf` and applied by running the install again.
+
+- **Package mirror inside Iran** (`APT_MIRROR`, default `https://mirror.arvancloud.ir`, `off` to skip).
+  Ubuntu's own packages and security updates come from Arvan's mirror, so they keep working when
+  international internet is cut. The switch happens only if the mirror answers and `apt-get update`
+  succeeds; otherwise the old lists come back (`*.before-routeflow`). PostgreSQL (PGDG) and Caddy still
+  come from their own foreign repositories.
+- **Clock from Iranian time servers** (`NTP_SERVERS`, default `ir.pool.ntp.org`, then ntp.ubuntu.com). The
+  two-step sign-in codes stop matching when the clock is off by a minute.
+- **Web ports for Arvan only** (`CDN_ONLY=1`). Ports 80 and 443 accept only Arvan's address ranges, read
+  from `https://www.arvancloud.ir/en/ips.txt`. A weekly timer (Sunday 05:00) refreshes them with
+  `routeflow cdn-ips`, which adds new ranges before it removes old ones. If the list cannot be read, the
+  rules stay as they were. Set `CDN_ONLY=0` to open the ports to everyone, for example while testing
+  without the CDN.
+- **Certificate toward Arvan** (`CERT_MODE`):
+  - Default: Let's Encrypt through Arvan. It works as long as Arvan passes plain HTTP for
+    `/.well-known/acme-challenge/` to this server.
+  - Arvan origin certificate: put it at `/etc/routeflow/tls/origin.crt` and `origin.key` and it is used
+    instead.
+  - `CERT_MODE=internal`: Caddy's own certificate, with Arvan set not to check the origin's certificate.
+  - None of the three has been tried against Arvan yet.
+- **`routeflow doctor`**: runs the pre-install checks again, plus the clock, the firewall ranges, the
+  certificate's expiry date and `routeflow status`.
+- **Status on login**: every SSH login shows one line with the version, health, age of the last backup and
+  disk use (`routeflow status-short`).
+
 ## Kernel settings
 
 `/etc/sysctl.d/60-routeflow.conf` (written by `routeflow install`, from `write_sysctl` in

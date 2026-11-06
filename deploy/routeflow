@@ -6,6 +6,7 @@
 #   sudo DOMAIN=app.example.ir routeflow install --yes        # no questions; tarball from incoming/ or here
 #   sudo routeflow upgrade routeflow-0.2.0-linux-x64.tar.gz   # upgrade now (otherwise: tonight, below)
 #   sudo routeflow rollback | status | backup [full|diff|incr] | restore-drill | restore | logs
+#   sudo routeflow doctor | cdn-ips                           # checks any time | refresh Arvan's address list
 #   sudo routeflow secrets list | set KEY | unset KEY | backup [file] | restore <file>
 #   routeflow upgrade-scheduled                               # the nightly timer: newest tarball in incoming/
 #   sudo routeflow                                            # Whiptail menu
@@ -449,6 +450,11 @@ COMPANY_NAME="$COMPANY_NAME"
 OWNER_USER=$OWNER_USER
 # Optional: the public key GitHub's deploy job signs in with (docs/release-and-deploy.md).
 DEPLOY_PUBKEY="${DEPLOY_PUBKEY:-}"
+# Web ports only for Arvan's CDN (1), or for everyone (0). Package mirror inside Iran, or off.
+CDN_ONLY=${CDN_ONLY:-1}
+APT_MIRROR=${APT_MIRROR:-https://mirror.arvancloud.ir}
+# Certificate toward Arvan: auto (Let's Encrypt), internal, or put origin.crt/.key in $CONF_DIR/tls/.
+CERT_MODE=${CERT_MODE:-auto}
 CONF
   )
 }
@@ -570,12 +576,151 @@ $DOMAIN {
 		max_size 25MB
 	}
 	reverse_proxy 127.0.0.1:$APP_PORT
+	$(caddy_tls_line)
 }
 CADDY
   grep -qxF 'import /etc/caddy/routeflow.caddy' /etc/caddy/Caddyfile 2>/dev/null \
     || printf '\nimport /etc/caddy/routeflow.caddy\n' >> /etc/caddy/Caddyfile
   caddy validate --config /etc/caddy/Caddyfile >/dev/null
   systemctl reload caddy || systemctl restart caddy
+}
+
+# ---- Running inside Iran: mirror, clock, CDN-only firewall, certificate, doctor, login status ------
+
+# A. OS packages from Arvan's mirror inside Iran, so installs and security updates keep working when
+# international internet is cut. Switched only when the mirror answers; the old list is kept.
+# shortcut: PostgreSQL (PGDG) and Caddy still come from their own foreign repositories.
+use_iran_mirror() {
+  local mirror=${APT_MIRROR:-https://mirror.arvancloud.ir} f
+  . /etc/os-release
+  [ "$mirror" = off ] && return 0
+  curl -fsS --max-time 10 -o /dev/null "$mirror/$ID/dists/$VERSION_CODENAME/Release" 2>/dev/null \
+    || { warn "package mirror $mirror does not answer; keeping the current package sources"; return 0; }
+  say "Packages from $mirror (inside Iran)"
+  for f in /etc/apt/sources.list.d/ubuntu.sources /etc/apt/sources.list.d/debian.sources /etc/apt/sources.list; do
+    [ -f "$f" ] || continue
+    [ -f "$f.before-routeflow" ] || cp -a "$f" "$f.before-routeflow"
+    sed -i -E "s#https?://([a-z]{2}\\.)?(archive|security)\\.ubuntu\\.com/ubuntu/?#$mirror/ubuntu/#g; s#https?://deb\\.debian\\.org/debian/?#$mirror/debian/#g" "$f"
+  done
+  # A mirror that is missing a part (a security pocket) must not break apt: go back to the old lists.
+  if ! apt-get update -q >/dev/null 2>&1; then
+    warn "apt failed with $mirror; back to the original package sources"
+    for f in /etc/apt/sources.list.d/ubuntu.sources /etc/apt/sources.list.d/debian.sources /etc/apt/sources.list; do
+      [ -f "$f.before-routeflow" ] && cp -a "$f.before-routeflow" "$f"
+    done
+  fi
+}
+
+# B. The clock from time servers inside Iran first: two-step codes (Google Authenticator) fail when
+# the server is a minute off.
+set_time_servers() {
+  install -d /etc/systemd/timesyncd.conf.d
+  printf '[Time]\nNTP=%s\nFallbackNTP=ntp.ubuntu.com time.cloudflare.com\n' "${NTP_SERVERS:-ir.pool.ntp.org}" \
+    >/etc/systemd/timesyncd.conf.d/routeflow.conf
+  timedatectl set-ntp true 2>/dev/null || true
+  systemctl restart systemd-timesyncd 2>/dev/null || true
+}
+
+# C. Only Arvan's CDN may open the web ports, so nobody reaches the server around the CDN (and its
+# protection) by its bare IP. The list is fetched from Arvan; when that fails the rules stay as they were.
+CDN_IPS_URL=${CDN_IPS_URL:-https://www.arvancloud.ir/en/ips.txt}
+
+# IPv4 and IPv6 ranges from a list, one per line; anything else is dropped.
+parse_cdn_ips() { grep -Eo '^[0-9a-fA-F:.]+/[0-9]{1,3}' | sort -u; }
+
+# Rule numbers (from `ufw status numbered` on stdin) to delete: web ports open to Anywhere, and
+# routeflow-cdn ranges no longer in the list given.
+stale_web_rules() {
+  local list=$1 line num src
+  while IFS= read -r line; do
+    [[ $line =~ ^\[\ *([0-9]+)\]\ +([^ ]+)\ +ALLOW\ IN\ +([^ ]+) ]] || continue
+    num=${BASH_REMATCH[1]}; src=${BASH_REMATCH[3]}
+    if [[ ${BASH_REMATCH[2]} =~ ^(80|443)/tcp$ && $src == Anywhere ]]; then echo "$num"
+    elif [[ $line == *routeflow-cdn* ]] && ! grep -qxF "$src" <<<"$list"; then echo "$num"; fi
+  done
+}
+
+cmd_cdn_ips() {
+  need_root cdn-ips
+  load_conf
+  local list n rule
+  if [ "${CDN_ONLY:-1}" = 0 ]; then
+    ufw allow 80/tcp >/dev/null; ufw allow 443/tcp >/dev/null
+    say "Web ports open to everyone (CDN_ONLY=0)"; return 0
+  fi
+  list=$(curl -fsS --max-time 20 "$CDN_IPS_URL" 2>/dev/null | parse_cdn_ips || true)
+  n=$(grep -c . <<<"$list" || true)
+  [ "$n" -ge 5 ] || { warn "could not read Arvan's address list ($CDN_IPS_URL); firewall left as it was"; return 0; }
+  # New ranges first (ufw skips ones it has), then remove open-to-all web rules and ranges Arvan
+  # dropped, highest number first so the numbers do not shift: the site is never closed in between.
+  while read -r net; do
+    ufw allow proto tcp from "$net" to any port 80,443 comment routeflow-cdn >/dev/null
+  done <<<"$list"
+  for rule in $(ufw status numbered | stale_web_rules "$list" | sort -rn); do
+    ufw --force delete "$rule" >/dev/null
+  done
+  say "Web ports open to Arvan's $n address ranges only"
+}
+
+write_cdn_timer() {
+  cat >/etc/systemd/system/routeflow-cdn-ips.service <<UNIT
+[Unit]
+Description=RouteFlow: refresh the firewall from Arvan's address list
+After=network-online.target
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/routeflow cdn-ips
+UNIT
+  cat >/etc/systemd/system/routeflow-cdn-ips.timer <<UNIT
+[Unit]
+Description=RouteFlow: refresh Arvan's address list weekly
+[Timer]
+OnCalendar=Sun *-*-* 05:00:00 Asia/Tehran
+Persistent=true
+[Install]
+WantedBy=timers.target
+UNIT
+}
+
+# D. The certificate Caddy uses toward Arvan. An origin certificate from the Arvan panel in
+# $CONF_DIR/tls/ wins; CERT_MODE=internal uses Caddy's own (Arvan set to not check the origin);
+# otherwise Let's Encrypt, which works through Arvan as long as plain HTTP reaches this server.
+caddy_tls_line() {
+  if [ -f "$CONF_DIR/tls/origin.crt" ] && [ -f "$CONF_DIR/tls/origin.key" ]; then
+    echo "tls $CONF_DIR/tls/origin.crt $CONF_DIR/tls/origin.key"
+  elif [ "${CERT_MODE:-auto}" = internal ]; then
+    echo "tls internal"
+  fi
+}
+
+# E. The pre-install checks and the status, any time.
+cmd_doctor() {
+  load_conf
+  local problems
+  problems=$(preflight)
+  if [ -n "$problems" ]; then printf 'Problems:\n%s\n' "$problems"; else echo "Checks:    ok"; fi
+  echo "Clock:     $(timedatectl show -p NTPSynchronized --value 2>/dev/null | sed 's/yes/in sync/;s/no/NOT in sync/')"
+  echo "Firewall:  $(ufw status 2>/dev/null | grep -c routeflow-cdn) Arvan ranges allowed on 80/443"
+  echo "Cert:      $(echo | timeout 5 openssl s_client -connect 127.0.0.1:443 -servername "$DOMAIN" 2>/dev/null | openssl x509 -noout -enddate 2>/dev/null | cut -d= -f2 || echo unknown)"
+  cmd_status
+  [ -z "$problems" ]
+}
+
+# F. A few lines on every SSH login.
+status_short() {
+  local live health age=""
+  live=$(current_version)
+  if curl -fsS --max-time 2 "http://127.0.0.1:$(app_port)/api/health" >/dev/null 2>&1; then health=ok; else health="NOT ANSWERING"; fi
+  if [ -f /var/lib/routeflow/backups/backup-status.json ]; then
+    age=" | last backup $(( ($(date +%s) - $(date -r /var/lib/routeflow/backups/backup-status.json +%s)) / 3600 )) h ago"
+  fi
+  echo "RouteFlow ${live:-not installed} | health $health$age | disk $(df -h --output=pcent "$ROOT" 2>/dev/null | tail -1 | tr -d ' ') | routeflow help"
+}
+
+write_motd() {
+  [ -d /etc/update-motd.d ] || return 0
+  printf '#!/bin/sh\n/usr/local/bin/routeflow status-short 2>/dev/null || true\n' >/etc/update-motd.d/90-routeflow
+  chmod 755 /etc/update-motd.d/90-routeflow
 }
 
 # ---- Install helpers: checks first, then the server's own safety -----------------------------------
@@ -764,17 +909,22 @@ cmd_install() {
 $problems"
   write_conf
 
+  use_iran_mirror
   say "Packages"
   apt-get update -q
   DEBIAN_FRONTEND=noninteractive apt-get install -y -q --no-install-recommends \
-    ca-certificates curl tar gnupg whiptail ufw unattended-upgrades caddy postgresql-client
+    ca-certificates curl tar gnupg openssl whiptail ufw unattended-upgrades caddy postgresql-client
 
-  say "Firewall: SSH, HTTP and HTTPS only"
-  ufw allow OpenSSH >/dev/null; ufw allow 80/tcp >/dev/null; ufw allow 443/tcp >/dev/null
+  say "Firewall: SSH, and the web ports for Arvan's CDN only"
+  ufw allow OpenSSH >/dev/null
+  # Open to all first, so a failed address-list download never leaves the site unreachable.
+  ufw allow 80/tcp >/dev/null; ufw allow 443/tcp >/dev/null
   ufw --force enable >/dev/null
+  cmd_cdn_ips
 
   # Tehran time on the server, so logs and the reboot window read the way the owner thinks.
   timedatectl set-timezone Asia/Tehran
+  set_time_servers
   # Night order (Tehran): 01:30 backup, 02:30 OS reboot if an update needs one, 03:30 app upgrade,
   # 04:00 on the 1st the restore drill.
   say "Security updates on, a needed reboot only at 02:30"
@@ -815,11 +965,13 @@ APT
   sed -i "s|^WorkingDirectory=.*|WorkingDirectory=$ROOT/current|; s|^ExecStart=/usr/bin/node |ExecStart=$ROOT/current/node/bin/node --env-file=%d/secrets |; /^LoadCredentialEncrypted=/d; /^EnvironmentFile=/a LoadCredentialEncrypted=secrets:$SECRETS" \
     /etc/systemd/system/routeflow-backup@.service /etc/systemd/system/routeflow-restore-drill.service 2>/dev/null || true
   write_upgrade_timer
+  write_cdn_timer
+  write_motd
   ensure_sweep_token
   write_storage_timers
   systemctl daemon-reload
   systemctl enable "$SERVICE" >/dev/null
-  systemctl enable --now routeflow-upgrade.timer >/dev/null
+  systemctl enable --now routeflow-upgrade.timer routeflow-cdn-ips.timer >/dev/null
   systemctl enable --now routeflow-storage-jobs.timer routeflow-storage-daily.timer routeflow-storage-weekly.timer >/dev/null
   install -d -o "$APP_USER" -g "$APP_USER" -m 775 "$ROOT/incoming"
   # The key-only user GitHub copies releases as (docs/release-and-deploy.md) may write here, nothing more.
@@ -890,7 +1042,7 @@ menu() {
   esac
 }
 
-usage() { sed -n '2,10p' "$0" | sed 's/^# \{0,1\}//'; }
+usage() { sed -n '2,12p' "$0" | sed 's/^# \{0,1\}//'; }
 
 main() {
   local cmd=${1:-}
@@ -901,6 +1053,9 @@ main() {
     upgrade-scheduled) cmd_upgrade_scheduled ;;
     rollback | switch) cmd_rollback "$@" ;;
     status) cmd_status ;;
+    status-short) status_short ;;
+    doctor) cmd_doctor ;;
+    cdn-ips) cmd_cdn_ips ;;
     backup) cmd_backup "$@" ;;
     restore-drill) cmd_restore_drill ;;
     restore) cmd_restore "$@" ;;

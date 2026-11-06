@@ -208,3 +208,39 @@ describe("routeflow install: kernel settings", () => {
     expect(conf).not.toMatch(/tcp_timestamps|tcp_syn_retries|tcp_synack_retries|tcp_max_tw_buckets/);
   });
 });
+
+describe("routeflow: Arvan-only web ports and the certificate", () => {
+  it("reads address ranges from Arvan's list and ignores anything else", () => {
+    const r = run(`printf '185.143.232.0/22\\n<html>\\n2a0b:4d07::/32\\n\\n94.101.182.0/27 # x\\n' | parse_cdn_ips`);
+    expect(r.out.split("\n")).toEqual(["185.143.232.0/22", "2a0b:4d07::/32", "94.101.182.0/27"]);
+  });
+
+  it("removes open-to-all web rules and ranges Arvan dropped, keeps SSH and current ranges", () => {
+    const status = [
+      "Status: active",
+      "     To                         Action      From",
+      "[ 1] OpenSSH                    ALLOW IN    Anywhere",
+      "[ 2] 80/tcp                     ALLOW IN    Anywhere",
+      "[ 3] 443/tcp                    ALLOW IN    Anywhere",
+      "[ 4] 80,443/tcp                 ALLOW IN    185.143.232.0/22           # routeflow-cdn",
+      "[ 5] 80,443/tcp                 ALLOW IN    10.9.9.0/24                # routeflow-cdn",
+      "[ 6] 80/tcp (v6)                ALLOW IN    Anywhere (v6)",
+    ].join("\n");
+    fs.writeFileSync(path.join(root, "ufw"), status);
+    const r = run(`stale_web_rules "185.143.232.0/22" < "${root}/ufw"`);
+    expect(r.out.split("\n")).toEqual(["2", "3", "5"]);
+  });
+
+  it("uses an origin certificate when one is in place, Caddy's own when asked, else Let's Encrypt", () => {
+    const conf = path.join(root, "etc");
+    fs.mkdirSync(path.join(conf, "tls"), { recursive: true });
+    const withConf = { ...process.env, ROUTEFLOW_CONF_DIR: conf };
+    expect(spawnSync("bash", ["-c", `. "${SCRIPT}"; caddy_tls_line`], { encoding: "utf8", env: withConf }).stdout.trim()).toBe("");
+    expect(spawnSync("bash", ["-c", `CERT_MODE=internal; . "${SCRIPT}"; caddy_tls_line`], { encoding: "utf8", env: withConf }).stdout.trim()).toBe("tls internal");
+    fs.writeFileSync(path.join(conf, "tls", "origin.crt"), "x");
+    fs.writeFileSync(path.join(conf, "tls", "origin.key"), "x");
+    expect(spawnSync("bash", ["-c", `. "${SCRIPT}"; caddy_tls_line`], { encoding: "utf8", env: withConf }).stdout.trim()).toBe(
+      `tls ${conf}/tls/origin.crt ${conf}/tls/origin.key`,
+    );
+  });
+});
