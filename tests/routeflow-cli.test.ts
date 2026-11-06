@@ -164,3 +164,20 @@ describe("routeflow: a tarball still being copied", () => {
     expect(run("newest_incoming").out).toBe("");
   });
 });
+
+describe("routeflow install: no questions with --yes", () => {
+  it("takes the value from the environment or the default instead of asking", () => {
+    expect(run('ROUTEFLOW_YES=1; DOMAIN=app.test; ask DOMAIN "q" ""; ask OWNER_USER "q" admin; echo "$DOMAIN $OWNER_USER"').out).toBe("app.test admin");
+  });
+
+  it("finds the tarball in incoming/ when none is named", () => {
+    fakeTarball("0.3.0");
+    expect(path.basename(run("install_tarball").out)).toBe(`routeflow-0.3.0-linux-${HOST_ARCH}.tar.gz`);
+    expect(run("install_tarball /nope.tar.gz").code).not.toBe(0);
+  });
+
+  it("makes a 16-character password of unambiguous letters and digits", () => {
+    const pw = run("new_password").out;
+    expect(pw).toMatch(/^[A-HJ-NP-Za-km-z2-9]{16}$/);
+  });
+});

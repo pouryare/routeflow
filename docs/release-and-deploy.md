@@ -36,7 +36,7 @@ commands:
 
 | Command | What it does |
 |---|---|
-| `routeflow install <tarball>` | Fresh Ubuntu or Debian server: asks for the domain and the backup machine, then packages, firewall (SSH, 80, 443), Tehran time zone, security updates with a reboot only at 02:30, a log cap, PostgreSQL and backups (`db/server/install.sh`), the app service, Caddy, the nightly upgrade timer, and the first release. Run again to re-apply after editing `routeflow.conf`. |
+| `routeflow install [--yes] [tarball]` | Fresh Ubuntu or Debian server: asks for the domain, the backup machine, the company name and the first login's username (with `--yes`, nothing is asked), then packages, firewall (SSH, 80, 443), Tehran time zone, security updates with a reboot only at 02:30, a log cap, PostgreSQL and backups (`db/server/install.sh`), the database connection (a web role and its password, written into the encrypted secrets), the app service, Caddy, the nightly upgrade timer, the first release, the company name and the first login. Run again to re-apply after editing `routeflow.conf`. |
 | `routeflow upgrade <tarball>` | Checks the sum and machine type, unpacks to `releases/<version>`, takes a backup, runs the migrations, switches `current`, waits for `/api/health` with the new version, then the smoke check. |
 | `routeflow upgrade-scheduled` | What the 03:30 timer runs: the newest tarball in `incoming/` not yet installed. |
 | `routeflow rollback` | Back to the previous release (the last 3 are kept). |
@@ -85,17 +85,39 @@ the encrypted file.
 This guards against a secret leaking through a copy of `/etc`, a screenshot or a pasted file. It does not
 guard against someone who is root on the running server.
 
+## A fresh server in one command
+
+Copy the tarball for the server's machine type (from a GitHub release or a manual Release run) to the
+server, then:
+
+```sh
+sudo DOMAIN=app.example.ir COMPANY_NAME="پخش نمونه" \
+  DEPLOY_PUBKEY="ssh-ed25519 AAAA... github-deploy" \
+  bash routeflow-0.1.0-linux-x64/bin/routeflow install --yes routeflow-0.1.0-linux-x64.tar.gz
+```
+
+(`tar -xzf <tarball> --wildcards '*/bin/routeflow'` takes the command out of the tarball first.) Only
+`DOMAIN` is required; `OFFSITE_HOST`, `OFFSITE_USER`, `OFFSITE_PATH`, `OWNER_USER` (default `admin`),
+`OWNER_PASSWORD` (default: a random one) and `DEPLOY_PUBKEY` are optional. At the end it prints the
+address and the first login, a platform owner, with its password **once**: sign in and change it. A
+second run never makes a second login.
+
+What it connects on its own: PostgreSQL with the app's own login role, its password inside
+`DATABASE_URL` in the encrypted secrets, a new `SESSION_SECRET`, the migrations, backups, Caddy with its
+certificate, and the nightly upgrade. What it cannot do for you: point the domain at the server in the
+Arvan panel, and make the off-site machine accept the backup user's key.
+
 ## Setting up the GitHub deploy
 
-On the server, once:
+With `DEPLOY_PUBKEY` set, the install makes the `deploy` user with that key. By hand instead:
 
 ```sh
 sudo adduser --disabled-password --gecos "" deploy
 sudo install -d -m 700 -o deploy -g deploy /home/deploy/.ssh
 # paste the public half of a new key made for GitHub only:
 sudo tee /home/deploy/.ssh/authorized_keys >/dev/null
-sudo routeflow install <tarball>     # adds deploy to the routeflow group, so it can write incoming/
-ssh-keyscan -p 22 localhost          # the host key line, for DEPLOY_KNOWN_HOSTS (use the public name)
+sudo routeflow install --yes          # adds deploy to the routeflow group, so it can write incoming/
+ssh-keyscan -p 22 localhost           # the host key line, for DEPLOY_KNOWN_HOSTS (use the public name)
 ```
 
 `deploy` cannot run `routeflow`, `sudo` or anything else that changes the server; it only drops files in

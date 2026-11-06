@@ -3,6 +3,7 @@
 # roll back, check, back up, restore, read logs. Run with no arguments on a terminal for a menu.
 #
 #   sudo routeflow install routeflow-0.1.0-linux-x64.tar.gz   # fresh Ubuntu or Debian server
+#   sudo DOMAIN=app.example.ir routeflow install --yes        # no questions; tarball from incoming/ or here
 #   sudo routeflow upgrade routeflow-0.2.0-linux-x64.tar.gz   # upgrade now (otherwise: tonight, below)
 #   sudo routeflow rollback | status | backup [full|diff|incr] | restore-drill | restore | logs
 #   sudo routeflow secrets list | set KEY | unset KEY | backup [file] | restore <file>
@@ -420,10 +421,12 @@ cmd_logs() {
 
 # Asks once and remembers the answers in $CONF. On a terminal it uses Whiptail; otherwise the values
 # must already be in $CONF or the environment.
+# With --yes (ROUTEFLOW_YES=1) or no terminal, nothing is asked: the value comes from $CONF, the
+# environment or the default.
 ask() {
   local var=$1 question=$2 default=${3:-} value
   value=${!var:-$default}
-  if [ -t 0 ] && command -v whiptail >/dev/null; then
+  if [ "${ROUTEFLOW_YES:-0}" != 1 ] && [ -t 0 ] && command -v whiptail >/dev/null; then
     value=$(whiptail --title "RouteFlow install" --inputbox "$question" 10 70 "$value" 3>&1 1>&2 2>&3) || die "cancelled"
   fi
   printf -v "$var" '%s' "$value"
@@ -442,6 +445,10 @@ OFFSITE_PATH=$OFFSITE_PATH
 KEEP_RELEASES=$KEEP_RELEASES
 # When a waiting release is applied (systemd OnCalendar). 03:30 Tehran is 00:00 UTC.
 UPGRADE_AT="$UPGRADE_AT"
+COMPANY_NAME="$COMPANY_NAME"
+OWNER_USER=$OWNER_USER
+# Optional: the public key GitHub's deploy job signs in with (docs/release-and-deploy.md).
+DEPLOY_PUBKEY="${DEPLOY_PUBKEY:-}"
 CONF
   )
 }
@@ -569,8 +576,44 @@ CADDY
   systemctl reload caddy || systemctl restart caddy
 }
 
+# The tarball to install: the one named, else the newest for this machine in incoming/, else in the
+# current folder.
+install_tarball() {
+  local t=${1:-}
+  if [ -z "$t" ]; then
+    t=$(newest_incoming)
+    [ -n "$t" ] || t=$(ls -1 routeflow-*-linux-"$(machine_arch)".tar.gz 2>/dev/null | sort -V | tail -1)
+  fi
+  [ -n "$t" ] && [ -f "$t" ] || return 1
+  echo "$t"
+}
+
+# A random password: letters and digits only, so it survives copying from any terminal.
+new_password() { head -c 64 /dev/urandom | base64 | tr -dc 'A-HJ-NP-Za-km-z2-9' | head -c "${1:-16}"; }
+
+# SQL as the database owner over the socket, like the migrations.
+owner_psql() { as_app psql -X -q -At -v ON_ERROR_STOP=1 -d "postgres:///$DB_NAME?host=/var/run/postgresql" "$@"; }
+
+# First install only: the company's name, and the first login, a platform owner (all of owner's
+# rights, plus the other companies). Its password is printed once; nothing on disk keeps it.
+ensure_owner() {
+  local pw rel=$ROOT/current
+  if [ -n "$COMPANY_NAME" ]; then
+    owner_psql -v name="$COMPANY_NAME" <<'SQL'
+UPDATE organizations SET name = :'name' WHERE id = 1;
+SQL
+  fi
+  [ "$(owner_psql -c "SELECT COUNT(*) FROM users WHERE role = 'platform_owner'")" = 0 ] || return 0
+  pw=${OWNER_PASSWORD:-$(new_password)}
+  printf '%s\n' "$pw" | as_app env DATABASE_URL="postgres:///$DB_NAME?host=/var/run/postgresql" \
+    "$rel/node/bin/node" "$rel/scripts/create-user.mjs" "$OWNER_USER" - "${OWNER_NAME:-مدیر سامانه}" platform_owner >/dev/null
+  OWNER_CREATED_PASSWORD=$pw
+}
+
 cmd_install() {
-  local tarball=${1:?usage: routeflow install <routeflow-X.Y.Z-linux-ARCH.tar.gz>} version tmp
+  local tarball version tmp
+  if [ "${1:-}" = --yes ]; then ROUTEFLOW_YES=1; shift; fi
+  tarball=$(install_tarball "${1:-}") || die "usage: routeflow install [--yes] <routeflow-X.Y.Z-linux-ARCH.tar.gz> (none found in $ROOT/incoming or here)"
   need_root install
   [ -f /etc/os-release ] && . /etc/os-release
   case "${ID:-}" in ubuntu | debian) ;; *) die "this installer is for Ubuntu or Debian" ;; esac
@@ -582,6 +625,8 @@ cmd_install() {
     ask OFFSITE_USER "User on $OFFSITE_HOST for the backups:" "${OFFSITE_USER:-rfbackup}"
     ask OFFSITE_PATH "Folder on $OFFSITE_HOST for the backups:" "${OFFSITE_PATH:-/srv/routeflow-pgbackrest}"
   fi
+  ask COMPANY_NAME "Company name shown in the app:" "${COMPANY_NAME:-}"
+  ask OWNER_USER "Username for the first login (the platform owner):" "${OWNER_USER:-admin}"
   [ -n "$DOMAIN" ] || die "a domain is needed"
   write_conf
 
@@ -636,7 +681,19 @@ APT
   systemctl enable --now routeflow-storage-jobs.timer routeflow-storage-daily.timer routeflow-storage-weekly.timer >/dev/null
   install -d -o "$APP_USER" -g "$APP_USER" -m 775 "$ROOT/incoming"
   # The key-only user GitHub copies releases as (docs/release-and-deploy.md) may write here, nothing more.
-  if id deploy >/dev/null 2>&1; then usermod -aG "$APP_USER" deploy; fi
+  if [ -n "${DEPLOY_PUBKEY:-}" ] && ! id deploy >/dev/null 2>&1; then
+    say "Deploy user (key only, can only drop files in $ROOT/incoming)"
+    useradd -m -s /bin/bash deploy
+    passwd -l deploy >/dev/null
+  fi
+  if id deploy >/dev/null 2>&1; then
+    usermod -aG "$APP_USER" deploy
+    if [ -n "${DEPLOY_PUBKEY:-}" ]; then
+      install -d -m 700 -o deploy -g deploy ~deploy/.ssh
+      grep -qxF "$DEPLOY_PUBKEY" ~deploy/.ssh/authorized_keys 2>/dev/null || printf '%s\n' "$DEPLOY_PUBKEY" >>~deploy/.ssh/authorized_keys
+      chown deploy:deploy ~deploy/.ssh/authorized_keys; chmod 600 ~deploy/.ssh/authorized_keys
+    fi
+  fi
 
   say "Caddy for $DOMAIN"
   write_caddy
@@ -647,7 +704,12 @@ APT
     say "A release is already live ($(current_version)); to change it: routeflow upgrade <tarball>"
   fi
   ln -sfn "$ROOT/current/bin/routeflow" /usr/local/bin/routeflow
-  say "Done. Next: create the owner login with  sudo -u $APP_USER $ROOT/current/node/bin/node $ROOT/current/scripts/create-user.mjs"
+  ensure_owner
+  say "Done: https://$DOMAIN"
+  if [ -n "${OWNER_CREATED_PASSWORD:-}" ]; then
+    printf '\n  First login (shown once; change it after signing in):\n    username: %s\n    password: %s\n\n' "$OWNER_USER" "$OWNER_CREATED_PASSWORD"
+  fi
+  say "Keep a copy of the secrets off this server: sudo routeflow secrets backup"
 }
 
 menu() {
