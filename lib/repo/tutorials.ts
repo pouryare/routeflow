@@ -75,3 +75,11 @@ export async function markAssignment(organizationId: number, userId: number, tut
     .prepare(`UPDATE tutorial_assignments SET ${col} = COALESCE(${col}, ?)${what === "done" ? ", seen_at = COALESCE(seen_at, ?)" : ""} WHERE organization_id = ? AND user_id = ? AND tutorial_id = ? AND done_at IS NULL`)
     .run(...(what === "done" ? [now, now] : [now]), organizationId, userId, tutorialId);
 }
+
+/** The company's active people a manager may send a tutorial to (everyone but themselves). */
+export async function tutorialPeople(organizationId: number, exceptUserId: number): Promise<{ id: number; name: string; role: string }[]> {
+  const rows = (await getDb()
+    .prepare("SELECT id, COALESCE(display_name, username) AS name, role FROM users WHERE organization_id = ? AND active = 1 AND id <> ? ORDER BY COALESCE(display_name, username)")
+    .all(organizationId, exceptUserId)) as { id: number; name: string; role: string }[];
+  return rows.map((r) => ({ id: Number(r.id), name: r.name, role: r.role }));
+}
