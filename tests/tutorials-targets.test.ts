@@ -83,4 +83,16 @@ describe("tutorial targets", () => {
         if (step.kind !== "pick") expect(s.advance, `${t.id}: ${s.target}`).toBe("next");
       }
   });
+  // The gap check (CLAUDE.md «a new main action gets a tutorial»): every `open:<flow>` button on a
+  // screen has a tutorial that points at it or at a step of its flow. A gap needs a written reason.
+  const NO_TUTORIAL_YET: Record<string, string> = {
+    "open:place": "shortcut: no tutorial for setting a customer's place yet; written before 0.1 (see TODO-REPORT.md)",
+  };
+  it("every main «open:» button has a tutorial or a written reason", () => {
+    const opens = new Set<string>();
+    for (const m of CODE.matchAll(/data-tour="(open:[a-z_]+)"/g)) opens.add(m[1]);
+    const targets = TUTORIALS.flatMap((t) => t.steps.map((s) => s.target ?? ""));
+    const gaps = [...opens].filter((o) => !NO_TUTORIAL_YET[o] && !targets.some((t) => t === o || t.startsWith(`${o.slice(5)}:`)));
+    expect(gaps).toEqual([]);
+  });
 });
