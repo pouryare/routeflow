@@ -25,3 +25,19 @@ export function stopVoice(): void {
     current = null;
   }
 }
+
+/** Idea I11: fetch the clips of the person's own role once, quietly, so they play offline too.
+ *  The service worker keeps what comes back. Only on Wi-Fi-like links, one at a time. */
+export async function prefetchVoice(clips: string[]): Promise<void> {
+  if (typeof window === "undefined" || !("serviceWorker" in navigator)) return;
+  const conn = (navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string } }).connection;
+  if (conn?.saveData || (conn?.effectiveType && conn.effectiveType !== "4g")) return;
+  for (const c of clips) {
+    if (!VOICE_CLIPS.has(c)) continue;
+    try {
+      await fetch(`/tutorials/voice/${c}.mp3`);
+    } catch {
+      return; // offline or blocked: stop, try again next visit
+    }
+  }
+}

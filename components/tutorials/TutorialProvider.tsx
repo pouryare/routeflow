@@ -11,6 +11,7 @@ import { firstSteps, offerFor, wantsGhost, withDone, withOffer } from "@/lib/tut
 import { pretendBody, pretendFor, setPretending } from "@/lib/tutorials/pretend";
 import { tehranTodayIso } from "@/lib/jalali";
 import { playSound } from "@/lib/sound";
+import { prefetchVoice } from "./voice";
 import { celebrate } from "@/lib/celebrate";
 import TourCard from "./TourCard";
 import OfferChip from "./OfferChip";
@@ -99,6 +100,14 @@ export default function TutorialProvider({ children }: { children: ReactNode }) 
   const [active, setActive] = useState<Active | null>(null);
   const [offer, setOffer] = useState<Tutorial | null>(null);
   const progressRef = useRef(progress);
+  // Idea I11: once the role is known and the page has settled, download its own clips for offline.
+  useEffect(() => {
+    if (!role) return;
+    const clips = TUTORIALS.filter((t) => t.roles.includes(role)).flatMap((t) => t.steps.map((_, i) => `${t.id}-${i}`));
+    const id = window.setTimeout(() => void prefetchVoice(clips), 8000);
+    return () => window.clearTimeout(id);
+  }, [role]);
+
   useEffect(() => {
     progressRef.current = progress;
   }, [progress]);
