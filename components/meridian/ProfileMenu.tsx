@@ -9,6 +9,9 @@ import SkinToggle from "@/components/meridian/SkinToggle";
 import FontPicker from "@/components/FontPicker";
 import AccentPicker from "@/components/AccentPicker";
 import Avatar from "@/components/meridian/Avatar";
+import { useTutorials } from "@/components/tutorials/TutorialProvider";
+import { TUTORIALS } from "@/lib/tutorials/catalog";
+import { firstSteps } from "@/lib/tutorials/engine";
 import type { AccountLink } from "@/lib/accountLinks";
 
 /** The one control at the end of the top bar: the viewer's avatar, opening a HeroUI Popover
@@ -32,6 +35,10 @@ export default function ProfileMenu({
   links: AccountLink[];
 }) {
   const [open, setOpen] = useState(false);
+  // Idea I8: a thin ring round the picture shows how far the first-steps list is; it goes when complete.
+  const { role: tutRole, progress } = useTutorials();
+  const steps = tutRole ? firstSteps(tutRole, progress, TUTORIALS) : null;
+  const ring = steps && steps.total > 0 && !steps.complete ? steps : null;
 
   return (
     <div className="pm">
@@ -44,7 +51,13 @@ export default function ProfileMenu({
         >
           {/* No person glyph beside the picture. The Avatar IS the person, and a generic
               silhouette next to an actual face says the same thing twice. */}
-          <Avatar userId={userId} name={name} size={34} />
+          <span
+            className="pm__ring"
+            data-on={ring ? "" : undefined}
+            style={ring ? ({ "--ring": `${Math.round((ring.done / ring.total) * 100)}%` } as React.CSSProperties) : undefined}
+          >
+            <Avatar userId={userId} name={name} size={34} />
+          </span>
         </Button>
         <Popover.Content placement="bottom end" offset={8} className="pm__panel">
           <Popover.Dialog aria-label="حساب و ظاهر" className="pm__dialog">

@@ -5803,3 +5803,7 @@ html[data-fx="off"] .pwfield[data-rolling] input { color: inherit; }
 .app-toasts [data-slot="toast"]:is(:hover, :focus-within) [data-slot="toast-close"]::before,
 html[data-toasts-paused] .app-toasts [data-slot="toast-close"]::before { animation-play-state: paused; }
 .app-toasts [data-slot="toast"]:has([data-pending]) [data-slot="toast-close"]::before { display: none; }
+
+/* Idea I8: progress ring round the avatar while the first-steps list is unfinished. */
+.pm__ring { display: inline-flex; padding: 2px; border-radius: 50%; }
+.pm__ring[data-on] { background: conic-gradient(var(--accent, #0a6fb8) var(--ring, 0%), var(--border, #d5dde5) 0); }
