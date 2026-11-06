@@ -1,19 +1,21 @@
 "use client";
 
 import { createPortal } from "react-dom";
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import type { Role } from "@/lib/roles";
 import type { Tutorial, TutorialProgress } from "@/lib/tutorials/types";
 import { TUTORIALS, tutorialById } from "@/lib/tutorials/catalog";
-import { DEMO_SETS } from "@/lib/tutorials/demo";
 import { firstSteps, offerFor, wantsGhost, withDone, withOffer } from "@/lib/tutorials/engine";
-import { pretendBody, pretendFor, setPretending } from "@/lib/tutorials/pretend";
 import { tehranTodayIso } from "@/lib/jalali";
 import { playSound } from "@/lib/sound";
 import { prefetchVoice } from "./voice";
 import { celebrate } from "@/lib/celebrate";
 import TourCard from "./TourCard";
+import { TutorialContext, type Active, type Ctx, type SentTutorial } from "./context";
+import { usePretendSaves } from "./usePretendSaves";
+
+export { useTutorials, useTutorialData } from "./context";
 import OfferChip from "./OfferChip";
 
 /** One provider in the root layout runs every tutorial (plan docs/plans/tutorials-2026-11-05.md).
@@ -26,46 +28,6 @@ import OfferChip from "./OfferChip";
  *    (useTutorialData). Ending it switches both off: the real rows are still in memory, so they come
  *    back at once, and router.refresh() fetches anything new without reloading the page.
  *  - A job of three taps or more is first played by the ghost hand, then «حالا شما». */
-
-export type TourMode = "ghost" | "learn" | "practice";
-/** `shown`: the ghost hand has already played this job once, so the first step says «حالا شما». */
-type Active = { t: Tutorial; i: number; mode: TourMode; shown?: boolean };
-
-export type SentTutorial = { id: number; tutorial_id: string; sent_by_name: string };
-
-type Ctx = {
-  role: Role | null;
-  progress: TutorialProgress;
-  /** Tutorials a manager sent this person and they have not finished (idea I7). */
-  assignments: SentTutorial[];
-  active: Active | null;
-  start: (id: string, mode?: "learn" | "practice") => void;
-  stop: (how: "done" | "skip" | "quit") => void;
-  next: () => void;
-  /** Leave the ghost demo and do the job yourself from step 1. */
-  toLearn: () => void;
-};
-
-const TutorialContext = createContext<Ctx>({
-  role: null,
-  progress: {},
-  assignments: [],
-  active: null,
-  start: () => undefined,
-  stop: () => undefined,
-  next: () => undefined,
-  toLearn: () => undefined,
-});
-
-export const useTutorials = () => useContext(TutorialContext);
-
-/** Demo rows while a tutorial with a demo set runs, the real ones otherwise. One line per list:
- *  `const tasks = useTutorialData("tasks", props.tasks)`. */
-export function useTutorialData<T>(key: string, real: T): T {
-  const { active } = useContext(TutorialContext);
-  const set = active?.t.demo ? DEMO_SETS[active.t.demo] : undefined;
-  return set && key in set ? (set[key] as T) : real;
-}
 
 function save(progress: TutorialProgress) {
   void fetch("/api/prefs", {
@@ -203,26 +165,7 @@ export default function TutorialProvider({ children }: { children: ReactNode }) 
   }, [router]);
 
   /* Pretend saves: while a tutorial runs, a write never leaves the phone. */
-  const pretend = active !== null && !(active.t.real && active.mode === "learn");
-  useEffect(() => {
-    if (!pretend) return;
-    setPretending(true);
-    const real = window.fetch;
-    let n = 0;
-    window.fetch = (input: RequestInfo | URL, init?: RequestInit) => {
-      const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
-      const method = init?.method ?? (input instanceof Request ? input.method : "GET");
-      if (pretendFor(method, url) === "fake") {
-        n += 1;
-        return Promise.resolve(new Response(JSON.stringify(pretendBody(n)), { status: 200, headers: { "Content-Type": "application/json" } }));
-      }
-      return real(input, init);
-    };
-    return () => {
-      window.fetch = real;
-      setPretending(false);
-    };
-  }, [pretend]);
+  usePretendSaves(active !== null && !(active.t.real && active.mode === "learn"));
 
   /* The bottom-bar tour starts by itself once; other screens offer theirs with the chip. Both wait a
      moment after a page opens, so the chip does not jump in while the page is still drawing. */

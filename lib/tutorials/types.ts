@@ -8,7 +8,7 @@ import type { Role } from "@/lib/roles";
  *    default when there is a target), or «ادامه» on the card (`"next"`, the default without one).
  *  - `path` is the page the step lives on. When the person is elsewhere, the card offers «برو».
  */
-export type TutorialStep = {
+type TutorialStep = {
   text: string;
   /** The same line with diacritics («بَرایِ ثَبتِ چِک»), read by the voice only; the card shows `text`. */
   say?: string;

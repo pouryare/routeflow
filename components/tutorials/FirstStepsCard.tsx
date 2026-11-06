@@ -90,7 +90,7 @@ export default function FirstStepsCard() {
 }
 
 /** The badge a role earns when its first steps are all done (idea I8). */
-export const BADGES: Partial<Record<string, string>> = {
+const BADGES: Partial<Record<string, string>> = {
   delivery_driver: "استاد مسیر",
   field_rep: "استاد مسیر",
   phone_sales: "استاد فروش",

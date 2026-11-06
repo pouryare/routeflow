@@ -6,7 +6,7 @@ import { VOICE_CLIPS } from "@/lib/tutorials/voiceClips";
  *  was not made. One clip plays at a time. */
 let current: HTMLAudioElement | null = null;
 
-export const voiceSrc = (id: string, i: number) => `/tutorials/voice/${id}-${i}.mp3`;
+const voiceSrc = (id: string, i: number) => `/tutorials/voice/${id}-${i}.mp3`;
 
 export function playVoice(id: string, i: number): void {
   stopVoice();

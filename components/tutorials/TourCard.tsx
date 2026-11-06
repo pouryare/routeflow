@@ -1,14 +1,13 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { Button, Card } from "@heroui/react";
-import { driver, type Driver } from "driver.js";
-import "driver.js/dist/driver.css";
 import { Icon } from "@/components/meridian/Icon";
 import { faNum } from "@/lib/format";
-import { useTutorials } from "./TutorialProvider";
+import { useTutorials } from "./context";
 import { playVoice, stopVoice } from "./voice";
+import { fxOn, useSpotlight } from "./spotlight";
 
 /** One card per step: the provider keys it by tutorial, mode and step, so every step starts fresh.
  *
@@ -22,10 +21,6 @@ import { playVoice, stopVoice } from "./voice";
 
 const FIND_MS = 4000;
 
-function fxOn() {
-  return typeof document !== "undefined" && document.documentElement.dataset.fx !== "off";
-}
-
 export default function TourCard() {
   const { active, next, stop, toLearn } = useTutorials();
   const router = useRouter();
@@ -34,7 +29,6 @@ export default function TourCard() {
   const [missing, setMissing] = useState(false);
   const [hint, setHint] = useState(false);
   const [hand, setHand] = useState<{ x: number; y: number } | null>(null);
-  const spot = useRef<Driver | null>(null);
 
   const step = active ? active.t.steps[active.i] : undefined;
   const mode = active?.mode ?? "learn";
@@ -60,45 +54,7 @@ export default function TourCard() {
     return () => window.clearTimeout(timer);
   }, [step?.target, pathname]);
 
-  /* The spotlight: dim the page, leave a bright hole around the button, and pulse the button. Inside an
-     open sheet there is no dim (the sheet already sits over the page), only the pulse. */
-  useEffect(() => {
-    if (!el || !showHints) return;
-    el.scrollIntoView({ block: "center", behavior: fxOn() ? "smooth" : "auto" });
-    el.setAttribute("data-tour-pulse", "");
-    const inSheet = !!el.closest('[role="dialog"]');
-    let d: Driver | null = null;
-    if (!inSheet) {
-      d = driver({
-        animate: fxOn(),
-        overlayOpacity: 0.55,
-        stagePadding: 6,
-        stageRadius: 14,
-        allowClose: false,
-        allowKeyboardControl: false,
-        overlayClickBehavior: "none",
-        disableActiveInteraction: false,
-        showButtons: [],
-      });
-      d.highlight({ element: el });
-    }
-    spot.current = d;
-    const place = () => {
-      const r = el.getBoundingClientRect();
-      setHand({ x: r.left + r.width / 2, y: r.top + r.height / 2 });
-    };
-    const id = window.setTimeout(place, fxOn() ? 350 : 0);
-    window.addEventListener("resize", place);
-    window.addEventListener("scroll", place, true);
-    return () => {
-      window.clearTimeout(id);
-      window.removeEventListener("resize", place);
-      window.removeEventListener("scroll", place, true);
-      el.removeAttribute("data-tour-pulse");
-      d?.destroy();
-      spot.current = null;
-    };
-  }, [el, showHints]);
+  useSpotlight(el, showHints, setHand);
 
   /* A real tap on the button moves the tutorial on. */
   useEffect(() => {

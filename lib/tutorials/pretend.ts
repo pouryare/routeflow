@@ -7,7 +7,7 @@
  *
  *  The server holds a second lock: proxy.ts refuses any write whose address names a `demo-` id. */
 
-export const DEMO_PREFIX = "demo-";
+const DEMO_PREFIX = "demo-";
 
 /** On while a tutorial runs with pretend saves. Read by the offline outbox (lib/offline/net.ts), which
  *  would otherwise store a practice payment on the phone before any request is made. */
@@ -17,7 +17,6 @@ export const setPretending = (on: boolean) => {
 };
 export const isPretending = () => pretending;
 
-export const isDemoId = (v: unknown) => typeof v === "string" && v.startsWith(DEMO_PREFIX);
 
 /** Addresses a tutorial may still reach for real: its own progress and the person's settings. */
 const PASS = [/^\/api\/tutorials(\/|$)/, /^\/api\/prefs$/];
