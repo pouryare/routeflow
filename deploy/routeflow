@@ -471,6 +471,8 @@ Environment=NODE_ENV=production PORT=$APP_PORT HOSTNAME=127.0.0.1
 ExecStart=$ROOT/current/node/bin/node --env-file=%d/secrets server.js
 Restart=on-failure
 RestartSec=3
+# Many photos and sockets open at once; the default 1024 is low for a web server.
+LimitNOFILE=65536
 # Lets running requests finish on a restart.
 TimeoutStopSec=20
 
@@ -612,37 +614,59 @@ ensure_swap() {
   sysctl -q -p /etc/sysctl.d/60-routeflow-swap.conf
 }
 
-# True when some login on this server has an SSH key, so turning passwords off cannot lock everyone out.
-has_ssh_key() {
-  local f
-  for f in /root/.ssh/authorized_keys /home/*/.ssh/authorized_keys; do
-    [ -s "$f" ] || continue
-    [ "$f" = "$(getent passwd deploy | cut -d: -f6)/.ssh/authorized_keys" ] && continue
-    grep -qE '^(ssh-|ecdsa-|sk-)' "$f" && return 0
-  done
-  return 1
+# Kernel settings for a small web server behind a CDN, in a file of its own so the distribution's
+# defaults stay untouched. Reasoned in docs/release-and-deploy.md ("Kernel settings").
+write_sysctl() {
+  cat <<'SYSCTL'
+# Written by 'routeflow install'. See docs/release-and-deploy.md, "Kernel settings".
+
+# BBR and fair queueing: steadier speed on lossy, long links (phones in Iran, Arvan, the Pi).
+net.core.default_qdisc = fq
+net.ipv4.tcp_congestion_control = bbr
+# Find a working packet size on paths that drop large packets (tunnels, some mobile networks).
+net.ipv4.tcp_mtu_probing = 1
+# Keep full speed on kept-alive connections from the CDN after a quiet moment.
+net.ipv4.tcp_slow_start_after_idle = 0
+
+# Queues for bursts of new connections. Node's own backlog is 511; Caddy's is the system's.
+net.core.somaxconn = 4096
+net.ipv4.tcp_max_syn_backlog = 8192
+net.core.netdev_max_backlog = 16384
+
+# Socket buffers up to 16 MB, so one big download (a backup to the Pi, photos) fills the link.
+net.core.rmem_max = 16777216
+net.core.wmem_max = 16777216
+net.ipv4.tcp_rmem = 4096 87380 16777216
+net.ipv4.tcp_wmem = 4096 65536 16777216
+
+# Closing and idle connections: free them sooner, notice dead peers in about 11 minutes, not 2 hours.
+net.ipv4.tcp_fin_timeout = 30
+net.ipv4.tcp_keepalive_time = 600
+net.ipv4.tcp_keepalive_intvl = 30
+net.ipv4.tcp_keepalive_probes = 3
+# Reuse closing outgoing connections (to PostgreSQL, the Pi). Needs timestamps, so those stay on.
+net.ipv4.tcp_tw_reuse = 1
+# Outgoing ports start above every port a service here listens on (3003, 5432, ...).
+net.ipv4.ip_local_port_range = 10240 65535
+
+# Safety: SYN flood cookies, no redirects, drop spoofed source addresses, reboot 10 s after a panic.
+net.ipv4.tcp_syncookies = 1
+net.ipv4.conf.all.accept_redirects = 0
+net.ipv4.conf.default.accept_redirects = 0
+net.ipv6.conf.all.accept_redirects = 0
+net.ipv4.conf.all.send_redirects = 0
+net.ipv4.conf.all.rp_filter = 1
+kernel.panic = 10
+SYSCTL
 }
 
-harden_ssh() {
-  DEBIAN_FRONTEND=noninteractive apt-get install -y -q --no-install-recommends fail2ban >/dev/null
-  systemctl enable --now fail2ban >/dev/null 2>&1 || true
-  if ! has_ssh_key; then
-    warn "no SSH key found for any login, so password sign-in stays ON. Add your key (ssh-copy-id) and run install again."
-    return 0
-  fi
-  say "SSH: keys only, no root password, fail2ban on"
-  cat >/etc/ssh/sshd_config.d/10-routeflow.conf <<'SSHD'
-# Written by 'routeflow install': sign in with a key only.
-PasswordAuthentication no
-KbdInteractiveAuthentication no
-PermitRootLogin prohibit-password
-SSHD
-  if sshd -t 2>/dev/null; then
-    systemctl reload ssh 2>/dev/null || systemctl reload sshd 2>/dev/null || true
-  else
-    rm -f /etc/ssh/sshd_config.d/10-routeflow.conf
-    warn "the SSH settings did not pass sshd -t; left SSH as it was"
-  fi
+tune_kernel() {
+  say "Kernel network settings (BBR, queues, buffers)"
+  modprobe tcp_bbr 2>/dev/null || true
+  echo tcp_bbr >/etc/modules-load.d/routeflow-bbr.conf
+  write_sysctl >/etc/sysctl.d/60-routeflow.conf
+  # One bad line must not stop the install: apply what the kernel accepts, warn about the rest.
+  sysctl -q -p /etc/sysctl.d/60-routeflow.conf 2>&1 | sed 's/^/  sysctl: /' >&2 || warn "some kernel settings were refused (above)"
 }
 
 # The commands to paste on the Pi (as root): the backup user and folder with this server's key, and
@@ -761,7 +785,7 @@ APT
   systemctl enable --now unattended-upgrades >/dev/null 2>&1 || true
 
   ensure_swap
-  harden_ssh
+  tune_kernel
 
   say "Log size cap"
   install -d /etc/systemd/journald.conf.d

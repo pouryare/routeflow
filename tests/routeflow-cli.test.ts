@@ -198,3 +198,13 @@ describe("routeflow install: Pi pairing and checks", () => {
     expect(r.out).toContain("nothing-here.invalid does not resolve");
   });
 });
+
+describe("routeflow install: kernel settings", () => {
+  it("keeps outgoing ports clear of the app and PostgreSQL, and keeps timestamps and retries", () => {
+    const conf = run("write_sysctl").out;
+    const start = Number(/ip_local_port_range = (\d+)/.exec(conf)?.[1]);
+    expect(start).toBeGreaterThan(5432);
+    expect(conf).toContain("tcp_congestion_control = bbr");
+    expect(conf).not.toMatch(/tcp_timestamps|tcp_syn_retries|tcp_synack_retries|tcp_max_tw_buckets/);
+  });
+});

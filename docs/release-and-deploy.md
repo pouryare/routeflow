@@ -104,9 +104,8 @@ second run never makes a second login.
 
 Before it changes anything it checks the machine: Ubuntu or Debian, at least 1.5 GB of memory and
 10 GB free, nothing else on ports 80 and 443, and that `DOMAIN` resolves. It stops with the list of
-problems instead of failing halfway. Along the way it adds 2 GB of swap when there is none, and turns on
-fail2ban; SSH password sign-in is turned off only when some login already has a key, so nobody is locked
-out. Everything it prints is also in `/var/log/routeflow-install.log`, except the first login's password.
+problems instead of failing halfway. Along the way it adds 2 GB of swap when there is none and tunes
+the kernel's network settings (below). SSH is left as the VPS came (owner's choice, 2026-11-06). Everything it prints is also in `/var/log/routeflow-install.log`, except the first login's password.
 At the end it makes a full backup and restores it into a scratch copy, so backups are proven on day one.
 
 When `OFFSITE_HOST` (the Pi) does not take the backup key yet, the install goes on with backups on this
@@ -119,6 +118,30 @@ What it connects on its own: PostgreSQL with the app's own login role, its passw
 `DATABASE_URL` in the encrypted secrets, a new `SESSION_SECRET`, the migrations, backups, Caddy with its
 certificate, and the nightly upgrade. What it cannot do for you: point the domain at the server in the
 Arvan panel, and make the off-site machine accept the backup user's key.
+
+## Kernel settings
+
+`/etc/sysctl.d/60-routeflow.conf` (written by `routeflow install`, from `write_sysctl` in
+`deploy/routeflow`). It started from a common "speed" list. These parts are kept or changed:
+
+- **Kept:** BBR with `fq` (the biggest win on lossy, long links), larger socket buffers (16 MB),
+  shorter FIN and keepalive times, SYN cookies, `tcp_tw_reuse`.
+- **Smaller:** `somaxconn` 4096 and `tcp_max_syn_backlog` 8192 instead of 32768/16384. One small server
+  behind a CDN never queues that many, and Node's own backlog is 511.
+- **Changed:** outgoing ports start at 10240, not 1024. From 1024 the kernel could hand out 3003 or 5432
+  as a client port and block the app or PostgreSQL from starting.
+- **Added:** `tcp_mtu_probing` (paths that drop large packets), `tcp_slow_start_after_idle = 0` (CDN
+  connections stay fast), no ICMP redirects, `rp_filter`, reboot 10 s after a kernel panic, and
+  `LimitNOFILE=65536` on the app service.
+- **Left out on purpose:**
+  - `tcp_timestamps = 0`: `tcp_tw_reuse` needs timestamps, and they guard against old packets.
+  - `tcp_syn_retries = 1` and `tcp_synack_retries = 1`: on a lossy link, one lost packet would fail the
+    connection to the Pi or a slow phone.
+  - `tcp_max_tw_buckets = 6000`: it makes the kernel drop closing connections under load.
+  - `fs.file-max`: already in the millions on current kernels. The per-service limit above is what counts.
+  - The `inotify` limits: they matter for file watchers in development, not for a server.
+  - `tcp_max_orphans`, `route.gc_timeout`, the UDP minimums, and the IPv6 and ICMP lines: they are
+    already the defaults, or they do nothing for this server.
 
 ## Setting up the GitHub deploy
 
