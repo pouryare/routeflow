@@ -181,3 +181,20 @@ describe("routeflow install: no questions with --yes", () => {
     expect(pw).toMatch(/^[A-HJ-NP-Za-km-z2-9]{16}$/);
   });
 });
+
+describe("routeflow install: Pi pairing and checks", () => {
+  it("prints commands for the Pi that add the backup key once and point the monitor at the domain", () => {
+    const out = run('pi_pair_command "ssh-ed25519 AAAAkey routeflow-backup@vps" rfbackup /srv/rf app.test').out;
+    expect(out).toContain('grep -qxF "ssh-ed25519 AAAAkey routeflow-backup@vps"');
+    expect(out).toContain("install -d -o rfbackup -m 750 /srv/rf");
+    expect(out).toContain("URL=https://app.test");
+    // The Pi part is valid bash.
+    const pi = out.split("\n").slice(0, 8).join("\n");
+    expect(spawnSync("bash", ["-n"], { input: pi }).status).toBe(0);
+  });
+
+  it("refuses a domain that does not resolve", () => {
+    const r = run("DOMAIN=nothing-here.invalid; preflight 2>/dev/null");
+    expect(r.out).toContain("nothing-here.invalid does not resolve");
+  });
+});

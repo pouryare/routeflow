@@ -44,6 +44,7 @@ git archive HEAD public content data db/migrations db/server \
   scripts/pg scripts/_db.mjs scripts/create-user.mjs scripts/disable-second-factor.mjs scripts/run-sweeps.mjs \
   | tar -x -C "$OUT"
 install -D -m 755 deploy/routeflow "$OUT/bin/routeflow"
+install -D -m 755 deploy/monitor/routeflow-monitor "$OUT/bin/routeflow-monitor"
 
 # sharp is the one native module the app loads; swap in the build for the target machine.
 if [ "$ARCH" != "$(node -p 'process.arch')" ]; then

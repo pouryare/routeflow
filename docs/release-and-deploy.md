@@ -102,6 +102,19 @@ sudo DOMAIN=app.example.ir COMPANY_NAME="پخش نمونه" \
 address and the first login, a platform owner, with its password **once**: sign in and change it. A
 second run never makes a second login.
 
+Before it changes anything it checks the machine: Ubuntu or Debian, at least 1.5 GB of memory and
+10 GB free, nothing else on ports 80 and 443, and that `DOMAIN` resolves. It stops with the list of
+problems instead of failing halfway. Along the way it adds 2 GB of swap when there is none, and turns on
+fail2ban; SSH password sign-in is turned off only when some login already has a key, so nobody is locked
+out. Everything it prints is also in `/var/log/routeflow-install.log`, except the first login's password.
+At the end it makes a full backup and restores it into a scratch copy, so backups are proven on day one.
+
+When `OFFSITE_HOST` (the Pi) does not take the backup key yet, the install goes on with backups on this
+server only and prints the commands to paste on the Pi (the backup user, folder and key, then the
+monitor, which ships in the tarball as `bin/routeflow-monitor`). Paste them, run
+`sudo routeflow install --yes` again, and backups go to the Pi too. On the Pi, `routeflow-monitor test`
+proves Telegram and SMS reach you.
+
 What it connects on its own: PostgreSQL with the app's own login role, its password inside
 `DATABASE_URL` in the encrypted secrets, a new `SESSION_SECRET`, the migrations, backups, Caddy with its
 certificate, and the nightly upgrade. What it cannot do for you: point the domain at the server in the

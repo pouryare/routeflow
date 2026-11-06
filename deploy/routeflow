@@ -576,6 +576,109 @@ CADDY
   systemctl reload caddy || systemctl restart caddy
 }
 
+# ---- Install helpers: checks first, then the server's own safety -----------------------------------
+
+# Problems that would make the install fail halfway, one per line; empty when none. Soft warnings go
+# to stderr and do not stop anything.
+preflight() {
+  local mem_mb free_gb ip resolved
+  . /etc/os-release 2>/dev/null || true
+  case "${ID:-}" in ubuntu | debian) ;; *) echo "this installer is for Ubuntu or Debian, not ${ID:-unknown}" ;; esac
+  mem_mb=$(awk '/^MemTotal:/ {print int($2/1024)}' /proc/meminfo)
+  [ "$mem_mb" -ge 1500 ] || echo "only ${mem_mb} MB of memory; RouteFlow and PostgreSQL need at least 1.5 GB"
+  free_gb=$(df -Pk / | awk 'NR==2 {print int($4/1048576)}')
+  [ "$free_gb" -ge 10 ] || echo "only ${free_gb} GB free on /; keep at least 10 GB for releases, the database and backups"
+  if ss -Hltnp '( sport = :80 or sport = :443 )' 2>/dev/null | grep -qv caddy; then
+    echo "something other than Caddy already listens on port 80 or 443: $(ss -Hltnp '( sport = :80 or sport = :443 )' | grep -v caddy | awk '{print $NF}' | head -1)"
+  fi
+  resolved=$(getent ahostsv4 "$DOMAIN" 2>/dev/null | awk 'NR==1 {print $1}' || true)
+  if [ -z "$resolved" ]; then
+    echo "$DOMAIN does not resolve yet; add its DNS record in the Arvan panel first"
+  else
+    ip=$(hostname -I 2>/dev/null)
+    # Behind Arvan CDN the name resolves to Arvan, not here: that is fine when Arvan's origin is this server.
+    [[ " $ip " == *" $resolved "* ]] || warn "$DOMAIN points to $resolved, this server is ${ip% }; if that is Arvan CDN, set its origin to this server"
+  fi
+}
+
+# 2 GB of swap when there is none: a busy minute gets slow instead of killing PostgreSQL or the app.
+ensure_swap() {
+  [ -n "$(swapon --noheadings 2>/dev/null)" ] && return 0
+  say "Swap: 2 GB"
+  { fallocate -l 2G /swapfile && chmod 600 /swapfile && mkswap -q /swapfile && swapon /swapfile; } \
+    || { rm -f /swapfile; warn "could not add swap (this disk may not allow a swap file); going on without"; return 0; }
+  grep -q '^/swapfile ' /etc/fstab || echo '/swapfile none swap sw 0 0' >>/etc/fstab
+  echo 'vm.swappiness=10' >/etc/sysctl.d/60-routeflow-swap.conf
+  sysctl -q -p /etc/sysctl.d/60-routeflow-swap.conf
+}
+
+# True when some login on this server has an SSH key, so turning passwords off cannot lock everyone out.
+has_ssh_key() {
+  local f
+  for f in /root/.ssh/authorized_keys /home/*/.ssh/authorized_keys; do
+    [ -s "$f" ] || continue
+    [ "$f" = "$(getent passwd deploy | cut -d: -f6)/.ssh/authorized_keys" ] && continue
+    grep -qE '^(ssh-|ecdsa-|sk-)' "$f" && return 0
+  done
+  return 1
+}
+
+harden_ssh() {
+  DEBIAN_FRONTEND=noninteractive apt-get install -y -q --no-install-recommends fail2ban >/dev/null
+  systemctl enable --now fail2ban >/dev/null 2>&1 || true
+  if ! has_ssh_key; then
+    warn "no SSH key found for any login, so password sign-in stays ON. Add your key (ssh-copy-id) and run install again."
+    return 0
+  fi
+  say "SSH: keys only, no root password, fail2ban on"
+  cat >/etc/ssh/sshd_config.d/10-routeflow.conf <<'SSHD'
+# Written by 'routeflow install': sign in with a key only.
+PasswordAuthentication no
+KbdInteractiveAuthentication no
+PermitRootLogin prohibit-password
+SSHD
+  if sshd -t 2>/dev/null; then
+    systemctl reload ssh 2>/dev/null || systemctl reload sshd 2>/dev/null || true
+  else
+    rm -f /etc/ssh/sshd_config.d/10-routeflow.conf
+    warn "the SSH settings did not pass sshd -t; left SSH as it was"
+  fi
+}
+
+# The commands to paste on the Pi (as root): the backup user and folder with this server's key, and
+# the monitor pointed at this server.
+pi_pair_command() {
+  local key=$1 user=$2 path=$3 domain=$4
+  cat <<PAIR
+sudo bash -c '
+id $user >/dev/null 2>&1 || useradd -m -s /bin/bash $user
+install -d -o $user -m 750 $path
+install -d -o $user -m 700 ~$user/.ssh
+grep -qxF "$key" ~$user/.ssh/authorized_keys 2>/dev/null || echo "$key" >> ~$user/.ssh/authorized_keys
+chown $user ~$user/.ssh/authorized_keys; chmod 600 ~$user/.ssh/authorized_keys
+printf "$user soft nofile 65536\\n$user hard nofile 65536\\n" > /etc/security/limits.d/routeflow-backup.conf
+'
+PAIR
+  echo "# then the monitor (copy routeflow-monitor from this server's $ROOT/current/bin/ first):"
+  echo "sudo bash routeflow-monitor install && sudo sed -i 's|^URL=.*|URL=https://$domain|' /etc/routeflow-monitor.conf"
+}
+
+# Makes the backup key now and checks the Pi takes it. Prints the pairing commands and returns 1
+# when it does not, so the install goes on with local backups only.
+pair_offsite() {
+  local dir key
+  dir=$(getent passwd postgres | cut -d: -f6)/.ssh
+  install -d -o postgres -g postgres -m 700 "$dir"
+  [ -f "$dir/routeflow_backup" ] || runuser -u postgres -- ssh-keygen -q -t ed25519 -N '' -C "routeflow-backup@$(hostname)" -f "$dir/routeflow_backup"
+  runuser -u postgres -- sh -c "ssh-keyscan -H '$OFFSITE_HOST' >> '$dir/known_hosts' 2>/dev/null; sort -u -o '$dir/known_hosts' '$dir/known_hosts'"
+  if runuser -u postgres -- ssh -i "$dir/routeflow_backup" -o BatchMode=yes -o ConnectTimeout=10 "$OFFSITE_USER@$OFFSITE_HOST" "test -d '$OFFSITE_PATH'" 2>/dev/null; then
+    return 0
+  fi
+  key=$(cat "$dir/routeflow_backup.pub")
+  PI_PAIRING=$(pi_pair_command "$key" "$OFFSITE_USER" "$OFFSITE_PATH" "$DOMAIN")
+  return 1
+}
+
 # The tarball to install: the one named, else the newest for this machine in incoming/, else in the
 # current folder.
 install_tarball() {
@@ -615,8 +718,11 @@ cmd_install() {
   if [ "${1:-}" = --yes ]; then ROUTEFLOW_YES=1; shift; fi
   tarball=$(install_tarball "${1:-}") || die "usage: routeflow install [--yes] <routeflow-X.Y.Z-linux-ARCH.tar.gz> (none found in $ROOT/incoming or here)"
   need_root install
-  [ -f /etc/os-release ] && . /etc/os-release
-  case "${ID:-}" in ubuntu | debian) ;; *) die "this installer is for Ubuntu or Debian" ;; esac
+  # Everything below also goes to the log, to send along when something fails. The first login's
+  # password goes only to the screen (fd 3), never to the log.
+  exec 3>&1
+  exec > >(tee -a /var/log/routeflow-install.log) 2>&1
+  say "routeflow install $(date '+%F %T'), log: /var/log/routeflow-install.log"
   load_conf
   APP_PORT=${APP_PORT:-3003}; KEEP_RELEASES=${KEEP_RELEASES:-3}; UPGRADE_AT=${UPGRADE_AT:-*-*-* 03:30:00 Asia/Tehran}
   ask DOMAIN "Domain users open (pointed at this server through Arvan CDN):" "${DOMAIN:-}"
@@ -628,6 +734,10 @@ cmd_install() {
   ask COMPANY_NAME "Company name shown in the app:" "${COMPANY_NAME:-}"
   ask OWNER_USER "Username for the first login (the platform owner):" "${OWNER_USER:-admin}"
   [ -n "$DOMAIN" ] || die "a domain is needed"
+  local problems
+  problems=$(preflight)
+  [ -z "$problems" ] || die "not installing, fix these first:
+$problems"
   write_conf
 
   say "Packages"
@@ -650,6 +760,9 @@ Unattended-Upgrade::Automatic-Reboot-Time "02:30";
 APT
   systemctl enable --now unattended-upgrades >/dev/null 2>&1 || true
 
+  ensure_swap
+  harden_ssh
+
   say "Log size cap"
   install -d /etc/systemd/journald.conf.d
   printf '[Journal]\nSystemMaxUse=500M\n' > /etc/systemd/journald.conf.d/routeflow.conf
@@ -661,7 +774,12 @@ APT
   say "Database, roles, backups ($tmp/db/server/install.sh)"
   # A rebuilt server with restored secrets keeps the web role's password from DATABASE_URL.
   WEB_PASS=$(secret_value DATABASE_URL | sed -n 's|^postgres://[^:]*:\([^@]*\)@.*|\1|p') \
-  APP_DIR=$ROOT OFFSITE_HOST=$OFFSITE_HOST OFFSITE_USER=${OFFSITE_USER:-} OFFSITE_PATH=${OFFSITE_PATH:-} \
+  local offsite=$OFFSITE_HOST
+  if [ -n "$OFFSITE_HOST" ] && ! pair_offsite; then
+    warn "$OFFSITE_HOST does not take the backup key yet: backups stay on this server for now (commands for the Pi at the end)"
+    offsite=""
+  fi
+  APP_DIR=$ROOT OFFSITE_HOST=$offsite OFFSITE_USER=${OFFSITE_USER:-} OFFSITE_PATH=${OFFSITE_PATH:-} \
     bash "$tmp/db/server/install.sh" --no-migrate
   rm -rf "$tmp"
   secrets_absorb
@@ -705,9 +823,19 @@ APT
   fi
   ln -sfn "$ROOT/current/bin/routeflow" /usr/local/bin/routeflow
   ensure_owner
+
+  say "Self-test: a full backup, then restoring it into a scratch copy"
+  if systemctl start routeflow-backup@full && systemctl start routeflow-restore-drill; then
+    say "Backups work: one was made and restored"
+  else
+    warn "the backup self-test failed; see: journalctl -u 'routeflow-backup@*' -u routeflow-restore-drill"
+  fi
   say "Done: https://$DOMAIN"
+  if [ -n "${PI_PAIRING:-}" ]; then
+    printf '\nOn the Pi, paste this, then run  sudo routeflow install --yes  here again:\n\n%s\n\n' "$PI_PAIRING"
+  fi
   if [ -n "${OWNER_CREATED_PASSWORD:-}" ]; then
-    printf '\n  First login (shown once; change it after signing in):\n    username: %s\n    password: %s\n\n' "$OWNER_USER" "$OWNER_CREATED_PASSWORD"
+    printf '\n  First login (shown once; change it after signing in):\n    username: %s\n    password: %s\n\n' "$OWNER_USER" "$OWNER_CREATED_PASSWORD" >&3
   fi
   say "Keep a copy of the secrets off this server: sudo routeflow secrets backup"
 }
