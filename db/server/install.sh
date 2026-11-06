@@ -73,6 +73,15 @@ install -m 644 "$HERE/postgresql.routeflow.conf" "$PGCONF/conf.d/routeflow.conf"
 if [ -f "$(pg_config --pkglibdir 2>/dev/null || echo /nonexistent)/pg_duckdb.so" ]; then
   sed -i "s/^shared_preload_libraries = .*/shared_preload_libraries = 'pg_stat_statements,pg_duckdb'/" "$PGCONF/conf.d/routeflow.conf"
 fi
+# Memory settings sized to this machine (routeflow.conf's are for a 16 GB server): a later file wins.
+mem_mb=$(awk '/^MemTotal:/ {print int($2/1024)}' /proc/meminfo)
+cat > "$PGCONF/conf.d/zz-routeflow-memory.conf" <<MEM
+# Written by install.sh for ${mem_mb} MB of memory; run install.sh again after resizing the server.
+shared_buffers = $(( mem_mb / 4 ))MB
+effective_cache_size = $(( mem_mb * 3 / 4 ))MB
+maintenance_work_mem = $(( mem_mb / 16 > 1024 ? 1024 : mem_mb / 16 ))MB
+work_mem = $(( mem_mb / 256 < 4 ? 4 : (mem_mb / 256 > 64 ? 64 : mem_mb / 256) ))MB
+MEM
 # Debian starts the cluster itself; a restart picks up wal_level, archive_mode and the preload list.
 pg_ctlcluster "$PG_MAJOR" main restart 2>/dev/null || pg_ctlcluster "$PG_MAJOR" main start
 
@@ -150,8 +159,12 @@ else
   echo "  OFFSITE_HOST is not set: backups stay on this machine until you rerun this with it."
 fi
 chown postgres:postgres /etc/pgbackrest/pgbackrest.conf; chmod 640 /etc/pgbackrest/pgbackrest.conf
-as_postgres pgbackrest --stanza=$STANZA stanza-create
-as_postgres pgbackrest --stanza=$STANZA check
+# A rebuild restores from the existing backups next (routeflow rebuild); a new stanza would not match
+# them until the restored cluster is in place.
+if [ "${RF_REBUILD:-0}" != 1 ]; then
+  as_postgres pgbackrest --stanza=$STANZA stanza-create
+  as_postgres pgbackrest --stanza=$STANZA check
+fi
 
 if [ "$NO_SYSTEMD" = 0 ]; then
   step "Backup timers"

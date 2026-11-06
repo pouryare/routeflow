@@ -164,3 +164,137 @@ describe("routeflow: a tarball still being copied", () => {
     expect(run("newest_incoming").out).toBe("");
   });
 });
+
+describe("routeflow install: no questions with --yes", () => {
+  it("takes the value from the environment or the default instead of asking", () => {
+    expect(run('ROUTEFLOW_YES=1; DOMAIN=app.test; ask DOMAIN "q" ""; ask OWNER_USER "q" admin; echo "$DOMAIN $OWNER_USER"').out).toBe("app.test admin");
+  });
+
+  it("finds the tarball in incoming/ when none is named", () => {
+    fakeTarball("0.3.0");
+    expect(path.basename(run("install_tarball").out)).toBe(`routeflow-0.3.0-linux-${HOST_ARCH}.tar.gz`);
+    expect(run("install_tarball /nope.tar.gz").code).not.toBe(0);
+  });
+
+  it("makes a 16-character password of unambiguous letters and digits", () => {
+    const pw = run("new_password").out;
+    expect(pw).toMatch(/^[A-HJ-NP-Za-km-z2-9]{16}$/);
+  });
+});
+
+describe("routeflow install: Pi pairing and checks", () => {
+  it("prints commands for the Pi that add the backup key once and point the monitor at the domain", () => {
+    const out = run('pi_pair_command "ssh-ed25519 AAAAkey routeflow-backup@vps" rfbackup /srv/rf app.test').out;
+    expect(out).toContain('grep -qxF "ssh-ed25519 AAAAkey routeflow-backup@vps"');
+    expect(out).toContain("install -d -o rfbackup -m 750 /srv/rf");
+    expect(out).toContain("URL=https://app.test");
+    // The Pi part is valid bash.
+    const pi = out.split("\n").slice(0, 8).join("\n");
+    expect(spawnSync("bash", ["-n"], { input: pi }).status).toBe(0);
+  });
+
+  it("refuses a domain that does not resolve", () => {
+    const r = run("DOMAIN=nothing-here.invalid; preflight 2>/dev/null");
+    expect(r.out).toContain("nothing-here.invalid does not resolve");
+  });
+});
+
+describe("routeflow install: kernel settings", () => {
+  it("keeps outgoing ports clear of the app and PostgreSQL, and keeps timestamps and retries", () => {
+    const conf = run("write_sysctl").out;
+    const start = Number(/ip_local_port_range = (\d+)/.exec(conf)?.[1]);
+    expect(start).toBeGreaterThan(5432);
+    expect(conf).toContain("tcp_congestion_control = bbr");
+    expect(conf).not.toMatch(/tcp_timestamps|tcp_syn_retries|tcp_synack_retries|tcp_max_tw_buckets/);
+  });
+});
+
+describe("routeflow: Arvan-only web ports and the certificate", () => {
+  it("reads address ranges from Arvan's list and ignores anything else", () => {
+    const r = run(`printf '185.143.232.0/22\\n<html>\\n2a0b:4d07::/32\\n\\n94.101.182.0/27 # x\\n' | parse_cdn_ips`);
+    expect(r.out.split("\n")).toEqual(["185.143.232.0/22", "2a0b:4d07::/32", "94.101.182.0/27"]);
+  });
+
+  it("removes open-to-all web rules and ranges Arvan dropped, keeps SSH and current ranges", () => {
+    const status = [
+      "Status: active",
+      "     To                         Action      From",
+      "[ 1] OpenSSH                    ALLOW IN    Anywhere",
+      "[ 2] 80/tcp                     ALLOW IN    Anywhere",
+      "[ 3] 443/tcp                    ALLOW IN    Anywhere",
+      "[ 4] 80,443/tcp                 ALLOW IN    185.143.232.0/22           # routeflow-cdn",
+      "[ 5] 80,443/tcp                 ALLOW IN    10.9.9.0/24                # routeflow-cdn",
+      "[ 6] 80/tcp (v6)                ALLOW IN    Anywhere (v6)",
+    ].join("\n");
+    fs.writeFileSync(path.join(root, "ufw"), status);
+    const r = run(`stale_web_rules "185.143.232.0/22" < "${root}/ufw"`);
+    expect(r.out.split("\n")).toEqual(["2", "3", "5"]);
+  });
+
+  it("uses an origin certificate when one is in place, Caddy's own when asked, else Let's Encrypt", () => {
+    const conf = path.join(root, "etc");
+    fs.mkdirSync(path.join(conf, "tls"), { recursive: true });
+    const withConf = { ...process.env, ROUTEFLOW_CONF_DIR: conf };
+    expect(spawnSync("bash", ["-c", `. "${SCRIPT}"; caddy_tls_line`], { encoding: "utf8", env: withConf }).stdout.trim()).toBe("");
+    expect(spawnSync("bash", ["-c", `CERT_MODE=internal; . "${SCRIPT}"; caddy_tls_line`], { encoding: "utf8", env: withConf }).stdout.trim()).toBe("tls internal");
+    fs.writeFileSync(path.join(conf, "tls", "origin.crt"), "x");
+    fs.writeFileSync(path.join(conf, "tls", "origin.key"), "x");
+    expect(spawnSync("bash", ["-c", `. "${SCRIPT}"; caddy_tls_line`], { encoding: "utf8", env: withConf }).stdout.trim()).toBe(
+      `tls ${conf}/tls/origin.crt ${conf}/tls/origin.key`,
+    );
+  });
+});
+
+describe("routeflow: helper keys that expire", () => {
+  it("turns 3d and 12h into an expiry time and refuses anything else", () => {
+    expect(run("support_expiry 3d").out).toMatch(/^\d{12}$/);
+    expect(run("support_expiry 12h").out).toMatch(/^\d{12}$/);
+    expect(run("support_expiry 0d").code).not.toBe(0);
+    expect(run("support_expiry soon").code).not.toBe(0);
+  });
+
+  it("removes only helper keys whose time has passed", () => {
+    const keys = path.join(root, "authorized_keys");
+    fs.writeFileSync(
+      keys,
+      [
+        "ssh-ed25519 AAAAowner owner@laptop",
+        'expiry-time="200001010000Z" ssh-ed25519 AAAAold helper routeflow-support',
+        'expiry-time="299901010000Z" ssh-ed25519 AAAAnew helper routeflow-support',
+      ].join("\n") + "\n",
+    );
+    const r = run(`SUPPORT_KEYS="${keys}"; support_prune`);
+    expect(r.out).toBe("1");
+    expect(fs.readFileSync(keys, "utf8")).toBe(
+      'ssh-ed25519 AAAAowner owner@laptop\nexpiry-time="299901010000Z" ssh-ed25519 AAAAnew helper routeflow-support\n',
+    );
+  });
+});
+
+describe("routeflow: upgrade preview, maintenance and tidy-up", () => {
+  it("lists the database changes a release would make and whether it can switch back", () => {
+    const t = fakeTarball("0.2.0");
+    // Rebuild the tarball with two migrations in it.
+    const dir = path.join(root, "build", `routeflow-0.2.0-linux-${HOST_ARCH}`);
+    fs.mkdirSync(path.join(dir, "db", "migrations"), { recursive: true });
+    fs.writeFileSync(path.join(dir, "db", "migrations", "1_add.sql"), "-- Up Migration\n-- rf: expand-only\n");
+    fs.writeFileSync(path.join(dir, "db", "migrations", "2_drop.sql"), "-- Up Migration\n-- rf: contract\n");
+    execFileSync("tar", ["-czf", t, "-C", path.join(root, "build"), path.basename(dir)]);
+    const sum = execFileSync("sha256sum", [t], { encoding: "utf8" }).split(" ")[0];
+    fs.writeFileSync(`${t}.sha256`, `${sum}  ${path.basename(t)}\n`);
+    // No database here: pending_migrations lists every file as pending.
+    const r = run(`pending_migrations() { ls "$1/db/migrations" | sed 's/\\.sql$//'; }; cmd_upgrade_check "${t}"`);
+    expect(r.code, r.err).toBe(0);
+    expect(r.out).toContain("1_add   expand-only");
+    expect(r.out).toContain("2_drop   contract");
+    expect(r.out).toContain("waits for you");
+  });
+
+  it("anonymising SQL switches triggers off and covers phones, names and two-step secrets", () => {
+    const sql = run("anonymise_sql").out;
+    expect(sql).toContain("SET session_replication_role = replica");
+    expect(sql).toMatch(/phone\|mobile/);
+    expect(sql).toContain("business_name");
+    expect(sql).toContain("totp_secret = NULL");
+  });
+});

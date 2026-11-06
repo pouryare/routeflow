@@ -13,6 +13,7 @@
 #   - "Back up" message after an outage that was reported.
 #   - The newest backup on this machine older than 26 hours: Telegram and SMS, once.
 #   - This machine's backup disk 80% full or more: Telegram, once a day.
+#   - The site's HTTPS certificate expiring within 14 days: Telegram, once a day.
 #   - A daily summary at SUMMARY_HOUR (Tehran), and on the 1st of each month a test on both channels,
 #     so a silent monitor is noticed.
 #
@@ -30,6 +31,7 @@ DOWN_AFTER=2          # failed checks in a row
 SMS_AFTER=300         # seconds down before an SMS
 BACKUP_MAX_HOURS=26
 DISK_MAX_PCT=80
+CERT_WARN_DAYS=14
 
 log() { printf 'routeflow-monitor: %s\n' "$*" >&2; }
 
@@ -81,6 +83,16 @@ backup_age_hours() {
   echo $(( ($1 - ${newest%.*}) / 3600 ))
 }
 
+# Days until the HTTPS certificate users see expires; empty when it cannot be read.
+cert_days_left() {
+  local host end
+  host=${URL#https://}; host=${host%%/*}
+  [ "$URL" != "$host" ] || return 0
+  end=$(echo | timeout 10 openssl s_client -connect "$host:443" -servername "$host" 2>/dev/null | openssl x509 -noout -enddate 2>/dev/null | cut -d= -f2)
+  [ -n "$end" ] || return 0
+  echo $(( ($(date -d "$end" +%s) - $1) / 86400 ))
+}
+
 disk_pct() { [ -n "$BACKUP_DIR" ] && [ -d "$BACKUP_DIR" ] && df --output=pcent "$BACKUP_DIR" | tail -1 | tr -dc 0-9; }
 
 tick() {
@@ -130,6 +142,14 @@ tick() {
   if [ -n "$pct" ] && [ "$pct" -ge "$DISK_MAX_PCT" ] && [ "$(get disk_alerted_day)" != "$day" ]; then
     put disk_alerted_day "$day"
     telegram_send "🟠 RouteFlow: the Pi's backup disk is $pct% full"
+  fi
+
+  if [ "$(get cert_checked_day)" != "$day" ]; then
+    put cert_checked_day "$day"
+    local days; days=$(cert_days_left "$now" || true)
+    if [ -n "$days" ] && [ "$days" -le "$CERT_WARN_DAYS" ]; then
+      telegram_send "🟠 RouteFlow: the HTTPS certificate for $URL expires in $days days"
+    fi
   fi
 
   if [ "$hour" -ge "$SUMMARY_HOUR" ] && [ "$(get summary_day)" != "$day" ]; then

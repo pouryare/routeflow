@@ -7,6 +7,9 @@
 //
 // Usage:
 //   node scripts/create-user.mjs <username> <password> "<Display Name>" <owner|group_manager|salesperson|driver> [group_id]
+//
+// A password of "-" is read from the first line of stdin, so it never shows in the process list
+// (`routeflow install` creates the first login this way).
 
 import crypto from "node:crypto";
 import { openScriptDb } from "./_db.mjs";
@@ -18,7 +21,14 @@ const ROLES = ["platform_owner", "owner", "group_manager", "rep_manager", "phone
 const USAGE =
   'Usage: node scripts/create-user.mjs <username> <password> "<Display Name>" <owner|group_manager|rep_manager|phone_sales|field_rep|delivery_driver|shareholder> [group_id]';
 
-const [username, password, displayName, role, groupArg] = process.argv.slice(2);
+const [username, passwordArg, displayName, role, groupArg] = process.argv.slice(2);
+const password = passwordArg === "-" ? (await readStdin()).split(/\r?\n/)[0] : passwordArg;
+
+async function readStdin() {
+  let text = "";
+  for await (const chunk of process.stdin) text += chunk;
+  return text;
+}
 if (!username || !password || !displayName || !role) {
   console.error(USAGE);
   process.exit(1);
@@ -45,7 +55,7 @@ if (role === "platform_owner") {
 // An owner is unscoped by design. A non-owner with no group can reach nothing at all --
 // groupFilter() becomes " AND 1 = 0" -- so the account would log in and then show an
 // empty app, which looks like a broken deployment rather than a misconfigured account.
-const UNSCOPED = role === "owner" || role === "rep_manager";
+const UNSCOPED = role === "platform_owner" || role === "owner" || role === "rep_manager";
 const groupId = UNSCOPED ? null : Number(groupArg);
 if (!UNSCOPED && !Number.isInteger(groupId)) {
   console.error(`[create-user] role "${role}" needs a group_id as the fifth argument.`);

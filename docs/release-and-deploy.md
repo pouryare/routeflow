@@ -36,7 +36,7 @@ commands:
 
 | Command | What it does |
 |---|---|
-| `routeflow install <tarball>` | Fresh Ubuntu or Debian server: asks for the domain and the backup machine, then packages, firewall (SSH, 80, 443), Tehran time zone, security updates with a reboot only at 02:30, a log cap, PostgreSQL and backups (`db/server/install.sh`), the app service, Caddy, the nightly upgrade timer, and the first release. Run again to re-apply after editing `routeflow.conf`. |
+| `routeflow install [--yes] [tarball]` | Fresh Ubuntu or Debian server: asks for the domain, the backup machine, the company name and the first login's username (with `--yes`, nothing is asked), then packages, firewall (SSH, 80, 443), Tehran time zone, security updates with a reboot only at 02:30, a log cap, PostgreSQL and backups (`db/server/install.sh`), the database connection (a web role and its password, written into the encrypted secrets), the app service, Caddy, the nightly upgrade timer, the first release, the company name and the first login. Run again to re-apply after editing `routeflow.conf`. |
 | `routeflow upgrade <tarball>` | Checks the sum and machine type, unpacks to `releases/<version>`, takes a backup, runs the migrations, switches `current`, waits for `/api/health` with the new version, then the smoke check. |
 | `routeflow upgrade-scheduled` | What the 03:30 timer runs: the newest tarball in `incoming/` not yet installed. |
 | `routeflow rollback` | Back to the previous release (the last 3 are kept). |
@@ -85,17 +85,175 @@ the encrypted file.
 This guards against a secret leaking through a copy of `/etc`, a screenshot or a pasted file. It does not
 guard against someone who is root on the running server.
 
+## A fresh server in one command
+
+Copy the tarball for the server's machine type (from a GitHub release or a manual Release run) to the
+server, then:
+
+```sh
+sudo DOMAIN=app.example.ir COMPANY_NAME="پخش نمونه" \
+  DEPLOY_PUBKEY="ssh-ed25519 AAAA... github-deploy" \
+  bash routeflow-0.1.0-linux-x64/bin/routeflow install --yes routeflow-0.1.0-linux-x64.tar.gz
+```
+
+(`tar -xzf <tarball> --wildcards '*/bin/routeflow'` takes the command out of the tarball first.) Only
+`DOMAIN` is required; `OFFSITE_HOST`, `OFFSITE_USER`, `OFFSITE_PATH`, `OWNER_USER` (default `admin`),
+`OWNER_PASSWORD` (default: a random one) and `DEPLOY_PUBKEY` are optional. At the end it prints the
+address and the first login, a platform owner, with its password **once**: sign in and change it. A
+second run never makes a second login.
+
+Before it changes anything it checks the machine: Ubuntu or Debian, at least 1.5 GB of memory and
+10 GB free, nothing else on ports 80 and 443, and that `DOMAIN` resolves. It stops with the list of
+problems instead of failing halfway. Along the way it adds 2 GB of swap when there is none and tunes
+the kernel's network settings (below). SSH is left as the VPS came (owner's choice, 2026-11-06). Everything it prints is also in `/var/log/routeflow-install.log`, except the first login's password.
+At the end it makes a full backup and restores it into a scratch copy, so backups are proven on day one.
+
+When `OFFSITE_HOST` (the Pi) does not take the backup key yet, the install goes on with backups on this
+server only and prints the commands to paste on the Pi (the backup user, folder and key, then the
+monitor, which ships in the tarball as `bin/routeflow-monitor`). Paste them, run
+`sudo routeflow install --yes` again, and backups go to the Pi too. On the Pi, `routeflow-monitor test`
+proves Telegram and SMS reach you.
+
+What it connects on its own: PostgreSQL with the app's own login role, its password inside
+`DATABASE_URL` in the encrypted secrets, a new `SESSION_SECRET`, the migrations, backups, Caddy with its
+certificate, and the nightly upgrade. What it cannot do for you: point the domain at the server in the
+Arvan panel, and make the off-site machine accept the backup user's key.
+
+## Running from inside Iran
+
+`routeflow install` also sets up the following (owner's pick, 2026-11-06). Each one can be changed in
+`/etc/routeflow/routeflow.conf` and applied by running the install again.
+
+- **Package mirror inside Iran** (`APT_MIRROR`, default `https://mirror.arvancloud.ir`, `off` to skip).
+  Ubuntu's own packages and security updates come from Arvan's mirror, so they keep working when
+  international internet is cut. The switch happens only if the mirror answers and `apt-get update`
+  succeeds; otherwise the old lists come back (`*.before-routeflow`). PostgreSQL (PGDG) and Caddy still
+  come from their own foreign repositories.
+- **Clock from Iranian time servers** (`NTP_SERVERS`, default `ir.pool.ntp.org`, then ntp.ubuntu.com). The
+  two-step sign-in codes stop matching when the clock is off by a minute.
+- **Web ports for Arvan only** (`CDN_ONLY=1`). Ports 80 and 443 accept only Arvan's address ranges, read
+  from `https://www.arvancloud.ir/en/ips.txt`. A weekly timer (Sunday 05:00) refreshes them with
+  `routeflow cdn-ips`, which adds new ranges before it removes old ones. If the list cannot be read, the
+  rules stay as they were. Set `CDN_ONLY=0` to open the ports to everyone, for example while testing
+  without the CDN.
+- **Certificate toward Arvan** (`CERT_MODE`):
+  - Default: Let's Encrypt through Arvan. It works as long as Arvan passes plain HTTP for
+    `/.well-known/acme-challenge/` to this server.
+  - Arvan origin certificate: put it at `/etc/routeflow/tls/origin.crt` and `origin.key` and it is used
+    instead.
+  - `CERT_MODE=internal`: Caddy's own certificate, with Arvan set not to check the origin's certificate.
+  - None of the three has been tried against Arvan yet.
+- **`routeflow doctor`**: runs the pre-install checks again, plus the clock, the firewall ranges, the
+  certificate's expiry date and `routeflow status`.
+- **Status on login**: every SSH login shows one line with the version, health, age of the last backup and
+  disk use (`routeflow status-short`).
+
+## More safety (owner's pick G to L, 2026-11-06)
+
+- **Rebuild on a new server.**
+  - `routeflow secrets backup` now writes one encrypted bundle. It holds the secrets,
+    `routeflow.conf`, the pgBackRest passphrase (without it the backups cannot be read) and the backup SSH
+    key, so the Pi accepts the new server.
+  - On a fresh VPS, run `sudo routeflow rebuild routeflow-secrets-....tar.asc [tarball]`. It restores
+    that bundle, installs everything, loads the newest database from the Pi, runs any newer migrations
+    and checks pgBackRest. Your usual logins work again, because the users come back with the database.
+  - Not tried end to end yet.
+- **Page during upgrades.** While the app restarts, Caddy answers with a short Persian «در حال
+  به‌روزرسانی» page that reloads itself every 15 seconds, and `/api/*` gets
+  `{"ok":false,"maintenance":true}`. Both use status 503 and `Cache-Control: no-store`, so Arvan never
+  keeps the page. Tried with Caddy 2.6.
+- **PostgreSQL memory sized to the server.** `install.sh` writes `zz-routeflow-memory.conf`:
+  - `shared_buffers` 25% of memory and `effective_cache_size` 75%;
+  - `maintenance_work_mem` memory/16, at most 1 GB;
+  - `work_mem` memory/256, between 4 and 64 MB.
+
+  On 4 GB that is 1 GB, 3 GB, 256 MB and 16 MB. The fixed values in `postgresql.routeflow.conf` were for
+  16 GB (4 GB of `shared_buffers` would fill a 4 GB server). Run the install again after resizing.
+- **Disk check before every upgrade.** With less than 3 GB free on `/opt/routeflow` (`MIN_FREE_GB`),
+  the upgrade stops before it changes anything.
+- **Certificate alert.** The Pi monitor reads the expiry date of the certificate users see once a day.
+  It warns on Telegram from 14 days before.
+- **Helper access that expires.** `routeflow support-key add "ssh-ed25519 AAAA... name" 3d` (or `12h`)
+  adds the key for root with OpenSSH's own `expiry-time`, so sshd refuses it after that time even if
+  nothing else runs. An hourly timer then deletes the line. `routeflow support-key list` and `remove`
+  show and end access early.
+
+## Sending the database for a change, and taking a fix back
+
+- `sudo routeflow export` writes `/var/lib/routeflow/exports/routeflow-<date>.dump` (pg_dump custom
+  format, every company, with grants). It holds personal data, so send it only through a private
+  channel.
+- The usual way back is a fix, not a whole database: a reviewed `fix.sql`, applied with
+  `sudo routeflow sql fix.sql`. It shows the SQL, asks you to type APPLY, takes a backup, and runs the
+  file in one transaction, so any error leaves nothing changed. Orders entered between the export and
+  the fix are kept, which re-importing a changed dump would lose.
+- When a whole database has to go back: `sudo routeflow import <file.dump>`.
+  - It asks you to type IMPORT and takes a backup.
+  - It stops the app and renames the live database to `routeflow_before_import_<time>`. It is kept,
+    not dropped.
+  - It restores the file, runs the migrations and starts the app.
+  - If the restore fails, the old database is put back.
+- On the development side, the file loads into a local database with `pg_restore -d <db> <file>`.
+
+## Everyday extras (owner's pick M to Q, 2026-11-06)
+
+- **Upgrade preview.** `sudo routeflow upgrade --check <tarball>` changes nothing. It shows the version
+  jump, the free disk space, every database change with its marker, and whether a failed upgrade would
+  switch back by itself.
+- **Maintenance switch.** `sudo routeflow maintenance on` makes Caddy show the «در حال به‌روزرسانی» page
+  (503, never cached) to everyone, with no reload, because it only checks for
+  `/etc/routeflow/maintenance.on`. `off` opens the app again, and `status` says which.
+- **Anonymous export.** `sudo routeflow export --anonymise` dumps the live database into a scratch copy
+  and changes the details there. The live database is never touched.
+  - Phones become `09…` numbers.
+  - Names, shop names, addresses and notes become «نمونه xxxxxx», and emails `u…@example.com`.
+  - Two-step secrets and recovery codes are removed.
+  - The same input always gives the same fake value, so duplicates still show.
+  - Map points, amounts and dates stay real.
+  - Columns are chosen by name, so a new personal column needs its name added in `anonymise_sql`.
+  - Tried on the demo data: 500 customers, all phones replaced with valid `09` numbers.
+- **Login rescue.** `sudo routeflow reset-login <username>` sets a new random password (printed once),
+  turns off two-step sign-in, signs out every session and reactivates the account
+  (`scripts/reset-login.mjs`).
+- **Export tidy-up.** Exports older than 7 days (`EXPORT_KEEP_DAYS`) are deleted by the hourly
+  `routeflow tidy`. `routeflow export --encrypt` locks the file with a passphrase (`.dump.gpg`), and
+  `routeflow import` opens such a file.
+
+## Kernel settings
+
+`/etc/sysctl.d/60-routeflow.conf` (written by `routeflow install`, from `write_sysctl` in
+`deploy/routeflow`). It started from a common "speed" list. These parts are kept or changed:
+
+- **Kept:** BBR with `fq` (the biggest win on lossy, long links), larger socket buffers (16 MB),
+  shorter FIN and keepalive times, SYN cookies, `tcp_tw_reuse`.
+- **Smaller:** `somaxconn` 4096 and `tcp_max_syn_backlog` 8192 instead of 32768/16384. One small server
+  behind a CDN never queues that many, and Node's own backlog is 511.
+- **Changed:** outgoing ports start at 10240, not 1024. From 1024 the kernel could hand out 3003 or 5432
+  as a client port and block the app or PostgreSQL from starting.
+- **Added:** `tcp_mtu_probing` (paths that drop large packets), `tcp_slow_start_after_idle = 0` (CDN
+  connections stay fast), no ICMP redirects, `rp_filter`, reboot 10 s after a kernel panic, and
+  `LimitNOFILE=65536` on the app service.
+- **Left out on purpose:**
+  - `tcp_timestamps = 0`: `tcp_tw_reuse` needs timestamps, and they guard against old packets.
+  - `tcp_syn_retries = 1` and `tcp_synack_retries = 1`: on a lossy link, one lost packet would fail the
+    connection to the Pi or a slow phone.
+  - `tcp_max_tw_buckets = 6000`: it makes the kernel drop closing connections under load.
+  - `fs.file-max`: already in the millions on current kernels. The per-service limit above is what counts.
+  - The `inotify` limits: they matter for file watchers in development, not for a server.
+  - `tcp_max_orphans`, `route.gc_timeout`, the UDP minimums, and the IPv6 and ICMP lines: they are
+    already the defaults, or they do nothing for this server.
+
 ## Setting up the GitHub deploy
 
-On the server, once:
+With `DEPLOY_PUBKEY` set, the install makes the `deploy` user with that key. By hand instead:
 
 ```sh
 sudo adduser --disabled-password --gecos "" deploy
 sudo install -d -m 700 -o deploy -g deploy /home/deploy/.ssh
 # paste the public half of a new key made for GitHub only:
 sudo tee /home/deploy/.ssh/authorized_keys >/dev/null
-sudo routeflow install <tarball>     # adds deploy to the routeflow group, so it can write incoming/
-ssh-keyscan -p 22 localhost          # the host key line, for DEPLOY_KNOWN_HOSTS (use the public name)
+sudo routeflow install --yes          # adds deploy to the routeflow group, so it can write incoming/
+ssh-keyscan -p 22 localhost           # the host key line, for DEPLOY_KNOWN_HOSTS (use the public name)
 ```
 
 `deploy` cannot run `routeflow`, `sudo` or anything else that changes the server; it only drops files in
