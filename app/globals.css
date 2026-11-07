@@ -1313,7 +1313,7 @@ body {
   /* Was #828A98 (3.1:1) and documented as non-text only, but 150+ readable labels use it, so
      it is now solved to 4.5 on --bg. The two roles sit close together; --text-muted stays the
      darker of the pair. */
-  --text-faint: #656E7B;
+  --text-faint: #5F6874;
   --accent: #0077BC;        /* fills only in light */
   --accent-text: #006EAE;   /* accent as text: 4.55 on --bg */
   --accent-foreground: #FFFFFF;    /* on an --accent fill: 4.65 */
@@ -1458,7 +1458,7 @@ body {
   --border: #28323A;
   --border-strong: #37414A;
   --foreground: #EDF1F5;
-  --text-faint: #828C97;
+  --text-faint: #8A939E;
   --accent: #3BA6F5;
   --accent-text: #3BA6F5;
   --accent-foreground: #030E19;   /* NOT white — white on this accent is 3.01:1 */

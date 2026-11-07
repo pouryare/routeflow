@@ -52,9 +52,9 @@ const ratio = (a, b) => {
 /** Anything a reader must actually read. */
 /*  HeroUI names: inside .meridian they hold the values and the older ones are aliases
     (--text is --foreground, --crit is --danger ...; MASTER.md "Colour"). */
-const TEXT = ["--foreground", "--muted", "--accent-text", "--success", "--warning", "--danger", "--info", "--tint-plum"];
+const TEXT = ["--foreground", "--muted", "--text-faint", "--accent-text", "--success", "--warning", "--danger", "--info", "--tint-plum"];
 /** Non-text: decorative glyphs, disabled day numbers, separators. 3:1 per MASTER.md. */
-const NON_TEXT = ["--text-faint"];
+const NON_TEXT = [];
 
 const GROUNDS = ["--background", "--surface"];
 
@@ -155,8 +155,8 @@ const SURFACE_CREAM = {
   },
 };
 const SURFACE_INK = {
-  light: { "--text": ["#1A1F26", 7], "--text-muted": ["#5C6672", 4.5], "--text-faint": ["#656E7B", 4.5] },
-  dark: { "--text": ["#EDF1F5", 7], "--text-muted": ["#8B98A5", 4.5], "--text-faint": ["#828C97", 3] },
+  light: { "--text": ["#1A1F26", 7], "--text-muted": ["#5C6672", 4.5], "--text-faint": ["#5F6874", 4.5] },
+  dark: { "--text": ["#EDF1F5", 7], "--text-muted": ["#8B98A5", 4.5], "--text-faint": ["#8A939E", 4.5] },
 };
 
 /* The grounds these themes are solved against, from the .meridian blocks (cold). --surface-raised
