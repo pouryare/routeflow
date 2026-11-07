@@ -5,6 +5,9 @@ import AcctTable, { CELL, NUM } from "@/components/accounting/AcctTable";
 import { requireAccounting } from "@/lib/accountingGate";
 import { agedPayables } from "@/lib/repo/reports";
 import { faNum } from "@/lib/format";
+import { pageMetadata } from "@/lib/pageMeta";
+
+export const metadata = pageMetadata("/accounting/payables");
 
 export const dynamic = "force-dynamic";
 

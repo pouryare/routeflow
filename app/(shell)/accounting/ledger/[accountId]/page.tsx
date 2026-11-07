@@ -7,6 +7,8 @@ import AcctTable, { CELL, NUM } from "@/components/accounting/AcctTable";
 import { requireAccounting } from "@/lib/accountingGate";
 import { accountById, accountLedger } from "@/lib/repo/reports";
 import Pager from "@/components/accounting/Pager";
+import { pageMetadata } from "@/lib/pageMeta";
+import type { Metadata } from "next";
 import { faNum } from "@/lib/format";
 import { pagingFor } from "@/lib/paging";
 
@@ -23,6 +25,14 @@ const PAGE_SIZE = 200;
  *  answered before the ledger existed.
  *
  *  A reversed posting keeps its line and is struck through, same rule as the journal. */
+/** The account's name in the tab, after the same gate as the page itself. */
+export async function generateMetadata({ params }: { params: Promise<{ accountId: string }> }): Promise<Metadata> {
+  await requireAccounting("/accounting/trial-balance");
+  const id = Number((await params).accountId);
+  const account = Number.isInteger(id) && id > 0 ? await accountById(id) : undefined;
+  return account ? { title: account.nameFa } : pageMetadata("/accounting/trial-balance");
+}
+
 export default async function AccountLedgerPage({
   params,
   searchParams,

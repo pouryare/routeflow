@@ -11,6 +11,9 @@ import { faNum } from "@/lib/format";
 import ExpenseEntry from "@/components/flows/ExpenseEntry";
 import { expenseCategories } from "@/lib/repo/ledgerPostings";
 import { listSuppliers } from "@/lib/repo/suppliers";
+import { pageMetadata } from "@/lib/pageMeta";
+
+export const metadata = pageMetadata("/accounting/expenses");
 
 export const dynamic = "force-dynamic";
 

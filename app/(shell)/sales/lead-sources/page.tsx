@@ -8,6 +8,9 @@ import { leadSourceReport, topReferrers, REVENUE_WINDOW_DAYS } from "@/lib/repo/
 import CustomerName from "@/components/CustomerName";
 import PageHeader from "@/components/meridian/PageHeader";
 import { faNum } from "@/lib/format";
+import { pageMetadata } from "@/lib/pageMeta";
+
+export const metadata = pageMetadata("/sales/lead-sources");
 
 export const dynamic = "force-dynamic";
 

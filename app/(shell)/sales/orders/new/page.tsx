@@ -10,6 +10,9 @@ import { canSell, isOwner, isVanRole } from "@/lib/roles";
 import Link from "next/link";
 import StatePage from "@/components/meridian/StatePage";
 import { Icon } from "@/components/meridian/Icon";
+import { pageMetadata } from "@/lib/pageMeta";
+
+export const metadata = pageMetadata("/sales/orders/new");
 
 export const dynamic = "force-dynamic";
 

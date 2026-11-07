@@ -15,6 +15,9 @@ import PageHeader from "@/components/meridian/PageHeader";
 import { isVanRole, MANAGE_ROLES } from "@/lib/roles";
 import SalePings from "@/components/sales/SalePings";
 import RealizedProfitCard from "@/components/sales/RealizedProfitCard";
+import { pageMetadata } from "@/lib/pageMeta";
+
+export const metadata = pageMetadata("/sales");
 
 export const dynamic = "force-dynamic";
 

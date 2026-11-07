@@ -26,6 +26,10 @@ import DriverLinks from "@/components/driver/DriverLinks";
 import FirstStepsCard from "@/components/tutorials/FirstStepsCard";
 import { driverLinks } from "@/lib/driverLinks";
 
+import type { Metadata } from "next";
+
+export const metadata: Metadata = { title: "مسیر امروز" };
+
 export const dynamic = "force-dynamic";
 
 /** Phase 6: one line of weather from the run's frozen forecast, or null. */

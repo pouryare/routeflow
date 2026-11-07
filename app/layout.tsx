@@ -12,9 +12,12 @@ import { CONTRAST_INIT_SCRIPT } from "@/lib/contrast";
 import { ALL_FONT_VARS } from "@/app/fonts";
 import "./globals.css";
 
+/** Each page sets only its own name (see pageMetadata in lib/pageMeta.ts); the template
+ *  adds the app name, so a tab reads «سفارش‌ها · RouteFlow». `default` is for a page that
+ *  sets nothing, such as the redirecting front door. */
 export const metadata: Metadata = {
-  title: "نقشه پوشش مشتریان",
-  description: "نقشه پوشش مناطق و مشتریان",
+  title: { template: "%s · RouteFlow", default: "RouteFlow" },
+  description: "سامانه فروش، پخش و مدیریت مسیر",
 };
 
 /** `colorScheme: "dark light"` -- dark first, because it is the default and the order is

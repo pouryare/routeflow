@@ -6,6 +6,9 @@ import { requireAccounting } from "@/lib/accountingGate";
 import { agedPayables } from "@/lib/repo/reports";
 import { listSuppliers } from "@/lib/repo/suppliers";
 import { faNum } from "@/lib/format";
+import { pageMetadata } from "@/lib/pageMeta";
+
+export const metadata = pageMetadata("/accounting/suppliers");
 
 export const dynamic = "force-dynamic";
 

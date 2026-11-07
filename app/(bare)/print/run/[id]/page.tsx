@@ -7,6 +7,10 @@ import { runNotes } from "@/lib/runNotes";
 import PrintButton from "@/components/PrintButton";
 import { faNum } from "@/lib/format";
 
+import type { Metadata } from "next";
+
+export const metadata: Metadata = { title: "برگهٔ سفر تحویل" };
+
 export const dynamic = "force-dynamic";
 
 /** F101: every delivery note of one run, in stop order, one per printed page, after a cover sheet.

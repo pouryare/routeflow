@@ -20,6 +20,8 @@
  *
  *  `help` is an optional id into `lib/help/` rather than a second paragraph: the copy already
  *  lives there, and a page should not be able to drift from it. */
+import type { Metadata } from "next";
+
 export type PageMeta = { title: string; titleEn: string; overview: string; help?: string };
 
 
@@ -443,4 +445,11 @@ export function pageMetaFor(pathname: string, view?: string): PageMeta {
   return key
     ? PAGE_META[key]
     : { title: "RouteFlow", titleEn: "RouteFlow", overview: "" };
+}
+
+/** The browser-tab title (and description) for a shell page. Only the page name goes here:
+ *  the root layout's title template adds «· RouteFlow», so the tab reads «سفارش‌ها · RouteFlow». */
+export function pageMetadata(route: string, view?: string): Metadata {
+  const m = pageMetaFor(route, view);
+  return { title: m.title, description: m.overview };
 }

@@ -9,6 +9,9 @@ import { reasonReport, type ReasonArea } from "@/lib/repo/reasonReport";
 import type { ReasonDomain } from "@/lib/repo/reasonCodes";
 import PageHeader from "@/components/meridian/PageHeader";
 import { faNum } from "@/lib/format";
+import { pageMetadata } from "@/lib/pageMeta";
+
+export const metadata = pageMetadata("/sales/reasons");
 
 export const dynamic = "force-dynamic";
 

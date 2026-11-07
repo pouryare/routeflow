@@ -7,6 +7,9 @@ import { getSessionFromCookies } from "@/lib/session";
 import { OWNER_ROLES } from "@/lib/roles";
 import { assignmentsSentBy, stepCounts, tutorialPeople } from "@/lib/repo/tutorials";
 import { TUTOR_ROLES } from "@/lib/tutorials/catalog";
+import { pageMetadata } from "@/lib/pageMeta";
+
+export const metadata = pageMetadata("/settings/tutorials");
 
 /** «آموزش برنامه»: every tutorial this person's role has, the «چطور…؟» search, replay and practice.
  *  Managers and owners also get «فرستادن آموزش» (idea I7) and the owner the company's counts (idea I12).

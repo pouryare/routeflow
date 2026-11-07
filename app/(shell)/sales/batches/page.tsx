@@ -7,6 +7,9 @@ import BatchesPanel from "@/components/sales/BatchesPanel";
 import PageHeader from "@/components/meridian/PageHeader";
 
 import { MANAGE_ROLES } from "@/lib/roles";
+import { pageMetadata } from "@/lib/pageMeta";
+
+export const metadata = pageMetadata("/sales/batches");
 export const dynamic = "force-dynamic";
 
 export default async function BatchesPage() {

@@ -6,6 +6,9 @@ import { getSessionFromCookies } from "@/lib/session";
 import PaymentsPanel from "@/components/sales/PaymentsPanel";
 import PageHeader from "@/components/meridian/PageHeader";
 import { isVanRole, isOwner } from "@/lib/roles";
+import { pageMetadata } from "@/lib/pageMeta";
+
+export const metadata = pageMetadata("/sales/payments");
 
 export const dynamic = "force-dynamic";
 

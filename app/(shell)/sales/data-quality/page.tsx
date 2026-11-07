@@ -8,6 +8,9 @@ import { MANAGE_ROLES } from "@/lib/roles";
 import { dataQuality, type Gap } from "@/lib/repo/dataQuality";
 import PageHeader from "@/components/meridian/PageHeader";
 import { faNum } from "@/lib/format";
+import { pageMetadata } from "@/lib/pageMeta";
+
+export const metadata = pageMetadata("/sales/data-quality");
 
 export const dynamic = "force-dynamic";
 

@@ -9,6 +9,9 @@ import RoutingPlanner from "@/components/sales/RoutingPlanner";
 import PageHeader from "@/components/meridian/PageHeader";
 
 import { MANAGE_ROLES } from "@/lib/roles";
+import { pageMetadata } from "@/lib/pageMeta";
+
+export const metadata = pageMetadata("/sales/routing");
 export const dynamic = "force-dynamic";
 
 export default async function RoutingPage() {

@@ -8,6 +8,9 @@ import Pocket from "@/components/pocket/Pocket";
 import PageHeader from "@/components/meridian/PageHeader";
 import { canSell, isVanRole } from "@/lib/roles";
 import { appTabs } from "@/lib/appNav";
+import { pageMetadata } from "@/lib/pageMeta";
+
+export const metadata = pageMetadata("/sales/pocket");
 
 export const dynamic = "force-dynamic";
 

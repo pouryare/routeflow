@@ -7,6 +7,9 @@ import { incomeStatement, listPeriods } from "@/lib/repo/reports";
 import { faNum } from "@/lib/format";
 import SummaryCards from "@/components/accounting/SummaryCards";
 import { incomeStatementCards } from "@/lib/accountingCards";
+import { pageMetadata } from "@/lib/pageMeta";
+
+export const metadata = pageMetadata("/accounting/income-statement");
 
 export const dynamic = "force-dynamic";
 

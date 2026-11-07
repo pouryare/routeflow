@@ -8,6 +8,9 @@ import { getPrefs } from "@/lib/repo/prefs";
 import Board from "@/components/board/Board";
 import type { BoardView } from "@/lib/tasks/lenses";
 import PageHeader from "@/components/meridian/PageHeader";
+import { pageMetadata } from "@/lib/pageMeta";
+
+export const metadata = pageMetadata("/sales/tasks");
 
 export const dynamic = "force-dynamic";
 

@@ -19,6 +19,18 @@ import { oneOf, type SearchParams } from "@/lib/viewParam";
 import { isVanRole } from "@/lib/roles";
 import RunsViewClient from "@/components/sales/RunsViewClient";
 import type { ReactNode } from "react";
+import { pageMetadata } from "@/lib/pageMeta";
+import type { Metadata } from "next";
+
+/** The runs view is its own screen («سفرهای تحویل»), so its tab says so too. */
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: Promise<{ view?: string | string[] }>;
+}): Promise<Metadata> {
+  const { view } = await searchParams;
+  return pageMetadata("/sales/schedule", typeof view === "string" ? view : undefined);
+}
 
 export const dynamic = "force-dynamic";
 

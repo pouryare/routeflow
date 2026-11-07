@@ -6,6 +6,9 @@ import { OWNER_ROLES } from "@/lib/roles";
 import AccountSwitcher from "@/components/meridian/AccountSwitcher";
 import ActingCompany from "@/components/meridian/ActingCompany";
 import PageHeader from "@/components/meridian/PageHeader";
+import { pageMetadata } from "@/lib/pageMeta";
+
+export const metadata = pageMetadata("/switch");
 
 export const dynamic = "force-dynamic";
 

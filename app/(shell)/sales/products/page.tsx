@@ -14,6 +14,9 @@ import { isVanRole, isOwner } from "@/lib/roles";
 import { recentProductChanges } from "@/lib/repo/productLog";
 import Link from "next/link";
 import { Icon } from "@/components/meridian/Icon";
+import { pageMetadata } from "@/lib/pageMeta";
+
+export const metadata = pageMetadata("/sales/products");
 
 
 export const dynamic = "force-dynamic";

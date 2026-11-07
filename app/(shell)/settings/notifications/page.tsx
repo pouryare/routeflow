@@ -5,6 +5,9 @@ import { getSessionFromCookies } from "@/lib/session";
 import { getPrefsMatrix } from "@/lib/repo/notifications";
 import NotificationSettings from "@/components/settings/NotificationSettings";
 import PageHeader from "@/components/meridian/PageHeader";
+import { pageMetadata } from "@/lib/pageMeta";
+
+export const metadata = pageMetadata("/settings/notifications");
 
 export const dynamic = "force-dynamic";
 

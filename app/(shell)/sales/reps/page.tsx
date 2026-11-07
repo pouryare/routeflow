@@ -15,6 +15,9 @@ import { faNum } from "@/lib/format";
 import PageHeader from "@/components/meridian/PageHeader";
 
 import { isOwner, MANAGE_ROLES } from "@/lib/roles";
+import { pageMetadata } from "@/lib/pageMeta";
+
+export const metadata = pageMetadata("/sales/reps");
 export const dynamic = "force-dynamic";
 
 /* Labels from REP_HEALTH_BAND_FA, the one map (this page's own copy said «مراقبت» where

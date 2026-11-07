@@ -7,6 +7,9 @@ import { expenseCategories } from "@/lib/repo/ledgerPostings";
 import { tehranTodayIso, todayJalali } from "@/lib/jalali";
 import { listGroups } from "@/lib/repo/groupsAdmin";
 import { listUsers } from "@/lib/repo/usersAdmin";
+import { pageMetadata } from "@/lib/pageMeta";
+
+export const metadata = pageMetadata("/accounting/shareholders");
 
 export const dynamic = "force-dynamic";
 

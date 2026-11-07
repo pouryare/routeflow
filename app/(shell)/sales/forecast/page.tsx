@@ -15,6 +15,9 @@ import PageHeader from "@/components/meridian/PageHeader";
 import { faJalaliDateTime } from "@/lib/jalali";
 
 import { MANAGE_ROLES } from "@/lib/roles";
+import { pageMetadata } from "@/lib/pageMeta";
+
+export const metadata = pageMetadata("/sales/forecast");
 export const dynamic = "force-dynamic";
 
 export default async function ForecastPage() {

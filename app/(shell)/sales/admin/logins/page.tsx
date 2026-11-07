@@ -5,6 +5,9 @@ import { getSessionFromCookies } from "@/lib/session";
 import PageHeader from "@/components/meridian/PageHeader";
 import LoginEventList from "@/components/LoginEventList";
 import { recentLogins } from "@/lib/repo/loginEvents";
+import { pageMetadata } from "@/lib/pageMeta";
+
+export const metadata = pageMetadata("/sales/admin/logins");
 
 export const dynamic = "force-dynamic";
 

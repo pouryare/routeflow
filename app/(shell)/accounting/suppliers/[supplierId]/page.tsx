@@ -8,6 +8,8 @@ import AcctTable, { CELL, NUM } from "@/components/accounting/AcctTable";
 import { requireAccounting } from "@/lib/accountingGate";
 import { supplierStatement } from "@/lib/repo/reports";
 import { supplierOf } from "@/lib/repo/suppliers";
+import { pageMetadata } from "@/lib/pageMeta";
+import type { Metadata } from "next";
 import { faNum } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
@@ -18,6 +20,14 @@ export const dynamic = "force-dynamic";
  *  we hold a credit balance with is not the same as one we owe nothing to, and printing
  *  only the payable would show the second as a stranger. The running balance is what
  *  reconciles the two. */
+/** The supplier's name in the tab, read in the caller's company after the same gate as the page. */
+export async function generateMetadata({ params }: { params: Promise<{ supplierId: string }> }): Promise<Metadata> {
+  const organizationId = await requireAccounting("/accounting/suppliers");
+  const id = Number((await params).supplierId);
+  const supplier = Number.isInteger(id) && id > 0 ? await supplierOf(organizationId, id) : undefined;
+  return supplier ? { title: supplier.name } : pageMetadata("/accounting/suppliers");
+}
+
 export default async function SupplierStatementPage({
   params,
 }: {

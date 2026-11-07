@@ -7,6 +7,9 @@ import ChequesBoard from "@/components/sales/ChequesBoard";
 import PageHeader from "@/components/meridian/PageHeader";
 
 import { MANAGE_ROLES, isOwner } from "@/lib/roles";
+import { pageMetadata } from "@/lib/pageMeta";
+
+export const metadata = pageMetadata("/sales/cheques");
 export const dynamic = "force-dynamic";
 
 export default async function ChequesPage() {

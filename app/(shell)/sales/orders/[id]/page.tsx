@@ -6,6 +6,8 @@ import { redirect, notFound } from "next/navigation";
 import { COOKIE_NAME } from "@/lib/auth";
 import { getSessionFromCookies } from "@/lib/session";
 import { orderPageFor } from "@/lib/repo/ordersView";
+import { pageMetadata } from "@/lib/pageMeta";
+import type { Metadata } from "next";
 import { faToman, faNum } from "@/lib/format";
 import { faJalaliDate, faJalaliDateTime } from "@/lib/jalali";
 import { buildMapLink } from "@/lib/deepLink";
@@ -43,6 +45,16 @@ const ATTEMPT_LABEL: Record<string, string> = {
   CANCELLED: "لغوشده",
 };
 
+
+/** «سفارش ۱۲# · RouteFlow», the same number the page heading shows. orderPageFor is the page's
+ *  own scoped read, so an order this person cannot see falls back to the section title. */
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+  const session = await getSessionFromCookies((await cookies()).get(COOKIE_NAME)?.value);
+  const page = session ? await orderPageFor(session, Number((await params).id)) : null;
+  return page
+    ? { title: `سفارش ${faNum(Number(page.order.order_no.split("-")[1]))}#` }
+    : pageMetadata("/sales/orders");
+}
 
 export default async function OrderDetailPage({
   params,

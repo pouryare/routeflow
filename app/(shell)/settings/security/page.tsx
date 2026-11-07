@@ -11,6 +11,9 @@ import SecondFactorSection from "@/components/meridian/SecondFactorSection";
 import StepUpSwitch from "@/components/meridian/StepUpSwitch";
 import { stepUpRequiredFor } from "@/lib/repo/stepUp";
 import { isOwner } from "@/lib/roles";
+import { pageMetadata } from "@/lib/pageMeta";
+
+export const metadata = pageMetadata("/settings/security");
 
 export const dynamic = "force-dynamic";
 
