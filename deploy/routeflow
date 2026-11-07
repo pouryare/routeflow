@@ -26,6 +26,7 @@ set -euo pipefail
 
 ROOT=${ROUTEFLOW_ROOT:-/opt/routeflow}
 CONF_DIR=${ROUTEFLOW_CONF_DIR:-/etc/routeflow}
+CADDY_DIR=${ROUTEFLOW_CADDY_DIR:-/etc/caddy}
 CONF=$CONF_DIR/routeflow.conf
 ENV_FILE=$CONF_DIR/env
 SECRETS=$CONF_DIR/secrets.cred
@@ -457,13 +458,75 @@ cmd_logs() {
 # must already be in $CONF or the environment.
 # With --yes (ROUTEFLOW_YES=1) or no terminal, nothing is asked: the value comes from $CONF, the
 # environment or the default.
+# Interactive only on a terminal and without --yes. Prompts go to the terminal itself (not the install
+# log); a plain read works over SSH, with paste, and before whiptail is installed.
+interactive() { [ "${ROUTEFLOW_YES:-0}" != 1 ] && [ -t 0 ] && [ -w /dev/tty ]; }
+
 ask() {
   local var=$1 question=$2 default=${3:-} value
   value=${!var:-$default}
-  if [ "${ROUTEFLOW_YES:-0}" != 1 ] && [ -t 0 ] && command -v whiptail >/dev/null; then
-    value=$(whiptail --title "RouteFlow install" --inputbox "$question" 10 70 "$value" 3>&1 1>&2 2>&3) || die "cancelled"
+  if interactive; then
+    printf '\n%s\n' "$question" >/dev/tty
+    read -r -p "  [${value:-empty}] > " -e reply </dev/tty || die "cancelled"
+    [ -z "$reply" ] || value=$reply
   fi
   printf -v "$var" '%s' "$value"
+}
+
+# ask_yes VAR "question" 1|0 : stores 1 or 0 (Enter keeps the default).
+ask_yes() {
+  local var=$1 question=$2 default=${3:-1} reply
+  if interactive; then
+    printf '\n%s\n' "$question" >/dev/tty
+    read -r -p "  [$([ "$default" = 1 ] && echo Y/n || echo y/N)] > " reply </dev/tty || die "cancelled"
+    case "$reply" in [yYبه]*) default=1 ;; [nNخن]*) default=0 ;; esac
+  fi
+  printf -v "$var" '%s' "$default"
+}
+
+# The questions of a hand-run install, in the order a person thinks about them. With --yes the answers
+# come from the environment or $CONF and nothing is asked.
+install_questions() {
+  interactive || return 0
+  {
+    printf '\n==== RouteFlow install: a few questions ====\n'
+    printf 'Press Enter to keep the answer shown in [brackets]. You can run the install again later to change any of them.\n'
+  } >/dev/tty
+  while [ -z "${DOMAIN:-}" ]; do
+    ask DOMAIN "1. What address will people open?  Example: app.example.ir
+   (Create this name in the Arvan CDN panel first, pointing at this server's IP.)" "${DOMAIN:-}"
+  done
+  ask COMPANY_NAME "2. Company name shown in the app.  Example: پخش نمونه" "${COMPANY_NAME:-}"
+  ask OWNER_USER "3. Username for the first login (you, the platform owner)." "${OWNER_USER:-admin}"
+  if [ -z "${OWNER_PASSWORD:-}" ]; then
+    printf '\n4. Password for the first login.\n   Press Enter to let me make a strong random one and show it once at the end.\n' >/dev/tty
+    read -r -s -p "  > " OWNER_PASSWORD </dev/tty || die "cancelled"; printf '\n' >/dev/tty
+    [ -z "$OWNER_PASSWORD" ] || [ "${#OWNER_PASSWORD}" -ge 8 ] || die "the password needs at least 8 characters"
+  fi
+  local c
+  printf '\n5. Which certificate does this server use toward Arvan?\n   1 = Caddy makes its own (simplest: in the Arvan panel set SSL to "do not verify the origin")\n   2 = Let'"'"'s Encrypt, or an Arvan origin certificate you put in %s/tls/ (origin.crt, origin.key)\n' "$CONF_DIR" >/dev/tty
+  read -r -p "  [1] > " c </dev/tty || die "cancelled"
+  case "$c" in 2) CERT_MODE=auto ;; *) CERT_MODE=internal ;; esac
+  ask_yes CDN_ONLY "6. Open the web ports only to Arvan's servers? (safer; choose no while you test without the CDN)" "${CDN_ONLY:-1}"
+  local pi=0; [ -z "${OFFSITE_HOST:-}" ] || pi=1
+  ask_yes pi "7. Send backups to a second machine (your home Pi)? You can say no now and add it later." "$pi"
+  if [ "$pi" = 1 ]; then
+    ask OFFSITE_HOST "   Pi address (host name or IP)." "${OFFSITE_HOST:-}"
+    ask OFFSITE_USER "   User on the Pi for the backups." "${OFFSITE_USER:-rfbackup}"
+    ask OFFSITE_PATH "   Folder on the Pi for the backups." "${OFFSITE_PATH:-/srv/routeflow-pgbackrest}"
+  else
+    OFFSITE_HOST=""
+  fi
+  ask DEPLOY_PUBKEY "8. Should GitHub upload new versions by itself? Paste its public key (starts with ssh-ed25519), or press Enter to skip.
+   Skipping is fine: you can copy the release file by hand." "${DEPLOY_PUBKEY:-}"
+  {
+    printf '\n---- Summary ----\n'
+    printf 'Address:      %s\nCompany:      %s\nFirst login:  %s (%s)\n' "$DOMAIN" "${COMPANY_NAME:-(none)}" "$OWNER_USER" "$([ -n "${OWNER_PASSWORD:-}" ] && echo "your password" || echo "random password")"
+    printf 'Certificate:  %s\nArvan only:   %s\nBackup Pi:    %s\nGitHub key:   %s\n' "$([ "$CERT_MODE" = internal ] && echo "Caddy's own" || echo "Let's Encrypt / origin certificate")" "$([ "$CDN_ONLY" = 1 ] && echo yes || echo no)" "${OFFSITE_HOST:-no (this server only)}" "$([ -n "${DEPLOY_PUBKEY:-}" ] && echo yes || echo no)"
+  } >/dev/tty
+  local go
+  ask_yes go "Start the install now? It takes about 10 minutes." 1
+  [ "$go" = 1 ] || die "stopped, nothing was changed"
 }
 
 write_conf() {
@@ -602,8 +665,10 @@ maintenance_page() {
 }
 
 write_caddy() {
-  # A file of its own, imported once, so another site in the Caddyfile is never touched.
-  cat > /etc/caddy/routeflow.caddy <<CADDY
+  # One file per site in $CADDY_DIR/sites/, all pulled in by one glob line, so adding another site
+  # is a new file and this one is never touched. Global options stay in the Caddyfile.
+  mkdir -p "$CADDY_DIR/sites"
+  cat > "$CADDY_DIR/sites/routeflow.caddy" <<CADDY
 # Written by 'routeflow install' from $CONF.
 $DOMAIN {
 	# next start leaves signed-in API JSON uncompressed; this covers every route.
@@ -637,9 +702,12 @@ $DOMAIN {
 	}
 }
 CADDY
-  grep -qxF 'import /etc/caddy/routeflow.caddy' /etc/caddy/Caddyfile 2>/dev/null \
-    || printf '\nimport /etc/caddy/routeflow.caddy\n' >> /etc/caddy/Caddyfile
-  caddy validate --config /etc/caddy/Caddyfile >/dev/null
+  # Older installs imported $CADDY_DIR/routeflow.caddy by name: move to the glob.
+  rm -f "$CADDY_DIR/routeflow.caddy"
+  sed -i '\|^import /etc/caddy/routeflow.caddy$|d' "$CADDY_DIR/Caddyfile" 2>/dev/null || true
+  grep -qxF 'import sites/*.caddy' "$CADDY_DIR/Caddyfile" 2>/dev/null \
+    || printf '\nimport sites/*.caddy\n' >> "$CADDY_DIR/Caddyfile"
+  caddy validate --config "$CADDY_DIR/Caddyfile" >/dev/null
   systemctl reload caddy || systemctl restart caddy
 }
 
@@ -1221,7 +1289,11 @@ SQL
 cmd_install() {
   local tarball version tmp
   if [ "${1:-}" = --yes ]; then ROUTEFLOW_YES=1; shift; fi
-  tarball=$(install_tarball "${1:-}") || die "usage: routeflow install [--yes] <routeflow-X.Y.Z-linux-ARCH.tar.gz> (none found in $ROOT/incoming or here)"
+  tarball=$(install_tarball "${1:-}") || {
+    interactive || die "usage: routeflow install [--yes] <routeflow-X.Y.Z-linux-ARCH.tar.gz> (none found in $ROOT/incoming or here)"
+    ask TARBALL_PATH "0. I did not find the release file (routeflow-X.Y.Z-linux-$(machine_arch).tar.gz) here. Where is it?" ""
+    tarball=$(install_tarball "$TARBALL_PATH") || die "no such file: $TARBALL_PATH"
+  }
   need_root install
   # Everything below also goes to the log, to send along when something fails. The first login's
   # password goes only to the screen (fd 3), never to the log.
@@ -1230,14 +1302,10 @@ cmd_install() {
   say "routeflow install $(date '+%F %T'), log: /var/log/routeflow-install.log"
   load_conf
   APP_PORT=${APP_PORT:-3003}; KEEP_RELEASES=${KEEP_RELEASES:-3}; UPGRADE_AT=${UPGRADE_AT:-*-*-* 03:30:00 Asia/Tehran}
-  ask DOMAIN "Domain users open (pointed at this server through Arvan CDN):" "${DOMAIN:-}"
-  ask OFFSITE_HOST "Second machine for off-site backups (the Pi), host or IP. Empty = local only:" "${OFFSITE_HOST:-}"
-  if [ -n "$OFFSITE_HOST" ]; then
-    ask OFFSITE_USER "User on $OFFSITE_HOST for the backups:" "${OFFSITE_USER:-rfbackup}"
-    ask OFFSITE_PATH "Folder on $OFFSITE_HOST for the backups:" "${OFFSITE_PATH:-/srv/routeflow-pgbackrest}"
-  fi
-  ask COMPANY_NAME "Company name shown in the app:" "${COMPANY_NAME:-}"
-  ask OWNER_USER "Username for the first login (the platform owner):" "${OWNER_USER:-admin}"
+  install_questions
+  # With --yes the same values come from the environment or $CONF.
+  OFFSITE_USER=${OFFSITE_USER:-rfbackup}; OFFSITE_PATH=${OFFSITE_PATH:-/srv/routeflow-pgbackrest}
+  OWNER_USER=${OWNER_USER:-admin}
   [ -n "$DOMAIN" ] || die "a domain is needed"
   local problems
   problems=$(preflight)

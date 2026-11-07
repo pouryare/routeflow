@@ -301,3 +301,32 @@ describe("routeflow: upgrade preview, maintenance and tidy-up", () => {
     expect(sql).toContain("totp_secret = NULL");
   });
 });
+
+describe("write_caddy: one file per site", () => {
+  it("writes sites/routeflow.caddy, imports the folder once and moves an old import", () => {
+    const caddy = path.join(root, "caddy");
+    fs.mkdirSync(caddy);
+    fs.writeFileSync(path.join(caddy, "Caddyfile"), "{\n\temail a@b.c\n}\nimport /etc/caddy/routeflow.caddy\n");
+    fs.writeFileSync(path.join(caddy, "routeflow.caddy"), "old");
+    const r = spawnSync(
+      "bash",
+      ["-c", `. "${SCRIPT}"; DOMAIN=app.test; APP_PORT=3003; caddy() { :; }; systemctl() { :; }; write_caddy; write_caddy`],
+      { env: { ...process.env, ROUTEFLOW_ROOT: root, ROUTEFLOW_CADDY_DIR: caddy, ROUTEFLOW_CONF_DIR: path.join(root, "conf") }, encoding: "utf8" },
+    );
+    expect(r.status, r.stderr).toBe(0);
+    expect(fs.readFileSync(path.join(caddy, "sites", "routeflow.caddy"), "utf8")).toContain("app.test {");
+    const main = fs.readFileSync(path.join(caddy, "Caddyfile"), "utf8");
+    expect(main.match(/import sites\/\*\.caddy/g)).toHaveLength(1);
+    expect(main).not.toContain("routeflow.caddy");
+    expect(main).toContain("email a@b.c");
+    expect(fs.existsSync(path.join(caddy, "routeflow.caddy"))).toBe(false);
+  });
+});
+
+describe("install questions", () => {
+  it("ask nothing without a terminal or with --yes, and keep the values given", () => {
+    const r = run('ROUTEFLOW_YES=1; DOMAIN=app.test; install_questions; echo "$DOMAIN"');
+    expect(r.out).toBe("app.test");
+    expect(run("interactive && echo yes || echo no").out).toBe("no");
+  });
+});
