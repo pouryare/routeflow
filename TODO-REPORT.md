@@ -3,6 +3,10 @@
 _Condensed 2026-10-23, updated 2026-10-30. Each finished piece of work is one line here; the full earlier text is in git history (`git log -p TODO-REPORT.md`)._
 
 ## Done
+
+- [x] `routeflow install` asks step by step (address, company, first login and password, certificate, Arvan-only ports, Pi, GitHub key, summary, go) instead of needing `--` arguments; `--yes` with variables still works for scripts (2026-11-07). Tried in a pseudo-terminal, not on a real server.
+
+- [x] Caddy is one file per site: `/etc/caddy/sites/routeflow.caddy`, the Caddyfile only has `import sites/*.caddy`; an older install is moved over on the next `routeflow install` (tested, and checked with Caddy 2.6 together with a second site file). Not tried on a real server.
 - [x] Photo cache and held uploads kept outside the release folder (2026-11-06): `routeflow` links `data/cache` and `data/held` into each release like photos and map, so the 7-day cache is writable and survives upgrades and photos held while a bucket is down are not stranded; test in `tests/routeflow-cli.test.ts`. Docker readiness write-up: https://claude.ai/artifact/XS1Lx29Jc6KsRLyQ2JLTGL
 - [x] Everyday extras (2026-11-06, owner picked M to Q): `routeflow upgrade --check`, `routeflow maintenance on|off` (Caddy flag file, tried on Caddy 2.6), `routeflow export --anonymise` (scratch copy, tried on the demo data) and `--encrypt`, `routeflow reset-login` (`scripts/reset-login.mjs`, tried), week-old exports removed by `routeflow tidy`
 - [x] More install safety (2026-11-06, owner picked G to L): `routeflow rebuild` from the secrets bundle and the Pi (bundle now also carries routeflow.conf, the pgBackRest passphrase and the backup SSH key), Persian 503 page during upgrades (tried on Caddy 2.6), PostgreSQL memory sized to the machine (the old 4 GB `shared_buffers` would not fit a 4 GB server), 3 GB disk check before upgrades, certificate expiry alert on the Pi, expiring helper keys (`routeflow support-key`)
