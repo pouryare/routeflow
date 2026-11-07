@@ -153,7 +153,7 @@ restates HeroUI's calculated tokens (hover, soft and focus mixes, `--default`, `
 `--overlay`, `--separator`, `--surface-shadow`) from this palette, because HeroUI declares them
 on `:root`, where they would mix the default violet-grey rather than the chosen theme.
 
-The map (outside `.meridian`) still reads its own `:root` palette under the older names.
+`<body>` itself carries `.meridian` (2026-11-07), so the map, the page background and every portal follow the chosen accent and skin. The old cyan `:root` colour set is gone; `:root` keeps only what has no `.meridian` value (series colours, `--facility`, elevation, motion, spacing, z-index).
 
 ### Light (default)
 

@@ -90,18 +90,10 @@
   --font-display: var(--font-damavand), var(--font-ui), system-ui, sans-serif;
 
   /* color */
-  --bg: #0a0e14;
-  --surface: #121a24;
-  --surface-raised: #182230;
-  --border: #1e2a38;
-  --border-strong: #2a3a4c;
-  --accent: #2de0e6;
-  --accent-dim: #1b8a8f;
   /* Ink on an --accent fill. A separate token because it does not merely invert between
      themes: on dark's bright cyan the readable ink is near-black, on light's darkened
      teal it is white. Every primary button in the app had this value hardcoded, which is
      precisely why it broke the moment a second theme existed. */
-  --accent-ink: #04191c;
   /* Ambient sweep. Barely-there on a near-black ground at 0.12; the same figure over a
      pale canvas is a grey wedge across the page, so light dials it down. */
   --sweep-opacity: 0.12;
@@ -128,14 +120,6 @@
   --series-7: #9085e9;
   --series-other: #5b6b7c;
   /* One series, so nothing to be told apart from: it wears the app's accent. */
-  --series-single: #2de0e6;
-  --text: #e7eef5;
-  --text-muted: #8697a8;
-  --text-faint: #71808f;
-  --good: #3ddc84;
-  --warn: #f5a623;
-  --crit: #f0475b;
-  --neutral: #78889a;
   /* Own sites (warehouse / home base). Not a status and not the interactive accent --
      see MASTER.md "Facility marker". */
   --facility: #d6e6f5;
@@ -259,14 +243,6 @@
 
    Dark stays the default. This block only applies once something sets data-theme.       */
 :root[data-theme="light"] {
-  --bg: #f1f4f7;
-  --surface: #ffffff;
-  --surface-raised: #ffffff;
-  --border: #dde3ea;
-  --border-strong: #c2ccd6;
-  --accent: #0b7c82;
-  --accent-dim: #6bc4c8;
-  --accent-ink: #ffffff;
   --sweep-opacity: 0.05;
   /* Same hues, re-solved for a white chart surface. Bright cyan cannot be the single-series
      colour here for the same reason it cannot be the accent: it glares and fails contrast. */
@@ -278,14 +254,6 @@
   --series-6: #008d00;
   --series-7: #6a3fe9;
   --series-other: #5f6c79;
-  --series-single: #0b7c82;
-  --text: #0f1922;
-  --text-muted: #56636f;
-  --text-faint: #616d79;
-  --good: #147d4b;
-  --warn: #8a5300;
-  --crit: #be2637;
-  --neutral: #5f6c79;
   --facility: #2b4a66;
 
   /* --surface and --surface-raised are the same white on purpose: in light mode a raised
@@ -856,9 +824,9 @@ body {
   width: 12px;
   height: 12px;
   border-radius: 50%;
-  background: #2de0e6;
+  background: var(--accent);
   border: 2px solid rgb(255 255 255 / 0.6);
-  box-shadow: 0 0 6px rgb(45 224 230 / 0.5);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--accent) 50%, transparent);
   cursor: pointer;
 }
 /* The pin on a customer's own map (CRM card and location editor). */

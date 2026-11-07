@@ -15,8 +15,8 @@
  *  "" for a property that has not been applied yet, which on the very first paint would
  *  otherwise hand the map an empty string. */
 export const MAP_INK_FALLBACK = {
-  light: { strokeMajor: "#6B5B4C", strokeMinor: "#8A7A69", selected: "#C0532B", boundary: "#998876", unknown: "#7D7166", accent: "#0b7c82", accentInk: "#ffffff", bg: "#f1f4f7" },
-  dark:  { strokeMajor: "#9A8A78", strokeMinor: "#8A7A69", selected: "#E8734A", boundary: "#6E6055", unknown: "#7D7166", accent: "#2de0e6", accentInk: "#04191c", bg: "#0a0e14" },
+  light: { strokeMajor: "#6B5B4C", strokeMinor: "#8A7A69", selected: "#C0532B", boundary: "#998876", unknown: "#7D7166", accent: "#0077BC", accentInk: "#FFFFFF", bg: "#F0F3F6" },
+  dark:  { strokeMajor: "#9A8A78", strokeMinor: "#8A7A69", selected: "#E8734A", boundary: "#6E6055", unknown: "#7D7166", accent: "#3BA6F5", accentInk: "#030E19", bg: "#0F1214" },
 } as const;
 
 export interface MapInk {

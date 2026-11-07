@@ -45,7 +45,7 @@ var k=${JSON.stringify(THEME_KEY)},s=localStorage.getItem(k);
 if(s!=="dark"&&s!=="light"){s=matchMedia("(prefers-color-scheme: light)").matches?"light":"dark";localStorage.setItem(k,s);}
 document.documentElement.setAttribute("data-skin",s);
 document.documentElement.setAttribute("data-theme",s);
-if(s==="light"){var m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute("content","#f1f4f7");}
+if(s==="light"){var m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute("content","#F0F3F6");}
 }catch(e){}})();`;
 
 /** Writes the choice and tells every mounted consumer in this tab.
@@ -56,7 +56,7 @@ if(s==="light"){var m=document.querySelector('meta[name="theme-color"]');if(m)m.
  */
 /** Canvas colours, duplicated from globals.css for the one consumer that cannot read CSS:
  *  the browser's own chrome. Kept next to each other so a change to either is obvious. */
-const THEME_COLOR: Record<Theme, string> = { dark: "#0a0e14", light: "#f1f4f7" };
+const THEME_COLOR: Record<Theme, string> = { dark: "#0F1214", light: "#F0F3F6" };
 
 export function applyTheme(theme: Theme) {
   // Both attributes, positive on both sides -- see SKIN_KEY.

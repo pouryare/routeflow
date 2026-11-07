@@ -28,7 +28,7 @@ export const metadata: Metadata = {
  */
 export const viewport: Viewport = {
   colorScheme: "dark light",
-  themeColor: "#0a0e14",
+  themeColor: "#0F1214",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
@@ -42,7 +42,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       suppressHydrationWarning
       className={`${ALL_FONT_VARS} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col font-sans">
+      <body className="meridian min-h-full flex flex-col font-sans">
         {/* Blocking and inline, ahead of everything. next/script's beforeInteractive is
             explicitly documented as not blocking hydration, which is a weaker guarantee
             than this needs: the attribute has to exist before the first paint, not before
