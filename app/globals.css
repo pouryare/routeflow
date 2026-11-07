@@ -5775,3 +5775,27 @@ html[data-toasts-paused] .app-toasts [data-slot="toast-close"]::before { animati
 /* Idea I8: progress ring round the avatar while the first-steps list is unfinished. */
 .pm__ring { display: inline-flex; padding: 2px; border-radius: 50%; }
 .pm__ring[data-on] { background: conic-gradient(var(--accent, #0a6fb8) var(--ring, 0%), var(--border, #d5dde5) 0); }
+
+/* ---- High contrast (lib/contrast.ts, the switch in the account menu) -------------------
+   For glare. Text reaches 7:1 on every ground (the 4.5:1 normal text gets is the legal floor,
+   not the best a phone in sunlight can have), and borders reach 3:1 against the page so a card
+   edge can be seen. Declared last and with one attribute more than the accent blocks above, so
+   it wins in every accent theme. The accent as text is the theme's own accent pulled toward
+   black (light) or white (dark), so it still reads as that theme's colour. */
+:root[data-contrast="high"] .meridian {
+  --foreground: #0B0F14;
+  --muted: #3A424C;
+  --text-faint: #434B56;
+  --border: #76828F;
+  --border-strong: #6D7985;
+  --accent-text: color-mix(in oklab, var(--accent) 55%, black);
+}
+:root[data-contrast="high"][data-accent][data-skin="dark"] .meridian,
+:root[data-contrast="high"][data-skin="dark"] .meridian {
+  --foreground: #FFFFFF;
+  --muted: #C8D0D8;
+  --text-faint: #BFC8D1;
+  --border: #7B8895;
+  --border-strong: #8C99A6;
+  --accent-text: color-mix(in oklab, var(--accent) 50%, white);
+}

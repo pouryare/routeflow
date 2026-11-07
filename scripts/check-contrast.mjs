@@ -64,6 +64,25 @@ const say = (ok, line) => {
   console.log(`${ok ? "✓" : "✗"} ${line}`);
 };
 
+/* High contrast (app/globals.css, `:root[data-contrast="high"]`): text 7:1 on every ground,
+   borders 3:1 on the page. Only the fixed hex values are read; the accent text is a mix. */
+for (const [skin, sel, grounds] of [
+  ["light", ':root[data-contrast="high"] .meridian', ["#F0F3F6", "#FFFFFF", "#E7ECF1", "#F8FAFC"]],
+  ["dark", ':root[data-contrast="high"][data-skin="dark"] .meridian', ["#0F1214", "#171B20", "#232A31", "#1D2228"]],
+]) {
+  const h = block(sel);
+  for (const token of ["--foreground", "--muted", "--text-faint"]) {
+    for (const g of grounds) {
+      const r = ratio(h[token], g);
+      say(r >= 7, `${skin} high contrast ${token} on ${g}: ${r.toFixed(2)} (need 7)`);
+    }
+  }
+  for (const token of ["--border", "--border-strong"]) {
+    const r = ratio(h[token], grounds[0]);
+    say(r >= 3, `${skin} high contrast ${token} on ${grounds[0]}: ${r.toFixed(2)} (need 3)`);
+  }
+}
+
 for (const [theme, selector] of [
   ["light", ".meridian"],
   ["dark", ':root[data-skin="dark"] .meridian'],

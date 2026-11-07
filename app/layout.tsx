@@ -8,6 +8,7 @@ import HeroUIProvider from "@/components/HeroUIProvider";
 import { THEME_INIT_SCRIPT } from "@/lib/theme";
 import { ACCENT_INIT_SCRIPT } from "@/lib/accent";
 import { FONT_INIT_SCRIPT } from "@/lib/font";
+import { CONTRAST_INIT_SCRIPT } from "@/lib/contrast";
 import { ALL_FONT_VARS } from "@/app/fonts";
 import "./globals.css";
 
@@ -53,6 +54,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <script dangerouslySetInnerHTML={{ __html: ACCENT_INIT_SCRIPT }} />
         {/* And the letterforms you read best. See lib/font.ts. */}
         <script dangerouslySetInnerHTML={{ __html: FONT_INIT_SCRIPT }} />
+        <script dangerouslySetInnerHTML={{ __html: CONTRAST_INIT_SCRIPT }} />
         <ServiceWorkerRegister />
         <SoundSync />
         <FxSync />

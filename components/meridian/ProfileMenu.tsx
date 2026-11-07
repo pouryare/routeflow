@@ -7,6 +7,7 @@ import { Button, Popover } from "@heroui/react";
 import Link from "next/link";
 import SkinToggle from "@/components/meridian/SkinToggle";
 import FontPicker from "@/components/FontPicker";
+import ContrastToggle from "@/components/ContrastToggle";
 import AccentPicker from "@/components/AccentPicker";
 import Avatar from "@/components/meridian/Avatar";
 import { useTutorials } from "@/components/tutorials/TutorialProvider";
@@ -92,6 +93,10 @@ export default function ProfileMenu({
             <div className="pm__row">
               <span>رنگ</span>
               <AccentPicker />
+            </div>
+            <div className="pm__row">
+              <span>کنتراست بالا</span>
+              <ContrastToggle />
             </div>
           </Popover.Dialog>
         </Popover.Content>
