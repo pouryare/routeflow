@@ -19,9 +19,9 @@ import { accessUsers, recentImpersonations } from "@/lib/repo/accessReview";
 export const dynamic = "force-dynamic";
 
 const TONE: Record<Tone, { label: string; color: string }> = {
-  good: { label: "خوب", color: "var(--good)" },
-  warn: { label: "نیاز به نگاه", color: "var(--warn)" },
-  bad: { label: "خراب", color: "var(--crit)" },
+  good: { label: "خوب", color: "var(--success)" },
+  warn: { label: "نیاز به نگاه", color: "var(--warning)" },
+  bad: { label: "خراب", color: "var(--danger)" },
   unknown: { label: "نامعلوم", color: "var(--text-faint)" },
 };
 
@@ -45,10 +45,10 @@ export default async function StatusPage() {
           {lines.map((l) => (
             <li key={l.key} className="flex flex-col gap-[var(--space-1)] border-b border-[var(--border)] pb-[var(--space-3)]">
               <div className="flex flex-wrap items-baseline justify-between gap-[var(--space-2)]">
-                <span className="font-medium text-[var(--text)]">{l.label}</span>
+                <span className="font-medium text-[var(--foreground)]">{l.label}</span>
                 <span style={{ color: TONE[l.tone].color }}>{TONE[l.tone].label}</span>
               </div>
-              <div className="flex flex-wrap items-baseline justify-between gap-[var(--space-2)] text-[var(--text-muted)]">
+              <div className="flex flex-wrap items-baseline justify-between gap-[var(--space-2)] text-[var(--muted)]">
                 <span>{l.detail}</span>
                 {l.at && <span className="tabular-nums">{faJalaliDateTime(l.at)}</span>}
               </div>

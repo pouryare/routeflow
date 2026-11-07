@@ -27,8 +27,8 @@ interface DraftLine {
 }
 
 const FIELD =
-  "w-full rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] px-[var(--space-3)] py-[var(--space-2)] text-[length:var(--text-sm)] text-[var(--text)] outline-none transition-colors duration-[var(--dur-base)] focus:border-[var(--accent)]";
-const LABEL = "mb-[var(--space-1)] block text-[length:var(--text-xs)] text-[var(--text-muted)]";
+  "w-full rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] px-[var(--space-3)] py-[var(--space-2)] text-[length:var(--text-sm)] text-[var(--foreground)] outline-none transition-colors duration-[var(--dur-base)] focus:border-[var(--accent)]";
+const LABEL = "mb-[var(--space-1)] block text-[length:var(--text-xs)] text-[var(--muted)]";
 
 /** Recording a delivery of stock into the warehouse.
  *
@@ -118,7 +118,7 @@ export default function PurchaseEntry({ products }: { products: Product[] }) {
       {message && (
         <p
           className={`m-0 text-[length:var(--text-sm)] ${
-            message.kind === "ok" ? "text-[var(--good)]" : "text-[var(--crit)]"
+            message.kind === "ok" ? "text-[var(--success)]" : "text-[var(--danger)]"
           }`}
         >
           {message.text}
@@ -164,23 +164,23 @@ export default function PurchaseEntry({ products }: { products: Product[] }) {
               key={line.key}
               className="flex items-center justify-between gap-[var(--space-2)] border-b border-[var(--border)] pb-[var(--space-2)]"
             >
-              <span className="min-w-0 truncate text-[length:var(--text-sm)] text-[var(--text)]">
+              <span className="min-w-0 truncate text-[length:var(--text-sm)] text-[var(--foreground)]">
                 {line.product.name}
-                <span className="text-[length:var(--text-xs)] tabular-nums text-[var(--text-muted)]">
+                <span className="text-[length:var(--text-xs)] tabular-nums text-[var(--muted)]">
                   {" "}
                   · {faNum(line.base_qty)} {line.product.base_unit} ×{" "}
                   {faToman(line.unit_cost_toman)}
                 </span>
               </span>
               <div className="flex shrink-0 items-center gap-[var(--space-2)]">
-                <span className="tabular-nums text-[length:var(--text-sm)] text-[var(--text)]">
+                <span className="tabular-nums text-[length:var(--text-sm)] text-[var(--foreground)]">
                   {faToman(line.total)}
                 </span>
                 <button
                   type="button"
                   aria-label="حذف قلم"
                   onClick={() => setLines((cur) => cur.filter((l) => l.key !== line.key))}
-                  className="rounded-[var(--radius-sm)] px-[var(--space-2)] py-[var(--space-1)] text-[var(--text-muted)] hover:bg-white/5 hover:text-[var(--crit)]"
+                  className="rounded-[var(--radius-sm)] px-[var(--space-2)] py-[var(--space-1)] text-[var(--muted)] hover:bg-white/5 hover:text-[var(--danger)]"
                 >
                   <Icon name="trash" size="sm" />
                 </button>
@@ -204,7 +204,7 @@ export default function PurchaseEntry({ products }: { products: Product[] }) {
           type="button"
           onClick={addLine}
           disabled={!product || parsedCost === null || !(parsedQty > 0)}
-          className="rounded-[var(--radius-md)] border border-[var(--border-strong)] px-[var(--space-4)] py-[var(--space-2)] text-[length:var(--text-sm)] text-[var(--text)] transition-colors duration-[var(--dur-base)] hover:border-[var(--accent)] hover:text-[var(--accent)] disabled:opacity-40"
+          className="rounded-[var(--radius-md)] border border-[var(--border-strong)] px-[var(--space-4)] py-[var(--space-2)] text-[length:var(--text-sm)] text-[var(--foreground)] transition-colors duration-[var(--dur-base)] hover:border-[var(--accent)] hover:text-[var(--accent)] disabled:opacity-40"
         >
           <Icon name="plus" size="sm" />
           افزودن قلم
@@ -213,10 +213,10 @@ export default function PurchaseEntry({ products }: { products: Product[] }) {
 
       <div className="flex flex-wrap items-center justify-between gap-[var(--space-3)]">
         <div>
-          <strong className="block text-[length:var(--text-base)] font-medium tabular-nums text-[var(--text)]">
+          <strong className="block text-[length:var(--text-base)] font-medium tabular-nums text-[var(--foreground)]">
             {faToman(total)}
           </strong>
-          <span className="text-[length:var(--text-xs)] text-[var(--text-muted)]">
+          <span className="text-[length:var(--text-xs)] text-[var(--muted)]">
             ثبت خرید، میانگین قیمت کالاها را تغییر می‌دهد.
           </span>
         </div>

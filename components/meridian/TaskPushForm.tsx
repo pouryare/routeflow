@@ -20,9 +20,9 @@ export default function TaskPushForm({ minutes }: { minutes: number }) {
   return (
     <section className="card flex flex-col gap-[var(--space-3)] p-[var(--space-4)]" dir="rtl">
       <h2 className="sechead__title">یادآوری کارهای ساعت‌دار</h2>
-      <p className="m-0 text-[length:var(--text-sm)] text-[var(--text-muted)]">کسی که کار به او سپرده شده، این‌قدر پیش از ساعت کار یک اعلان می‌گیرد.</p>
+      <p className="m-0 text-[length:var(--text-sm)] text-[var(--muted)]">کسی که کار به او سپرده شده، این‌قدر پیش از ساعت کار یک اعلان می‌گیرد.</p>
       <KeypadField label="چند دقیقه پیش از کار" value={value} onChange={setValue} unit="دقیقه" />
-      {msg ? <p className="m-0 text-[length:var(--text-xs)]" style={{ color: msg.ok ? "var(--good)" : "var(--crit)" }}>{msg.text}</p> : null}
+      {msg ? <p className="m-0 text-[length:var(--text-xs)]" style={{ color: msg.ok ? "var(--success)" : "var(--danger)" }}>{msg.text}</p> : null}
       <button type="button" disabled={busy} onClick={() => void save()} className="inline-flex min-h-[44px] items-center justify-center gap-[var(--space-2)] self-start rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--accent)] px-[var(--space-4)] text-[length:var(--text-sm)] text-accent-ink">
         <Icon name="save" size="md" />
         ذخیرهٔ زمان یادآوری

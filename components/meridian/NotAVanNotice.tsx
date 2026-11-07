@@ -15,10 +15,10 @@ export default function NotAVanNotice({ roleLabel }: { roleLabel?: string }) {
       dir="rtl"
       className="mx-auto flex min-h-dvh w-full max-w-md flex-col items-center justify-center gap-[var(--space-3)] p-[var(--space-4)] text-center"
     >
-      <h1 className="m-0 text-[length:var(--text-lg)] font-medium text-[var(--text)]">
+      <h1 className="m-0 text-[length:var(--text-lg)] font-medium text-[var(--foreground)]">
         شما راننده نیستید
       </h1>
-      <p className="m-0 text-[length:var(--text-sm)] text-[var(--text-muted)]">
+      <p className="m-0 text-[length:var(--text-sm)] text-[var(--muted)]">
         این صفحه برنامه و توقف‌های یک راننده را نشان می‌دهد. برای دیدن برنامهٔ امروز یک
         راننده، به‌عنوان او وارد شوید.
       </p>
@@ -35,7 +35,7 @@ export default function NotAVanNotice({ roleLabel }: { roleLabel?: string }) {
       </Link>
       <Link
         href="/sales"
-        className="text-[length:var(--text-sm)] text-[var(--text-muted)] underline"
+        className="text-[length:var(--text-sm)] text-[var(--muted)] underline"
       >
         بازگشت به فروش
       </Link>

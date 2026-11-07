@@ -36,7 +36,7 @@ export default function LearnedCapacity({ rows }: { rows: CapacityRow[] }) {
         <div className="overflow-x-auto">
           <CardTable className="w-full border-collapse text-[length:var(--text-sm)]">
             <thead>
-              <tr className="text-[var(--text-muted)]">
+              <tr className="text-[var(--muted)]">
                 <th className="border-b border-[var(--border)] py-1 text-right font-medium">شرایط</th>
                 <th className="border-b border-[var(--border)] py-1 text-left font-medium">ضریب سرعت</th>
                 <th className="border-b border-[var(--border)] py-1 text-left font-medium">ضریب توقف</th>
@@ -46,18 +46,18 @@ export default function LearnedCapacity({ rows }: { rows: CapacityRow[] }) {
             <tbody>
               {rows.map((r) => (
                 <tr key={r.condition_code}>
-                  <td className="border-b border-[var(--border)] py-1 text-[var(--text)]">
+                  <td className="border-b border-[var(--border)] py-1 text-[var(--foreground)]">
                     {CONDITION_FA[r.condition_code] ?? r.condition_code}
                   </td>
-                  <td className="border-b border-[var(--border)] py-1 text-left tabular-nums text-[var(--text-muted)]">
+                  <td className="border-b border-[var(--border)] py-1 text-left tabular-nums text-[var(--muted)]">
                     {pct(r.speed_factor)}
                   </td>
-                  <td className="border-b border-[var(--border)] py-1 text-left tabular-nums text-[var(--text-muted)]">
+                  <td className="border-b border-[var(--border)] py-1 text-left tabular-nums text-[var(--muted)]">
                     {pct(r.stop_factor)}
                   </td>
                   <td
                     className="border-b border-[var(--border)] py-1 text-left tabular-nums"
-                    style={{ color: r.learned_n >= MIN_LEARN_N ? "var(--good)" : "var(--text-faint)" }}
+                    style={{ color: r.learned_n >= MIN_LEARN_N ? "var(--success)" : "var(--text-faint)" }}
                   >
                     {r.learned_n.toLocaleString("fa-IR")}
                     {r.learned_n >= MIN_LEARN_N ? <Icon name="check" size="sm" /> : null}

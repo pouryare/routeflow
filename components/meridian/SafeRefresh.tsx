@@ -37,7 +37,7 @@ export default function SafeRefresh() {
   return (
     <section className="card flex flex-col gap-[var(--space-2)] p-[var(--space-4)]">
       <h2 className="sechead__title">داده‌های این گوشی</h2>
-      <p className="m-0 text-[length:var(--text-sm)] text-[var(--text-muted)]">
+      <p className="m-0 text-[length:var(--text-sm)] text-[var(--muted)]">
         اگر چیزی در این گوشی قدیمی یا ناقص به نظر می‌رسد، نسخهٔ این گوشی را پاک کنید تا از نو گرفته شود.
       </p>
       {msg ? <p className="m-0 text-[length:var(--text-sm)]" role="status">{msg}</p> : null}

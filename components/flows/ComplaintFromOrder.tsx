@@ -20,7 +20,7 @@ export default function ComplaintFromOrder({ orderId, customerId, customerName, 
       <button
         type="button"
         onClick={() => setFlow((f) => ({ key: f.key + 1, open: true }))}
-        className="inline-flex items-center justify-center gap-[var(--space-2)] self-start rounded-[var(--radius-md)] border border-[var(--border)] px-[var(--space-4)] py-[var(--space-3)] text-[length:var(--text-sm)] text-[var(--text)]"
+        className="inline-flex items-center justify-center gap-[var(--space-2)] self-start rounded-[var(--radius-md)] border border-[var(--border)] px-[var(--space-4)] py-[var(--space-3)] text-[length:var(--text-sm)] text-[var(--foreground)]"
       >
         <Icon name="warn" size="md" />
         ثبت شکایت برای این سفارش

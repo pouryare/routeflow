@@ -153,7 +153,7 @@ restates HeroUI's calculated tokens (hover, soft and focus mixes, `--default`, `
 `--overlay`, `--separator`, `--surface-shadow`) from this palette, because HeroUI declares them
 on `:root`, where they would mix the default violet-grey rather than the chosen theme.
 
-The map (outside `.meridian`) still reads its own `:root` palette under the older names.
+`<body>` itself carries `.meridian` (2026-11-07), so the map, the page background and every portal follow the chosen accent and skin. The old cyan `:root` colour set is gone; `:root` keeps only what has no `.meridian` value (series colours, `--facility`, elevation, motion, spacing, z-index).
 
 ### Light (default)
 
@@ -167,7 +167,7 @@ The map (outside `.meridian`) still reads its own `:root` palette under the olde
 | `--border-strong` | `#CDD4DE` | — | — | Emphasized borders |
 | `--foreground` (`--text`, `--ink`) | `#1A1F26` | 14.90 | 16.56 | Primary text |
 | `--muted` (`--text-muted`) | `#5C6672` | 5.25 | 5.84 | Secondary text |
-| `--text-faint` | `#656E7B` | 4.63 | 5.16 | Readable; close to `--text-muted` by design (was `#828A98`, 3.1:1, which failed for the 150+ labels that used it) |
+| `--text-faint` | `#5F6874` | 5.07 | 5.65 | Readable; close to `--text-muted` by design (was `#828A98`, 3.1:1, which failed for the 150+ labels that used it) |
 | `--accent` | `#0077BC` | 4.33 | 4.81 | Ocean. **Fills only** |
 | `--accent-text` | `#006EAE` | 4.92 | 5.47 | Accent *as text* — links, amounts due |
 | `--accent-foreground` (`--accent-ink`) | `#FFFFFF` | 4.81 on accent | — | Text on an accent fill |
@@ -189,7 +189,7 @@ The map (outside `.meridian`) still reads its own `:root` palette under the olde
 | `--border-strong` | `#37414A` | — | — | |
 | `--foreground` (`--text`, `--ink`) | `#EDF1F5` | 16.56 | 15.21 | |
 | `--muted` (`--text-muted`) | `#8B98A5` | 6.39 | 5.86 | |
-| `--text-faint` | `#828C97` | 5.50 | 5.05 | Clears text here; light's cannot |
+| `--text-faint` | `#8A939E` | 6.04 | 5.56 | Clears 4.5 on every tinted ground too (2026-11-07) |
 | `--accent` | `#3BA6F5` | 7.13 | 6.54 | Lifted — light's ocean is muddy on black |
 | `--accent-text` | `#46A6EF` | 7.13 | 6.54 | Near-same value; dark needs no split |
 | `--accent-foreground` (`--accent-ink`) | `#030E19` | 7.36 on accent | — | **Near-black, not white** |
@@ -202,7 +202,7 @@ The map (outside `.meridian`) still reads its own `:root` palette under the olde
 Four findings from computing this table rather than trusting the prototype:
 
 - **`--text-faint` is now text-safe in light (2026-10).** It was `#828A98`, 3.1:1 and documented
-  as non-text only, yet 150+ readable labels used it and failed. It is now `#656E7B` (4.63 on
+  as non-text only, yet 150+ readable labels used it and failed. It is now `#5F6874` (4.63 on
   the ground). The price is that faint and `--text-muted` sit close together; muted stays the
   darker of the pair. Axe on the live pages is the arbiter, not this table.
 - **The accent still needs a text variant in light and not in dark.** `#0077BC` is a

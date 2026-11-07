@@ -8,8 +8,8 @@ export default function PriorityTag({ priority }: { priority: string | null | un
     <span
       className="inline-flex items-center rounded-[var(--radius-sm)] border px-[var(--space-1)] text-[length:var(--text-xs)] font-medium"
       style={{
-        color: urgent ? "var(--crit)" : "var(--accent)",
-        borderColor: urgent ? "var(--crit)" : "var(--accent)",
+        color: urgent ? "var(--danger)" : "var(--accent)",
+        borderColor: urgent ? "var(--danger)" : "var(--accent)",
       }}
     >
       {priorityLabel(priority)}

@@ -214,8 +214,8 @@ function surfaceTokens(hue, skin, id) {
 /** Inks the surface grounds have to keep carrying. From the `.meridian` blocks in
  *  app/globals.css; --text-faint is non-text (3:1) by design, see MASTER.md. */
 const SURFACE_INKS = {
-  light: { text: "#1A1F26", muted: "#5C6672", faint: "#656E7B" },
-  dark: { text: "#EDF1F5", muted: "#8B98A5", faint: "#828C97" },
+  light: { text: "#1A1F26", muted: "#5C6672", faint: "#5F6874" },
+  dark: { text: "#EDF1F5", muted: "#8B98A5", faint: "#8A939E" },
 };
 
 /* ── the themes. Hue is the whole definition. ────────────────────────────────── */
@@ -574,7 +574,7 @@ function verify(themes) {
       const cream = SURFACE_BASE[skin];
       const I = SURFACE_INKS[skin];
       const EPS = 0.08;
-      const WCAG = { "--text": 7, "--text-muted": 4.5, "--text-faint": 3 };
+      const WCAG = { "--text": 7, "--text-muted": 4.5, "--text-faint": 4.5 };
       for (const g of ["--bg", "--surface", "--surface-2", "--surface-sunk"]) {
         for (const [ink, name] of [[I.text, "--text"], [I.muted, "--text-muted"], [I.faint, "--text-faint"]]) {
           const got = ratio(ink, surf[g]);

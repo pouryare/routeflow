@@ -24,7 +24,7 @@ export default function JalaliDatePicker({
       {label && (
         <label
           htmlFor={id}
-          className="mb-[var(--space-1)] block text-[length:var(--text-xs)] text-[var(--text-muted)]"
+          className="mb-[var(--space-1)] block text-[length:var(--text-xs)] text-[var(--muted)]"
         >
           {label}
         </label>

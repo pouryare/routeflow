@@ -174,7 +174,7 @@ export default function ScheduleBoard({
                       <div
                         className="ev"
                         style={{
-                          background: p?.soft ?? "var(--sunk)",
+                          background: p?.soft ?? "var(--surface-tertiary)",
                           color: p?.ink ?? "var(--muted)",
                         }}
                       >

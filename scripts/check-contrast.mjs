@@ -52,9 +52,9 @@ const ratio = (a, b) => {
 /** Anything a reader must actually read. */
 /*  HeroUI names: inside .meridian they hold the values and the older ones are aliases
     (--text is --foreground, --crit is --danger ...; MASTER.md "Colour"). */
-const TEXT = ["--foreground", "--muted", "--accent-text", "--success", "--warning", "--danger", "--info", "--tint-plum"];
+const TEXT = ["--foreground", "--muted", "--text-faint", "--accent-text", "--success", "--warning", "--danger", "--info", "--tint-plum"];
 /** Non-text: decorative glyphs, disabled day numbers, separators. 3:1 per MASTER.md. */
-const NON_TEXT = ["--text-faint"];
+const NON_TEXT = [];
 
 const GROUNDS = ["--background", "--surface"];
 
@@ -63,6 +63,25 @@ const say = (ok, line) => {
   if (!ok) failures++;
   console.log(`${ok ? "✓" : "✗"} ${line}`);
 };
+
+/* High contrast (app/globals.css, `:root[data-contrast="high"]`): text 7:1 on every ground,
+   borders 3:1 on the page. Only the fixed hex values are read; the accent text is a mix. */
+for (const [skin, sel, grounds] of [
+  ["light", ':root[data-contrast="high"] .meridian', ["#F0F3F6", "#FFFFFF", "#E7ECF1", "#F8FAFC"]],
+  ["dark", ':root[data-contrast="high"][data-skin="dark"] .meridian', ["#0F1214", "#171B20", "#232A31", "#1D2228"]],
+]) {
+  const h = block(sel);
+  for (const token of ["--foreground", "--muted", "--text-faint"]) {
+    for (const g of grounds) {
+      const r = ratio(h[token], g);
+      say(r >= 7, `${skin} high contrast ${token} on ${g}: ${r.toFixed(2)} (need 7)`);
+    }
+  }
+  for (const token of ["--border", "--border-strong"]) {
+    const r = ratio(h[token], grounds[0]);
+    say(r >= 3, `${skin} high contrast ${token} on ${grounds[0]}: ${r.toFixed(2)} (need 3)`);
+  }
+}
 
 for (const [theme, selector] of [
   ["light", ".meridian"],
@@ -92,6 +111,38 @@ for (const [theme, selector] of [
     say(r >= 4.5, `${theme} --accent-foreground on --accent: ${r.toFixed(2)} (need 4.5)`);
   } else {
     say(false, `${theme}: --accent-foreground or --accent missing from the ${selector} block`);
+  }
+
+  /* Colour-blind check on the status trio (success, warning, danger), simulated with the
+     Machado 2009 matrices. Protan and tritan must stay clearly apart. Red against green
+     under deutan cannot be fixed with a colour that still reads as green and red and passes
+     4.5:1 as text, so it is held at today's value and every status shows a word or a shape
+     as well (StatusPill, .stpill, shaped map markers). */
+  {
+    const lin = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16) / 255).map((v) => (v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4));
+    const lab = (rgb) => {
+      const [r, g, b] = rgb;
+      const xyz = [(0.4124 * r + 0.3576 * g + 0.1805 * b) / 0.95047, 0.2126 * r + 0.7152 * g + 0.0722 * b, (0.0193 * r + 0.1192 * g + 0.9505 * b) / 1.08883];
+      const f = xyz.map((v) => (v > 0.008856 ? Math.cbrt(v) : 7.787 * v + 16 / 116));
+      return [116 * f[1] - 16, 500 * (f[0] - f[1]), 200 * (f[1] - f[2])];
+    };
+    const SIM = {
+      protan: [[0.152286, 1.052583, -0.204868], [0.114503, 0.786281, 0.099216], [-0.003882, -0.048116, 1.051998]],
+      deutan: [[0.367322, 0.860646, -0.227968], [0.280085, 0.672501, 0.047413], [-0.01182, 0.04294, 0.968881]],
+      tritan: [[1.255528, -0.076749, -0.178779], [-0.078411, 0.930809, 0.147602], [0.004733, 0.691367, 0.3039]],
+    };
+    const seen = (h, M) => lab(M.map((row) => Math.min(1, Math.max(0, row[0] * lin(h)[0] + row[1] * lin(h)[1] + row[2] * lin(h)[2]))));
+    const dE = (a, b, M) => Math.hypot(...seen(a, M).map((v, i) => v - seen(b, M)[i]));
+    const trio = ["--success", "--warning", "--danger"];
+    for (let i = 0; i < trio.length; i++) {
+      for (let j = i + 1; j < trio.length; j++) {
+        for (const [kind, M] of Object.entries(SIM)) {
+          const floor = kind === "deutan" && trio[i] === "--success" && trio[j] === "--danger" ? 6 : 12;
+          const d = dE(t[trio[i]], t[trio[j]], M);
+          say(d >= floor, `${theme} ${trio[i]} vs ${trio[j]} under ${kind}: ΔE ${d.toFixed(0)} (need ${floor})`);
+        }
+      }
+    }
   }
 
   // Soft-tinted pills carry their status word; the word answers to the pill, not the page.
@@ -155,8 +206,8 @@ const SURFACE_CREAM = {
   },
 };
 const SURFACE_INK = {
-  light: { "--text": ["#1A1F26", 7], "--text-muted": ["#5C6672", 4.5], "--text-faint": ["#656E7B", 4.5] },
-  dark: { "--text": ["#EDF1F5", 7], "--text-muted": ["#8B98A5", 4.5], "--text-faint": ["#828C97", 3] },
+  light: { "--text": ["#1A1F26", 7], "--text-muted": ["#5C6672", 4.5], "--text-faint": ["#5F6874", 4.5] },
+  dark: { "--text": ["#EDF1F5", 7], "--text-muted": ["#8B98A5", 4.5], "--text-faint": ["#8A939E", 4.5] },
 };
 
 /* The grounds these themes are solved against, from the .meridian blocks (cold). --surface-raised

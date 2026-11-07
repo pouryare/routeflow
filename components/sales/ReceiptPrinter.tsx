@@ -284,7 +284,7 @@ export default function ReceiptPrinter({ data, onSent }: { data: ReceiptData; on
   const BUTTON =
     "rounded-[var(--radius-md)] border px-[var(--space-3)] py-[var(--space-2)] text-[length:var(--text-sm)] transition-colors duration-[var(--dur-base)] disabled:opacity-40";
   const primary = "border-[var(--accent)] bg-[var(--accent)] text-accent-ink";
-  const secondary = "border-[var(--border)] text-[var(--text-muted)] hover:border-[var(--border-strong)]";
+  const secondary = "border-[var(--border)] text-[var(--muted)] hover:border-[var(--border-strong)]";
 
   const options: { key: Transport; label: string; run: () => void; show: boolean }[] = [
     { key: "bluetooth", label: "چاپ بلوتوث", run: printOverBluetooth, show: can.bluetooth },
@@ -322,11 +322,11 @@ export default function ReceiptPrinter({ data, onSent }: { data: ReceiptData; on
       </div>
 
       {status && (
-        <p className="m-0 text-[length:var(--text-xs)] text-[var(--text-muted)]">{status}</p>
+        <p className="m-0 text-[length:var(--text-xs)] text-[var(--muted)]">{status}</p>
       )}
 
       {!can.bluetooth && (
-        <p className="m-0 text-[length:var(--text-xs)] leading-5 text-[var(--text-muted)]">
+        <p className="m-0 text-[length:var(--text-xs)] leading-5 text-[var(--muted)]">
           این مرورگر چاپ مستقیم بلوتوث را پشتیبانی نمی‌کند. با «ارسال به پرینتر» تصویر
           رسید را به برنامه پرینتر بدهید.
         </p>

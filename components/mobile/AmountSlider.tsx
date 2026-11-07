@@ -86,9 +86,9 @@ export default function AmountSlider({
         setHeld(true);
       }}
     >
-      <div className="mb-[var(--space-1)] flex items-center justify-between text-[length:var(--text-xs)] text-[var(--text-muted)]">
+      <div className="mb-[var(--space-1)] flex items-center justify-between text-[length:var(--text-xs)] text-[var(--muted)]">
         <span>{label}</span>
-        <span className="tabular-nums text-[var(--text)]">{format(value)}</span>
+        <span className="tabular-nums text-[var(--foreground)]">{format(value)}</span>
       </div>
       <Slider.Track
         className="amountslider"

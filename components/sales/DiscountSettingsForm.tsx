@@ -48,16 +48,16 @@ export default function DiscountSettingsForm({ initial }: { initial: DiscountSet
       <section className="card flex flex-col gap-[var(--space-4)] p-[var(--space-4)]" dir="rtl">
         <span className="text-[length:var(--text-sm)] font-medium">تخفیف بدون نیاز به تأیید تا</span>
         <KeypadField label="تخفیف بدون نیاز به تأیید تا" value={auto} onChange={setAuto} unit="٪" decimal />
-        <p className="m-0 text-[length:var(--text-sm)] text-[var(--text-muted)]">
+        <p className="m-0 text-[length:var(--text-sm)] text-[var(--muted)]">
           تخفیفِ کمتر از این درصد خودکار تأیید می‌شود. صفر یعنی هر تخفیف منتظر تأیید می‌ماند.
         </p>
         <span className="text-[length:var(--text-sm)] font-medium">سهم کمیسیون از تخفیف</span>
         <KeypadField label="سهم کمیسیون از تخفیف" value={commission} onChange={setCommission} unit="٪" decimal />
-        <p className="m-0 text-[length:var(--text-sm)] text-[var(--text-muted)]">
+        <p className="m-0 text-[length:var(--text-sm)] text-[var(--muted)]">
           چند درصدِ تخفیفِ تأییدشده از کمیسیون افراد انتخاب‌شده کم شود. بقیه را شرکت می‌پذیرد.
         </p>
         {msg && (
-          <p role="status" className="m-0 text-[length:var(--text-sm)]" style={{ color: msg.ok ? "var(--good)" : "var(--crit)" }}>
+          <p role="status" className="m-0 text-[length:var(--text-sm)]" style={{ color: msg.ok ? "var(--success)" : "var(--danger)" }}>
             {msg.text}
           </p>
         )}

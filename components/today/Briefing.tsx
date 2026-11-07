@@ -10,15 +10,15 @@ import type { Briefing as BriefingData, BriefingItem } from "@/lib/repo/briefing
 type Variant = "plain" | "meridian";
 
 const TONE_PLAIN: Record<string, string> = {
-  good: "var(--good)",
-  warn: "var(--warn)",
-  crit: "var(--crit)",
+  good: "var(--success)",
+  warn: "var(--warning)",
+  crit: "var(--danger)",
   info: "var(--info)",
 };
 const TONE_KARGAH: Record<string, string> = {
   good: "var(--sage)",
   warn: "var(--amber)",
-  crit: "var(--crit)",
+  crit: "var(--danger)",
   info: "var(--serie-b)",
 };
 
@@ -37,7 +37,7 @@ function Item({ item, variant }: { item: BriefingItem; variant: Variant }) {
   const inner = (
     <span className="flex items-baseline justify-between gap-[var(--space-2)]">
       <span
-        className={variant === "meridian" ? "text-[var(--ink)]" : "text-[var(--text)]"}
+        className={variant === "meridian" ? "text-[var(--foreground)]" : "text-[var(--foreground)]"}
         style={item.tone ? { color: tone[item.tone] } : undefined}
       >
         {item.label}
@@ -59,7 +59,7 @@ function Item({ item, variant }: { item: BriefingItem; variant: Variant }) {
     <li
       className={
         variant === "meridian"
-          ? "border-b border-[var(--line)] py-[10px] last:border-b-0"
+          ? "border-b border-[var(--border)] py-[10px] last:border-b-0"
           : "border-b border-[var(--border)] py-[var(--space-2)]"
       }
     >
@@ -90,7 +90,7 @@ function Summary({ summary, variant }: { summary?: BriefingItem[]; variant: Vari
           className={
             variant === "meridian"
               ? "text-[length:12.5px] text-[var(--muted)]"
-              : "text-[length:var(--text-xs)] text-[var(--text-muted)]"
+              : "text-[length:var(--text-xs)] text-[var(--muted)]"
           }
         >
           {s.label}
@@ -140,7 +140,7 @@ export default function Briefing({
           fontSize: 13,
           color: "var(--muted)",
           padding: "28px 22px",
-          border: "1px dashed var(--line-2)",
+          border: "1px dashed var(--border-strong)",
           borderRadius: 14,
         }}
       >
@@ -194,7 +194,7 @@ export default function Briefing({
             ))}
           </ul>
           {p.more ? (
-            <p className="m-0 mt-[var(--space-1)] text-[length:var(--text-xs)] text-[var(--text-muted)]">
+            <p className="m-0 mt-[var(--space-1)] text-[length:var(--text-xs)] text-[var(--muted)]">
               + {p.more} مورد بیشتر
             </p>
           ) : null}

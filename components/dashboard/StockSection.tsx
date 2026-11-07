@@ -29,7 +29,7 @@ export default async function StockSection({ session }: { session: Session }) {
               data={stock.map((r) => ({
                 label: r.name,
                 value: r.on_hand,
-                color: r.negative ? "var(--crit)" : undefined,
+                color: r.negative ? "var(--danger)" : undefined,
               }))}
               formatValue={(v) => faNum(v)}
               empty={empty}

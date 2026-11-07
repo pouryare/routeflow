@@ -32,14 +32,14 @@ export default function PhotoBrowser({
       {photos.length >= 2 && (
         <button
           type="button"
-          className="touch mb-[var(--space-2)] inline-flex min-h-[44px] items-center gap-[var(--space-2)] rounded-[var(--radius-md)] border border-[var(--border)] px-[var(--space-3)] text-[length:var(--text-sm)] text-[var(--text)]"
+          className="touch mb-[var(--space-2)] inline-flex min-h-[44px] items-center gap-[var(--space-2)] rounded-[var(--radius-md)] border border-[var(--border)] px-[var(--space-3)] text-[length:var(--text-sm)] text-[var(--foreground)]"
           onClick={() => setPicked((p) => (p ? null : []))}
         >
           <Icon name={picked ? "x" : "arrow-swap"} size="sm" />
           {picked ? "لغو مقایسه" : "مقایسهٔ دو عکس"}
         </button>
       )}
-      {picked && <p className="m-0 mb-[var(--space-2)] text-[length:var(--text-xs)] text-[var(--text-muted)]">دو عکس را انتخاب کنید ({picked.length} از ۲)</p>}
+      {picked && <p className="m-0 mb-[var(--space-2)] text-[length:var(--text-xs)] text-[var(--muted)]">دو عکس را انتخاب کنید ({picked.length} از ۲)</p>}
       <PhotoThumbs photos={photos} picked={picked ?? undefined} onView={tap} />
       <PhotoCompare ids={pair} onClose={() => setPair(null)} />
     </>

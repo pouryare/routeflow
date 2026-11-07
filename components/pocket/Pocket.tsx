@@ -109,7 +109,7 @@ export default function Pocket({
         gap: 11,
         alignItems: "flex-start",
         padding: "10px 2px",
-        borderBottom: "1px solid var(--line)",
+        borderBottom: "1px solid var(--border)",
         fontSize: 12.5,
       }}
     >
@@ -153,7 +153,7 @@ export default function Pocket({
               fontSize: 10.5,
               padding: "2px 8px",
               borderRadius: 999,
-              background: "var(--sunk)",
+              background: "var(--surface-tertiary)",
             }}
           >
             {DUE_LABEL(c)}

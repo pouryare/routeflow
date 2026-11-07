@@ -1047,7 +1047,7 @@ export default function CoverageMap({
                   <span className="truncate text-[length:var(--text-sm)] text-text">{customer.business_name}</span>
                   <span
                     className="shrink-0 font-mono text-[length:var(--text-xs)]"
-                    style={{ color: days > 60 ? "var(--crit)" : "var(--warn)" }}
+                    style={{ color: days > 60 ? "var(--danger)" : "var(--warning)" }}
                   >
                     {faNum(days)} روز
                   </span>

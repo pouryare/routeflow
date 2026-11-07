@@ -45,7 +45,7 @@ export default function ConfirmOrderButton({ orderId }: { orderId: number }) {
         <BusyIcon busy={pending} done={done} name="check" size="sm" />
         {pending ? "در حال تأیید سفارش…" : done ? "تأیید شد" : "تأیید سفارش"}
       </button>
-      <span className="text-[length:var(--text-xs)] text-[var(--text-muted)]">
+      <span className="text-[length:var(--text-xs)] text-[var(--muted)]">
         بعد از تأیید قابل ویرایش نیست؛ تا ۵ ثانیه می‌توانید پشیمان شوید.
       </span>
     </div>

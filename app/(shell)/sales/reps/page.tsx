@@ -19,7 +19,7 @@ export const dynamic = "force-dynamic";
 
 /* Labels from REP_HEALTH_BAND_FA, the one map (this page's own copy said «مراقبت» where
    the rep's page said «نیازمند پیگیری»); only the tone is this table's business. */
-const BAND_TONE: Record<string, string> = { good: "var(--good)", watch: "var(--warn)", risk: "var(--crit)" };
+const BAND_TONE: Record<string, string> = { good: "var(--success)", watch: "var(--warning)", risk: "var(--danger)" };
 
 function one(value: string | string[] | undefined): string | undefined {
   return Array.isArray(value) ? value[0] : value;
@@ -72,7 +72,7 @@ export default async function RepsPage({
       <div className="kblock__body overflow-x-auto">
         <CardTable className="w-full border-collapse text-[length:var(--text-sm)]">
           <thead>
-            <tr className="text-[var(--text-muted)]">
+            <tr className="text-[var(--muted)]">
               <th className="border-b border-[var(--border)] py-2 text-right font-medium">کد / نام</th>
               <th className="border-b border-[var(--border)] py-2 text-left font-medium">مرحله</th>
               <th className="border-b border-[var(--border)] py-2 text-left font-medium">سلامت</th>
@@ -83,19 +83,19 @@ export default async function RepsPage({
           <tbody>
             {reps.map((r) => (
               <tr key={r.representative_id}>
-                <td className="border-b border-[var(--border)] py-2 text-[var(--text)]">
-                  <Link href={`/sales/reps/${r.representative_id}`} className="text-[var(--text)] no-underline hover:text-[var(--accent)]">
+                <td className="border-b border-[var(--border)] py-2 text-[var(--foreground)]">
+                  <Link href={`/sales/reps/${r.representative_id}`} className="text-[var(--foreground)] no-underline hover:text-[var(--accent)]">
                     {r.rep_code} · {r.business_name}
                   </Link>
                 </td>
-                <td className="border-b border-[var(--border)] py-2 text-left text-[var(--text-muted)]">{REP_STAGE_LABEL[r.stage as RepStage] ?? "نامشخص"}</td>
+                <td className="border-b border-[var(--border)] py-2 text-left text-[var(--muted)]">{REP_STAGE_LABEL[r.stage as RepStage] ?? "نامشخص"}</td>
                 <td className="border-b border-[var(--border)] py-2 text-left tabular-nums" style={{ color: BAND_TONE[r.band] }}>
                   {faNum(r.score)} · {REP_HEALTH_BAND_FA[r.band as keyof typeof REP_HEALTH_BAND_FA] ?? "نامشخص"}
                 </td>
-                <td className="border-b border-[var(--border)] py-2 text-left tabular-nums text-[var(--text-muted)]">
+                <td className="border-b border-[var(--border)] py-2 text-left tabular-nums text-[var(--muted)]">
                   {faNum(r.onboarding_done)}/{faNum(r.onboarding_total)}
                 </td>
-                <td className="border-b border-[var(--border)] py-2 text-left tabular-nums text-[var(--text-muted)]">
+                <td className="border-b border-[var(--border)] py-2 text-left tabular-nums text-[var(--muted)]">
                   {r.last_order_date ? faJalaliDate(r.last_order_date) : "—"}
                 </td>
               </tr>

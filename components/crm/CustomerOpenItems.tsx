@@ -26,7 +26,7 @@ export default function CustomerOpenItems({ data }: { data: Customer360 }) {
               </p>
               <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 6 }}>
                 {data.cheques.items.map((c) => (
-                  <li key={c.id} style={{ color: c.status === "bounced" ? "var(--crit)" : undefined }}>
+                  <li key={c.id} style={{ color: c.status === "bounced" ? "var(--danger)" : undefined }}>
                     چک {c.cheque_no} · {faToman(c.amount_toman)} · سررسید {faJalaliDate(c.due_date)} · {CHEQUE_STATUS_LABEL[c.status]}
                   </li>
                 ))}

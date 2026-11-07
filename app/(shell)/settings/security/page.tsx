@@ -37,17 +37,17 @@ export default async function SecuritySettingsPage({
       <PageHeader route="/settings/security" />
       <section className="card flex flex-col gap-[var(--space-3)] p-[var(--space-4)]" dir="rtl">
         <h2 className="sechead__title">خروج از دستگاه‌ها</h2>
-        <p className="m-0 text-[length:var(--text-sm)] text-[var(--text-muted)]">
+        <p className="m-0 text-[length:var(--text-sm)] text-[var(--muted)]">
           اگر گوشی‌ای گم شده یا روی رایانهٔ دیگری وارد شده‌اید و بیرون نیامده‌اید، از اینجا همهٔ آن ورودها را ببندید.
           هر دستگاه دیگر در درخواست بعدی‌اش به صفحهٔ ورود می‌رود.
         </p>
         {done === "others" && (
-          <p role="status" className="m-0 text-[length:var(--text-sm)] text-[var(--good)]">
+          <p role="status" className="m-0 text-[length:var(--text-sm)] text-[var(--success)]">
             از همهٔ دستگاه‌های دیگر خارج شدید. این دستگاه وارد مانده است.
           </p>
         )}
         {(impersonating || error === "impersonating") && (
-          <p role="status" className="m-0 text-[length:var(--text-sm)] text-[var(--warn)]">
+          <p role="status" className="m-0 text-[length:var(--text-sm)] text-[var(--warning)]">
             در حالت ورود به‌جای کاربر دیگر این کار ممکن نیست.
           </p>
         )}
@@ -57,7 +57,7 @@ export default async function SecuritySettingsPage({
               <Icon name="logout" size="sm" />
               خروج از همهٔ دستگاه‌های دیگر
             </button>
-            <button type="submit" name="scope" value="all" className={`${BUTTON} border-[var(--border)] text-[var(--text-muted)]`}>
+            <button type="submit" name="scope" value="all" className={`${BUTTON} border-[var(--border)] text-[var(--muted)]`}>
               <Icon name="logout" size="sm" />
               خروج از همه‌جا، این دستگاه هم
             </button>

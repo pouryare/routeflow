@@ -35,7 +35,7 @@ export default function WhatsNewCard({ entry }: { entry: WhatsNewEntry }) {
       }}
     >
       <h2 className="sechead__title">تازه‌های برنامه</h2>
-      <ul className="m-0 mt-[var(--space-2)] flex list-disc flex-col gap-[var(--space-1)] pr-[var(--space-4)] text-[length:var(--text-sm)] leading-6 text-[var(--text)]">
+      <ul className="m-0 mt-[var(--space-2)] flex list-disc flex-col gap-[var(--space-1)] pr-[var(--space-4)] text-[length:var(--text-sm)] leading-6 text-[var(--foreground)]">
         {entry.items.map((i, k) => (
           <li key={k}>
             {i.text}

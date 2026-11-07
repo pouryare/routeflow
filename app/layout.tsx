@@ -8,6 +8,7 @@ import HeroUIProvider from "@/components/HeroUIProvider";
 import { THEME_INIT_SCRIPT } from "@/lib/theme";
 import { ACCENT_INIT_SCRIPT } from "@/lib/accent";
 import { FONT_INIT_SCRIPT } from "@/lib/font";
+import { CONTRAST_INIT_SCRIPT } from "@/lib/contrast";
 import { ALL_FONT_VARS } from "@/app/fonts";
 import "./globals.css";
 
@@ -28,7 +29,7 @@ export const metadata: Metadata = {
  */
 export const viewport: Viewport = {
   colorScheme: "dark light",
-  themeColor: "#0a0e14",
+  themeColor: "#0F1214",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
@@ -42,7 +43,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       suppressHydrationWarning
       className={`${ALL_FONT_VARS} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col font-sans">
+      <body className="meridian min-h-full flex flex-col font-sans">
         {/* Blocking and inline, ahead of everything. next/script's beforeInteractive is
             explicitly documented as not blocking hydration, which is a weaker guarantee
             than this needs: the attribute has to exist before the first paint, not before
@@ -53,6 +54,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <script dangerouslySetInnerHTML={{ __html: ACCENT_INIT_SCRIPT }} />
         {/* And the letterforms you read best. See lib/font.ts. */}
         <script dangerouslySetInnerHTML={{ __html: FONT_INIT_SCRIPT }} />
+        <script dangerouslySetInnerHTML={{ __html: CONTRAST_INIT_SCRIPT }} />
         <ServiceWorkerRegister />
         <SoundSync />
         <FxSync />

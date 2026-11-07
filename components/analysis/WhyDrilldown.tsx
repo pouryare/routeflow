@@ -28,19 +28,19 @@ export default function WhyDrilldown({ chain }: { chain: Rung[] }) {
     >
       {chain.map((rung, i) => (
         <div key={i}>
-          <div className="text-[length:var(--text-xs)] text-[var(--text-muted)]">
+          <div className="text-[length:var(--text-xs)] text-[var(--muted)]">
             {rung.scope_fa ? `${rung.scope_fa} ← ` : ""}
             به تفکیک {rung.dimension_fa} · {pct(rung.pct)}
           </div>
-          <div className="text-[length:var(--text-sm)] text-[var(--text)]">{rung.headline}</div>
+          <div className="text-[length:var(--text-sm)] text-[var(--foreground)]">{rung.headline}</div>
           <ul className="m-0 mt-[var(--space-1)] list-none p-0">
             {rung.contributions.slice(0, 4).map((c) => (
               <li
                 key={c.key}
-                className="flex justify-between text-[length:var(--text-xs)] tabular-nums text-[var(--text-muted)]"
+                className="flex justify-between text-[length:var(--text-xs)] tabular-nums text-[var(--muted)]"
               >
                 <span>{c.label}</span>
-                <span style={{ color: c.delta < 0 ? "var(--crit)" : "var(--good)" }}>
+                <span style={{ color: c.delta < 0 ? "var(--danger)" : "var(--success)" }}>
                   {c.delta >= 0 ? "+" : ""}
                   {fa(c.delta)}
                 </span>

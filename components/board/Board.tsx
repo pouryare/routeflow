@@ -227,7 +227,7 @@ export default function Board({
                           className="st"
                           style={{
                             background:
-                              card.priority === "CRITICAL" ? "var(--crit)" : "var(--amber)",
+                              card.priority === "CRITICAL" ? "var(--danger)" : "var(--amber)",
                           }}
                           aria-hidden
                         />
@@ -260,15 +260,15 @@ export default function Board({
                     </div>
 
                     <div className="top" style={{ marginTop: 8 }}>
-                      <span style={{ color: "var(--line-2)", letterSpacing: -2 }} aria-hidden>
+                      <span style={{ color: "var(--border-strong)", letterSpacing: -2 }} aria-hidden>
                         ⋮⋮
                       </span>
                       <button
                         type="button"
                         aria-label="انتقال"
                         style={{
-                          border: "1px solid var(--line-2)",
-                          background: "var(--card-2)",
+                          border: "1px solid var(--border-strong)",
+                          background: "var(--surface-secondary)",
                           color: "var(--muted)",
                           borderRadius: 7,
                           padding: "2px 8px",
@@ -288,7 +288,7 @@ export default function Board({
                       <div
                         style={{
                           marginTop: 8,
-                          borderTop: "1px dashed var(--line-2)",
+                          borderTop: "1px dashed var(--border-strong)",
                           paddingTop: 8,
                         }}
                       >
@@ -309,9 +309,9 @@ export default function Board({
                                 display: "block",
                                 width: "100%",
                                 textAlign: "start",
-                                border: "1px solid var(--line)",
-                                background: "var(--card-2)",
-                                color: "var(--ink)",
+                                border: "1px solid var(--border)",
+                                background: "var(--surface-secondary)",
+                                color: "var(--foreground)",
                                 borderRadius: 7,
                                 padding: "6px 9px",
                                 fontSize: 12,

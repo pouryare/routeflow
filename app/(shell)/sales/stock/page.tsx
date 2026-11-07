@@ -123,19 +123,19 @@ export default async function StockPage() {
 
       {expiring.length > 0 && (
         <section className="card p-[var(--space-4)]">
-          <h2 className="sechead__title" style={{ color: "var(--warn)" }}>
+          <h2 className="sechead__title" style={{ color: "var(--warning)" }}>
             انقضا — {faNum(expiring.length)} سری ساخت
           </h2>
           <ul className="mt-[var(--space-3)] flex list-none flex-col gap-[var(--space-2)] p-0 text-[length:var(--text-sm)]">
             {expiring.slice(0, 12).map((b) => (
               <li key={b.id} className="flex flex-wrap items-baseline justify-between gap-[var(--space-2)] border-b border-[var(--border)] pb-[var(--space-2)]">
-                <span className="text-[var(--text)]">
+                <span className="text-[var(--foreground)]">
                   {stockName.get(b.product_id) ?? "کالا"}
-                  <span className="text-[var(--text-muted)]"> · سری ساخت {b.batch_code}</span>
+                  <span className="text-[var(--muted)]"> · سری ساخت {b.batch_code}</span>
                 </span>
                 <span
                   className="tabular-nums"
-                  style={{ color: (b.days_to_expiry ?? 0) < 0 ? "var(--crit)" : "var(--warn)" }}
+                  style={{ color: (b.days_to_expiry ?? 0) < 0 ? "var(--danger)" : "var(--warning)" }}
                 >
                   {b.expiry_date ? faJalaliDate(b.expiry_date) : "—"} ·{" "}
                   {(b.days_to_expiry ?? 0) < 0
@@ -150,7 +150,7 @@ export default async function StockPage() {
       )}
 
       {negatives.length > 0 && (
-        <p className="m-0 rounded-[var(--radius-md)] border border-[var(--warn)] p-[var(--space-3)] text-[length:var(--text-sm)] leading-6 text-[var(--warn)]">
+        <p className="m-0 rounded-[var(--radius-md)] border border-[var(--warning)] p-[var(--space-3)] text-[length:var(--text-sm)] leading-6 text-[var(--warning)]">
           موجودی {faNum(negatives.length)} کالا منفی است. یعنی خریدِ ثبت‌نشده دارید — تا
           وقتی فاکتورهای کاغذی وارد نشده‌اند این طبیعی است.
         </p>
@@ -163,7 +163,7 @@ export default async function StockPage() {
       )}
 
       {warehouse === null && MANAGE_ROLES.includes(session.role) && (
-        <p className="m-0 rounded-[var(--radius-md)] border border-dashed border-[var(--border)] p-[var(--space-3)] text-[length:var(--text-sm)] leading-6 text-[var(--text-muted)]">
+        <p className="m-0 rounded-[var(--radius-md)] border border-dashed border-[var(--border)] p-[var(--space-3)] text-[length:var(--text-sm)] leading-6 text-[var(--muted)]">
           هنوز انباری تعریف نشده است؛ شمارش و ثبت کالای رسیده پس از آن باز می‌شود.{" "}
           {isOwner(session.role) ? (
             <Link href="/facilities" className="inline-flex min-h-11 items-center font-medium text-[var(--accent)]">
@@ -188,7 +188,7 @@ export default async function StockPage() {
       )}
 
       {stock.length === 0 ? (
-        <p className="rounded-[var(--radius-lg)] border border-dashed border-[var(--border)] p-[var(--space-6)] text-center text-[length:var(--text-sm)] text-[var(--text-muted)]">
+        <p className="rounded-[var(--radius-lg)] border border-dashed border-[var(--border)] p-[var(--space-6)] text-center text-[length:var(--text-sm)] text-[var(--muted)]">
           هنوز کالایی ثبت نشده است. کالاها را از صفحهٔ «کالاها و قیمت‌ها» اضافه کنید.
         </p>
       ) : (
@@ -210,14 +210,14 @@ export default async function StockPage() {
                 key={p.id}
                 className="flex flex-wrap items-baseline justify-between gap-[var(--space-2)] border-b border-[var(--border)] pb-[var(--space-2)]"
               >
-                <span className="text-[var(--text)]">
+                <span className="text-[var(--foreground)]">
                   {p.supplier ?? "بدون تأمین‌کننده"}
-                  <span className="text-[var(--text-muted)]">
+                  <span className="text-[var(--muted)]">
                     {" "}
                     · {faNum(p.line_count)} قلم
                   </span>
                 </span>
-                <span className="tabular-nums text-[var(--text-muted)]">
+                <span className="tabular-nums text-[var(--muted)]">
                   {faToman(p.total_toman)} · {faJalaliDate(p.purchase_date)}
                 </span>
               </li>

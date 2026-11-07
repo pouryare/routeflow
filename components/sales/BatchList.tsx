@@ -45,7 +45,7 @@ export default function BatchList({ rows, canManage }: { rows: BatchListRow[]; c
         <div className="overflow-x-auto">
           <CardTable className="w-full border-collapse text-[length:var(--text-sm)]">
             <thead>
-              <tr className="text-[var(--text-muted)]">
+              <tr className="text-[var(--muted)]">
                 <th className="border-b border-[var(--border)] py-2 text-right font-medium">سری ساخت</th>
                 <th className="border-b border-[var(--border)] py-2 text-right font-medium">کالا</th>
                 <th className="border-b border-[var(--border)] py-2 text-right font-medium">تولید</th>
@@ -57,16 +57,16 @@ export default function BatchList({ rows, canManage }: { rows: BatchListRow[]; c
             <tbody>
               {rows.map((b) => (
                 <tr key={b.id}>
-                  <td className="border-b border-[var(--border)] py-2 font-mono text-[var(--text)]">{b.batch_code}</td>
-                  <td className="border-b border-[var(--border)] py-2 text-[var(--text)]">{b.product}</td>
-                  <td className="border-b border-[var(--border)] py-2 text-[var(--text-muted)]">
+                  <td className="border-b border-[var(--border)] py-2 font-mono text-[var(--foreground)]">{b.batch_code}</td>
+                  <td className="border-b border-[var(--border)] py-2 text-[var(--foreground)]">{b.product}</td>
+                  <td className="border-b border-[var(--border)] py-2 text-[var(--muted)]">
                     {b.produced_at ? faJalaliDate(b.produced_at) : "—"}
                   </td>
-                  <td className="border-b border-[var(--border)] py-2 text-[var(--text-muted)]">
+                  <td className="border-b border-[var(--border)] py-2 text-[var(--muted)]">
                     {b.expiry_date ? faJalaliDate(b.expiry_date) : "—"}
                   </td>
                   <td className="border-b border-[var(--border)] py-2 text-left tabular-nums">{faNum(b.on_hand)}</td>
-                  <td className="border-b border-[var(--border)] py-2 text-left text-[var(--text-muted)]">
+                  <td className="border-b border-[var(--border)] py-2 text-left text-[var(--muted)]">
                     {BATCH_STATUS_LABEL[b.status] ?? "نامشخص"}
                   </td>
                 </tr>

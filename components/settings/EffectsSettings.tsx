@@ -34,7 +34,7 @@ export default function EffectsSettings({
     <section className="card flex flex-col gap-[var(--space-3)] p-[var(--space-4)]" aria-label="جلوه‌های تصویری" dir="rtl">
       <SectionHead title="جلوه‌های تصویری" />
       <div className="flex min-h-11 items-center justify-between gap-[var(--space-3)]">
-        <p className="m-0 text-[length:var(--text-sm)] text-[var(--text)]">
+        <p className="m-0 text-[length:var(--text-sm)] text-[var(--foreground)]">
           {personOn ? "برای شما روشن است." : "برای شما خاموش است."}
         </p>
         <ToggleSwitch
@@ -46,12 +46,12 @@ export default function EffectsSettings({
           }}
         />
       </div>
-      <p className="m-0 text-[length:var(--text-sm)] text-[var(--text-muted)]">
+      <p className="m-0 text-[length:var(--text-sm)] text-[var(--muted)]">
         سکه، لبهٔ رسید، نور روی کارت و مانند آن. روی گوشی‌های ضعیف و وقتی «کاهش حرکت» روشن است، خودکار خاموش‌اند.
       </p>
       {canSetCompany ? (
         <div className="flex min-h-11 items-center justify-between gap-[var(--space-3)]">
-          <p className="m-0 text-[length:var(--text-sm)] text-[var(--text)]">
+          <p className="m-0 text-[length:var(--text-sm)] text-[var(--foreground)]">
             {companyOn ? "برای همهٔ کارکنان شرکت مجازند." : "برای همهٔ کارکنان شرکت خاموش است."}
           </p>
           <ToggleSwitch
@@ -64,7 +64,7 @@ export default function EffectsSettings({
           />
         </div>
       ) : null}
-      {error && <p role="alert" className="m-0 text-[length:var(--text-sm)] text-[var(--crit)]">{error}</p>}
+      {error && <p role="alert" className="m-0 text-[length:var(--text-sm)] text-[var(--danger)]">{error}</p>}
     </section>
   );
 }

@@ -9,7 +9,7 @@ import Link from "next/link";
 export default function CustomerName({ id, name }: { id: number | null | undefined; name: string }) {
   if (!id) return <>{name}</>;
   return (
-    <Link href={`/crm/${id}`} className="text-[var(--text)] underline-offset-2 hover:text-[var(--accent)] hover:underline">
+    <Link href={`/crm/${id}`} className="text-[var(--foreground)] underline-offset-2 hover:text-[var(--accent)] hover:underline">
       {name}
     </Link>
   );

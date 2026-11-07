@@ -37,15 +37,15 @@ function toPercent(input: string): number | null {
 }
 
 const FIELD =
-  "w-full rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] px-[var(--space-3)] py-[var(--space-2)] text-[length:var(--text-sm)] text-[var(--text)] outline-none transition-colors duration-[var(--dur-base)] focus:border-[var(--accent)]";
-const LABEL = "mb-[var(--space-1)] block text-[length:var(--text-xs)] text-[var(--text-muted)]";
+  "w-full rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] px-[var(--space-3)] py-[var(--space-2)] text-[length:var(--text-sm)] text-[var(--foreground)] outline-none transition-colors duration-[var(--dur-base)] focus:border-[var(--accent)]";
+const LABEL = "mb-[var(--space-1)] block text-[length:var(--text-xs)] text-[var(--muted)]";
 const BUTTON =
   "rounded-[var(--radius-md)] border border-[var(--accent)] bg-[var(--accent)] px-[var(--space-4)] py-[var(--space-2)] text-[length:var(--text-sm)] font-medium text-accent-ink transition-[filter,transform] duration-[var(--dur-base)] hover:brightness-110 active:scale-[0.98] disabled:opacity-50";
 const SEG_BTN = (on: boolean) =>
   `rounded-[var(--radius-md)] border px-[var(--space-3)] py-[var(--space-1)] text-[length:var(--text-xs)] font-medium transition-colors duration-[var(--dur-base)] ${
     on
       ? "border-[var(--accent)] bg-[var(--accent)] text-accent-ink"
-      : "border-[var(--border)] bg-[var(--surface)] text-[var(--text-muted)] hover:border-[var(--border-strong)]"
+      : "border-[var(--border)] bg-[var(--surface)] text-[var(--muted)] hover:border-[var(--border-strong)]"
   }`;
 
 type Kind = "sales" | "driver" | "manager";
@@ -196,7 +196,7 @@ export default function CommissionEditor({
       <h2 className="sechead__title">نرخ و پرداخت</h2>
 
       {message && (
-        <p className={`m-0 text-[length:var(--text-sm)] ${message.kind === "ok" ? "text-[var(--good)]" : "text-[var(--crit)]"}`}>
+        <p className={`m-0 text-[length:var(--text-sm)] ${message.kind === "ok" ? "text-[var(--success)]" : "text-[var(--danger)]"}`}>
           {message.text}
         </p>
       )}
@@ -246,7 +246,7 @@ export default function CommissionEditor({
             </label>
             <KeypadField label={rateKind === "manager" ? "درصد از فروش گروه" : "تومان در هر کیلو"} value={rateValue} onChange={setRateValue} unit={rateKind === "manager" ? "درصد" : "تومان"} decimal={rateKind === "manager"} />
             {rateValue !== "" && (
-              <span className="mt-[var(--space-1)] block text-[length:var(--text-xs)] text-[var(--text-muted)]">
+              <span className="mt-[var(--space-1)] block text-[length:var(--text-xs)] text-[var(--muted)]">
                 {!rateValid ? "عدد معتبر نیست" : rateKind === "manager" ? `${rateValue}٪` : faToman(parsedRate ?? 0)}
               </span>
             )}
@@ -307,7 +307,7 @@ export default function CommissionEditor({
             </label>
             <KeypadField label="مبلغ پرداخت" value={payAmount} onChange={setPayAmount} unit="تومان" />
             {payAmount !== "" && (
-              <span className="mt-[var(--space-1)] block text-[length:var(--text-xs)] text-[var(--text-muted)]">
+              <span className="mt-[var(--space-1)] block text-[length:var(--text-xs)] text-[var(--muted)]">
                 {parsedPay === null ? "عدد معتبر نیست" : faToman(parsedPay)}
               </span>
             )}
@@ -325,7 +325,7 @@ export default function CommissionEditor({
 
         <div className="flex flex-col gap-[var(--space-3)]">
           <h3 className="sechead__title">پلن پلکانی (فروشنده)</h3>
-          <p className="m-0 text-[length:var(--text-xs)] text-[var(--text-muted)]">
+          <p className="m-0 text-[length:var(--text-xs)] text-[var(--muted)]">
             پلن پلکانی جای نرخ تخت می‌نشیند: هر پله فقط روی مقدار داخل خودش حساب می‌شود، پس
             با فروش بیشتر درآمد کمتر نمی‌شود. اگر برای این فروشنده پلنی ثبت نشود، همان نرخ
             تخت بالا اعمال می‌شود.
@@ -407,7 +407,7 @@ export default function CommissionEditor({
           {planMode === "cliff" && (
             <p
               role="alert"
-              className="m-0 flex items-start gap-[var(--space-2)] rounded-[var(--radius-md)] border border-[var(--crit)]/40 bg-[var(--crit)]/10 px-[var(--space-3)] py-[var(--space-2)] text-[length:var(--text-xs)] text-[var(--crit)]"
+              className="m-0 flex items-start gap-[var(--space-2)] rounded-[var(--radius-md)] border border-[var(--danger)]/40 bg-[var(--danger)]/10 px-[var(--space-3)] py-[var(--space-2)] text-[length:var(--text-xs)] text-[var(--danger)]"
             >
               <Icon name="warn" size="md" />
               <span>
@@ -475,7 +475,7 @@ export default function CommissionEditor({
                 {tierRows.length > 1 && (
                   <button
                     type="button"
-                    className="flex cursor-pointer items-center gap-1 rounded-[var(--radius-md)] border border-[var(--border)] px-[var(--space-2)] py-[var(--space-1)] text-[length:var(--text-xs)] text-[var(--text-muted)] transition-colors hover:text-[var(--crit)]"
+                    className="flex cursor-pointer items-center gap-1 rounded-[var(--radius-md)] border border-[var(--border)] px-[var(--space-2)] py-[var(--space-1)] text-[length:var(--text-xs)] text-[var(--muted)] transition-colors hover:text-[var(--danger)]"
                     onClick={() => setTierRows(tierRows.filter((_, j) => j !== i))}
                     aria-label={`حذف پله ${i + 1}`}
                   >
@@ -500,7 +500,7 @@ export default function CommissionEditor({
           </div>
 
           {planProblem && (
-            <p role="alert" className="m-0 text-[length:var(--text-xs)] text-[var(--crit)]">
+            <p role="alert" className="m-0 text-[length:var(--text-xs)] text-[var(--danger)]">
               {planProblem}
             </p>
           )}
@@ -510,10 +510,10 @@ export default function CommissionEditor({
             <ul className="m-0 flex list-none flex-col gap-1 p-0 text-[length:var(--text-xs)]">
               {previews.map((p) => (
                 <li key={p.total} className="flex justify-between gap-[var(--space-3)]">
-                  <span className="text-[var(--text-muted)]">
+                  <span className="text-[var(--muted)]">
                     {p.total.toLocaleString("fa-IR")} {METRIC_LABEL[planMetric]}
                   </span>
-                  <span className="font-medium text-[var(--text)]">{faToman(p.amount)}</span>
+                  <span className="font-medium text-[var(--foreground)]">{faToman(p.amount)}</span>
                 </li>
               ))}
             </ul>

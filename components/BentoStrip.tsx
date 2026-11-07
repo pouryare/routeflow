@@ -36,11 +36,11 @@ export function BentoIdentity({
             {eyebrow}
           </span>
         )}
-        <span className="mt-[var(--space-1)] block text-[length:var(--text-lg)] text-[var(--text)]">
+        <span className="mt-[var(--space-1)] block text-[length:var(--text-lg)] text-[var(--foreground)]">
           {title}
         </span>
         {meta && (
-          <span className="mt-[var(--space-1)] block text-[length:var(--text-xs)] text-[var(--text-muted)]">
+          <span className="mt-[var(--space-1)] block text-[length:var(--text-xs)] text-[var(--muted)]">
             {meta}
           </span>
         )}
@@ -62,10 +62,10 @@ export function BentoTile({
   hint?: string;
   tone?: "good" | "warn" | "crit";
 }) {
-  const color = tone ? `var(--${tone})` : "var(--text)";
+  const color = tone ? `var(--${tone})` : "var(--foreground)";
   return (
     <div className="rounded-[var(--radius-xl)] bg-[var(--surface-raised)] p-[var(--space-4)]">
-      <span className="block text-[length:var(--text-xs)] text-[var(--text-muted)]">{label}</span>
+      <span className="block text-[length:var(--text-xs)] text-[var(--muted)]">{label}</span>
       <strong
         className="mt-[var(--space-1)] block font-mono text-[length:var(--text-xl)] font-normal tabular-nums"
         style={{ color }}
@@ -134,14 +134,14 @@ export function BentoGauge({
         <text
           x="42" y="42"
           textAnchor="middle" dominantBaseline="central"
-          className="fill-[var(--text)] font-mono"
+          className="fill-[var(--foreground)] font-mono"
           style={{ fontSize: 16 }}
         >
           {faNum(Math.round(f * 100))}٪
         </text>
       </svg>
       <span className="min-w-0">
-        <span className="block text-[length:var(--text-xs)] text-[var(--text-muted)]">{label}</span>
+        <span className="block text-[length:var(--text-xs)] text-[var(--muted)]">{label}</span>
         {caption && (
           <span className="mt-[var(--space-1)] block font-mono text-[length:var(--text-xs)] text-[var(--text-faint)]">
             {caption}

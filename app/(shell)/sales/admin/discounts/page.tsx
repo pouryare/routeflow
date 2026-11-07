@@ -13,7 +13,7 @@ import { faJalaliDate } from "@/lib/jalali";
 
 export const dynamic = "force-dynamic";
 
-const STATUS_COLOR = { pending: "var(--warn)", approved: "var(--good)", rejected: "var(--crit)" } as const;
+const STATUS_COLOR = { pending: "var(--warning)", approved: "var(--success)", rejected: "var(--danger)" } as const;
 
 /** The company's discount settings, for the owner (the admin layout gates it), and the latest
  *  discounts with their status. */
@@ -30,18 +30,18 @@ export default async function DiscountsPage() {
       <section className="card p-[var(--space-4)]" dir="rtl">
         <SectionHead title="آخرین تخفیف‌ها" as="h3" className="mb-[var(--space-3)]" />
         {recent.length === 0 ? (
-          <p className="m-0 text-[length:var(--text-sm)] text-[var(--text-muted)]">هنوز تخفیفی ثبت نشده است. وقتی فروشنده روی سفارش تخفیف بدهد، اینجا دیده می‌شود.</p>
+          <p className="m-0 text-[length:var(--text-sm)] text-[var(--muted)]">هنوز تخفیفی ثبت نشده است. وقتی فروشنده روی سفارش تخفیف بدهد، اینجا دیده می‌شود.</p>
         ) : (
           <ul className="m-0 flex list-none flex-col gap-[var(--space-3)] p-0 text-[length:var(--text-sm)]">
             {recent.map((d) => (
               <li key={d.id} className="flex flex-col gap-[var(--space-1)] border-b border-[var(--border)] pb-[var(--space-3)]">
                 <div className="flex flex-wrap items-baseline justify-between gap-[var(--space-2)]">
-                  <Link href={`/sales/orders/${d.order_id}`} className="inline-flex min-h-11 items-center font-medium text-[var(--text)]">
+                  <Link href={`/sales/orders/${d.order_id}`} className="inline-flex min-h-11 items-center font-medium text-[var(--foreground)]">
                     {d.customer_name} · {d.order_no}
                   </Link>
                   <span style={{ color: STATUS_COLOR[d.status] }}>{DISCOUNT_STATUS_LABEL[d.status]}</span>
                 </div>
-                <div className="flex flex-wrap items-baseline justify-between gap-[var(--space-2)] text-[var(--text-muted)]">
+                <div className="flex flex-wrap items-baseline justify-between gap-[var(--space-2)] text-[var(--muted)]">
                   <span>
                     {faToman(d.amount_toman)} · {DISCOUNT_REASONS.find((r) => r.id === d.reason)?.label ?? d.reason} · {d.requested_by_name}
                   </span>

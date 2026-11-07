@@ -11,11 +11,11 @@ export default function ChangePasswordSection() {
   return (
     <section className="card mt-[var(--space-4)] flex flex-col gap-[var(--space-3)] p-[var(--space-4)]" dir="rtl">
       <h2 className="sechead__title">تغییر رمز</h2>
-      <p className="m-0 text-[length:var(--text-sm)] text-[var(--text-muted)]">
+      <p className="m-0 text-[length:var(--text-sm)] text-[var(--muted)]">
         رمز فعلی را وارد کنید و رمز تازه را دو بار بنویسید. با ذخیره، از همهٔ دستگاه‌های دیگر خارج می‌شوید.
       </p>
       {saved && (
-        <p role="status" className="m-0 text-[length:var(--text-sm)] text-[var(--good)]">
+        <p role="status" className="m-0 text-[length:var(--text-sm)] text-[var(--success)]">
           رمز عوض شد و دستگاه‌های دیگر خارج شدند. این دستگاه وارد مانده است.
         </p>
       )}

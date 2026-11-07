@@ -50,7 +50,7 @@ At the end of every reply, update `TODO-REPORT.md` at the repo root and show the
 - **Not done / gaps** — unchecked items and known limits.
 - **Next steps** — numbered, in the order they will be worked.
 
-Keep it current: move items from Next steps to Done as they finish, add new gaps as they are found. Commit `TODO-REPORT.md` together with the work it describes.
+Keep it current: move items from Next steps to Done as they finish, add new gaps as they are found. `TODO-REPORT.md` is in `.gitignore` (owner rule, 2026-11-07): keep it up to date in the working folder and show it in the reply, but never commit it.
 
 # UI work follows the mobile-first rules
 

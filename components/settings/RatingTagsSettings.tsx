@@ -58,7 +58,7 @@ export default function RatingTagsSettings({ initial }: { initial: RatingTags })
         return (
           <section key={key} className="card flex flex-col gap-[var(--space-3)] p-[var(--space-4)]" dir="rtl">
             <SectionHead title={title} as="h3" />
-            <p className="m-0 text-[length:var(--text-sm)] text-[var(--text-muted)]">{sub}</p>
+            <p className="m-0 text-[length:var(--text-sm)] text-[var(--muted)]">{sub}</p>
             {tags[key].length === 0 ? (
               <p className="m-0 text-[length:var(--text-sm)] text-[var(--text-faint)]">برچسبی نیست؛ این قدم برای این امتیاز پرسیده نمی‌شود.</p>
             ) : (
@@ -95,7 +95,7 @@ export default function RatingTagsSettings({ initial }: { initial: RatingTags })
         );
       })}
       {msg && (
-        <p role="status" className="m-0 px-[var(--space-4)] text-[length:var(--text-sm)]" style={{ color: msg.ok ? "var(--good)" : "var(--crit)" }}>
+        <p role="status" className="m-0 px-[var(--space-4)] text-[length:var(--text-sm)]" style={{ color: msg.ok ? "var(--success)" : "var(--danger)" }}>
           {msg.text}
         </p>
       )}

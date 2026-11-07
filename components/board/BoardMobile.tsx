@@ -73,8 +73,8 @@ export default function BoardMobile({
         onClick={() => setSheetFor({ card: c, laneId })}
         style={{
           marginTop: 8,
-          border: "1px solid var(--line-2)",
-          background: "var(--card-2)",
+          border: "1px solid var(--border-strong)",
+          background: "var(--surface-secondary)",
           color: "var(--muted)",
           borderRadius: 7,
           padding: "3px 10px",
@@ -117,7 +117,7 @@ export default function BoardMobile({
             style={{
               display: "flex",
               gap: 4,
-              background: "var(--sunk)",
+              background: "var(--surface-tertiary)",
               borderRadius: 999,
               padding: 4,
               overflowX: "auto",
@@ -137,8 +137,8 @@ export default function BoardMobile({
                   fontSize: 11.5,
                   whiteSpace: "nowrap",
                   cursor: "pointer",
-                  background: i === laneIx ? "var(--card)" : "transparent",
-                  color: i === laneIx ? "var(--ink)" : "var(--muted)",
+                  background: i === laneIx ? "var(--surface)" : "transparent",
+                  color: i === laneIx ? "var(--foreground)" : "var(--muted)",
                   fontWeight: i === laneIx ? 600 : 400,
                   boxShadow: i === laneIx ? "var(--sh-1)" : "none",
                 }}
@@ -161,7 +161,7 @@ export default function BoardMobile({
             <div
               key={l.id}
               style={{
-                border: "1px solid var(--line)",
+                border: "1px solid var(--border)",
                 borderRadius: "var(--r-md)",
                 marginBottom: 8,
                 overflow: "hidden",
@@ -176,8 +176,8 @@ export default function BoardMobile({
                   justifyContent: "space-between",
                   alignItems: "center",
                   border: 0,
-                  background: "var(--card-2)",
-                  color: "var(--ink)",
+                  background: "var(--surface-secondary)",
+                  color: "var(--foreground)",
                   padding: "10px 12px",
                   fontSize: 12.5,
                   fontWeight: 600,

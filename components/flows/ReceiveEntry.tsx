@@ -13,7 +13,7 @@ export default function ReceiveEntry({ products, suppliers }: { products: Receiv
       <button data-tour="open:receive"
         type="button"
         onClick={() => setFlow((f) => ({ key: f.key + 1, open: true }))}
-        className="inline-flex min-h-[44px] items-center justify-center gap-[var(--space-2)] self-start rounded-[var(--radius-md)] border border-[var(--border)] px-[var(--space-4)] text-[length:var(--text-sm)] text-[var(--text)]"
+        className="inline-flex min-h-[44px] items-center justify-center gap-[var(--space-2)] self-start rounded-[var(--radius-md)] border border-[var(--border)] px-[var(--space-4)] text-[length:var(--text-sm)] text-[var(--foreground)]"
       >
         <Icon name="truck" size="md" />
         دریافت کالا

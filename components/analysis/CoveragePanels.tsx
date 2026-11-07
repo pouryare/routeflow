@@ -48,7 +48,7 @@ export default function CoveragePanels({
               >
                 {faNum(data.districtCounts[s] ?? 0)}
               </div>
-              <div className="text-[length:var(--text-xs)] text-[var(--text-muted)]">
+              <div className="text-[length:var(--text-xs)] text-[var(--muted)]">
                 {STATUS_LABEL[s]}
               </div>
             </div>
@@ -61,10 +61,10 @@ export default function CoveragePanels({
           reminders is a worklist length, and the only useful comparison is to zero. */}
       <section className="grid grid-cols-2 gap-[var(--space-3)] sm:grid-cols-4">
         {[
-          { n: data.dormant, label: "مشتری راکد (۳۰+ روز)", tone: "var(--warn)" },
-          { n: data.reminders.overdue, label: "یادآوری معوق", tone: "var(--crit)" },
-          { n: data.reminders.today, label: "یادآوری امروز", tone: "var(--warn)" },
-          { n: data.reminders.total, label: "کل یادآوری‌های باز", tone: "var(--text)" },
+          { n: data.dormant, label: "مشتری راکد (۳۰+ روز)", tone: "var(--warning)" },
+          { n: data.reminders.overdue, label: "یادآوری معوق", tone: "var(--danger)" },
+          { n: data.reminders.today, label: "یادآوری امروز", tone: "var(--warning)" },
+          { n: data.reminders.total, label: "کل یادآوری‌های باز", tone: "var(--foreground)" },
         ].map((t) => (
           <div
             key={t.label}
@@ -76,7 +76,7 @@ export default function CoveragePanels({
             >
               {faNum(t.n)}
             </div>
-            <div className="text-[length:var(--text-xs)] text-[var(--text-muted)]">{t.label}</div>
+            <div className="text-[length:var(--text-xs)] text-[var(--muted)]">{t.label}</div>
           </div>
         ))}
       </section>
@@ -98,7 +98,7 @@ export default function CoveragePanels({
           <div className="overflow-x-auto rounded-[var(--radius-md)] border border-[var(--border)]">
             <CardTable className="w-full border-collapse text-[length:var(--text-sm)]">
               <thead>
-                <tr className="border-b border-[var(--border)] bg-[var(--surface)] text-right text-[var(--text-muted)]">
+                <tr className="border-b border-[var(--border)] bg-[var(--surface)] text-right text-[var(--muted)]">
                   <th className="px-[var(--space-3)] py-[var(--space-2)] font-medium">تاریخ</th>
                   <th className="px-[var(--space-3)] py-[var(--space-2)] font-medium">شروع</th>
                   <th className="px-[var(--space-3)] py-[var(--space-2)] font-medium">پایان</th>
@@ -114,24 +114,24 @@ export default function CoveragePanels({
               <tbody>
                 {data.dayLog.map((d) => (
                   <tr key={d.day} className="border-b border-[var(--border)] last:border-b-0">
-                    <td className="mono px-[var(--space-3)] py-[var(--space-2)] tabular-nums text-[var(--text)]">
+                    <td className="mono px-[var(--space-3)] py-[var(--space-2)] tabular-nums text-[var(--foreground)]">
                       {d.day}
                     </td>
-                    <td dir="ltr" className="mono px-[var(--space-3)] py-[var(--space-2)] text-right tabular-nums text-[var(--text-muted)]">
+                    <td dir="ltr" className="mono px-[var(--space-3)] py-[var(--space-2)] text-right tabular-nums text-[var(--muted)]">
                       {d.start}
                     </td>
-                    <td dir="ltr" className="mono px-[var(--space-3)] py-[var(--space-2)] text-right tabular-nums text-[var(--text-muted)]">
+                    <td dir="ltr" className="mono px-[var(--space-3)] py-[var(--space-2)] text-right tabular-nums text-[var(--muted)]">
                       {d.end ?? "—"}
                     </td>
-                    <td className="mono px-[var(--space-3)] py-[var(--space-2)] tabular-nums text-[var(--text-muted)]">
+                    <td className="mono px-[var(--space-3)] py-[var(--space-2)] tabular-nums text-[var(--muted)]">
                       {d.minutes === null
                         ? "—"
                         : `${faNum(Math.floor(d.minutes / 60))} ساعت و ${faNum(d.minutes % 60)} دقیقه`}
                     </td>
-                    <td className="mono px-[var(--space-3)] py-[var(--space-2)] tabular-nums text-[var(--text-muted)]">
+                    <td className="mono px-[var(--space-3)] py-[var(--space-2)] tabular-nums text-[var(--muted)]">
                       {faNum(d.stops)}
                     </td>
-                    <td className="mono px-[var(--space-3)] py-[var(--space-2)] tabular-nums text-[var(--text-muted)]">
+                    <td className="mono px-[var(--space-3)] py-[var(--space-2)] tabular-nums text-[var(--muted)]">
                       {faNum(d.done)}
                     </td>
                   </tr>

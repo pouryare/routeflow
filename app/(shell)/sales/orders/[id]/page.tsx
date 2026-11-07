@@ -67,7 +67,7 @@ export default async function OrderDetailPage({
           <h2 className="sechead__title tabular-nums">
             سفارش {faNum(Number(order.order_no.split("-")[1]))}#
           </h2>
-          <p className="m-0 mt-[var(--space-1)] text-[length:var(--text-sm)] text-[var(--text-muted)]">
+          <p className="m-0 mt-[var(--space-1)] text-[length:var(--text-sm)] text-[var(--muted)]">
             {/* The name opens the customer (who they are, their other orders, what they owe);
                 the pin beside it is the shop on the map. buildMapLink is the same format the
                 map's own share links use and parseMapLink already reads on load. */}
@@ -75,7 +75,7 @@ export default async function OrderDetailPage({
             <Link
               /* buildMapLink already includes the leading "?" -- see lib/deepLink.ts. */
               href={`/map${buildMapLink({ customerId: order.customer_id })}`}
-              className="touch inline-flex min-h-11 min-w-11 items-center justify-center align-middle text-[var(--text-muted)] hover:text-[var(--accent)]"
+              className="touch inline-flex min-h-11 min-w-11 items-center justify-center align-middle text-[var(--muted)] hover:text-[var(--accent)]"
               aria-label="نمایش روی نقشه"
               title="نمایش روی نقشه"
             >
@@ -87,7 +87,7 @@ export default async function OrderDetailPage({
         </div>
         <Link
           href="/sales/orders"
-          className="inline-flex items-center gap-2 text-[length:var(--text-sm)] text-[var(--text-muted)] no-underline hover:text-[var(--text)]"
+          className="inline-flex items-center gap-2 text-[length:var(--text-sm)] text-[var(--muted)] no-underline hover:text-[var(--foreground)]"
         >
           <Icon name="arrow-right" size="sm" />
           همه سفارش‌ها
@@ -130,8 +130,8 @@ export default async function OrderDetailPage({
           caption={`${faToman(order.paid_toman)} از ${faToman(order.total_toman)}`}
           tone={
             order.paid_toman >= order.total_toman && order.total_toman > 0
-              ? "var(--good)"
-              : "var(--warn)"
+              ? "var(--success)"
+              : "var(--warning)"
           }
         />
       </BentoStrip>
@@ -142,12 +142,12 @@ export default async function OrderDetailPage({
             <strong>تخفیف {faToman(discount.amount_toman)}</strong>
             <span
               className="text-[length:var(--text-sm)]"
-              style={{ color: discount.status === "approved" ? "var(--good)" : discount.status === "rejected" ? "var(--crit)" : "var(--warn)" }}
+              style={{ color: discount.status === "approved" ? "var(--success)" : discount.status === "rejected" ? "var(--danger)" : "var(--warning)" }}
             >
               {DISCOUNT_STATUS_LABEL[discount.status]}
             </span>
           </div>
-          <p className="m-0 text-[length:var(--text-sm)] text-[var(--text-muted)]">
+          <p className="m-0 text-[length:var(--text-sm)] text-[var(--muted)]">
             {DISCOUNT_REASONS.find((r) => r.id === discount.reason)?.label ?? discount.reason}
             {discount.requested_by_name && ` · درخواست ${discount.requested_by_name}`}
             {discount.decided_by_name && ` · پاسخ ${discount.decided_by_name}`}
@@ -185,7 +185,7 @@ export default async function OrderDetailPage({
 
       <CardTable className="w-full border-collapse rounded-[var(--radius-lg)] text-[length:var(--text-sm)]">
         <thead>
-          <tr className="text-[var(--text-muted)]">
+          <tr className="text-[var(--muted)]">
             <th className="border-b border-[var(--border)] py-[var(--space-2)] text-right font-medium">
               کالا
             </th>
@@ -203,19 +203,19 @@ export default async function OrderDetailPage({
         <tbody>
           {order.lines.map((line) => (
             <tr key={line.id}>
-              <td className="border-b border-[var(--border)] py-[var(--space-2)] text-[var(--text)]">
+              <td className="border-b border-[var(--border)] py-[var(--space-2)] text-[var(--foreground)]">
                 {line.product_name}
-                <span className="block text-[length:var(--text-xs)] text-[var(--text-muted)]">
+                <span className="block text-[length:var(--text-xs)] text-[var(--muted)]">
                   {line.packaging_name} · {faNum(line.kg)} کیلو
                 </span>
               </td>
-              <td className="border-b border-[var(--border)] py-[var(--space-2)] text-left tabular-nums text-[var(--text-muted)]">
+              <td className="border-b border-[var(--border)] py-[var(--space-2)] text-left tabular-nums text-[var(--muted)]">
                 {faNum(line.packs_ordered)}
               </td>
-              <td className="border-b border-[var(--border)] py-[var(--space-2)] text-left tabular-nums text-[var(--text-muted)]">
+              <td className="border-b border-[var(--border)] py-[var(--space-2)] text-left tabular-nums text-[var(--muted)]">
                 {faToman(line.unit_price_toman)}
               </td>
-              <td className="border-b border-[var(--border)] py-[var(--space-2)] text-left tabular-nums text-[var(--text)]">
+              <td className="border-b border-[var(--border)] py-[var(--space-2)] text-left tabular-nums text-[var(--foreground)]">
                 {faToman(line.total_toman)}
               </td>
             </tr>
@@ -228,7 +228,7 @@ export default async function OrderDetailPage({
       <section className="mt-[var(--space-5)]">
         <h2 className="sechead__title">تلاش‌های تحویل</h2>
         {attempts.length === 0 ? (
-          <p className="m-0 mt-[var(--space-2)] text-[length:var(--text-sm)] text-[var(--text-muted)]">
+          <p className="m-0 mt-[var(--space-2)] text-[length:var(--text-sm)] text-[var(--muted)]">
             برای این سفارش هنوز تلاشی برای تحویل ثبت نشده است.
           </p>
         ) : (
@@ -239,10 +239,10 @@ export default async function OrderDetailPage({
                 className="rounded-[var(--radius-md)] border border-[var(--border)] p-[var(--space-3)]"
               >
                 <div className="flex flex-wrap items-baseline justify-between gap-[var(--space-2)]">
-                  <span className="text-[length:var(--text-sm)] font-medium text-[var(--text)]">
+                  <span className="text-[length:var(--text-sm)] font-medium text-[var(--foreground)]">
                     تلاش {faNum(a.seq)} · {ATTEMPT_LABEL[a.status] ?? "نامشخص"}
                   </span>
-                  <span className="text-[length:var(--text-xs)] tabular-nums text-[var(--text-muted)]">
+                  <span className="text-[length:var(--text-xs)] tabular-nums text-[var(--muted)]">
                     {a.actual_arrival
                       ? faJalaliDateTime(a.actual_arrival)
                       : a.planned_arrival
@@ -251,14 +251,14 @@ export default async function OrderDetailPage({
                   </span>
                 </div>
                 {(a.fail_reason || a.delay_reason) && (
-                  <p className="m-0 mt-[var(--space-1)] text-[length:var(--text-xs)] text-[var(--text-muted)]">
+                  <p className="m-0 mt-[var(--space-1)] text-[length:var(--text-xs)] text-[var(--muted)]">
                     {a.fail_reason ? `دلیل ناموفقی: ${a.fail_reason}` : null}
                     {a.fail_reason && a.delay_reason ? " · " : null}
                     {a.delay_reason ? `دلیل تأخیر: ${a.delay_reason}` : null}
                   </p>
                 )}
                 {a.receiver_name && (
-                  <p className="m-0 mt-[var(--space-1)] text-[length:var(--text-xs)] text-[var(--text-muted)]">
+                  <p className="m-0 mt-[var(--space-1)] text-[length:var(--text-xs)] text-[var(--muted)]">
                     تحویل به {a.receiver_name}
                   </p>
                 )}
@@ -269,24 +269,24 @@ export default async function OrderDetailPage({
       </section>
 
       {order.status === "DRAFT" ? (
-        <p className="m-0 text-[length:var(--text-xs)] leading-6 text-[var(--text-muted)]">
+        <p className="m-0 text-[length:var(--text-xs)] leading-6 text-[var(--muted)]">
           تا وقتی پیش‌نویس است می‌شود تغییرش داد. بعد از تأیید، اصلاح فقط با ثبت قلم
           برگشتی انجام می‌شود — چون پورسانت از همین عددها حساب می‌شود.
         </p>
       ) : (
-        <p className="m-0 text-[length:var(--text-xs)] leading-6 text-[var(--text-muted)]">
+        <p className="m-0 text-[length:var(--text-xs)] leading-6 text-[var(--muted)]">
           این سفارش تأیید شده و عددهایش ثابت است. قیمت‌ها همان‌هایی هستند که روز ثبت
           سفارش اعمال شده‌اند، حتی اگر قیمت کالا بعداً تغییر کرده باشد.
         </p>
       )}
 
       {order.credit_override_by !== null && (
-        <p className="m-0 rounded-[var(--radius-md)] border border-[var(--warn)] p-[var(--space-3)] text-[length:var(--text-xs)] text-[var(--warn)]">
+        <p className="m-0 rounded-[var(--radius-md)] border border-[var(--warning)] p-[var(--space-3)] text-[length:var(--text-xs)] text-[var(--warning)]">
           این سفارش با عبور از سقف اعتبار مشتری ثبت شده است.
         </p>
       )}
 
-      <p className="m-0 text-[length:var(--text-xs)] text-[var(--text-muted)]">
+      <p className="m-0 text-[length:var(--text-xs)] text-[var(--muted)]">
         ثبت‌شده در {faJalaliDateTime(order.created_at)}
       </p>
     </div>

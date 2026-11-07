@@ -19,13 +19,13 @@ export default function EarningsCard({ e }: { e: EarningsSoFar }) {
           <HideMoneyButton />
         </span>
       </div>
-      <p className="m-0 mt-[var(--space-1)] text-[length:var(--text-xs)] text-[var(--text-muted)]">
+      <p className="m-0 mt-[var(--space-1)] text-[length:var(--text-xs)] text-[var(--muted)]">
         از {faJalaliDate(e.from)} · {faNum(e.orders)} سفارش تحویل‌شده · {faNum(e.kg)} کیلو
       </p>
-      <p className="m-0 mt-[var(--space-2)] text-[length:var(--text-lg)] font-semibold tabular-nums text-[var(--text)]">
+      <p className="m-0 mt-[var(--space-2)] text-[length:var(--text-lg)] font-semibold tabular-nums text-[var(--foreground)]">
         <CountUp value={e.accrued_toman} /> تومان
       </p>
-      <p className="m-0 mt-[var(--space-1)] text-[length:var(--text-xs)] text-[var(--text-muted)]">
+      <p className="m-0 mt-[var(--space-1)] text-[length:var(--text-xs)] text-[var(--muted)]">
         پرداخت‌شده در این ماه <CountUp value={e.paid_toman} /> تومان · مانده تا امروز <CountUp value={e.owed_toman} /> تومان
       </p>
       <Link href="/sales/commission" className="btn mt-[var(--space-2)] inline-flex min-h-[44px] items-center gap-[var(--space-2)]">

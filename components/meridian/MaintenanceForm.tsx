@@ -42,11 +42,11 @@ export default function MaintenanceForm({ current }: { current: Maintenance | nu
     <section className="card flex flex-col gap-[var(--space-3)] p-[var(--space-4)]" dir="rtl">
       <h2 className="sechead__title">اعلام زمان به‌روزرسانی</h2>
       {current ? (
-        <p className="m-0 text-[length:var(--text-sm)] text-[var(--text-muted)]">
+        <p className="m-0 text-[length:var(--text-sm)] text-[var(--muted)]">
           اعلام‌شده: {faJalaliDateTime(current.from)} تا {faJalaliDateTime(current.to)}{current.note ? ` · ${current.note}` : ""}
         </p>
       ) : (
-        <p className="m-0 text-[length:var(--text-sm)] text-[var(--text-muted)]">همه یک نوار هشدار می‌بینند؛ رانندگان و فروشنده‌ها پیش از شروع باید همگام کنند.</p>
+        <p className="m-0 text-[length:var(--text-sm)] text-[var(--muted)]">همه یک نوار هشدار می‌بینند؛ رانندگان و فروشنده‌ها پیش از شروع باید همگام کنند.</p>
       )}
       <DayChips value={date} onChange={setDate} ariaLabel="روز به‌روزرسانی" />
       <div className="grid grid-cols-2 gap-[var(--space-2)]">
@@ -54,7 +54,7 @@ export default function MaintenanceForm({ current }: { current: Maintenance | nu
         <KeypadField label="مدت" value={hours} onChange={setHours} unit="ساعت" />
       </div>
       <FieldInput value={note} onChange={(e) => setNote(e.target.value)} placeholder="توضیح کوتاه (اختیاری)" aria-label="توضیح" maxLength={200} />
-      {msg ? <p className="m-0 text-[length:var(--text-xs)] text-[var(--crit)]">{msg}</p> : null}
+      {msg ? <p className="m-0 text-[length:var(--text-xs)] text-[var(--danger)]">{msg}</p> : null}
       <div className="flex flex-wrap gap-[var(--space-2)]">
         <button type="button" disabled={busy} onClick={save} className={`${BTN} bg-[var(--accent)] text-accent-ink`}>
           <Icon name="save" size="md" />

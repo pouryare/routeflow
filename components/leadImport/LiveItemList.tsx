@@ -58,8 +58,8 @@ function rowMeta(item: LiveItem) {
 const TONE_CLASS: Record<string, string> = {
   faint: "text-text-faint",
   muted: "text-text-muted",
-  good: "text-[color:var(--good)]",
-  warn: "text-[color:var(--warn)]",
+  good: "text-[color:var(--success)]",
+  warn: "text-[color:var(--warning)]",
 };
 
 export default function LiveItemList({ items }: { items: LiveItem[] }) {

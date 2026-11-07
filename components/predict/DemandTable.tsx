@@ -32,8 +32,8 @@ function MethodBadge({ method }: { method: string }) {
     <span
       className="rounded-[var(--radius-sm)] px-[6px] py-[1px] text-[length:var(--text-xs)]"
       style={{
-        color: learning ? "var(--good)" : "var(--warn)",
-        border: `1px solid ${learning ? "var(--good)" : "var(--warn)"}`,
+        color: learning ? "var(--success)" : "var(--warning)",
+        border: `1px solid ${learning ? "var(--success)" : "var(--warning)"}`,
       }}
     >
       {learning ? "یادگیری" : "تخمین"}
@@ -55,7 +55,7 @@ export default function DemandTable({ entries }: { entries: DemandEntry[] }) {
           <h2>پیش‌بینی تقاضا</h2>
           <CardHelp id="card.demand" />
         </div>
-        <p className="kblock__body text-[length:var(--text-sm)] text-[var(--text-muted)]">
+        <p className="kblock__body text-[length:var(--text-sm)] text-[var(--muted)]">
           هنوز پیش‌بینی‌ای محاسبه نشده — دکمهٔ «به‌روزرسانی پیش‌بینی» را بزنید.
         </p>
       </div>
@@ -76,7 +76,7 @@ export default function DemandTable({ entries }: { entries: DemandEntry[] }) {
       <div className="kblock__body overflow-x-auto">
         <CardTable className="w-full border-collapse text-[length:var(--text-sm)]">
           <thead>
-            <tr className="text-[var(--text-muted)]">
+            <tr className="text-[var(--muted)]">
               <th className="border-b border-[var(--border)] py-1 text-right font-medium">مورد</th>
               {horizons.map((h) => (
                 <th key={h} className="border-b border-[var(--border)] py-1 text-left font-medium">
@@ -90,11 +90,11 @@ export default function DemandTable({ entries }: { entries: DemandEntry[] }) {
           <tbody>
             {ordered.map((e) => (
               <tr key={`${e.entity_type}:${e.entity_id}`}>
-                <td className="border-b border-[var(--border)] py-1 text-[var(--text)]">{e.label}</td>
+                <td className="border-b border-[var(--border)] py-1 text-[var(--foreground)]">{e.label}</td>
                 {e.points.map((p) => (
                   <td
                     key={p.target_period}
-                    className="border-b border-[var(--border)] py-1 text-left tabular-nums text-[var(--text-muted)]"
+                    className="border-b border-[var(--border)] py-1 text-left tabular-nums text-[var(--muted)]"
                   >
                     {fa(p.yhat)}
                     <span className="block text-[length:var(--text-xs)] text-[var(--text-faint)]">

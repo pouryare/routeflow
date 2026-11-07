@@ -65,8 +65,8 @@ interface Draft {
 }
 
 const FIELD =
-  "w-full rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] px-[var(--space-3)] py-[var(--space-2)] text-[length:var(--text-base)] text-[var(--text)] outline-none transition-colors duration-[var(--dur-base)] focus:border-[var(--accent)]";
-const LABEL = "mb-[var(--space-1)] block text-[length:var(--text-xs)] text-[var(--text-muted)]";
+  "w-full rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] px-[var(--space-3)] py-[var(--space-2)] text-[length:var(--text-base)] text-[var(--foreground)] outline-none transition-colors duration-[var(--dur-base)] focus:border-[var(--accent)]";
+const LABEL = "mb-[var(--space-1)] block text-[length:var(--text-xs)] text-[var(--muted)]";
 
 /** Recording an order, phone first.
  *
@@ -283,7 +283,7 @@ export default function OrderForm({
   return (
     <div className="flex flex-col gap-[var(--space-4)]">
       {error && (
-        <p className="m-0 rounded-[var(--radius-md)] border border-[var(--crit)] bg-[var(--crit)]/10 p-[var(--space-3)] text-[length:var(--text-sm)] text-[var(--crit)]">
+        <p className="m-0 rounded-[var(--radius-md)] border border-[var(--danger)] bg-[var(--danger)]/10 p-[var(--space-3)] text-[length:var(--text-sm)] text-[var(--danger)]">
           {error}
         </p>
       )}
@@ -295,10 +295,10 @@ export default function OrderForm({
         {customer ? (
           <div className="flex items-center justify-between gap-[var(--space-3)]">
             <div>
-              <strong className="block text-[length:var(--text-base)] font-medium text-[var(--text)]">
+              <strong className="block text-[length:var(--text-base)] font-medium text-[var(--foreground)]">
                 {customer.business_name}
               </strong>
-              <span className="text-[length:var(--text-xs)] text-[var(--text-muted)]">
+              <span className="text-[length:var(--text-xs)] text-[var(--muted)]">
                 {customer.customer_code}
                 {customer.debt > 0 && ` · بدهی ${faToman(customer.debt)}`}
               </span>
@@ -308,7 +308,7 @@ export default function OrderForm({
               onClick={() => {
                 setCustomerId(null);
               }}
-              className="rounded-[var(--radius-md)] border border-[var(--border)] px-[var(--space-3)] py-[var(--space-1)] text-[length:var(--text-xs)] text-[var(--text-muted)] hover:border-[var(--border-strong)]"
+              className="rounded-[var(--radius-md)] border border-[var(--border)] px-[var(--space-3)] py-[var(--space-1)] text-[length:var(--text-xs)] text-[var(--muted)] hover:border-[var(--border-strong)]"
             >
               <Icon name="edit" size="sm" />
               تغییر
@@ -368,7 +368,7 @@ export default function OrderForm({
             />
           </div>
           {resolvedRequestedDay !== null && (
-            <p className="m-0 mt-[var(--space-1)] text-[length:var(--text-xs)] text-[var(--text-muted)]">
+            <p className="m-0 mt-[var(--space-1)] text-[length:var(--text-xs)] text-[var(--muted)]">
               {requestedDayLabel(resolvedRequestedDay)}
             </p>
           )}
@@ -417,22 +417,22 @@ export default function OrderForm({
                 className="flex items-center justify-between gap-[var(--space-2)] border-b border-[var(--border)] pb-[var(--space-2)]"
               >
                 <div className="min-w-0">
-                  <span className="block truncate text-[length:var(--text-sm)] text-[var(--text)]">
+                  <span className="block truncate text-[length:var(--text-sm)] text-[var(--foreground)]">
                     {line.product.name} · {line.packaging.name}
                   </span>
-                  <span className="text-[length:var(--text-xs)] tabular-nums text-[var(--text-muted)]">
+                  <span className="text-[length:var(--text-xs)] tabular-nums text-[var(--muted)]">
                     {faNum(line.packs)} بسته · {faNum(line.kg)} کیلو
                   </span>
                 </div>
                 <div className="flex shrink-0 items-center gap-[var(--space-2)]">
-                  <span className="tabular-nums text-[length:var(--text-sm)] text-[var(--text)]">
+                  <span className="tabular-nums text-[length:var(--text-sm)] text-[var(--foreground)]">
                     {faToman(line.total)}
                   </span>
                   <button
                     type="button"
                     aria-label="حذف قلم"
                     onClick={() => removeLine(line.key, line.product.name)}
-                    className="touch inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-[var(--radius-sm)] text-[var(--text-muted)] hover:bg-white/5 hover:text-[var(--crit)]"
+                    className="touch inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-[var(--radius-sm)] text-[var(--muted)] hover:bg-white/5 hover:text-[var(--danger)]"
                   >
                     <Icon name="trash" size="sm" />
                   </button>
@@ -472,7 +472,7 @@ export default function OrderForm({
             type="button"
             onClick={addLine}
             disabled={!packaging || packaging.price_toman === null}
-            className="inline-flex items-center justify-center gap-[var(--space-2)] rounded-[var(--radius-md)] border border-[var(--border-strong)] px-[var(--space-4)] py-[var(--space-2)] text-[length:var(--text-sm)] text-[var(--text)] transition-colors duration-[var(--dur-base)] hover:border-[var(--accent)] hover:text-[var(--accent)] disabled:opacity-40"
+            className="inline-flex items-center justify-center gap-[var(--space-2)] rounded-[var(--radius-md)] border border-[var(--border-strong)] px-[var(--space-4)] py-[var(--space-2)] text-[length:var(--text-sm)] text-[var(--foreground)] transition-colors duration-[var(--dur-base)] hover:border-[var(--accent)] hover:text-[var(--accent)] disabled:opacity-40"
           >
             <Icon name="plus" size="sm" />
             افزودن قلم
@@ -485,15 +485,15 @@ export default function OrderForm({
       )}
 
       {onboardingGaps.length > 0 && customer && (
-        <p className="m-0 rounded-[var(--radius-md)] border border-[var(--warn)] p-[var(--space-3)] text-[length:var(--text-sm)] leading-6 text-[var(--warn)]">
+        <p className="m-0 rounded-[var(--radius-md)] border border-[var(--warning)] p-[var(--space-3)] text-[length:var(--text-sm)] leading-6 text-[var(--warning)]">
           مشتری تازه: {onboardingGaps.join("، ")} هنوز ثبت نشده. سفارش ثبت می‌شود؛ پیش از نخستین تحویل{" "}
           <Link href={`/crm/${customer.id}`} className="underline">پروندهٔ مشتری</Link> را کامل کنید.
         </p>
       )}
 
       {dupe && (
-        <div role="alert" className="flex flex-col gap-[var(--space-3)] rounded-[var(--radius-md)] border border-[var(--warn)] p-[var(--space-3)]">
-          <p className="m-0 text-[length:var(--text-sm)] leading-6 text-[var(--warn)]">
+        <div role="alert" className="flex flex-col gap-[var(--space-3)] rounded-[var(--radius-md)] border border-[var(--warning)] p-[var(--space-3)]">
+          <p className="m-0 text-[length:var(--text-sm)] leading-6 text-[var(--warning)]">
             این مشتری سفارش باز {dupe.order_no} را با همین کالاها در ۲۴ ساعت گذشته دارد. شاید دوباره ثبت شده باشد.
           </p>
           <div className="flex flex-wrap gap-[var(--space-2)]">
@@ -510,19 +510,19 @@ export default function OrderForm({
       )}
 
       {overLimit && customer?.credit_limit_toman != null && (
-        <p className="m-0 rounded-[var(--radius-md)] border border-[var(--warn)] p-[var(--space-3)] text-[length:var(--text-sm)] leading-6 text-[var(--warn)]">
+        <p className="m-0 rounded-[var(--radius-md)] border border-[var(--warning)] p-[var(--space-3)] text-[length:var(--text-sm)] leading-6 text-[var(--warning)]">
           با این سفارش، بدهی {customer.business_name} به {faToman(projectedDebt)} می‌رسد و از
           سقف {faToman(customer.credit_limit_toman)} بیشتر می‌شود. ثبت آن آزاد است، اما به
           نام شما ثبت می‌شود.
         </p>
       )}
 
-      <div data-has-primary-bar className="sticky bottom-[calc(56px+env(safe-area-inset-bottom))] md:bottom-0 flex items-center justify-between gap-[var(--space-3)] rounded-[var(--radius-lg)] border border-[var(--border-strong)] bg-[var(--surface-2)] p-[var(--space-4)]">
+      <div data-has-primary-bar className="sticky bottom-[calc(56px+env(safe-area-inset-bottom))] md:bottom-0 flex items-center justify-between gap-[var(--space-3)] rounded-[var(--radius-lg)] border border-[var(--border-strong)] bg-[var(--surface-secondary)] p-[var(--space-4)]">
         <div>
-          <strong className="block text-[length:var(--text-lg)] font-medium tabular-nums text-[var(--text)]">
+          <strong className="block text-[length:var(--text-lg)] font-medium tabular-nums text-[var(--foreground)]">
             {faToman(total)}
           </strong>
-          <span className="text-[length:var(--text-xs)] tabular-nums text-[var(--text-muted)]">
+          <span className="text-[length:var(--text-xs)] tabular-nums text-[var(--muted)]">
             {faNum(resolved.length)} قلم · {faNum(totalKg)} کیلو
           </span>
         </div>

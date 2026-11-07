@@ -59,7 +59,7 @@ export default function HoldButton({
       type="button"
       disabled={disabled}
       aria-label={typeof children === "string" ? `${children} (نگه دارید)` : undefined}
-      className="touch relative inline-flex min-h-[52px] w-full select-none items-center justify-center gap-[var(--space-2)] rounded-[var(--radius-md)] border border-[var(--crit)] px-[var(--space-4)] text-[length:var(--text-sm)] font-medium text-[var(--crit)] disabled:opacity-50"
+      className="touch relative inline-flex min-h-[52px] w-full select-none items-center justify-center gap-[var(--space-2)] rounded-[var(--radius-md)] border border-[var(--danger)] px-[var(--space-4)] text-[length:var(--text-sm)] font-medium text-[var(--danger)] disabled:opacity-50"
       style={{ touchAction: "none" }}
       onPointerDown={begin}
       onPointerUp={stop}
@@ -89,7 +89,7 @@ export default function HoldButton({
       </ProgressCircle>
       )}
       <span>{children}</span>
-      <span className="text-[length:var(--text-xs)] text-[var(--text-muted)]">نگه دارید</span>
+      <span className="text-[length:var(--text-xs)] text-[var(--muted)]">نگه دارید</span>
     </button>
   );
 }

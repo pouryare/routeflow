@@ -116,13 +116,13 @@ export default function NotificationBell({
           data-fly-target="bell"
           className={
             inHeader
-              ? "relative rounded-full text-[var(--muted)] hover:text-[var(--ink)]"
+              ? "relative rounded-full text-[var(--muted)] hover:text-[var(--foreground)]"
               : "relative rounded-full border border-[var(--border)] bg-[var(--surface)] shadow-[var(--elev-2)]"
           }
         >
           <Icon name="bell" size={inHeader ? "md" : "lg"} className={swing ? "bell-swing" : undefined} />
           {shown > 0 && (
-            <span ref={badge} className="absolute top-0 right-0 grid min-w-[1.15rem] place-items-center rounded-full bg-[var(--accent)] px-1 text-[length:var(--text-xs)] font-bold text-[var(--accent-ink)]">
+            <span ref={badge} className="absolute top-0 right-0 grid min-w-[1.15rem] place-items-center rounded-full bg-[var(--accent)] px-1 text-[length:var(--text-xs)] font-bold text-[var(--accent-foreground)]">
               {shown > 9 ? "۹+" : faNum(shown)}
             </span>
           )}

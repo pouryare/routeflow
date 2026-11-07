@@ -239,7 +239,7 @@ export default function CostToServePanel({
                     {hasCost && (
                       <td
                         className="px-3 py-2 font-mono tabular-nums"
-                        style={{ color: r.margin !== null && r.margin < 0 ? "var(--crit)" : "var(--text-muted)" }}
+                        style={{ color: r.margin !== null && r.margin < 0 ? "var(--danger)" : "var(--muted)" }}
                       >
                         {r.margin === null ? "—" : faNum(Math.round(r.margin))}
                       </td>

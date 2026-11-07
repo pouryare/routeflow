@@ -161,7 +161,7 @@ export default function RepDefinitions() {
             <Icon name="plus" size="md" />
             افزودن نماینده
           </button>
-          {error && <span className="text-[length:var(--text-xs)] text-[var(--crit)]">{error}</span>}
+          {error && <span className="text-[length:var(--text-xs)] text-[var(--danger)]">{error}</span>}
         </form>
       </section>
 
@@ -238,7 +238,7 @@ export default function RepDefinitions() {
           <ul className="flex flex-col gap-1">
             {steps.map((s) => (
               <li key={s.id} className="flex items-center gap-2 text-[length:var(--text-sm)]">
-                <span className={s.completed_at ? "text-[var(--good)]" : "text-text-muted"}>
+                <span className={s.completed_at ? "text-[var(--success)]" : "text-text-muted"}>
                   <Icon name={s.completed_at ? "check" : "dot"} size="sm" />
                 </span>
                 <span className={s.completed_at ? "text-text-muted line-through" : "text-text"}>

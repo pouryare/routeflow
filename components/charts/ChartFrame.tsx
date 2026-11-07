@@ -47,16 +47,16 @@ export default function ChartFrame({
   return (
     <figure className="card m-0 p-[var(--space-4)]">
       <figcaption className="mb-[var(--space-3)]">
-        <h3 className="m-0 text-[length:var(--text-base)] font-medium text-[var(--text)]">{title}</h3>
+        <h3 className="m-0 text-[length:var(--text-base)] font-medium text-[var(--foreground)]">{title}</h3>
         {subtitle && (
-          <p className="m-0 mt-[var(--space-1)] text-[length:var(--text-xs)] text-[var(--text-muted)]">
+          <p className="m-0 mt-[var(--space-1)] text-[length:var(--text-xs)] text-[var(--muted)]">
             {subtitle}
           </p>
         )}
       </figcaption>
 
       {isEmpty ? (
-        <p className="my-[var(--space-6)] text-center text-[length:var(--text-sm)] text-[var(--text-muted)]">
+        <p className="my-[var(--space-6)] text-center text-[length:var(--text-sm)] text-[var(--muted)]">
           {empty ?? "هنوز داده‌ای ثبت نشده است"}
         </p>
       ) : (
@@ -74,8 +74,8 @@ export default function ChartFrame({
                     className="inline-block h-[10px] w-[10px] shrink-0 rounded-[3px]"
                     style={{ background: entry.color }}
                   />
-                  <span className="text-[var(--text-muted)]">{entry.label}</span>
-                  {entry.value && <span className="text-[var(--text-muted)]">{entry.value}</span>}
+                  <span className="text-[var(--muted)]">{entry.label}</span>
+                  {entry.value && <span className="text-[var(--muted)]">{entry.value}</span>}
                 </li>
               ))}
             </ul>
@@ -83,12 +83,12 @@ export default function ChartFrame({
 
           {rows && rows.length > 0 && (
             <details className="mt-[var(--space-3)]">
-              <summary className="cursor-pointer text-[length:var(--text-xs)] text-[var(--text-muted)] hover:text-[var(--text)]">
+              <summary className="cursor-pointer text-[length:var(--text-xs)] text-[var(--muted)] hover:text-[var(--foreground)]">
                 جدول داده‌ها
               </summary>
               <CardTable className="mt-[var(--space-2)] w-full border-collapse text-[length:var(--text-xs)]">
                 <thead>
-                  <tr className="text-[var(--text-muted)]">
+                  <tr className="text-[var(--muted)]">
                     <th className="border-b border-[var(--border)] py-[var(--space-1)] text-right font-medium">
                       عنوان
                     </th>
@@ -100,10 +100,10 @@ export default function ChartFrame({
                 <tbody>
                   {rows.map((r) => (
                     <tr key={r.label}>
-                      <td className="border-b border-[var(--border)] py-[var(--space-1)] text-[var(--text-muted)]">
+                      <td className="border-b border-[var(--border)] py-[var(--space-1)] text-[var(--muted)]">
                         {r.label}
                       </td>
-                      <td className="border-b border-[var(--border)] py-[var(--space-1)] text-left tabular-nums text-[var(--text)]">
+                      <td className="border-b border-[var(--border)] py-[var(--space-1)] text-left tabular-nums text-[var(--foreground)]">
                         {typeof r.value === "number" ? faNum(r.value) : r.value}
                       </td>
                     </tr>

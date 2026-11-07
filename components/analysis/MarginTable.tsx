@@ -91,7 +91,7 @@ export default function MarginTable({ period }: { period: string }) {
               className="cursor-pointer rounded-[var(--radius-sm)] border px-[var(--space-2)] py-[2px] touch text-[length:var(--text-xs)]"
               style={{
                 borderColor: dim === d.key ? "var(--accent)" : "var(--border)",
-                color: dim === d.key ? "var(--accent)" : "var(--text-muted)",
+                color: dim === d.key ? "var(--accent)" : "var(--muted)",
               }}
             >
               <Icon name="chart" size="sm" />
@@ -102,10 +102,10 @@ export default function MarginTable({ period }: { period: string }) {
         <CardHelp id="card.margin" />
       </div>
 
-      {err && <p className="text-[length:var(--text-sm)] text-[var(--crit)]">{err}</p>}
+      {err && <p className="text-[length:var(--text-sm)] text-[var(--danger)]">{err}</p>}
       {!err && rows === null && <p className="text-[length:var(--text-sm)] text-[var(--text-faint)]">…</p>}
       {rows && rows.length === 0 && (
-        <p className="text-[length:var(--text-sm)] text-[var(--text-muted)]">داده‌ای برای این دوره نیست.</p>
+        <p className="text-[length:var(--text-sm)] text-[var(--muted)]">داده‌ای برای این دوره نیست.</p>
       )}
       {rows && rows.length > 0 && (
         <div className="kblock__body overflow-x-auto">
@@ -119,8 +119,8 @@ export default function MarginTable({ period }: { period: string }) {
                 <tr key={r.key}>
                   <td>{r.label}</td>
                   <td className="tabular-nums">{fa(r.revenue_toman)}</td>
-                  <td className="tabular-nums" style={{ color: r.margin_toman < 0 ? "var(--crit)" : undefined }}>{fa(r.margin_toman)}</td>
-                  <td className="tabular-nums" style={{ color: r.margin_pct < 0.1 ? "var(--warn)" : undefined }}>
+                  <td className="tabular-nums" style={{ color: r.margin_toman < 0 ? "var(--danger)" : undefined }}>{fa(r.margin_toman)}</td>
+                  <td className="tabular-nums" style={{ color: r.margin_pct < 0.1 ? "var(--warning)" : undefined }}>
                     {Math.round(r.margin_pct * 100).toLocaleString("fa-IR")}٪
                   </td>
                   <td className="tabular-nums">{Math.round(r.share_pct * 100).toLocaleString("fa-IR")}٪</td>
@@ -143,10 +143,10 @@ export default function MarginTable({ period }: { period: string }) {
                     <Table.Row key={r.key} id={r.key}>
                       <Table.Cell>{r.label}</Table.Cell>
                       <Table.Cell className="tabular-nums">{fa(r.revenue_toman)}</Table.Cell>
-                      <Table.Cell className="tabular-nums" style={{ color: r.margin_toman < 0 ? "var(--crit)" : undefined }}>
+                      <Table.Cell className="tabular-nums" style={{ color: r.margin_toman < 0 ? "var(--danger)" : undefined }}>
                         {fa(r.margin_toman)}
                       </Table.Cell>
-                      <Table.Cell className="tabular-nums" style={{ color: r.margin_pct < 0.1 ? "var(--warn)" : undefined }}>
+                      <Table.Cell className="tabular-nums" style={{ color: r.margin_pct < 0.1 ? "var(--warning)" : undefined }}>
                         {Math.round(r.margin_pct * 100).toLocaleString("fa-IR")}٪
                       </Table.Cell>
                       <Table.Cell className="tabular-nums">{Math.round(r.share_pct * 100).toLocaleString("fa-IR")}٪</Table.Cell>
@@ -160,7 +160,7 @@ export default function MarginTable({ period }: { period: string }) {
             <button
               type="button"
               onClick={() => setExpandedDim(dim)}
-              className="mt-[var(--space-2)] cursor-pointer rounded-[var(--radius-sm)] border border-[var(--border)] px-[var(--space-2)] py-[2px] touch text-[length:var(--text-xs)] text-[var(--text-muted)]"
+              className="mt-[var(--space-2)] cursor-pointer rounded-[var(--radius-sm)] border border-[var(--border)] px-[var(--space-2)] py-[2px] touch text-[length:var(--text-xs)] text-[var(--muted)]"
             >
               <Icon name="chevron-down" size="sm" />
               نمایش {fa(hidden)} ردیف دیگر

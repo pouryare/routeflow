@@ -151,11 +151,11 @@ export default function DecodeConsole({
 
       {finished && (
         <div className="mt-2 flex flex-wrap items-center gap-2 text-[length:var(--text-sm)]">
-          <span className="flex items-center gap-1 text-[color:var(--good)]">
+          <span className="flex items-center gap-1 text-[color:var(--success)]">
             <Icon name="check" size="sm" /> {faNum(snapshot.added_count)} مکان اضافه شد
           </span>
           {snapshot.unresolved_count > 0 && (
-            <span className="text-[color:var(--warn)]">
+            <span className="text-[color:var(--warning)]">
               {faNum(snapshot.unresolved_count)} نیاز به بررسی دارد
             </span>
           )}

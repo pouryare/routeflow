@@ -28,11 +28,11 @@ export default async function RepDetail({ params }: { params: Promise<{ id: stri
     <div className="kblock flex flex-col gap-[var(--space-4)] p-[var(--space-4)]" dir="rtl">
       <Icon name="arrow-right" size="sm" />
       <div>
-        <Link href="/sales/reps" className="text-[length:var(--text-sm)] text-[var(--text-muted)] no-underline">
+        <Link href="/sales/reps" className="text-[length:var(--text-sm)] text-[var(--muted)] no-underline">
           ← همه نمایندگان
         </Link>
         <h2 className="sechead__title mt-[var(--space-1)]">{rep.rep_code}</h2>
-        <p className="m-0 text-[length:var(--text-sm)] text-[var(--text-muted)]">
+        <p className="m-0 text-[length:var(--text-sm)] text-[var(--muted)]">
           مرحله: {REP_STAGE_LABEL[rep.stage as RepStage] ?? "نامشخص"} · سلامت {faNum(health.score)} (
           {REP_HEALTH_BAND_FA[health.band]})
         </p>
@@ -48,7 +48,7 @@ export default async function RepDetail({ params }: { params: Promise<{ id: stri
         ).map(([label, v]) => (
           <div key={label} className="rounded-[var(--radius-md)] border border-[var(--border)] p-[var(--space-2)]">
             <div className="text-[length:var(--text-lg)] font-medium tabular-nums">{faNum(v)}</div>
-            <div className="text-[length:var(--text-xs)] text-[var(--text-muted)]">{label}</div>
+            <div className="text-[length:var(--text-xs)] text-[var(--muted)]">{label}</div>
           </div>
         ))}
       </section>
@@ -58,7 +58,7 @@ export default async function RepDetail({ params }: { params: Promise<{ id: stri
         <ul className="m-0 list-none p-0 text-[length:var(--text-sm)]">
           {steps.map((s) => (
             <li key={s.id} className="flex items-center justify-between border-b border-[var(--border)] py-[var(--space-1)]">
-              <span className={s.completed_at ? "text-[var(--text-muted)] line-through" : "text-[var(--text)]"}>
+              <span className={s.completed_at ? "text-[var(--muted)] line-through" : "text-[var(--foreground)]"}>
                 {s.label_fa}
               </span>
               <span className="text-[length:var(--text-xs)] text-[var(--text-faint)]">

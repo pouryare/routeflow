@@ -37,7 +37,7 @@ export default function OrderPriorityToggle({ orderId, priority }: { orderId: nu
       disabled={pending}
       aria-pressed={urgent}
       className="inline-flex min-h-[44px] items-center justify-center gap-[var(--space-2)] rounded-[var(--radius-md)] border px-[var(--space-4)] text-[length:var(--text-sm)] disabled:opacity-50"
-      style={{ borderColor: urgent ? "var(--crit)" : "var(--border)", color: urgent ? "var(--crit)" : "var(--text-muted)" }}
+      style={{ borderColor: urgent ? "var(--danger)" : "var(--border)", color: urgent ? "var(--danger)" : "var(--muted)" }}
     >
       <Icon name="flag" size="sm" />
       {urgent ? `${priorityLabel("URGENT")} · برگرداندن به عادی` : "فوری کن"}

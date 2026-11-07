@@ -22,7 +22,7 @@ export default async function UpdatesPage() {
       <div className="flex flex-col gap-[var(--space-4)]">
         {hasSyncClient(session.role) ? <SafeRefresh /> : null}
         {entries.length === 0 ? (
-          <p className="text-[length:var(--text-sm)] text-[var(--text-muted)]">هنوز تغییری برای نقش شما ثبت نشده است.</p>
+          <p className="text-[length:var(--text-sm)] text-[var(--muted)]">هنوز تغییری برای نقش شما ثبت نشده است.</p>
         ) : (
           entries.map((e) => (
             <section key={e.version} className="card p-[var(--space-4)]">

@@ -110,3 +110,6 @@ graphify-out/
 # Release tarballs (scripts/release/pack.sh) and the Node download cache
 /dist/
 /.cache/
+
+# Running to-do report: kept on the owner's machine and in chat, not in git (2026-11-07)
+/TODO-REPORT.md

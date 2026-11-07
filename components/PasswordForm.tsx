@@ -96,12 +96,12 @@ export default function PasswordForm({
       />
       {password && <PasswordMeter password={password} />}
       <PasswordInput label="تکرار رمز" autoComplete="new-password" value={repeat} onChange={setRepeat} />
-      {mismatch && <p className="mb-[var(--space-3)] text-[length:var(--text-sm)] text-[var(--warn)]">دو رمز یکی نیستند.</p>}
-      {error && <p role="alert" className="mb-[var(--space-3)] text-[length:var(--text-sm)] text-[var(--crit)]">{error}</p>}
+      {mismatch && <p className="mb-[var(--space-3)] text-[length:var(--text-sm)] text-[var(--warning)]">دو رمز یکی نیستند.</p>}
+      {error && <p role="alert" className="mb-[var(--space-3)] text-[length:var(--text-sm)] text-[var(--danger)]">{error}</p>}
       <button
         type="submit"
         disabled={blocked}
-        className="inline-flex min-h-11 w-full items-center justify-center gap-[var(--space-2)] rounded-[var(--radius-md)] border border-[var(--accent)] bg-[var(--accent)] py-[var(--space-2)] font-medium text-[var(--accent-ink)] disabled:cursor-not-allowed disabled:opacity-40"
+        className="inline-flex min-h-11 w-full items-center justify-center gap-[var(--space-2)] rounded-[var(--radius-md)] border border-[var(--accent)] bg-[var(--accent)] py-[var(--space-2)] font-medium text-[var(--accent-foreground)] disabled:cursor-not-allowed disabled:opacity-40"
       >
         <Icon name="save" size="md" />
         {saving ? "در حال ذخیره…" : submitLabel}

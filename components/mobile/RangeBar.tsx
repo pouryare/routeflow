@@ -38,9 +38,9 @@ export default function RangeBar({
       onChangeEnd={(v) => onCommit(v as [number, number])}
       className="w-full"
     >
-      <div className={`${bars ? "mb-[40px]" : "mb-[var(--space-1)]"} flex items-center justify-between gap-[var(--space-2)] text-[length:var(--text-xs)] text-[var(--text-muted)]`}>
+      <div className={`${bars ? "mb-[40px]" : "mb-[var(--space-1)]"} flex items-center justify-between gap-[var(--space-2)] text-[length:var(--text-xs)] text-[var(--muted)]`}>
         <span>{label}</span>
-        <span className="tabular-nums text-[var(--text)]">
+        <span className="tabular-nums text-[var(--foreground)]">
           {format(value[0])} تا {format(value[1])}
         </span>
       </div>
