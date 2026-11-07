@@ -103,6 +103,30 @@ Pi (and its address, user and folder), and an optional GitHub public key. It end
 answers are saved in `/etc/routeflow/routeflow.conf` (the password is not), so running it again offers
 them as the defaults.
 
+What it does around the questions (all in `deploy/routeflow`):
+
+- **One command.** Put `install.sh`, the tarball and its `.sha256` (all three are in the release, or in the
+  zip of a manual Release run) in one folder on the server and run `sudo bash install.sh`. It checks the
+  checksum first, then unpacks and starts the questions.
+- **Answers are checked as typed** (domain, username, SSH key, Pi address; the Pi must answer on port 22
+  or you confirm). At the summary, type a number to change that answer.
+- **A pause for the Arvan panel**: the A record with the cloud ON and the SSL mode, before it starts.
+- **It runs in the background** (a systemd unit). Closing the window or losing the connection does not stop
+  it; `sudo tail -f /var/log/routeflow-install.log` shows it again. The first login is kept in a root-only
+  file and shown by `sudo routeflow first-login` (once). If you lose it: `sudo routeflow reset-login <user>`.
+- **A progress bar**: `[████░░░░░░] 4/11 Firewall`, the time each step took, and at the end a green/red
+  final check (app, address, HTTPS through Arvan, backup, Pi) with what to do about each red line, then the
+  next steps in order and a QR code for the address.
+- **Run it again safely.** A re-run first copies the settings to `/var/backups/routeflow-config-*.tar.gz`
+  (put back with `sudo tar -xzf <file> -C /`) and, when the app is already live, takes a backup. Only the
+  package download is skipped the second time (`ROUTEFLOW_FRESH=1` repeats it). It is not an automatic undo.
+- `sudo routeflow install --check` asks the questions and runs only the checks, then lists what a real run
+  would do. Nothing changes.
+- `sudo routeflow support-file` makes one file with the doctor output, logs and settings, passwords and
+  tokens hidden, to send for help. `sudo routeflow uninstall` removes the app, services and Caddy site and
+  keeps the database, backups, photos and secrets.
+- After an upgrade, the line `0.2.0 is live (was 0.1.0). Migrations applied: N (names)`.
+
 For a script, skip the questions with `--yes` and pass the answers as variables:
 
 ```sh
