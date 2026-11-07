@@ -5,6 +5,9 @@ import { getSessionFromCookies } from "@/lib/session";
 import PageHeader from "@/components/meridian/PageHeader";
 import RatingTagsSettings from "@/components/settings/RatingTagsSettings";
 import { ratingTagsFor } from "@/lib/repo/ratingTags";
+import { pageMetadata } from "@/lib/pageMeta";
+
+export const metadata = pageMetadata("/sales/admin/rating-tags");
 
 export const dynamic = "force-dynamic";
 

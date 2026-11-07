@@ -10,6 +10,9 @@ import { homePathFor, isShareholder } from "@/lib/roles";
 import { myShareOf, shareholderOfUserIn } from "@/lib/repo/routeAdapters";
 import { faJalaliDate, todayJalali } from "@/lib/jalali";
 import { faNum, faToman } from "@/lib/format";
+import { pageMetadata } from "@/lib/pageMeta";
+
+export const metadata = pageMetadata("/my-share");
 
 export const dynamic = "force-dynamic";
 

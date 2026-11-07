@@ -10,7 +10,10 @@ import { faNum } from "@/lib/format";
 import { Icon } from "@/components/meridian/Icon";
 
 import { MANAGE_ROLES } from "@/lib/roles";
+import { pageMetadata } from "@/lib/pageMeta";
 export const dynamic = "force-dynamic";
+
+export const metadata = pageMetadata("/sales/reps");
 
 export default async function RepDetail({ params }: { params: Promise<{ id: string }> }) {
   const jar = await cookies();

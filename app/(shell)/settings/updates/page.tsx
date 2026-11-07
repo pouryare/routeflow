@@ -7,6 +7,9 @@ import { notesFor } from "@/lib/whatsNew";
 import { faJalaliDate } from "@/lib/jalali";
 import SafeRefresh from "@/components/meridian/SafeRefresh";
 import { hasSyncClient } from "@/lib/roles";
+import { pageMetadata } from "@/lib/pageMeta";
+
+export const metadata = pageMetadata("/settings/updates");
 
 export const dynamic = "force-dynamic";
 

@@ -15,6 +15,9 @@ import { taskPushMinutes } from "@/lib/repo/taskPush";
 import { documentSettingsFor } from "@/lib/repo/documentSettings";
 import { accessReview } from "@/lib/accessReview";
 import { accessUsers, recentImpersonations } from "@/lib/repo/accessReview";
+import { pageMetadata } from "@/lib/pageMeta";
+
+export const metadata = pageMetadata("/sales/admin/status");
 
 export const dynamic = "force-dynamic";
 

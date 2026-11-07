@@ -13,6 +13,10 @@ import { roleLabel } from "@/lib/roles";
 import RolePicker from "@/components/today/RolePicker";
 import NotificationBell from "@/components/NotificationBell";
 
+import type { Metadata } from "next";
+
+export const metadata: Metadata = { title: "امروز" };
+
 export const dynamic = "force-dynamic";
 
 /** Where a person starts their day.

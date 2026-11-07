@@ -30,6 +30,9 @@ import WhatsNewCard from "@/components/today/WhatsNewCard";
 import FirstStepsCard from "@/components/tutorials/FirstStepsCard";
 import MoneyTiles from "@/components/today/MoneyTiles";
 import { moneyTilesFor } from "@/lib/repo/moneyTiles";
+import { pageMetadata } from "@/lib/pageMeta";
+
+export const metadata = pageMetadata("/sales/today");
 
 
 export const dynamic = "force-dynamic";

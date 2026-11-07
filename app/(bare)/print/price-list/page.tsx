@@ -10,6 +10,10 @@ import { faJalaliDate, tehranTodayIso } from "@/lib/jalali";
 import { faNum } from "@/lib/format";
 import PrintButton from "@/components/PrintButton";
 
+import type { Metadata } from "next";
+
+export const metadata: Metadata = { title: "فهرست قیمت" };
+
 export const dynamic = "force-dynamic";
 
 /** F23: today's price list as a sheet to print or save as PDF and send to a customer. Prices

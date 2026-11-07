@@ -4,6 +4,9 @@ import { COOKIE_NAME } from "@/lib/auth";
 import { getSessionFromCookies, orgScopeId } from "@/lib/session";
 import PageHeader from "@/components/meridian/PageHeader";
 import StoragePanel from "@/components/storage/StoragePanel";
+import { pageMetadata } from "@/lib/pageMeta";
+
+export const metadata = pageMetadata("/sales/admin/storage");
 
 export const dynamic = "force-dynamic";
 

@@ -12,6 +12,9 @@ import Avatar from "@/components/meridian/Avatar";
 import EarnerCard from "@/components/meridian/EarnerCard";
 import PageHeader from "@/components/meridian/PageHeader";
 import { isVanRole, isOwner } from "@/lib/roles";
+import { pageMetadata } from "@/lib/pageMeta";
+
+export const metadata = pageMetadata("/sales/commission");
 
 
 export const dynamic = "force-dynamic";

@@ -1,7 +1,9 @@
 import { Suspense, type ReactNode } from "react";
 import PageHeader from "@/components/meridian/PageHeader";
 import PageHeaderCard from "@/components/meridian/PageHeaderCard";
-import { pageMetaFor } from "@/lib/pageMeta";
+import { pageMetaFor, pageMetadata } from "@/lib/pageMeta";
+
+export const metadata = pageMetadata("/sales/admin/holidays");
 
 /** The page-overview card lives here rather than in page.tsx because the page is a client
  *  component and PageHeader is an async server one — a client file cannot import it, which

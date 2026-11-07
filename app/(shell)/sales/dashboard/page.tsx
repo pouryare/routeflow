@@ -26,6 +26,9 @@ import SectionSkeleton from "@/components/dashboard/SectionSkeleton";
 import { compactToman, EMPTY_CHART } from "@/components/dashboard/format";
 import { coverageAnalytics } from "@/lib/repo/coverageAnalytics";
 import { PIN_POOL_ROLES, isVanRole } from "@/lib/roles";
+import { pageMetadata } from "@/lib/pageMeta";
+
+export const metadata = pageMetadata("/sales/dashboard");
 
 
 export const dynamic = "force-dynamic";

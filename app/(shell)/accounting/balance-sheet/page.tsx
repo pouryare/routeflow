@@ -5,6 +5,9 @@ import AcctTable, { CELL, NUM, UnbalancedBanner } from "@/components/accounting/
 import { requireAccounting } from "@/lib/accountingGate";
 import { balanceSheet } from "@/lib/repo/reports";
 import { faNum } from "@/lib/format";
+import { pageMetadata } from "@/lib/pageMeta";
+
+export const metadata = pageMetadata("/accounting/balance-sheet");
 
 export const dynamic = "force-dynamic";
 

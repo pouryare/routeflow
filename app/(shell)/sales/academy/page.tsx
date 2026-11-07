@@ -7,6 +7,9 @@ import { listObjectionCards, academyManifest, lessonProgress, trainingStatus } f
 import AcademyPath from "@/components/sales/AcademyPath";
 import TrainingTable from "@/components/sales/TrainingTable";
 import PageHeader from "@/components/meridian/PageHeader";
+import { pageMetadata } from "@/lib/pageMeta";
+
+export const metadata = pageMetadata("/sales/academy");
 
 export const dynamic = "force-dynamic";
 

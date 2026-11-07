@@ -17,6 +17,9 @@ import { findDefaultFacilityId, onHandByProduct } from "@/lib/repo/stock";
 import Link from "next/link";
 import StockCountEntry from "@/components/flows/StockCountEntry";
 import ReceiveEntry from "@/components/flows/ReceiveEntry";
+import { pageMetadata } from "@/lib/pageMeta";
+
+export const metadata = pageMetadata("/sales/stock");
 
 export const dynamic = "force-dynamic";
 

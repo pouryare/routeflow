@@ -8,6 +8,9 @@ import { mapPageData } from "@/lib/repo/mapPageView";
 import { getSessionFromCookies } from "@/lib/session";
 import PageHeader from "@/components/meridian/PageHeader";
 import { isVanRole } from "@/lib/roles";
+import { pageMetadata } from "@/lib/pageMeta";
+
+export const metadata = pageMetadata("/map");
 
 // The map's opening data comes from the server, not from fetches fired after hydration.
 // SQLite is local and these reads are sub-millisecond, so paying for them inline is

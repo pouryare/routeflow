@@ -21,6 +21,9 @@ import { customerDebtsForOrg } from "@/lib/repo/payments";
 import PageHeader from "@/components/meridian/PageHeader";
 import { faJalaliDateTime } from "@/lib/jalali";
 import { isVanRole } from "@/lib/roles";
+import { pageMetadata } from "@/lib/pageMeta";
+
+export const metadata = pageMetadata("/report");
 
 export const dynamic = "force-dynamic";
 

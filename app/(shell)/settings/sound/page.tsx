@@ -9,6 +9,9 @@ import { effectsFor } from "@/lib/repo/effects";
 import { getPrefs } from "@/lib/repo/prefs";
 import { soundSkinFor } from "@/lib/repo/soundSkin";
 import { isOwner } from "@/lib/roles";
+import { pageMetadata } from "@/lib/pageMeta";
+
+export const metadata = pageMetadata("/settings/sound");
 
 export const dynamic = "force-dynamic";
 

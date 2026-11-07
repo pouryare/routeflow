@@ -9,6 +9,9 @@ import { faNum } from "@/lib/format";
 import ReceiptButton from "@/components/accounting/ReceiptButton";
 import { journalsWithReceipt } from "@/lib/repo/expenseReceipts";
 import { pagingFor, requestedPage } from "@/lib/paging";
+import { pageMetadata } from "@/lib/pageMeta";
+
+export const metadata = pageMetadata("/accounting/journal");
 
 export const dynamic = "force-dynamic";
 

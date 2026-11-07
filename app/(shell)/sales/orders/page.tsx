@@ -28,6 +28,9 @@ import { oneOf, one, type SearchParams } from "@/lib/viewParam";
 import { canSell, isVanRole } from "@/lib/roles";
 import OrderAmountFilter from "@/components/sales/OrderAmountFilter";
 import { boundsOf, inRange, parseRange } from "@/lib/rangeBar";
+import { pageMetadata } from "@/lib/pageMeta";
+
+export const metadata = pageMetadata("/sales/orders");
 
 export const dynamic = "force-dynamic";
 

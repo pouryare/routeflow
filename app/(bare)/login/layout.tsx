@@ -5,6 +5,10 @@ import { COOKIE_NAME } from "@/lib/auth";
 import { getSessionFromCookies } from "@/lib/session";
 import { homePathFor } from "@/lib/roles";
 
+import type { Metadata } from "next";
+
+export const metadata: Metadata = { title: "ورود" };
+
 /** Someone who is already signed in has no use for the sign-in form: send them to their home.
  *
  *  Decided on the DATABASE-checked session (`getSessionFromCookies`), not on a cookie that merely
