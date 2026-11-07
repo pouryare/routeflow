@@ -8,7 +8,8 @@
 #   sudo routeflow first-login | support-file                 # the first login again | one file to send for help
 #   sudo routeflow upgrade routeflow-0.2.0-linux-x64.tar.gz   # upgrade now (otherwise: tonight, below)
 #   sudo routeflow rollback | status | backup [full|diff|incr] | restore-drill | restore | logs
-#   sudo routeflow doctor | cdn-ips                           # checks any time | refresh Arvan's address list
+#   sudo routeflow doctor | install-report | check-pi         # checks any time | the final check again | the Pi link
+#   sudo routeflow cdn-ips [--open|--only]                    # refresh Arvan's address list | open the web ports | Arvan only
 #   sudo routeflow export [--anonymise] [--encrypt] [file] | import <file> | sql <fix.sql>
 #   sudo routeflow upgrade --check <tarball> | maintenance on|off | reset-login <user>
 #   sudo routeflow rebuild <secrets.tar.asc> [tarball]        # a new server from the secrets copy and the Pi
@@ -52,8 +53,26 @@ step() {
   local now; now=$(date +%s)
   if [ -n "$STEP_PREV" ]; then STEP_TIMES+=("$((now - STEP_T)) s  $STEP_PREV"); fi
   STEP_T=$now; STEP_PREV=$*
-  STEP_N=$((STEP_N + 1)); printf '== [%s] %s/%s %s\n' "$(progress_bar "$STEP_N" "$STEP_TOTAL")" "$STEP_N" "$STEP_TOTAL" "$*"
+  STEP_N=$((STEP_N + 1))
+  printf '== [%s] %s/%s %s%s\n' "$(progress_bar "$STEP_N" "$STEP_TOTAL")" "$STEP_N" "$STEP_TOTAL" "$*" "$(time_left "$now")"
 }
+# A rough guess, from how long the finished steps took against their usual share of the whole install.
+# shortcut: the shares are my estimate for a 4 GB VPS, not measured; re-weigh them after the first real run.
+STEP_WEIGHTS=(1 30 2 6 18 4 2 15 2 10 2)
+time_left() {
+  local now=$1 i done_w=0 total_w=0 elapsed left
+  [ -n "${INSTALL_T0:-}" ] || return 0
+  for ((i = 0; i < STEP_TOTAL; i++)); do
+    total_w=$((total_w + ${STEP_WEIGHTS[i]:-1}))
+    if ((i < STEP_N - 1)); then done_w=$((done_w + ${STEP_WEIGHTS[i]:-1})); fi
+  done
+  elapsed=$((now - INSTALL_T0))
+  [ "$done_w" -gt 0 ] && [ "$elapsed" -ge 20 ] || return 0
+  left=$(( elapsed * (total_w - done_w) / done_w ))
+  printf '  (about %s min left)' "$(( (left + 59) / 60 ))"
+}
+# 23: the terminal's title tells the state, so you can work in another window meanwhile.
+set_title() { if [ -w /dev/tty ]; then printf '\033]0;%s\007' "$1" >/dev/tty 2>/dev/null || true; fi; }
 step_times() {
   local now t; now=$(date +%s)
   [ -z "$STEP_PREV" ] || STEP_TIMES+=("$((now - STEP_T)) s  $STEP_PREV"); STEP_PREV=""
@@ -1116,6 +1135,13 @@ cmd_cdn_ips() {
   need_root cdn-ips
   load_conf
   local list n rule
+  if [ "${1:-}" = --open ]; then
+    ufw allow 80/tcp >/dev/null; ufw allow 443/tcp >/dev/null
+    sed -i 's/^CDN_ONLY=.*/CDN_ONLY=0/' "$CONF"
+    say "Web ports are open to everyone now and the weekly refresh leaves them so. Back to Arvan only: sudo routeflow cdn-ips --only"
+    return 0
+  fi
+  if [ "${1:-}" = --only ]; then sed -i 's/^CDN_ONLY=.*/CDN_ONLY=1/' "$CONF"; CDN_ONLY=1; fi
   if [ "${CDN_ONLY:-1}" = 0 ]; then
     ufw allow 80/tcp >/dev/null; ufw allow 443/tcp >/dev/null
     say "Web ports open to everyone (CDN_ONLY=0)"; return 0
@@ -1427,6 +1453,7 @@ detach_install() {
   touch "$log"
   say "Running in the background. Closing this window or losing the connection does not stop it."
   say "Watch again with: sudo tail -f $log      When it says Done: sudo routeflow first-login"
+  set_title "RouteFlow: installing..."
   tail -n 0 -F "$log" 2>/dev/null & tailpid=$!
   systemd-run --unit=routeflow-install --collect --wait --quiet \
     --setenv=ROUTEFLOW_YES=1 --setenv=ROUTEFLOW_DETACHED=1 \
@@ -1434,8 +1461,10 @@ detach_install() {
     bash "$self" install "$tarball" || true
   sleep 1; kill "$tailpid" 2>/dev/null || true
   if [ -f "$CONF_DIR/last-install-ok" ]; then
+    set_title "RouteFlow: install done"
     cmd_first_login || true
   else
+    set_title "RouteFlow: install FAILED"
     warn "the install did not finish; the last lines above say why. Run it again to continue, or: sudo routeflow support-file"
     return 1
   fi
@@ -1447,6 +1476,57 @@ cmd_first_login() {
   need_root first-login
   [ -s "$f" ] || die "no first login is waiting (it was already shown). To set a new password: sudo routeflow reset-login <username>"
   cat "$f"; rm -f "$f"
+}
+
+# Where the link to the backup machine (the Pi) stands: ok, network, nokey, key (not accepted), hostkey, folder.
+pi_state() {
+  local dir out
+  dir=$(getent passwd postgres | cut -d: -f6)/.ssh
+  reachable "$OFFSITE_HOST" || { echo network; return; }
+  [ -f "$dir/routeflow_backup" ] || { echo nokey; return; }
+  out=$(runuser -u postgres -- ssh -i "$dir/routeflow_backup" -o BatchMode=yes -o ConnectTimeout=10 -o StrictHostKeyChecking=accept-new \
+    "$OFFSITE_USER@$OFFSITE_HOST" "test -d '$OFFSITE_PATH' && touch '$OFFSITE_PATH/.rf-test' && rm -f '$OFFSITE_PATH/.rf-test' && echo RF_OK" 2>&1 || true)
+  case "$out" in
+    *RF_OK*) echo ok ;;
+    *"Permission denied"*) echo key ;;
+    *"Host key"*) echo hostkey ;;
+    *"timed out"* | *"Connection"* | *"No route"*) echo network ;;
+    *) echo folder ;;
+  esac
+}
+
+pi_state_text() {
+  case "$1" in
+    ok) echo "The Pi takes the backup key and the folder is writable." ;;
+    network) echo "The Pi does not answer on port 22 from here. Check its address, that it is on, and the router/firewall." ;;
+    nokey) echo "This server has no backup key yet. Run: sudo routeflow install" ;;
+    key) echo "The Pi did not accept the backup key. Paste the commands below on the Pi, then run check-pi again." ;;
+    hostkey) echo "The Pi's host key changed. If you reinstalled the Pi: sudo -u postgres ssh-keygen -R <its address>, then run check-pi again." ;;
+    folder) echo "The key works but the backup folder is missing or not writable. The commands below create it." ;;
+  esac
+}
+
+# 25: tries the Pi link and says which part is wrong.
+cmd_check_pi() {
+  need_root check-pi
+  load_conf
+  [ -n "${OFFSITE_HOST:-}" ] || die "no backup machine is set (OFFSITE_HOST in $CONF)"
+  local st dir
+  st=$(pi_state)
+  pi_state_text "$st"
+  if [ "$st" = key ] || [ "$st" = folder ]; then
+    dir=$(getent passwd postgres | cut -d: -f6)/.ssh
+    printf '\n%s\n' "$(pi_pair_command "$(cat "$dir/routeflow_backup.pub")" "$OFFSITE_USER" "$OFFSITE_PATH" "$DOMAIN")"
+  fi
+  [ "$st" = ok ]
+}
+
+# 24: only the final green/red check again, for after a fix in the Arvan panel or on the Pi.
+cmd_install_report() {
+  need_root install-report
+  load_conf
+  [ ! -f /var/lib/routeflow/backups/backup-status.json ] || BACKUP_OK=1
+  install_report
 }
 
 # Idea 10/6: a plain green/red list at the end, with what to do about each red line.
@@ -1470,10 +1550,9 @@ install_report() {
   if [ "${BACKUP_OK:-0}" = 1 ]; then ok "A backup was made and restored"; else bad "The backup self-test failed: journalctl -u 'routeflow-backup@*'"; fi
   if [ -z "${OFFSITE_HOST:-}" ]; then
     printf '  - Backups stay on this server only (no Pi chosen)\n'
-  elif [ -n "${PI_PAIRING:-}" ]; then
-    bad "The Pi $OFFSITE_HOST does not take the backup key yet: paste the commands above on the Pi, then run: sudo routeflow install"
   else
-    ok "Backups also go to $OFFSITE_HOST"
+    local pst; pst=$(pi_state)
+    if [ "$pst" = ok ]; then ok "Backups also go to $OFFSITE_HOST"; else bad "Pi $OFFSITE_HOST: $(pi_state_text "$pst") (test again: sudo routeflow check-pi)"; fi
   fi
 }
 
@@ -1680,6 +1759,7 @@ APT
   fi
   step_times
   install_next_steps
+  set_title "RouteFlow: install done"
   [ "${ROUTEFLOW_DETACHED:-0}" != 1 ] || date -Is > "$CONF_DIR/last-install-ok"
   trap - EXIT
 }
@@ -1710,7 +1790,7 @@ menu() {
   esac
 }
 
-usage() { sed -n '2,18p' "$0" | sed 's/^# \{0,1\}//'; }
+usage() { sed -n '2,19p' "$0" | sed 's/^# \{0,1\}//'; }
 
 main() {
   local cmd=${1:-}
@@ -1723,7 +1803,9 @@ main() {
     status) cmd_status ;;
     status-short) status_short ;;
     doctor) cmd_doctor ;;
-    cdn-ips) cmd_cdn_ips ;;
+    cdn-ips) cmd_cdn_ips "$@" ;;
+    check-pi) cmd_check_pi ;;
+    install-report) cmd_install_report ;;
     rebuild) cmd_rebuild "$@" ;;
     support-key) cmd_support_key "$@" ;;
     export) cmd_export "$@" ;;

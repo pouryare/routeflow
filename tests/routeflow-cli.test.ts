@@ -416,3 +416,30 @@ describe("install progress", () => {
     expect(r.out).toMatch(/0 s {2}One/);
   });
 });
+
+describe("after the install", () => {
+  it("guesses the time left from the finished steps, and says nothing too early", () => {
+    expect(run("INSTALL_T0=1000; STEP_TOTAL=11; STEP_N=3; time_left 1010").out).toBe("");
+    // 10 s of weight 1 + 30 done, 70 of 92 left: 3 min elapsed -> about 6 min left
+    const r = run("INSTALL_T0=1000; STEP_TOTAL=11; STEP_N=3; time_left 1180");
+    expect(r.out).toMatch(/about \d+ min left/);
+  });
+
+  it("explains each way the Pi link can fail", () => {
+    for (const st of ["ok", "network", "nokey", "key", "hostkey", "folder"]) {
+      expect(run(`pi_state_text ${st}`).out.length).toBeGreaterThan(10);
+    }
+  });
+
+  it("cdn-ips --open opens the ports and keeps them open on later refreshes", () => {
+    const conf = path.join(root, "conf");
+    fs.mkdirSync(conf);
+    fs.writeFileSync(path.join(conf, "routeflow.conf"), "DOMAIN=app.test\nCDN_ONLY=1\n");
+    const r = spawnSync("bash", ["-c", `. "${SCRIPT}"; need_root() { :; }; ufw() { echo "ufw $*" >> "${root}/ufw.log"; }; cmd_cdn_ips --open`], {
+      env: { ...process.env, ROUTEFLOW_ROOT: root, ROUTEFLOW_CONF_DIR: conf }, encoding: "utf8",
+    });
+    expect(r.status, r.stderr).toBe(0);
+    expect(fs.readFileSync(path.join(conf, "routeflow.conf"), "utf8")).toContain("CDN_ONLY=0");
+    expect(fs.readFileSync(path.join(root, "ufw.log"), "utf8")).toContain("ufw allow 443/tcp");
+  });
+});

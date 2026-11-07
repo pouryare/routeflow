@@ -125,6 +125,12 @@ What it does around the questions (all in `deploy/routeflow`):
 - `sudo routeflow support-file` makes one file with the doctor output, logs and settings, passwords and
   tokens hidden, to send for help. `sudo routeflow uninstall` removes the app, services and Caddy site and
   keeps the database, backups, photos and secrets.
+- **After the install:** `sudo routeflow install-report` repeats only the final check (after a fix in the
+  Arvan panel). `sudo routeflow check-pi` says which part of the Pi link fails (network, key, host key,
+  folder) and prints the commands to paste. `sudo routeflow cdn-ips --open` opens ports 80/443 to everyone
+  when Arvan-only locks you out (`--only` goes back). The progress line guesses the time left from usual
+  step lengths (an estimate; re-weighed after the first real run), and the terminal title shows installing,
+  done or FAILED.
 - After an upgrade, the line `0.2.0 is live (was 0.1.0). Migrations applied: N (names)`.
 
 For a script, skip the questions with `--yes` and pass the answers as variables:
