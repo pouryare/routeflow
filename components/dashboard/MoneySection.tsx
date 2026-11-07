@@ -26,16 +26,16 @@ export default async function MoneySection({ session, debt }: { session: Session
 
   return (
       <CollapsibleSection help="card.dash-money" title="بدهی و پورسانت" icon="wallet" storageKey="dash-money">
-        <p className="m-0 mb-[var(--space-3)] text-[length:var(--text-xs)] text-[var(--text-muted)]">
+        <p className="m-0 mb-[var(--space-3)] text-[length:var(--text-xs)] text-[var(--muted)]">
           مانده کل پورسانت -- فروشنده، راننده و مدیر گروه با هم -- {faToman(owedTotal)}.
         </p>
         <div className="grid gap-[var(--space-4)] md:grid-cols-2">
           <DonutChart
             title="سن بدهی"
             data={[
-              { label: "۰ تا ۷ روز", value: debt.d0_7, color: "var(--good)" },
-              { label: "۸ تا ۳۰ روز", value: debt.d8_30, color: "var(--warn)" },
-              { label: "بالای ۳۰ روز", value: debt.over_30, color: "var(--crit)" },
+              { label: "۰ تا ۷ روز", value: debt.d0_7, color: "var(--success)" },
+              { label: "۸ تا ۳۰ روز", value: debt.d8_30, color: "var(--warning)" },
+              { label: "بالای ۳۰ روز", value: debt.over_30, color: "var(--danger)" },
             ]}
             formatValue={faToman}
             centreLabel="تومان"

@@ -113,7 +113,7 @@ export default function BusinessProfile({ initial, initialTimeline, canOrder }: 
     {profile.onboarding?.isNew && profile.onboarding.missing.length > 0 && <section className="tile" aria-label="آماده‌سازی مشتری تازه"><h2>آماده‌سازی مشتری تازه</h2>
       <p>پیش از نخستین تحویل این‌ها را کامل کنید. سفارش بدون آن‌ها هم ثبت می‌شود.</p>
       <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 6 }}>
-        {profile.onboarding.items.map(i => <li key={i.key} style={{ display: "flex", gap: 8, alignItems: "center", color: i.done ? "var(--text-muted)" : "var(--warn)" }}>
+        {profile.onboarding.items.map(i => <li key={i.key} style={{ display: "flex", gap: 8, alignItems: "center", color: i.done ? "var(--muted)" : "var(--warning)" }}>
           <Icon name={i.done ? "check" : "warn"} size="sm" />{i.label}{i.done ? " · ثبت شده" : " · ثبت نشده"}</li>)}
       </ul>
     </section>}

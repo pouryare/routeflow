@@ -48,14 +48,14 @@ export default async function CommissionPage() {
     <>
     <PageHeader route="/sales/commission" />
     <div className="flex flex-col gap-[var(--space-5)]">
-      <p className="m-0 text-[length:var(--text-sm)] text-[var(--text-muted)]">
+      <p className="m-0 text-[length:var(--text-sm)] text-[var(--muted)]">
         دوره {faJalaliDate(period.from)} تا {faJalaliDate(period.to)} · پورسانت فروشنده و
         راننده روی وزن تحویل‌شده حساب می‌شود، نه سفارش‌شده.
       </p>
 
       {/* ---- فروشنده‌ها ---------------------------------------------------- */}
       {statements.length === 0 ? (
-        <p className="rounded-[var(--radius-lg)] border border-dashed border-[var(--border)] p-[var(--space-6)] text-center text-[length:var(--text-sm)] text-[var(--text-muted)]">
+        <p className="rounded-[var(--radius-lg)] border border-dashed border-[var(--border)] p-[var(--space-6)] text-center text-[length:var(--text-sm)] text-[var(--muted)]">
           هنوز فروشنده‌ای ثبت نشده است. فروشنده‌ها را از صفحهٔ «کاربران» اضافه کنید.
         </p>
       ) : (
@@ -126,13 +126,13 @@ export default async function CommissionPage() {
                   <small>تومان پورسانت</small>
                 </div>
 
-                <p className="m-0 text-[length:var(--text-xs)] text-[var(--text-muted)]">
+                <p className="m-0 text-[length:var(--text-xs)] text-[var(--muted)]">
                   گروه در این دوره {faToman(m.group_accrued_toman)} پورسانت فروشنده انباشته — سهم شما
                   {" "}{faNum(m.override_pct)}٪ آن است.
                 </p>
 
                 {m.deduction_toman > 0 && (
-                  <p className="m-0 text-[length:var(--text-xs)] text-[var(--text-muted)]">
+                  <p className="m-0 text-[length:var(--text-xs)] text-[var(--muted)]">
                     کسر تخفیف از سهم شما {faToman(m.deduction_toman)}
                     {m.carried_toman > 0 && ` · ${faToman(m.carried_toman)} به دورهٔ بعد می‌رود`}
                   </p>
@@ -163,7 +163,7 @@ export default async function CommissionPage() {
       {(rates.length > 0 || driverRates.length > 0 || managerOverrides.length > 0) && (
         <section className="card p-[var(--space-4)]">
           <h2 className="sechead__title">نرخ‌های پورسانت</h2>
-          <p className="mt-[var(--space-1)] text-[length:var(--text-xs)] text-[var(--text-muted)]">
+          <p className="mt-[var(--space-1)] text-[length:var(--text-xs)] text-[var(--muted)]">
             نرخ‌ها پاک نمی‌شوند. هر تغییر یک سطر تازه است.
           </p>
 
@@ -173,8 +173,8 @@ export default async function CommissionPage() {
               <ul className="mt-[var(--space-2)] flex list-none flex-col gap-[var(--space-2)] p-0 text-[length:var(--text-sm)]">
                 {rates.map((r) => (
                   <li key={r.id} className="flex flex-wrap items-baseline justify-between gap-[var(--space-2)] border-b border-[var(--border)] pb-[var(--space-2)]">
-                    <span className="text-[var(--text)]">{r.display_name ?? "همه فروشنده‌ها"}</span>
-                    <span className="tabular-nums text-[var(--text-muted)]">
+                    <span className="text-[var(--foreground)]">{r.display_name ?? "همه فروشنده‌ها"}</span>
+                    <span className="tabular-nums text-[var(--muted)]">
                       {faToman(r.rate_per_kg_toman)} در هر کیلو · از {faJalaliDate(r.valid_from)}
                     </span>
                   </li>
@@ -189,8 +189,8 @@ export default async function CommissionPage() {
               <ul className="mt-[var(--space-2)] flex list-none flex-col gap-[var(--space-2)] p-0 text-[length:var(--text-sm)]">
                 {driverRates.map((r) => (
                   <li key={r.id} className="flex flex-wrap items-baseline justify-between gap-[var(--space-2)] border-b border-[var(--border)] pb-[var(--space-2)]">
-                    <span className="text-[var(--text)]">{r.display_name ?? "همه راننده‌ها"}</span>
-                    <span className="tabular-nums text-[var(--text-muted)]">
+                    <span className="text-[var(--foreground)]">{r.display_name ?? "همه راننده‌ها"}</span>
+                    <span className="tabular-nums text-[var(--muted)]">
                       {faToman(r.rate_per_kg_toman)} در هر کیلو · از {faJalaliDate(r.valid_from)}
                     </span>
                   </li>
@@ -205,8 +205,8 @@ export default async function CommissionPage() {
               <ul className="mt-[var(--space-2)] flex list-none flex-col gap-[var(--space-2)] p-0 text-[length:var(--text-sm)]">
                 {managerOverrides.map((r) => (
                   <li key={r.id} className="flex flex-wrap items-baseline justify-between gap-[var(--space-2)] border-b border-[var(--border)] pb-[var(--space-2)]">
-                    <span className="text-[var(--text)]">{r.display_name ?? "همه مدیران"}</span>
-                    <span className="tabular-nums text-[var(--text-muted)]">
+                    <span className="text-[var(--foreground)]">{r.display_name ?? "همه مدیران"}</span>
+                    <span className="tabular-nums text-[var(--muted)]">
                       {faNum(r.override_pct)}٪ از فروش گروه · از {faJalaliDate(r.valid_from)}
                     </span>
                   </li>

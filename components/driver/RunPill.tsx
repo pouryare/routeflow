@@ -17,7 +17,7 @@ export default function RunPill({ pill, onOpen }: { pill: RunPillModel; onOpen: 
     >
       <Icon name="route" size="md" className="shrink-0 text-[var(--accent)]" />
       <span className="min-w-0 flex-1">
-        <span className="block truncate text-[length:var(--text-sm)] font-medium text-[var(--text)]">
+        <span className="block truncate text-[length:var(--text-sm)] font-medium text-[var(--foreground)]">
           توقف {faNum(pill.index)} از {faNum(pill.total)} · {pill.name}
         </span>
         <span className="runpill__bar mt-1 block h-[3px] overflow-hidden rounded-full bg-[var(--border)]">

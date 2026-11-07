@@ -37,7 +37,7 @@ export default async function ForecastPage() {
     <PageHeader route="/sales/forecast" />
     <div className="flex flex-col gap-[var(--space-4)]" dir="rtl">
       <div className="flex items-baseline justify-between">
-        <h1 className="text-[length:var(--text-lg)] font-bold text-[var(--text)]">پیش‌بینی</h1>
+        <h1 className="text-[length:var(--text-lg)] font-bold text-[var(--foreground)]">پیش‌بینی</h1>
         <div className="flex items-center gap-[var(--space-2)]">
           <span className="text-[length:var(--text-xs)] text-[var(--text-faint)]">
             {computedAt ? `عددها تا ${faJalaliDateTime(computedAt)}` : "هنوز محاسبه نشده"}

@@ -22,7 +22,7 @@ export default function HourPulse({ counts }: { counts: number[] }) {
     <figure className="card m-0 p-[var(--space-4)]">
       <figcaption>
         <h3 className="sechead__title m-0">ساعت‌های شلوغ</h3>
-        <p className="m-0 mt-[var(--space-1)] text-[length:var(--text-xs)] text-[var(--text-muted)]" aria-live="polite">
+        <p className="m-0 mt-[var(--space-1)] text-[length:var(--text-xs)] text-[var(--muted)]" aria-live="polite">
           {shown === null
             ? "هنوز سفارشی در ۳۰ روز گذشته ثبت نشده است"
             : `${faNum(shown)} تا ${faNum(shown + 1)} · ${faNum(counts[shown])} سفارش${pick === null ? " (شلوغ‌ترین ساعت)" : ""}`}

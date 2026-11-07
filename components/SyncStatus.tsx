@@ -164,17 +164,17 @@ export default function SyncStatus() {
           className="inline-block h-2 w-2 rounded-full"
           style={{ background: `var(--${badge.tone === "muted" ? "text-faint" : badge.tone})` }}
         />
-        <span className="text-[var(--text-muted)]">{badge.label}</span>
+        <span className="text-[var(--muted)]">{badge.label}</span>
       </button>
 
       {open && (
         <div className="mt-2 max-h-[60vh] w-[min(20rem,90vw)] overflow-auto rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] p-3 shadow-lg">
-          <p className="m-0 mb-2 text-[var(--text-muted)]">آخرین همگام‌سازی: {since(lastSynced)}</p>
+          <p className="m-0 mb-2 text-[var(--muted)]">آخرین همگام‌سازی: {since(lastSynced)}</p>
           {records.length === 0 && <p className="m-0 text-[var(--text-faint)]">صف خالی است</p>}
           <ul className="m-0 flex list-none flex-col gap-2 p-0">
             {records.map((r) => (
               <li key={r.id} className="flex items-center justify-between gap-2">
-                <span className="text-[var(--text)]">
+                <span className="text-[var(--foreground)]">
                   {OFFLINE_OPS[r.op]?.label_fa ?? "عملیات"}
                   <span className="block text-[var(--text-faint)]">
                     {OUTBOX_STATUS_LABEL[r.status] ?? "نامشخص"} · {new Date(r.occurred_at).toLocaleTimeString("fa-IR")}
@@ -192,7 +192,7 @@ export default function SyncStatus() {
                       <Icon name="send" size="md" />
                       ارسال دوباره
                     </button>
-                    <button type="button" onClick={() => void discard(r.id)} className="text-[var(--crit)]">
+                    <button type="button" onClick={() => void discard(r.id)} className="text-[var(--danger)]">
                       <Icon name="trash" size="md" />
                       حذف این ثبت
                     </button>

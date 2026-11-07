@@ -11,9 +11,9 @@ type Status = { enabled: boolean; pending: boolean; recoveryLeft: number };
 const BUTTON =
   "inline-flex min-h-[44px] items-center justify-center gap-[var(--space-2)] rounded-[var(--radius-md)] border border-[var(--accent)] bg-[var(--accent)] px-[var(--space-4)] text-[length:var(--text-sm)] font-medium text-accent-ink disabled:opacity-50";
 const GHOST =
-  "inline-flex min-h-[44px] items-center justify-center gap-[var(--space-2)] rounded-[var(--radius-md)] border border-[var(--border)] px-[var(--space-4)] text-[length:var(--text-sm)] text-[var(--text)] disabled:opacity-50";
+  "inline-flex min-h-[44px] items-center justify-center gap-[var(--space-2)] rounded-[var(--radius-md)] border border-[var(--border)] px-[var(--space-4)] text-[length:var(--text-sm)] text-[var(--foreground)] disabled:opacity-50";
 const INPUT =
-  "min-h-[44px] w-full rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] px-[var(--space-3)] text-center font-mono text-[length:var(--text-base)] tracking-[0.2em] text-[var(--text)]";
+  "min-h-[44px] w-full rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] px-[var(--space-3)] text-center font-mono text-[length:var(--text-base)] tracking-[0.2em] text-[var(--foreground)]";
 
 /** Your second sign-in step (an authenticator-app code on top of the password), also the code asked
  *  before sensitive actions (lib/stepUp.ts). Turning it off needs a current code, so a hijacked session
@@ -65,15 +65,15 @@ export default function SecondFactorSection() {
   return (
     <section className="mt-[var(--space-4)]" aria-label="ورود دومرحله‌ای">
       <SectionHead help="card.two-factor" title="ورود دومرحله‌ای" />
-      <p className="m-0 mt-[var(--space-1)] mb-[var(--space-2)] text-[length:var(--text-sm)] text-[var(--text-muted)]">
+      <p className="m-0 mt-[var(--space-1)] mb-[var(--space-2)] text-[length:var(--text-sm)] text-[var(--muted)]">
         {status.enabled
           ? `فعال است. هر ورود علاوه بر رمز، کد برنامهٔ احراز هویت می‌خواهد. کدهای بازیابی باقی‌مانده: ${status.recoveryLeft}`
           : "غیرفعال است. با فعال‌سازی، ورود و کارهای حساس (مثل تأیید تخفیف یا تغییر قیمت) کد برنامهٔ احراز هویت می‌خواهند."}
       </p>
 
       {recovery ? (
-        <div role="status" className="rounded-[var(--radius-md)] border border-[var(--warn)]/40 bg-[var(--warn)]/10 p-[var(--space-3)]">
-          <p className="m-0 mb-[var(--space-2)] text-[length:var(--text-sm)] text-[var(--warn)]">
+        <div role="status" className="rounded-[var(--radius-md)] border border-[var(--warning)]/40 bg-[var(--warning)]/10 p-[var(--space-3)]">
+          <p className="m-0 mb-[var(--space-2)] text-[length:var(--text-sm)] text-[var(--warning)]">
             این کدها فقط همین یک بار نمایش داده می‌شوند. جای امنی ذخیره‌شان کنید؛ هر کدام یک‌بار مصرف است.
           </p>
           <ul className="m-0 grid list-none grid-cols-2 gap-[var(--space-2)] p-0 font-mono text-[length:var(--text-base)]" dir="ltr">
@@ -88,7 +88,7 @@ export default function SecondFactorSection() {
         </div>
       ) : setup ? (
         <div className="flex flex-col gap-[var(--space-2)]">
-          <p className="m-0 text-[length:var(--text-sm)] text-[var(--text-muted)]">
+          <p className="m-0 text-[length:var(--text-sm)] text-[var(--muted)]">
             این کلید را در برنامهٔ احراز هویت (مثل Google Authenticator) وارد کنید، سپس کد ۶ رقمی را بنویسید.
           </p>
           <div dir="ltr" className="select-all break-all rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] p-[var(--space-3)] font-mono text-[length:var(--text-sm)]">
@@ -118,7 +118,7 @@ export default function SecondFactorSection() {
           فعال‌سازی
         </button>
       )}
-      {error ? <p className="mt-[var(--space-2)] text-[length:var(--text-sm)] text-[var(--crit)]">{error}</p> : null}
+      {error ? <p className="mt-[var(--space-2)] text-[length:var(--text-sm)] text-[var(--danger)]">{error}</p> : null}
     </section>
   );
 }

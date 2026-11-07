@@ -15,7 +15,7 @@ export const STAGES: { key: StageKey; label: string; tone: string }[] = [
   { key: "draft", label: "پیش‌نویس", tone: "var(--text-faint)" },
   { key: "confirmed", label: "تأییدشده", tone: "var(--accent)" },
   { key: "on_route", label: "در مسیر", tone: "var(--info)" },
-  { key: "delivered", label: "تحویل‌شده", tone: "var(--good)" },
+  { key: "delivered", label: "تحویل‌شده", tone: "var(--success)" },
 ];
 
 const PRE_CONFIRM: ReadonlySet<string> = new Set([

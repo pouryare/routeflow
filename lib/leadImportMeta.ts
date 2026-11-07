@@ -21,15 +21,15 @@ export interface ResolutionMeta {
 }
 
 export const RESOLUTION_META: Record<LocationResolution, ResolutionMeta> = {
-  direct: { icon: "check", label: "دقیق", color: "var(--good)", exact: true },
-  pluscode: { icon: "check", label: "دقیق", color: "var(--good)", exact: true },
+  direct: { icon: "check", label: "دقیق", color: "var(--success)", exact: true },
+  pluscode: { icon: "check", label: "دقیق", color: "var(--success)", exact: true },
   // A real Chromium page read Google's APP_INITIALIZATION_STATE. Exact, and slower
   // than the two above -- which is the distinction the progress UI exists to show.
-  browser: { icon: "compass", label: "دقیق (مرورگر)", color: "var(--good)", exact: true },
+  browser: { icon: "compass", label: "دقیق (مرورگر)", color: "var(--success)", exact: true },
   // Nominatim matched on an address string, so the pin is a neighbourhood at best.
   nominatim: { icon: "target", label: "تقریبی", color: "var(--accent)", exact: false },
-  manual: { icon: "map-pin", label: "دستی", color: "var(--good)", exact: true },
-  unresolved: { icon: "warn", label: "نیاز به مکان‌یابی دستی", color: "var(--warn)", exact: false },
+  manual: { icon: "map-pin", label: "دستی", color: "var(--success)", exact: true },
+  unresolved: { icon: "warn", label: "نیاز به مکان‌یابی دستی", color: "var(--warning)", exact: false },
 };
 
 /**

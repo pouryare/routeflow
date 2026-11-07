@@ -194,7 +194,7 @@ export default function SplinePlot({
               x={width - PAD}
               y={height + 16}
               textAnchor="end"
-              className="fill-[var(--text-muted)]"
+              className="fill-[var(--muted)]"
               style={{ fontSize: 10, direction: "ltr", unicodeBidi: "isolate" }}
             >
               {labels[0]}
@@ -203,7 +203,7 @@ export default function SplinePlot({
               x={PAD}
               y={height + 16}
               textAnchor="start"
-              className="fill-[var(--text-muted)]"
+              className="fill-[var(--muted)]"
               style={{ fontSize: 10, direction: "ltr", unicodeBidi: "isolate" }}
             >
               {labels[n - 1]}
@@ -219,15 +219,15 @@ export default function SplinePlot({
           role="status"
           aria-live="off"
         >
-          <span className="block text-[length:var(--text-xs)] text-[var(--text-muted)]">
+          <span className="block text-[length:var(--text-xs)] text-[var(--muted)]">
             {labels[active]}
           </span>
           {series.map((s) => (
             <span key={s.label} className="block text-[length:var(--text-sm)]">
               {series.length > 1 && (
-                <span className="text-[var(--text-muted)]">{s.label} </span>
+                <span className="text-[var(--muted)]">{s.label} </span>
               )}
-              <span className="num text-[var(--text)]">{s.formatted[active]}</span>
+              <span className="num text-[var(--foreground)]">{s.formatted[active]}</span>
             </span>
           ))}
         </div>

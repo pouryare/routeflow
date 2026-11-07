@@ -97,12 +97,12 @@ export default async function DriverPage() {
       <VerifyVisits />
       <header className="mb-[var(--space-4)] flex items-start justify-between gap-[var(--space-3)]">
         <div>
-          <h1 className="m-0 text-[length:var(--text-lg)] font-medium text-[var(--text)]">
-            <a href="/start" className="text-[var(--text)] no-underline hover:text-[var(--accent)]">
+          <h1 className="m-0 text-[length:var(--text-lg)] font-medium text-[var(--foreground)]">
+            <a href="/start" className="text-[var(--foreground)] no-underline hover:text-[var(--accent)]">
               مسیر امروز ›
             </a>
           </h1>
-          <p className="m-0 mt-[var(--space-1)] text-[length:var(--text-xs)] text-[var(--text-muted)]">
+          <p className="m-0 mt-[var(--space-1)] text-[length:var(--text-xs)] text-[var(--muted)]">
             {session.user.display_name}
             {run && ` · ${faJalaliLong(run.run_date)}`}
           </p>
@@ -110,7 +110,7 @@ export default async function DriverPage() {
         <form action="/api/logout" method="post">
           <button
             type="submit"
-            className="inline-flex items-center justify-center gap-[var(--space-2)] cursor-pointer rounded-[var(--radius-md)] border border-[var(--border)] px-[var(--space-3)] py-[var(--space-2)] text-[length:var(--text-xs)] text-[var(--text-muted)] transition-colors duration-[var(--dur-base)] hover:border-[var(--border-strong)] hover:text-[var(--text)]"
+            className="inline-flex items-center justify-center gap-[var(--space-2)] cursor-pointer rounded-[var(--radius-md)] border border-[var(--border)] px-[var(--space-3)] py-[var(--space-2)] text-[length:var(--text-xs)] text-[var(--muted)] transition-colors duration-[var(--dur-base)] hover:border-[var(--border-strong)] hover:text-[var(--foreground)]"
           >
             <Icon name="logout" size="sm" />
             خروج
@@ -126,7 +126,7 @@ export default async function DriverPage() {
           <SectionHead id="day-deliveries" title="تحویل‌ها" />
 
           {run && weatherLine(run as unknown as { weather_json?: string | null }) && (
-            <p className="mb-[var(--space-3)] flex items-center justify-center gap-[var(--space-2)] rounded-[var(--radius-md)] border border-[var(--warn)] p-[var(--space-2)] text-center text-[length:var(--text-xs)] text-[var(--text-muted)]">
+            <p className="mb-[var(--space-3)] flex items-center justify-center gap-[var(--space-2)] rounded-[var(--radius-md)] border border-[var(--warning)] p-[var(--space-2)] text-center text-[length:var(--text-xs)] text-[var(--muted)]">
               <Icon name="weather" size="sm" />
               {weatherLine(run as unknown as { weather_json?: string | null })}
             </p>
@@ -142,7 +142,7 @@ export default async function DriverPage() {
           {commission.kg > 0 && (
             <div className="mt-[var(--space-4)] flex items-center justify-between gap-[var(--space-3)] rounded-[var(--radius-lg)] border border-[var(--border)] p-[var(--space-4)]">
               <div>
-                <div className="text-[length:var(--text-xs)] text-[var(--text-muted)]">
+                <div className="text-[length:var(--text-xs)] text-[var(--muted)]">
                   پورسانت از {faJalaliDate(period.from)}
                 </div>
                 <div className="mt-[var(--space-1)] text-[length:var(--text-xs)] text-[var(--text-faint)]">
@@ -152,7 +152,7 @@ export default async function DriverPage() {
                   پرداخت‌شده {faToman(commission.paid_toman)} · مانده {faToman(commission.owed_toman)}
                 </div>
               </div>
-              <div className="tabular-nums text-[length:var(--text-md)] font-medium text-[var(--text)]">
+              <div className="tabular-nums text-[length:var(--text-md)] font-medium text-[var(--foreground)]">
                 <CountUp value={commission.accrued_toman} /> تومان
               </div>
             </div>

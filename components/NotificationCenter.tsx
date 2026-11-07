@@ -78,13 +78,13 @@ export default function NotificationCenter({ onUnread }: { onUnread: (n: number)
 
   if (loading)
     return (
-      <p className="w-[min(92vw,22rem)] p-[var(--space-3)] text-[length:var(--text-xs)] text-[var(--text-muted)]">
+      <p className="w-[min(92vw,22rem)] p-[var(--space-3)] text-[length:var(--text-xs)] text-[var(--muted)]">
         در حال بارگذاری…
       </p>
     );
   if (groups.length === 0)
     return (
-      <p className="w-[min(92vw,22rem)] p-[var(--space-4)] text-[length:var(--text-sm)] text-[var(--text-muted)]">
+      <p className="w-[min(92vw,22rem)] p-[var(--space-4)] text-[length:var(--text-sm)] text-[var(--muted)]">
         اعلان تازه‌ای ندارید.
       </p>
     );
@@ -92,7 +92,7 @@ export default function NotificationCenter({ onUnread }: { onUnread: (n: number)
   return (
     <div className="flex max-h-[60vh] w-[min(92vw,22rem)] flex-col">
       <div className="flex items-center justify-between border-b border-[var(--border)] px-[var(--space-3)] py-[var(--space-2)]">
-        <span className="text-[length:var(--text-sm)] font-medium text-[var(--text)]">اعلان‌ها</span>
+        <span className="text-[length:var(--text-sm)] font-medium text-[var(--foreground)]">اعلان‌ها</span>
         <Button variant="ghost" size="sm" onPress={markAll} className="notifrow__all">
           <Icon name="check-check" size="sm" />
           خواندنِ همه
@@ -122,12 +122,12 @@ export default function NotificationCenter({ onUnread }: { onUnread: (n: number)
                 style={{ background: g.unread_count ? "var(--accent)" : "transparent" }}
               />
               <span className="min-w-0 flex-1">
-                <span className="block text-[length:var(--text-sm)] text-[var(--text)]">
+                <span className="block text-[length:var(--text-sm)] text-[var(--foreground)]">
                   {g.title_fa}
                   {g.count > 1 ? ` · ${faNum(g.count)}` : ""}
                 </span>
                 {g.body_fa && (
-                  <span className="block truncate text-[length:var(--text-xs)] text-[var(--text-muted)]">
+                  <span className="block truncate text-[length:var(--text-xs)] text-[var(--muted)]">
                     {g.body_fa}
                   </span>
                 )}
@@ -139,7 +139,7 @@ export default function NotificationCenter({ onUnread }: { onUnread: (n: number)
                 {g.items.map((it) => (
                   <li
                     key={it.id}
-                    className="px-[var(--space-5)] py-[var(--space-1)] text-[length:var(--text-xs)] text-[var(--text-muted)]"
+                    className="px-[var(--space-5)] py-[var(--space-1)] text-[length:var(--text-xs)] text-[var(--muted)]"
                   >
                     {it.body_fa ?? it.title_fa}
                   </li>

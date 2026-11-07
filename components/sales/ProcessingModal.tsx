@@ -90,7 +90,7 @@ export default function ProcessingModal({
                   style={{
                     height: 8,
                     borderRadius: 999,
-                    background: `linear-gradient(to left, var(--accent) 0 ${pct}%, var(--sunk) ${pct}% 100%)`,
+                    background: `linear-gradient(to left, var(--accent) 0 ${pct}%, var(--surface-tertiary) ${pct}% 100%)`,
                   }}
                 />
                 <p style={{ margin: "12px 0 0", fontSize: 12, color: "var(--muted)" }}>

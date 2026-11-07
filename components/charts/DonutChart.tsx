@@ -88,7 +88,7 @@ export default function DonutChart({
             x={0}
             y={centreLabel ? -2 : 5}
             textAnchor="middle"
-            className="fill-[var(--text)] tabular-nums"
+            className="fill-[var(--foreground)] tabular-nums"
             style={{ fontSize: 16, fontWeight: 500 }}
           >
             {formatValue(total)}
@@ -98,7 +98,7 @@ export default function DonutChart({
               x={0}
               y={14}
               textAnchor="middle"
-              className="fill-[var(--text-muted)]"
+              className="fill-[var(--muted)]"
               style={{ fontSize: 10 }}
             >
               {centreLabel}

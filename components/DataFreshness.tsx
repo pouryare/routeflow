@@ -27,7 +27,7 @@ export default function DataFreshness({
   if (tier === "fresh") return null;
 
   const days = daysSince(syncedAt, now);
-  const color = tier === "stale" ? "var(--crit)" : "var(--warn)";
+  const color = tier === "stale" ? "var(--danger)" : "var(--warning)";
 
   return (
     <p

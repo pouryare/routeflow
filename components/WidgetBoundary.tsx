@@ -66,7 +66,7 @@ function WidgetFallback({
           <Icon name="warn" size="md" />
         </span>
       )}
-      <p className="m-0 text-[length:var(--text-sm)] text-[var(--text-muted)]">{label} درست بار نشد</p>
+      <p className="m-0 text-[length:var(--text-sm)] text-[var(--muted)]">{label} درست بار نشد</p>
       <button
         type="button"
         className="inline-flex items-center justify-center gap-[var(--space-2)] btn ghost"

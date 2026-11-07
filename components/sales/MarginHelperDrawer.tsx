@@ -38,8 +38,8 @@ export interface DrawerProduct {
 }
 
 const FIELD =
-  "w-full rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] px-[var(--space-3)] py-[var(--space-2)] text-[length:var(--text-sm)] text-[var(--text)] outline-none transition-colors duration-[var(--dur-base)] focus:border-[var(--accent)]";
-const LABEL = "mb-[var(--space-1)] block text-[length:var(--text-xs)] text-[var(--text-muted)]";
+  "w-full rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] px-[var(--space-3)] py-[var(--space-2)] text-[length:var(--text-sm)] text-[var(--foreground)] outline-none transition-colors duration-[var(--dur-base)] focus:border-[var(--accent)]";
+const LABEL = "mb-[var(--space-1)] block text-[length:var(--text-xs)] text-[var(--muted)]";
 
 /** What an empty field means, everywhere in this drawer.
  *
@@ -193,14 +193,14 @@ export default function MarginHelperDrawer({
         type="button"
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center justify-between gap-[var(--space-2)] px-[var(--space-3)] py-[var(--space-2)] text-[length:var(--text-sm)] text-[var(--text)]"
+        className="flex w-full items-center justify-between gap-[var(--space-2)] px-[var(--space-3)] py-[var(--space-2)] text-[length:var(--text-sm)] text-[var(--foreground)]"
       >
         <span className="flex items-center gap-[var(--space-2)]">
           <Icon name="chart" size="sm" />
           محاسبه سود
         </span>
         {actual ? (
-          <span className="font-mono tabular-nums text-[length:var(--text-xs)] text-[var(--text-muted)]">
+          <span className="font-mono tabular-nums text-[length:var(--text-xs)] text-[var(--muted)]">
             {faFixed(actual.margin_pct * 100, 1)}٪
             {markup === null ? null : ` · سود روی بها ${faFixed(markup * 100, 1)}٪`}
           </span>
@@ -302,7 +302,7 @@ export default function MarginHelperDrawer({
                 inputMode="numeric"
                 placeholder={UNSET}
               />
-              <span className="mt-[var(--space-1)] block text-[length:var(--text-xs)] text-[var(--text-muted)]">
+              <span className="mt-[var(--space-1)] block text-[length:var(--text-xs)] text-[var(--muted)]">
                 {ratePerKgToman === null
                   ? "نرخ ثبت نشده — پورسانت در محاسبه نیست"
                   : product && product.kg_per_base_unit > 0
@@ -324,7 +324,7 @@ export default function MarginHelperDrawer({
               onChange={(e) => setTarget(e.target.value)}
               inputMode="decimal"
             />
-            <span className="mt-[var(--space-1)] block text-[length:var(--text-xs)] text-[var(--text-muted)]">
+            <span className="mt-[var(--space-1)] block text-[length:var(--text-xs)] text-[var(--muted)]">
               {suggested === null
                 ? "حاشیه هدف معتبر نیست"
                 : suggested.ok
@@ -337,7 +337,7 @@ export default function MarginHelperDrawer({
           </div>
 
           {actual && (
-            <p className="m-0 text-[length:var(--text-xs)] leading-5 text-[var(--text-muted)]">
+            <p className="m-0 text-[length:var(--text-xs)] leading-5 text-[var(--muted)]">
               سود خالص این قیمت: {faNum(actual.profit_toman)} تومان
               {selectedPackaging ? ` · ${selectedPackaging.name}` : ""}
             </p>
@@ -380,7 +380,7 @@ export default function MarginHelperDrawer({
             {saveState && (
               <p
                 className={`m-0 text-[length:var(--text-sm)] ${
-                  saveState.kind === "ok" ? "text-[var(--good)]" : "text-[var(--crit)]"
+                  saveState.kind === "ok" ? "text-[var(--success)]" : "text-[var(--danger)]"
                 }`}
               >
                 {saveState.text}

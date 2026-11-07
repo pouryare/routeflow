@@ -43,7 +43,7 @@ export default function DiscountSection({
         <button
           type="button"
           onClick={() => onChange({ ...draft, open: true })}
-          className="inline-flex min-h-[44px] w-full items-center justify-center gap-[var(--space-2)] rounded-[var(--radius-md)] border border-[var(--border-strong)] px-[var(--space-4)] text-[length:var(--text-sm)] text-[var(--text)]"
+          className="inline-flex min-h-[44px] w-full items-center justify-center gap-[var(--space-2)] rounded-[var(--radius-md)] border border-[var(--border-strong)] px-[var(--space-4)] text-[length:var(--text-sm)] text-[var(--foreground)]"
         >
           <Icon name="plus" size="sm" />
           افزودن تخفیف
@@ -63,7 +63,7 @@ export default function DiscountSection({
         <button
           type="button"
           onClick={() => onChange(emptyDraft())}
-          className="inline-flex min-h-[44px] items-center gap-[var(--space-1)] px-[var(--space-2)] text-[length:var(--text-sm)] text-[var(--text-muted)]"
+          className="inline-flex min-h-[44px] items-center gap-[var(--space-1)] px-[var(--space-2)] text-[length:var(--text-sm)] text-[var(--muted)]"
         >
           <Icon name="trash" size="sm" />
           حذف تخفیف
@@ -106,7 +106,7 @@ export default function DiscountSection({
 
       {payers.length > 0 && (
         <div className="flex flex-col gap-[var(--space-2)]">
-          <span className="text-[length:var(--text-xs)] text-[var(--text-muted)]">
+          <span className="text-[length:var(--text-xs)] text-[var(--muted)]">
             از پورسانت چه کسی کم شود؟ اگر کسی را انتخاب نکنید، شرکت تحمل می‌کند.
           </span>
           <ChipGroup
@@ -148,14 +148,14 @@ export default function DiscountSection({
 
       <div className="flex flex-col gap-[var(--space-1)] rounded-[var(--radius-md)] border border-[var(--border)] p-[var(--space-3)] text-[length:var(--text-sm)]" role="status">
         {s.problem ? (
-          <span className="text-[var(--text-muted)]">{s.problem}</span>
+          <span className="text-[var(--muted)]">{s.problem}</span>
         ) : (
           <>
             <span className="tabular-nums">تخفیف {faToman(s.amount)} ({faNum(Math.round(s.percent * 100) / 100)}٪)</span>
-            <span className="tabular-nums text-[var(--text-muted)]">مبلغ بعد از تخفیف {faToman(s.net)}</span>
+            <span className="tabular-nums text-[var(--muted)]">مبلغ بعد از تخفیف {faToman(s.net)}</span>
           </>
         )}
-        <span className="text-[length:var(--text-xs)] text-[var(--text-muted)]">
+        <span className="text-[length:var(--text-xs)] text-[var(--muted)]">
           {needsApproval
             ? "سفارش تا تأیید مدیر یا مالک تأیید نهایی نمی‌شود."
             : "تخفیف شما به‌عنوان مالک بلافاصله اعمال می‌شود."}

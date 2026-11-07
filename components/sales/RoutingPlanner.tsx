@@ -94,7 +94,7 @@ export default function RoutingPlanner({ vehicleNames }: { vehicleNames: Record<
           type="button"
           disabled={busy || pending}
           onClick={() => void build()}
-          className="rounded-[var(--radius-md)] border border-[var(--border)] px-[var(--space-3)] py-[var(--space-1)] hover:bg-[var(--surface-2)] disabled:opacity-50"
+          className="rounded-[var(--radius-md)] border border-[var(--border)] px-[var(--space-3)] py-[var(--space-1)] hover:bg-[var(--surface-secondary)] disabled:opacity-50"
         >
           <Icon name="plus" size="md" />
           ساخت پیشنهاد
@@ -112,29 +112,29 @@ export default function RoutingPlanner({ vehicleNames }: { vehicleNames: Record<
         )}
       </div>
 
-      {msg && <p className="m-0 text-[length:var(--text-xs)] text-[var(--crit)]">{msg}</p>}
+      {msg && <p className="m-0 text-[length:var(--text-xs)] text-[var(--danger)]">{msg}</p>}
 
       {plan && (
         <>
           {plan.source === "greedy" && (
-            <p className="m-0 text-[length:var(--text-xs)] text-[var(--warn)]">
+            <p className="m-0 text-[length:var(--text-xs)] text-[var(--warning)]">
               بدون بهینه‌ساز — مسیر تقریبی
             </p>
           )}
           {plan.weather && plan.weather.conditions.length > 0 && (
-            <div className="rounded-[var(--radius-md)] border border-[var(--warn)] bg-[var(--surface-2)] p-[var(--space-3)] text-[length:var(--text-xs)]">
+            <div className="rounded-[var(--radius-md)] border border-[var(--warning)] bg-[var(--surface-secondary)] p-[var(--space-3)] text-[length:var(--text-xs)]">
               <div className="flex flex-wrap gap-[var(--space-2)]">
                 {plan.weather.notes_fa.map((note) => (
-                  <span key={note} className="text-[var(--text)]">
+                  <span key={note} className="text-[var(--foreground)]">
                     <Icon name="weather" size="sm" /> {note}
                   </span>
                 ))}
               </div>
-              <p className="m-0 mt-[var(--space-1)] text-[var(--text-muted)]">
+              <p className="m-0 mt-[var(--space-1)] text-[var(--muted)]">
                 ظرفیت مؤثر: {faNum(plan.weather.effective_max_stops)} از {faNum(plan.weather.base_stops)} توقف
               </p>
               {plan.weather.cold_chain_capped && (
-                <p className="m-0 mt-[var(--space-1)] text-[var(--crit)]">
+                <p className="m-0 mt-[var(--space-1)] text-[var(--danger)]">
                   زنجیرهٔ سرد — زمان مسیر برای خودروی بدون یخچال محدود شده است
                 </p>
               )}
@@ -147,11 +147,11 @@ export default function RoutingPlanner({ vehicleNames }: { vehicleNames: Record<
             >
               <div className="flex items-baseline justify-between">
                 <strong>{vehicleNames[a.vehicle_key] ?? `خودرو ${faNum(a.vehicle_key)}`}</strong>
-                <span className="text-[length:var(--text-xs)] text-[var(--text-muted)]">
+                <span className="text-[length:var(--text-xs)] text-[var(--muted)]">
                   {faNum(a.stops.length)} توقف · {faNum(a.distance_km)} کیلومتر · {faNum(a.duration_min)} دقیقه
                 </span>
               </div>
-              <ol className="m-0 mt-[var(--space-1)] pr-[var(--space-4)] text-[length:var(--text-xs)] text-[var(--text-muted)]">
+              <ol className="m-0 mt-[var(--space-1)] pr-[var(--space-4)] text-[length:var(--text-xs)] text-[var(--muted)]">
                 {a.stops.map((s) => (
                   <li key={s.delivery_id}>
                     تحویل {faNum(s.delivery_id)} · حدود {faNum(s.eta_min)} دقیقه
@@ -172,7 +172,7 @@ export default function RoutingPlanner({ vehicleNames }: { vehicleNames: Record<
             </div>
           ))}
           {plan.unassigned.length > 0 && (
-            <p className="m-0 text-[length:var(--text-xs)] text-[var(--crit)]">
+            <p className="m-0 text-[length:var(--text-xs)] text-[var(--danger)]">
               {faNum(plan.unassigned.length)} تحویل جا نشد — ظرفیت خودروها کافی نیست
             </p>
           )}

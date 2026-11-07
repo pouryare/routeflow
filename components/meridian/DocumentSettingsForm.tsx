@@ -49,11 +49,11 @@ export default function DocumentSettingsForm({ current }: { current: DocumentSet
       <label className={label}>
         پیشوند شمارهٔ سفارش
         <FieldInput value={prefix} onChange={(e) => setPrefix(e.target.value.toUpperCase())} placeholder="مثلاً RF" maxLength={4} dir="ltr" autoCapitalize="characters" />
-        <span className="text-[length:var(--text-xs)] text-[var(--text-muted)]">
+        <span className="text-[length:var(--text-xs)] text-[var(--muted)]">
           فقط برای سفارش‌های تازه، مثل {prefix || "RF"}1405-00001. شمارهٔ سفارش‌های قبلی عوض نمی‌شود.
         </span>
       </label>
-      {msg ? <p className="m-0 text-[length:var(--text-xs)]" style={{ color: msg.ok ? "var(--good)" : "var(--crit)" }}>{msg.text}</p> : null}
+      {msg ? <p className="m-0 text-[length:var(--text-xs)]" style={{ color: msg.ok ? "var(--success)" : "var(--danger)" }}>{msg.text}</p> : null}
       <button type="button" disabled={busy} onClick={() => void save()} className={`${BTN} self-start bg-[var(--accent)] text-accent-ink`}>
         <Icon name="save" size="md" />
         ذخیرهٔ کاغذها

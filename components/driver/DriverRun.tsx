@@ -110,7 +110,7 @@ export default function DriverRun({
       {pill && <RunPill pill={pill} onOpen={(id) => setLaunch((l) => ({ id, n: (l?.n ?? 0) + 1 }))} />}
 
       {(!online || pending > 0) && (
-        <p className="m-0 rounded-[var(--radius-md)] border border-[var(--warn)] p-[var(--space-3)] text-[length:var(--text-xs)] leading-5 text-[var(--warn)]">
+        <p className="m-0 rounded-[var(--radius-md)] border border-[var(--warning)] p-[var(--space-3)] text-[length:var(--text-xs)] leading-5 text-[var(--warning)]">
           {online
             ? `${faNum(pending)} تحویل هنوز ارسال نشده — به‌محض وصل شدن خودکار ارسال می‌شود.`
             : "اینترنت قطع است. تحویل‌ها ذخیره می‌شوند و بعداً خودکار ارسال می‌شوند."}
@@ -119,7 +119,7 @@ export default function DriverRun({
 
       {atDoor && (
         <div className="flex flex-wrap items-center gap-[var(--space-2)] rounded-[var(--radius-lg)] border border-[var(--accent)] bg-[var(--surface-raised)] p-[var(--space-3)]" role="status">
-          <span className="min-w-0 flex-1 text-[length:var(--text-sm)] text-[var(--text)]">
+          <span className="min-w-0 flex-1 text-[length:var(--text-sm)] text-[var(--foreground)]">
             به <strong className="text-[var(--accent)]">{atDoor.customer_name}</strong> رسیدید
           </span>
           <button
@@ -133,7 +133,7 @@ export default function DriverRun({
           <button
             type="button"
             onClick={() => setWaved((w) => new Set(w).add(atDoor.id))}
-            className="inline-flex min-h-[44px] items-center justify-center gap-[var(--space-2)] rounded-[var(--radius-md)] border border-[var(--border)] px-[var(--space-3)] text-[length:var(--text-sm)] text-[var(--text-muted)]"
+            className="inline-flex min-h-[44px] items-center justify-center gap-[var(--space-2)] rounded-[var(--radius-md)] border border-[var(--border)] px-[var(--space-3)] text-[length:var(--text-sm)] text-[var(--muted)]"
           >
             <Icon name="x" size="md" />
             فعلاً نه
@@ -163,13 +163,13 @@ export default function DriverRun({
       {receipt && (
         <div className="rounded-[var(--radius-lg)] border border-[var(--border-strong)] bg-[var(--surface-raised)] p-[var(--space-4)]">
           <div className="mb-[var(--space-3)] flex items-center justify-between">
-            <h2 className="m-0 text-[length:var(--text-base)] text-[var(--text)]">رسید</h2>
+            <h2 className="m-0 text-[length:var(--text-base)] text-[var(--foreground)]">رسید</h2>
             <div className="flex gap-[var(--space-2)]">
               <button
                 type="button"
                 aria-expanded={!folded}
                 onClick={() => setFolded((f) => !f)}
-                className="touch rounded-[var(--radius-md)] border border-[var(--border)] px-[var(--space-3)] py-[var(--space-1)] text-[length:var(--text-xs)] text-[var(--text-muted)]"
+                className="touch rounded-[var(--radius-md)] border border-[var(--border)] px-[var(--space-3)] py-[var(--space-1)] text-[length:var(--text-xs)] text-[var(--muted)]"
               >
                 <Icon name={folded ? "chevron-down" : "minimize"} size="sm" />
                 {folded ? "باز کردن رسید" : "تا کردن رسید"}
@@ -177,7 +177,7 @@ export default function DriverRun({
               <button
                 type="button"
                 onClick={() => setReceipt(null)}
-                className="touch rounded-[var(--radius-md)] border border-[var(--border)] px-[var(--space-3)] py-[var(--space-1)] text-[length:var(--text-xs)] text-[var(--text-muted)]"
+                className="touch rounded-[var(--radius-md)] border border-[var(--border)] px-[var(--space-3)] py-[var(--space-1)] text-[length:var(--text-xs)] text-[var(--muted)]"
               >
                 <Icon name="x" size="sm" />
                 بستن رسید
@@ -198,8 +198,8 @@ export default function DriverRun({
 function Tile({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--surface)] p-[var(--space-3)] text-center">
-      <span className="block text-[length:var(--text-xs)] text-[var(--text-muted)]">{label}</span>
-      <strong className="mt-[var(--space-1)] block text-[length:var(--text-base)] font-medium tabular-nums text-[var(--text)]">
+      <span className="block text-[length:var(--text-xs)] text-[var(--muted)]">{label}</span>
+      <strong className="mt-[var(--space-1)] block text-[length:var(--text-base)] font-medium tabular-nums text-[var(--foreground)]">
         {value}
       </strong>
     </div>
@@ -282,16 +282,16 @@ function StopCard({
       >
         <Icon name="check" size="md" />
         <span className="min-w-0">
-          <span className="flex items-center gap-[var(--space-2)] truncate text-[length:var(--text-base)] text-[var(--text)]">
+          <span className="flex items-center gap-[var(--space-2)] truncate text-[length:var(--text-base)] text-[var(--foreground)]">
             {stop.customer_name}
             <PriorityTag priority={stop.priority} />
           </span>
-          <span className="mt-[var(--space-1)] block text-[length:var(--text-xs)] text-[var(--text-muted)]">
+          <span className="mt-[var(--space-1)] block text-[length:var(--text-xs)] text-[var(--muted)]">
             {stop.address ?? "بدون آدرس"}
           </span>
         </span>
         <span className="shrink-0 text-left">
-          <span className="block tabular-nums text-[length:var(--text-sm)] text-[var(--text)]">
+          <span className="block tabular-nums text-[length:var(--text-sm)] text-[var(--foreground)]">
             {faToman(stop.total_toman)}
           </span>
           <span
@@ -299,9 +299,9 @@ function StopCard({
             style={{
               color:
                 stop.status === "delivered"
-                  ? "var(--good)"
+                  ? "var(--success)"
                   : stop.status === "refused"
-                    ? "var(--crit)"
+                    ? "var(--danger)"
                     : "var(--text-faint)",
             }}
           >
@@ -331,7 +331,7 @@ function StopCard({
             {stop.lines.map((line) => (
               <li key={line.id} className="flex items-center justify-between gap-[var(--space-3)]">
                 <div className="min-w-0 flex-1">
-                  <span className="block truncate text-[length:var(--text-sm)] text-[var(--text)]">
+                  <span className="block truncate text-[length:var(--text-sm)] text-[var(--foreground)]">
                     {line.product_name}
                   </span>
                   <span className="text-[length:var(--text-xs)] tabular-nums text-[var(--text-faint)]">
@@ -339,7 +339,7 @@ function StopCard({
                   </span>
                 </div>
                 {done && (
-                  <span className="shrink-0 tabular-nums text-[length:var(--text-sm)] text-[var(--text)]">
+                  <span className="shrink-0 tabular-nums text-[length:var(--text-sm)] text-[var(--foreground)]">
                     تحویل {faNum(line.packs_delivered ?? line.packs_ordered)}
                   </span>
                 )}
@@ -348,10 +348,10 @@ function StopCard({
           </ul>
 
           <div className="mt-[var(--space-4)] flex items-end justify-between">
-            <span className="text-[length:var(--text-xs)] text-[var(--text-muted)]">
+            <span className="text-[length:var(--text-xs)] text-[var(--muted)]">
               {done ? "دریافتی" : "جمع سفارش"}
             </span>
-            <strong className="block tabular-nums text-[length:var(--text-base)] text-[var(--text)]">
+            <strong className="block tabular-nums text-[length:var(--text-base)] text-[var(--foreground)]">
               {faToman(done ? stop.collected_toman : stop.total_toman)}
             </strong>
           </div>
@@ -373,7 +373,7 @@ function StopCard({
                 type="button"
                 data-tour="stop-later"
                 onClick={defer}
-                className="inline-flex min-h-[44px] items-center justify-center gap-[var(--space-2)] rounded-[var(--radius-md)] border border-[var(--border)] px-[var(--space-4)] text-[length:var(--text-sm)] text-[var(--text-muted)]"
+                className="inline-flex min-h-[44px] items-center justify-center gap-[var(--space-2)] rounded-[var(--radius-md)] border border-[var(--border)] px-[var(--space-4)] text-[length:var(--text-sm)] text-[var(--muted)]"
               >
                 <Icon name="clock" size="md" />
                 بعداً این توقف
@@ -397,7 +397,7 @@ function StopCard({
                   }),
                 )
               }
-              className="rounded-[var(--radius-md)] border border-[var(--border)] px-[var(--space-4)] py-[var(--space-3)] text-[length:var(--text-sm)] text-[var(--text-muted)]"
+              className="rounded-[var(--radius-md)] border border-[var(--border)] px-[var(--space-4)] py-[var(--space-3)] text-[length:var(--text-sm)] text-[var(--muted)]"
             >
               <Icon name="receipt" size="sm" />
               نمایش رسید

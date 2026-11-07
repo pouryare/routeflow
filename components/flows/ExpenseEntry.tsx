@@ -14,7 +14,7 @@ import Link from "next/link";
 import { placeHref } from "@/lib/entryPlace";
 
 const BTN =
-  "inline-flex min-h-[44px] items-center justify-center gap-[var(--space-2)] rounded-[var(--radius-md)] border border-[var(--border)] px-[var(--space-4)] text-[length:var(--text-sm)] text-[var(--text)]";
+  "inline-flex min-h-[44px] items-center justify-center gap-[var(--space-2)] rounded-[var(--radius-md)] border border-[var(--border)] px-[var(--space-4)] text-[length:var(--text-sm)] text-[var(--foreground)]";
 
 /** «ثبت هزینه» on the expenses page: rent, fuel, a repair, in a few taps. Below it, the latest
  *  expenses, each with «تکرار این» (A10): the same category, supplier and amount, today's date. */
@@ -77,7 +77,7 @@ export default function ExpenseEntry({ categories, suppliers, recent = [], canSe
                       <span className="truncate font-medium">{r.categoryFa}</span>
                       <span className="tnum shrink-0">{faNum(r.amountToman)} تومان</span>
                     </p>
-                    <p className="truncate text-[length:var(--text-xs)] text-[var(--text-muted)]">
+                    <p className="truncate text-[length:var(--text-xs)] text-[var(--muted)]">
                       {[faJalaliDate(r.postedAt), supplier ?? (r.memo || null), r.enteredBy, show === "review" && !r.hasReceipt ? "بدون رسید" : null, show === "review" && !r.memo?.trim() ? "بدون توضیح" : null].filter(Boolean).join(" · ")}
                       {r.hasReceipt ? (
                         <>
@@ -88,7 +88,7 @@ export default function ExpenseEntry({ categories, suppliers, recent = [], canSe
                     </p>
                     <span className="flex flex-wrap items-center gap-[var(--space-2)]">
                       {r.place ? (
-                        <Link href={placeHref(r.place)} className="inline-flex min-h-[44px] items-center gap-[var(--space-1)] text-[length:var(--text-xs)] text-[var(--text-muted)]">
+                        <Link href={placeHref(r.place)} className="inline-flex min-h-[44px] items-center gap-[var(--space-1)] text-[length:var(--text-xs)] text-[var(--muted)]">
                           <Icon name="map-pin" size="sm" />
                           جای ثبت
                         </Link>

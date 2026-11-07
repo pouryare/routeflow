@@ -146,7 +146,7 @@ export default function UnloadTapFlow({
       })}
 
       {error && (
-        <p className="mb-2 rounded-[var(--radius-sm)] border border-border px-2 py-1.5 text-[length:var(--text-xs)] text-[var(--crit)]">
+        <p className="mb-2 rounded-[var(--radius-sm)] border border-border px-2 py-1.5 text-[length:var(--text-xs)] text-[var(--danger)]">
           {error}
         </p>
       )}

@@ -76,7 +76,7 @@ export default async function ProductsPage() {
         </Link>
       )}
       {products.length === 0 ? (
-        <p className="rounded-[var(--radius-lg)] border border-dashed border-[var(--border)] p-[var(--space-6)] text-center text-[length:var(--text-sm)] text-[var(--text-muted)]">
+        <p className="rounded-[var(--radius-lg)] border border-dashed border-[var(--border)] p-[var(--space-6)] text-center text-[length:var(--text-sm)] text-[var(--muted)]">
           هنوز کالایی ثبت نشده است.
           {isOwner(session.role) && " با فرم پایین اولین کالا را اضافه کنید."}
         </p>
@@ -135,7 +135,7 @@ export default async function ProductsPage() {
           <h2 className="sechead__title">
             تاریخچه قیمت‌ها
           </h2>
-          <p className="mt-[var(--space-1)] text-[length:var(--text-xs)] text-[var(--text-muted)]">
+          <p className="mt-[var(--space-1)] text-[length:var(--text-xs)] text-[var(--muted)]">
             قیمت‌ها پاک نمی‌شوند. هر تغییر یک سطر تازه است، تا سفارش‌های قبلی با قیمت
             همان روز بمانند.
           </p>
@@ -145,13 +145,13 @@ export default async function ProductsPage() {
                 key={row.id}
                 className="flex flex-wrap items-baseline justify-between gap-[var(--space-2)] border-b border-[var(--border)] pb-[var(--space-2)]"
               >
-                <span className="text-[var(--text)]">
+                <span className="text-[var(--foreground)]">
                   {row.product_name}
                   {row.packaging_name && (
-                    <span className="text-[var(--text-muted)]"> · {row.packaging_name}</span>
+                    <span className="text-[var(--muted)]"> · {row.packaging_name}</span>
                   )}
                 </span>
-                <span className="tabular-nums text-[var(--text-muted)]">
+                <span className="tabular-nums text-[var(--muted)]">
                   {faToman(row.price_toman)} · از {faJalaliDate(row.valid_from)}
                   {row.by_name && ` · ${row.by_name}`}
                 </span>
@@ -183,7 +183,7 @@ export default async function ProductsPage() {
               })}
             </div>
           ) : (
-            <p className="mt-[var(--space-4)] text-[length:var(--text-xs)] text-[var(--text-muted)]">
+            <p className="mt-[var(--space-4)] text-[length:var(--text-xs)] text-[var(--muted)]">
               هنوز هیچ کالایی بیش از یک بار قیمت‌گذاری نشده — نمودار وقتی معنا پیدا می‌کند
               که یک بسته‌بندی حداقل دو قیمت داشته باشد.
             </p>
@@ -194,7 +194,7 @@ export default async function ProductsPage() {
       {changes.length > 0 && (
         <section className="card p-[var(--space-4)]">
           <h2 className="sechead__title">تغییرات کاتالوگ</h2>
-          <p className="mt-[var(--space-1)] text-[length:var(--text-xs)] text-[var(--text-muted)]">
+          <p className="mt-[var(--space-1)] text-[length:var(--text-xs)] text-[var(--muted)]">
             کالای تازه، بسته‌بندی تازه و تغییر آستانه‌های انبار، با نام کسی که ثبت کرد. تغییر قیمت در تاریخچهٔ قیمت‌ها آمده است.
           </p>
           <ul className="mt-[var(--space-3)] flex list-none flex-col gap-[var(--space-2)] p-0 text-[length:var(--text-sm)]">
@@ -203,16 +203,16 @@ export default async function ProductsPage() {
                 key={c.id}
                 className="flex flex-wrap items-baseline justify-between gap-[var(--space-2)] border-b border-[var(--border)] pb-[var(--space-2)]"
               >
-                <span className="text-[var(--text)]">
+                <span className="text-[var(--foreground)]">
                   {c.product_name} · {c.note}
                   {c.new_value && (
-                    <span className="text-[var(--text-muted)]">
+                    <span className="text-[var(--muted)]">
                       {" "}
                       {c.old_value ? `از «${c.old_value}» به «${c.new_value}»` : `«${c.new_value}»`}
                     </span>
                   )}
                 </span>
-                <span className="tabular-nums text-[var(--text-muted)]">
+                <span className="tabular-nums text-[var(--muted)]">
                   {faJalaliDateTime(c.created_at)}
                   {c.changed_by && ` · ${c.changed_by}`}
                 </span>

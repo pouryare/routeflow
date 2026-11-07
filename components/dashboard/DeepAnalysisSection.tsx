@@ -82,7 +82,7 @@ export default async function DeepAnalysisSection({ session }: { session: Sessio
           </div>
           <div className="kblock__body">
             {risky.length === 0 ? (
-              <p className="text-[length:var(--text-sm)] text-[var(--text-muted)]">مشتری پرخطری ندارید.</p>
+              <p className="text-[length:var(--text-sm)] text-[var(--muted)]">مشتری پرخطری ندارید.</p>
             ) : (
               <ul className="m-0 list-none p-0 text-[length:var(--text-sm)]">
                 {risky.map((h) => (
@@ -90,8 +90,8 @@ export default async function DeepAnalysisSection({ session }: { session: Sessio
                     key={h.customer_id}
                     className="flex items-center justify-between border-b border-[var(--border)] py-[var(--space-1)]"
                   >
-                    <span className="text-[var(--text)]">{h.business_name}</span>
-                    <span className="tabular-nums text-[var(--text-muted)]">
+                    <span className="text-[var(--foreground)]">{h.business_name}</span>
+                    <span className="tabular-nums text-[var(--muted)]">
                       {faNum(h.score)} · {BAND_LABEL[h.band]} · {h.reasons[0] ?? ""}
                     </span>
                   </li>

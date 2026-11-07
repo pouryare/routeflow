@@ -35,7 +35,7 @@ export default async function DataQualityPage() {
           </div>
           <div className="kblock__body">
             {groups.length === 0 ? (
-              <p className="text-[length:var(--text-sm)] text-[var(--text-muted)]">هنوز مشتری فعالی ثبت نشده.</p>
+              <p className="text-[length:var(--text-sm)] text-[var(--muted)]">هنوز مشتری فعالی ثبت نشده.</p>
             ) : (
               <CardTable className="w-full border-collapse text-[length:var(--text-sm)]">
                 <thead>
@@ -72,7 +72,7 @@ export default async function DataQualityPage() {
           </div>
           <div className="kblock__body">
             {rows.length === 0 ? (
-              <p className="text-[length:var(--text-sm)] text-[var(--text-muted)]">همهٔ مشتریان مکان، تلفن و منطقه دارند.</p>
+              <p className="text-[length:var(--text-sm)] text-[var(--muted)]">همهٔ مشتریان مکان، تلفن و منطقه دارند.</p>
             ) : (
               <ul className="m-0 flex list-none flex-col gap-[var(--space-2)] p-0">
                 {rows.map((r) => (

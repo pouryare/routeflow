@@ -20,10 +20,10 @@ export const STATUS_COLOR: Record<CoverageStatus, string> = {
    the light ground, which fails for numbers and words; these resolve to --good/--warn/--crit,
    which MASTER.md solves for text on both themes. Use these for any readable label. */
 export const STATUS_TEXT: Record<CoverageStatus, string> = {
-  visited: "var(--good)",
-  needs_coverage: "var(--warn)",
-  not_allowed: "var(--crit)",
-  unknown: "var(--text-muted)",
+  visited: "var(--success)",
+  needs_coverage: "var(--warning)",
+  not_allowed: "var(--danger)",
+  unknown: "var(--muted)",
 };
 
 export const STATUS_LABEL: Record<CoverageStatus, string> = {

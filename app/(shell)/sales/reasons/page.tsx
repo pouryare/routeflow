@@ -36,7 +36,7 @@ function Area({ area }: { area: ReasonArea }) {
       </div>
       <div className="kblock__body">
         {area.total === 0 ? (
-          <p className="text-[length:var(--text-sm)] text-[var(--text-muted)]">در این بازه موردی ثبت نشده.</p>
+          <p className="text-[length:var(--text-sm)] text-[var(--muted)]">در این بازه موردی ثبت نشده.</p>
         ) : (
           <>
             <CardTable className="w-full border-collapse text-[length:var(--text-sm)]">

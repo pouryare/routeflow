@@ -55,8 +55,8 @@ export default function QuickAdd({
   return (
     <div
       style={{
-        background: "var(--sunk)",
-        border: "1px solid var(--line)",
+        background: "var(--surface-tertiary)",
+        border: "1px solid var(--border)",
         borderRadius: "var(--r-md)",
         padding: 12,
         margin: "10px 0 4px",
@@ -80,9 +80,9 @@ export default function QuickAdd({
         style={{
           fontFamily: "var(--fa)",
           fontSize: 12.5,
-          color: "var(--ink)",
-          background: "var(--card)",
-          border: "1px solid var(--line-2)",
+          color: "var(--foreground)",
+          background: "var(--surface)",
+          border: "1px solid var(--border-strong)",
           borderRadius: 8,
           padding: "7px 9px",
         }}

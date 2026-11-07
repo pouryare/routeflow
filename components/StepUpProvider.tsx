@@ -84,11 +84,11 @@ export default function StepUpProvider() {
       live
     >
       <div className="flex flex-col gap-[var(--space-4)] pb-[var(--space-4)]" dir="rtl">
-        <p className="m-0 text-[length:var(--text-sm)] text-[var(--text-muted)]">
+        <p className="m-0 text-[length:var(--text-sm)] text-[var(--muted)]">
           برای این کار کد ۶ رقمی برنامهٔ احراز هویت (مثل Google Authenticator) را وارد کنید. بعد از آن ۱۰ دقیقه روی همین دستگاه دوباره پرسیده نمی‌شود.
         </p>
         <OtpInput value={code} onChange={setCode} onComplete={(v) => void verify(v)} isInvalid={error !== null} disabled={busy} />
-        {error && <p role="alert" className="m-0 text-center text-[length:var(--text-sm)] text-[var(--crit)]">{error}</p>}
+        {error && <p role="alert" className="m-0 text-center text-[length:var(--text-sm)] text-[var(--danger)]">{error}</p>}
         {ask?.critical ? (
           <HoldButton onConfirm={() => void verify(code)} disabled={busy || code.length < 6}>
             تأیید و انجام

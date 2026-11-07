@@ -6,13 +6,13 @@ import type { MoneyTiles as Tiles } from "@/lib/repo/moneyTiles";
 function Tile({ href, icon, label, value, sub }: { href: string; icon: IconName; label: string; value: number; sub?: string }) {
   return (
     <li className="min-w-0">
-      <Link href={href} className="card flex min-h-[44px] flex-col gap-[var(--space-1)] p-[var(--space-3)] text-[var(--text)] no-underline">
-        <span className="flex items-center gap-[var(--space-1)] text-[length:var(--text-xs)] text-[var(--text-muted)]">
+      <Link href={href} className="card flex min-h-[44px] flex-col gap-[var(--space-1)] p-[var(--space-3)] text-[var(--foreground)] no-underline">
+        <span className="flex items-center gap-[var(--space-1)] text-[length:var(--text-xs)] text-[var(--muted)]">
           <Icon name={icon} size="sm" />
           {label}
         </span>
         <span className="tnum truncate text-[length:var(--text-lg)] font-semibold">{faNum(value)}</span>
-        {sub ? <span className="truncate text-[length:var(--text-xs)] text-[var(--text-muted)]">{sub}</span> : null}
+        {sub ? <span className="truncate text-[length:var(--text-xs)] text-[var(--muted)]">{sub}</span> : null}
       </Link>
     </li>
   );

@@ -77,8 +77,8 @@ export function readReturnToOrigin(): boolean {
 }
 
 export const STATUS_META: Record<PlanRow["status"], { label: string; color: string }> = {
-  planned: { label: "برنامه‌ریزی‌شده", color: "var(--warn)" },
-  done: { label: "انجام شد", color: "var(--good)" },
+  planned: { label: "برنامه‌ریزی‌شده", color: "var(--warning)" },
+  done: { label: "انجام شد", color: "var(--success)" },
   skipped: { label: "رد شد", color: "var(--neutral)" },
 };
 

@@ -86,7 +86,7 @@ export default function AccountSwitcher({ variant = "page" }: { variant?: "menu"
         value={q}
         onChange={(e) => setQ(e.target.value)}
         placeholder="جستجوی نام یا سازمان…" aria-label="جستجوی نام یا سازمان"
-        className="mb-[var(--space-3)] w-full text-[length:var(--text-sm)] text-[var(--text)]"
+        className="mb-[var(--space-3)] w-full text-[length:var(--text-sm)] text-[var(--foreground)]"
       />
       {asking && (
         <div role="alertdialog" aria-label="ورود به‌جای کاربر" className="mb-[var(--space-3)] grid gap-[var(--space-2)] rounded-[var(--radius-md)] border border-[var(--border)] p-[var(--space-3)]">
@@ -104,7 +104,7 @@ export default function AccountSwitcher({ variant = "page" }: { variant?: "menu"
         </div>
       )}
       {byOrg.length === 0 && (
-        <p className="text-[length:var(--text-sm)] text-[var(--text-muted)]">حسابی یافت نشد</p>
+        <p className="text-[length:var(--text-sm)] text-[var(--muted)]">حسابی یافت نشد</p>
       )}
       {byOrg.map((org) => (
         <section key={org.name} className="mb-[var(--space-4)]">
@@ -123,12 +123,12 @@ export default function AccountSwitcher({ variant = "page" }: { variant?: "menu"
                   <Icon name="users" size="md" />
                   <Avatar userId={r.id} name={r.display_name} size={26} />
                   <span className="flex-1">
-                    <span className="block text-[length:var(--text-sm)] text-[var(--text)]">
+                    <span className="block text-[length:var(--text-sm)] text-[var(--foreground)]">
                       {r.display_name}
                     </span>
                     {/* Every hat, not just the primary: the point of the feature is to see
                         what this person really is. */}
-                    <span className="block text-[length:var(--text-xs)] text-[var(--text-muted)]">
+                    <span className="block text-[length:var(--text-xs)] text-[var(--muted)]">
                       {r.roles.map((x) => roleLabel(x)).join("، ")}
                     </span>
                   </span>

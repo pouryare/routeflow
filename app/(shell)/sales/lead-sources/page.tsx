@@ -35,7 +35,7 @@ export default async function LeadSourcesPage() {
         </div>
         <div className="kblock__body">
           {rows.length === 0 ? (
-            <p className="text-[length:var(--text-sm)] text-[var(--text-muted)]">هنوز سرنخی ثبت نشده.</p>
+            <p className="text-[length:var(--text-sm)] text-[var(--muted)]">هنوز سرنخی ثبت نشده.</p>
           ) : (
             <>
               <div style={{ overflowX: "auto" }}>
@@ -75,7 +75,7 @@ export default async function LeadSourcesPage() {
         </div>
         <div className="kblock__body">
           {referrers.length === 0 ? (
-            <p className="text-[length:var(--text-sm)] text-[var(--text-muted)]">هنوز کسی مشتری تازه‌ای معرفی نکرده. معرف را هنگام ثبت سرنخ انتخاب کنید.</p>
+            <p className="text-[length:var(--text-sm)] text-[var(--muted)]">هنوز کسی مشتری تازه‌ای معرفی نکرده. معرف را هنگام ثبت سرنخ انتخاب کنید.</p>
           ) : (
             <ul className="m-0 flex list-none flex-col gap-[var(--space-2)] p-0 text-[length:var(--text-sm)]">
               {referrers.map((r) => (

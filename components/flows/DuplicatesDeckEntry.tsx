@@ -40,7 +40,7 @@ export default function DuplicatesDeckEntry({ pairs }: { pairs: DupPair[] }) {
       <button
         type="button"
         onClick={() => setDeck((d) => ({ key: d.key + 1, open: true }))}
-        className="inline-flex min-h-[44px] items-center justify-center gap-[var(--space-2)] rounded-[var(--radius-md)] border border-[var(--border)] px-[var(--space-4)] text-[length:var(--text-sm)] text-[var(--text)]"
+        className="inline-flex min-h-[44px] items-center justify-center gap-[var(--space-2)] rounded-[var(--radius-md)] border border-[var(--border)] px-[var(--space-4)] text-[length:var(--text-sm)] text-[var(--foreground)]"
       >
         <Icon name="users" size="md" />
         {`مشتریان تکراری · ${faNum(pairs.length)} مورد`}

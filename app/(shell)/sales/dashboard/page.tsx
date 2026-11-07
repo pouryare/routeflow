@@ -71,7 +71,7 @@ export default async function DashboardPage() {
     <>
     <PageHeader route="/sales/dashboard" />
     <div className="flex flex-col gap-[var(--space-5)]">
-      <p className="m-0 text-[length:var(--text-sm)] text-[var(--text-muted)]">
+      <p className="m-0 text-[length:var(--text-sm)] text-[var(--muted)]">
         همه ارقام بر اساس مقدار تحویل‌شده است — نه سفارش‌شده. تا {faJalaliDate(period.to)}.
       </p>
 

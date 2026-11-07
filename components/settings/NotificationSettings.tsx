@@ -318,7 +318,7 @@ export default function NotificationSettings({ initial }: { initial: PrefsMatrix
                 return (
                   <li
                     key={t.code}
-                    className="flex items-center justify-between gap-3 rounded-[var(--radius-md)] px-2 py-1.5 odd:bg-[color:var(--sunk)]"
+                    className="flex items-center justify-between gap-3 rounded-[var(--radius-md)] px-2 py-1.5 odd:bg-[color:var(--surface-tertiary)]"
                   >
                     <span className="flex min-w-0 items-center gap-2">
                       <span className="truncate text-[length:var(--text-sm)] text-text">{t.name_fa}</span>

@@ -117,7 +117,7 @@ export default function CrmBoard({ initialRows, initialCounts, initialView, canP
               borderRadius: "var(--radius-md)",
               border: "2px solid var(--border)",
               background: "var(--surface)",
-              color: "var(--text)",
+              color: "var(--foreground)",
               font: "inherit",
               fontSize: "var(--text-sm)",
               width: "100%",

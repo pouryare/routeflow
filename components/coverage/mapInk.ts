@@ -55,7 +55,7 @@ export function readMapInk(el: HTMLElement | null, ground: "light" | "dark"): Ma
     boundary: get("--map-boundary", fb.boundary),
     unknown: get("--map-unknown", fb.unknown),
     accent: get("--accent", fb.accent),
-    accentInk: get("--accent-ink", fb.accentInk),
-    bg: get("--bg", fb.bg),
+    accentInk: get("--accent-foreground", fb.accentInk),
+    bg: get("--background", fb.bg),
   };
 }

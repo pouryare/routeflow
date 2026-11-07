@@ -93,7 +93,7 @@ export default function OrderStatusPanel({
   return (
     <section className="flex flex-col gap-[var(--space-3)]">
       <div className="flex flex-wrap items-center gap-[var(--space-2)]">
-        <span className="text-[length:var(--text-sm)] font-medium text-[var(--text)]">
+        <span className="text-[length:var(--text-sm)] font-medium text-[var(--foreground)]">
           وضعیت: {ORDER_STATUS_LABEL[status as OrderStatus] ?? status}
         </span>
         {actions.map((a) => (
@@ -102,7 +102,7 @@ export default function OrderStatusPanel({
             type="button"
             disabled={pending}
             onClick={() => run(a)}
-            className="inline-flex min-h-[44px] items-center justify-center gap-[var(--space-2)] rounded-[var(--radius-md)] border border-[var(--border)] px-[var(--space-4)] text-[length:var(--text-sm)] text-[var(--text)] hover:bg-[var(--surface-2)] disabled:opacity-50"
+            className="inline-flex min-h-[44px] items-center justify-center gap-[var(--space-2)] rounded-[var(--radius-md)] border border-[var(--border)] px-[var(--space-4)] text-[length:var(--text-sm)] text-[var(--foreground)] hover:bg-[var(--surface-secondary)] disabled:opacity-50"
           >
             <Icon name="package" size="sm" />
             {ACTION_LABEL[a]}
@@ -121,7 +121,7 @@ export default function OrderStatusPanel({
         />
       )}
       {events.length > 0 && (
-        <ol className="m-0 flex list-none flex-col gap-[var(--space-1)] p-0 text-[length:var(--text-xs)] text-[var(--text-muted)]">
+        <ol className="m-0 flex list-none flex-col gap-[var(--space-1)] p-0 text-[length:var(--text-xs)] text-[var(--muted)]">
           {events.map((e) => (
             <li key={e.id}>
               <span className="tabular-nums">{new Date(e.created_at).toLocaleString("fa-IR")}</span>

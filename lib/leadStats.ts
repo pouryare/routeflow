@@ -21,9 +21,9 @@ export const LEAD_STATUS_LABEL: Record<LocationStatus | "none", string> = {
 /** Text-safe tokens (MASTER.md), so the dots and bars follow the skin. */
 export const LEAD_STATUS_TONE: Record<LocationStatus | "none", string> = {
   contacted: "var(--info)",
-  visited: "var(--good)",
-  no_answer: "var(--warn)",
-  declined: "var(--crit)",
+  visited: "var(--success)",
+  no_answer: "var(--warning)",
+  declined: "var(--danger)",
   none: "var(--neutral)",
 };
 

@@ -97,7 +97,7 @@ export default function TaskRow({ taskId, label, sub, customerId, snoozable = fa
       end={snoozable ? snoozer.swipe : { label: "حذف این کار", icon: "trash", tone: "bad", run: remove }}
     >
     <div className="flex flex-col gap-[var(--space-1)] py-[var(--space-2)]">
-      <span className="text-[var(--text)]">
+      <span className="text-[var(--foreground)]">
         {label}
         {sub && <span className="mr-[var(--space-1)] text-[length:var(--text-xs)] text-[var(--text-faint)]">· {sub}</span>}
       </span>
@@ -121,16 +121,16 @@ export default function TaskRow({ taskId, label, sub, customerId, snoozable = fa
         <button
           type="button"
           onClick={remove}
-          className="inline-flex min-h-[44px] items-center justify-center gap-[var(--space-2)] rounded-full px-[var(--space-3)] text-[length:var(--text-xs)] text-[var(--text-faint)] hover:text-[var(--crit)]"
+          className="inline-flex min-h-[44px] items-center justify-center gap-[var(--space-2)] rounded-full px-[var(--space-3)] text-[length:var(--text-xs)] text-[var(--text-faint)] hover:text-[var(--danger)]"
         >
           <Icon name="trash" size="sm" />
           حذف این کار
         </button>
       </div>
       {card && (
-        <div className="mt-[var(--space-1)] rounded-[var(--radius-md)] border border-[var(--accent)] bg-[var(--surface-2)] p-[var(--space-2)] text-[length:var(--text-xs)]">
-          <strong className="text-[var(--text)]">{card.title_fa}</strong>
-          <p className="m-0 mt-[var(--space-1)] leading-6 text-[var(--text-muted)]">{card.script_fa}</p>
+        <div className="mt-[var(--space-1)] rounded-[var(--radius-md)] border border-[var(--accent)] bg-[var(--surface-secondary)] p-[var(--space-2)] text-[length:var(--text-xs)]">
+          <strong className="text-[var(--foreground)]">{card.title_fa}</strong>
+          <p className="m-0 mt-[var(--space-1)] leading-6 text-[var(--muted)]">{card.script_fa}</p>
         </div>
       )}
     </div>

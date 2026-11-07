@@ -49,14 +49,14 @@ export default function OrderAmountFilter({
           onCommit={(v) => go(v[0] === bounds.min && v[1] === bounds.max ? null : v)}
           bars={bars}
         />
-        <p aria-live="polite" className="m-0 mt-[var(--space-1)] text-[length:var(--text-xs)] text-[var(--text-muted)] tabular-nums">
+        <p aria-live="polite" className="m-0 mt-[var(--space-1)] text-[length:var(--text-xs)] text-[var(--muted)] tabular-nums">
           {faDigits(String(countIn(amounts, value)))} سفارش در این بازه
         </p>
       </div>
       {active && (
         <button
           type="button"
-          className="touch inline-flex min-h-[44px] shrink-0 items-center gap-[var(--space-1)] rounded-[var(--radius-md)] border border-[var(--border)] px-[var(--space-3)] text-[length:var(--text-xs)] text-[var(--text-muted)]"
+          className="touch inline-flex min-h-[44px] shrink-0 items-center gap-[var(--space-1)] rounded-[var(--radius-md)] border border-[var(--border)] px-[var(--space-3)] text-[length:var(--text-xs)] text-[var(--muted)]"
           onClick={() => {
             setValue([bounds.min, bounds.max]);
             go(null);

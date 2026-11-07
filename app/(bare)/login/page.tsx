@@ -20,7 +20,7 @@ function SubmitButton({ loading, done, disabled, label }: { loading: boolean; do
     <button
       type="submit"
       disabled={disabled}
-      className="inline-flex items-center justify-center gap-[var(--space-2)] w-full cursor-pointer rounded-[var(--radius-md)] border border-[var(--accent)] bg-[var(--accent)] py-[var(--space-2)] font-medium text-[var(--accent-ink)] transition-[filter,transform,opacity] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:enabled:scale-[1.03] hover:enabled:brightness-110 active:enabled:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
+      className="inline-flex items-center justify-center gap-[var(--space-2)] w-full cursor-pointer rounded-[var(--radius-md)] border border-[var(--accent)] bg-[var(--accent)] py-[var(--space-2)] font-medium text-[var(--accent-foreground)] transition-[filter,transform,opacity] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:enabled:scale-[1.03] hover:enabled:brightness-110 active:enabled:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
     >
       <BusyIcon busy={loading && !done} done={done} name="login" />
       {done ? "وارد شدید" : loading ? "در حال ورود…" : label}
@@ -133,17 +133,17 @@ function LoginForm() {
               RouteFlow
             </div>
           </div>
-          <h1 className="mb-[var(--space-1)] text-center text-[length:var(--text-xl)] font-bold text-[var(--text)]">
+          <h1 className="mb-[var(--space-1)] text-center text-[length:var(--text-xl)] font-bold text-[var(--foreground)]">
             <LeanTitle><WordReveal text="نقشه پوشش مشتریان" /></LeanTitle>
           </h1>
-          <p className="mb-[var(--space-5)] text-center text-[length:var(--text-sm)] text-[var(--text-muted)]">
+          <p className="mb-[var(--space-5)] text-center text-[length:var(--text-sm)] text-[var(--muted)]">
             با نام کاربری و رمز عبور خودتان وارد شوید.
           </p>
 
           {bounced && (
             <p
               role="status"
-              className="mb-[var(--space-4)] rounded-[var(--radius-md)] border border-[var(--warn)]/40 bg-[var(--warn)]/10 px-[var(--space-3)] py-[var(--space-2)] text-[length:var(--text-sm)] text-[var(--warn)]"
+              className="mb-[var(--space-4)] rounded-[var(--radius-md)] border border-[var(--warning)]/40 bg-[var(--warning)]/10 px-[var(--space-3)] py-[var(--space-2)] text-[length:var(--text-sm)] text-[var(--warning)]"
             >
               نشست شما پایان یافته است. برای ادامه دوباره وارد شوید.
             </p>
@@ -159,11 +159,11 @@ function LoginForm() {
                   value={code}
                   onChange={(e) => setCode(e.target.value)}
                   dir="ltr"
-                  className="mb-[var(--space-4)] w-full text-center font-mono text-[length:var(--text-lg)] tracking-[0.3em] text-[var(--text)]"
+                  className="mb-[var(--space-4)] w-full text-center font-mono text-[length:var(--text-lg)] tracking-[0.3em] text-[var(--foreground)]"
                 /></label>
               ) : (
                 <div className="mb-[var(--space-4)] flex flex-col gap-[var(--space-3)]">
-                  <p className="m-0 text-center text-[length:var(--text-sm)] text-[var(--text-muted)]">کد ۶ رقمی برنامهٔ احراز هویت را وارد کنید.</p>
+                  <p className="m-0 text-center text-[length:var(--text-sm)] text-[var(--muted)]">کد ۶ رقمی برنامهٔ احراز هویت را وارد کنید.</p>
                   <OtpInput value={code} onChange={setCode} onComplete={(v) => void submit(v)} isInvalid={error !== null} disabled={loading} />
                 </div>
               )
@@ -180,7 +180,7 @@ function LoginForm() {
                 {useRecovery ? "برگشت به کد برنامه" : "کد بازیابی دارم"}
               </button>
             )}
-            {error && <p className="mb-[var(--space-4)] text-[length:var(--text-sm)] text-[var(--crit)]">{error}</p>}
+            {error && <p className="mb-[var(--space-4)] text-[length:var(--text-sm)] text-[var(--danger)]">{error}</p>}
             <SubmitButton
               loading={loading}
               done={done}

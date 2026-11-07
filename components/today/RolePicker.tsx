@@ -51,8 +51,8 @@ export default function RolePicker({ roles, active }: { roles: Role[]; active: R
               "rounded-[var(--radius-md)] border px-[var(--space-3)] py-[var(--space-2)] text-[length:var(--text-sm)] " +
               "disabled:opacity-60 " +
               (on
-                ? "border-[var(--accent)] bg-[var(--accent)] text-[var(--accent-ink)]"
-                : "border-[var(--border)] bg-[var(--surface)] text-[var(--text)] hover:bg-[var(--surface-raised)]")
+                ? "border-[var(--accent)] bg-[var(--accent)] text-[var(--accent-foreground)]"
+                : "border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:bg-[var(--surface-raised)]")
             }
           >
             <Icon name="users" size="sm" />

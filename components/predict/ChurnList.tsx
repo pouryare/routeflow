@@ -11,9 +11,9 @@ export interface ChurnRow {
 }
 
 const BAND: Record<string, { label: string; tone: string }> = {
-  high: { label: "بالا", tone: "var(--crit)" },
-  watch: { label: "مراقبت", tone: "var(--warn)" },
-  low: { label: "پایین", tone: "var(--good)" },
+  high: { label: "بالا", tone: "var(--danger)" },
+  watch: { label: "مراقبت", tone: "var(--warning)" },
+  low: { label: "پایین", tone: "var(--success)" },
 };
 
 /** The `high` then `watch` customers — where the churn model wants a call. */
@@ -31,7 +31,7 @@ export default function ChurnList({ rows }: { rows: ChurnRow[] }) {
       </div>
       <div className="kblock__body">
       {shown.length === 0 ? (
-        <p className="text-[length:var(--text-sm)] text-[var(--text-muted)]">
+        <p className="text-[length:var(--text-sm)] text-[var(--muted)]">
           مشتری پرخطری شناسایی نشده.
         </p>
       ) : (
@@ -43,13 +43,13 @@ export default function ChurnList({ rows }: { rows: ChurnRow[] }) {
             >
               <Link
                 href={customerHref(r.customer_id)}
-                className="text-[var(--text)] no-underline hover:text-[var(--accent)]"
+                className="text-[var(--foreground)] no-underline hover:text-[var(--accent)]"
               >
                 {r.business_name}
               </Link>
-              <span className="flex items-center gap-[var(--space-2)] tabular-nums text-[var(--text-muted)]">
+              <span className="flex items-center gap-[var(--space-2)] tabular-nums text-[var(--muted)]">
                 <span>{r.reason_fa ?? ""}</span>
-                <span style={{ color: BAND[r.band]?.tone ?? "var(--text-muted)" }}>
+                <span style={{ color: BAND[r.band]?.tone ?? "var(--muted)" }}>
                   {Math.round(r.probability * 100).toLocaleString("fa-IR")}٪ · {BAND[r.band]?.label ?? "نامشخص"}
                 </span>
               </span>

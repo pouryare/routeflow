@@ -93,12 +93,12 @@ export default function SoundSettings({
       <section className="card flex flex-col gap-[var(--space-3)] p-[var(--space-4)]" aria-label="صدای برنامه">
         <SectionHead title="صدای برنامه" />
         <div className="flex min-h-11 items-center justify-between gap-[var(--space-3)]">
-          <p className="m-0 text-[length:var(--text-sm)] text-[var(--text)]">
+          <p className="m-0 text-[length:var(--text-sm)] text-[var(--foreground)]">
             {on ? "روشن است: ثبت، خطا و دکمه‌ها صدای کوتاه دارند." : "خاموش است: برنامه بی‌صداست."}
           </p>
           <ToggleSwitch on={on} onChange={() => void flip()} label="صدای برنامه" />
         </div>
-        <p className="m-0 text-[length:var(--text-sm)] text-[var(--text-muted)]">
+        <p className="m-0 text-[length:var(--text-sm)] text-[var(--muted)]">
           این انتخاب فقط برای شماست و روی همهٔ دستگاه‌هایتان می‌ماند. وقتی گوشی آیفون روی بی‌صداست، صدایی پخش نمی‌شود.
           {" اگر در تنظیمات گوشی «کاهش حرکت» روشن است، صدا تا وقتی خودتان روشنش نکنید خاموش می‌ماند."}
         </p>
@@ -127,7 +127,7 @@ export default function SoundSettings({
 
       <section className="card flex flex-col gap-[var(--space-3)] p-[var(--space-4)]" aria-label="صدای شرکت">
         <SectionHead title="صدای شرکت" />
-        <p className="m-0 text-[length:var(--text-sm)] text-[var(--text-muted)]">
+        <p className="m-0 text-[length:var(--text-sm)] text-[var(--muted)]">
           {canPickSkin
             ? "همهٔ کارکنان شرکت همین صدا را می‌شنوند. با زدن هر گزینه، صدای «ثبت شد» آن پخش می‌شود."
             : `صدای شرکت «${SKIN_LABELS[skin]}» است. فقط مالک شرکت می‌تواند آن را عوض کند.`}
@@ -144,13 +144,13 @@ export default function SoundSettings({
                 <Icon name={s === skin ? "check" : "volume"} size="sm" />
                 <span className="font-medium">{SKIN_LABELS[s]}</span>
                 {/* On the lit chip the muted grey sinks into the accent; the chip's own ink reads there. */}
-                <span className={s === skin ? "opacity-85" : "text-[var(--text-muted)]"}>{SKIN_HINT[s]}</span>
+                <span className={s === skin ? "opacity-85" : "text-[var(--muted)]"}>{SKIN_HINT[s]}</span>
               </ToggleButton>
             ))}
           </div>
         )}
       </section>
-      {error && <p role="alert" className="m-0 text-[length:var(--text-sm)] text-[var(--crit)]">{error}</p>}
+      {error && <p role="alert" className="m-0 text-[length:var(--text-sm)] text-[var(--danger)]">{error}</p>}
     </div>
   );
 }

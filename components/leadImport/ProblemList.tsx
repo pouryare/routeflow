@@ -31,7 +31,7 @@ export default function ProblemList({ items }: { items: LiveItem[] }) {
             key={item.id}
             className="flex items-start gap-2 rounded-[var(--radius-md)] border border-border bg-surface px-3 py-2"
           >
-            <span className="mt-0.5 shrink-0 text-[color:var(--warn)]">
+            <span className="mt-0.5 shrink-0 text-[color:var(--warning)]">
               <Icon name="warn" size="sm" />
             </span>
             <div className="min-w-0 flex-1">

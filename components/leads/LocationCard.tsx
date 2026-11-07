@@ -83,7 +83,7 @@ export default function LocationCard({
 
   return (
     <div
-      className={`rounded-[var(--radius-md)] border border-[var(--line)] bg-surface p-3 hover:border-[var(--line-2)] transition-colors ${compactMode ? "p-2" : ""}
+      className={`rounded-[var(--radius-md)] border border-[var(--border)] bg-surface p-3 hover:border-[var(--border-strong)] transition-colors ${compactMode ? "p-2" : ""}
         ${priorityHigh ? "border-accent shadow-sm" : ""}`}
     >
       <div className="flex items-start gap-3">

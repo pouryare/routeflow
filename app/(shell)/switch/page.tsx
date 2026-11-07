@@ -25,7 +25,7 @@ export default async function SwitchPage() {
   return (
     <div className="mx-auto w-full max-w-2xl">
       <PageHeader route="/switch" />
-      <p className="mt-[var(--space-1)] text-[length:var(--text-sm)] text-[var(--text-muted)]">
+      <p className="mt-[var(--space-1)] text-[length:var(--text-sm)] text-[var(--muted)]">
         هر کاری که اینجا انجام دهید به نام آن شخص ثبت می‌شود.
       </p>
       {/* The founder's account only: pick a company to act in (reads and writes), or all of them. */}

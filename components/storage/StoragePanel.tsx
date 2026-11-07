@@ -26,7 +26,7 @@ interface Data {
   dev_disk: boolean;
 }
 
-const TONE_COLOR = { none: "var(--accent)", ok: "var(--good)", warn: "var(--warn)", over: "var(--warn)" } as const;
+const TONE_COLOR = { none: "var(--accent)", ok: "var(--success)", warn: "var(--warning)", over: "var(--warning)" } as const;
 
 async function send(url: string, method: string, body?: unknown): Promise<string | null> {
   const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: body === undefined ? undefined : JSON.stringify(body) });
@@ -193,7 +193,7 @@ function StorageCard({ s, isDefault, onEdit, onRemove }: { s: PublicStorage; isD
       <h2 className="sechead__title flex items-center gap-2">
         <span
           className="inline-block size-2.5 rounded-full"
-          style={{ background: s.last_check_error ? "var(--crit)" : "var(--good)" }}
+          style={{ background: s.last_check_error ? "var(--danger)" : "var(--success)" }}
           aria-label={s.last_check_error ? "کار نمی‌کند" : "کار می‌کند"}
         />
         {s.name}
@@ -222,7 +222,7 @@ function StorageCard({ s, isDefault, onEdit, onRemove }: { s: PublicStorage; isD
         </div>
       ) : null}
       {tone === "over" && (
-        <p className="text-xs" style={{ color: "var(--warn)" }}>
+        <p className="text-xs" style={{ color: "var(--warning)" }}>
           {s.at_limit === "keep" ? "از اندازهٔ طرح گذشته؛ آپلود ادامه دارد و هزینهٔ اضافه با شماست." : "پر است؛ فایل‌های تازه به فضای سرریز می‌روند."}
         </p>
       )}

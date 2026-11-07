@@ -102,7 +102,7 @@ export default function PlanOriginPanel({ origin, originPickerOpen, setOriginPic
               )}
               {/* Feature 4 */}
               {warehouseDetour && (
-                <span style={{ color: warehouseDetour.deltaKm > 0 ? "var(--warn)" : "var(--good)" }}>
+                <span style={{ color: warehouseDetour.deltaKm > 0 ? "var(--warning)" : "var(--success)" }}>
                   بارگیری از {warehouseDetour.name}:{" "}
                   {warehouseDetour.deltaKm > 0 ? "+" : "−"}
                   {formatDistanceKm(Math.abs(warehouseDetour.deltaKm))}
