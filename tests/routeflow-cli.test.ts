@@ -322,3 +322,11 @@ describe("write_caddy: one file per site", () => {
     expect(fs.existsSync(path.join(caddy, "routeflow.caddy"))).toBe(false);
   });
 });
+
+describe("install questions", () => {
+  it("ask nothing without a terminal or with --yes, and keep the values given", () => {
+    const r = run('ROUTEFLOW_YES=1; DOMAIN=app.test; install_questions; echo "$DOMAIN"');
+    expect(r.out).toBe("app.test");
+    expect(run("interactive && echo yes || echo no").out).toBe("no");
+  });
+});

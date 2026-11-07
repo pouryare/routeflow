@@ -85,10 +85,25 @@ the encrypted file.
 This guards against a secret leaking through a copy of `/etc`, a screenshot or a pasted file. It does not
 guard against someone who is root on the running server.
 
-## A fresh server in one command
+## A fresh server: answer the questions
 
 Copy the tarball for the server's machine type (from a GitHub release or a manual Release run) to the
-server, then:
+server, unpack the command and run it with no arguments:
+
+```sh
+tar -xzf routeflow-0.1.0-linux-x64.tar.gz
+sudo bash routeflow-0.1.0-linux-x64/bin/routeflow install
+```
+
+It asks, one question at a time, with an example and a default in `[brackets]` (Enter keeps it): the
+address, the company name, the first login's username and password (Enter = a random one), which
+certificate to use toward Arvan, whether the web ports are for Arvan only, whether to send backups to the
+Pi (and its address, user and folder), and an optional GitHub public key. It ends with a summary and
+"Start the install now?". If the release file is not in the current folder, it asks where it is. Your
+answers are saved in `/etc/routeflow/routeflow.conf` (the password is not), so running it again offers
+them as the defaults.
+
+For a script, skip the questions with `--yes` and pass the answers as variables:
 
 ```sh
 sudo DOMAIN=app.example.ir COMPANY_NAME="پخش نمونه" \
