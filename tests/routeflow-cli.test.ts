@@ -66,7 +66,7 @@ describe("routeflow: machine type and tarball names", () => {
 });
 
 describe("routeflow: unpacking a release", () => {
-  it("checks the sum, unpacks to releases/<version> and links the shared photo and map folders", () => {
+  it("checks the sum, unpacks to releases/<version> and links the shared photo, map, cache and held folders", () => {
     const t = fakeTarball("0.1.0");
     const r = run(`unpack_release "${t}"`);
     expect(r.code, r.err).toBe(0);
@@ -74,6 +74,9 @@ describe("routeflow: unpacking a release", () => {
     const rel = path.join(root, "releases", "0.1.0");
     expect(fs.readlinkSync(path.join(rel, "data", "photos"))).toBe(path.join(root, "data", "photos"));
     expect(fs.readlinkSync(path.join(rel, "data", "map"))).toBe(path.join(root, "data", "map"));
+    // The 7-day file cache and held uploads must outlive the release folder (lib/storage/cache.ts, files.ts).
+    expect(fs.readlinkSync(path.join(rel, "data", "cache"))).toBe(path.join(root, "data", "cache"));
+    expect(fs.readlinkSync(path.join(rel, "data", "held"))).toBe(path.join(root, "data", "held"));
     expect(fs.existsSync(path.join(rel, "data", "tehran-districts.json"))).toBe(true);
   });
 

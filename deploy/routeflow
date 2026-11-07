@@ -102,11 +102,15 @@ unpack_release() {
   tar -xzf "$tarball" -C "$tmp" --strip-components=1
   [ -x "$tmp/node/bin/node" ] && [ -f "$tmp/server.js" ] && [ "$(cat "$tmp/VERSION")" = "$version" ] \
     || { rm -rf "$tmp"; die "$(basename "$tarball") is incomplete"; }
-  # Photos, avatars and map tiles are state, not code: one copy in $ROOT/data, linked into each release.
-  mkdir -p "$ROOT/data/photos" "$ROOT/data/map"
-  rm -rf "$tmp/data/photos" "$tmp/data/map"
-  ln -s "$ROOT/data/photos" "$tmp/data/photos"
-  ln -s "$ROOT/data/map" "$tmp/data/map"
+  # Photos, avatars, map tiles, the 7-day file cache and uploads held while a bucket is down are
+  # state, not code: one copy in $ROOT/data, linked into each release. The app writes cache and held
+  # under its own folder, and a release folder is root-owned and replaced on every upgrade.
+  local d
+  for d in photos map cache held; do
+    mkdir -p "$ROOT/data/$d"
+    rm -rf "${tmp:?}/data/$d"
+    ln -s "$ROOT/data/$d" "$tmp/data/$d"
+  done
   mv "$tmp" "$ROOT/releases/$version"
   echo "$version"
 }
