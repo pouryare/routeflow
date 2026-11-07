@@ -330,3 +330,116 @@ describe("install questions", () => {
     expect(run("interactive && echo yes || echo no").out).toBe("no");
   });
 });
+
+describe("install helpers", () => {
+  it("checks a domain, a username, a host and an SSH key", () => {
+    const ok = (fn: string, v: string) => run(`${fn} '${v}' && echo y || echo n`).out;
+    expect(ok("valid_domain", "app.example.ir")).toBe("y");
+    expect(ok("valid_domain", "localhost")).toBe("n");
+    expect(ok("valid_domain", "-bad.example.ir")).toBe("n");
+    expect(ok("valid_domain", "a b.example.ir")).toBe("n");
+    expect(ok("valid_username", "admin")).toBe("y");
+    expect(ok("valid_username", "a")).toBe("n");
+    expect(ok("valid_host", "192.168.1.5")).toBe("y");
+    expect(ok("valid_host", "pi host")).toBe("n");
+    expect(ok("valid_pubkey", "")).toBe("y");
+    expect(ok("valid_pubkey", "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIabc github-deploy")).toBe("y");
+    expect(ok("valid_pubkey", "not a key")).toBe("n");
+  });
+
+  it("hides passwords, tokens and database passwords in the support file", () => {
+    const r = run(
+      `printf 'TELEGRAM_BOT_TOKEN=abc123\\nSMS_API_KEY=zzz\\nDATABASE_URL=postgres://u:secretpw@/db\\nDOMAIN=app.test\\n' | redact`,
+    );
+    expect(r.out).toContain("TELEGRAM_BOT_TOKEN=***");
+    expect(r.out).toContain("SMS_API_KEY=***");
+    expect(r.out).toContain("postgres://u:***@/db");
+    expect(r.out).toContain("DOMAIN=app.test");
+    expect(r.out).not.toContain("secretpw");
+  });
+
+  it("skips a finished step on a second run, unless asked to repeat it", () => {
+    const conf = path.join(root, "conf");
+    fs.mkdirSync(conf);
+    const sh = (extra: string) => spawnSync("bash", ["-c", `. "${SCRIPT}"; ${extra}`], {
+      env: { ...process.env, ROUTEFLOW_ROOT: root, ROUTEFLOW_CONF_DIR: conf }, encoding: "utf8",
+    }).stdout.trim();
+    expect(sh("step_done packages && echo y || echo n")).toBe("n");
+    expect(sh("mark_step packages; step_done packages && echo y || echo n")).toBe("y");
+    expect(sh("ROUTEFLOW_FRESH=1; step_done packages && echo y || echo n")).toBe("n");
+  });
+
+  it("shows the first login once and then removes it", () => {
+    const conf = path.join(root, "conf");
+    fs.mkdirSync(conf);
+    fs.writeFileSync(path.join(conf, "first-login"), "password: Abc123\n");
+    const sh = () => spawnSync("bash", ["-c", `. "${SCRIPT}"; need_root() { :; }; cmd_first_login`], {
+      env: { ...process.env, ROUTEFLOW_ROOT: root, ROUTEFLOW_CONF_DIR: conf }, encoding: "utf8",
+    });
+    expect(sh().stdout).toContain("Abc123");
+    const again = sh();
+    expect(again.status).not.toBe(0);
+    expect(again.stderr).toContain("reset-login");
+  });
+
+  it("numbers the install steps so the total is right", () => {
+    const src = fs.readFileSync(SCRIPT, "utf8");
+    const body = src.slice(src.indexOf("\ncmd_install() {"), src.indexOf("\nmenu() {"));
+    const calls = (body.match(/^ {2}step "/gm) ?? []).length;
+    const total = Number(/^STEP_TOTAL=(\d+)/m.exec(src)?.[1]);
+    expect(calls + 1).toBe(total); // the first step is the checks done before the install is handed to the background
+  });
+});
+
+describe("install.sh", () => {
+  it("stops on a wrong checksum before it runs anything", () => {
+    fs.mkdirSync(path.join(root, "pkg"));
+    const dir = path.join(root, "pkg");
+    fs.copyFileSync(path.join(process.cwd(), "scripts", "release", "install.sh"), path.join(dir, "install.sh"));
+    const name = `routeflow-0.0.1-linux-${HOST_ARCH}.tar.gz`;
+    fs.writeFileSync(path.join(dir, name), "not really a tarball");
+    fs.writeFileSync(path.join(dir, `${name}.sha256`), `${"0".repeat(64)}  ${name}\n`);
+    const r = spawnSync("bash", [path.join(dir, "install.sh")], { encoding: "utf8" });
+    expect(r.status).not.toBe(0);
+    expect(r.stdout + r.stderr).toContain("FAILED");
+  });
+});
+
+describe("install progress", () => {
+  it("draws a bar that fills with the steps and lists the time of each", () => {
+    expect(run("progress_bar 0 10").out).toBe("░░░░░░░░░░");
+    expect(run("progress_bar 5 10").out).toBe("█████░░░░░");
+    expect(run("progress_bar 10 10").out).toBe("██████████");
+    const r = run('STEP_TOTAL=2; step "One"; step "Two"; step_times');
+    expect(r.out).toContain("[█████░░░░░] 1/2 One");
+    expect(r.out).toContain("[██████████] 2/2 Two");
+    expect(r.out).toMatch(/0 s {2}One/);
+  });
+});
+
+describe("after the install", () => {
+  it("guesses the time left from the finished steps, and says nothing too early", () => {
+    expect(run("INSTALL_T0=1000; STEP_TOTAL=11; STEP_N=3; time_left 1010").out).toBe("");
+    // 10 s of weight 1 + 30 done, 70 of 92 left: 3 min elapsed -> about 6 min left
+    const r = run("INSTALL_T0=1000; STEP_TOTAL=11; STEP_N=3; time_left 1180");
+    expect(r.out).toMatch(/about \d+ min left/);
+  });
+
+  it("explains each way the Pi link can fail", () => {
+    for (const st of ["ok", "network", "nokey", "key", "hostkey", "folder"]) {
+      expect(run(`pi_state_text ${st}`).out.length).toBeGreaterThan(10);
+    }
+  });
+
+  it("cdn-ips --open opens the ports and keeps them open on later refreshes", () => {
+    const conf = path.join(root, "conf");
+    fs.mkdirSync(conf);
+    fs.writeFileSync(path.join(conf, "routeflow.conf"), "DOMAIN=app.test\nCDN_ONLY=1\n");
+    const r = spawnSync("bash", ["-c", `. "${SCRIPT}"; need_root() { :; }; ufw() { echo "ufw $*" >> "${root}/ufw.log"; }; cmd_cdn_ips --open`], {
+      env: { ...process.env, ROUTEFLOW_ROOT: root, ROUTEFLOW_CONF_DIR: conf }, encoding: "utf8",
+    });
+    expect(r.status, r.stderr).toBe(0);
+    expect(fs.readFileSync(path.join(conf, "routeflow.conf"), "utf8")).toContain("CDN_ONLY=0");
+    expect(fs.readFileSync(path.join(root, "ufw.log"), "utf8")).toContain("ufw allow 443/tcp");
+  });
+});

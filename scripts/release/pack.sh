@@ -78,5 +78,6 @@ echo "$NODE_VERSION" > "$OUT/NODE_VERSION"
 
 tar -czf "dist/$NAME.tar.gz" -C dist "$NAME"
 (cd dist && sha256sum "$NAME.tar.gz" > "$NAME.tar.gz.sha256")
+cp scripts/release/install.sh dist/install.sh
 rm -rf "$OUT"
 echo "dist/$NAME.tar.gz ($(du -h "dist/$NAME.tar.gz" | cut -f1))"
