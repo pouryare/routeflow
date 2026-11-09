@@ -173,6 +173,29 @@ describe("readRun", () => {
     expect(run.stops[0].total_toman).toBe(1320000); // 3 x 440000
   });
 
+  it("gives each stop its own lines when the run has several (read in one query)", async () => {
+    const db = getDb();
+    const third = Number((await db.prepare(
+      "INSERT INTO users (username, password_hash, display_name, role, group_id, active, created_at) VALUES ('d3', 'x', 'راننده سه', 'delivery_driver', ?, 1, ?)"
+    ).run(ctx.group, new Date().toISOString())).lastInsertRowid);
+    const run = await createRun(db, { driver_user_id: third, run_date: "2026-07-01", created_by: ctx.owner, organization_id: 1 });
+    const packs = [1, 2];
+    for (const n of packs) {
+      const o = await createOrder(db, {
+        customer_id: ctx.customer,
+        order_date: "2026-07-01",
+        created_by: ctx.owner,
+        organization_id: 1,
+        lines: [{ product_id: ctx.product, packaging_id: ctx.packaging, packs: n }],
+      });
+      await confirmOrder(db, o.id);
+      await addStop(db, run, o.id);
+    }
+    const read = (await readRun(db, run))!;
+    expect(read.stops.map((s) => s.lines.map((l) => l.packs_ordered))).toEqual([[1], [2]]);
+    expect(read.stops.map((s) => s.total_toman)).toEqual([440000, 880000]);
+  });
+
   it("reports what is still to collect", async () => {
     const run = (await readRun(getDb(), ctx.run))!;
     expect(run.to_collect_toman).toBe(1320000);

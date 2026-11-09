@@ -29,7 +29,6 @@ import { planDelivery, deliveryForStop } from "./repo/deliveries";
 import { tombstone } from "./repo/tombstones";
 import type { OrderStatus } from "./orderStateMachine";
 
-import { mapSeq } from "@/lib/seq";
 export class DeliveryError extends Error {}
 
 export interface RunStopLine extends LineSnapshot {
@@ -291,18 +290,29 @@ export async function deleteRun(db: Db, runId: number): Promise<{ releasedOrderI
 }
 
 async function stopLines(db: Db, orderId: number): Promise<RunStopLine[]> {
+  return (await stopLinesMany(db, [orderId])).get(orderId) ?? [];
+}
+
+/** The lines of every stop on a run in one query, by order id (a run of 20 stops was 20 queries). */
+async function stopLinesMany(db: Db, orderIds: number[]): Promise<Map<number, RunStopLine[]>> {
+  const byOrder = new Map<number, RunStopLine[]>();
+  if (orderIds.length === 0) return byOrder;
   const rows = await db
     .prepare(
       `SELECT ol.*, p.name AS product_name, pk.name AS packaging_name
          FROM order_lines ol
          JOIN products p ON p.id = ol.product_id
          JOIN packagings pk ON pk.id = ol.packaging_id
-        WHERE ol.order_id = ?
-        ORDER BY ol.id`
+        WHERE ol.order_id IN (${orderIds.map(() => "?").join(",")})
+        ORDER BY ol.order_id, ol.id`
     )
-    .all(orderId) as unknown as (RunStopLine & LineSnapshot)[];
-
-  return rows.map((row) => ({ ...row, total_toman: lineTotalToman(row), kg: lineKg(row) }));
+    .all(...orderIds) as unknown as (RunStopLine & LineSnapshot & { order_id: number })[];
+  for (const row of rows) {
+    const list = byOrder.get(row.order_id) ?? [];
+    list.push({ ...row, total_toman: lineTotalToman(row), kg: lineKg(row) });
+    byOrder.set(row.order_id, list);
+  }
+  return byOrder;
 }
 
 export async function readRun(db: Db, runId: number): Promise<RunDetail | null> {
@@ -345,8 +355,9 @@ export async function readRun(db: Db, runId: number): Promise<RunDetail | null> 
     )
     .all(runId) as unknown as (Omit<RunStop, "lines" | "total_toman"> & { discount_toman: number })[];
 
-  const stops: RunStop[] = await mapSeq(stopRows, async (stop) => {
-    const lines = await stopLines(db, stop.order_id);
+  const linesByOrder = await stopLinesMany(db, stopRows.map((s) => s.order_id));
+  const stops: RunStop[] = stopRows.map((stop) => {
+    const lines = linesByOrder.get(stop.order_id) ?? [];
     // The driver collects what the customer owes, so the approved discount is already off.
     const { discount_toman, ...rest } = stop;
     return { ...rest, lines, total_toman: netOfDiscount(orderTotalToman(lines), Number(discount_toman ?? 0)) };
