@@ -27,6 +27,8 @@ import { compactToman, EMPTY_CHART } from "@/components/dashboard/format";
 import { coverageAnalytics } from "@/lib/repo/coverageAnalytics";
 import { PIN_POOL_ROLES, isVanRole } from "@/lib/roles";
 import { pageMetadata } from "@/lib/pageMeta";
+import RouteTabs from "@/components/RouteTabs";
+import { DASH_PERIODS, DASH_PERIOD_LABEL, dashPeriod, dashPeriodRange } from "@/lib/periods";
 
 export const metadata = pageMetadata("/sales/dashboard");
 
@@ -40,13 +42,18 @@ const STATUS_LABEL = ORDER_STATUS_LABEL as Record<string, string>;
 const pct = (n: number) => `${faNum(Math.round(n * 100))}٪`;
 
 
-export default async function DashboardPage() {
+export default async function DashboardPage({ searchParams }: { searchParams: Promise<{ period?: string }> }) {
   const jar = await cookies();
   const session = await getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
   if (!session) redirect("/login");
   if (isVanRole(session.role)) redirect("/driver");
 
-  const d = await dashboardFor(session);
+  /* The time frame: this Jalali season unless asked (owner decision 2026-11-09). The sales figures
+     come from the saved daily totals, so a longer frame costs a few more rows, not a recount. */
+  const frame = dashPeriod((await searchParams).period);
+  const range = dashPeriodRange(frame, tehranTodayIso());
+  const frameHref = (p: string) => (p === "quarter" ? "/sales/dashboard" : `/sales/dashboard?period=${p}`);
+  const d = await dashboardFor(session, range);
   const hours = await ordersByHourFor(session, tehranTodayIso());
 
   const today = toJalali(new Date().toISOString())!;
@@ -74,8 +81,14 @@ export default async function DashboardPage() {
     <>
     <PageHeader route="/sales/dashboard" />
     <div className="flex flex-col gap-[var(--space-5)]">
+      <RouteTabs
+        label="بازهٔ زمانی"
+        tabs={DASH_PERIODS.map((p) => ({ href: frameHref(p), label: DASH_PERIOD_LABEL[p] }))}
+        current={frameHref(frame)}
+      />
       <p className="m-0 text-[length:var(--text-sm)] text-[var(--muted)]">
-        همه ارقام بر اساس مقدار تحویل‌شده است — نه سفارش‌شده. تا {faJalaliDate(period.to)}.
+        همه ارقام بر اساس مقدار تحویل‌شده است — نه سفارش‌شده.{" "}
+        {range.from ? <>از {faJalaliDate(range.from)} </> : null}تا {faJalaliDate(period.to)}.
       </p>
 
       {/* The wash is decoration and grouping, nothing more: it gives the four tiles

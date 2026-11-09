@@ -124,4 +124,8 @@ export const TENANT_TABLES = [
   "notifications_archive",
   "rule_runs_archive",
   "live_events_archive",
+  /* Saved daily sales totals and the days marked for a recount (lib/repo/salesDaily.ts). */
+  "sales_daily",
+  "sales_daily_products",
+  "sales_daily_marks",
 ] as const satisfies readonly string[];

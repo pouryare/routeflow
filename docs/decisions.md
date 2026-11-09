@@ -411,3 +411,15 @@ Swipe actions 1 and 2, text field, send 1 and 2, slider, rating, checkbox 1 and 
 
 ### 10.19 Own use only, not for sale (2026-11-05, owner decision)
 The owner no longer plans to sell RouteFlow: for now it is for his own company only. So a library or service whose licence forbids commercial use or asks for attribution is allowed (for example the non-commercial Chatterbox Persian voice and ElevenLabs' free tier), and the AGPL tour libraries are no longer ruled out for licence reasons alone. Paid foreign services stay a risk for access and payment from Iran, so the owner is asked before any recurring cost. If the plan to sell returns, re-check every licence taken on under this decision. Tutorial voice: ElevenLabs **v4**, voice **Jessica**, always from the diacritic `say` text; clips made at build time, so the server never calls ElevenLabs and the key is never stored in the repo.
+
+### 10.21 Database follow-ups to the index audit (2026-11-09, owner decision)
+Six follow-ups after the index audit (`notes/db-index-audit-2026-11-09.md`, PR #66). All built in the same pull request.
+
+| Item | Decision |
+|---|---|
+| Old history | **Kept, never deleted** (the owner wants it for decisions and future ML). Five log tables (events, notifications, rule runs, order steps, live events) move nightly to `*_archive` twins in the same database. The platform owner sets how many months stay in the everyday tables on «وضعیت سامانه» (default 12; live events keep their 7-day window). Orders, payments and the books are never archived. An order's timeline reads both halves (`order_events_all`), so an order from two years ago still shows every step. Deleting old rows and a separate archive database were rejected. |
+| Long lists | Paged on the server with **HeroUI's Pagination** (`components/mobile/ListPager.tsx`): payments 25 a page. The lead-run planner, the only reader of every run, now asks for the last month only. |
+| Small lists and the shell | Read once per request (session, prefs, order lines in one query). The nav shell is a layout, so it stays mounted between pages; only the page part changes. |
+| Dashboard totals | **Own saved daily totals with changed-day marks** (`lib/repo/salesDaily.ts`). Any change to an order, a line or a payment marks the order's day, and marked days are recounted just before the next read, so a total is right even when the past is edited. pg_ivm was rejected (an extension to install and keep in step with every Postgres upgrade). The dashboard opens on **this Jalali season**, with «امسال» and «همهٔ زمان‌ها» beside it. |
+| Seed speed | Delegated. Demo seed runs with `synchronous_commit=off`; it stays sequential because order numbers and credit holds depend on order. |
+| Slow queries | A card on «وضعیت سامانه» for the platform owner, from `pg_stat_statements`: the ten slowest app queries on average, with how often each ran. |

@@ -496,6 +496,19 @@ export interface Events {
   organization_id: number;
 }
 
+export interface EventsArchive {
+  actor_user_id: number | null;
+  created_at: string;
+  entity_id: number | null;
+  entity_type: string | null;
+  id: number;
+  impersonated_by: number | null;
+  kind: string;
+  metadata_json: string | null;
+  occurred_at: string;
+  organization_id: number;
+}
+
 export interface ExpenseReceipts {
   created_at: string;
   created_by: number;
@@ -762,6 +775,20 @@ export interface LiveEvents {
   topic: string;
 }
 
+export interface LiveEventsArchive {
+  audience_roles: string[] | null;
+  audience_users: ArrayType<number> | null;
+  client_key: string | null;
+  created_at: Timestamp;
+  data_json: string | null;
+  entity_id: number | null;
+  entity_type: string | null;
+  id: number;
+  organization_id: number;
+  tags: string[] | null;
+  topic: string;
+}
+
 export interface LiveLatest {
   audience_roles: string[] | null;
   audience_users: ArrayType<number> | null;
@@ -867,6 +894,27 @@ export interface Notifications {
   user_id: number;
 }
 
+export interface NotificationsArchive {
+  body_fa: string | null;
+  created_at: string;
+  entity_id: number | null;
+  entity_type: string | null;
+  group_key: string;
+  id: number;
+  organization_id: number;
+  priority: string;
+  push_flushed_at: string | null;
+  read_at: string | null;
+  ref_id: number | null;
+  seen_at: string | null;
+  source_event_id: number | null;
+  source_rule_run_id: number | null;
+  tg_flushed_at: string | null;
+  title_fa: string;
+  type_code: string;
+  user_id: number;
+}
+
 export interface NotificationTypes {
   active: Generated<number>;
   category: string;
@@ -920,6 +968,36 @@ export interface OrderEvents {
   device_time: string | null;
   from_status: string | null;
   id: Generated<number>;
+  impersonated_by: number | null;
+  note: string | null;
+  order_id: number;
+  organization_id: number;
+  reason_code_id: number | null;
+  to_status: string;
+}
+
+export interface OrderEventsAll {
+  action: string | null;
+  actor_user_id: number | null;
+  created_at: string | null;
+  device_time: string | null;
+  from_status: string | null;
+  id: number | null;
+  impersonated_by: number | null;
+  note: string | null;
+  order_id: number | null;
+  organization_id: number | null;
+  reason_code_id: number | null;
+  to_status: string | null;
+}
+
+export interface OrderEventsArchive {
+  action: string;
+  actor_user_id: number | null;
+  created_at: string;
+  device_time: string | null;
+  from_status: string | null;
+  id: number;
   impersonated_by: number | null;
   note: string | null;
   order_id: number;
@@ -1294,6 +1372,20 @@ export interface RuleRuns {
   task_id: number | null;
 }
 
+export interface RuleRunsArchive {
+  alert_id: number | null;
+  cooldown_until: string;
+  entity_id: number | null;
+  entity_type: string | null;
+  escalated_at: string | null;
+  fired_at: string;
+  id: number;
+  organization_id: number;
+  resolved_at: string | null;
+  rule_id: number;
+  task_id: number | null;
+}
+
 export interface Rules {
   action_json: string | null;
   action_kind: string;
@@ -1370,6 +1462,36 @@ export interface Sales {
   qty: number | null;
   sale_date: string;
   shipping_status: string | null;
+}
+
+export interface SalesDaily {
+  cost: number | null;
+  customer_id: number;
+  day: string;
+  group_id: number | null;
+  kg: number | null;
+  orders: number;
+  organization_id: number;
+  realized: number;
+  revenue: number | null;
+  salesperson_user_id: number | null;
+}
+
+export interface SalesDailyMarks {
+  day: string;
+  id: Generated<number>;
+  organization_id: number;
+  tx: Generated<string>;
+}
+
+export interface SalesDailyProducts {
+  day: string;
+  group_id: number | null;
+  kg: number | null;
+  organization_id: number;
+  product_id: number;
+  revenue: number | null;
+  salesperson_user_id: number | null;
 }
 
 export interface SavedLocations {
@@ -1755,6 +1877,7 @@ export interface DB {
   driver_commission_rates: DriverCommissionRates;
   entry_places: EntryPlaces;
   events: Events;
+  events_archive: EventsArchive;
   expense_receipts: ExpenseReceipts;
   facilities: Facilities;
   fiscal_periods: FiscalPeriods;
@@ -1776,6 +1899,7 @@ export interface DB {
   live_connections: LiveConnections;
   live_display_keys: LiveDisplayKeys;
   live_events: LiveEvents;
+  live_events_archive: LiveEventsArchive;
   live_latest: LiveLatest;
   live_presence: LivePresence;
   live_viewing: LiveViewing;
@@ -1787,9 +1911,12 @@ export interface DB {
   notification_prefs: NotificationPrefs;
   notification_types: NotificationTypes;
   notifications: Notifications;
+  notifications_archive: NotificationsArchive;
   objection_cards: ObjectionCards;
   order_discounts: OrderDiscounts;
   order_events: OrderEvents;
+  order_events_all: OrderEventsAll;
+  order_events_archive: OrderEventsArchive;
   order_lines: OrderLines;
   orders: Orders;
   organizations: Organizations;
@@ -1816,12 +1943,16 @@ export interface DB {
   route_schedules: RouteSchedules;
   route_templates: RouteTemplates;
   rule_runs: RuleRuns;
+  rule_runs_archive: RuleRunsArchive;
   rules: Rules;
   run_draft_stops: RunDraftStops;
   run_drafts: RunDrafts;
   run_facility_stops: RunFacilityStops;
   run_unload_lines: RunUnloadLines;
   sales: Sales;
+  sales_daily: SalesDaily;
+  sales_daily_marks: SalesDailyMarks;
+  sales_daily_products: SalesDailyProducts;
   saved_locations: SavedLocations;
   seasonal_factors: SeasonalFactors;
   shared_cost_rules: SharedCostRules;

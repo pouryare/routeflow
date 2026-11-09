@@ -11,7 +11,10 @@
  */
 
 import type { Db } from "@/lib/database/client";
-import { orderFilter, groupFilter, type Session } from "./session";
+import { orderFilter, groupFilter, orgScopeId, scopeView, type Session } from "./session";
+import { isVanRole } from "./roles";
+import { refreshSalesDaily } from "./repo/salesDaily";
+import { addDaysIso } from "./flows/dates";
 import { customerDebtsForOrgOnce } from "./repo/payments";
 import {
   FULFILLED_ORDER_STATUSES,
@@ -19,7 +22,6 @@ import {
   sqlStatusList,
 } from "./orderStateMachine";
 import { jalaliMonthKey, JALALI_MONTHS, JALALI_WEEKDAYS, tehranTodayIso } from "./jalali";
-import { round } from "@/lib/database/dialect";
 
 export interface Series {
   key: string;
@@ -99,75 +101,78 @@ function rank(map: Map<string, number>, limit = 10): Series[] {
     .slice(0, limit);
 }
 
-export async function salesDashboard(db: Db, session: Session): Promise<SalesDashboard> {
+/** `range` limits the order figures (revenue, margin, orders, kilograms and their breakdowns, fill
+ *  rate, status mix, lead time) to orders dated on those days, inclusive; an empty end is open.
+ *  Debt and new customers by month stay all-time; revenue_by_day is always the last 30 days. */
+export async function salesDashboard(db: Db, session: Session, range: { from: string; to: string } = { from: "", to: "" }): Promise<SalesDashboard> {
   const scope = orderFilter(session);
 
-  /* Everything the charts group by, aggregated in SQL in two passes instead of loading every
-     delivered line (148k on a 78k-order ledger) into JS.
-     - `ot`: one row per delivered order -- its total, cost and weight, read from the figures
-       stored on the order (lib/repo/orderFigures.ts) and summed from the lines only for an
-       order whose stored figure is empty. Customer, date and salesperson are properties of the
-       ORDER, so all of those breakdowns come from here. An order with no lines is not a sale.
-     - the product rows need the line level, so they get their own grouped scan.
-     Each line is rounded to whole Toman before it is added (round half away from zero, on the
-     delivered packs when there are any), exactly as lineTotalToman/lineCostToman do, so the
-     money columns are the same integers the old per-line JS arithmetic produced. Weight is a
-     float sum and SQLite adds it with compensated summation, so kilograms can differ from the
-     old naive sum in the last digit or two; nothing downstream depends on more than that.
-     The inner joins mirror the old row-by-row query so the same orders are counted. */
-  const EFF = "COALESCE(ol.packs_delivered, ol.packs_ordered)";
-  const LINE_TOTAL = `CAST(${round(`${EFF} * ol.unit_price_toman`)} AS INTEGER)`;
-  const LINE_COST = `CAST(${round(`${EFF} * ol.unit_cost_toman`)} AS INTEGER)`;
-  const LINE_KG = `(${EFF} * ol.qty_per_pack * ol.kg_per_base_unit)`;
-  const fulfilled = sqlStatusList(FULFILLED_ORDER_STATUSES);
+  /* Sales figures come from the saved daily totals (lib/repo/salesDaily.ts): one row per day,
+     group, salesperson and customer, recounted from the orders for any day an edit marked, just
+     before this read. They hold the same per-order figures this page always added up -- the
+     stored total, cost and weight of each delivered order, or its lines' sum when that is empty --
+     so the numbers are the same; only the work of adding them up moved. The scope is the same
+     orderFilter, on the totals' own organization_id, group_id and salesperson_user_id. A van role
+     is scoped by its runs, which the totals do not carry; its screens never reach this page. */
+  if (isVanRole(scopeView(session).role)) throw new Error("salesDashboard: van roles are scoped by run");
+  await refreshSalesDaily(db, orgScopeId(session));
+  const sd = orderFilter(session, "s");
+  const days: string[] = [];
+  const params: unknown[] = [];
+  if (range.from) {
+    days.push(" AND s.day >= ?");
+    params.push(range.from);
+  }
+  if (range.to) {
+    days.push(" AND s.day <= ?");
+    params.push(range.to);
+  }
+  const inRange = days.join("");
+  // The same days on the orders themselves, for fill rate, status mix and lead time.
+  const oRange = inRange.replaceAll("s.day", "left(o.order_date, 10)");
+  const today = tehranTodayIso();
 
   const agg = await db
     .prepare(
-      `WITH ot AS MATERIALIZED (
-         SELECT o.id AS oid, o.order_date AS od, o.customer_id AS cid, o.salesperson_user_id AS sid,
-                COALESCE(o.total_toman, (SELECT SUM(${LINE_TOTAL}) FROM order_lines ol JOIN products p ON p.id = ol.product_id WHERE ol.order_id = o.id)) AS t,
-                COALESCE(o.cost_toman, (SELECT SUM(${LINE_COST}) FROM order_lines ol JOIN products p ON p.id = ol.product_id WHERE ol.order_id = o.id)) AS cst,
-                o.paid_toman AS pd,
-                COALESCE(o.kg_total, (SELECT SUM(${LINE_KG}) FROM order_lines ol JOIN products p ON p.id = ol.product_id WHERE ol.order_id = o.id)) AS kg
-           FROM orders o
-           JOIN customers c ON c.id = o.customer_id
-          WHERE o.status IN (${fulfilled})${scope.sql}
-            AND EXISTS (SELECT 1 FROM order_lines ol WHERE ol.order_id = o.id)
-       )
-       SELECT 'tot' AS kind, NULL AS label, SUM(t) AS a, SUM(cst) AS b, SUM(kg) AS c, COUNT(*) AS n FROM ot
+      `SELECT 'tot' AS kind, NULL AS label, SUM(s.revenue) AS a, SUM(s.cost) AS b, SUM(s.kg) AS c, SUM(s.orders) AS n, SUM(s.realized) AS r
+         FROM sales_daily s WHERE 1 = 1${inRange}${sd.sql}
        UNION ALL
-       SELECT 'real', NULL,
-              SUM(CASE WHEN t > 0 THEN ${round("(t - cst) * LEAST(GREATEST(pd, 0), t) / t")} ELSE 0 END), NULL, NULL, NULL FROM ot
+       SELECT 'date', s.day, SUM(s.revenue), NULL, NULL, NULL, NULL FROM sales_daily s WHERE 1 = 1${inRange}${sd.sql} GROUP BY s.day
        UNION ALL
-       SELECT 'date', od, SUM(t), NULL, NULL, NULL FROM ot GROUP BY od
+       SELECT 'last30', s.day, SUM(s.revenue), NULL, NULL, NULL, NULL FROM sales_daily s WHERE s.day >= ? AND s.day <= ?${sd.sql} GROUP BY s.day
        UNION ALL
-       SELECT 'cust', c.business_name, SUM(ot.t), NULL, NULL, NULL
-         FROM ot JOIN customers c ON c.id = ot.cid GROUP BY c.business_name
+       SELECT 'cust', c.business_name, SUM(s.revenue), NULL, NULL, NULL, NULL
+         FROM sales_daily s JOIN customers c ON c.id = s.customer_id WHERE 1 = 1${inRange}${sd.sql} GROUP BY c.business_name
        UNION ALL
-       SELECT 'rep', u.display_name, SUM(ot.t), NULL, NULL, NULL
-         FROM ot JOIN users u ON u.id = ot.sid
-        WHERE u.display_name IS NOT NULL AND u.display_name <> '' GROUP BY u.display_name`
+       SELECT 'rep', u.display_name, SUM(s.revenue), NULL, NULL, NULL, NULL
+         FROM sales_daily s JOIN users u ON u.id = s.salesperson_user_id
+        WHERE u.display_name IS NOT NULL AND u.display_name <> ''${inRange}${sd.sql} GROUP BY u.display_name`
     )
-    .all(...scope.params) as unknown as {
-    kind: "tot" | "real" | "date" | "cust" | "rep";
+    .all(
+      ...(params as never[]), ...sd.params,
+      ...(params as never[]), ...sd.params,
+      addDaysIso(today, -29), today, ...sd.params,
+      ...(params as never[]), ...sd.params,
+      ...(params as never[]), ...sd.params
+    ) as unknown as {
+    kind: "tot" | "date" | "last30" | "cust" | "rep";
     label: string | null;
     a: number | null;
     b: number | null;
     c: number | null;
     n: number | null;
+    r: number | null;
   }[];
 
   const productRows = await db
     .prepare(
-      `SELECT p.name AS label, SUM(${LINE_TOTAL}) AS total, SUM(${LINE_KG}) AS kg
-         FROM order_lines ol
-         JOIN orders o ON o.id = ol.order_id
-         JOIN customers c ON c.id = o.customer_id
-         JOIN products p ON p.id = ol.product_id
-        WHERE o.status IN (${fulfilled})${scope.sql}
+      `SELECT p.name AS label, SUM(s.revenue) AS total, SUM(s.kg) AS kg
+         FROM sales_daily_products s
+         JOIN products p ON p.id = s.product_id
+        WHERE 1 = 1${inRange}${sd.sql}
         GROUP BY p.name`
     )
-    .all(...scope.params) as unknown as { label: string; total: number; kg: number }[];
+    .all(...(params as never[]), ...sd.params) as unknown as { label: string; total: number; kg: number }[];
 
   // Ordered/delivered packs across everything confirmed or beyond, for fill rate. A
   // draft has not been agreed yet, so including it would read as under-delivery.
@@ -177,15 +182,15 @@ export async function salesDashboard(db: Db, session: Session): Promise<SalesDas
               COALESCE(SUM(COALESCE(ol.packs_delivered, 0)), 0) AS delivered
          FROM order_lines ol
          JOIN orders o ON o.id = ol.order_id
-        WHERE o.status IN (${sqlStatusList([...PRICED_ORDER_STATUSES, "CANCELLED"])})${scope.sql}`
+        WHERE o.status IN (${sqlStatusList([...PRICED_ORDER_STATUSES, "CANCELLED"])})${oRange}${scope.sql}`
     )
-    .get(...scope.params) as { ordered: number; delivered: number };
+    .get(...(params as never[]), ...scope.params) as { ordered: number; delivered: number };
 
   const statusRows = await db
     .prepare(
-      `SELECT o.status, COUNT(*) AS n FROM orders o WHERE 1 = 1${scope.sql} GROUP BY o.status`
+      `SELECT o.status, COUNT(*) AS n FROM orders o WHERE 1 = 1${oRange}${scope.sql} GROUP BY o.status`
     )
-    .all(...scope.params) as unknown as { status: string; n: number }[];
+    .all(...(params as never[]), ...scope.params) as unknown as { status: string; n: number }[];
 
   const byDay = new Map<string, number>();
   const byMonth = new Map<string, number>();
@@ -207,8 +212,8 @@ export async function salesDashboard(db: Db, session: Session): Promise<SalesDas
   let realized = 0;
 
   for (const row of agg) {
-    if (row.kind === "real") realized = Number(row.a ?? 0);
     if (row.kind === "tot") {
+      realized = Number(row.r ?? 0);
       revenue = row.a ?? 0;
       cost = row.b ?? 0;
       kg = row.c ?? 0;
@@ -227,12 +232,12 @@ export async function salesDashboard(db: Db, session: Session): Promise<SalesDas
      built from the civil date at UTC midnight, never a Date parsed from a full ISO instant:
      a local-timezone parse can land on the wrong side of midnight and shift every bar by one
      day (jalaliMonthGrid does the same for the same reason). */
+  for (const row of agg) if (row.kind === "last30") byDay.set(row.label!, row.a ?? 0);
   for (const row of agg) {
     if (row.kind !== "date") continue;
     const total = row.a ?? 0;
     const orderDate = row.label!;
     const day = orderDate.slice(0, 10);
-    byDay.set(day, (byDay.get(day) ?? 0) + total);
     const month = jalaliMonthKey(orderDate);
     byMonth.set(month, (byMonth.get(month) ?? 0) + total);
     const [gy, gm, gd] = day.split("-").map(Number);
@@ -266,9 +271,9 @@ export async function salesDashboard(db: Db, session: Session): Promise<SalesDas
     .prepare(
       `SELECT o.order_date, o.delivered_at
          FROM orders o
-        WHERE o.status IN (${sqlStatusList(FULFILLED_ORDER_STATUSES)}) AND o.delivered_at IS NOT NULL${scope.sql}`
+        WHERE o.status IN (${sqlStatusList(FULFILLED_ORDER_STATUSES)}) AND o.delivered_at IS NOT NULL${oRange}${scope.sql}`
     )
-    .all(...scope.params) as unknown as { order_date: string; delivered_at: string }[];
+    .all(...(params as never[]), ...scope.params) as unknown as { order_date: string; delivered_at: string }[];
   const leadDays = leadRows
     .map((r) => (new Date(r.delivered_at).getTime() - new Date(r.order_date).getTime()) / 86_400_000)
     // A delivery logged before its own order date is a data-entry problem, not a

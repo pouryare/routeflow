@@ -19,8 +19,9 @@ import { hourBuckets } from "@/lib/hourBuckets";
  * so the tenant and group scope is decided in one place per figure. */
 
 /** The stat tiles and charts at the top of /sales/dashboard. */
-export async function dashboardFor(session: Session): Promise<SalesDashboard> {
-  return await salesDashboard(getDb(), session);
+/** `range` limits the sales figures to those days (lib/dashboard.ts); without it, all time. */
+export async function dashboardFor(session: Session, range?: { from: string; to: string }): Promise<SalesDashboard> {
+  return await salesDashboard(getDb(), session, range);
 }
 
 export interface MoneyFigures {
