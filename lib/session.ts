@@ -3,7 +3,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { COOKIE_NAME, parseSessionToken } from "./auth";
 import { getDb, type Role, type UserRow } from "./db";
 import { isVanRole } from "./roles";
-import { rolesFor } from "./repo/userRoles";
 import { scopeForCompany, setRequestScopeResolver, withDbScope, type DbScope } from "./database/scope";
 
 export interface Session {
@@ -72,8 +71,12 @@ async function resolveSession(token: string | undefined | null): Promise<Session
   const claims = parseSessionToken(token);
   if (!claims) return null;
 
-  const user = await getDb().prepare("SELECT * FROM users WHERE id = ?").get(claims.uid) as UserRow | undefined;
-  if (!user) return null;
+  /* The user row and their role set in one round trip (they were two, on every request). */
+  const row = await getDb()
+    .prepare("SELECT u.*, ARRAY(SELECT r.role FROM user_roles r WHERE r.user_id = u.id ORDER BY r.role) AS held_roles FROM users u WHERE u.id = ?")
+    .get(claims.uid) as (UserRow & { held_roles: string[] }) | undefined;
+  if (!row) return null;
+  const { held_roles: heldRoles, ...user } = row;
   if (!user.active) return null;
   if (user.token_version !== claims.tv) return null;
 
@@ -96,7 +99,7 @@ async function resolveSession(token: string | undefined | null): Promise<Session
   /* TIER 2 first, because TIER 1 is decided by it. The set is read from the database on
      every request for the same reason the user row is: a role removed by an admin must take
      effect now, not when a 30-day cookie expires. */
-  const held = await rolesFor(user.id);
+  const held = heldRoles as Role[];
 
   /* An account with NO set rows answers from its primary, and the set is REPLACED rather
      than merely consulted. Returning `[]` alongside a populated `.role` would be a person
