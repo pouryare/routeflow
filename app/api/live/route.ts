@@ -112,6 +112,7 @@ export async function GET(req: NextRequest) {
               },
               close,
               behind: () => (controller.desiredSize ?? 0) <= 0,
+              device: req.headers.get("user-agent"),
             },
             lastSeen
           );

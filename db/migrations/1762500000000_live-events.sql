@@ -104,7 +104,8 @@ CREATE UNLOGGED TABLE live_connections (
   device text CHECK (device IS NULL OR length(device) <= 200),
   opened_at timestamptz NOT NULL DEFAULT now(),
   last_seen timestamptz NOT NULL DEFAULT now(),
-  last_event_id bigint NOT NULL DEFAULT 0
+  last_event_id bigint NOT NULL DEFAULT 0,
+  slow boolean NOT NULL DEFAULT false -- its buffer was full at the last heartbeat
 );
 CREATE INDEX live_connections_org ON live_connections (organization_id, opened_at);
 ALTER TABLE live_connections ENABLE ROW LEVEL SECURITY;

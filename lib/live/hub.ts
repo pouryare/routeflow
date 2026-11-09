@@ -16,6 +16,8 @@
  *   everywhere closes the stream at once (NOTIFY rf_live_kick, from a trigger on users).
  * - A stream whose phone cannot keep up is closed; it reconnects and catches up from the log. */
 import pg from "pg";
+import os from "node:os";
+import { randomUUID } from "node:crypto";
 import { databaseUrl } from "@/lib/database/connection";
 import { withDbScope } from "@/lib/database/scope";
 import {
@@ -29,6 +31,7 @@ import {
   pruneEvents,
   touchPresence,
 } from "@/lib/repo/live";
+import { clearServerConnections, closeConnection, openConnection, touchConnections } from "@/lib/repo/liveConnections";
 import {
   BYE_TOPIC,
   RESET_TOPIC,
@@ -55,6 +58,10 @@ const MAX_STREAMS_PER_USER = 10;
    newest only (idea L5, Centrifugo's batch_flush_latest): a slow phone never gets a queue of old
    positions. */
 const LATEST_FLUSH_MS = 250;
+/** This app server, in the owner's list of open streams (L8). */
+const SERVER = `${os.hostname().slice(0, 100)}:${process.pid}`;
+
+const warn = (what: string) => (e: unknown) => console.warn(`[live] ${what} failed`, e);
 
 /** One open stream, as the hub sees it. `write` returns false when the phone is not keeping up. */
 interface LiveSink {
@@ -71,6 +78,8 @@ interface LiveSink {
   behind?(): boolean;
   /** What this stream asked for: a display link's topics (L9), a screen's ?tags= (L10). */
   filter?: LiveFilter;
+  /** The browser's user agent, for the owner's list of open streams (L8). */
+  device?: string | null;
 }
 
 /** Whether a stream gets an event: its company and audience, and for an event about a record, the
@@ -92,6 +101,8 @@ interface Sub {
   /** Latest values waiting for the next flush, by topic; newer ones replace older (L5). */
   latest: Map<string, string>;
   flush: ReturnType<typeof setTimeout> | null;
+  /** Its row in live_connections. */
+  connId: string;
 }
 
 class Hub {
@@ -114,6 +125,7 @@ class Hub {
     return (this.started ??= (async () => {
       this.stopped = false;
       this.cursor = await withDbScope("system", () => newestEventId());
+      await withDbScope("system", () => clearServerConnections(SERVER)).catch(warn("clearing old connections"));
       await this.listen();
       const every = (ms: number, fn: () => void) => {
         const t = setInterval(fn, ms);
@@ -241,7 +253,7 @@ class Hub {
   /** Opens a stream: joins, catches up from `lastSeen`, then goes live. */
   async add(sink: LiveSink, lastSeen: number): Promise<() => void> {
     await this.start();
-    const sub: Sub = { sink, lastId: lastSeen, queue: [], beats: 0, closed: false, latest: new Map(), flush: null };
+    const sub: Sub = { sink, lastId: lastSeen, queue: [], beats: 0, closed: false, latest: new Map(), flush: null, connId: randomUUID() };
     const same = [...this.subs].filter((s) => s.sink.who.userId === sink.who.userId);
     const firstHere = same.length === 0;
     this.subs.add(sub);
@@ -284,6 +296,16 @@ class Hub {
     sub.queue = null;
     for (const m of held) if (m.id === undefined || m.id > sub.lastId) this.send(sub, m.text, m.id);
     if (sub.latest.size) this.flushLatest(sub);
+    void withDbScope("system", () =>
+      openConnection({
+        id: sub.connId,
+        organizationId: sink.who.organizationId,
+        userId: sink.who.userId > 0 ? sink.who.userId : null,
+        server: SERVER,
+        device: sink.device ?? null,
+        lastEventId: sub.lastId,
+      })
+    ).catch(warn("recording the connection"));
     const wasLeaving = this.leaving.get(sink.who.userId);
     if (wasLeaving) {
       // Back within the grace period: still online, nobody was told otherwise.
@@ -298,6 +320,9 @@ class Hub {
     sub.closed = true;
     if (sub.flush) clearTimeout(sub.flush);
     this.subs.delete(sub);
+    // shortcut: a close that races its own insert can leave a row; the 60 s window hides it and
+    // the server's next start clears it. Fine for a support view.
+    void withDbScope("system", () => closeConnection(sub.connId)).catch(warn("closing the connection"));
     try {
       sub.sink.close();
     } catch {
@@ -328,6 +353,7 @@ class Hub {
 
   private async heartbeat(): Promise<void> {
     const seen = new Map<number, LiveListener>();
+    const conns: { id: string; lastEventId: number; slow: boolean }[] = [];
     for (const sub of [...this.subs]) {
       if (sub.queue) continue; // still catching up; it writes soon enough
       if (!sub.sink.write(": hb\n\n")) {
@@ -335,9 +361,11 @@ class Hub {
         this.remove(sub);
         continue;
       }
+      conns.push({ id: sub.connId, lastEventId: sub.lastId, slow: sub.sink.behind?.() ?? false });
       seen.set(sub.sink.who.userId, sub.sink.who);
       if (++sub.beats % RECHECK_EVERY_BEATS === 0) void this.recheck(sub);
     }
+    await withDbScope("system", () => touchConnections(conns)).catch(warn("refreshing connections"));
     for (const who of seen.values()) {
       if (who.userId <= 0) continue;
       await withDbScope("system", () => touchPresence(who.userId, who.organizationId)).catch(() => undefined);

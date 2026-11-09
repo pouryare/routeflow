@@ -13,6 +13,7 @@ const { databaseUrl } = await import("@/lib/database/connection");
 const live = await import("@/lib/repo/live");
 const { liveHub } = await import("@/lib/live/hub");
 const { canSeeRecord } = await import("@/lib/live/visibility");
+const { connectionsOf } = await import("@/lib/repo/liveConnections");
 type Sink = Parameters<typeof liveHub.add>[0];
 
 const NOW = "2026-01-01T00:00:00.000Z";
@@ -335,6 +336,21 @@ describe("the hub", () => {
     expect(s.frames.some((f) => f.startsWith(`id: ${near}\n`))).toBe(true);
     expect(s.frames.some((f) => f.startsWith(`id: ${far}\n`))).toBe(false);
     leave();
+  });
+
+  it("lists each open stream for the owner, marks a slow one, and drops it when it closes (L8)", async () => {
+    const s = Object.assign(fakeSink(reza, ["delivery_driver"]), { device: "Mozilla/5.0 (Linux; Android 14)", behind: (): boolean => false });
+    const leave = await liveHub.add(s, (await live.eventBounds(1)).newest ?? 0);
+    const mine = async () => (await connectionsOf(1)).filter((c) => c.user_id === reza);
+    for (let i = 0; i < 50 && (await mine()).length === 0; i++) await new Promise((r) => setTimeout(r, 20)); // the insert does not hold up the stream
+    expect((await mine()).map((c) => [c.device, c.slow])).toEqual([["Mozilla/5.0 (Linux; Android 14)", false]]);
+    expect((await mine())[0].name).toBeTruthy();
+    s.behind = () => true;
+    await liveHub.beat();
+    expect((await mine())[0].slow).toBe(true);
+    leave();
+    await new Promise((r) => setTimeout(r, 200));
+    expect(await mine()).toEqual([]);
   });
 
   it("tells a phone that is too far behind to refetch", async () => {

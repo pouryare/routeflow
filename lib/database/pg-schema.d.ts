@@ -733,6 +733,7 @@ export interface LiveConnections {
   opened_at: Generated<Timestamp>;
   organization_id: number;
   server: string;
+  slow: Generated<boolean>;
   user_id: number | null;
 }
 
