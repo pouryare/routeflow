@@ -15,11 +15,9 @@ describe("the payments screen", () => {
   it("never counts a VOIDED receipt in a total", () => {
     // A void means the money went back. Counting it and calling the card "collected this
     // month" is the single most misleading number this screen could print.
-    expect(panel).toMatch(/const live = useMemo\(\(\) => \(payments \?\? \[\]\)\.filter\(\(p\) => !p\.voided_at\)/);
-    // Every card builds from `live`, not from `payments`.
-    const cardSection = panel.slice(panel.indexOf("const totals = useMemo"));
-    expect(cardSection).toMatch(/live\.filter/);
-    expect(cardSection).not.toMatch(/payments\s*\?\?\s*\[\]\)\.filter/);
+    // The server builds the cards (pagePayments) from the live receipts only, not from the filtered rows.
+    expect(panel).toMatch(/const live = all\.filter\(\(p\) => !p\.voided_at\)/);
+    expect(panel).toMatch(/totals: paymentTotals\(live, todayISO, weekAgoISO\)/);
   });
 
   it("hides voided rows BY DEFAULT rather than showing them as live money", () => {
@@ -49,12 +47,15 @@ describe("the payments screen", () => {
   });
 
   it("exports the FILTERED set, not everything, so the file matches the screen", () => {
-    expect(panel).toMatch(/paymentsCsv\(filtered, customerName\)/);
+    // The rows come from the server with the same filter the screen sends (page=all), not from a list held on the phone.
+    expect(panel).toMatch(/api\/payments\?page=all&\$\{filterQuery\}/);
+    expect(panel).toMatch(/paymentsCsv\(body\.payments, customerName\)/);
   });
 
   it("paginates rather than rendering every receipt at once", () => {
-    expect(panel).toMatch(/const PAGE_SIZE = \d+/);
-    expect(panel).toMatch(/filtered\.slice\(safePage \* PAGE_SIZE/);
+    // The server cuts the page (pagePayments in lib/paymentsView.ts); the phone asks for one page at a time.
+    expect(panel).toMatch(/api\/payments\?page=\$\{page\}&\$\{filterQuery\}/);
+    expect(panel).toMatch(/rows: filtered\.slice\(safePage \* size/);
   });
 
   it("groups by month, derived at render rather than stored", () => {

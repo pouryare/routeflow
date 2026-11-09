@@ -14,6 +14,8 @@ import {
   type AllocationInput,
 } from "@/lib/repo/payments";
 import { isOwner, MANAGE_ROLES } from "@/lib/roles";
+import { pagePayments, PAYMENTS_PAGE_SIZE, type Payment } from "@/lib/paymentsView";
+import { tehranTodayIso } from "@/lib/jalali";
 
 const METHODS: PaymentMethod[] = ["CASH", "POS", "CARD_TO_CARD", "CHEQUE", "CREDIT_NOTE", "OTHER"];
 
@@ -37,9 +39,33 @@ export async function GET(req: NextRequest) {
           ? { groupIds: session.groupId === null ? [] : [session.groupId] }
           : { salespersonId: session.user.id }),
       });
+  // ?page=N (or "all", for the CSV) sends one filtered page and the summary cards instead of every receipt.
+  // shortcut: the scoped list is still read whole and cut here; move the filter and LIMIT into SQL when one
+  // company holds more than about 50 000 receipts.
+  const sp = req.nextUrl.searchParams;
+  const pageParam = sp.get("page");
+  let send: typeof payments = payments;
+  let extra: Record<string, unknown> = {};
+  if (pageParam !== null) {
+    const voided = sp.get("voided");
+    const filters = {
+      method: sp.get("method") ?? "",
+      from: sp.get("from") ?? "",
+      to: sp.get("to") ?? "",
+      voided: (voided === "only" || voided === "all" ? voided : "hide") as "hide" | "only" | "all",
+    };
+    const now = new Date();
+    const today = tehranTodayIso(now);
+    const weekAgo = tehranTodayIso(new Date(now.getTime() - 7 * 864e5));
+    const size = PAYMENTS_PAGE_SIZE;
+    const asked = pageParam === "all" ? { page: 0, size: Number.MAX_SAFE_INTEGER } : { page: Number(pageParam) || 0, size };
+    const r = pagePayments(payments as unknown as Payment[], filters, asked.page, asked.size, today, weekAgo);
+    send = r.rows as unknown as typeof payments;
+    extra = { total: r.total, live: r.live, page: r.page, totals: r.totals, page_size: size };
+  }
   // Z9: where each was taken, when the phone said.
-  const places = await entryPlacesFor(session.organizationId, "payment", payments.map((p) => p.id));
-  return compressedJson(req, { ok: true, payments: payments.map((p) => ({ ...p, place: places.get(p.id) ?? null })) });
+  const places = await entryPlacesFor(session.organizationId, "payment", send.map((p) => p.id));
+  return compressedJson(req, { ok: true, payments: send.map((p) => ({ ...p, place: places.get(p.id) ?? null })), ...extra });
 }
 
 export async function POST(req: NextRequest) {

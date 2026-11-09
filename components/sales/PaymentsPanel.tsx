@@ -6,7 +6,6 @@ import BooksButton from "@/components/accounting/BooksButton";
 import CardTable from "@/components/CardTable";
 import { FieldInput } from "@/components/FieldInput";
 import { tehranTodayIso, faJalaliDateTime } from "@/lib/jalali";
-import { useRunAfterMount } from "@/lib/useRunAfterMount";
 import { friendlyError } from "@/lib/userMessage";
 import FilterChips from "@/components/mobile/FilterChips";
 import FilteredEmpty from "@/components/FilteredEmpty";
@@ -16,22 +15,27 @@ import BusyIcon from "@/components/meridian/BusyIcon";
 import { useDoneFlash } from "@/lib/useDoneFlash";
 import SectionHead from "@/components/meridian/SectionHead";
 import JalaliDateInput from "@/components/meridian/JalaliDateInput";
-import { Fragment, useCallback, useMemo, useState } from "react";
+import { Fragment, useCallback, useMemo, useRef, useState } from "react";
+import { useRunAfterMount } from "@/lib/useRunAfterMount";
 import { faToman } from "@/lib/format";
 import PaymentFlow from "@/components/flows/PaymentFlow";
 import { autoOpenFlow, currentSearch } from "@/lib/flows/autoOpen";
 import { isToman, toToman } from "@/lib/money";
 import PaymentTotalsCards from "@/components/sales/PaymentTotalsCards";
 import AllocationEditor from "@/components/sales/AllocationEditor";
-import { METHOD_LABEL, filterPayments, groupByMonth, paymentTotals, paymentsCsv, type AllocationDraft, type Customer, type OpenOrder, type Payment } from "@/lib/paymentsView";
+import { METHOD_LABEL, groupByMonth, paymentsCsv, type PaymentTotals, type AllocationDraft, type Customer, type OpenOrder, type Payment } from "@/lib/paymentsView";
 import CustomerName from "@/components/CustomerName";
 import SmartPicker from "@/components/mobile/SmartPicker";
 import { ChipGroup } from "@/components/mobile/ChipGroup";
 
-const PAGE_SIZE = 25;
-
 export default function PaymentsPanel({ customers, canSeeBooks = false }: { customers: Customer[]; canSeeBooks?: boolean }) {
+  /* One page of receipts as the server cut it (lib/paymentsView.ts pagePayments): the filter, the page, the
+     card totals and the counts all come from there, so the phone never holds every receipt. */
   const [payments, setPayments] = useState<Payment[] | null>(null);
+  const [total, setTotal] = useState(0);
+  const [liveCount, setLiveCount] = useState(0);
+  const [pageSize, setPageSize] = useState(25);
+  const [totals, setTotals] = useState<PaymentTotals | null>(null);
   const [customerId, setCustomerId] = useState(() => {
     if (typeof window === "undefined") return "";
     const q = new URLSearchParams(window.location.search).get("customer_id");
@@ -70,44 +74,34 @@ export default function PaymentsPanel({ customers, canSeeBooks = false }: { cust
     setPage(0);
   }
   const [page, setPage] = useState(0);
+  const filterQuery = `method=${encodeURIComponent(fMethod)}&from=${fFrom}&to=${fTo}&voided=${fVoided}`;
   const [editing, setEditing] = useState<number | null>(null);
   const [draft, setDraft] = useState<AllocationDraft[]>([]);
   const [openOrders, setOpenOrders] = useState<OpenOrder[]>([]);
   const [allocError, setAllocError] = useState<string | null>(null);
 
-  /* A voided payment's money is GONE, so it is counted nowhere in the totals. Counting it
+  /* A voided payment's money is GONE, so the server counts it nowhere in the totals. Counting it
      and calling the result "collected this month" is the most misleading number this screen
      could print. */
-  const live = useMemo(() => (payments ?? []).filter((p) => !p.voided_at), [payments]);
-
-  const filtered = useMemo(
-    () => filterPayments(payments ?? [], { method: fMethod, from: fFrom, to: fTo, voided: fVoided }),
-    [payments, fMethod, fFrom, fTo, fVoided]
-  );
-
-  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const pageCount = Math.max(1, Math.ceil(total / pageSize));
   const safePage = Math.min(page, pageCount - 1);
-  const pageRows = filtered.slice(safePage * PAGE_SIZE, (safePage + 1) * PAGE_SIZE);
-
-  /* Today / week / month, by method — from the same `live` list the table shows, so a
-     figure on a card and a row in the table can never disagree. */
-  const totals = useMemo(() => {
-    const now = new Date();
-    return paymentTotals(live, tehranTodayIso(now), tehranTodayIso(new Date(now.getTime() - 7 * 864e5)));
-  }, [live]);
 
   /* Jalali month sections. A flat list of 400 receipts is unreadable; grouped by month it is
      a story. The grouping is derived at render, never stored. */
-  const months = useMemo(() => groupByMonth(pageRows), [pageRows]);
+  const months = useMemo(() => groupByMonth(payments ?? []), [payments]);
 
-  const exportCsv = useCallback(() => {
-    const blob = new Blob([paymentsCsv(filtered, customerName)], { type: "text/csv;charset=utf-8;" });
+  const exportCsv = useCallback(async () => {
+    // The CSV is every receipt the filter keeps, fetched only now, not held on the phone.
+    const res = await fetch(`/api/payments?page=all&${filterQuery}`);
+    const body = await res.json().catch(() => null);
+    if (!res.ok || !body) return;
+    const blob = new Blob([paymentsCsv(body.payments, customerName)], { type: "text/csv;charset=utf-8;" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
     a.download = "payments.csv";
     a.click();
     URL.revokeObjectURL(a.href);
-  }, [filtered, customerName]);
+  }, [filterQuery, customerName]);
 
   async function openAllocation(paymentId: number) {
     setAllocError(null);
@@ -139,13 +133,23 @@ export default function PaymentsPanel({ customers, canSeeBooks = false }: { cust
     setDraft([]);
   }
 
+  /* Only the newest answer is kept: a slow reply to an old page must not overwrite a newer one. */
+  const loadSeq = useRef(0);
   const load = useCallback(async () => {
-    const res = await fetch("/api/payments");
+    const seq = ++loadSeq.current;
+    const res = await fetch(`/api/payments?page=${page}&${filterQuery}`);
     const body = await res.json().catch(() => null);
+    if (seq !== loadSeq.current) return;
     setPayments(res.ok && body ? body.payments : []);
-  }, []);
+    if (res.ok && body) {
+      setTotal(body.total);
+      setLiveCount(body.live);
+      setPageSize(body.page_size);
+      setTotals(body.totals);
+    }
+  }, [page, filterQuery]);
 
-  useRunAfterMount(load);
+  useRunAfterMount(load); // again whenever the page or a filter changes (load's dependencies)
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -297,7 +301,7 @@ export default function PaymentsPanel({ customers, canSeeBooks = false }: { cust
         <h2 className="sechead__title">خلاصهٔ دریافتی‌ها</h2>
         {/* Voided receipts are excluded from every figure here: the money was given back,
             so counting it would be the most misleading number this screen could print. */}
-<PaymentTotalsCards totals={totals} />
+{totals ? <PaymentTotalsCards totals={totals} /> : null}
         <h2 className="sechead__title">دریافت‌ها</h2>
         <FilterChips
           groups={[
@@ -331,21 +335,21 @@ export default function PaymentsPanel({ customers, canSeeBooks = false }: { cust
         />
         <div className="flex flex-wrap items-end gap-2 text-sm">
           <button type="button" className="rounded border border-border px-2 py-1 text-xs"
-            onClick={exportCsv}>
+            onClick={() => void exportCsv()}>
             <Icon name="download" size="sm" />
             خروجی CSV
           </button>
           <span className="ms-auto text-xs text-text-muted">
-            {filtered.length.toLocaleString("fa-IR")} ردیف
+            {total.toLocaleString("fa-IR")} ردیف
           </span>
         </div>
 
         {payments === null ? (
           <p className="text-sm text-text-muted">در حال بارگذاری…</p>
-        ) : filtered.length === 0 ? (
+        ) : total === 0 ? (
           <FilteredEmpty
             title="دریافتی با این فیلترها یافت نشد."
-            hidden={live.length}
+            hidden={liveCount}
             onClear={() => { choosePeriod(""); setFMethod(""); setFVoided("hide"); }}
           />
         ) : (
