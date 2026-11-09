@@ -2104,15 +2104,21 @@ body {
   radial-gradient(110% 120% at 8% 92%, #4A3A22 0%, transparent 60%),
   linear-gradient(150deg,#332A1D,#4C3E27); }
 .meridian .gcard .k { font-size: 14px; color: var(--gcard-k); }
+/* The figure keeps its size until it would not fit: --chars (set by GradientStat from the figure's
+   own length) shrinks it so every digit stays in the card. A digit is about 0.65em wide; 0.68
+   leaves a little air. 100cqi is the card's inner width, hence container-type on .gcard. */
+.meridian .gcard { container-type: inline-size; }
 .meridian .gcard .v {
-  font-size: 46px; line-height: 1.12; font-weight: 700; letter-spacing: -.03em;
+  --v-size: 46px;
+  font-size: min(var(--v-size), calc(100cqi / (var(--chars, 1) * 0.68)));
+  line-height: 1.12; font-weight: 700; letter-spacing: -.03em;
   margin-top: 6px; color: var(--gcard-ink);
 }
 .meridian .gcard .v small {
   font-size: 17px; font-weight: 500; color: var(--gcard-k);
   margin-inline-start: 8px; letter-spacing: 0;
 }
-.meridian .gcard.small .v { font-size: 32px; }
+.meridian .gcard.small .v { --v-size: 32px; }
 .meridian .gcard .d.sky { color: var(--gcard-chip-sky); }
 .meridian .gcard .d.amber { color: var(--gcard-chip-amber); }
 .meridian .gcard .d {
@@ -3236,7 +3242,7 @@ body {
   .meridian .bento .tile:first-child { grid-column: 1/-1; }
 }
 @media (max-width: 620px) {
-  .meridian .gcard .v { font-size: 38px; }
+  .meridian .gcard .v { --v-size: 38px; }
   .meridian .pockets { grid-template-columns: 1fr; padding-inline: 16px; }
   .meridian .bento { grid-template-columns: 1fr; padding-inline: 16px; }
   .meridian .board, .meridian .hint { padding-inline: 16px; }
