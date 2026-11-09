@@ -1,3 +1,4 @@
+import { compressedJson } from "@/lib/httpCache";
 import { NextRequest, NextResponse } from "next/server";
 import { requireRole } from "@/lib/session";
 import { addProduct, catalogueFor } from "@/lib/repo/salesWrites";
@@ -24,7 +25,7 @@ export async function GET(req: NextRequest) {
     onDate: url.searchParams.get("on") ?? undefined,
   });
 
-  return NextResponse.json({ ok: true, products });
+  return compressedJson(req, { ok: true, products });
 }
 
 export async function POST(req: NextRequest) {

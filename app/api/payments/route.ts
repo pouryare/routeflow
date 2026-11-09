@@ -1,3 +1,4 @@
+import { compressedJson } from "@/lib/httpCache";
 import { NextRequest, NextResponse } from "next/server";
 import { parsePlace } from "@/lib/entryPlace";
 import { entryPlacesFor, saveEntryPlace } from "@/lib/repo/entryPlaces";
@@ -38,7 +39,7 @@ export async function GET(req: NextRequest) {
       });
   // Z9: where each was taken, when the phone said.
   const places = await entryPlacesFor(session.organizationId, "payment", payments.map((p) => p.id));
-  return NextResponse.json({ ok: true, payments: payments.map((p) => ({ ...p, place: places.get(p.id) ?? null })) });
+  return compressedJson(req, { ok: true, payments: payments.map((p) => ({ ...p, place: places.get(p.id) ?? null })) });
 }
 
 export async function POST(req: NextRequest) {

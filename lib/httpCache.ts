@@ -1,3 +1,4 @@
+import { promisify } from "node:util";
 import zlib from "node:zlib";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -90,4 +91,34 @@ export function etagJson(req: NextRequest, tag: string, data: unknown): NextResp
   if (encoding) headers.set("Content-Encoding", encoding);
 
   return new NextResponse(new Uint8Array(body), { status: 200, headers });
+}
+
+const brotli = promisify(zlib.brotliCompress);
+const gzipAsync = promisify(zlib.gzip);
+/** Below this a body is sent as it is: the saving is smaller than the headers it adds. */
+const COMPRESS_FROM_BYTES = 1024;
+
+/** `NextResponse.json` that compresses itself. `next start` leaves route-handler JSON uncompressed (measured:
+ *  /api/payments 4.6 MB instead of 277 KB), and Caddy's `encode` only helps once it is set up on the server, so
+ *  the biggest list endpoints call this and do not depend on it. Brotli quality 4 (fast; see BROTLI_QUALITY for
+ *  why not higher), done off the main thread. Use `etagJson` instead where a cheap change tag exists. */
+export async function compressedJson(req: NextRequest, data: unknown, init: { status?: number; headers?: HeadersInit } = {}): Promise<NextResponse> {
+  const identity = Buffer.from(JSON.stringify(data), "utf8");
+  const accepts = (req.headers.get("accept-encoding") ?? "").toLowerCase();
+  const headers = new Headers(init.headers);
+  headers.set("Content-Type", "application/json; charset=utf-8");
+  headers.append("Vary", "Accept-Encoding");
+
+  let body: Buffer = identity;
+  if (identity.length >= COMPRESS_FROM_BYTES && (accepts.includes("br") || accepts.includes("gzip"))) {
+    if (accepts.includes("br")) {
+      body = await brotli(identity, { params: { [zlib.constants.BROTLI_PARAM_QUALITY]: 4 } });
+      headers.set("Content-Encoding", "br");
+    } else {
+      body = await gzipAsync(identity, { level: 6 });
+      headers.set("Content-Encoding", "gzip");
+    }
+  }
+  headers.set("Content-Length", String(body.length));
+  return new NextResponse(new Uint8Array(body), { status: init.status ?? 200, headers });
 }

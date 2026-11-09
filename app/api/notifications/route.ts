@@ -1,3 +1,4 @@
+import { compressedJson } from "@/lib/httpCache";
 import { NextRequest, NextResponse } from "next/server";
 import { requireRole } from "@/lib/session";
 import {
@@ -13,7 +14,7 @@ export async function GET(req: NextRequest) {
   const guard = await requireRole(req, [...ROLES]);
   if (!guard.ok) return guard.response;
   const { organizationId, user } = guard.session;
-  return NextResponse.json({
+  return compressedJson(req, {
     ok: true,
     unread: await unreadGroupCount(organizationId, user.id),
     groups: await listNotificationGroups(organizationId, user.id, { limit: 50 }),
