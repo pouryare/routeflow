@@ -22,10 +22,38 @@ interface PullResponse {
   rows: { table: string; row: Record<string, unknown> }[];
   tombstones: { entity_type: string; entity_id: number }[];
   watermark: string;
+  /** Where the next page starts; absent or null on the last page. */
+  next?: string | null;
   server_time: string;
 }
 
 const WATERMARK_KEY = "routeflow.sync.watermark";
+const PROGRESS_KEY = "routeflow.sync.progress";
+const PULL_PAGE = 1500;
+const MAX_PULL_PAGES = 200;
+
+interface PullProgress {
+  since: string | null;
+  at: string;
+  after: string;
+}
+/** Where an interrupted pull stopped, if it was a pull from the same watermark we are about to ask from. */
+function readProgress(since: string | null): PullProgress | null {
+  try {
+    const p = JSON.parse(localStorage.getItem(PROGRESS_KEY) ?? "null") as PullProgress | null;
+    return p && p.since === since && typeof p.at === "string" && typeof p.after === "string" ? p : null;
+  } catch {
+    return null;
+  }
+}
+function saveProgress(p: PullProgress | null): void {
+  try {
+    if (p) localStorage.setItem(PROGRESS_KEY, JSON.stringify(p));
+    else localStorage.removeItem(PROGRESS_KEY);
+  } catch {
+    /* ignore */
+  }
+}
 const LAST_SYNC_KEY = "routeflow.sync.last";
 
 /** Records not yet accepted by the server: held, queued, sending, refused or in conflict. Only an
@@ -127,20 +155,38 @@ export class SyncEngine extends EventTarget {
       } catch {
         /* ignore */
       }
-      const pres = await fetch(`/api/sync/pull${since ? `?since=${encodeURIComponent(since)}` : ""}`);
-      if (pres.ok) {
+      // The pull comes in pages of PULL_PAGE rows (issue #60, G). Each page is written as it arrives and the
+      // place reached is kept, so a line that drops at 80% resumes at 80%; the watermark is saved only after
+      // the last page, and it is the first page's, so nothing changed meanwhile is lost.
+      let progress = readProgress(since);
+      for (let guard = 0; guard < MAX_PULL_PAGES; guard++) {
+        const q = new URLSearchParams({ limit: String(PULL_PAGE) });
+        if (since) q.set("since", since);
+        if (progress) {
+          q.set("after", progress.after);
+          q.set("at", progress.at);
+        }
+        const pres = await fetch(`/api/sync/pull?${q}`);
+        if (!pres.ok) break;
         const j = (await pres.json()) as PullResponse;
         noteServerTime(j.server_time);
         await this.store.deleteSnapshot(snapshotDeletes(j.tombstones ?? [], j.rows));
         await this.store.writeSnapshot(
           j.rows.filter((r) => (r.row as { id?: unknown }).id !== undefined) as never
         );
+        if (j.next) {
+          progress = { since, at: j.watermark, after: j.next };
+          saveProgress(progress);
+          continue;
+        }
         try {
           localStorage.setItem(WATERMARK_KEY, j.watermark);
           localStorage.setItem(LAST_SYNC_KEY, new Date().toISOString());
         } catch {
           /* ignore */
         }
+        saveProgress(null);
+        break;
       }
     } finally {
       this.running = false;
@@ -157,6 +203,7 @@ export class SyncEngine extends EventTarget {
     try {
       localStorage.removeItem(WATERMARK_KEY);
       localStorage.removeItem(LAST_SYNC_KEY);
+      localStorage.removeItem(PROGRESS_KEY);
     } catch {
       /* the watermark could not be read either */
     }

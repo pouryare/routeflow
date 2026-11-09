@@ -14,6 +14,39 @@ export interface PullResult {
   watermark: string;
   rows: PullRow[];
   tombstones: Tombstone[];
+  /** Only on a paged pull: where the next page starts, or null on the last page. */
+  next?: string | null;
+}
+
+/** A paged pull (issue #60, G): `limit` rows per answer, `after` the cursor the last answer ended on, `at` the
+ *  watermark the FIRST answer returned. Every page is worked out again from the same lower bound, and the
+ *  watermark stays the first page's, so a row that changes while the pages are coming is not lost: it is
+ *  stamped at or above that watermark and arrives in the next pull. */
+export interface PullPage {
+  limit: number;
+  after: string | null;
+  at: string | null;
+}
+
+/** The order rows travel in on a paged pull; a table not listed goes last. Fixed, so a cursor means the same
+ *  thing on the next page even when a table was empty on the first. */
+const PULL_TABLE_ORDER = ["products", "packagings", "product_prices", "delivery_runs", "delivery_stops", "lead_run_stops", "run_facility_stops", "facilities", "run_unload_lines", "saved_locations", "orders", "order_lines", "customers", "deliveries"];
+const tableRank = (t: string) => {
+  const i = PULL_TABLE_ORDER.indexOf(t);
+  return i < 0 ? PULL_TABLE_ORDER.length : i;
+};
+const rowId = (r: PullRow) => Number((r.row as { id?: unknown }).id) || 0;
+const cursorOf = (r: PullRow) => `${r.table}:${rowId(r)}`;
+
+/** Rows after `cursor` in travel order, up to `limit`, and the cursor to continue from (null when done). */
+export function cutPage(all: PullRow[], page: PullPage): { rows: PullRow[]; next: string | null } {
+  const sorted = [...all].sort((a, b) => tableRank(a.table) - tableRank(b.table) || rowId(a) - rowId(b));
+  const m = /^([a-z_]+):(\d+)$/.exec(page.after ?? "");
+  const rest = m
+    ? sorted.filter((r) => tableRank(r.table) > tableRank(m[1]) || (tableRank(r.table) === tableRank(m[1]) && rowId(r) > Number(m[2])))
+    : sorted;
+  const rows = rest.slice(0, page.limit);
+  return { rows, next: rest.length > rows.length ? cursorOf(rows[rows.length - 1]) : null };
 }
 
 /** Rows this session may see that changed since `since` (null = a full snapshot), plus
@@ -30,9 +63,12 @@ export interface PullResult {
  *  owner gets their group's recent orders and customers. The catalogue
  *  (products / prices / packagings) goes to everyone in full -- it is small and a driver
  *  at a door needs a price. */
-export async function pullSince(session: Session, since: string | null): Promise<PullResult> {
+export async function pullSince(session: Session, since: string | null, page?: PullPage): Promise<PullResult> {
   const db = getDb();
-  const xmin = ((await db.prepare("SELECT CAST(pg_snapshot_xmin(pg_current_snapshot()) AS text) AS x").get()) as { x: string }).x;
+  const xmin =
+    page?.at?.startsWith(XID_PREFIX) && /^\d+$/.test(page.at.slice(XID_PREFIX.length))
+      ? page.at.slice(XID_PREFIX.length)
+      : ((await db.prepare("SELECT CAST(pg_snapshot_xmin(pg_current_snapshot()) AS text) AS x").get()) as { x: string }).x;
   const org = session.organizationId;
   const mark = xidOf(since);
   /* "Changed since the watermark": the transaction that last wrote the row is not below it. */
@@ -267,6 +303,11 @@ export async function pullSince(session: Session, since: string | null): Promise
 
   const tombstones = await tombstonesSinceXid(org, mark);
 
+  if (page) {
+    const cut = cutPage(rows, page);
+    // Deletions travel once, with the last page.
+    return { watermark: `${XID_PREFIX}${xmin}`, rows: cut.rows, tombstones: cut.next === null ? tombstones : [], next: cut.next };
+  }
   return { watermark: `${XID_PREFIX}${xmin}`, rows, tombstones };
 }
 
