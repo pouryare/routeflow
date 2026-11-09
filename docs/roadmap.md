@@ -604,7 +604,7 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
 - **FB9. Internal chat, phase 1: threads on orders and customers.** A native chat, no outside server. Phase 1 is a thread on every order and customer. The owner may read any 1:1 or group chat and members see a notice.
   <details><summary>Full decision</summary>
 
-  **Internal chat, first slice: threads on orders and customers.** See the decision below.<br><br>**Internal chat system (decided 2026-10-30).** A native chat, no outside chat server; the existing-solutions search was skipped on the owner's say-so. Phases: (1) a thread on every order and customer, (2) 1:1 and group chats on the same tables (one conversation table with a subject: customer, order, direct or group), (3) photos, search and read receipts. Decided 2026-10-30: the owner may read any 1:1 or group chat, members see a standing notice («مالک می‌تواند این گفتگو را ببیند») and each owner read is logged. Rules to settle when it is designed: a thread is visible only to people who may see the record, and adding someone grants no access to the record; mentions go through the existing notification preferences and quiet hours; online-only at first, saying so on a failed send; live delivery by server-sent events or polling over Postgres, no Redis.
+  **Internal chat, first slice: threads on orders and customers.** See the decision below.<br><br>**Internal chat system (decided 2026-10-30).** A native chat, no outside chat server; the existing-solutions search was skipped on the owner's say-so. Phases: (1) a thread on every order and customer, (2) 1:1 and group chats on the same tables (one conversation table with a subject: customer, order, direct or group), (3) photos, search and read receipts. Decided 2026-10-30: the owner may read any 1:1 or group chat, members see a standing notice («مالک می‌تواند این گفتگو را ببیند») and each owner read is logged. Rules to settle when it is designed: a thread is visible only to people who may see the record, and adding someone grants no access to the record; mentions go through the existing notification preferences and quiet hours; online-only at first, saying so on a failed send; live delivery by server-sent events or polling over Postgres, no Redis. The live layer is built (2026-11-09, issue #58, decisions 10.7): chat publishes with `publishLive` (audience = the thread's members at send time) and typing with `publishEphemeral`.
 
   </details>
 
@@ -1072,7 +1072,7 @@ Platform claims in [docs/decisions.md section 10](decisions.md#10-platform-facts
 - Nothing has been tested from Iran: the outside services in 10.5, package registries, Firebase push, map tiles.
 - Package versions and dates come from the npm registry; no package was installed or run.
 - The official `farazsms` client was found on npm but not inspected.
-- Whether Centrifugo can read events from a Postgres outbox table.
+- ~~Whether Centrifugo can read events from a Postgres outbox table~~: answered 2026-11-09, yes since v5.2, and v6 clusters on Postgres alone (see decisions 10.7).
 - Whether the Postgres extension `pg_duckdb` fits, and DuckDB's npm "latest" tag being a development build.
 - ~~Whether MapLibre needs the right-to-left text plugin~~: answered 2026-10-28, MapLibre 6 shapes Persian itself and labels render in Peyda (see 10.1, map tiles).
 - Whether Google Play and Cafe Bazaar or Myket rules allow updating web code inside the Android app.

@@ -237,6 +237,19 @@ Added 2026-10-23 from a review of the code and these docs. The candidates in the
 
 **Decided 2026-10-27 (owner): stay on one server as long as possible.** Centrifugo is not added. Chat is built on PostgreSQL: the message row, then an `events` row with an increasing id, streamed over server-sent events; a phone that lost signal sends `Last-Event-ID` and gets what it missed. Presence waits for a second app server.
 
+**Built 2026-11-09 (issue #58), after a review of Gemini's alternatives (Soketi, Supabase Realtime, PocketBase, Socket.IO; notes `centrifugo-alternatives-2026-11-08.md` and `sse-optimization-2026-11-08.md` in the project files).** The owner chose our own code with no new library, and the Centrifugo features it would have given, built on Postgres:
+
+| Feature | How it works here |
+|---|---|
+| Catch-up after a gap | `live_events` with increasing ids; the browser resumes with `Last-Event-ID` or `?after=`. Events are kept 7 days; a phone further behind (or ahead, after a restore) gets `live.reset` and refetches. |
+| Commit order | `rf_live_publish()` takes one transaction-level lock before it takes an id, so ids appear in commit order and a reconnect never skips one. Shortcut: one lock for all companies; move to an xid8 watermark if writers queue on it. |
+| Who receives what | Each event names its company and optionally users and/or roles, chosen by the writer with the app's own permission code; the stream compares (`lib/live/protocol.ts canReceive`). |
+| Presence and typing | `live_presence` (unlogged) refreshed by each stream's 20-second heartbeat, `GET /api/live/presence`, and `presence` notices; typing and other short notices go out by `NOTIFY` and are never stored (`publishEphemeral`). |
+| Kick | A trigger on `users` sends `NOTIFY rf_live_kick` when `token_version` or `active` changes; that person's streams re-check their session and close. Sessions are also re-checked every 5 minutes. |
+| Small payloads, limits, counters | 4,000 characters per event; 30 connections a minute and 10 open streams per person; `/api/health` reports `live`. |
+
+How it is built: one `LISTEN` connection per app server (`lib/live/hub.ts`), fan-out in memory, a 15-second safety read, slow phones dropped and caught up later, jittered reconnects. In the browser (`lib/live/client.ts`), one stream per browser shared between tabs (Web Locks plus BroadcastChannel), closed after 2 minutes with no visible tab. Caddy leaves `/api/live` uncompressed. First user: the notification bell (instant, 5-minute backstop instead of a 60-second poll), through a trigger on `notifications` so every writer is covered. Answered here: Centrifugo can read a Postgres outbox (since v5.2) and cluster on Postgres alone (v6), so it stays the step up for thousands of connections without needing Redis.
+
 ### 10.8 Interesting technologies (not decided)
 
 Ideas that are interesting for this app but not chosen. None is decided; the owner picks which to pursue (see the intro to section 10).

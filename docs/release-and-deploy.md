@@ -195,6 +195,13 @@ same server, add `/etc/caddy/sites/othersite.caddy` with its own `othersite.exam
     instead.
   - `CERT_MODE=internal`: Caddy's own certificate, with Arvan set not to check the origin's certificate.
   - None of the three has been tried against Arvan yet.
+- **Live updates through Arvan** (issue #58). `/api/live` is one long response that the app writes to as
+  things happen (server-sent events). Caddy leaves it uncompressed and sends each piece at once. In the
+  Arvan panel, add a rule for the path `/api/live`: no caching, no compression, and the longest idle
+  timeout allowed; the app writes a small heartbeat every 20 seconds, so any timeout over that is
+  enough. To check it from a laptop: `curl -N -H 'Cookie: …' https://DOMAIN/api/live` should print `: ok`
+  at once and `: hb` every 20 seconds, not everything in one lump. Arvan's setting names are not
+  verified yet. `curl https://DOMAIN/api/health` shows `live.listening` and the open streams.
 - **`routeflow doctor`**: runs the pre-install checks again, plus the clock, the firewall ranges, the
   certificate's expiry date and `routeflow status`.
 - **Status on login**: every SSH login shows one line with the version, health, age of the last backup and
