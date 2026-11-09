@@ -39,7 +39,7 @@ const rowId = (r: PullRow) => Number((r.row as { id?: unknown }).id) || 0;
 const cursorOf = (r: PullRow) => `${r.table}:${rowId(r)}`;
 
 /** Rows after `cursor` in travel order, up to `limit`, and the cursor to continue from (null when done). */
-export function cutPage(all: PullRow[], page: PullPage): { rows: PullRow[]; next: string | null } {
+function cutPage(all: PullRow[], page: PullPage): { rows: PullRow[]; next: string | null } {
   const sorted = [...all].sort((a, b) => tableRank(a.table) - tableRank(b.table) || rowId(a) - rowId(b));
   const m = /^([a-z_]+):(\d+)$/.exec(page.after ?? "");
   const rest = m

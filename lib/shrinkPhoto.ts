@@ -2,7 +2,7 @@ import { cropRect, fitInside } from "@/lib/photoCrop";
 
 /** The same long edge the server stores a photo at (PHOTO_MAX_EDGE in lib/imagePipeline.ts, which pulls in
  *  sharp and so cannot be imported here). An avatar passes 512, as the server does. */
-export const UPLOAD_MAX_EDGE = 1600;
+const UPLOAD_MAX_EDGE = 1600;
 const UPLOAD_QUALITY = 0.8;
 
 /** A smaller copy of a photo to send over a slow line: centre-cropped to `ratio` when given, scaled so the

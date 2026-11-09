@@ -25,7 +25,7 @@ export async function customerListSignature(organizationId: number | null): Prom
 /** A bookmark into the customer list: `d1.<transaction id>.<ms>`. The transaction id finds customers and
  *  orders that changed (their sync_xid, as the offline sync does); the time finds payments, which carry no
  *  sync_xid but move a customer's debt. */
-export function customerToken(xmin: string, nowMs: number): string {
+function customerToken(xmin: string, nowMs: number): string {
   return `d1.${xmin}.${nowMs}`;
 }
 export function parseCustomerToken(token: string | null): { xid: string; ms: number } | null {
