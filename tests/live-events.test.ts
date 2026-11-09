@@ -257,6 +257,22 @@ describe("the hub", () => {
     leaves.forEach((l) => l());
   });
 
+  it("does not announce someone gone when their phone is back within 5 seconds (L2)", async () => {
+    const mina = await user("mina", "phone_sales", 1); // nobody else's stream left a grace timer for her
+    const start = (await live.eventBounds(1)).newest ?? 0;
+    const watcher = fakeSink(reza, ["delivery_driver"]);
+    const leaveW = await liveHub.add(watcher, start);
+    const said = (on: boolean) => watcher.frames.filter((f) => f.includes(`"u":${mina},"on":${on}`)).length;
+    const leave1 = await liveHub.add(fakeSink(mina, ["phone_sales"]), start);
+    await until(() => said(true) > 0);
+    leave1(); // the signal drops...
+    const leave2 = await liveHub.add(fakeSink(mina, ["phone_sales"]), start); // ...and is back a moment later
+    await new Promise((r) => setTimeout(r, 300));
+    expect([said(true), said(false)]).toEqual([1, 0]);
+    leave2();
+    leaveW();
+  });
+
   it("tells a phone that is too far behind to refetch", async () => {
     const { newest } = await live.eventBounds(1);
     const s = fakeSink(sara, ["phone_sales"]);

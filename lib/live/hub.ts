@@ -34,7 +34,10 @@ const HEARTBEAT_MS = 20_000;
 const RECHECK_EVERY_BEATS = 15; // the session is read again every 5 minutes
 const SAFETY_DRAIN_MS = 15_000;
 const PRUNE_MS = 60 * 60_000;
-const CATCH_UP_MAX = 2000; // further behind than this, the screen refetches instead
+const CATCH_UP_MAX = 2000;
+/* A phone that drops for a moment and comes back is not announced as gone (idea L2, as Pusher waits
+   before member_removed): "offline" goes out only if no stream of theirs is back within this. */
+const OFFLINE_GRACE_MS = 5000; // further behind than this, the screen refetches instead
 const MAX_STREAMS_PER_USER = 10;
 
 /** One open stream, as the hub sees it. `write` returns false when the phone is not keeping up. */
@@ -77,6 +80,7 @@ class Hub {
   private drainAgain = false;
   private timers: ReturnType<typeof setInterval>[] = [];
   private retryDelay = 1000;
+  private leaving = new Map<number, ReturnType<typeof setTimeout>>();
   private stopped = false;
   delivered = 0;
   dropped = 0;
@@ -220,7 +224,12 @@ class Hub {
     const held = sub.queue ?? [];
     sub.queue = null;
     for (const m of held) if (m.id === undefined || m.id > sub.lastId) this.send(sub, m.text, m.id);
-    if (firstHere) void this.presence(sink.who, true);
+    const wasLeaving = this.leaving.get(sink.who.userId);
+    if (wasLeaving) {
+      // Back within the grace period: still online, nobody was told otherwise.
+      clearTimeout(wasLeaving);
+      this.leaving.delete(sink.who.userId);
+    } else if (firstHere) void this.presence(sink.who, true);
     return () => this.remove(sub);
   }
 
@@ -234,7 +243,13 @@ class Hub {
       /* already closed by the browser */
     }
     const who = sub.sink.who;
-    if (![...this.subs].some((s) => s.sink.who.userId === who.userId)) void this.presence(who, false);
+    if ([...this.subs].some((s) => s.sink.who.userId === who.userId) || this.leaving.has(who.userId)) return;
+    const t = setTimeout(() => {
+      this.leaving.delete(who.userId);
+      if (![...this.subs].some((s) => s.sink.who.userId === who.userId)) void this.presence(who, false);
+    }, this.stopped ? 0 : OFFLINE_GRACE_MS);
+    t.unref?.();
+    this.leaving.set(who.userId, t);
   }
 
   private async presence(who: LiveListener, online: boolean): Promise<void> {
@@ -299,6 +314,8 @@ class Hub {
     for (const t of this.timers) clearInterval(t);
     this.timers = [];
     for (const sub of [...this.subs]) this.remove(sub);
+    for (const t of this.leaving.values()) clearTimeout(t);
+    this.leaving.clear();
     await this.draining;
     const c = this.client;
     this.client = null;
