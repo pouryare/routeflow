@@ -160,6 +160,19 @@ describe("live record changes (L1)", () => {
   });
 });
 
+describe("send with a receipt (L7)", () => {
+  it("stores a message once however often the phone retries it, and answers with the same id", async () => {
+    const first = await live.publishLive(1, { topic: "chat:1", data: { text: "سلام" }, clientKey: "phone-msg-0001" });
+    const again = await live.publishLive(1, { topic: "chat:1", data: { text: "سلام" }, clientKey: "phone-msg-0001" });
+    const elsewhere = await live.publishLive(2, { topic: "chat:1", clientKey: "phone-msg-0001" }); // another company's own key
+    expect(again).toBe(first);
+    expect(elsewhere).not.toBe(first);
+    const n = (await getDb().prepare("SELECT count(*) AS n FROM live_events WHERE client_key = 'phone-msg-0001'").get()) as { n: number };
+    expect(Number(n.n)).toBe(2);
+    await expect(live.publishLive(1, { topic: "chat:1", clientKey: "x" })).rejects.toThrow(/client key/);
+  });
+});
+
 describe("presence", () => {
   it("lists who was seen in the last minute, per company", async () => {
     await live.touchPresence(sara, 1);
