@@ -34,10 +34,10 @@ const HEARTBEAT_MS = 20_000;
 const RECHECK_EVERY_BEATS = 15; // the session is read again every 5 minutes
 const SAFETY_DRAIN_MS = 15_000;
 const PRUNE_MS = 60 * 60_000;
-const CATCH_UP_MAX = 2000;
+const CATCH_UP_MAX = 2000; // further behind than this, the screen refetches instead
 /* A phone that drops for a moment and comes back is not announced as gone (idea L2, as Pusher waits
    before member_removed): "offline" goes out only if no stream of theirs is back within this. */
-const OFFLINE_GRACE_MS = 5000; // further behind than this, the screen refetches instead
+const OFFLINE_GRACE_MS = 5000;
 const MAX_STREAMS_PER_USER = 10;
 
 /** One open stream, as the hub sees it. `write` returns false when the phone is not keeping up. */
@@ -50,6 +50,9 @@ interface LiveSink {
   /** Whether this person may see one record (lib/live/visibility.ts). Without it, events about a
    *  record are not sent to this stream at all. */
   canSee?(type: string, id: number): Promise<boolean>;
+  /** Whether the phone has fallen behind (its buffer is past the normal high-water mark). Short
+   *  notices are skipped while it is, instead of piling up and getting the stream closed. */
+  behind?(): boolean;
 }
 
 /** Whether a stream gets an event: its company and audience, and for an event about a record, the
@@ -84,6 +87,7 @@ class Hub {
   private stopped = false;
   delivered = 0;
   dropped = 0;
+  skipped = 0;
 
   start(): Promise<void> {
     return (this.started ??= (async () => {
@@ -168,11 +172,18 @@ class Hub {
     }
     const ev = { organization_id: msg.o, audience_users: msg.u, audience_roles: msg.r };
     const text = frame(msg.t, msg.d);
-    for (const sub of this.subs) if (canReceive(sub.sink.who, ev)) this.send(sub, text);
+    for (const sub of this.subs) if (canReceive(sub.sink.who, ev)) this.send(sub, text, undefined, true);
   }
 
-  private send(sub: Sub, text: string, id?: number): void {
+  /** `droppable`: a short notice (typing, online, a GPS ping) that a phone which is behind simply
+   *  skips (idea L3, Socket.IO's volatile events). Losing "Sara is typing" costs nothing; closing
+   *  the stream over it would cost a reconnect and a catch-up. */
+  private send(sub: Sub, text: string, id?: number, droppable = false): void {
     if (sub.closed) return;
+    if (droppable && sub.sink.behind?.()) {
+      this.skipped++;
+      return;
+    }
     if (sub.queue) {
       sub.queue.push({ id, text });
       return;
@@ -298,13 +309,14 @@ class Hub {
     await Promise.all([...this.subs].filter((s) => s.sink.who.userId === userId).map((s) => this.recheck(s)));
   }
 
-  stats(): { listening: boolean; streams: number; people: number; delivered: number; dropped: number } {
+  stats(): { listening: boolean; streams: number; people: number; delivered: number; dropped: number; skipped: number } {
     return {
       listening: this.listening,
       streams: this.subs.size,
       people: new Set([...this.subs].map((s) => s.sink.who.userId)).size,
       delivered: this.delivered,
       dropped: this.dropped,
+      skipped: this.skipped,
     };
   }
 

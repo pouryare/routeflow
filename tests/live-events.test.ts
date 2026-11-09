@@ -273,6 +273,22 @@ describe("the hub", () => {
     leaveW();
   });
 
+  it("skips short notices for a phone that is behind, without closing its stream (L3)", async () => {
+    const start = (await live.eventBounds(1)).newest ?? 0;
+    const s = Object.assign(fakeSink(sara, ["phone_sales"]), { behind: () => true });
+    const leave = await liveHub.add(s, start);
+    const before = liveHub.stats().skipped;
+    await live.publishEphemeral(1, { topic: "typing", data: { u: reza } });
+    await until(() => liveHub.stats().skipped > before);
+    expect(liveHub.stats().skipped).toBeGreaterThan(before);
+    expect(topics(s.frames)).not.toContain("typing");
+    expect(s.closed).toBe(false);
+    const id = await live.publishLive(1, { topic: "orders" }); // a stored event still goes out
+    await until(() => s.frames.some((f) => f.startsWith(`id: ${id}\n`)));
+    expect(s.frames.some((f) => f.startsWith(`id: ${id}\n`))).toBe(true);
+    leave();
+  });
+
   it("tells a phone that is too far behind to refetch", async () => {
     const { newest } = await live.eventBounds(1);
     const s = fakeSink(sara, ["phone_sales"]);

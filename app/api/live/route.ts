@@ -60,6 +60,7 @@ export async function GET(req: NextRequest) {
                 return (controller.desiredSize ?? 0) > -SLOW_BYTES;
               },
               close,
+              behind: () => (controller.desiredSize ?? 0) <= 0,
               async recheck() {
                 const s = await getSessionFromCookies(token);
                 if (s) current = s;
