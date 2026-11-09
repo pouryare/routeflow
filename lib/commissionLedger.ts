@@ -21,15 +21,15 @@ import type { Db } from "@/lib/database/client";
 import { rateFor, accrualToman, type RateRow } from "./commission";
 import { FULFILLED_ORDER_STATUSES, sqlStatusList } from "./orderStateMachine";
 import { isToman, roundToman } from "./money";
-import { orgOfUser } from "./repo/userOrg";
-import { insertCommissionPayment } from "./repo/commissionPayments";
+import { namesOf, orgOfUser } from "./repo/userOrg";
+import { insertCommissionPayment, paidByPerson } from "./repo/commissionPayments";
 import { commissionFor, effectiveRate, type PlanMode } from "./commission/tiers";
 import { measureFor, type MeasurableOrder } from "./commission/measure";
 import { planFor } from "./repo/commissionTiers";
 import { orgClause } from "./orgScope";
 
 import { mapSeq } from "@/lib/seq";
-import { deductionFields, deductionsFor, lifetimeDeductions, type DeductionItem } from "./repo/discountDeductions";
+import { deductionFields, deductionsByUser, sumDeductions, type DeductionItem } from "./repo/discountDeductions";
 export interface Period {
   from: string;
   to: string;
@@ -258,48 +258,51 @@ export async function statementFor(
   salespersonId: number,
   period: Period
 ): Promise<Statement> {
-  const person = await db
-    .prepare("SELECT id, display_name FROM users WHERE id = ?")
-    .get(salespersonId) as { id: number; display_name: string } | undefined;
+  return (await statementsFor(db, [salespersonId], period))[0];
+}
 
+/** The statements of many sellers, in the order given. Names, payments and deductions are one
+ *  query each for everyone; the accruals stay per person, since a tiered plan is priced over the
+ *  person's whole period (they are shared within a render through accrualsMemo).
+ *  shortcut: accruals are still two order reads per seller; batch them like the driver ledger if a
+ *  statements page with many sellers shows up slow. */
+async function statementsFor(db: Db, ids: number[], period: Period): Promise<Statement[]> {
+  if (ids.length === 0) return [];
+  const from = period.from.slice(0, 10);
+  const to = period.to.slice(0, 10);
+  const people = await namesOf(db, ids);
   const rates = await db.prepare("SELECT * FROM commission_rates").all() as unknown as RateRow[];
-  const orders = await accrualsFor(db, salespersonId, period, rates);
+  const paidBy = await paidByPerson(db, "sales", ids, period);
+  const deductionsBy = await deductionsByUser(db, ids, "sales");
 
-  const accrued = orders.reduce((total, o) => total + o.accrual_toman, 0);
-
-  const paidInPeriod = await db
-    .prepare(
-      "SELECT COALESCE(SUM(amount_toman), 0) AS total FROM commission_payments WHERE salesperson_user_id = ? AND paid_on BETWEEN ? AND ?"
-    )
-    .get(salespersonId, period.from.slice(0, 10), period.to.slice(0, 10)) as { total: number };
-
-  // Owed is deliberately lifetime rather than period: what somebody is still due does
-  // not reset because a report window moved.
-  const lifetimeAccrued = (await accrualsFor(
-    db,
-    salespersonId,
-    { from: "0000-01-01", to: "9999-12-31" },
-    rates
-  )).reduce((total, o) => total + o.accrual_toman, 0);
-  const lifetimePaid = await db
-    .prepare(
-      "SELECT COALESCE(SUM(amount_toman), 0) AS total FROM commission_payments WHERE salesperson_user_id = ?"
-    )
-    .get(salespersonId) as { total: number };
-
-  return {
-    salesperson_user_id: salespersonId,
-    display_name: person?.display_name ?? "—",
-    kg: orders.reduce((total, o) => total + o.kg, 0),
-    accrued_toman: accrued,
-    paid_toman: paidInPeriod.total,
-    owed_toman: lifetimeAccrued - (await lifetimeDeductions(db, salespersonId, "sales")) - lifetimePaid.total,
-    ...deductionFields(accrued, await deductionsFor(db, salespersonId, "sales", period)),
-    // Read from the same lookup the accrual used, so the label cannot disagree with the
-    // number it labels. Null means the flat rate path ran, unchanged.
-    plan_mode: (await planFor(await orgOf(db, salespersonId), salespersonId, period.to, db))?.mode ?? null,
-    orders,
-  };
+  return await mapSeq(ids, async (salespersonId) => {
+    const orders = await accrualsFor(db, salespersonId, period, rates);
+    const accrued = orders.reduce((total, o) => total + o.accrual_toman, 0);
+    // Owed is deliberately lifetime rather than period: what somebody is still due does
+    // not reset because a report window moved.
+    const lifetimeAccrued = (await accrualsFor(
+      db,
+      salespersonId,
+      { from: "0000-01-01", to: "9999-12-31" },
+      rates
+    )).reduce((total, o) => total + o.accrual_toman, 0);
+    const paid = paidBy.get(salespersonId);
+    const deductions = deductionsBy.get(salespersonId) ?? [];
+    const person = people.get(salespersonId);
+    return {
+      salesperson_user_id: salespersonId,
+      display_name: person?.display_name ?? "—",
+      kg: orders.reduce((total, o) => total + o.kg, 0),
+      accrued_toman: accrued,
+      paid_toman: paid?.period ?? 0,
+      owed_toman: lifetimeAccrued - sumDeductions(deductions) - (paid?.lifetime ?? 0),
+      ...deductionFields(accrued, deductions.filter((d) => d.order_date >= from && d.order_date <= to)),
+      // Read from the same lookup the accrual used, so the label cannot disagree with the
+      // number it labels. Null means the flat rate path ran, unchanged.
+      plan_mode: (await planFor(person?.organization_id ?? 1, salespersonId, period.to, db))?.mode ?? null,
+      orders,
+    };
+  });
 }
 
 /** One line per فروشنده.
@@ -347,5 +350,5 @@ export async function allStatements(
           .all(groupId, ...org.params)
   ) as unknown as { id: number }[];
 
-  return await mapSeq(people, async (person) => await statementFor(db, person.id, period));
+  return await statementsFor(db, people.map((p) => p.id), period);
 }

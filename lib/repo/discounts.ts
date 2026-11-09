@@ -24,8 +24,9 @@ import {
   type DiscountStatus,
   type ShareInput,
 } from "@/lib/discounts";
-import { lineTotalToman, type LineSnapshot } from "@/lib/orderMath";
+import { lineTotalToman } from "@/lib/orderMath";
 import { refreshOrderFigures } from "./orderFigures";
+import { linesByOrder } from "./orderLines";
 import { advanceOrder, OrderError } from "./orders";
 
 export class DiscountError extends OrderError {}
@@ -86,16 +87,8 @@ async function grossTotal(db: Db, orderId: number): Promise<number> {
 
 /** The same for many orders in one query, by order id (the approval deck was one query per card). */
 async function grossTotals(db: Db, orderIds: number[]): Promise<Map<number, number>> {
-  const totals = new Map<number, number>();
-  if (orderIds.length === 0) return totals;
-  const lines = await db
-    .prepare(
-      `SELECT order_id, packs_ordered, packs_delivered, unit_price_toman, unit_cost_toman, qty_per_pack, kg_per_base_unit
-         FROM order_lines WHERE order_id IN (${orderIds.map(() => "?").join(",")})`
-    )
-    .all(...orderIds) as unknown as (LineSnapshot & { order_id: number })[];
-  for (const l of lines) totals.set(l.order_id, (totals.get(l.order_id) ?? 0) + lineTotalToman(l));
-  return totals;
+  const lines = await linesByOrder(db, orderIds);
+  return new Map([...lines].map(([id, ls]) => [id, ls.reduce((t, l) => t + lineTotalToman(l), 0)]));
 }
 
 interface OrderBrief {
