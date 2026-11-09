@@ -59,3 +59,17 @@ export async function encodeImage(input: Buffer, maxEdge: number): Promise<Encod
 
   return { avif, webp };
 }
+
+/** The long edge of a grid thumbnail. A tile on a phone is about 190 CSS pixels wide (570 on a 3x screen), so
+ *  640 is sharp; the full 1600 px photo stays for the lightbox. */
+export const THUMB_MAX_EDGE = 640;
+export const THUMB_QUALITY = 72;
+
+/** A small WebP copy of an already stored photo, for grids (issue #60, H). WebP only: AVIF is slower to encode
+ *  and a 640 px WebP is already tens of KB. Never enlarges. */
+export async function encodeThumb(stored: Buffer): Promise<Buffer> {
+  return sharp(stored)
+    .resize({ width: THUMB_MAX_EDGE, height: THUMB_MAX_EDGE, fit: "inside", withoutEnlargement: true })
+    .webp({ quality: THUMB_QUALITY })
+    .toBuffer();
+}

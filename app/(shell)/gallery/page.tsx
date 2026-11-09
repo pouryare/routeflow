@@ -110,16 +110,13 @@ export default function GalleryPage() {
                 className="group flex flex-col overflow-hidden rounded-[var(--radius-md)] border border-border bg-surface-raised text-right transition-[border-color] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:border-accent"
               >
                 <div className="aspect-square w-full overflow-hidden">
-                  <picture>
-                    <source srcSet={`/api/photos/${p.id}/file?format=avif`} type="image/avif" />
-                    <img
-                      src={`/api/photos/${p.id}/file?format=webp`}
-                      alt={p.caption ?? ""}
-                      loading="lazy"
-                      decoding="async"
-                      className="h-full w-full object-cover transition-transform duration-[var(--dur-slow)] ease-[var(--ease-out)] group-hover:scale-[1.03]"
-                    />
-                  </picture>
+                  <img
+                    src={`/api/photos/${p.id}/file?size=thumb`}
+                    alt={p.caption ?? ""}
+                    loading="lazy"
+                    decoding="async"
+                    className="h-full w-full object-cover transition-transform duration-[var(--dur-slow)] ease-[var(--ease-out)] group-hover:scale-[1.03]"
+                  />
                 </div>
                 <div className="p-2">
                   <div className="truncate text-[length:var(--text-sm)] text-text">{p.label}</div>
