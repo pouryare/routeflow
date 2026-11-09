@@ -1,3 +1,4 @@
+import { compressedJson } from "@/lib/httpCache";
 import { NextRequest, NextResponse } from "next/server";
 import { requireRole } from "@/lib/session";
 import { rulesFor, setTenantRuleOverride, RuleError } from "@/lib/repo/rules";
@@ -6,7 +7,7 @@ import { MANAGE_ROLES } from "@/lib/roles";
 export async function GET(req: NextRequest) {
   const guard = await requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
-  return NextResponse.json({ ok: true, rules: await rulesFor(guard.session.organizationId) });
+  return compressedJson(req, { ok: true, rules: await rulesFor(guard.session.organizationId) });
 }
 
 export async function PATCH(req: NextRequest) {

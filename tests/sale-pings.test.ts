@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { PING_MAX, pingsAfter, type PingOrder } from "@/lib/salePings";
 
@@ -27,5 +28,13 @@ describe("pingsAfter", () => {
 
   it("copes with an empty list", () => {
     expect(pingsAfter([], null)).toEqual({ latest: 0, fresh: [], more: 0 });
+  });
+});
+
+describe("the order pings follow the live stream", () => {
+  const src = readFileSync("components/sales/SalePings.tsx", "utf8");
+  it("asks when an order changed, and the timer is only a slow backstop", () => {
+    expect(src).toMatch(/onLive\("orders"/);
+    expect(Number(/const CHECK_MS = (\d+) \* 60_000/.exec(src)?.[1])).toBeGreaterThanOrEqual(2);
   });
 });

@@ -1,3 +1,4 @@
+import { compressedJson } from "@/lib/httpCache";
 import { NextRequest, NextResponse } from "next/server";
 import { parsePlace } from "@/lib/entryPlace";
 import { entryPlacesFor, saveEntryPlace } from "@/lib/repo/entryPlaces";
@@ -15,9 +16,8 @@ import {
   type AllocationInput,
 } from "@/lib/repo/payments";
 import { isOwner, MANAGE_ROLES } from "@/lib/roles";
+import { PAYMENTS_PAGE_SIZE } from "@/lib/paymentsView";
 
-/** Rows per page on the payments screen. */
-const PAYMENTS_PAGE_SIZE = 25;
 
 const METHODS: PaymentMethod[] = ["CASH", "POS", "CARD_TO_CARD", "CHEQUE", "CREDIT_NOTE", "OTHER"];
 
@@ -71,7 +71,7 @@ export async function GET(req: NextRequest) {
     // An empty filtered list says how many receipts the filter hides (FilteredEmpty).
     const unfiltered = total === 0 ? (await pagePayments(session.organizationId, scope, { customer_id, voided: "hide" }, 1, 1)).total : 0;
     const places = await entryPlacesFor(session.organizationId, "payment", rows.map((p) => p.id));
-    return NextResponse.json({
+    return compressedJson(req, {
       ok: true,
       payments: rows.map((p) => ({ ...p, place: places.get(p.id) ?? null })),
       total,
@@ -87,7 +87,7 @@ export async function GET(req: NextRequest) {
     : await listPaymentsScoped(session.organizationId, { customer_id, ...scope });
   // Z9: where each was taken, when the phone said.
   const places = await entryPlacesFor(session.organizationId, "payment", payments.map((p) => p.id));
-  return NextResponse.json({ ok: true, payments: payments.map((p) => ({ ...p, place: places.get(p.id) ?? null })) });
+  return compressedJson(req, { ok: true, payments: payments.map((p) => ({ ...p, place: places.get(p.id) ?? null })) });
 }
 
 export async function POST(req: NextRequest) {

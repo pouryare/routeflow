@@ -15,10 +15,10 @@ import { FULFILLED_ORDER_STATUSES, sqlStatusList } from "@/lib/orderStateMachine
 
 /** A line's figures, rounded to whole Toman per line on the delivered packs when there are any,
  *  as lineTotalToman/lineCostToman do. */
-export const EFF = "COALESCE(ol.packs_delivered, ol.packs_ordered)";
-export const LINE_TOTAL = `CAST(${round(`${EFF} * ol.unit_price_toman`)} AS INTEGER)`;
-export const LINE_COST = `CAST(${round(`${EFF} * ol.unit_cost_toman`)} AS INTEGER)`;
-export const LINE_KG = `(${EFF} * ol.qty_per_pack * ol.kg_per_base_unit)`;
+const EFF = "COALESCE(ol.packs_delivered, ol.packs_ordered)";
+const LINE_TOTAL = `CAST(${round(`${EFF} * ol.unit_price_toman`)} AS INTEGER)`;
+const LINE_COST = `CAST(${round(`${EFF} * ol.unit_cost_toman`)} AS INTEGER)`;
+const LINE_KG = `(${EFF} * ol.qty_per_pack * ol.kg_per_base_unit)`;
 
 /** Recounts the marked days of every company the caller's scope can see, or of one. Returns how
  *  many days it rewrote. */

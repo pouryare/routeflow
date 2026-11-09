@@ -1,3 +1,4 @@
+import { compressedJson } from "@/lib/httpCache";
 import { NextRequest, NextResponse } from "next/server";
 import { requireRole } from "@/lib/session";
 import {
@@ -31,7 +32,7 @@ export async function GET(req: NextRequest) {
 
   if (scope === "customer") {
     if (id) return NextResponse.json({ ok: true, scope, id, health: await customerHealthFor(org, id) });
-    return NextResponse.json({ ok: true, scope, rows: await customersHealthOverview(guard.session) });
+    return compressedJson(req, { ok: true, scope, rows: await customersHealthOverview(guard.session) });
   }
   if (!id) {
     return NextResponse.json({ ok: false, error: "محدوده مشخص نشده است" }, { status: 400 });

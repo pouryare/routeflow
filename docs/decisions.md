@@ -412,6 +412,23 @@ Swipe actions 1 and 2, text field, send 1 and 2, slider, rating, checkbox 1 and 
 ### 10.19 Own use only, not for sale (2026-11-05, owner decision)
 The owner no longer plans to sell RouteFlow: for now it is for his own company only. So a library or service whose licence forbids commercial use or asks for attribution is allowed (for example the non-commercial Chatterbox Persian voice and ElevenLabs' free tier), and the AGPL tour libraries are no longer ruled out for licence reasons alone. Paid foreign services stay a risk for access and payment from Iran, so the owner is asked before any recurring cost. If the plan to sell returns, re-check every licence taken on under this decision. Tutorial voice: ElevenLabs **v4**, voice **Jessica**, always from the diacritic `say` text; clips made at build time, so the server never calls ElevenLabs and the key is never stored in the repo.
 
+### 10.20 Small payloads for slow connections (2026-11-09, owner: «do A to I», issue #60)
+Measured first (project note `slow-connections-small-payloads-2026-11-09.md`): the app already sends 102 bytes for an offline sync with nothing new and 0 bytes for an unchanged customer list. The waste was elsewhere, and this entry records what was done and the rules to keep:
+
+| | What | Rule to keep |
+|---|---|---|
+| A | The phone crops and shrinks a photo to 1600 px (avatar 512) as JPEG before it uploads (`lib/shrinkPhoto.ts`) | The server still re-encodes; the phone copy only saves the line. Arvan's WAF refuses bodies over 512 KB |
+| B | `compressedJson` (`lib/httpCache.ts`) compresses the big list endpoints themselves | `next start` leaves route-handler JSON uncompressed. Caddy `encode` is still needed on the server for the rest |
+| C | `/api/payments?page=N` sends 25 receipts, the filtered count and the cards; `?page=all` feeds the CSV | A list screen asks for a page, never for everything |
+| D | The bell asks `/api/notifications?count=1` (about 70 bytes) | The 50-group list is read only when the sheet opens |
+| E | Order pings follow the live stream (3-minute backstop); a hidden tab refreshes once when shown | No new fixed-interval polling: use `onLive` |
+| F | `/api/customers?since=<bookmark>` sends changed customers, deleted ids and the size; the map checks its count and falls back to the whole list | The bookmark is the full read's, taken before the rows are read |
+| G | `/api/sync/pull?limit=` pages the pull; the phone saves where it stopped | The watermark stays the first page's and is saved after the last |
+| H | `/api/photos/:id/file?size=thumb` makes a 640 px WebP on first view, kept in the file cache | Grids use thumbs; the lightbox loads the full photo |
+| I | **Not built.** No screen reads the phone snapshot yet (`readSnapshot` has no caller), so «screens read the snapshot first» is a separate project, not a tweak | Decide per screen when offline reading is wanted |
+
+Owner step after merge: `encode zstd gzip` in the real Caddyfile on the Pi (`deploy/Caddy-snippet.txt`), with `/api/live` excluded.
+
 ### 10.21 Database follow-ups to the index audit (2026-11-09, owner decision)
 Six follow-ups after the index audit (`notes/db-index-audit-2026-11-09.md`, PR #66). All built in the same pull request.
 

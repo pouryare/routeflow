@@ -1,3 +1,4 @@
+import { compressedJson } from "@/lib/httpCache";
 import { NextRequest, NextResponse } from "next/server";
 import { isId } from "@/lib/inputChecks";
 import { requireRole, orderFilter, canReachGroup, orgScopeId } from "@/lib/session";
@@ -75,7 +76,7 @@ export async function GET(req: NextRequest) {
   const org = orgScopeId(guard.session);
   const onboarding = customerId && org !== null ? await onboardingFor(org, Number(customerId)) : null;
 
-  return NextResponse.json({ ok: true, orders, products, prices, usual, recent_open, onboarding });
+  return compressedJson(req, { ok: true, orders, products, prices, usual, recent_open, onboarding });
 }
 
 export async function POST(req: NextRequest) {

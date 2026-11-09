@@ -20,7 +20,13 @@ export async function GET(req: NextRequest) {
   }
 
   const since = req.nextUrl.searchParams.get("since");
-  const result = await pullSince(session, since && since.length > 0 ? since : null);
+  // ?limit=N pages the answer (with ?after= and ?at= from the previous page); without it, everything at once.
+  const limit = Number(req.nextUrl.searchParams.get("limit"));
+  const page =
+    Number.isInteger(limit) && limit >= 1
+      ? { limit: Math.min(limit, 5000), after: req.nextUrl.searchParams.get("after"), at: req.nextUrl.searchParams.get("at") }
+      : undefined;
+  const result = await pullSince(session, since && since.length > 0 ? since : null, page);
   const payload = JSON.stringify({ ok: true, ...result, server_time: new Date().toISOString() });
   /* A first pull is megabytes of JSON, and next start does not compress route-handler responses
      (measured: 2.1 MB sent for a driver, 120 KB gzipped), so it is compressed here. Behind a proxy

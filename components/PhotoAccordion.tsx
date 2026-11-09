@@ -28,10 +28,7 @@ function PhotoAccordion({
           data-open={i === active}
           onClick={() => (i === active ? onView(p.id) : setOpen(i))}
         >
-          <picture>
-            <source srcSet={`/api/photos/${p.id}/file?format=avif`} type="image/avif" />
-            <img src={`/api/photos/${p.id}/file?format=webp`} alt={p.caption ?? ""} loading="lazy" decoding="async" />
-          </picture>
+          <img src={`/api/photos/${p.id}/file?size=thumb`} alt={p.caption ?? ""} loading="lazy" decoding="async" />
         </button>
       ))}
     </div>
@@ -61,10 +58,7 @@ export default function PhotoThumbs({
           aria-pressed={picked ? picked.includes(p.id) : undefined}
           className={`aspect-square overflow-hidden rounded-[var(--radius-sm)] border transition-[border-color] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:border-accent ${picked?.includes(p.id) ? "border-accent ring-2 ring-accent" : "border-border"}`}
         >
-          <picture>
-            <source srcSet={`/api/photos/${p.id}/file?format=avif`} type="image/avif" />
-            <img src={`/api/photos/${p.id}/file?format=webp`} alt={p.caption ?? ""} loading="lazy" decoding="async" className="h-full w-full object-cover" />
-          </picture>
+          <img src={`/api/photos/${p.id}/file?size=thumb`} alt={p.caption ?? ""} loading="lazy" decoding="async" className="h-full w-full object-cover" />
         </button>
       ))}
     </div>

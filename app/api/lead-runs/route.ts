@@ -1,3 +1,4 @@
+import { compressedJson } from "@/lib/httpCache";
 import { NextRequest, NextResponse } from "next/server";
 import { plain } from "@/lib/db";
 import { requireRole } from "@/lib/session";
@@ -38,7 +39,7 @@ export async function GET(req: NextRequest) {
   }
   // ?from=YYYY-MM-DD: only runs on or after that day (the planner's calendar).
   const from = url.searchParams.get("from");
-  return NextResponse.json({ ok: true, runs: plain(await runsFor(session, from && /^\d{4}-\d{2}-\d{2}$/.test(from) ? from : undefined)) });
+  return compressedJson(req, { ok: true, runs: plain(await runsFor(session, from && /^\d{4}-\d{2}-\d{2}$/.test(from) ? from : undefined)) });
 }
 
 export async function POST(req: NextRequest) {

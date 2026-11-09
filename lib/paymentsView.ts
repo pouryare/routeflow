@@ -10,6 +10,9 @@ export const METHOD_LABEL: Record<string, string> = {
   OTHER: "سایر",
 };
 
+/** Receipts per page on the payments screen; the server cuts the pages with it. */
+export const PAYMENTS_PAGE_SIZE = 25;
+
 export interface Customer {
   id: number;
   business_name: string;

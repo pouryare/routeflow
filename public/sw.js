@@ -222,7 +222,8 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  if (url.pathname === "/api/districts" || url.pathname === "/api/customers") {
+  // A customer-list delta (?since=) is different every time and only good once: never cache it.
+  if (url.pathname === "/api/districts" || (url.pathname === "/api/customers" && !url.searchParams.has("since"))) {
     event.respondWith(staleWhileRevalidate(request, DATA_CACHE));
     return;
   }

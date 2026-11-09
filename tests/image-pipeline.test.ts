@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import sharp from "sharp";
-import { encodeImage, AVATAR_MAX_EDGE, PHOTO_MAX_EDGE } from "@/lib/imagePipeline";
+import { encodeImage, encodeThumb, AVATAR_MAX_EDGE, PHOTO_MAX_EDGE, THUMB_MAX_EDGE } from "@/lib/imagePipeline";
 
 /** An image built in memory so the test needs no fixture file. */
 async function sample(w = 4, h = 3): Promise<Buffer> {
@@ -43,5 +43,21 @@ describe("encodeImage", () => {
 
   it("rejects a buffer sharp cannot read", async () => {
     await expect(encodeImage(Buffer.from("not an image"), PHOTO_MAX_EDGE)).rejects.toThrow();
+  });
+});
+
+describe("encodeThumb", () => {
+  it("makes a grid-sized WebP that is much smaller than the stored photo, and never enlarges", async () => {
+    // The stored photo is built straight as WebP: encodeImage also writes AVIF, which is slow enough to time out on a busy CI runner.
+    const stored = await sharp({ create: { width: 1600, height: 1200, channels: 3, background: { r: 128, g: 128, b: 128 }, noise: { type: "gaussian", mean: 128, sigma: 40 } } })
+      .webp({ quality: 78 })
+      .toBuffer();
+    const thumb = await encodeThumb(stored);
+    const meta = await sharp(thumb).metadata();
+    expect(meta.format).toBe("webp");
+    expect(Math.max(meta.width ?? 0, meta.height ?? 0)).toBe(THUMB_MAX_EDGE);
+    expect(thumb.length).toBeLessThan(stored.length / 2);
+    const small = await encodeThumb(await sharp(await sample(40, 30)).webp().toBuffer());
+    expect((await sharp(small).metadata()).width).toBe(40);
   });
 });
