@@ -29,7 +29,7 @@ export function BentoIdentity({
   children?: ReactNode;
 }) {
   return (
-    <div className="flex flex-col justify-between rounded-[var(--radius-xl)] bg-[var(--surface-raised)] p-[var(--space-4)] sm:col-span-2">
+    <div className="flex flex-col justify-between rounded-[var(--radius-xl)] border border-[var(--border)] bg-[var(--surface-secondary)] p-[var(--space-4)] sm:col-span-2">
       <div>
         {eyebrow && (
           <span className="block font-mono text-[length:var(--text-xs)] uppercase tracking-[0.1em] text-[var(--text-faint)]">
@@ -64,7 +64,7 @@ export function BentoTile({
 }) {
   const color = tone ? `var(--${tone})` : "var(--foreground)";
   return (
-    <div className="rounded-[var(--radius-xl)] bg-[var(--surface-raised)] p-[var(--space-4)]">
+    <div className="rounded-[var(--radius-xl)] border border-[var(--border)] bg-[var(--surface-secondary)] p-[var(--space-4)]">
       <span className="block text-[length:var(--text-xs)] text-[var(--muted)]">{label}</span>
       <strong
         className="mt-[var(--space-1)] block font-mono text-[length:var(--text-xl)] font-normal tabular-nums"
@@ -107,7 +107,7 @@ export function BentoGauge({
   const track = (SWEEP / 360) * 2 * Math.PI * R;
 
   return (
-    <div className="flex items-center gap-[var(--space-3)] rounded-[var(--radius-xl)] bg-[var(--surface-raised)] p-[var(--space-4)]">
+    <div className="flex items-center gap-[var(--space-3)] rounded-[var(--radius-xl)] border border-[var(--border)] bg-[var(--surface-secondary)] p-[var(--space-4)]">
       <svg width="84" height="84" viewBox="0 0 84 84" aria-hidden="true" className="shrink-0">
         {/* Rotated so the gap sits at the bottom, centred. */}
         <g transform="rotate(135 42 42)">
