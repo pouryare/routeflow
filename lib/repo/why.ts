@@ -140,8 +140,8 @@ async function funnelCounts(
     .prepare(
       `SELECT
          COUNT(*) AS entered,
-         SUM(CASE WHEN EXISTS (SELECT 1 FROM order_events e WHERE e.order_id = o.id AND e.to_status = 'CONFIRMED') THEN 1 ELSE 0 END) AS confirmed,
-         SUM(CASE WHEN EXISTS (SELECT 1 FROM order_events e WHERE e.order_id = o.id AND e.to_status = 'DELIVERED') THEN 1 ELSE 0 END) AS delivered
+         SUM(CASE WHEN EXISTS (SELECT 1 FROM order_events_all e WHERE e.order_id = o.id AND e.to_status = 'CONFIRMED') THEN 1 ELSE 0 END) AS confirmed,
+         SUM(CASE WHEN EXISTS (SELECT 1 FROM order_events_all e WHERE e.order_id = o.id AND e.to_status = 'DELIVERED') THEN 1 ELSE 0 END) AS delivered
        FROM orders o
       WHERE ${where.join(" AND ")}${f.sql}`
     )

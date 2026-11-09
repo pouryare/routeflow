@@ -51,7 +51,8 @@ export function proxy(req: NextRequest) {
     (pathname === "/api/rules/run" ||
       pathname === "/api/analysis/refresh" ||
       pathname === "/api/predict/refresh" ||
-      pathname === "/api/storages/sweep")
+      pathname === "/api/storages/sweep" ||
+      pathname === "/api/admin/archive")
   ) {
     return NextResponse.next();
   }

@@ -20,6 +20,8 @@ import LiveConnectionsCard from "@/components/meridian/LiveConnectionsCard";
 import { connectionsOf } from "@/lib/repo/liveConnections";
 import SlowQueriesCard from "@/components/meridian/SlowQueriesCard";
 import { slowQueries } from "@/lib/repo/slowQueries";
+import ArchiveMonthsForm from "@/components/meridian/ArchiveMonthsForm";
+import { archiveHotMonths } from "@/lib/repo/historyArchive";
 
 export const metadata = pageMetadata("/sales/admin/status");
 
@@ -47,6 +49,7 @@ export default async function StatusPage() {
   // The query counters are the whole server's, every company's together: the platform owner's only.
   const platform = session.hasRole("platform_owner");
   const slow = platform ? await slowQueries() : undefined;
+  const hotMonths = platform ? await archiveHotMonths() : undefined;
 
   return (
     <>
@@ -73,6 +76,11 @@ export default async function StatusPage() {
       {slow !== undefined ? (
         <div className="mt-[var(--space-4)]">
           <SlowQueriesCard data={slow} />
+        </div>
+      ) : null}
+      {hotMonths !== undefined ? (
+        <div className="mt-[var(--space-4)]">
+          <ArchiveMonthsForm months={hotMonths} />
         </div>
       ) : null}
       <div className="mt-[var(--space-4)]">

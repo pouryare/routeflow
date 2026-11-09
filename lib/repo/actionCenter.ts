@@ -106,7 +106,7 @@ async function stalledOrderCandidates(session: Session): Promise<Candidate[]> {
   const rows = await db
     .prepare(
       `SELECT * FROM (SELECT o.id, o.status,
-              (SELECT MAX(e.created_at) FROM order_events e WHERE e.order_id = o.id) AS last_event,
+              (SELECT MAX(e.created_at) FROM order_events_all e WHERE e.order_id = o.id) AS last_event,
               COALESCE(SUM(COALESCE(ol.packs_delivered, ol.packs_ordered) * ol.unit_price_toman), 0) AS value
          FROM orders o
          LEFT JOIN order_lines ol ON ol.order_id = o.id

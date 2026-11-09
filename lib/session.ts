@@ -175,6 +175,7 @@ const COMPANY_FREE_WRITES = [
   "/api/me/second-factor",
   "/api/me/step-up",
   "/api/admin/impersonate",
+  "/api/admin/archive", // the archive months are the whole server's, not one company's
   "/api/notifications",
   "/api/push",
   "/api/prefs",
