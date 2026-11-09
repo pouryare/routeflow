@@ -115,7 +115,7 @@ export async function salesDashboard(db: Db, session: Session, range: { from: st
      orderFilter, on the totals' own organization_id, group_id and salesperson_user_id. A van role
      is scoped by its runs, which the totals do not carry; its screens never reach this page. */
   if (isVanRole(scopeView(session).role)) throw new Error("salesDashboard: van roles are scoped by run");
-  await refreshSalesDaily(db, orgScopeId(session));
+  await refreshSalesDaily(orgScopeId(session), db);
   const sd = orderFilter(session, "s");
   const days: string[] = [];
   const params: unknown[] = [];

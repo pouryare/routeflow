@@ -7,7 +7,6 @@ import { tehranTodayIso } from "@/lib/jalali";
 import { MAX_HOT_MONTHS, MIN_HOT_MONTHS, validHotMonths } from "@/lib/historyArchive";
 import { archiveHistory, setArchiveHotMonths } from "@/lib/repo/historyArchive";
 import { refreshSalesDaily } from "@/lib/repo/salesDaily";
-import { getDb } from "@/lib/db";
 
 /** Old history to the archive twins (db/migrations/1762700000000_history-archive.sql). One cutoff
  *  for the whole server, so both calls are the platform owner's:
@@ -51,6 +50,6 @@ export async function POST(req: NextRequest) {
     if (!guard.ok) return guard.response;
   }
   const moved = await withDbScope("system", () => archiveHistory(tehranTodayIso()));
-  const recountedDays = await withDbScope("system", () => refreshSalesDaily(getDb(), null));
+  const recountedDays = await withDbScope("system", () => refreshSalesDaily(null));
   return NextResponse.json({ ok: true, moved, recountedDays });
 }

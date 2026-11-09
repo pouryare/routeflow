@@ -10,6 +10,7 @@
  * A writer that commits while it runs either was seen by the rewrite or left its own mark, which
  * this recount did not delete (it was not committed yet), so the day is recounted next time. */
 import type { Db } from "@/lib/database/client";
+import { getDb } from "@/lib/db";
 import { round } from "@/lib/database/dialect";
 import { FULFILLED_ORDER_STATUSES, sqlStatusList } from "@/lib/orderStateMachine";
 
@@ -22,7 +23,7 @@ const LINE_KG = `(${EFF} * ol.qty_per_pack * ol.kg_per_base_unit)`;
 
 /** Recounts the marked days of every company the caller's scope can see, or of one. Returns how
  *  many days it rewrote. */
-export async function refreshSalesDaily(db: Db, organizationId: number | null): Promise<number> {
+export async function refreshSalesDaily(organizationId: number | null, db: Db = getDb()): Promise<number> {
   const orgs = organizationId !== null
     ? [organizationId]
     : ((await db.prepare("SELECT DISTINCT organization_id AS id FROM sales_daily_marks").all()) as { id: number }[]).map((r) => r.id);
