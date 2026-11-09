@@ -4,7 +4,9 @@ import { getSession, getSessionFromCookies, type Session } from "@/lib/session";
 import { rateLimit } from "@/lib/rateLimit";
 import { liveHub } from "@/lib/live/hub";
 import { canSeeRecord } from "@/lib/live/visibility";
-import { lastSeenId, parseTagFilter, retryMs, type LiveListener } from "@/lib/live/protocol";
+import { lastSeenId, parseTagFilter, retryMs, type LiveFilter, type LiveListener } from "@/lib/live/protocol";
+import { withDbScope } from "@/lib/database/scope";
+import { displayKey } from "@/lib/repo/liveDisplay";
 
 export const dynamic = "force-dynamic";
 
@@ -16,26 +18,72 @@ const SLOW_BYTES = 256 * 1024;
 
 /** The live stream (issue #58): one per browser, carrying every topic. See lib/live/hub.ts.
  *
- *  Every signed-in person may open it; what reaches them is decided per event by its company and
+ *  Every signed-in person may open it, and so may a screen holding a display link (?display=);
+ *  what reaches them is decided per event by its company and
  *  audience. The headers keep proxies from caching, compressing or holding it back (Caddy's encode
  *  is switched off for this path as well, deploy/routeflow). */
+/** One stream's identity and checks, for a signed-in person or for a display link. */
+interface Opened {
+  who: LiveListener;
+  filter?: LiveFilter;
+  recheck(): Promise<LiveListener | null>;
+  canSee(type: string, id: number): Promise<boolean>;
+}
+
+const tooMany = (retryAfterSeconds: number) =>
+  NextResponse.json(
+    { ok: false, error: "درخواست‌های زیاد؛ کمی بعد دوباره وصل می‌شود" },
+    { status: 429, headers: { "Retry-After": String(retryAfterSeconds) } }
+  );
+
+/** A display link (idea L9): no session, held to the key's topics. Its listener id is minus the
+ *  key's id, so it never matches a person's audience, is never marked online, and a revoke's kick
+ *  finds it. Record events of its topics reach it: the owner chose those topics for that screen,
+ *  and such an event is only an id and a status. Anything aimed at people or roles never does. */
+async function openDisplay(key: string): Promise<Opened | NextResponse> {
+  const k = await withDbScope("system", () => displayKey(key));
+  if (!k) return NextResponse.json({ ok: false, error: "این پیوند معتبر نیست یا لغو شده است" }, { status: 401 });
+  const limit = rateLimit(`live:display:${k.id}`, 30, 60_000);
+  if (!limit.allowed) return tooMany(limit.retryAfterSeconds);
+  const who: LiveListener = { userId: -k.id, organizationId: k.organizationId, roles: [] };
+  return {
+    who,
+    filter: { topics: k.topics },
+    recheck: async () => ((await withDbScope("system", () => displayKey(key))) ? who : null),
+    canSee: async () => true,
+  };
+}
+
 export async function GET(req: NextRequest) {
-  const session = await getSession(req);
-  if (!session) return NextResponse.json({ ok: false, error: "احراز هویت نشده" }, { status: 401 });
-  const limit = rateLimit(`live:${session.user.id}`, 30, 60_000);
-  if (!limit.allowed) {
-    return NextResponse.json(
-      { ok: false, error: "درخواست‌های زیاد؛ کمی بعد دوباره وصل می‌شود" },
-      { status: 429, headers: { "Retry-After": String(limit.retryAfterSeconds) } }
-    );
+  const display = req.nextUrl.searchParams.get("display");
+  let opened: Opened;
+  if (display) {
+    const d = await openDisplay(display);
+    if (d instanceof NextResponse) return d;
+    opened = d;
+  } else {
+    const session = await getSession(req);
+    if (!session) return NextResponse.json({ ok: false, error: "احراز هویت نشده" }, { status: 401 });
+    const limit = rateLimit(`live:${session.user.id}`, 30, 60_000);
+    if (!limit.allowed) return tooMany(limit.retryAfterSeconds);
+    const token = req.cookies.get(COOKIE_NAME)?.value;
+    let current = session; // replaced when the session is read again
+    // ?tags=district:14 sends only events labelled for district 14, and those with no district
+    // label (idea L10). It narrows what the person may receive; it never widens it.
+    const tags = parseTagFilter(req.nextUrl.searchParams.get("tags"));
+    opened = {
+      who: listener(session),
+      filter: tags ? { tags } : undefined,
+      async recheck() {
+        const s = await getSessionFromCookies(token);
+        if (s) current = s;
+        return s ? listener(s) : null;
+      },
+      canSee: (type, id) => canSeeRecord(current, type, id),
+    };
   }
-  const token = req.cookies.get(COOKIE_NAME)?.value;
   const lastSeen = lastSeenId(req.headers.get("last-event-id"), req.nextUrl.searchParams.get("after"));
-  // ?tags=district:14 sends only events labelled for district 14, and those with no district label
-  // (idea L10). It narrows what the person may receive; it never widens it.
-  const tags = parseTagFilter(req.nextUrl.searchParams.get("tags"));
   const encoder = new TextEncoder();
-  let current = session; // replaced when the session is read again
   let leave: (() => void) | null = null;
   let closed = false;
 
@@ -56,7 +104,7 @@ export async function GET(req: NextRequest) {
         try {
           leave = await liveHub.add(
             {
-              who: listener(session),
+              ...opened,
               write(chunk) {
                 if (closed) return false;
                 controller.enqueue(encoder.encode(chunk));
@@ -64,13 +112,6 @@ export async function GET(req: NextRequest) {
               },
               close,
               behind: () => (controller.desiredSize ?? 0) <= 0,
-              filter: tags ? { tags } : undefined,
-              async recheck() {
-                const s = await getSessionFromCookies(token);
-                if (s) current = s;
-                return s ? listener(s) : null;
-              },
-              canSee: (type, id) => canSeeRecord(current, type, id),
             },
             lastSeen
           );

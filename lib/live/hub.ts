@@ -314,6 +314,7 @@ class Hub {
   }
 
   private async presence(who: LiveListener, online: boolean): Promise<void> {
+    if (who.userId <= 0) return; // a display link (L9) is a screen, not a person
     try {
       await withDbScope("system", async () => {
         if (online) await touchPresence(who.userId, who.organizationId);
@@ -338,6 +339,7 @@ class Hub {
       if (++sub.beats % RECHECK_EVERY_BEATS === 0) void this.recheck(sub);
     }
     for (const who of seen.values()) {
+      if (who.userId <= 0) continue;
       await withDbScope("system", () => touchPresence(who.userId, who.organizationId)).catch(() => undefined);
     }
   }
