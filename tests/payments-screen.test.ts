@@ -15,7 +15,7 @@ describe("the payments screen", () => {
   it("never counts a VOIDED receipt in a total", () => {
     // A void means the money went back. Counting it and calling the card "collected this
     // month" is the single most misleading number this screen could print.
-    expect(panel).toMatch(/const live = useMemo\(\(\) => \(payments \?\? \[\]\)\.filter\(\(p\) => !p\.voided_at\)/);
+    expect(panel).toMatch(/const live = useMemo\(\(\) => recent\.filter\(\(p\) => !p\.voided_at\)/);
     // Every card builds from `live`, not from `payments`.
     const cardSection = panel.slice(panel.indexOf("const totals = useMemo"));
     expect(cardSection).toMatch(/live\.filter/);
@@ -53,8 +53,10 @@ describe("the payments screen", () => {
   });
 
   it("paginates rather than rendering every receipt at once", () => {
-    expect(panel).toMatch(/const PAGE_SIZE = \d+/);
-    expect(panel).toMatch(/filtered\.slice\(safePage \* PAGE_SIZE/);
+    // The server sends one page (?page=N) and the panel draws HeroUI's pagination under it.
+    expect(panel).toMatch(/page: String\(page\)/);
+    expect(panel).toMatch(/<ListPager page=\{page\}/);
+    expect(readFileSync("app/api/payments/route.ts", "utf8")).toMatch(/pagePayments\(/);
   });
 
   it("groups by month, derived at render rather than stored", () => {

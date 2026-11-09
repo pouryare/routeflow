@@ -20,7 +20,7 @@ type UpdateInput = Parameters<typeof updateLeadRun>[3];
 export const todaysRun = async (driverUserId: number, orgId: number, todayIso: string) => await readTodaysLeadRun(getDb(), driverUserId, orgId, todayIso);
 export const driversFor = async (session: Session) => await assignableDrivers(getDb(), session);
 export const assignmentsFor = async (session: Session) => await readLeadRunAssignments(getDb(), session);
-export const runsFor = async (session: Session) => await readScopedLeadRuns(getDb(), session);
+export const runsFor = async (session: Session, fromIso?: string) => await readScopedLeadRuns(getDb(), session, fromIso);
 export const createRunFor = async (session: Session, input: CreateInput) => await createOrReuseLeadRun(getDb(), session, input);
 export const runById = async (id: number, orgId: number) => await readLeadRun(getDb(), id, orgId);
 export const updateRunFor = async (session: Session, id: number, patch: UpdateInput) => await updateLeadRun(getDb(), session, id, patch);

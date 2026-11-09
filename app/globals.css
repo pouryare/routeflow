@@ -2980,6 +2980,11 @@ body {
 .pager__link { width: auto; height: auto; min-height: 44px; padding-inline: 14px; text-decoration: none; }
 /* The phone FAB («ثبت») sits over the bottom-left corner, where «صفحهٔ بعد» lands at the end of a list. */
 @media (max-width: 767.98px) { .pager { margin-bottom: 64px; } }
+/* ListPager: HeroUI's Pagination parts (summary above the buttons on a phone, as HeroUI lays it out), every button 44 px (HeroUI's are 36). */
+.listpager { margin-top: var(--space-3); gap: var(--space-2); }
+.listpager .pagination__link { width: auto; min-width: 44px; height: 44px; }
+.listpager .pagination__ellipsis { width: 20px; }
+@media (max-width: 767.98px) { .listpager { margin-bottom: 64px; } }
 /* TextInput / PasswordInput: a 44 px field with its label above, room under it before the next. */
 .textinput { margin-bottom: var(--space-3); gap: 4px; }
 .textinput .label { font-size: var(--text-xs); color: var(--muted); }

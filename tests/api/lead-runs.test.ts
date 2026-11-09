@@ -248,6 +248,16 @@ describe("the manager's roster", () => {
     expect(body.runs.length).toBe(2);
   });
 
+  it("?from= keeps only runs on or after that day, for the planner's calendar", async () => {
+    const all = ((await (await listRuns(...MANAGER())).json()) as { runs: Array<{ run_date: string }> }).runs;
+    const latest = all.map((r) => r.run_date).sort().at(-1)!;
+    const body = (await (await listRuns(...MANAGER(), `?from=${latest}`)).json()) as { runs: Array<{ run_date: string }> };
+    expect(body.runs.length).toBeGreaterThan(0);
+    expect(body.runs.every((r) => r.run_date >= latest)).toBe(true);
+    const later = (await (await listRuns(...MANAGER(), "?from=2999-01-01")).json()) as { runs: unknown[] };
+    expect(later.runs).toEqual([]);
+  });
+
   it("offers assignable drivers, and no one else", async () => {
     const body = (await (await listRuns(...MANAGER(), "?drivers=1")).json()) as { drivers: Array<{ id: number }> };
     const ids = body.drivers.map((d) => d.id);

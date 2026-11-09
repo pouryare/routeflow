@@ -121,15 +121,19 @@ export async function readDriverLeadRuns(conn: Db, driverUserId: number, orgId: 
   return await hydrateAll(conn, rows, orgId);
 }
 
-/** Runs a manager may see: their group's, or the whole organisation for an owner. */
-export async function readScopedLeadRuns(conn: Db, session: Session): Promise<LeadRun[]> {
+/** Runs a manager may see: their group's, or the whole organisation for an owner. `fromIso`
+ *  keeps only runs on or after that day: the planner's calendar needs the coming days, not
+ *  every run since the company started (452 runs and their stops in the audit's demo). */
+export async function readScopedLeadRuns(conn: Db, session: Session, fromIso?: string): Promise<LeadRun[]> {
   const org = session.organizationId;
   const all = isOwner(session.role);
+  const params: Array<number | string> = all ? [org] : [org, session.groupId ?? -1];
+  if (fromIso) params.push(fromIso);
   const rows = await conn
     .prepare(`SELECT ${RUN_COLS} FROM delivery_runs r LEFT JOIN users u ON u.id = r.driver_user_id
-               WHERE r.organization_id = ? ${all ? "" : "AND r.group_id = ?"}
+               WHERE r.organization_id = ? ${all ? "" : "AND r.group_id = ?"} ${fromIso ? "AND r.run_date >= ?" : ""}
                ORDER BY r.run_date DESC, r.id DESC`)
-    .all(...(all ? [org] : [org, session.groupId ?? -1])) as unknown as Record<string, unknown>[];
+    .all(...params) as unknown as Record<string, unknown>[];
   return await hydrateAll(conn, rows, org);
 }
 

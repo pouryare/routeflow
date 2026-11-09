@@ -377,12 +377,6 @@ export async function recordPayment(organizationId: number, input: RecordPayment
   });
 }
 
-/** Payments a caller may see, narrowed beyond the organisation.
- *
- *  `groupIds` keeps payments whose customer sits in one of those groups; `salespersonId` keeps
- *  payments the person received or whose customer they have sold to. Both can be given. The
- *  route used to return every payment of the organisation to a salesperson, byte-identical to
- *  the owner's view. */
 /** The group a customer belongs to, or `undefined` when there is no such customer in this
  *  organisation. Lets a route refuse a write against another group's customer. */
 export async function customerGroupOf(organizationId: number, customerId: number): Promise<{ group_id: number | null } | undefined> {
@@ -392,17 +386,27 @@ export async function customerGroupOf(organizationId: number, customerId: number
     .get(customerId, organizationId) as { group_id: number | null } | undefined;
 }
 
-export async function listPaymentsScoped(
-  organizationId: number,
-  scope: { groupIds?: number[]; salespersonId?: number; customer_id?: number }
-): Promise<PaymentRow[]> {
+/** Who may see which receipts: the company's for an owner (`null`), a group's, or a salesperson's. */
+export type PaymentScope = { groupIds?: number[]; salespersonId?: number } | null;
+
+/** The filters the payments screen offers. Dates are Tehran calendar days, YYYY-MM-DD. */
+export interface PaymentFilter {
+  customer_id?: number;
+  method?: string;
+  from?: string;
+  to?: string;
+  voided?: "hide" | "only" | "all"; // default "hide": a voided receipt is not money
+}
+
+/** WHERE for payments `p` joined to customers `c`, under a scope and filters. */
+function paymentWhere(organizationId: number, scope: PaymentScope, f: PaymentFilter): { sql: string; params: (number | string)[] } {
   const clauses = ["p.organization_id = ?"];
   const params: (number | string)[] = [organizationId];
-  if (scope.customer_id !== undefined) {
+  if (f.customer_id !== undefined) {
     clauses.push("p.customer_id = ?");
-    params.push(scope.customer_id);
+    params.push(f.customer_id);
   }
-  if (scope.groupIds !== undefined) {
+  if (scope?.groupIds !== undefined) {
     // A customer with no group yet is company-wide, the same rule tasks and alerts follow.
     clauses.push(
       scope.groupIds.length
@@ -411,19 +415,72 @@ export async function listPaymentsScoped(
     );
     params.push(...scope.groupIds);
   }
-  if (scope.salespersonId !== undefined) {
+  if (scope?.salespersonId !== undefined) {
     clauses.push(
       `(p.received_by = ? OR EXISTS (SELECT 1 FROM orders o WHERE o.customer_id = p.customer_id AND o.organization_id = p.organization_id AND o.salesperson_user_id = ?))`
     );
     params.push(scope.salespersonId, scope.salespersonId);
   }
+  if (f.method) {
+    clauses.push("p.method = ?");
+    params.push(f.method);
+  }
+  // received_at is ISO text, so its first ten characters are the day.
+  if (f.from) {
+    clauses.push("substr(p.received_at, 1, 10) >= ?");
+    params.push(f.from);
+  }
+  if (f.to) {
+    clauses.push("substr(p.received_at, 1, 10) <= ?");
+    params.push(f.to);
+  }
+  if ((f.voided ?? "hide") === "hide") clauses.push("p.voided_at IS NULL");
+  if (f.voided === "only") clauses.push("p.voided_at IS NOT NULL");
+  return { sql: clauses.join(" AND "), params };
+}
+
+/** Payments a caller may see, narrowed beyond the organisation.
+ *
+ *  `groupIds` keeps payments whose customer sits in one of those groups; `salespersonId` keeps
+ *  payments the person received or whose customer they have sold to. Both can be given. The
+ *  route used to return every payment of the organisation to a salesperson, byte-identical to
+ *  the owner's view. */
+export async function listPaymentsScoped(
+  organizationId: number,
+  scope: { groupIds?: number[]; salespersonId?: number; customer_id?: number }
+): Promise<PaymentRow[]> {
+  const { customer_id, ...who } = scope;
+  const w = paymentWhere(organizationId, who, { customer_id, voided: "all" });
   return await paymentsRepo
     .db()
     .prepare(
       `SELECT p.* FROM payments p JOIN customers c ON c.id = p.customer_id
-        WHERE ${clauses.join(" AND ")} ORDER BY p.received_at DESC, p.id DESC`
+        WHERE ${w.sql} ORDER BY p.received_at DESC, p.id DESC`
     )
-    .all(...(params as never[])) as unknown as PaymentRow[];
+    .all(...(w.params as never[])) as unknown as PaymentRow[];
+}
+
+/** One page of the payments a caller may see, newest first, and how many there are in all.
+ *  The screen used to download every receipt (12,000 rows, 4.6 MB) to show 25. */
+export async function pagePayments(
+  organizationId: number,
+  scope: PaymentScope,
+  filter: PaymentFilter,
+  page: number,
+  pageSize: number
+): Promise<{ rows: PaymentRow[]; total: number }> {
+  const w = paymentWhere(organizationId, scope, filter);
+  const db = paymentsRepo.db();
+  const { n } = (await db
+    .prepare(`SELECT COUNT(*) AS n FROM payments p JOIN customers c ON c.id = p.customer_id WHERE ${w.sql}`)
+    .get(...(w.params as never[]))) as { n: number };
+  const rows = (await db
+    .prepare(
+      `SELECT p.* FROM payments p JOIN customers c ON c.id = p.customer_id
+        WHERE ${w.sql} ORDER BY p.received_at DESC, p.id DESC LIMIT ? OFFSET ?`
+    )
+    .all(...(w.params as never[]), pageSize, Math.max(0, page - 1) * pageSize)) as unknown as PaymentRow[];
+  return { rows, total: Number(n) };
 }
 
 export async function listPayments(

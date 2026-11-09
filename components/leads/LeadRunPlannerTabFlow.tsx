@@ -80,7 +80,9 @@ export default function LeadRunPlannerTabFlow({
   const loadAssignData = useCallback(async () => {
     const [driversRes, runsRes] = await Promise.all([
       fetch("/api/lead-runs?drivers=1"),
-      fetch("/api/lead-runs"),
+      // The calendar marks taken days from a month back on; older runs cannot clash with a new
+      // one that matters, and the server refuses a double booking on any day regardless.
+      fetch(`/api/lead-runs?from=${tehranTodayIso(new Date(Date.now() - 31 * 864e5))}`),
     ]);
     const [driversData, runsData] = await Promise.all([driversRes.json(), runsRes.json()]);
     return {

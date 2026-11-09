@@ -18,6 +18,7 @@ const {
   voidPayment,
   allocationsOfPayment,
   PaymentError,
+  pagePayments,
 } = await import("@/lib/repo/payments");
 
 afterAll(() => {
@@ -238,5 +239,28 @@ describe("voidPayment", () => {
       await db.prepare("SELECT paid_toman,payment_status FROM orders WHERE id=?").get(o1)
     ).toMatchObject({ paid_toman: 0, payment_status: "unpaid" });
     await expect((async () => await voidPayment(1, pid, userId, "دوباره"))()).rejects.toThrow(PaymentError);
+  });
+});
+
+describe("pagePayments", () => {
+  it("returns one page, newest first, with the total of the filtered set", async () => {
+    for (const [d, m] of [["2026-02-01", "CASH"], ["2026-02-03", "POS"], ["2026-02-05", "CASH"], ["2026-02-07", "CASH"]] as const) {
+      await recordPayment(1, { customer_id: custId, amount_toman: 1_000, method: m, received_at: d, received_by: userId });
+    }
+    const p1 = await pagePayments(1, null, { method: "CASH" }, 1, 2);
+    expect(p1.total).toBe(3);
+    expect(p1.rows.map((r) => r.received_at.slice(0, 10))).toEqual(["2026-02-07", "2026-02-05"]);
+    const p2 = await pagePayments(1, null, { method: "CASH" }, 2, 2);
+    expect(p2.rows.map((r) => r.received_at.slice(0, 10))).toEqual(["2026-02-01"]);
+    expect((await pagePayments(1, null, { from: "2026-02-03", to: "2026-02-05" }, 1, 10)).total).toBe(2);
+  });
+
+  it("hides a voided receipt by default and shows only those on «only»", async () => {
+    const a = await recordPayment(1, { customer_id: custId, amount_toman: 1_000, method: "CASH", received_at: "2026-02-01", received_by: userId });
+    await recordPayment(1, { customer_id: custId, amount_toman: 2_000, method: "CASH", received_at: "2026-02-02", received_by: userId });
+    await voidPayment(1, a, userId, "اشتباه");
+    expect((await pagePayments(1, null, {}, 1, 10)).total).toBe(1);
+    expect((await pagePayments(1, null, { voided: "only" }, 1, 10)).rows.map((r) => r.id)).toEqual([a]);
+    expect((await pagePayments(1, null, { voided: "all" }, 1, 10)).total).toBe(2);
   });
 });

@@ -23,15 +23,20 @@ import { autoOpenFlow, currentSearch } from "@/lib/flows/autoOpen";
 import { isToman, toToman } from "@/lib/money";
 import PaymentTotalsCards from "@/components/sales/PaymentTotalsCards";
 import AllocationEditor from "@/components/sales/AllocationEditor";
+import ListPager from "@/components/mobile/ListPager";
 import { METHOD_LABEL, filterPayments, groupByMonth, paymentTotals, paymentsCsv, type AllocationDraft, type Customer, type OpenOrder, type Payment } from "@/lib/paymentsView";
 import CustomerName from "@/components/CustomerName";
 import SmartPicker from "@/components/mobile/SmartPicker";
 import { ChipGroup } from "@/components/mobile/ChipGroup";
 
-const PAGE_SIZE = 25;
-
 export default function PaymentsPanel({ customers, canSeeBooks = false }: { customers: Customer[]; canSeeBooks?: boolean }) {
+  /* The server pages the list (25 rows) and sends the live receipts of the last week and this
+     month for the totals cards, so the screen no longer downloads every receipt ever taken. */
   const [payments, setPayments] = useState<Payment[] | null>(null);
+  const [recent, setRecent] = useState<Payment[]>([]);
+  const [total, setTotal] = useState(0);
+  const [pageCount, setPageCount] = useState(1);
+  const [unfiltered, setUnfiltered] = useState(0);
   const [customerId, setCustomerId] = useState(() => {
     if (typeof window === "undefined") return "";
     const q = new URLSearchParams(window.location.search).get("customer_id");
@@ -67,9 +72,9 @@ export default function PaymentsPanel({ customers, canSeeBooks = false }: { cust
     const r = p === "" ? { from: "", to: "" } : periodRange(p, tehranTodayIso());
     setFFrom(r.from);
     setFTo(r.to);
-    setPage(0);
+    setPage(1);
   }
-  const [page, setPage] = useState(0);
+  const [page, setPage] = useState(1);
   const [editing, setEditing] = useState<number | null>(null);
   const [draft, setDraft] = useState<AllocationDraft[]>([]);
   const [openOrders, setOpenOrders] = useState<OpenOrder[]>([]);
@@ -78,16 +83,7 @@ export default function PaymentsPanel({ customers, canSeeBooks = false }: { cust
   /* A voided payment's money is GONE, so it is counted nowhere in the totals. Counting it
      and calling the result "collected this month" is the most misleading number this screen
      could print. */
-  const live = useMemo(() => (payments ?? []).filter((p) => !p.voided_at), [payments]);
-
-  const filtered = useMemo(
-    () => filterPayments(payments ?? [], { method: fMethod, from: fFrom, to: fTo, voided: fVoided }),
-    [payments, fMethod, fFrom, fTo, fVoided]
-  );
-
-  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const safePage = Math.min(page, pageCount - 1);
-  const pageRows = filtered.slice(safePage * PAGE_SIZE, (safePage + 1) * PAGE_SIZE);
+  const live = useMemo(() => recent.filter((p) => !p.voided_at), [recent]);
 
   /* Today / week / month, by method — from the same `live` list the table shows, so a
      figure on a card and a row in the table can never disagree. */
@@ -98,16 +94,22 @@ export default function PaymentsPanel({ customers, canSeeBooks = false }: { cust
 
   /* Jalali month sections. A flat list of 400 receipts is unreadable; grouped by month it is
      a story. The grouping is derived at render, never stored. */
-  const months = useMemo(() => groupByMonth(pageRows), [pageRows]);
+  const months = useMemo(() => groupByMonth(payments ?? []), [payments]);
 
-  const exportCsv = useCallback(() => {
+  /* The export is every matching receipt, not the page on screen: it asks for the whole list
+     and filters it here, as the screen did before it paged. */
+  const exportCsv = useCallback(async () => {
+    const res = await fetch("/api/payments");
+    const body = await res.json().catch(() => null);
+    if (!res.ok || !body) return setError(friendlyError(body?.error, "خروجی ساخته نشد؛ دوباره تلاش کنید"));
+    const filtered = filterPayments(body.payments as Payment[], { method: fMethod, from: fFrom, to: fTo, voided: fVoided });
     const blob = new Blob([paymentsCsv(filtered, customerName)], { type: "text/csv;charset=utf-8;" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
     a.download = "payments.csv";
     a.click();
     URL.revokeObjectURL(a.href);
-  }, [filtered, customerName]);
+  }, [customerName, fMethod, fFrom, fTo, fVoided]);
 
   async function openAllocation(paymentId: number) {
     setAllocError(null);
@@ -140,10 +142,28 @@ export default function PaymentsPanel({ customers, canSeeBooks = false }: { cust
   }
 
   const load = useCallback(async () => {
-    const res = await fetch("/api/payments");
+    const now = new Date();
+    const today = tehranTodayIso(now);
+    const weekAgo = tehranTodayIso(new Date(now.getTime() - 7 * 864e5));
+    const monthStart = today.slice(0, 8) + "01";
+    const q = new URLSearchParams({ page: String(page), voided: fVoided, recent_from: weekAgo < monthStart ? weekAgo : monthStart });
+    if (fMethod) q.set("method", fMethod);
+    if (fFrom) q.set("from", fFrom);
+    if (fTo) q.set("to", fTo);
+    const res = await fetch(`/api/payments?${q}`);
     const body = await res.json().catch(() => null);
-    setPayments(res.ok && body ? body.payments : []);
-  }, []);
+    if (!res.ok || !body) {
+      setPayments([]);
+      return;
+    }
+    setPayments(body.payments);
+    setRecent(body.recent ?? []);
+    setTotal(body.total);
+    setUnfiltered(body.unfiltered ?? 0);
+    setPageCount(Math.max(1, Math.ceil(body.total / body.pageSize)));
+    // A page past the end (a void emptied the last one) steps back to the real last page.
+    if (body.payments.length === 0 && page > 1 && body.total > 0) setPage(Math.ceil(body.total / body.pageSize));
+  }, [page, fMethod, fFrom, fTo, fVoided, setPage]);
 
   useRunAfterMount(load);
 
@@ -315,7 +335,7 @@ export default function PaymentsPanel({ customers, canSeeBooks = false }: { cust
               mode: "single",
               options: Object.entries(METHOD_LABEL).map(([k, v]) => ({ id: k, label: v })),
               value: fMethod,
-              onChange: (v) => { setFMethod(v as string); setPage(0); },
+              onChange: (v) => { setFMethod(v as string); setPage(1); },
             },
             {
               id: "voided",
@@ -325,27 +345,27 @@ export default function PaymentsPanel({ customers, canSeeBooks = false }: { cust
               options: [{ id: "only", label: "فقط باطال‌شده‌ها" }, { id: "all", label: "همه با باطال‌شده‌ها" }],
               value: fVoided,
               sheet: true,
-              onChange: (v) => { setFVoided(v as "hide" | "only" | "all"); setPage(0); },
+              onChange: (v) => { setFVoided(v as "hide" | "only" | "all"); setPage(1); },
             },
           ]}
         />
         <div className="flex flex-wrap items-end gap-2 text-sm">
           <button type="button" className="rounded border border-border px-2 py-1 text-xs"
-            onClick={exportCsv}>
+            onClick={() => void exportCsv()}>
             <Icon name="download" size="sm" />
             خروجی CSV
           </button>
           <span className="ms-auto text-xs text-text-muted">
-            {filtered.length.toLocaleString("fa-IR")} ردیف
+            {total.toLocaleString("fa-IR")} ردیف
           </span>
         </div>
 
         {payments === null ? (
           <p className="text-sm text-text-muted">در حال بارگذاری…</p>
-        ) : filtered.length === 0 ? (
+        ) : total === 0 ? (
           <FilteredEmpty
             title="دریافتی با این فیلترها یافت نشد."
-            hidden={live.length}
+            hidden={unfiltered}
             onClear={() => { choosePeriod(""); setFMethod(""); setFVoided("hide"); }}
           />
         ) : (
@@ -457,31 +477,7 @@ export default function PaymentsPanel({ customers, canSeeBooks = false }: { cust
               </section>
             ))}
 
-            {pageCount > 1 ? (
-              <div className="flex items-center justify-end gap-2 text-xs">
-                <button
-                  type="button"
-                  className="rounded border border-border px-2 py-1 disabled:opacity-40"
-                  disabled={safePage === 0}
-                  onClick={() => setPage(safePage - 1)}
-                >
-                  <Icon name="chevron-right" size="sm" />
-                  صفحهٔ قبل
-                </button>
-                <span className="tnum">
-                  {safePage + 1} / {pageCount}
-                </span>
-                <button
-                  type="button"
-                  className="rounded border border-border px-2 py-1 disabled:opacity-40"
-                  disabled={safePage >= pageCount - 1}
-                  onClick={() => setPage(safePage + 1)}
-                >
-                  صفحهٔ بعد
-                  <Icon name="chevron-left" size="sm" />
-                </button>
-              </div>
-            ) : null}
+            <ListPager page={page} pageCount={pageCount} onPage={setPage} />
           </>
         )}
 
