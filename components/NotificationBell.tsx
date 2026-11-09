@@ -5,8 +5,9 @@
  *  It began as a fixed island in the bottom-start corner (RTL -> visually bottom-right),
  *  opposite the SyncStatus island so the two never overlap; that is still what a bare
  *  route gets. Inside the shell it sits in the top bar beside the profile, which is
- *  where people look for it. Polls GET /api/notifications
- *  every 60s for the unread count; a 401/403 (logged out, or a role the feed does not
+ *  where people look for it. Reads GET /api/notifications when the live stream says a
+ *  notification arrived (lib/live/client.ts), when the stream reconnects, and every 5 minutes as a
+ *  backstop; a 401/403 (logged out, or a role the feed does not
  *  serve) flips `authed` off and the component renders nothing. Browser glue -- not
  *  unit-tested, per repo convention.
  */
@@ -20,6 +21,7 @@ import { playSound } from "@/lib/sound";
 import { unreadRose } from "@/lib/unreadRose";
 import { useToast } from "@/components/ToastProvider";
 import { replay } from "@/lib/burst";
+import { onLive, onLiveOpen } from "@/lib/live/client";
 
 export default function NotificationBell({
   placement = "floating",
@@ -38,7 +40,7 @@ export default function NotificationBell({
   const badge = useRef<HTMLSpanElement>(null);
   const [open, setOpen] = useState(false);
   const [authed, setAuthed] = useState(true);
-  /* A new notification swings the bell once and plays its sound; the 60 s poll is how it learns. */
+  /* A new notification swings the bell once and plays its sound; the live stream is how it learns. */
   const lastUnread = useRef<number | null>(null);
   const [swing, setSwing] = useState(false);
   useEffect(() => {
@@ -61,7 +63,7 @@ export default function NotificationBell({
     setShown(unread);
   }, [unread, toast]);
 
-  // Poll the unread count on an interval so the badge stays live without a socket.
+  // The live stream says when to read the count; the slow poll only covers a stream that is down.
   useEffect(() => {
     let alive = true;
     async function tick() {
@@ -83,10 +85,14 @@ export default function NotificationBell({
       }
     }
     void tick();
-    const h = setInterval(tick, 60_000);
+    const h = setInterval(tick, 5 * 60_000);
+    const offLive = onLive("notifications", () => void tick());
+    const offOpen = onLiveOpen(() => void tick());
     return () => {
       alive = false;
       clearInterval(h);
+      offLive();
+      offOpen();
     };
   }, []);
 

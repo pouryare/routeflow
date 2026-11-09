@@ -14,6 +14,7 @@ export const DB_PATH = process.env.ROUTEFLOW_DB_PATH || path.join(process.cwd(),
 
 let _asyncDb: Db | null = null;
 let _pgReady: (() => Promise<void>) | null = null;
+let _url = "";
 
 /** The database the app uses. Every call is asynchronous (see lib/database/client.ts). */
 export function getDb(): Db {
@@ -23,7 +24,8 @@ export function getDb(): Db {
   const template = process.env.ROUTEFLOW_PG_TEMPLATE;
   const test = template ? testDatabaseUrl(base, template, DB_PATH) : null;
   _pgReady = test?.ready ?? (async () => {});
-  return (_asyncDb = pgDb(test?.url ?? base, _pgReady));
+  _url = test?.url ?? base;
+  return (_asyncDb = pgDb(_url, _pgReady));
 }
 
 /** Resolves once the database can take statements (a test's copy of the template exists). getDb()
@@ -31,6 +33,13 @@ export function getDb(): Db {
 export function dbReady(): Promise<void> {
   getDb();
   return _pgReady!();
+}
+
+/** The connection string getDb() uses, once its database exists: for the one connection that
+ *  waits on LISTEN (lib/live/hub.ts), which cannot be a pooled one. */
+export async function databaseUrl(): Promise<string> {
+  await dbReady();
+  return _url;
 }
 
 /** True when the database answers a trivial query; for the public health check. */

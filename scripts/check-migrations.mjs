@@ -58,7 +58,7 @@ function targetTable(stmt) {
  *  never reads or writes a table it does not know. */
 export function riskyStatements(text) {
   const sql = upSql(text);
-  const created = new Set([...sql.matchAll(/\bCREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?([\w."]+)/gi)].map((m) => bare(m[1])));
+  const created = new Set([...sql.matchAll(/\bCREATE\s+(?:UNLOGGED\s+)?TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?([\w."]+)/gi)].map((m) => bare(m[1])));
   const newTableOnly = new Set(["adds a constraint the old release's writes may break", "adds a unique index the old release's writes may break", "changes who sees which rows"]);
   const why = [];
   for (const stmt of sql.split(";")) {

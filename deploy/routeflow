@@ -762,8 +762,10 @@ write_caddy() {
   cat > "$CADDY_DIR/sites/routeflow.caddy" <<CADDY
 # Written by 'routeflow install' from $CONF.
 $DOMAIN {
-	# next start leaves signed-in API JSON uncompressed; this covers every route.
-	encode zstd gzip
+	# next start leaves signed-in API JSON uncompressed; this covers every route but the live stream,
+	# which compression would hold back or break (issue #58).
+	@compress not path /api/live
+	encode @compress zstd gzip
 	# Photos (up to 20 MB) are the largest legitimate request.
 	request_body {
 		max_size 25MB

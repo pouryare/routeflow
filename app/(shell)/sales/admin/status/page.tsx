@@ -16,6 +16,8 @@ import { documentSettingsFor } from "@/lib/repo/documentSettings";
 import { accessReview } from "@/lib/accessReview";
 import { accessUsers, recentImpersonations } from "@/lib/repo/accessReview";
 import { pageMetadata } from "@/lib/pageMeta";
+import LiveConnectionsCard from "@/components/meridian/LiveConnectionsCard";
+import { connectionsOf } from "@/lib/repo/liveConnections";
 
 export const metadata = pageMetadata("/sales/admin/status");
 
@@ -39,6 +41,7 @@ export default async function StatusPage() {
   const logins = await recentImpersonations(session.organizationId);
   const docs = await documentSettingsFor(session.organizationId);
   const pushMinutes = await taskPushMinutes(session.organizationId);
+  const connections = await connectionsOf(session.organizationId);
 
   return (
     <>
@@ -59,6 +62,9 @@ export default async function StatusPage() {
           ))}
         </ul>
       </section>
+      <div className="mt-[var(--space-4)]">
+        <LiveConnectionsCard rows={connections} />
+      </div>
       <div className="mt-[var(--space-4)]">
         <AccessReviewCard review={review} logins={logins} />
       </div>

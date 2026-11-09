@@ -29,6 +29,7 @@ import { canSell, isVanRole } from "@/lib/roles";
 import OrderAmountFilter from "@/components/sales/OrderAmountFilter";
 import { boundsOf, inRange, parseRange } from "@/lib/rangeBar";
 import { pageMetadata } from "@/lib/pageMeta";
+import LiveRefresh from "@/components/LiveRefresh";
 
 export const metadata = pageMetadata("/sales/orders");
 
@@ -392,6 +393,7 @@ export default async function OrdersPage({
   return (
     <>
       <PageHeader route="/sales/orders" />
+      <LiveRefresh topics={["orders"]} />
       <ViewTabs tabs={VIEW_TABS} current={view} />
       {view === "board" ? (
         <BoardView orders={orders} onARun={onARun} />
