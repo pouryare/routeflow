@@ -1,6 +1,11 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import os from "node:os";
+import path from "node:path";
 
 process.env.SESSION_SECRET = "test-secret-".padEnd(40, "x");
+// Its own database: the hub keeps a LISTEN connection open, which would stop another file
+// sharing the default key from recreating that database.
+process.env.ROUTEFLOW_DB_PATH = path.join(os.tmpdir(), `rf-live-viewing-route-${Date.now()}-${Math.random().toString(36).slice(2)}.db`);
 
 const { getDb } = await import("@/lib/db");
 const { createSessionToken, COOKIE_NAME } = await import("@/lib/auth");
