@@ -4,6 +4,7 @@ import { requireRole } from "@/lib/session";
 import {
   listNotificationGroups,
   unreadGroupCount,
+  latestUnreadTitle,
   markGroupsRead,
   markGroupsUnread,
 } from "@/lib/repo/notifications";
@@ -14,6 +15,14 @@ export async function GET(req: NextRequest) {
   const guard = await requireRole(req, [...ROLES]);
   if (!guard.ok) return guard.response;
   const { organizationId, user } = guard.session;
+  // ?count=1: the bell needs the number and one title, not the 50 groups it would never show.
+  if (req.nextUrl.searchParams.get("count") === "1") {
+    return NextResponse.json({
+      ok: true,
+      unread: await unreadGroupCount(organizationId, user.id),
+      latest: await latestUnreadTitle(organizationId, user.id),
+    });
+  }
   return compressedJson(req, {
     ok: true,
     unread: await unreadGroupCount(organizationId, user.id),
