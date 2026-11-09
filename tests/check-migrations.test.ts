@@ -17,6 +17,11 @@ describe("migration markers", () => {
     expect(check("a.sql", sql)).toEqual([]);
   });
 
+  it("counts an UNLOGGED table as new too", () => {
+    const sql = up("CREATE UNLOGGED TABLE seen (id int, org int);\nALTER TABLE seen ENABLE ROW LEVEL SECURITY;\nCREATE POLICY p ON seen USING (true);");
+    expect(check("a.sql", sql)).toEqual([]);
+  });
+
   it("refuses an expand-only marker on statements the previous release can trip over", () => {
     expect(riskyStatements(up("ALTER TABLE orders DROP COLUMN note;"))).toContain("drops something");
     expect(riskyStatements(up("ALTER TABLE orders RENAME COLUMN a TO b;"))).toContain("renames something");
