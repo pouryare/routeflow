@@ -74,6 +74,13 @@ describe.skipIf(!ON)("row-level security", () => {
     expect(await withDbScope("", names)).toEqual([]);
   });
 
+  it("matches the company id exactly, not by prefix", async () => {
+    /* rf_scope_allows reads the id with split_part (db/migrations/1762600300000_faster-scope-check.sql):
+       org:12 must not see company 1 or 2, and a company with no rows sees none. */
+    expect(await withDbScope("org:12", names)).toEqual([]);
+    expect(await withDbScope("org:999", names)).toEqual([]);
+  });
+
   it("shows every company to a job and to a platform owner", async () => {
     expect(await withDbScope("system", names)).toEqual(["a-shop", "b-shop"]);
     expect(await withDbScope("all", names)).toEqual(["a-shop", "b-shop"]);
