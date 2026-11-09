@@ -42,7 +42,7 @@ const PUBLIC_BY_DESIGN: Record<string, string> = {
   "POST login/second-factor/route.ts": "second sign-in step: public like /api/login, it answers only with a valid password-step challenge",
   "POST logout/route.ts": "clearing a cookie needs no session; idempotent",
   "GET map/tiles/[z]/[x]/[y]/route.ts": "basemap tiles: public map data, served cookie-free so the CDN can cache each tile",
-  "GET health/route.ts": "liveness check for the outside monitor and upgrades: answers only ok and the version, no data",
+  "GET health/route.ts": "liveness check for the outside monitor and upgrades: answers only ok, the version and live-stream counts, no data",
   "DELETE admin/impersonate/route.ts": "ends a Login-As; with no saved owner session it only clears both cookies",
 };
 
@@ -235,6 +235,23 @@ function req(method: Method, url: string, cookie?: string, body: Record<string, 
   return new NextRequest(`http://localhost${url}`, init);
 }
 
+/** The body as text. A live stream (/api/live) never ends, so it is read for a moment, long
+ *  enough for its catch-up to arrive, and then closed: what it sent is still checked for leaks. */
+async function bodyText(res: Response): Promise<string> {
+  if (!res.headers.get("content-type")?.startsWith("text/event-stream") || !res.body) return await res.text();
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let text = "";
+  const stop = Date.now() + 300;
+  while (Date.now() < stop) {
+    const next = await Promise.race([reader.read(), new Promise<null>((r) => setTimeout(() => r(null), stop - Date.now()))]);
+    if (!next || next.done) break;
+    text += decoder.decode(next.value, { stream: true });
+  }
+  await reader.cancel();
+  return text;
+}
+
 async function call(r: RouteInfo, method: Method, value: string, cookie?: string, body: Record<string, unknown> = {}): Promise<{ status: number; text: string } | null> {
   const handler = modules.get(r.rel)?.[method];
   if (!handler) return null;
@@ -246,7 +263,7 @@ async function call(r: RouteInfo, method: Method, value: string, cookie?: string
   }
   try {
     const res = await handler(req(method, url, cookie, body), { params: Promise.resolve(params) });
-    return { status: res.status, text: await res.text() };
+    return { status: res.status, text: await bodyText(res) };
   } catch (e) {
     /* A handler that throws instead of answering is a 500 to the client. It is not a leak, so
        it is counted, not failed -- see the 5xx note in the summary test. */
