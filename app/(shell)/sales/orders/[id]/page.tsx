@@ -30,6 +30,7 @@ import { Icon } from "@/components/meridian/Icon";
 import { discountOfOrder } from "@/lib/repo/discounts";
 import { DISCOUNT_REASONS, DISCOUNT_STATUS_LABEL } from "@/lib/discounts";
 import LiveRefresh from "@/components/LiveRefresh";
+import ViewingChip from "@/components/ViewingChip";
 
 export const dynamic = "force-dynamic";
 
@@ -98,6 +99,7 @@ export default async function OrderDetailPage({
             · {faJalaliDate(order.order_date)} ·{" "}
             {statusLabel(order.status)}
           </p>
+          <ViewingChip type="order" id={order.id} />
         </div>
         <Link
           href="/sales/orders"
