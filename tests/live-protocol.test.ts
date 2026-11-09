@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { canReceive, eventFrame, frame, isTopic, lastSeenId, needsReset, retryMs } from "@/lib/live/protocol";
+import { canReceive, eventFrame, frame, isTopic, lastSeenId, needsReset, parseTagFilter, passesFilter, retryMs } from "@/lib/live/protocol";
 
 /* Live updates (issue #58): who may receive an event, where a reconnecting phone resumes, and the
  * frames on the wire. */
@@ -71,5 +71,31 @@ describe("frames", () => {
   it("spreads reconnects between 2 and 8 seconds", () => {
     expect(retryMs(() => 0)).toBe(2000);
     expect(retryMs(() => 0.999)).toBeLessThan(8000);
+  });
+});
+
+describe("filters chosen by the screen (L10)", () => {
+  it("reads ?tags= and ignores what is malformed", () => {
+    const f = parseTagFilter("district:14, district:15,rep:7,bad,DROP TABLE:x");
+    expect(f && [...f.entries()].map(([k, v]) => [k, [...v]])).toEqual([
+      ["district", ["14", "15"]],
+      ["rep", ["7"]],
+    ]);
+    expect(parseTagFilter("")).toBeNull();
+    expect(parseTagFilter("nonsense")).toBeNull();
+  });
+
+  it("keeps events labelled for the asked values, and events never labelled for that key", () => {
+    const filter = { tags: parseTagFilter("district:14")! };
+    expect(passesFilter(filter, { topic: "orders", tags: ["district:14"] })).toBe(true);
+    expect(passesFilter(filter, { topic: "orders", tags: ["district:9"] })).toBe(false);
+    expect(passesFilter(filter, { topic: "orders", tags: ["rep:7"] })).toBe(true);
+    expect(passesFilter(filter, { topic: "orders", tags: null })).toBe(true);
+    expect(passesFilter(undefined, { topic: "orders", tags: ["district:9"] })).toBe(true);
+  });
+
+  it("holds a display link to its topics", () => {
+    expect(passesFilter({ topics: ["runs"] }, { topic: "runs", tags: null })).toBe(true);
+    expect(passesFilter({ topics: ["runs"] }, { topic: "orders", tags: null })).toBe(false);
   });
 });

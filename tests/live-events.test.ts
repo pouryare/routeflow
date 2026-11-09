@@ -326,6 +326,17 @@ describe("the hub", () => {
     leave();
   });
 
+  it("sends a screen that asked for district 14 only that district's labelled events (L10)", async () => {
+    const s = Object.assign(fakeSink(sara, ["phone_sales"]), { filter: { tags: new Map([["district", new Set(["14"])]]) } });
+    const leave = await liveHub.add(s, (await live.eventBounds(1)).newest ?? 0);
+    const far = await live.publishLive(1, { topic: "orders", tags: { district: "9" } });
+    const near = await live.publishLive(1, { topic: "orders", tags: { district: "14" } });
+    await until(() => s.frames.some((f) => f.startsWith(`id: ${near}\n`)));
+    expect(s.frames.some((f) => f.startsWith(`id: ${near}\n`))).toBe(true);
+    expect(s.frames.some((f) => f.startsWith(`id: ${far}\n`))).toBe(false);
+    leave();
+  });
+
   it("tells a phone that is too far behind to refetch", async () => {
     const { newest } = await live.eventBounds(1);
     const s = fakeSink(sara, ["phone_sales"]);
