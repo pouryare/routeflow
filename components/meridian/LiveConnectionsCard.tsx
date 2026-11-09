@@ -26,7 +26,8 @@ export default function LiveConnectionsCard({ rows }: { rows: LiveConnectionRow[
                   <span style={{ color: r.slow ? "var(--warning)" : "var(--success)" }}>{r.slow ? "کند، عقب مانده" : "به‌روز"}</span>
                 </div>
                 <span className="text-[var(--muted)]">
-                  {deviceLabel(r.device)} · وصل از <span className="tabular-nums">{faJalaliDateTime(String(r.opened_at))}</span>
+                  {/* bdi keeps the Latin device name and the date's digits from reordering the line. */}
+                  وصل از <bdi dir="ltr" className="tabular-nums">{faJalaliDateTime(String(r.opened_at))}</bdi> · <bdi>{deviceLabel(r.device)}</bdi>
                 </span>
               </li>
             ))}
