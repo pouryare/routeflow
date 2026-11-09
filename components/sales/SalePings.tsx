@@ -9,9 +9,10 @@ import { buzz } from "@/lib/haptic";
 import { playSound } from "@/lib/sound";
 import type { PingOrder } from "@/lib/salePings";
 import { foldAmounts } from "@/lib/mergeCount";
+import { onLive, onLiveOpen } from "@/lib/live/client";
 
-/** How often the open page asks for new orders, while it is visible. */
-const CHECK_MS = 15_000;
+/** The live stream says when an order changed (issue #58); this slow check only covers a stream that is down. */
+const CHECK_MS = 3 * 60_000;
 /** How long a ping stays before it slides away. */
 const SHOW_MS = 9_000;
 
@@ -55,9 +56,19 @@ export default function SalePings() {
     void check();
     const t = setInterval(check, CHECK_MS);
     document.addEventListener("visibilitychange", check);
+    // An order changed somewhere: ask once, a burst of changes becomes one ask.
+    let settle: ReturnType<typeof setTimeout> | null = null;
+    const offLive = onLive("orders", () => {
+      if (settle) clearTimeout(settle);
+      settle = setTimeout(check, 400);
+    });
+    const offOpen = onLiveOpen(() => void check());
     return () => {
       stopped = true;
       clearInterval(t);
+      if (settle) clearTimeout(settle);
+      offLive();
+      offOpen();
       document.removeEventListener("visibilitychange", check);
     };
   }, [router]);
