@@ -36,7 +36,7 @@ export async function pullSince(session: Session, since: string | null): Promise
   const org = session.organizationId;
   const mark = xidOf(since);
   /* "Changed since the watermark": the transaction that last wrote the row is not below it. */
-  const changed = (alias: string) => `COALESCE(${alias}sync_xid, '0') >= CAST(? AS xid8)`;
+  const changed = (alias: string) => `${alias}sync_xid >= CAST(? AS xid8)`;
   const rows: PullRow[] = [];
   const add = (table: string, list: Record<string, unknown>[]) => {
     for (const r of list) {

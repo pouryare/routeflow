@@ -98,4 +98,25 @@ describe("the PostgreSQL sync watermark", () => {
     const r = await pullSince(owner(ownerId), "2030-01-01T00:00:00.000Z");
     expect(r.rows.some((x) => x.table === "products" && x.row.id === product)).toBe(true);
   });
+
+  it("sends a row written with triggers off on a full pull, and not again after it", async () => {
+    /* The pull compares sync_xid directly so an index can serve it
+       (db/migrations/1762600100000_sync-xid-indexes.sql). A row the trigger never stamped, as the
+       test fixtures write them, must still reach a phone that starts from nothing: the column
+       default gives it transaction 0 instead of NULL. */
+    const { pullSince } = await import("@/lib/repo/syncPull");
+    await writer!.query("BEGIN");
+    await writer!.query("SET LOCAL session_replication_role = replica");
+    const { rows } = await writer!.query(
+      "INSERT INTO products (name, kg_per_base_unit, organization_id, created_at, updated_at) VALUES ('پنیر', 1, 1, $1, $1) RETURNING id, sync_xid",
+      [new Date().toISOString()]
+    );
+    await writer!.query("COMMIT");
+    expect(rows[0].sync_xid).toBe("0");
+
+    const full = await pullSince(owner(ownerId), null);
+    expect(full.rows.some((r) => r.table === "products" && r.row.id === rows[0].id)).toBe(true);
+    const next = await pullSince(owner(ownerId), full.watermark);
+    expect(next.rows.some((r) => r.table === "products" && r.row.id === rows[0].id)).toBe(false);
+  });
 });
