@@ -58,6 +58,7 @@ try {
   const walLevel = await setting("wal_level");
   ["replica", "logical"].includes(walLevel) ? ok("wal_level", walLevel) : fail("wal_level", `${walLevel}; backups need replica or logical`);
   ["UTC", "Etc/UTC"].includes(await setting("timezone")) ? ok("timezone", "UTC") : warn("timezone", `${await setting("timezone")}; the app stores UTC`);
+  (await setting("jit")) === "off" ? ok("jit", "off") : warn("jit", "on; compiling costs ~150 ms a query, more than RouteFlow's queries take (db/server/postgresql.routeflow.conf)");
   (await setting("data_checksums")) === "on" ? ok("data checksums", "on") : warn("data checksums", "off; a damaged page would be read silently (initdb --data-checksums, on by default from 18)");
 
   // Migrations: every file in db/migrations has been applied.

@@ -46,7 +46,7 @@ jobs:
       - name: Start PostgreSQL
         run: |
           docker run -d --name pg -e POSTGRES_PASSWORD=ci -p 5432:5432 --shm-size=1g routeflow-postgres \
-            postgres -c shared_preload_libraries=pg_stat_statements,pg_duckdb -c wal_level=logical \
+            postgres -c shared_preload_libraries=pg_stat_statements,pg_duckdb -c wal_level=logical -c jit=off \
                      -c max_connections=400 -c fsync=off -c synchronous_commit=off -c full_page_writes=off
           # The image runs its init scripts on a temporary server, then restarts for real.
           for i in $(seq 1 120); do docker logs pg 2>&1 | grep -q "PostgreSQL init process complete" && break; sleep 1; done

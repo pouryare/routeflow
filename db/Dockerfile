@@ -21,10 +21,12 @@ RUN set -eux; \
     rm -rf /var/lib/apt/lists/*
 
 # pg_stat_statements and pg_duckdb must be loaded at start; logical WAL keeps change data
-# capture and logical replicas possible without a restart later.
+# capture and logical replicas possible without a restart later. JIT is off as on the server
+# (db/server/postgresql.routeflow.conf says why).
 CMD ["postgres", \
      "-c", "shared_preload_libraries=pg_stat_statements,pg_duckdb", \
-     "-c", "wal_level=logical"]
+     "-c", "wal_level=logical", \
+     "-c", "jit=off"]
 
 # Creates the extensions in the first database on first start (template1 too, so every
 # database made afterwards, including the per-test copies, has them).
