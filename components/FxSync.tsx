@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { prefsOnce } from "@/lib/prefsOnce";
 import { fxOn, isCompanyFx, isWeakPhone } from "@/lib/fx";
 
 /** Once per page load: reads the company's switch and this person's own (GET /api/prefs), weighs them with
@@ -9,9 +10,10 @@ import { fxOn, isCompanyFx, isWeakPhone } from "@/lib/fx";
 export default function FxSync() {
   useEffect(() => {
     let stopped = false;
-    void fetch("/api/prefs", { cache: "no-store" })
-      .then(async (res) => {
-        const data = (await res.json().catch(() => null)) as { ok?: boolean; prefs?: { effects?: unknown }; effects?: unknown } | null;
+    void prefsOnce()
+      .then(({ status, data: raw }) => {
+        const data = raw as { ok?: boolean; prefs?: { effects?: unknown }; effects?: unknown } | null;
+        const res = { ok: status >= 200 && status < 300, status };
         if (stopped || !res.ok || !data?.ok) return;
         const nav = navigator as Navigator & { deviceMemory?: number };
         const p = data.prefs?.effects;

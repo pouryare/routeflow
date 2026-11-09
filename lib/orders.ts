@@ -37,7 +37,6 @@ import {
   type LineSnapshot,
 } from "./orderMath";
 
-import { mapSeq } from "@/lib/seq";
 import { greatest } from "@/lib/database/dialect";
 export { OrderError, OrderTransitionError, OrderRoleError };
 
@@ -501,22 +500,31 @@ async function touch(db: Db, orderId: number) {
 }
 
 async function linesOf(db: Db, orderId: number): Promise<OrderLine[]> {
+  return (await linesOfMany(db, [orderId])).get(orderId) ?? [];
+}
+
+/** The lines of several orders, by order id, each list in line order. */
+async function linesOfMany(db: Db, orderIds: number[]): Promise<Map<number, OrderLine[]>> {
+  const byOrder = new Map<number, OrderLine[]>();
+  if (orderIds.length === 0) return byOrder;
   const rows = await db
     .prepare(
       `SELECT ol.*, p.name AS product_name, pk.name AS packaging_name
          FROM order_lines ol
          JOIN products p ON p.id = ol.product_id
          JOIN packagings pk ON pk.id = ol.packaging_id
-        WHERE ol.order_id = ?
-        ORDER BY ol.id`
+        WHERE ol.order_id IN (${orderIds.map(() => "?").join(",")})
+        ORDER BY ol.order_id, ol.id`
     )
-    .all(orderId) as unknown as (OrderLine & LineSnapshot)[];
+    .all(...orderIds) as unknown as (OrderLine & LineSnapshot & { order_id: number })[];
 
-  return rows.map((row) => ({
-    ...row,
-    total_toman: lineTotalToman(row),
-    kg: lineKg(row),
-  }));
+  for (const row of rows) {
+    const line = { ...row, total_toman: lineTotalToman(row), kg: lineKg(row) };
+    const list = byOrder.get(Number(row.order_id));
+    if (list) list.push(line);
+    else byOrder.set(Number(row.order_id), [line]);
+  }
+  return byOrder;
 }
 
 export async function readOrder(db: Db, orderId: number): Promise<OrderDetail | null> {
@@ -610,9 +618,11 @@ export async function readOrders(
   >[];
 
   // Totals are derived from the frozen line columns rather than stored on the order, so
-  // there is no second copy of the figure to fall out of step with the lines.
-  return await mapSeq(orders, async (order) => {
-    const lines = await linesOf(db, order.id);
+  // there is no second copy of the figure to fall out of step with the lines. All the listed
+  // orders' lines come back in one query: one query per order was 100 to 5,000 round trips.
+  const byOrder = await linesOfMany(db, orders.map((o) => o.id));
+  return orders.map((order) => {
+    const lines = byOrder.get(order.id) ?? [];
     return {
       ...order,
       total_toman: netOfDiscount(orderTotalToman(lines), Number(order.discount_toman ?? 0)),

@@ -74,27 +74,36 @@ type Queryable = Pick<pg.PoolClient, "query">;
 
 /** One open transaction. SQLite undoes only the statement that failed and keeps the
  *  transaction going, and the app relies on it (try an insert, catch the duplicate, carry
- *  on). PostgreSQL aborts the whole transaction instead, so each statement runs inside a
- *  savepoint and a failure rolls back to it. Statements on the transaction run one at a time,
- *  so two awaited together cannot interleave their savepoints. */
+ *  on). PostgreSQL aborts the whole transaction instead, so a savepoint always sits just before
+ *  the next statement, and a failure rolls back to it. Statements on the transaction run one at
+ *  a time, so two awaited together cannot interleave their savepoints.
+ *
+ *  After a statement succeeds, the savepoint moves past it with one round trip ("RELEASE; SAVEPOINT"
+ *  sent together). It used to be SAVEPOINT before and RELEASE after, which made three round trips
+ *  for each statement instead of two. After a failure, ROLLBACK TO leaves the savepoint where it is. */
 class TxConn {
   private last: Promise<unknown> = Promise.resolve();
   private readonly client: pg.PoolClient;
+  private armed = false;
   constructor(client: pg.PoolClient) {
     this.client = client;
   }
 
   run(text: string, params?: unknown[]): Promise<pg.QueryResult> {
     const next = this.last.then(async () => {
-      await this.client.query("SAVEPOINT rf_stmt");
+      if (!this.armed) {
+        await this.client.query("SAVEPOINT rf_stmt");
+        this.armed = true;
+      }
+      let r: pg.QueryResult;
       try {
-        const r = await this.client.query(text, params);
-        await this.client.query("RELEASE SAVEPOINT rf_stmt");
-        return r;
+        r = await this.client.query(text, params);
       } catch (e) {
         await this.client.query("ROLLBACK TO SAVEPOINT rf_stmt");
         throw e;
       }
+      await this.client.query("RELEASE SAVEPOINT rf_stmt; SAVEPOINT rf_stmt");
+      return r;
     });
     this.last = next.catch(() => undefined);
     return next;

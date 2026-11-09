@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { NextRequest, NextResponse } from "next/server";
 import { COOKIE_NAME, parseSessionToken } from "./auth";
 import { getDb, type Role, type UserRow } from "./db";
@@ -54,10 +55,18 @@ export async function getSession(req: NextRequest): Promise<Session | null> {
  *  so both entry points delegate here. One implementation means a page and its API route
  *  can never disagree about who the caller is. */
 export async function getSessionFromCookies(token: string | undefined | null): Promise<Session | null> {
-  /* Finding out who is asking comes before there is a company to scope to, and a platform
-     owner's Login-As actor lives in another company, so these lookups read as "system". */
-  return await withDbScope("system", () => resolveSession(token));
+  return await resolveOnce(token ?? null);
 }
+
+/* Finding out who is asking comes before there is a company to scope to, and a platform
+   owner's Login-As actor lives in another company, so these lookups read as "system".
+   React's cache() shares one answer per cookie for the length of one server render: a page whose
+   header, menu and body each ask "who is this" used to read the user and their roles once for each
+   of them (about 17 times a page, notes/db-index-audit-2026-11-09.md). Outside a render, for
+   example in a route handler, it does not cache, so each request still reads the database once. */
+const resolveOnce = cache(async (token: string | null): Promise<Session | null> =>
+  await withDbScope("system", () => resolveSession(token))
+);
 
 async function resolveSession(token: string | undefined | null): Promise<Session | null> {
   const claims = parseSessionToken(token);
