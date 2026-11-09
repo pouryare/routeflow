@@ -39,6 +39,10 @@ describe("/api/admin/archive", () => {
     expect(owner.status).toBe(403);
     const res = await POST(new NextRequest("http://localhost/api/admin/archive", { method: "POST", headers: { "x-sweep-token": "t".repeat(32) } }));
     expect(res.status).toBe(200);
-    expect((await res.json()).moved).toHaveProperty("order_events");
+    const body = await res.json();
+    expect(body.moved).toHaveProperty("order_events");
+    // The same night's run recounts the marked sales days, so no mark is left for a dashboard to wait on.
+    expect(typeof body.recountedDays).toBe("number");
+    expect(await getDb().prepare("SELECT 1 AS x FROM sales_daily_marks LIMIT 1").get()).toBeUndefined();
   });
 });

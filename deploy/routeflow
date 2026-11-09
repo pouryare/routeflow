@@ -739,13 +739,14 @@ UNIT
   done
 }
 
-# Old history (events, notifications, rule runs, order steps) to the archive twins, nightly at 04:00
+# Old history (events, notifications, rule runs, order steps) to the archive twins, then the recount of
+# edited sales days (sales_daily), nightly at 04:00
 # Tehran, before the storage sweep. The app keeps it; nothing is deleted.
 write_archive_timer() {
   cat > /etc/systemd/system/routeflow-archive.service <<UNIT
 # Written by 'routeflow install'.
 [Unit]
-Description=RouteFlow: move old history to the archive tables
+Description=RouteFlow: move old history to the archive tables, recount edited sales days
 After=$SERVICE.service
 
 [Service]
@@ -759,7 +760,7 @@ UNIT
   cat > /etc/systemd/system/routeflow-archive.timer <<'UNIT'
 # Written by 'routeflow install'.
 [Unit]
-Description=RouteFlow: move old history to the archive tables, nightly
+Description=RouteFlow: move old history to the archive tables, recount edited sales days, nightly
 
 [Timer]
 OnCalendar=*-*-* 04:00:00 Asia/Tehran

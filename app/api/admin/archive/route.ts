@@ -6,11 +6,15 @@ import { withDbScope } from "@/lib/database/scope";
 import { tehranTodayIso } from "@/lib/jalali";
 import { MAX_HOT_MONTHS, MIN_HOT_MONTHS, validHotMonths } from "@/lib/historyArchive";
 import { archiveHistory, setArchiveHotMonths } from "@/lib/repo/historyArchive";
+import { refreshSalesDaily } from "@/lib/repo/salesDaily";
+import { getDb } from "@/lib/db";
 
 /** Old history to the archive twins (db/migrations/1762700000000_history-archive.sql). One cutoff
  *  for the whole server, so both calls are the platform owner's:
  *    PUT  { months }  how many months stay in the everyday tables (3 to 120);
- *    POST             move what is older now. The nightly timer (deploy/routeflow) sends SWEEP_TOKEN. */
+ *    POST             move what is older now, then recount the sales days edited since the last
+ *                     recount, so the first dashboard of the morning does not wait for them.
+ *                     The nightly timer (deploy/routeflow) sends SWEEP_TOKEN. */
 
 function tokenMatches(header: string | null): boolean {
   const secret = process.env.SWEEP_TOKEN;
@@ -47,5 +51,6 @@ export async function POST(req: NextRequest) {
     if (!guard.ok) return guard.response;
   }
   const moved = await withDbScope("system", () => archiveHistory(tehranTodayIso()));
-  return NextResponse.json({ ok: true, moved });
+  const recountedDays = await withDbScope("system", () => refreshSalesDaily(getDb(), null));
+  return NextResponse.json({ ok: true, moved, recountedDays });
 }
