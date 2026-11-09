@@ -24,11 +24,23 @@ import {
   eventBounds,
   newestEventId,
   eventsAfter,
+  latestFor,
   publishEphemeral,
   pruneEvents,
   touchPresence,
 } from "@/lib/repo/live";
-import { BYE_TOPIC, RESET_TOPIC, canReceive, eventFrame, frame, needsReset, type LiveEvent, type LiveListener } from "./protocol";
+import {
+  BYE_TOPIC,
+  RESET_TOPIC,
+  canReceive,
+  eventFrame,
+  frame,
+  needsReset,
+  passesFilter,
+  type LiveEvent,
+  type LiveFilter,
+  type LiveListener,
+} from "./protocol";
 
 const HEARTBEAT_MS = 20_000;
 const RECHECK_EVERY_BEATS = 15; // the session is read again every 5 minutes
@@ -39,6 +51,10 @@ const CATCH_UP_MAX = 2000; // further behind than this, the screen refetches ins
    before member_removed): "offline" goes out only if no stream of theirs is back within this. */
 const OFFLINE_GRACE_MS = 5000;
 const MAX_STREAMS_PER_USER = 10;
+/* Latest values (a van's position every few seconds) are passed on at most this often per stream,
+   newest only (idea L5, Centrifugo's batch_flush_latest): a slow phone never gets a queue of old
+   positions. */
+const LATEST_FLUSH_MS = 250;
 
 /** One open stream, as the hub sees it. `write` returns false when the phone is not keeping up. */
 interface LiveSink {
@@ -53,12 +69,14 @@ interface LiveSink {
   /** Whether the phone has fallen behind (its buffer is past the normal high-water mark). Short
    *  notices are skipped while it is, instead of piling up and getting the stream closed. */
   behind?(): boolean;
+  /** What this stream asked for: a display link's topics (L9), a screen's ?tags= (L10). */
+  filter?: LiveFilter;
 }
 
 /** Whether a stream gets an event: its company and audience, and for an event about a record, the
  *  record's own view rule. A failed check counts as no. */
 async function allowed(sink: LiveSink, ev: LiveEvent): Promise<boolean> {
-  if (!canReceive(sink.who, ev)) return false;
+  if (!canReceive(sink.who, ev) || !passesFilter(sink.filter, ev)) return false;
   if (!ev.entity_type || ev.entity_id == null) return true;
   if (!sink.canSee) return false;
   return await sink.canSee(ev.entity_type, ev.entity_id).catch(() => false);
@@ -71,6 +89,9 @@ interface Sub {
   queue: { id?: number; text: string }[] | null;
   beats: number;
   closed: boolean;
+  /** Latest values waiting for the next flush, by topic; newer ones replace older (L5). */
+  latest: Map<string, string>;
+  flush: ReturnType<typeof setTimeout> | null;
 }
 
 class Hub {
@@ -164,15 +185,36 @@ class Hub {
   }
 
   private ephemeral(payload: string): void {
-    let msg: { o: number; t: string; u: number[] | null; r: string[] | null; d: unknown };
+    let msg: { o: number; t: string; u: number[] | null; r: string[] | null; g?: string[] | null; d: unknown; l?: 1 };
     try {
       msg = JSON.parse(payload);
     } catch {
       return;
     }
-    const ev = { organization_id: msg.o, audience_users: msg.u, audience_roles: msg.r };
+    const ev = { organization_id: msg.o, audience_users: msg.u, audience_roles: msg.r, topic: msg.t, tags: msg.g ?? null };
     const text = frame(msg.t, msg.d);
-    for (const sub of this.subs) if (canReceive(sub.sink.who, ev)) this.send(sub, text, undefined, true);
+    for (const sub of this.subs) {
+      if (!canReceive(sub.sink.who, ev) || !passesFilter(sub.sink.filter, ev)) continue;
+      if (msg.l) this.later(sub, msg.t, text);
+      else this.send(sub, text, undefined, true);
+    }
+  }
+
+  /** Holds a latest value for the stream's next flush, replacing an older one of the same topic. */
+  private later(sub: Sub, topic: string, text: string): void {
+    if (sub.closed) return;
+    if (sub.latest.has(topic)) this.skipped++; // replaced before it went out
+    sub.latest.set(topic, text);
+    if (sub.flush || sub.queue) return; // a flush is due, or the catch-up flushes when it ends
+    sub.flush = setTimeout(() => this.flushLatest(sub), this.stopped ? 0 : LATEST_FLUSH_MS);
+    sub.flush.unref?.();
+  }
+
+  private flushLatest(sub: Sub): void {
+    sub.flush = null;
+    const out = [...sub.latest.values()];
+    sub.latest.clear();
+    for (const text of out) this.send(sub, text, undefined, true);
   }
 
   /** `droppable`: a short notice (typing, online, a GPS ping) that a phone which is behind simply
@@ -199,7 +241,7 @@ class Hub {
   /** Opens a stream: joins, catches up from `lastSeen`, then goes live. */
   async add(sink: LiveSink, lastSeen: number): Promise<() => void> {
     await this.start();
-    const sub: Sub = { sink, lastId: lastSeen, queue: [], beats: 0, closed: false };
+    const sub: Sub = { sink, lastId: lastSeen, queue: [], beats: 0, closed: false, latest: new Map(), flush: null };
     const same = [...this.subs].filter((s) => s.sink.who.userId === sink.who.userId);
     const firstHere = same.length === 0;
     this.subs.add(sub);
@@ -227,6 +269,12 @@ class Hub {
             break;
           }
         }
+        // The current value of each "latest" topic, so the screen is not blank until the next
+        // change (idea L4). A newer one that arrived meanwhile is already held and wins.
+        for (const row of await latestFor(sink.who)) {
+          if (!passesFilter(sink.filter, { topic: row.topic, tags: null }) || sub.latest.has(row.topic)) continue;
+          sink.write(`data: {"t":${JSON.stringify(row.topic)},"d":${row.data_json ?? "null"}}\n\n`);
+        }
       });
     } catch (e) {
       this.remove(sub);
@@ -235,6 +283,7 @@ class Hub {
     const held = sub.queue ?? [];
     sub.queue = null;
     for (const m of held) if (m.id === undefined || m.id > sub.lastId) this.send(sub, m.text, m.id);
+    if (sub.latest.size) this.flushLatest(sub);
     const wasLeaving = this.leaving.get(sink.who.userId);
     if (wasLeaving) {
       // Back within the grace period: still online, nobody was told otherwise.
@@ -247,6 +296,7 @@ class Hub {
   private remove(sub: Sub): void {
     if (sub.closed) return;
     sub.closed = true;
+    if (sub.flush) clearTimeout(sub.flush);
     this.subs.delete(sub);
     try {
       sub.sink.close();

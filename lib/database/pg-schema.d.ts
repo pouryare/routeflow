@@ -725,21 +725,62 @@ export interface LessonProgress {
   user_id: number;
 }
 
+export interface LiveConnections {
+  device: string | null;
+  id: string;
+  last_event_id: Generated<number>;
+  last_seen: Generated<Timestamp>;
+  opened_at: Generated<Timestamp>;
+  organization_id: number;
+  server: string;
+  user_id: number | null;
+}
+
+export interface LiveDisplayKeys {
+  created_at: Generated<Timestamp>;
+  created_by: number | null;
+  id: Generated<number>;
+  key_hash: string;
+  label: string;
+  organization_id: number;
+  revoked_at: Timestamp | null;
+  topics: string[];
+}
+
 export interface LiveEvents {
   audience_roles: string[] | null;
   audience_users: ArrayType<number> | null;
+  client_key: string | null;
   created_at: Generated<Timestamp>;
   data_json: string | null;
   entity_id: number | null;
   entity_type: string | null;
   id: Generated<number>;
   organization_id: number;
+  tags: string[] | null;
   topic: string;
+}
+
+export interface LiveLatest {
+  audience_roles: string[] | null;
+  audience_users: ArrayType<number> | null;
+  data_json: string | null;
+  organization_id: number;
+  topic: string;
+  updated_at: Generated<Timestamp>;
 }
 
 export interface LivePresence {
   last_seen: Timestamp;
   organization_id: number;
+  user_id: number;
+}
+
+export interface LiveViewing {
+  entity_id: number;
+  entity_type: string;
+  organization_id: number;
+  seen_at: Generated<Timestamp>;
   user_id: number;
 }
 
@@ -1731,8 +1772,12 @@ export interface DB {
   lead_visit_activities: LeadVisitActivities;
   ledger_entries: LedgerEntries;
   lesson_progress: LessonProgress;
+  live_connections: LiveConnections;
+  live_display_keys: LiveDisplayKeys;
   live_events: LiveEvents;
+  live_latest: LiveLatest;
   live_presence: LivePresence;
+  live_viewing: LiveViewing;
   login_events: LoginEvents;
   manager_commission_overrides: ManagerCommissionOverrides;
   manager_commission_payments: ManagerCommissionPayments;

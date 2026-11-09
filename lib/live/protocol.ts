@@ -22,6 +22,8 @@ export interface LiveEvent {
   /** The record the event is about, when it is about one; the stream checks the person may see it. */
   entity_type?: string | null;
   entity_id?: number | null;
+  /** "key:value" labels a screen can filter on (idea L10). */
+  tags?: string[] | null;
 }
 
 /** Who is on the other end of a stream. */
@@ -84,4 +86,49 @@ export function eventFrame(ev: Pick<LiveEvent, "id" | "topic" | "data_json">): s
  *  restart every phone does not come back in the same second. */
 export function retryMs(random: () => number = Math.random): number {
   return 2000 + Math.floor(random() * 6000);
+}
+
+/** What one stream asked to receive, beyond what it may receive. A display link (idea L9) is held
+ *  to its topics; a screen that asked for `?tags=district:14` (idea L10) is held to those labels. */
+export interface LiveFilter {
+  topics?: readonly string[];
+  /** key -> the values asked for. */
+  tags?: ReadonlyMap<string, ReadonlySet<string>>;
+}
+
+const TAG = /^([a-z0-9_-]{1,40}):([A-Za-z0-9_-]{1,40})$/;
+
+/** Whether a label is well formed: "district:14". */
+export function isTag(tag: string): boolean {
+  return TAG.test(tag);
+}
+
+/** Reads `?tags=district:14,district:15,rep:7`. Anything malformed is ignored rather than refused,
+ *  so a bad link shows more, never nothing. Null when nothing usable was asked for. */
+export function parseTagFilter(query: string | null): Map<string, Set<string>> | null {
+  if (!query) return null;
+  const out = new Map<string, Set<string>>();
+  for (const part of query.split(",").slice(0, 20)) {
+    const m = TAG.exec(part.trim());
+    if (!m) continue;
+    if (!out.has(m[1])) out.set(m[1], new Set());
+    out.get(m[1])!.add(m[2]);
+  }
+  return out.size ? out : null;
+}
+
+/** Whether an event passes a stream's filter. Example: a stream that asked for district 14 gets
+ *  every event labelled district:14, and every event with no district label at all (a notice for
+ *  everyone is not hidden by a filter it was never labelled for), but not district:9. */
+export function passesFilter(filter: LiveFilter | undefined, ev: Pick<LiveEvent, "topic" | "tags">): boolean {
+  if (!filter) return true;
+  if (filter.topics && !filter.topics.includes(ev.topic)) return false;
+  if (filter.tags && ev.tags) {
+    for (const tag of ev.tags) {
+      const m = TAG.exec(tag);
+      const wanted = m && filter.tags.get(m[1]);
+      if (wanted && !wanted.has(m[2])) return false;
+    }
+  }
+  return true;
 }

@@ -289,6 +289,30 @@ describe("the hub", () => {
     leave();
   });
 
+  it("gives a screen that opens the latest value at once (L4)", async () => {
+    await live.publishLatest(1, { topic: "import.progress", data: { done: 3 } });
+    await live.publishLatest(1, { topic: "import.progress", data: { done: 7 } });
+    await live.publishLatest(1, { topic: "van.position", users: [reza], data: { lat: 35.7 } }); // not Sara's
+    const s = fakeSink(sara, ["phone_sales"]);
+    const leave = await liveHub.add(s, (await live.eventBounds(1)).newest ?? 0);
+    const got = s.frames.filter((f) => f.includes('"t":"import.progress"'));
+    expect(got).toEqual(['data: {"t":"import.progress","d":{"done":7}}\n\n']);
+    expect(topics(s.frames)).not.toContain("van.position");
+    leave();
+  });
+
+  it("passes on only the newest of a quick run of positions (L5)", async () => {
+    const s = fakeSink(sara, ["phone_sales"]);
+    const leave = await liveHub.add(s, (await live.eventBounds(1)).newest ?? 0);
+    const mine = () => s.frames.filter((f) => f.includes('"t":"van.7"'));
+    for (let i = 1; i <= 5; i++) await live.publishLatest(1, { topic: "van.7", data: { i } });
+    await until(() => mine().some((f) => f.includes('"i":5')));
+    await new Promise((r) => setTimeout(r, 400));
+    expect(mine().length).toBeLessThan(5);
+    expect(mine().at(-1)).toContain('"i":5');
+    leave();
+  });
+
   it("tells a phone that is too far behind to refetch", async () => {
     const { newest } = await live.eventBounds(1);
     const s = fakeSink(sara, ["phone_sales"]);
