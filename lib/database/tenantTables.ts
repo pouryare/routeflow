@@ -111,4 +111,7 @@ export const TENANT_TABLES = [
   "entry_places",
   "tutorial_assignments",
   "tutorial_counts",
+  /* Live updates (issue #58): the event log every open screen reads, and who was seen online. */
+  "live_events",
+  "live_presence",
 ] as const satisfies readonly string[];

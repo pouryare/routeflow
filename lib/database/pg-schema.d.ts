@@ -5,9 +5,19 @@
 
 import type { ColumnType } from "kysely";
 
+export type ArrayType<T> = ArrayTypeImpl<T> extends (infer U)[]
+  ? U[]
+  : ArrayTypeImpl<T>;
+
+export type ArrayTypeImpl<T> = T extends ColumnType<infer S, infer I, infer U>
+  ? ColumnType<S[], I[], U[]>
+  : T[];
+
 export type Generated<T> = T extends ColumnType<infer S, infer I, infer U>
   ? ColumnType<S, I | undefined, U>
   : ColumnType<T, T | undefined, T>;
+
+export type Timestamp = ColumnType<Date, Date | string, Date | string>;
 
 export interface Accounts {
   active: Generated<number>;
@@ -711,6 +721,22 @@ export interface LessonProgress {
   completed_at: string;
   id: Generated<number>;
   lesson_slug: string;
+  organization_id: number;
+  user_id: number;
+}
+
+export interface LiveEvents {
+  audience_roles: string[] | null;
+  audience_users: ArrayType<number> | null;
+  created_at: Generated<Timestamp>;
+  data_json: string | null;
+  id: Generated<number>;
+  organization_id: number;
+  topic: string;
+}
+
+export interface LivePresence {
+  last_seen: Timestamp;
   organization_id: number;
   user_id: number;
 }
@@ -1703,6 +1729,8 @@ export interface DB {
   lead_visit_activities: LeadVisitActivities;
   ledger_entries: LedgerEntries;
   lesson_progress: LessonProgress;
+  live_events: LiveEvents;
+  live_presence: LivePresence;
   login_events: LoginEvents;
   manager_commission_overrides: ManagerCommissionOverrides;
   manager_commission_payments: ManagerCommissionPayments;
