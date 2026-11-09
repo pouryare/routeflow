@@ -134,7 +134,7 @@ export async function todayFor(session: Session): Promise<Briefing> {
     const overdue = await db
       .prepare(
         `SELECT c.id, c.business_name, MAX(o.order_date) AS last
-           FROM customers c JOIN orders o ON o.id IN (SELECT id FROM orders WHERE customer_id = c.id)
+           FROM customers c JOIN orders o ON o.customer_id = c.id
           WHERE c.organization_id = ? AND o.salesperson_user_id = ?
           GROUP BY c.id HAVING ${daysBetween("?", "MAX(o.order_date)")} > 14
           ORDER BY last LIMIT 10`

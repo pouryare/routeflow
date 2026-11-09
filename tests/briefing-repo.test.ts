@@ -178,6 +178,23 @@ describe("todayFor", () => {
     expect(row!.sub).toMatch(/[۰-۹]/);
   });
 
+  it("«تماس‌های امروز» lists a customer once, with their latest order", async () => {
+    /* The join used to be `o.id IN (SELECT id FROM orders WHERE customer_id = c.id)`, which
+       checked every one of the rep's orders against every customer: 6 minutes on the demo data.
+       `o.customer_id = c.id` gives the same rows (notes/db-index-audit-2026-11-09.md). */
+    const db = getDb();
+    const daysAgo = (n: number) => new Date(Date.parse(`${today}T00:00:00Z`) - n * 86_400_000).toISOString().slice(0, 10);
+    for (const d of [daysAgo(40), daysAgo(20)]) {
+      const o = await createOrder(db, { customer_id: custId, order_date: d, created_by: owner, organization_id: 1, lines: [{ product_id: product, packaging_id: packaging, packs: 1 }] });
+      await db.prepare("UPDATE orders SET salesperson_user_id = ? WHERE id = ?").run(seller, o.id);
+    }
+    const p = (await todayFor(sess(seller, "phone_sales", groupId))).panels.find((x) => x.key === "call_list");
+    expect(p).toBeDefined();
+    const rows = p!.items.filter((i) => i.href?.includes(String(custId)));
+    expect(rows).toHaveLength(1);
+    expect(rows[0].sub).toContain(daysAgo(20));
+  });
+
   it("open_tasks never prints the raw priority enum", async () => {
     /* `sub: t.priority` put «HIGH» beside a Persian task title. Same leak as the order
        status, two panels up — found while fixing that one, exactly as the alert severity
