@@ -209,10 +209,10 @@ Added 2026-10-23 from a review of the code and these docs. The candidates in the
 
 | Place | Today |
 |---|---|
-| `components/CoverageMap.tsx` | Re-asks for customers every 45 seconds and when the tab becomes visible |
-| `components/NotificationBell.tsx` | Re-asks for the unread count every 60 seconds |
-| `components/LeadImportPanel.tsx` | Polls the job status while a lead import runs |
-| Orders pipeline, runs view, order status panel | Refresh only after the user's own action, so a coworker's change shows only after they act or reload |
+| `components/CoverageMap.tsx` | Re-asks for customers every 45 seconds and when the tab becomes visible. **Live since 2026-11-09** (L1): a customer change refreshes it; the poll is a 5-minute backstop |
+| `components/NotificationBell.tsx` | Re-asks for the unread count every 60 seconds. **Live since 2026-11-09**: a 5-minute backstop |
+| `components/LeadImportPanel.tsx` | Polls the job status while a lead import runs (still; `publishLatest` is ready for it) |
+| Orders pipeline, runs view, order status panel | Refresh only after the user's own action, so a coworker's change shows only after they act or reload. **Live since 2026-11-09** (L1): orders list, order page, schedule and the driver's page refresh themselves |
 
 **Named in the entries**: F6 (live driver positions and ETA), F125 (wallboard; the entry notes nothing refreshes by itself today), F4 (incoming-call screen pop).
 
@@ -249,6 +249,23 @@ Added 2026-10-23 from a review of the code and these docs. The candidates in the
 | Small payloads, limits, counters | 4,000 characters per event; 30 connections a minute and 10 open streams per person; `/api/health` reports `live`. |
 
 How it is built: one `LISTEN` connection per app server (`lib/live/hub.ts`), fan-out in memory, a 15-second safety read, slow phones dropped and caught up later, jittered reconnects. In the browser (`lib/live/client.ts`), one stream per browser shared between tabs (Web Locks plus BroadcastChannel), closed after 2 minutes with no visible tab. Caddy leaves `/api/live` uncompressed. First user: the notification bell (instant, 5-minute backstop instead of a 60-second poll), through a trigger on `notifications` so every writer is covered. Answered here: Centrifugo can read a Postgres outbox (since v5.2) and cluster on Postgres alone (v6), so it stays the step up for thousands of connections without needing Redis.
+
+**Borrowed from other realtime tools, built 2026-11-09 (owner: "all of them now"; research note `live-features-to-borrow-2026-11-09.md` in the project files).** Ideas only, no code copied.
+
+| # | Idea (from) | What was built |
+|---|---|---|
+| L1 | Live record changes, checked on delivery (Supabase broadcast from database, PocketBase view rules) | Statement triggers on `orders`, `delivery_runs` and `customers` publish `{id, status}` naming the record; before sending, the stream runs that record's own list rule (`lib/live/visibility.ts`). Over 200 rows in one statement send one `{"bulk":true}`. `components/LiveRefresh.tsx` refreshes the orders list, order page, schedule and driver page; the coverage map listens too. |
+| L2 | Online status without flicker (Pusher's delay before member_removed) | "Offline" goes out only when none of the person's streams is back within 5 seconds. |
+| L3 | Droppable notices (Socket.IO volatile) | Typing, presence and other short notices are skipped for a phone whose buffer is full, instead of closing its stream. `/api/health` counts them (`skipped`). |
+| L4 | Latest value on open (Centrifugo cache recovery) | `publishLatest()` keeps a topic's newest value in `live_latest` (unlogged); a stream that opens gets it at once. For import progress and van positions (F6). |
+| L5 | Keep only the newest (Centrifugo batch_flush_latest) | Latest values reach a phone at most every 250 ms, newest only per topic. |
+| L6 | Who is looking at this record (Supabase presence with state) | `live_viewing` (unlogged), `POST /api/live/viewing`, and a chip under the order title: «مالک شرکت هم این سفارش را باز کرده است». Only someone who may see the record joins its list. |
+| L7 | Send with a receipt (Socket.IO acks) | `publishLive({clientKey})`: a retry with the same key returns the first event's id and stores nothing. Server side, ready for chat (FB9). |
+| L8 | Who is connected (Mercure active subscriptions) | `live_connections` (unlogged), one row per open stream, refreshed each heartbeat; a card «چه کسی الان وصل است» on «وضعیت سامانه» (owner): person or screen, device, since when, up to date or slow. |
+| L9 | Signed read-only link (Mercure private updates) | `live_display_keys`: the owner makes a link holding 1 to 10 topics (`POST /api/live/display-keys`, revoke with `DELETE …/[id]`); `/api/live?display=<key>` streams only those topics, never anything aimed at people or roles. Only a SHA-256 of the key is kept; revoking closes open screens at once. No settings screen yet: it comes with the wallboard (F125). |
+| L10 | Filters chosen by the screen (Centrifugo publication tags) | Events can carry `key:value` tags; `/api/live?tags=district:14` sends only matching events plus those never tagged for that key. It narrows, never widens. The browser's shared stream does not use it yet. |
+
+Limits: L7 and L9 have no screen yet (chat and the wallboard don't exist); L10 is not used by any screen yet; the who-is-connected rows can lag a heartbeat (20 s) behind reality.
 
 ### 10.8 Interesting technologies (not decided)
 

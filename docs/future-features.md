@@ -198,6 +198,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 **Prerequisites:** none in code; a messaging provider for the customer-facing half.
 
+
+**Groundwork built (2026-11-09, L4 and L5, decisions 10.7):** `publishLatest()` keeps each van's newest position so a dispatcher map that opens shows it at once, and a phone gets at most one position every 250 ms, newest only. GPS capture, the map and ETAs are not built.
 ---
 
 ## F7. Dynamic re-routing during the day
@@ -1564,6 +1566,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 **Prerequisites:** the order events table and timeline (exist); F27 and F48 build on it.
 
+
+**Related, built (2026-11-09, L6):** the order page shows who else has the same order open right now («مالک شرکت هم این سفارش را باز کرده است»), which warns before two people edit one order. The history itself is not built.
 ---
 
 ## F74. Rep daily wrap-up
@@ -2691,6 +2695,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 **Prerequisites:** the run timeline (exists); F108 shares the "last updated" idea.
 
+
+**Partly built (2026-11-09, L9, decisions 10.7):** the revocable display key exists on the server: the owner makes a link holding chosen topics, `/api/live?display=<key>` streams only those topics live (no 30-second refresh needed), and revoking closes the screen at once. Open question 1 is answered by it. Still to build: the `/wall/dispatch` page and a screen to make and revoke links.
 ---
 
 ## F126. Organisation setup wizard
