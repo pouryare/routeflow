@@ -52,7 +52,7 @@ export default function RolePicker({ roles, active }: { roles: Role[]; active: R
               "disabled:opacity-60 " +
               (on
                 ? "border-[var(--accent)] bg-[var(--accent)] text-[var(--accent-foreground)]"
-                : "border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:bg-[var(--surface-raised)]")
+                : "border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:bg-[var(--surface-hover)]")
             }
           >
             <Icon name="users" size="sm" />

@@ -49,7 +49,7 @@ export default function PoolViewTable({
               <tr
                 key={loc.id ?? `table-${idx}`}
                 onClick={() => onSelect(loc.id)}
-                className={`border-b border-border/50 cursor-pointer transition-colors hover:bg-surface-raised ${
+                className={`border-b border-border/50 cursor-pointer transition-colors hover:bg-[var(--surface-hover)] ${
                   isSelected ? "bg-accent/10" : ""
                 } ${priorityHigh ? "border-l-2 border-l-accent" : ""}`}
               >

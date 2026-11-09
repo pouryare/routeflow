@@ -118,7 +118,7 @@ export default function AccountSwitcher({ variant = "page" }: { variant?: "menu"
                   type="button"
                   disabled={r.isSelf || busy !== null}
                   onClick={() => actAs(r)}
-                  className="flex w-full items-center gap-[var(--space-2)] rounded-[var(--radius-md)] px-[var(--space-2)] py-[var(--space-2)] text-right disabled:opacity-40 enabled:hover:bg-[var(--surface-raised)]"
+                  className="flex w-full items-center gap-[var(--space-2)] rounded-[var(--radius-md)] px-[var(--space-2)] py-[var(--space-2)] text-right disabled:opacity-40 enabled:hover:bg-[var(--surface-hover)]"
                 >
                   <Icon name="users" size="md" />
                   <Avatar userId={r.id} name={r.display_name} size={26} />
