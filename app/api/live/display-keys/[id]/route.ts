@@ -9,6 +9,6 @@ export async function DELETE(req: NextRequest, ctx: RouteContext<"/api/live/disp
   if (!g.ok) return g.response;
   const { id } = await ctx.params;
   if (!isId(id)) return NextResponse.json({ ok: false, error: "شناسه نامعتبر است" }, { status: 400 });
-  if (!(await revokeDisplayKey(g.org, Number(id)))) return NextResponse.json({ ok: false, error: "پیوند پیدا نشد" }, { status: 404 });
+  if (!(await revokeDisplayKey(g.org, Number(id)))) return NextResponse.json({ ok: false, error: "لینک پیدا نشد" }, { status: 404 });
   return NextResponse.json({ ok: true });
 }

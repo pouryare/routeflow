@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
   const input = checkDisplayInput(await req.json().catch(() => null));
   if (!input.ok) return NextResponse.json({ ok: false, error: input.error }, { status: 400 });
   if ((await listDisplayKeys(g.org)).filter((k) => !k.revoked_at).length >= 20) {
-    return NextResponse.json({ ok: false, error: "هر شرکت حداکثر ۲۰ پیوند نمایشگر فعال دارد" }, { status: 400 });
+    return NextResponse.json({ ok: false, error: "هر شرکت حداکثر ۲۰ لینک نمایشگر فعال دارد" }, { status: 400 });
   }
   const { id, key } = await createDisplayKey(g.org, input.label, input.topics, g.session.user.id);
   return NextResponse.json({ ok: true, id, key, url: `/api/live?display=${encodeURIComponent(key)}` }, { status: 201 });

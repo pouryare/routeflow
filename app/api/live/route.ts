@@ -42,7 +42,7 @@ const tooMany = (retryAfterSeconds: number) =>
  *  and such an event is only an id and a status. Anything aimed at people or roles never does. */
 async function openDisplay(key: string): Promise<Opened | NextResponse> {
   const k = await withDbScope("system", () => displayKey(key));
-  if (!k) return NextResponse.json({ ok: false, error: "این پیوند معتبر نیست یا لغو شده است" }, { status: 401 });
+  if (!k) return NextResponse.json({ ok: false, error: "این لینک معتبر نیست یا لغو شده است" }, { status: 401 });
   const limit = rateLimit(`live:display:${k.id}`, 30, 60_000);
   if (!limit.allowed) return tooMany(limit.retryAfterSeconds);
   const who: LiveListener = { userId: -k.id, organizationId: k.organizationId, roles: [] };
