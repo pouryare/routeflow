@@ -42,6 +42,9 @@ const { target, fresh, discard } = await postgresTarget();
 /* Everything above MUST stay ahead of these imports. the pg adapter reads DATABASE_URL at MODULE LOAD and memoises the handle, so the target is set
    in the environment above and every app import is dynamic, below this line. */
 process.env.SESSION_SECRET ||= "demo-seed-not-a-real-secret-0123456789";
+/* A demo build that fails is thrown away anyway, so its commits need not wait for the disk:
+   synchronous_commit=off (this process's connections only; node-postgres reads PGOPTIONS). */
+process.env.PGOPTIONS = `${process.env.PGOPTIONS ?? ""} -c synchronous_commit=off`.trim();
 
 const { runSeed } = await import("./seed/run");
 await runSeed({ scaleName, asOf: asOfArg ?? null, target, fresh, discard });
