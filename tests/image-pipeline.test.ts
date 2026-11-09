@@ -48,7 +48,7 @@ describe("encodeImage", () => {
 
 describe("encodeThumb", () => {
   it("makes a grid-sized WebP that is much smaller than the stored photo, and never enlarges", async () => {
-    const big = await sharp({ create: { width: 3200, height: 2400, channels: 3, noise: { type: "gaussian", mean: 128, sigma: 40 } } }).png().toBuffer();
+    const big = await sharp({ create: { width: 3200, height: 2400, channels: 3, background: { r: 128, g: 128, b: 128 }, noise: { type: "gaussian", mean: 128, sigma: 40 } } }).png().toBuffer();
     const stored = (await encodeImage(big, PHOTO_MAX_EDGE)).webp;
     const thumb = await encodeThumb(stored);
     const meta = await sharp(thumb).metadata();
