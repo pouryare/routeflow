@@ -10,7 +10,7 @@ import { faNum } from "@/lib/format";
  */
 export default function BentoStrip({ children }: { children: ReactNode }) {
   return (
-    <section className="grid gap-[var(--space-3)] rounded-[var(--radius-2xl)] border border-[var(--border)] bg-[var(--surface)] p-[var(--space-3)] sm:grid-cols-2 lg:grid-cols-4">
+    <section className="grid gap-[var(--space-3)] rounded-[var(--radius-2xl)] border border-[var(--border)] bg-[var(--surface)] p-[var(--space-3)] shadow-[var(--sh-1)] sm:grid-cols-2 lg:grid-cols-4">
       {children}
     </section>
   );
