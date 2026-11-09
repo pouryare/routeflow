@@ -16,7 +16,6 @@ import { priceAt, type PriceRow } from "./pricing";
 import { avgCostFor, costRowsFor, effectiveCost } from "./repo/productCosts";
 import { isToman } from "./money";
 
-import { mapSeq } from "@/lib/seq";
 export interface ProductRow {
   id: number;
   name: string;
@@ -79,7 +78,11 @@ export async function resolvePrice(
   packagingId: number | null,
   onDate: string
 ): Promise<PriceRow | null> {
-  const rows = await pricesFor(db, productId);
+  return pickPrice(await pricesFor(db, productId), packagingId, onDate);
+}
+
+/** resolvePrice's rule on a product's price rows already in hand. */
+function pickPrice(rows: (PriceRow & { packaging_id: number | null })[], packagingId: number | null, onDate: string): PriceRow | null {
   const specific = packagingId === null ? [] : rows.filter((r) => r.packaging_id === packagingId);
   return priceAt(specific, onDate) ?? priceAt(rows.filter((r) => r.packaging_id === null), onDate);
 }
@@ -99,23 +102,36 @@ export async function readCatalogue(
     )
     .all(organizationId) as unknown as ProductRow[];
 
-  return await mapSeq(products, async (product) => {
-    const packagings = await db
-      .prepare(
-        `SELECT * FROM packagings WHERE product_id = ? ${
-          opts.includeInactive ? "" : "AND active = 1"
-        } ORDER BY qty_per_pack DESC`
-      )
-      .all(product.id) as unknown as PackagingRow[];
+  /* Every packaging and every price row of these products in one query each, then grouped here:
+     it was one query per product and one more per packaging (540 in one walk through every page). */
+  if (products.length === 0) return [];
+  const ids = products.map((p) => p.id);
+  const marks = ids.map(() => "?").join(",");
+  const packagings = await db
+    .prepare(
+      `SELECT * FROM packagings WHERE product_id IN (${marks}) ${
+        opts.includeInactive ? "" : "AND active = 1"
+      } ORDER BY qty_per_pack DESC, id`
+    )
+    .all(...ids) as unknown as PackagingRow[];
+  const prices = await db
+    .prepare(`SELECT id, product_id, packaging_id, price_toman, valid_from FROM product_prices WHERE product_id IN (${marks})`)
+    .all(...ids) as unknown as (PriceRow & { product_id: number; packaging_id: number | null })[];
+  const group = <T extends { product_id: number }>(rows: T[]) => {
+    const m = new Map<number, T[]>();
+    for (const r of rows) m.set(r.product_id, [...(m.get(r.product_id) ?? []), r]);
+    return m;
+  };
+  const packsOf = group(packagings);
+  const pricesOf = group(prices);
 
-    return {
-      ...product,
-      packagings: await mapSeq(packagings, async (packaging) => {
-        const hit = await resolvePrice(db, product.id, packaging.id, onDate);
-        return { ...packaging, price_toman: hit?.price_toman ?? null, price_id: hit?.id ?? null };
-      }),
-    };
-  });
+  return products.map((product) => ({
+    ...product,
+    packagings: (packsOf.get(product.id) ?? []).map((packaging) => {
+      const hit = pickPrice(pricesOf.get(product.id) ?? [], packaging.id, onDate);
+      return { ...packaging, price_toman: hit?.price_toman ?? null, price_id: hit?.id ?? null };
+    }),
+  }));
 }
 
 export async function createProduct(
