@@ -19,6 +19,9 @@ export interface LiveEvent {
   audience_users: number[] | null;
   audience_roles: string[] | null;
   data_json: string | null;
+  /** The record the event is about, when it is about one; the stream checks the person may see it. */
+  entity_type?: string | null;
+  entity_id?: number | null;
 }
 
 /** Who is on the other end of a stream. */

@@ -21,6 +21,7 @@ import RunsViewClient from "@/components/sales/RunsViewClient";
 import type { ReactNode } from "react";
 import { pageMetadata } from "@/lib/pageMeta";
 import type { Metadata } from "next";
+import LiveRefresh from "@/components/LiveRefresh";
 
 /** The runs view is its own screen («سفرهای تحویل»), so its tab says so too. */
 export async function generateMetadata({
@@ -281,6 +282,7 @@ export default async function SchedulePage({
    *  can reach the screen without passing through them. */
   return (
     <ScheduleChrome view={view}>
+      <LiveRefresh topics={["runs", "orders"]} />
       {view === "runs" ? (
         <RunsView session={session} />
       ) : (

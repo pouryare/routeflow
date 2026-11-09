@@ -89,6 +89,7 @@ import { readStoredView, linkTargetView, writeStoredView } from "@/components/co
 import { MAP_INK_FALLBACK, MapInk, readMapInk } from "@/components/coverage/mapInk";
 import { MapWatcher, FitToCustomers } from "@/components/coverage/mapParts";
 import CheckField from "@/components/CheckField";
+import { onLive } from "@/lib/live/client";
 
 const HeatmapLayer = dynamic(() => import("./HeatmapLayer"), { ssr: false });
 const FullscreenControl = dynamic(() => import("./FullscreenControl"), { ssr: false });
@@ -316,11 +317,17 @@ export default function CoverageMap({
 
   // Keeps customer data live without a manual reload: any update made elsewhere -- a
   // coworker editing from a different session, or this same tab left open from an
-  // earlier visit. /api/customers is always-revalidate
-  // (lib/httpCache.ts), so a poll that finds nothing new costs one cheap 304 -- no row
-  // fetch even runs server-side -- and only actually re-renders when something changed.
+  // earlier visit. The live stream says when a customer changed (issue #58, idea L1); the
+  // 5-minute read only covers a stream that is down. /api/customers is always-revalidate
+  // (lib/httpCache.ts), so a read that finds nothing new costs one cheap 304.
   useEffect(() => {
-    const interval = setInterval(loadCustomers, 45000);
+    const interval = setInterval(loadCustomers, 5 * 60_000);
+    let settle: ReturnType<typeof setTimeout> | null = null;
+    const soon = () => {
+      if (settle) clearTimeout(settle);
+      settle = setTimeout(loadCustomers, 400); // a burst of edits becomes one read
+    };
+    const offLive = onLive("customers", soon);
     function onVisible() {
       if (document.visibilityState === "visible") loadCustomers();
     }
@@ -328,6 +335,8 @@ export default function CoverageMap({
     window.addEventListener("focus", loadCustomers);
     return () => {
       clearInterval(interval);
+      if (settle) clearTimeout(settle);
+      offLive();
       document.removeEventListener("visibilitychange", onVisible);
       window.removeEventListener("focus", loadCustomers);
     };

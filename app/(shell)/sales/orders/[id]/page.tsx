@@ -29,6 +29,7 @@ import CustomerName from "@/components/CustomerName";
 import { Icon } from "@/components/meridian/Icon";
 import { discountOfOrder } from "@/lib/repo/discounts";
 import { DISCOUNT_REASONS, DISCOUNT_STATUS_LABEL } from "@/lib/discounts";
+import LiveRefresh from "@/components/LiveRefresh";
 
 export const dynamic = "force-dynamic";
 
@@ -74,6 +75,7 @@ export default async function OrderDetailPage({
 
   return (
     <div className="flex flex-col gap-[var(--space-4)]">
+      <LiveRefresh topics={["orders"]} id={order.id} />
       <div className="flex flex-wrap items-baseline justify-between gap-[var(--space-2)]">
         <div>
           <h2 className="sechead__title tabular-nums">

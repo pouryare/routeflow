@@ -12,6 +12,7 @@ const { getDb } = await import("@/lib/db");
 const { databaseUrl } = await import("@/lib/database/connection");
 const live = await import("@/lib/repo/live");
 const { liveHub } = await import("@/lib/live/hub");
+const { canSeeRecord } = await import("@/lib/live/visibility");
 type Sink = Parameters<typeof liveHub.add>[0];
 
 const NOW = "2026-01-01T00:00:00.000Z";
@@ -118,6 +119,47 @@ describe("the event log", () => {
   });
 });
 
+describe("live record changes (L1)", () => {
+  it("publishes each changed order with its status, naming the record, and a bulk change as one event", async () => {
+    const before = (await live.eventBounds(1)).newest ?? 0;
+    const customer = Number(
+      (await getDb()
+        .prepare("INSERT INTO customers (customer_code, business_name, synced_at, organization_id) VALUES ('L1', 'فروشگاه', ?, 1)")
+        .run(NOW)).lastInsertRowid
+    );
+    const order = Number(
+      (await getDb()
+        .prepare(
+          `INSERT INTO orders (order_no, customer_id, order_date, created_by, created_at, updated_at, organization_id, salesperson_user_id)
+           VALUES ('S-1', ?, '2026-01-01', ?, ?, ?, 1, ?)`
+        )
+        .run(customer, sara, NOW, NOW, sara)).lastInsertRowid
+    );
+    await getDb().prepare("UPDATE orders SET status = 'CONFIRMED' WHERE id = ?").run(order);
+    const owner = who(sara, ["owner"]);
+    const evs = (await live.eventsAfter(owner, before)).filter((e) => e.topic === "orders");
+    expect(evs.map((e) => [e.entity_type, e.entity_id, JSON.parse(e.data_json ?? "{}").status])).toEqual([
+      ["order", order, "DRAFT"],
+      ["order", order, "CONFIRMED"],
+    ]);
+    const customerEvs = (await live.eventsAfter(owner, before)).filter((e) => e.topic === "customers");
+    expect(customerEvs.map((e) => e.entity_id)).toEqual([customer]);
+
+    // The check is the orders list's own filter: Sara sold it, so she sees it; Reza has no run with it.
+    const session = (id: number, role: string) =>
+      ({ user: { id }, role, roles: [role], groupId: null, organizationId: 1, hasRole: (r: string) => r === role }) as never;
+    expect(await canSeeRecord(session(sara, "phone_sales"), "order", order)).toBe(true);
+    expect(await canSeeRecord(session(reza, "delivery_driver"), "order", order)).toBe(false);
+    expect(await canSeeRecord(session(other, "owner"), "order", order)).toBe(true);
+    expect(await canSeeRecord(session(sara, "phone_sales"), "invoice", order)).toBe(false); // no rule, no event
+
+    const mid = (await live.eventBounds(1)).newest ?? 0;
+    await getDb().prepare("INSERT INTO customers (customer_code, business_name, synced_at, organization_id) SELECT 'B' || g, 'b', ?, 1 FROM generate_series(1, 201) g").run(NOW);
+    const bulk = (await live.eventsAfter(owner, mid)).filter((e) => e.topic === "customers");
+    expect(bulk.map((e) => [e.entity_type, e.data_json])).toEqual([[null, '{"bulk":true}']]);
+  });
+});
+
 describe("presence", () => {
   it("lists who was seen in the last minute, per company", async () => {
     await live.touchPresence(sara, 1);
@@ -195,6 +237,24 @@ describe("the hub", () => {
     expect(r.frames.find((f) => f.includes("typing"))).not.toContain("id:"); // never stored
     leaveS();
     leaveR();
+  });
+
+  it("sends an event about a record only to streams whose check lets them see it", async () => {
+    const start = (await live.eventBounds(1)).newest ?? 0;
+    const sees = fakeSink(sara, ["owner"]);
+    sees.canSee = async (type, id) => type === "order" && id === 77;
+    const blind = fakeSink(reza, ["owner"]);
+    blind.canSee = async () => false;
+    const noCheck = fakeSink(other, ["owner"]);
+    noCheck.who = who(other, ["owner"], 1);
+    const leaves = [await liveHub.add(sees, start), await liveHub.add(blind, start), await liveHub.add(noCheck, start)];
+    await live.publishLive(1, { topic: "orders", data: { id: 77 }, entity: { type: "order", id: 77 } });
+    await until(() => topics(sees.frames).includes("orders"));
+    await liveHub.settled();
+    expect(topics(sees.frames)).toContain("orders");
+    expect(topics(blind.frames)).not.toContain("orders");
+    expect(topics(noCheck.frames)).not.toContain("orders"); // no check means no record events
+    leaves.forEach((l) => l());
   });
 
   it("tells a phone that is too far behind to refetch", async () => {

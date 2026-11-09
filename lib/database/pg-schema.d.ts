@@ -730,6 +730,8 @@ export interface LiveEvents {
   audience_users: ArrayType<number> | null;
   created_at: Generated<Timestamp>;
   data_json: string | null;
+  entity_id: number | null;
+  entity_type: string | null;
   id: Generated<number>;
   organization_id: number;
   topic: string;

@@ -13,6 +13,9 @@ export interface LiveMessage {
   roles?: string[];
   /** Small: an id or a change, not a whole record. */
   data?: unknown;
+  /** The record this is about. The stream then sends it only to people who may see that record
+   *  (lib/live/visibility.ts), whatever the audience says. */
+  entity?: { type: "order" | "run" | "customer"; id: number };
 }
 
 /** Postgres array literal for a list of ids or plain words; the values are checked first, so
@@ -38,8 +41,8 @@ function checked(msg: LiveMessage): { data: string | null } {
 export async function publishLive(organizationId: number, msg: LiveMessage, db: Db = getDb()): Promise<number> {
   const { data } = checked(msg);
   const row = (await db
-    .prepare("SELECT rf_live_publish(?, ?, CAST(? AS bigint[]), CAST(? AS text[]), ?) AS id")
-    .get(organizationId, msg.topic, pgArray(msg.users), pgArray(msg.roles), data)) as { id: number };
+    .prepare("SELECT rf_live_publish(?, ?, CAST(? AS bigint[]), CAST(? AS text[]), ?, ?, ?) AS id")
+    .get(organizationId, msg.topic, pgArray(msg.users), pgArray(msg.roles), data, msg.entity?.type ?? null, msg.entity?.id ?? null)) as { id: number };
   return row.id;
 }
 
@@ -60,7 +63,7 @@ export async function publishEphemeral(organizationId: number, msg: LiveMessage,
 export async function eventsAfter(who: LiveListener, afterId: number, limit = 500, db: Db = getDb()): Promise<LiveEvent[]> {
   return (await db
     .prepare(
-      `SELECT id, organization_id, topic, CAST(audience_users AS int[]) AS audience_users, audience_roles, data_json
+      `SELECT id, organization_id, topic, CAST(audience_users AS int[]) AS audience_users, audience_roles, data_json, entity_type, entity_id
          FROM live_events
         WHERE id > ? AND organization_id = ?
           AND (audience_users IS NULL OR ? = ANY (audience_users))
@@ -76,7 +79,7 @@ export async function eventsAfter(who: LiveListener, afterId: number, limit = 50
 export async function allEventsAfter(afterId: number, limit = 1000, db: Db = getDb()): Promise<LiveEvent[]> {
   return (await db
     .prepare(
-      `SELECT id, organization_id, topic, CAST(audience_users AS int[]) AS audience_users, audience_roles, data_json
+      `SELECT id, organization_id, topic, CAST(audience_users AS int[]) AS audience_users, audience_roles, data_json, entity_type, entity_id
          FROM live_events WHERE id > ? ORDER BY id LIMIT ?`
     )
     .all(afterId, limit)) as unknown as LiveEvent[];

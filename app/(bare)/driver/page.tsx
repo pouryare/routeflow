@@ -27,6 +27,7 @@ import FirstStepsCard from "@/components/tutorials/FirstStepsCard";
 import { driverLinks } from "@/lib/driverLinks";
 
 import type { Metadata } from "next";
+import LiveRefresh from "@/components/LiveRefresh";
 
 export const metadata: Metadata = { title: "مسیر امروز" };
 
@@ -97,6 +98,7 @@ export default async function DriverPage() {
   return (
     <main className="mx-auto min-h-screen w-full max-w-2xl px-[var(--space-4)] py-[var(--space-5)]">
       <SyncStatus />
+      <LiveRefresh topics={["runs", "orders"]} />
       {maintenance && phase !== "none" ? <MaintenanceBanner m={maintenance} phase={phase} syncFirst /> : null}
       <VerifyVisits />
       <header className="mb-[var(--space-4)] flex items-start justify-between gap-[var(--space-3)]">

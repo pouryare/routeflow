@@ -3,6 +3,7 @@ import { COOKIE_NAME } from "@/lib/auth";
 import { getSession, getSessionFromCookies, type Session } from "@/lib/session";
 import { rateLimit } from "@/lib/rateLimit";
 import { liveHub } from "@/lib/live/hub";
+import { canSeeRecord } from "@/lib/live/visibility";
 import { lastSeenId, retryMs, type LiveListener } from "@/lib/live/protocol";
 
 export const dynamic = "force-dynamic";
@@ -31,6 +32,7 @@ export async function GET(req: NextRequest) {
   const token = req.cookies.get(COOKIE_NAME)?.value;
   const lastSeen = lastSeenId(req.headers.get("last-event-id"), req.nextUrl.searchParams.get("after"));
   const encoder = new TextEncoder();
+  let current = session; // replaced when the session is read again
   let leave: (() => void) | null = null;
   let closed = false;
 
@@ -60,8 +62,10 @@ export async function GET(req: NextRequest) {
               close,
               async recheck() {
                 const s = await getSessionFromCookies(token);
+                if (s) current = s;
                 return s ? listener(s) : null;
               },
+              canSee: (type, id) => canSeeRecord(current, type, id),
             },
             lastSeen
           );

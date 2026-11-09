@@ -28,7 +28,7 @@ import {
   pruneEvents,
   touchPresence,
 } from "@/lib/repo/live";
-import { BYE_TOPIC, RESET_TOPIC, canReceive, eventFrame, frame, needsReset, type LiveListener } from "./protocol";
+import { BYE_TOPIC, RESET_TOPIC, canReceive, eventFrame, frame, needsReset, type LiveEvent, type LiveListener } from "./protocol";
 
 const HEARTBEAT_MS = 20_000;
 const RECHECK_EVERY_BEATS = 15; // the session is read again every 5 minutes
@@ -44,6 +44,18 @@ interface LiveSink {
   close(): void;
   /** Reads the session again; null when it has ended. Called every few minutes and on a kick. */
   recheck(): Promise<LiveListener | null>;
+  /** Whether this person may see one record (lib/live/visibility.ts). Without it, events about a
+   *  record are not sent to this stream at all. */
+  canSee?(type: string, id: number): Promise<boolean>;
+}
+
+/** Whether a stream gets an event: its company and audience, and for an event about a record, the
+ *  record's own view rule. A failed check counts as no. */
+async function allowed(sink: LiveSink, ev: LiveEvent): Promise<boolean> {
+  if (!canReceive(sink.who, ev)) return false;
+  if (!ev.entity_type || ev.entity_id == null) return true;
+  if (!sink.canSee) return false;
+  return await sink.canSee(ev.entity_type, ev.entity_id).catch(() => false);
 }
 
 interface Sub {
@@ -129,9 +141,9 @@ class Hub {
           for (;;) {
             const rows = await withDbScope("system", () => allEventsAfter(this.cursor));
             for (const ev of rows) {
-              for (const sub of this.subs) {
-                if (ev.id > sub.lastId && canReceive(sub.sink.who, ev)) this.send(sub, eventFrame(ev), ev.id);
-              }
+              const targets = [...this.subs].filter((sub) => ev.id > sub.lastId);
+              const ok = await Promise.all(targets.map((sub) => allowed(sub.sink, ev)));
+              targets.forEach((sub, i) => ok[i] && this.send(sub, eventFrame(ev), ev.id));
               this.cursor = ev.id;
             }
             if (rows.length < 1000) break;
@@ -189,7 +201,7 @@ class Hub {
         for (;;) {
           const rows = await eventsAfter(sink.who, sub.lastId, 500);
           for (const ev of rows) {
-            sink.write(eventFrame(ev));
+            if (await allowed(sink, ev)) sink.write(eventFrame(ev));
             sub.lastId = ev.id;
           }
           sent += rows.length;
