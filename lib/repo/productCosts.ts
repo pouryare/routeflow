@@ -27,6 +27,17 @@ export async function costRowsFor(db: Db, productId: number): Promise<CostRow[]>
     .all(productId) as unknown as CostRow[];
 }
 
+/** Every cost row of many products, in one query. Unscoped by design: the caller scopes. */
+export async function costRowsForMany(db: Db, productIds: number[]): Promise<CostRow[]> {
+  if (productIds.length === 0) return [];
+  return await db
+    .prepare(
+      `SELECT id, product_id, packaging_id, method, cost_toman, valid_from
+         FROM product_costs WHERE product_id IN (${productIds.map(() => "?").join(",")})`
+    )
+    .all(...productIds) as unknown as CostRow[];
+}
+
 /** The cost override in force on a date, packaging-specific first.
  *
  *  Returns null when no row is in force -- which is NOT the same as a cost of zero. The
@@ -55,6 +66,15 @@ export async function avgCostFor(db: Db, productId: number): Promise<number | nu
     .prepare("SELECT avg_cost_toman FROM products WHERE id = ?")
     .get(productId) as { avg_cost_toman: number } | undefined;
   return row ? row.avg_cost_toman : null;
+}
+
+/** `avgCostFor` for many products in one query, by product id. */
+export async function avgCostsFor(db: Db, productIds: number[]): Promise<Map<number, number>> {
+  if (productIds.length === 0) return new Map();
+  const rows = await db
+    .prepare(`SELECT id, avg_cost_toman FROM products WHERE id IN (${productIds.map(() => "?").join(",")})`)
+    .all(...productIds) as unknown as { id: number; avg_cost_toman: number }[];
+  return new Map(rows.map((r) => [r.id, r.avg_cost_toman]));
 }
 
 /** Confirms the product belongs to this organisation before a cost row is written.

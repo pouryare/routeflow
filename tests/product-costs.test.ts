@@ -11,7 +11,7 @@ process.env.ROUTEFLOW_DB_PATH = testDbPath;
 process.env.SESSION_SECRET = "test-secret";
 
 const { getDb } = await import("@/lib/db");
-const { createProduct, createPackaging, setCost, costBasisFor, readCostBasis } =
+const { createProduct, createPackaging, setCost, costBasisFor, costBasisMany, readCostBasis } =
   await import("@/lib/catalogue");
 
 afterAll(() => {
@@ -111,6 +111,20 @@ describe("product_costs", () => {
       created_by: null,
     });
     expect((await costBasisFor(db, product, null, "2026-06-01"))?.cost_toman).toBe(61_000);
+  });
+
+  it("gives many products the same answers as one at a time, in one go", async () => {
+    const db = getDb();
+    const bare = await createProduct(db, { name: "کالای خام دو", kg_per_base_unit: 1, organization_id: 1 });
+    const items = [
+      { productId: product, packagingId: pack },
+      { productId: bare, packagingId: null },
+    ];
+    const many = await costBasisMany(db, items, "2026-06-01");
+    for (const i of items) {
+      expect(many.get(i.productId)).toEqual(await costBasisFor(db, i.productId, i.packagingId, "2026-06-01"));
+    }
+    expect(many.get(bare)).toBeNull();
   });
 
   it("refuses a fractional cost rather than rounding it", async () => {

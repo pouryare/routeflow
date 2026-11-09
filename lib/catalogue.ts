@@ -13,7 +13,7 @@
 import { tehranTodayIso } from "@/lib/jalali";
 import type { Db } from "@/lib/database/client";
 import { priceAt, type PriceRow } from "./pricing";
-import { avgCostFor, costRowsFor, effectiveCost } from "./repo/productCosts";
+import { avgCostFor, avgCostsFor, costRowsFor, costRowsForMany, effectiveCost } from "./repo/productCosts";
 import { isToman } from "./money";
 
 export interface ProductRow {
@@ -307,13 +307,31 @@ export async function costBasisFor(
   onDate: string
 ): Promise<CostBasis | null> {
   const hit = effectiveCost(await costRowsFor(db, productId), packagingId, onDate);
-  if (hit) {
-    return { cost_toman: hit.cost_toman, method: hit.method, cost_id: hit.id };
-  }
+  if (hit) return { cost_toman: hit.cost_toman, method: hit.method, cost_id: hit.id };
+  return basisFromAverage(await avgCostFor(db, productId));
+}
 
-  const avg = await avgCostFor(db, productId);
-  if (avg === null || avg <= 0) return null;
+function basisFromAverage(avg: number | null | undefined): CostBasis | null {
+  if (avg == null || avg <= 0) return null;
   return { cost_toman: avg, method: "weighted_average", cost_id: null };
+}
+
+/** `costBasisFor` for many products in two queries, by product id (the owner's costing drawer
+ *  was two queries per product). */
+export async function costBasisMany(
+  db: Db,
+  items: { productId: number; packagingId: number | null }[],
+  onDate: string
+): Promise<Map<number, CostBasis | null>> {
+  const ids = items.map((i) => i.productId);
+  const rows = await costRowsForMany(db, ids);
+  const avgs = await avgCostsFor(db, ids);
+  return new Map(
+    items.map((i) => {
+      const hit = effectiveCost(rows.filter((r) => r.product_id === i.productId), i.packagingId, onDate);
+      return [i.productId, hit ? { cost_toman: hit.cost_toman, method: hit.method, cost_id: hit.id } : basisFromAverage(avgs.get(i.productId))];
+    })
+  );
 }
 
 /** `costBasisFor` scoped to one organisation.
