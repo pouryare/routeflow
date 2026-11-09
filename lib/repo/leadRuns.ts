@@ -5,7 +5,6 @@ import { canReachGroup, type Session } from "@/lib/session";
 import { nextActionFor, visitOutcomeLabel } from "@/lib/crm/leadDesire";
 import { tombstone } from "./tombstones";
 
-import { mapSeq } from "@/lib/seq";
 /** A lead run: one driver, one day, an ordered set of pins.
  *
  *  Modelled on delivery_runs rather than invented, down to the UNIQUE(driver_user_id,
@@ -66,29 +65,40 @@ const RUN_COLS = `r.id, r.driver_user_id, u.display_name AS driver_name, r.group
                   r.status, r.notes, r.created_by AS planned_by`;
 
 /** Stops with everything the driver's card needs, derived rather than stored. */
-const STOPS_SQL = `
-  SELECT s.location_id, s.sort_order, l.name, l.address, l.lat, l.lng,
-         l.status, l.visit_outcome, l.rating_potential
-    FROM lead_run_stops s
-    JOIN saved_locations l ON l.id = s.location_id
-   WHERE s.run_id = ? AND l.organization_id = ?
-   ORDER BY s.sort_order`;
-
-async function stopsFor(conn: Db, runId: number, orgId: number): Promise<LeadRunStop[]> {
-  const rows = await conn.prepare(STOPS_SQL).all(runId, orgId) as unknown as Array<{
-    location_id: number; sort_order: number; name: string; address: string | null;
+/** The stops of many runs in one query: a list of 450 runs used to send 450 queries. */
+async function stopsByRun(conn: Db, runIds: number[], orgId: number): Promise<Map<number, LeadRunStop[]>> {
+  const byRun = new Map<number, LeadRunStop[]>(runIds.map((id) => [id, []]));
+  if (runIds.length === 0) return byRun;
+  const rows = await conn
+    .prepare(`
+      SELECT s.run_id, s.location_id, s.sort_order, l.name, l.address, l.lat, l.lng,
+             l.status, l.visit_outcome, l.rating_potential
+        FROM lead_run_stops s
+        JOIN saved_locations l ON l.id = s.location_id
+       WHERE s.run_id IN (${runIds.map(() => "?").join(",")}) AND l.organization_id = ?
+       ORDER BY s.run_id, s.sort_order`)
+    .all(...runIds, orgId) as unknown as Array<{
+    run_id: number; location_id: number; sort_order: number; name: string; address: string | null;
     lat: number | null; lng: number | null; status: string | null;
     visit_outcome: string | null; rating_potential: number | null;
   }>;
-  return rows.map((r) => ({
-    ...r,
-    outcome_label: visitOutcomeLabel(r.visit_outcome),
-    next_action: nextActionFor(r.visit_outcome),
-  }));
+  for (const { run_id, ...r } of rows) {
+    byRun.get(Number(run_id))?.push({
+      ...r,
+      outcome_label: visitOutcomeLabel(r.visit_outcome),
+      next_action: nextActionFor(r.visit_outcome),
+    });
+  }
+  return byRun;
+}
+
+async function hydrateAll(conn: Db, rows: Record<string, unknown>[], orgId: number): Promise<LeadRun[]> {
+  const stops = await stopsByRun(conn, rows.map((r) => Number(r.id)), orgId);
+  return rows.map((row) => ({ ...(row as unknown as LeadRun), stops: stops.get(Number(row.id)) ?? [] }));
 }
 
 async function hydrate(conn: Db, row: Record<string, unknown>, orgId: number): Promise<LeadRun> {
-  return { ...(row as unknown as LeadRun), stops: await stopsFor(conn, Number(row.id), orgId) };
+  return (await hydrateAll(conn, [row], orgId))[0];
 }
 
 /** One run, or null. 404 rather than 403 elsewhere in this app for the same reason: a 403
@@ -108,7 +118,7 @@ export async function readDriverLeadRuns(conn: Db, driverUserId: number, orgId: 
                WHERE r.driver_user_id = ? AND r.organization_id = ?
                ORDER BY r.run_date DESC`)
     .all(driverUserId, orgId) as unknown as Record<string, unknown>[];
-  return await mapSeq(rows, async (r) => await hydrate(conn, r, orgId));
+  return await hydrateAll(conn, rows, orgId);
 }
 
 /** Runs a manager may see: their group's, or the whole organisation for an owner. */
@@ -120,7 +130,7 @@ export async function readScopedLeadRuns(conn: Db, session: Session): Promise<Le
                WHERE r.organization_id = ? ${all ? "" : "AND r.group_id = ?"}
                ORDER BY r.run_date DESC, r.id DESC`)
     .all(...(all ? [org] : [org, session.groupId ?? -1])) as unknown as Record<string, unknown>[];
-  return await mapSeq(rows, async (r) => await hydrate(conn, r, org));
+  return await hydrateAll(conn, rows, org);
 }
 
 /** The run a driver should be looking at: today's, else the most recent not finished.

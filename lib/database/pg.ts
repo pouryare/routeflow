@@ -114,6 +114,8 @@ export function pgDb(url: string, ready: () => Promise<void> = async () => {}): 
     if (appRole) pool.on("connect", (client) => void client.query(`SET ROLE ${appRole}`));
     return pool;
   };
+  /** The rf.scope each pooled connection was last given outside a transaction. */
+  const sessionScope = new WeakMap<pg.PoolClient, string>();
   /** One statement outside a transaction, on any pooled client, under the caller's company. */
   const once = async (text: string, params?: unknown[]): Promise<pg.QueryResult> => {
     await ready();
@@ -121,7 +123,14 @@ export function pgDb(url: string, ready: () => Promise<void> = async () => {}): 
     const scope = await currentDbScope();
     const client = await open().connect();
     try {
-      await client.query("SELECT set_config('rf.scope', $1, false)", [scope]);
+      /* The setting lives on the connection, so a connection that last ran under this same scope
+         already has it: skipping the call halves the round trips (71,000 extra calls in one walk
+         through every page, notes/db-index-audit-2026-11-09.md). A transaction's own setting is
+         local (below) and ends with it, which leaves this one in place. */
+      if (sessionScope.get(client) !== scope) {
+        await client.query("SELECT set_config('rf.scope', $1, false)", [scope]);
+        sessionScope.set(client, scope);
+      }
       return await client.query(text, params);
     } finally {
       client.release();

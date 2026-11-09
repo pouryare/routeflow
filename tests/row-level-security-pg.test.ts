@@ -74,6 +74,16 @@ describe.skipIf(!ON)("row-level security", () => {
     expect(await withDbScope("", names)).toEqual([]);
   });
 
+  it("switches company on a reused connection", async () => {
+    /* The adapter skips set_config when a connection already has the scope (lib/database/pg.ts);
+       one statement at a time reuses the same idle connection, so this alternates on it. */
+    for (let i = 0; i < 3; i++) {
+      expect(await withDbScope("org:1", names)).toEqual(["a-shop"]);
+      expect(await withDbScope("org:2", names)).toEqual(["b-shop"]);
+      expect(await withDbScope("", names)).toEqual([]);
+    }
+  });
+
   it("matches the company id exactly, not by prefix", async () => {
     /* rf_scope_allows reads the id with split_part (db/migrations/1762600300000_faster-scope-check.sql):
        org:12 must not see company 1 or 2, and a company with no rows sees none. */
