@@ -36,6 +36,10 @@ async function refreshOrg(db: Db, org: number): Promise<number> {
   const any = await db.prepare("SELECT 1 AS x FROM sales_daily_marks WHERE organization_id = ? LIMIT 1").get(org);
   if (!any) return 0;
   return await db.tx(async () => {
+    /* The web role stops any statement at 15 s (db/server/install.sh). The first recount after the
+       migration marks every day there is, which on a Pi can take longer; this transaction alone
+       may run for a few minutes. */
+    await db.prepare("SET LOCAL statement_timeout = '5min'").run();
     await db.prepare("SELECT pg_advisory_xact_lock(hashtext('sales_daily'), CAST(? AS int))").get(org);
     const top = (await db.prepare("SELECT MAX(id) AS id FROM sales_daily_marks WHERE organization_id = ?").get(org)) as { id: number | null };
     if (top.id === null) return 0;
