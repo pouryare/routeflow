@@ -127,6 +127,38 @@ describe("pullSince", () => {
     expect(runIds).not.toContain(oldDone);
   });
 
+  it("pages a pull: the pages together are the whole answer, the watermark is the first page's, deletions come last", async () => {
+    await runFor(driverA, custA);
+    await tombstone(1, "customers", 4242);
+    const who = sess(driverA, "delivery_driver", 1, groupA);
+    const whole = await pullSince(who, null);
+    const key = (r: { table: string; row: Record<string, unknown> }) => `${r.table}:${String(r.row.id)}`;
+
+    const seen: string[] = [];
+    let after: string | null = null;
+    let at: string | null = null;
+    let first = "";
+    let lastTombs = 0;
+    for (let guard = 0; guard < 100; guard++) {
+      const page = await pullSince(who, null, { limit: 3, after, at });
+      expect(page.rows.length).toBeLessThanOrEqual(3);
+      if (!at) first = page.watermark;
+      expect(page.watermark).toBe(first);
+      seen.push(...page.rows.map(key));
+      if (page.next) {
+        expect(page.tombstones).toEqual([]);
+        after = page.next;
+        at = page.watermark;
+        continue;
+      }
+      lastTombs = page.tombstones.length;
+      break;
+    }
+    expect([...new Set(seen)].sort()).toEqual([...new Set(whole.rows.map(key))].sort());
+    expect(seen.length).toBe(new Set(seen).size); // no row twice
+    expect(lastTombs).toBeGreaterThan(0);
+  });
+
   it("an immediate re-pull at the watermark returns nothing new", async () => {
     await runFor(driverA, custA);
     const first = await pullSince(sess(driverA, "delivery_driver", 1, groupA), null);

@@ -1,3 +1,4 @@
+import { compressedJson } from "@/lib/httpCache";
 import { NextRequest, NextResponse } from "next/server";
 import { plain } from "@/lib/db";
 import { requireRole } from "@/lib/session";
@@ -36,7 +37,7 @@ export async function GET(req: NextRequest) {
   if (url.searchParams.get("assignments") === "1") {
     return NextResponse.json({ ok: true, assignments: await assignmentsFor(session) });
   }
-  return NextResponse.json({ ok: true, runs: plain(await runsFor(session)) });
+  return compressedJson(req, { ok: true, runs: plain(await runsFor(session)) });
 }
 
 export async function POST(req: NextRequest) {

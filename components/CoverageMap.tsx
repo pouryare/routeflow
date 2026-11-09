@@ -23,6 +23,7 @@ import {
   resolveTier,
 } from "@/lib/precision";
 import type { Role } from "@/lib/db";
+import { applyCustomerDelta, type CustomerDelta } from "@/lib/customerDelta";
 import CollapsibleSection, { SectionFilterContext } from "./CollapsibleSection";
 import CustomerFilters from "./CustomerFilters";
 import SearchBox from "./SearchBox";
@@ -232,10 +233,32 @@ export default function CoverageMap({
     setGeomVersion(data.version);
   }, []);
 
+  /* The customer list is read whole once, then only what changed: the bookmark from the last answer asks for
+     the changed shops and the deleted ids (lib/repo/customerList.ts customersChangedSince). If the count we
+     end up with differs from the server's, or the server does not know the bookmark, read the whole list. */
+  const customerToken = useRef<string | null>(null);
+  const customerList = useRef<CustomerRow[]>([]);
   const loadCustomers = useCallback(async () => {
+    if (customerToken.current) {
+      const res = await fetch(`/api/customers?since=${encodeURIComponent(customerToken.current)}`);
+      const delta = res.ok ? ((await res.json().catch(() => null)) as ({ full?: boolean } & CustomerDelta<CustomerRow>) | null) : null;
+      if (delta && !delta.full) {
+        customerToken.current = delta.token;
+        const merged = applyCustomerDelta(customerList.current, delta);
+        if (merged.length === delta.total) {
+          if (merged !== customerList.current) {
+            customerList.current = merged;
+            setCustomers(merged);
+          }
+          return;
+        }
+      }
+    }
     const res = await fetch("/api/customers");
     const data = await res.json();
-    setCustomers(data.customers ?? []);
+    customerToken.current = data.token ?? null;
+    customerList.current = data.customers ?? [];
+    setCustomers(customerList.current);
   }, []);
 
   useEffect(() => {

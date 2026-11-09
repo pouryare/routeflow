@@ -1,3 +1,4 @@
+import { compressedJson } from "@/lib/httpCache";
 import { NextRequest, NextResponse } from "next/server";
 import { requireRole, groupFilter, canReachGroup, orgScopeId } from "@/lib/session";
 import { DeliveryError } from "@/lib/delivery";
@@ -11,7 +12,7 @@ export async function GET(req: NextRequest) {
   if (!guard.ok) return guard.response;
 
   const scope = await groupFilter(guard.session, "dr.group_id");
-  return NextResponse.json({ ok: true, runs: await listRuns(scope, orgScopeId(guard.session)) });
+  return compressedJson(req, { ok: true, runs: await listRuns(scope, orgScopeId(guard.session)) });
 }
 
 export async function POST(req: NextRequest) {

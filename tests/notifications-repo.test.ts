@@ -8,7 +8,7 @@ process.env.ROUTEFLOW_DB_PATH = testDbPath;
 process.env.SESSION_SECRET = "test-secret";
 
 const { getDb } = await import("@/lib/db");
-const { recipientsFor, fanOutNotifications, listNotificationGroups, unreadGroupCount, markGroupsRead, markGroupsUnread } = await import(
+const { recipientsFor, fanOutNotifications, listNotificationGroups, unreadGroupCount, latestUnreadTitle, markGroupsRead, markGroupsUnread } = await import(
   "@/lib/repo/notifications"
 );
 const { runEventRules } = await import("@/lib/repo/rules");
@@ -258,4 +258,18 @@ it("a due-reminder notification remembers which reminder it is, so a push button
   expect(await fanOutNotifications(1, rule, ev, null)).toBeGreaterThan(0);
   const row = await getDb().prepare("SELECT ref_id FROM notifications WHERE type_code = 'reminder.due' ORDER BY id DESC LIMIT 1").get() as { ref_id: number | null };
   expect(row.ref_id).toBe(77);
+});
+
+it("the bell's one title is the newest unread notification, and null when there is none", async () => {
+  expect(await latestUnreadTitle(1, seller)).toBeNull();
+  await fanOutNotifications(
+    1,
+    { code: "notify_order_confirmed", action_json: JSON.stringify({ notification_type: "order.confirmed" }) },
+    evRow("order.passReview", ord, { order_no: "9001", customer_name: "x" }, owner),
+    null
+  );
+  const [group] = await listNotificationGroups(1, seller);
+  expect(await latestUnreadTitle(1, seller)).toBe(group.title_fa);
+  await markGroupsRead(1, seller, "all");
+  expect(await latestUnreadTitle(1, seller)).toBeNull();
 });

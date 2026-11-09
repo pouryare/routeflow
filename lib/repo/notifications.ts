@@ -454,6 +454,18 @@ export async function unreadGroupCount(organizationId: number, userId: number): 
   return row.c;
 }
 
+/** The title of the newest unread notification, or null: what the bell shows in the message that flies into it. */
+export async function latestUnreadTitle(organizationId: number, userId: number): Promise<string | null> {
+  const row = (await getDb()
+    .prepare(
+      `SELECT title_fa FROM notifications
+        WHERE organization_id = ? AND user_id = ? AND read_at IS NULL
+        ORDER BY created_at DESC, id DESC LIMIT 1`
+    )
+    .get(organizationId, userId)) as { title_fa: string } | undefined;
+  return row?.title_fa ?? null;
+}
+
 export async function markGroupsRead(organizationId: number, userId: number, groupKeys: string[] | "all"): Promise<void> {
   const now = new Date().toISOString();
   if (groupKeys === "all") {

@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { shrinkPhoto } from "@/lib/shrinkPhoto";
 import { Icon } from "@/components/meridian/Icon";
 
 /** The receipt photo of one expense: «رسید» opens it when there is one; otherwise «افزودن رسید» takes
@@ -14,7 +15,7 @@ export default function ReceiptButton({ journalId, has }: { journalId: number; h
   async function upload(file: File) {
     setState("sending");
     const form = new FormData();
-    form.append("file", file);
+    form.append("file", await shrinkPhoto(file));
     const res = await fetch(`/api/accounting/expenses/${journalId}/receipt`, { method: "POST", body: form }).catch(() => null);
     if (res?.ok) {
       setState("idle");

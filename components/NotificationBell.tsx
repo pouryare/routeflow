@@ -68,7 +68,7 @@ export default function NotificationBell({
     let alive = true;
     async function tick() {
       try {
-        const res = await fetch("/api/notifications");
+        const res = await fetch("/api/notifications?count=1");
         if (!alive) return;
         if (!res.ok) {
           // 401 (logged out) or 403 (role not permitted) -> the bell has nothing to show.
@@ -76,8 +76,8 @@ export default function NotificationBell({
           return;
         }
         if (res.ok) {
-          const j = (await res.json()) as { unread?: number; groups?: { title_fa: string; unread_count: number }[] };
-          latestTitle.current = j.groups?.find((g) => g.unread_count > 0)?.title_fa ?? null;
+          const j = (await res.json()) as { unread?: number; latest?: string | null };
+          latestTitle.current = j.latest ?? null;
           setUnread(j.unread ?? 0);
         }
       } catch {

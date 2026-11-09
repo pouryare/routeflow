@@ -1,3 +1,4 @@
+import { compressedJson } from "@/lib/httpCache";
 import { boundedText, isDayWithin, isQuantity, isTimestampWithin } from "@/lib/inputChecks";
 import { NextRequest, NextResponse } from "next/server";
 import { requireRole } from "@/lib/session";
@@ -17,7 +18,7 @@ export async function GET(req: NextRequest) {
   if (!guard.ok) return guard.response;
 
   const sp = req.nextUrl.searchParams;
-  return NextResponse.json({
+  return compressedJson(req, {
     ok: true,
     movements: await listMovements(guard.session.organizationId, {
       product_id: sp.get("product_id") ? Number(sp.get("product_id")) : undefined,

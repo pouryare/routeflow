@@ -22,3 +22,9 @@ export function cropRect(w: number, h: number, ratio: number | null): { x: numbe
   const ch = Math.min(h, Math.round(cw / ratio));
   return { x: Math.floor((w - cw) / 2), y: Math.floor((h - ch) / 2), w: cw, h: ch };
 }
+
+/** The size a w×h picture is drawn at so its long edge is at most `maxEdge`; never larger than it is. */
+export function fitInside(w: number, h: number, maxEdge: number): { w: number; h: number } {
+  const scale = Math.min(1, maxEdge / Math.max(w, h));
+  return { w: Math.max(1, Math.round(w * scale)), h: Math.max(1, Math.round(h * scale)) };
+}
