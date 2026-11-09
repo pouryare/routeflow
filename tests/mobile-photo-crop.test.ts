@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cropRect, photoProblem, MAX_PHOTO_BYTES } from "@/lib/photoCrop";
+import { cropRect, fitInside, photoProblem, MAX_PHOTO_BYTES } from "@/lib/photoCrop";
 
 // PhotoCropSheet (components/mobile/PhotoCropSheet.tsx) frames a photo with these.
 describe("photo crop", () => {
@@ -24,5 +24,10 @@ describe("photo crop", () => {
     expect(photoProblem({ type: "application/pdf", size: 10 })).not.toBeNull();
     expect(photoProblem({ type: "image/jpeg", size: MAX_PHOTO_BYTES + 1 })).not.toBeNull();
     expect(photoProblem({ type: "image/jpeg", size: 1000 })).toBeNull();
+  });
+  it("scales a camera photo down to the long edge and never up", () => {
+    expect(fitInside(4000, 3000, 1600)).toEqual({ w: 1600, h: 1200 });
+    expect(fitInside(3000, 4000, 1600)).toEqual({ w: 1200, h: 1600 });
+    expect(fitInside(800, 600, 1600)).toEqual({ w: 800, h: 600 });
   });
 });

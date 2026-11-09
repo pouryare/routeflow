@@ -1,5 +1,6 @@
 "use client";
 
+import { shrinkPhoto } from "@/lib/shrinkPhoto";
 import { FieldInput } from "@/components/FieldInput";
 import { PasswordInput } from "@/components/TextInput";
 import { FieldPassword } from "@/components/PasswordRoll";
@@ -89,7 +90,7 @@ function AvatarCell({
     setBusy(true);
     try {
       const form = new FormData();
-      form.append("file", file);
+      form.append("file", await shrinkPhoto(file, { maxEdge: 512 }));
       form.append("user_id", String(user.id));
       const res = await fetch("/api/photos/avatar", { method: "POST", body: form });
       // The upload route already wrote the row, so on failure there is nothing to undo

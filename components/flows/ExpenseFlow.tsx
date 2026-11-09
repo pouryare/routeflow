@@ -1,5 +1,6 @@
 "use client";
 
+import { shrinkPhoto } from "@/lib/shrinkPhoto";
 import { useMyPosition } from "@/components/MyPositionProvider";
 import { withPlace } from "@/lib/entryPlace";
 import { Button } from "@heroui/react";
@@ -83,7 +84,7 @@ export default function ExpenseFlow({
       if (file && typeof json.id === "number") {
         // The expense is saved either way; a failed picture is reported but does not undo it.
         const form = new FormData();
-        form.append("file", file);
+        form.append("file", await shrinkPhoto(file));
         const up = await fetch(`/api/accounting/expenses/${json.id}/receipt`, { method: "POST", body: form }).catch(() => null);
         if (!up || !up.ok) return { ok: false, error: "هزینه ثبت شد ولی عکس رسید ارسال نشد؛ از صفحهٔ دفتر دوباره بفرستید." };
       }

@@ -5,11 +5,12 @@ import { Button } from "@heroui/react";
 import { Icon } from "@/components/meridian/Icon";
 import BottomSheet from "@/components/mobile/BottomSheet";
 import { AnswerButton } from "@/components/tapflow/Answer";
-import { CROP_ASPECTS, cropRect } from "@/lib/photoCrop";
+import { CROP_ASPECTS } from "@/lib/photoCrop";
+import { shrinkPhoto } from "@/lib/shrinkPhoto";
 
 /** Frame a photo before it uploads: pick a shape (as taken, 4:3, 1:1 or 3:4), see it, and confirm. The
  *  crop is always the centre of the picture. shortcut: no dragging the frame to another spot; add pan only
- *  if people ask. «اصلی» uploads the file untouched. */
+ *  if people ask. «اصلی» keeps the whole picture (still made small before it is sent). */
 export default function PhotoCropSheet({ file, onDone, onCancel }: { file: File | null; onDone: (f: File) => void; onCancel: () => void }) {
   const [aspect, setAspect] = useState<(typeof CROP_ASPECTS)[number]["id"]>("orig");
   const [busy, setBusy] = useState(false);
@@ -19,19 +20,9 @@ export default function PhotoCropSheet({ file, onDone, onCancel }: { file: File 
 
   async function frame() {
     if (!file) return;
-    if (ratio === null) return onDone(file);
     setBusy(true);
     try {
-      const bmp = await createImageBitmap(file);
-      const r = cropRect(bmp.width, bmp.height, ratio);
-      const canvas = document.createElement("canvas");
-      canvas.width = r.w;
-      canvas.height = r.h;
-      canvas.getContext("2d")?.drawImage(bmp, r.x, r.y, r.w, r.h, 0, 0, r.w, r.h);
-      const blob = await new Promise<Blob | null>((res) => canvas.toBlob(res, "image/jpeg", 0.92));
-      onDone(blob ? new File([blob], file.name.replace(/\.\w+$/, "") + ".jpg", { type: "image/jpeg" }) : file);
-    } catch {
-      onDone(file); // cannot decode here: send the original and let the server handle it
+      onDone(await shrinkPhoto(file, { ratio })); // frame it and make it small enough for a slow line
     } finally {
       setBusy(false);
     }
