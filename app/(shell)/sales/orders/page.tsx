@@ -206,7 +206,11 @@ function ListView({
           })}
         />
       )}
-      <Pager base="/sales/orders" params={pageParams} paging={paging} />
+      {paging.pageCount > 1 && (
+        <div className="kblock__body">
+          <Pager base="/sales/orders" params={pageParams} paging={paging} />
+        </div>
+      )}
     </div>
   );
 }
