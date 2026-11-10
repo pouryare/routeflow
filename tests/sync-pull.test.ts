@@ -127,10 +127,11 @@ describe("pullSince", () => {
     expect(runIds).not.toContain(oldDone);
   });
 
-  it("pages a pull: the pages together are the whole answer, the watermark is the first page's, deletions come last", async () => {
+  it.each(["delivery_driver", "owner"] as const)("pages a pull for a %s: the pages together are the whole answer, the watermark is the first page's, deletions come last", async (role) => {
+    // The owner's pages skip tables already sent and read only the rows after the cursor, in SQL.
     await runFor(driverA, custA);
     await tombstone(1, "customers", 4242);
-    const who = sess(driverA, "delivery_driver", 1, groupA);
+    const who = sess(driverA, role, 1, role === "owner" ? null : groupA);
     const whole = await pullSince(who, null);
     const key = (r: { table: string; row: Record<string, unknown> }) => `${r.table}:${String(r.row.id)}`;
 
