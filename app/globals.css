@@ -4659,6 +4659,8 @@ html[data-fx="off"] .meridian .flow-drawer { transition: none; }
 }
 .meridian .crm-views button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-foreground); }
 .meridian .crm-views i { font-style: normal; opacity: .75; margin-inline-start: 4px; font-variant-numeric: tabular-nums; }
+/* Full strength on the lit chip: at .75 over the accent it read 3.4:1, under the 4.5 the text needs. */
+.meridian .crm-views button[aria-pressed="true"] i { opacity: 1; }
 .meridian .crm-list { display: grid; gap: 10px; }
 .meridian .crm-card { display: grid; gap: 6px; padding: 12px 14px; border-radius: var(--r-xl); background: var(--surface); box-shadow: var(--sh-1); border: 1px solid transparent; }
 .meridian .crm-card.hl { border-color: var(--accent); }
