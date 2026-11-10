@@ -27,6 +27,7 @@ export default function OrderAmountFilter({
 
   const go = (next: [number, number] | null) => {
     const q = new URLSearchParams(search.toString());
+    q.delete("page"); // a new range starts from its first page
     if (next) {
       q.set("min", String(next[0]));
       q.set("max", String(next[1]));

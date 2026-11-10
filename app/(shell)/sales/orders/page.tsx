@@ -30,10 +30,15 @@ import OrderAmountFilter from "@/components/sales/OrderAmountFilter";
 import { boundsOf, inRange, parseRange } from "@/lib/rangeBar";
 import { pageMetadata } from "@/lib/pageMeta";
 import LiveRefresh from "@/components/LiveRefresh";
+import Pager from "@/components/accounting/Pager";
+import { pagingFor, type Paging } from "@/lib/paging";
 
 export const metadata = pageMetadata("/sales/orders");
 
 export const dynamic = "force-dynamic";
+
+/** Cards on one page of the list view. A hundred cards was 355 KB of page on a phone. */
+const ORDERS_PER_PAGE = 25;
 
 /** The three ways to read the same orders, selected by `?view=`.
  *
@@ -93,8 +98,14 @@ function ListView({
   bounds,
   range,
   amounts,
+  paging,
+  pageParams,
 }: {
   orders: OrderSummary[];
+  /** Which slice of `orders` is drawn; the heading still counts them all. */
+  paging: Paging;
+  /** The list's other filters, kept by the pager's links. */
+  pageParams: Record<string, string | undefined>;
   onARun: Set<number>;
   /** Amount bounds of every order this person can see, and the chosen range (null = all). */
   bounds: { min: number; max: number } | null;
@@ -152,7 +163,7 @@ function ListView({
         </p>
       ) : (
         <OrdersPockets
-          rows={orders.map((order): PocketRow => {
+          rows={orders.slice(paging.offset, paging.offset + paging.limit).map((order): PocketRow => {
             const st = statusPill(order.status);
             const docs: PocketDoc[] = [];
             // A draft has not been invoiced, so there is no receipt to file.
@@ -195,6 +206,7 @@ function ListView({
           })}
         />
       )}
+      <Pager base="/sales/orders" params={pageParams} paging={paging} />
     </div>
   );
 }
@@ -400,7 +412,17 @@ export default async function OrdersPage({
       ) : view === "journey" ? (
         <JourneyView session={session} orders={orders} mode={mode} askedOrderId={askedOrderId} />
       ) : (
-        <ListView orders={orders} onARun={onARun} focused={focused} mayOrder={canSell(session.role)} bounds={bounds} range={range} amounts={amounts} />
+        <ListView
+          orders={orders}
+          onARun={onARun}
+          focused={focused}
+          mayOrder={canSell(session.role)}
+          bounds={bounds}
+          range={range}
+          amounts={amounts}
+          paging={pagingFor(one(params, "page"), orders.length, ORDERS_PER_PAGE)}
+          pageParams={{ customer: customerParam, min: one(params, "min"), max: one(params, "max") }}
+        />
       )}
     </>
   );
