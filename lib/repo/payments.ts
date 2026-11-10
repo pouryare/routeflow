@@ -2,6 +2,7 @@ import { cache } from "react";
 import { isToman } from "@/lib/money";
 import type { Db } from "@/lib/database/client";
 import { makeRepo } from "./base";
+import { linesByOrder } from "./orderLines";
 import { lineTotalToman, netOfDiscount, type LineSnapshot } from "@/lib/orderMath";
 import type { CustomerDebt } from "@/lib/types";
 import { FULFILLED_ORDER_STATUSES, sqlStatusList } from "@/lib/orderStateMachine";
@@ -12,7 +13,6 @@ import { tryEmitEvent } from "./events";
    a later editor can route around with a special case. */
 import { postReceipt, postReceiptReversal, receiptJournalIdFor } from "./ledgerPostings";
 
-import { mapSeq } from "@/lib/seq";
 import { round } from "@/lib/database/dialect";
 export type { CustomerDebt };
 
@@ -102,14 +102,11 @@ export async function deliveredOrdersForCustomer(
     )
     .all(customerId, organizationId) as unknown as (Omit<OutstandingOrder, "total_toman"> & { discount_toman: number })[];
 
-  const lineStmt = db.prepare(
-    `SELECT packs_ordered, packs_delivered, unit_price_toman, unit_cost_toman,
-            qty_per_pack, kg_per_base_unit
-       FROM order_lines WHERE order_id = ?`
-  );
+  // Every order's lines in one query (a customer's page was one query per order: 64 on the demo).
+  const linesBy = await linesByOrder(db, orders.map((o) => o.id));
 
-  return await mapSeq(orders, async (o) => {
-    const lines = await lineStmt.all(o.id) as unknown as LineSnapshot[];
+  return orders.map((o) => {
+    const lines = linesBy.get(o.id) ?? [];
     /* What the customer owes is the lines less the approved discount (lib/discounts.ts). */
     const total_toman = netOfDiscount(lines.reduce((sum, l) => sum + lineTotalToman(l), 0), Number(o.discount_toman ?? 0));
     const { discount_toman: _discount, ...rest } = o;
