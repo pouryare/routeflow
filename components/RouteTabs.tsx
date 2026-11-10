@@ -76,6 +76,10 @@ export default function RouteTabs({
             </Tabs.Tab>
           ))}
         </Tabs.List>
+        {/* The page below the row is the real panel. React Aria still points the lit tab's
+            aria-controls at a panel id, and with no element there every page failed axe's
+            critical aria-valid-attr-value check; an empty hidden panel gives it a target. */}
+        {lit && <Tabs.Panel id={lit} hidden>{null}</Tabs.Panel>}
       </Tabs>
     </div>
   );
