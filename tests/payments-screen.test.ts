@@ -15,11 +15,14 @@ describe("the payments screen", () => {
   it("never counts a VOIDED receipt in a total", () => {
     // A void means the money went back. Counting it and calling the card "collected this
     // month" is the single most misleading number this screen could print.
-    expect(panel).toMatch(/const live = useMemo\(\(\) => recent\.filter\(\(p\) => !p\.voided_at\)/);
-    // Every card builds from `live`, not from `payments`.
-    const cardSection = panel.slice(panel.indexOf("const totals = useMemo"));
-    expect(cardSection).toMatch(/live\.filter/);
-    expect(cardSection).not.toMatch(/payments\s*\?\?\s*\[\]\)\.filter/);
+    // The cards are summed on the server, from receipts read with voided ones hidden.
+    const list = readFileSync("app/api/payments/route.ts", "utf8");
+    const cardSection = list.slice(list.indexOf("const recent ="), list.indexOf("const totals ="));
+    expect(cardSection).toMatch(/voided: "hide"/);
+    expect(list).toMatch(/const totals = paymentTotals\(recent,/);
+    // The screen shows those sums, never a total of its own page of `payments`.
+    expect(panel).toMatch(/setTotals\(body\.totals\)/);
+    expect(panel).not.toMatch(/payments\s*\?\?\s*\[\]\)\.filter/);
   });
 
   it("hides voided rows BY DEFAULT rather than showing them as live money", () => {

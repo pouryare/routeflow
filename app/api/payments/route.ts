@@ -16,7 +16,8 @@ import {
   type AllocationInput,
 } from "@/lib/repo/payments";
 import { isOwner, MANAGE_ROLES } from "@/lib/roles";
-import { PAYMENTS_PAGE_SIZE } from "@/lib/paymentsView";
+import { PAYMENTS_PAGE_SIZE, paymentTotals } from "@/lib/paymentsView";
+import { tehranTodayIso } from "@/lib/jalali";
 
 
 const METHODS: PaymentMethod[] = ["CASH", "POS", "CARD_TO_CARD", "CHEQUE", "CREDIT_NOTE", "OTHER"];
@@ -62,12 +63,15 @@ export async function GET(req: NextRequest) {
       PAYMENTS_PAGE_SIZE
     );
     // The totals cards cover today, the last 7 days and this month: the live receipts since the
-    // earlier of a week ago and the first of the month.
-    const since = day(q.get("recent_from"));
-    // shortcut: capped at 5,000 receipts in ~5 weeks; read the saved daily totals instead if a company outgrows it.
-    const recent = since
-      ? (await pagePayments(session.organizationId, scope, { customer_id, from: since, voided: "hide" }, 1, 5000)).rows
-      : [];
+    // earlier of a week ago and the first of the month, summed here rather than sent (they were
+    // 119 KB of a 25-row page).
+    const now = new Date();
+    const today = tehranTodayIso(now);
+    const weekAgo = tehranTodayIso(new Date(now.getTime() - 7 * 864e5));
+    const monthStart = today.slice(0, 8) + "01";
+    // shortcut: capped at 5,000 receipts in ~5 weeks; sum in SQL instead if a company outgrows it.
+    const recent = (await pagePayments(session.organizationId, scope, { customer_id, from: weekAgo < monthStart ? weekAgo : monthStart, voided: "hide" }, 1, 5000)).rows;
+    const totals = paymentTotals(recent, today, weekAgo);
     // An empty filtered list says how many receipts the filter hides (FilteredEmpty).
     const unfiltered = total === 0 ? (await pagePayments(session.organizationId, scope, { customer_id, voided: "hide" }, 1, 1)).total : 0;
     const places = await entryPlacesFor(session.organizationId, "payment", rows.map((p) => p.id));
@@ -77,7 +81,7 @@ export async function GET(req: NextRequest) {
       total,
       page,
       pageSize: PAYMENTS_PAGE_SIZE,
-      recent,
+      totals,
       unfiltered,
     });
   }

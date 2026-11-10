@@ -30,10 +30,10 @@ import SmartPicker from "@/components/mobile/SmartPicker";
 import { ChipGroup } from "@/components/mobile/ChipGroup";
 
 export default function PaymentsPanel({ customers, canSeeBooks = false }: { customers: Customer[]; canSeeBooks?: boolean }) {
-  /* The server pages the list (25 rows) and sends the live receipts of the last week and this
-     month for the totals cards, so the screen no longer downloads every receipt ever taken. */
+  /* The server pages the list (25 rows) and sends the totals cards' sums, so the screen no longer
+     downloads every receipt ever taken. */
   const [payments, setPayments] = useState<Payment[] | null>(null);
-  const [recent, setRecent] = useState<Payment[]>([]);
+  const [totals, setTotals] = useState<ReturnType<typeof paymentTotals>>(() => paymentTotals([], "", ""));
   const [total, setTotal] = useState(0);
   const [pageCount, setPageCount] = useState(1);
   const [unfiltered, setUnfiltered] = useState(0);
@@ -83,14 +83,8 @@ export default function PaymentsPanel({ customers, canSeeBooks = false }: { cust
   /* A voided payment's money is GONE, so it is counted nowhere in the totals. Counting it
      and calling the result "collected this month" is the most misleading number this screen
      could print. */
-  const live = useMemo(() => recent.filter((p) => !p.voided_at), [recent]);
-
-  /* Today / week / month, by method — from the same `live` list the table shows, so a
-     figure on a card and a row in the table can never disagree. */
-  const totals = useMemo(() => {
-    const now = new Date();
-    return paymentTotals(live, tehranTodayIso(now), tehranTodayIso(new Date(now.getTime() - 7 * 864e5)));
-  }, [live]);
+  /* Today / week / month, by method: summed on the server (app/api/payments) with the same
+     paymentTotals, from the live receipts of the last week and this month. */
 
   /* Jalali month sections. A flat list of 400 receipts is unreadable; grouped by month it is
      a story. The grouping is derived at render, never stored. */
@@ -142,11 +136,7 @@ export default function PaymentsPanel({ customers, canSeeBooks = false }: { cust
   }
 
   const load = useCallback(async () => {
-    const now = new Date();
-    const today = tehranTodayIso(now);
-    const weekAgo = tehranTodayIso(new Date(now.getTime() - 7 * 864e5));
-    const monthStart = today.slice(0, 8) + "01";
-    const q = new URLSearchParams({ page: String(page), voided: fVoided, recent_from: weekAgo < monthStart ? weekAgo : monthStart });
+    const q = new URLSearchParams({ page: String(page), voided: fVoided });
     if (fMethod) q.set("method", fMethod);
     if (fFrom) q.set("from", fFrom);
     if (fTo) q.set("to", fTo);
@@ -157,7 +147,7 @@ export default function PaymentsPanel({ customers, canSeeBooks = false }: { cust
       return;
     }
     setPayments(body.payments);
-    setRecent(body.recent ?? []);
+    if (body.totals) setTotals(body.totals);
     setTotal(body.total);
     setUnfiltered(body.unfiltered ?? 0);
     setPageCount(Math.max(1, Math.ceil(body.total / body.pageSize)));
