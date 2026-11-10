@@ -100,6 +100,7 @@ export default function GroupTerritoryEditor({
           group={{ id: "owner", label: "فیلتر مالک", mode: "single", neutral: "all", value: String(ownerFilter),
             onChange: (v) => setOwnerFilter(v === "all" ? "all" : v === "none" ? "none" : Number(v)),
             options: [{ id: "none", label: "بدون گروه" }, ...groups.map((g) => ({ id: String(g.id), label: g.name }))] }}
+          wrap // one chip per group: unwrapped, four groups ran 33 px past a phone
         />
       </div>
 
