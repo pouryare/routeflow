@@ -78,3 +78,14 @@ describe("saveViewMode", () => {
   });
 });
 
+
+describe("leadsDrawn", () => {
+  it("draws a step of a long list, every lead in a grouped view, and always the linked lead", async () => {
+    const { leadsDrawn, LEADS_SHOWN_STEP } = await import("@/lib/leadViews");
+    expect(leadsDrawn("compact", 200, LEADS_SHOWN_STEP, -1)).toBe(30);
+    expect(leadsDrawn("compact", 12, LEADS_SHOWN_STEP, -1)).toBe(12);
+    expect(leadsDrawn("kanban", 200, LEADS_SHOWN_STEP, -1)).toBe(200);
+    expect(leadsDrawn("table", 200, LEADS_SHOWN_STEP, 120)).toBe(121);
+    expect(leadsDrawn("table", 200, 60, -1)).toBe(60);
+  });
+});

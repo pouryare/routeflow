@@ -53,3 +53,15 @@ export function saveViewMode(mode: LeadViewMode): void {
 }
 
 export { STORAGE_KEY };
+
+/** The list views draw this many leads, then more on a tap: 200 leads were 12,400 elements, and a
+ *  cheap phone stuttered scrolling them. */
+export const LEADS_SHOWN_STEP = 30;
+
+/** How many leads a view draws. The grouped views (kanban, score, cluster) need every lead to place
+ *  each in its group. A lead opened from the map or a link (`linkedAt`, -1 for none) is always drawn,
+ *  however far down the list it sits. */
+export function leadsDrawn(mode: LeadViewMode, total: number, shown: number, linkedAt: number): number {
+  if (mode === "kanban" || mode === "score" || mode === "cluster") return total;
+  return Math.min(total, Math.max(shown, linkedAt + 1));
+}

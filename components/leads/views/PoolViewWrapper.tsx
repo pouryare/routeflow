@@ -1,5 +1,9 @@
 "use client";
 
+import { useState } from "react";
+import { Button } from "@heroui/react";
+import { Icon } from "@/components/meridian/Icon";
+import { faNum } from "@/lib/format";
 import { SavedLocation } from "@/app/(shell)/leads/hooks/useLeads";
 import { faJalaliDate } from "@/lib/jalali";
 import { type NavAppId } from "@/lib/navApps";
@@ -14,7 +18,7 @@ import PoolViewBatch from "./PoolViewBatch";
 import PoolViewCluster from "./PoolViewCluster";
 import EmptyState from "@/components/EmptyState";
 import { SkeletonRows } from "@/components/Skeleton";
-import { type LeadViewMode } from "@/lib/leadViews";
+import { LEADS_SHOWN_STEP, leadsDrawn, type LeadViewMode } from "@/lib/leadViews";
 
 interface PoolViewWrapperProps {
   viewMode: LeadViewMode;
@@ -52,6 +56,7 @@ export interface PoolViewItem {
 
 export default function PoolViewWrapper(props: PoolViewWrapperProps) {
   const { viewMode, locations, loading, run, sortAnchor } = props;
+  const [shown, setShown] = useState(LEADS_SHOWN_STEP);
 
   if (loading) {
     return <SkeletonRows />;
@@ -63,7 +68,12 @@ export default function PoolViewWrapper(props: PoolViewWrapperProps) {
     );
   }
 
-  const items: PoolViewItem[] = locations.map((loc) => {
+  const linkedAt = props.linkedId === null ? -1 : locations.findIndex((l) => l.id === props.linkedId);
+  const limit = leadsDrawn(viewMode, locations.length, shown, linkedAt);
+  const visible = locations.slice(0, limit);
+  const hidden = locations.length - visible.length;
+
+  const items: PoolViewItem[] = visible.map((loc) => {
     const inRun = run.includes(loc.id);
     const runIdx = inRun ? run.indexOf(loc.id) + 1 : null;
     const km = sortAnchor && loc.lat !== null && loc.lng !== null
@@ -98,6 +108,20 @@ export default function PoolViewWrapper(props: PoolViewWrapperProps) {
     priorityHigh: props.priorityHigh,
   };
 
+  return (
+    <>
+      {renderView(viewMode, shared)}
+      {hidden > 0 && (
+        <Button variant="secondary" className="mt-[var(--space-2)] min-h-11 w-full" onPress={() => setShown(limit + LEADS_SHOWN_STEP)}>
+          <Icon name="chevron-down" size="sm" />
+          {faNum(Math.min(hidden, LEADS_SHOWN_STEP))} سرنخ دیگر ({faNum(hidden)} مانده)
+        </Button>
+      )}
+    </>
+  );
+}
+
+function renderView(viewMode: LeadViewMode, shared: Parameters<typeof PoolViewCompact>[0]) {
   switch (viewMode) {
     case "compact":
       return <PoolViewCompact {...shared} />;
