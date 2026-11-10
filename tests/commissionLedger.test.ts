@@ -230,5 +230,6 @@ describe("allStatements", () => {
     const one = await statementFor(db, ctx.nazanin, period);
     expect(row.accrued_toman).toBe(one.accrued_toman);
     expect(row.owed_toman).toBe(one.owed_toman);
+    expect(row).toEqual(one);
   });
 });

@@ -4,7 +4,7 @@ import { Button } from "@heroui/react";
 import { Icon } from "@/components/meridian/Icon";
 import { faDigits, faNum } from "@/lib/format";
 import type { Worklist, WorkReminder } from "@/lib/mapWorklist";
-import type { CustomerRow, DistrictProperties } from "@/lib/types";
+import type { MapCustomer, DistrictProperties } from "@/lib/types";
 
 /** «در این محدوده»: the top of the map sidebar when nothing is selected (item 27).
  *
@@ -19,7 +19,7 @@ export default function MapWorklist({
   onReminder,
 }: {
   worklist: Worklist & { totals: { quiet: number; reminders: number; uncovered: number } };
-  onCustomer: (c: CustomerRow) => void;
+  onCustomer: (c: MapCustomer) => void;
   onDistrict: (d: DistrictProperties) => void;
   onReminder: (r: WorkReminder) => void;
 }) {

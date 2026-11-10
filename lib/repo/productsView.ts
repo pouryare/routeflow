@@ -1,10 +1,9 @@
 import { getDb } from "@/lib/db";
 import { orgScopeId, type Session } from "@/lib/session";
 import { orgClause } from "@/lib/orgScope";
-import { costBasisFor, type CatalogueProduct, type CostBasis } from "@/lib/catalogue";
+import { costBasisMany, type CatalogueProduct, type CostBasis } from "@/lib/catalogue";
 import { companyRatePerKg } from "@/lib/repo/commissionRates";
 
-import { mapSeq } from "@/lib/seq";
 /* What /sales/products reads beyond the catalogue, as functions of the SESSION. */
 
 export interface PriceHistoryRow {
@@ -48,12 +47,12 @@ export interface OwnerCosting {
 }
 
 /** The owner's costing drawer inputs, all resolved against ONE date through the same
- *  `costBasisFor` the order line snapshots, so there is one answer per product. A null basis is
+ *  rules as `costBasisFor`, which the order line snapshots, so there is one answer per product. A null basis is
  *  passed through as unknown rather than as a cost of zero. */
 export async function ownerCostingFor(session: Session, products: CatalogueProduct[], today: string): Promise<OwnerCosting> {
   const db = getDb();
   return {
     companyRatePerKg: await companyRatePerKg(db, session.organizationId, today),
-    basisByProduct: new Map(await mapSeq(products, async (p) => [p.id, await costBasisFor(db, p.id, p.packagings[0]?.id ?? null, today)])),
+    basisByProduct: await costBasisMany(db, products.map((p) => ({ productId: p.id, packagingId: p.packagings[0]?.id ?? null })), today),
   };
 }

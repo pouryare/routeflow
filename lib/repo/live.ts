@@ -169,14 +169,18 @@ export async function eventBounds(organizationId: number, db: Db = getDb()): Pro
   return { oldest: r.oldest ?? null, newest: r.newest ?? null };
 }
 
-/** Drops events older than `days`, always keeping the newest one, so the log's bounds still say
- *  where it had got to. A phone away longer than that gets a reset and refetches. */
+/** Moves events older than `days` to live_events_archive (kept, not deleted: owner decision
+ *  2026-11-09), always keeping the newest one, so the log's bounds still say where it had got to.
+ *  A phone away longer than that gets a reset and refetches. */
 export async function pruneEvents(days = 7, db: Db = getDb()): Promise<number> {
   const r = await db
     .prepare(
-      `DELETE FROM live_events
-        WHERE created_at < now() - make_interval(days => ?)
-          AND id < (SELECT MAX(id) FROM live_events)`
+      `WITH moved AS (
+         DELETE FROM live_events
+          WHERE created_at < now() - make_interval(days => ?)
+            AND id < (SELECT MAX(id) FROM live_events)
+         RETURNING *)
+       INSERT INTO live_events_archive SELECT * FROM moved`
     )
     .run(days);
   return Number(r.changes);

@@ -49,6 +49,18 @@ function cutPage(all: PullRow[], page: PullPage): { rows: PullRow[]; next: strin
   return { rows, next: rest.length > rows.length ? cursorOf(rows[rows.length - 1]) : null };
 }
 
+/** On a paged pull, what a big table's query adds so the database hands over only what this page can use:
+ *  a table wholly before the cursor is skipped, the cursor's own table starts after its id, and no table
+ *  sends more than `limit + 1` rows (enough for cutPage to fill the page and know a next one exists). The
+ *  owner's first pull was 16 pages, each re-reading all 25,000 rows to keep 1,500. */
+function pageClause(page: PullPage | undefined, table: string, alias: string): { skip: boolean; sql: string; params: number[] } {
+  if (!page) return { skip: false, sql: "", params: [] };
+  const m = /^([a-z_]+):(\d+)$/.exec(page.after ?? "");
+  if (m && tableRank(table) < tableRank(m[1])) return { skip: true, sql: "", params: [] };
+  const after = m && m[1] === table ? Number(m[2]) : 0;
+  return { skip: false, sql: ` AND ${alias}id > ? ORDER BY ${alias}id LIMIT ?`, params: [after, page.limit + 1] };
+}
+
 /** Rows this session may see that changed since `since` (null = a full snapshot), plus
  *  tombstones, plus the new watermark.
  *
@@ -72,7 +84,7 @@ export async function pullSince(session: Session, since: string | null, page?: P
   const org = session.organizationId;
   const mark = xidOf(since);
   /* "Changed since the watermark": the transaction that last wrote the row is not below it. */
-  const changed = (alias: string) => `COALESCE(${alias}sync_xid, '0') >= CAST(? AS xid8)`;
+  const changed = (alias: string) => `${alias}sync_xid >= CAST(? AS xid8)`;
   const rows: PullRow[] = [];
   const add = (table: string, list: Record<string, unknown>[]) => {
     for (const r of list) {
@@ -82,36 +94,39 @@ export async function pullSince(session: Session, since: string | null, page?: P
   };
 
   // --- catalogue: everyone, in full ------------------------------------------------
-  add(
+  const pp = pageClause(page, "products", "");
+  if (!pp.skip) add(
     "products",
     plain(
       await db
         .prepare(
-          `SELECT * FROM products WHERE (organization_id = ? OR organization_id IS NULL) AND ${changed("")}`
+          `SELECT * FROM products WHERE (organization_id = ? OR organization_id IS NULL) AND ${changed("")}${pp.sql}`
         )
-        .all(org, mark) as Record<string, unknown>[]
+        .all(org, mark, ...pp.params) as Record<string, unknown>[]
     )
   );
-  add(
+  const pk = pageClause(page, "packagings", "pk.");
+  if (!pk.skip) add(
     "packagings",
     plain(
       await db
         .prepare(
           `SELECT pk.* FROM packagings pk JOIN products p ON p.id = pk.product_id
-            WHERE (p.organization_id = ? OR p.organization_id IS NULL) AND ${changed("pk.")}`
+            WHERE (p.organization_id = ? OR p.organization_id IS NULL) AND ${changed("pk.")}${pk.sql}`
         )
-        .all(org, mark) as Record<string, unknown>[]
+        .all(org, mark, ...pk.params) as Record<string, unknown>[]
     )
   );
-  add(
+  const pr = pageClause(page, "product_prices", "pp.");
+  if (!pr.skip) add(
     "product_prices",
     plain(
       await db
         .prepare(
           `SELECT pp.* FROM product_prices pp JOIN products p ON p.id = pp.product_id
-            WHERE (p.organization_id = ? OR p.organization_id IS NULL) AND ${changed("pp.")}`
+            WHERE (p.organization_id = ? OR p.organization_id IS NULL) AND ${changed("pp.")}${pr.sql}`
         )
-        .all(org, mark) as Record<string, unknown>[]
+        .all(org, mark, ...pr.params) as Record<string, unknown>[]
     )
   );
 
@@ -280,23 +295,25 @@ export async function pullSince(session: Session, since: string | null, page?: P
        loads any old order online. Upgrade to an on-demand fetch if offline lookups of old paid
        orders are needed. */
     const orderSince = new Date(Date.now() - ORDER_WINDOW_DAYS * 86_400_000).toISOString().slice(0, 10);
-    add(
+    const po = pageClause(page, "orders", "o.");
+    if (!po.skip) add(
       "orders",
       plain(
         await db
           .prepare(
             `SELECT o.* FROM orders o WHERE ${changed("o.")}${of.sql}
-               AND (o.order_date >= ? OR o.payment_status <> 'paid' OR o.status NOT IN (${sqlStatusList([...TERMINAL_ORDER_STATUSES])}))`
+               AND (o.order_date >= ? OR o.payment_status <> 'paid' OR o.status NOT IN (${sqlStatusList([...TERMINAL_ORDER_STATUSES])}))${po.sql}`
           )
-          .all(mark, ...of.params, orderSince) as Record<string, unknown>[]
+          .all(mark, ...of.params, orderSince, ...po.params) as Record<string, unknown>[]
       )
     );
-    add(
+    const pc = pageClause(page, "customers", "c.");
+    if (!pc.skip) add(
       "customers",
       plain(
         await db
-          .prepare(`SELECT c.* FROM customers c WHERE ${changed("c.")}${gf.sql}`)
-          .all(mark, ...gf.params) as Record<string, unknown>[]
+          .prepare(`SELECT c.* FROM customers c WHERE ${changed("c.")}${gf.sql}${pc.sql}`)
+          .all(mark, ...gf.params, ...pc.params) as Record<string, unknown>[]
       )
     );
   }

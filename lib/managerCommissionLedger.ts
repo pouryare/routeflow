@@ -8,11 +8,11 @@
  *  that sum a second way.
  */
 
-import { deductionFields, deductionsFor, lifetimeDeductions, type DeductionItem } from "./repo/discountDeductions";
-import { insertCommissionPayment, insertDatedRate } from "./repo/commissionPayments";
+import { deductionFields, deductionsByUser, sumDeductions, type DeductionItem } from "./repo/discountDeductions";
+import { insertCommissionPayment, insertDatedRate, paidByPerson } from "./repo/commissionPayments";
 import type { Db } from "@/lib/database/client";
 import { effectiveAt } from "./pricing";
-import { allStatements, type Period } from "./commissionLedger";
+import { allStatements, type Period, type StatementOrder } from "./commissionLedger";
 import { roundToman } from "./money";
 import { orgClause } from "./orgScope";
 
@@ -108,78 +108,89 @@ export async function managerStatementFor(
   managerId: number,
   period: Period
 ): Promise<ManagerStatement> {
-  const person = await db
-    .prepare(
-      `SELECT u.id, u.display_name, u.group_id, u.organization_id, g.name AS group_name
-         FROM users u LEFT JOIN groups g ON g.id = u.group_id
-        WHERE u.id = ?`
-    )
-    .get(managerId) as
-    | { id: number; display_name: string; group_id: number | null; organization_id: number; group_name: string | null }
-    | undefined;
+  return (await managerStatementsFor(db, [managerId], period))[0];
+}
 
-  // A manager with no group has no team to earn a share of -- zero rather than a group
-  // sum error, the same "empty means nothing" rule allStatements enforces.
-  const periodOrders =
-    person?.group_id == null ? [] : (await allStatements(db, period, { groupId: person.group_id, organizationId: person.organization_id })).flatMap((s) => s.orders);
-  const groupAccrued = periodOrders.reduce((total, o) => total + o.accrual_toman, 0);
+const ALL_TIME = { from: "0000-01-01", to: "9999-12-31" };
 
+/** The statements of many managers, in the order given: people, overrides, payments and deductions
+ *  are one query each for everyone, and each group's sales are read once however many managers
+ *  share it. */
+async function managerStatementsFor(db: Db, managerIds: number[], period: Period): Promise<ManagerStatement[]> {
+  if (managerIds.length === 0) return [];
+  const from = period.from.slice(0, 10);
+  const to = period.to.slice(0, 10);
+  const people = new Map(
+    (await db
+      .prepare(
+        `SELECT u.id, u.display_name, u.group_id, u.organization_id, g.name AS group_name
+           FROM users u LEFT JOIN groups g ON g.id = u.group_id
+          WHERE u.id IN (${managerIds.map(() => "?").join(",")})`
+      )
+      .all(...managerIds) as unknown as { id: number; display_name: string; group_id: number | null; organization_id: number; group_name: string | null }[])
+      .map((p) => [p.id, p])
+  );
   const overrides = await db
     .prepare("SELECT * FROM manager_commission_overrides")
     .all() as unknown as ManagerOverrideRow[];
-  // Valued order by order at the override in force on ITS OWN date, same reasoning as
-  // the lifetime figure below -- a mid-period raise must not silently reprice the
-  // orders that accrued before it.
-  const accrued = roundToman(
-    periodOrders.reduce((total, o) => {
-      const r = overrideFor(overrides, managerId, o.order_date);
-      return total + (o.accrual_toman * (r?.override_pct ?? 0)) / 100;
-    }, 0)
-  );
-  // The percentage shown on the card: whatever applies today, since a single number
-  // cannot represent a mix of rates that changed mid-period.
-  const pct = overrideFor(overrides, managerId, period.to)?.override_pct ?? 0;
+  const paidBy = await paidByPerson(db, "manager", managerIds, period);
+  const deductionsBy = await deductionsByUser(db, managerIds, "manager");
 
-  const paidInPeriod = await db
-    .prepare(
-      "SELECT COALESCE(SUM(amount_toman), 0) AS total FROM manager_commission_payments WHERE manager_user_id = ? AND paid_on BETWEEN ? AND ?"
-    )
-    .get(managerId, period.from.slice(0, 10), period.to.slice(0, 10)) as { total: number };
-
-  // Lifetime owed needs each historical order valued at the override in force on ITS
-  // OWN date, not at whatever override applies today -- a raise given this month must
-  // not silently reprice every override accrued before it, the same rule commission
-  // rates and product prices already follow. allStatements already carries the dated
-  // order_date/accrual_toman pairs behind the group total, so this reuses those rather
-  // than re-deriving them.
-  const lifetimeAccrued =
-    person?.group_id == null
-      ? 0
-      : roundToman(
-          (await allStatements(db, { from: "0000-01-01", to: "9999-12-31" }, { groupId: person.group_id, organizationId: person.organization_id }))
-            .flatMap((s) => s.orders)
-            .reduce((total, o) => {
-              const r = overrideFor(overrides, managerId, o.order_date);
-              return total + (o.accrual_toman * (r?.override_pct ?? 0)) / 100;
-            }, 0)
-        );
-  const lifetimePaid = await db
-    .prepare("SELECT COALESCE(SUM(amount_toman), 0) AS total FROM manager_commission_payments WHERE manager_user_id = ?")
-    .get(managerId) as { total: number };
-
-  return {
-    manager_user_id: managerId,
-    display_name: person?.display_name ?? "—",
-    group_id: person?.group_id ?? null,
-    group_name: person?.group_name ?? null,
-    group_accrued_toman: groupAccrued,
-    override_pct: pct,
-    accrued_toman: accrued,
-    paid_toman: paidInPeriod.total,
-    owed_toman: lifetimeAccrued - (await lifetimeDeductions(db, managerId, "manager")) - lifetimePaid.total,
-    // The override stays on the group's gross accruals; a discount charged to the manager comes off here.
-    ...deductionFields(accrued, await deductionsFor(db, managerId, "manager", period)),
+  /* A group's orders, period and lifetime, read once per group. Lifetime owed needs each
+     historical order valued at the override in force on ITS OWN date, not at whatever override
+     applies today -- a raise given this month must not silently reprice every override accrued
+     before it, the same rule commission rates and product prices already follow. allStatements
+     already carries the dated order_date/accrual_toman pairs behind the group total, so this
+     reuses those rather than re-deriving them. */
+  const groupOrders = new Map<number, { period: StatementOrder[]; lifetime: StatementOrder[] }>();
+  const ordersOf = async (groupId: number, organizationId: number) => {
+    const known = groupOrders.get(groupId);
+    if (known) return known;
+    const read = {
+      period: (await allStatements(db, period, { groupId, organizationId })).flatMap((s) => s.orders),
+      lifetime: (await allStatements(db, ALL_TIME, { groupId, organizationId })).flatMap((s) => s.orders),
+    };
+    groupOrders.set(groupId, read);
+    return read;
   };
+
+  return await mapSeq(managerIds, async (managerId) => {
+    const person = people.get(managerId);
+    // A manager with no group has no team to earn a share of -- zero rather than a group
+    // sum error, the same "empty means nothing" rule allStatements enforces.
+    const orders = person?.group_id == null ? { period: [], lifetime: [] } : await ordersOf(person.group_id, person.organization_id);
+    const groupAccrued = orders.period.reduce((total, o) => total + o.accrual_toman, 0);
+    // Valued order by order at the override in force on ITS OWN date, same reasoning as
+    // the lifetime figure -- a mid-period raise must not silently reprice the orders that
+    // accrued before it.
+    const valued = (list: StatementOrder[]) =>
+      roundToman(
+        list.reduce((total, o) => {
+          const r = overrideFor(overrides, managerId, o.order_date);
+          return total + (o.accrual_toman * (r?.override_pct ?? 0)) / 100;
+        }, 0)
+      );
+    const accrued = valued(orders.period);
+    // The percentage shown on the card: whatever applies today, since a single number
+    // cannot represent a mix of rates that changed mid-period.
+    const pct = overrideFor(overrides, managerId, period.to)?.override_pct ?? 0;
+    const paid = paidBy.get(managerId);
+    const deductions = deductionsBy.get(managerId) ?? [];
+
+    return {
+      manager_user_id: managerId,
+      display_name: person?.display_name ?? "—",
+      group_id: person?.group_id ?? null,
+      group_name: person?.group_name ?? null,
+      group_accrued_toman: groupAccrued,
+      override_pct: pct,
+      accrued_toman: accrued,
+      paid_toman: paid?.period ?? 0,
+      owed_toman: valued(orders.lifetime) - sumDeductions(deductions) - (paid?.lifetime ?? 0),
+      // The override stays on the group's gross accruals; a discount charged to the manager comes off here.
+      ...deductionFields(accrued, deductions.filter((d) => d.order_date >= from && d.order_date <= to)),
+    };
+  });
 }
 
 export async function allManagerStatements(db: Db, period: Period, organizationId: number | null): Promise<ManagerStatement[]> {
@@ -187,5 +198,5 @@ export async function allManagerStatements(db: Db, period: Period, organizationI
   const people = await db
     .prepare(`SELECT id FROM users WHERE role = 'group_manager'${org.sql} ORDER BY display_name`)
     .all(...org.params) as unknown as { id: number }[];
-  return await mapSeq(people, async (person) => await managerStatementFor(db, person.id, period));
+  return await managerStatementsFor(db, people.map((p) => p.id), period);
 }

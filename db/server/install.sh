@@ -113,6 +113,10 @@ DO \$\$ BEGIN
 END \$\$;
 ALTER ROLE $WEB_ROLE PASSWORD '$WEB_PASS';
 GRANT $APP_ROLE TO $WEB_ROLE;
+-- A runaway query is stopped at 15 s instead of holding a connection and a CPU core. The app's
+-- reads take 1 to 150 ms; the one known long job (the first recount of daily sales totals) raises
+-- its own limit for its transaction.
+ALTER ROLE $WEB_ROLE SET statement_timeout = '15s';
 SQL
 grep -q "$WEB_ROLE" "$PGCONF/pg_hba.conf" || sed -i "0,/^local/s||local   all   $WEB_ROLE   scram-sha-256\n&|" "$PGCONF/pg_hba.conf"
 pg_ctlcluster "$PG_MAJOR" main reload
@@ -184,6 +188,9 @@ SESSION_SECRET=$(head -c 48 /dev/urandom | base64 | tr -d '\n=+/')
 COVERAGE_BACKUP_DIR=/var/lib/routeflow/backups
 ROUTEFLOW_PHOTOS_DIR=$APP_DIR/data/photos
 ENV
+    # A small machine (the Raspberry Pi) runs Postgres and the app on 4 cores: 5 connections keep
+    # the app from queueing more work than the database can run at once. The default is 10.
+    if [ "$(awk '/MemTotal/ {print int($2 / 1048576)}' /proc/meminfo)" -lt 6 ]; then echo "PG_POOL_MAX=5" >> "$ENV_FILE"; fi
   )
   chgrp "$APP_USER" "$ENV_FILE"
   echo "  Wrote $ENV_FILE with a new SESSION_SECRET. Add 'EnvironmentFile=$ENV_FILE' to the app's service."

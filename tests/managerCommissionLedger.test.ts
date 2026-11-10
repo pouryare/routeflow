@@ -174,4 +174,12 @@ describe("allManagerStatements", () => {
     expect(names).toContain("مدیر شرق");
     expect(names).toContain("مدیر غرب");
   });
+
+  it("gives each manager, read together, the same statement as read alone", async () => {
+    const db = getDb();
+    const period = { from: "2026-01-01", to: "2026-12-29" };
+    const rows = await allManagerStatements(db, period, 1);
+    expect(rows.length).toBeGreaterThan(1);
+    for (const row of rows) expect(row).toEqual(await managerStatementFor(db, row.manager_user_id, period));
+  });
 });

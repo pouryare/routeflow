@@ -649,8 +649,8 @@ export default function PlannerPage() {
       <div className="mx-auto flex max-w-3xl flex-col gap-5">
         <div className="flex items-center justify-between">
           <div>
-            <div className="font-mono text-[length:var(--text-xs)] uppercase tracking-[0.12em] text-accent">
-              Route Planner
+            <div className="text-[length:var(--text-xs)] font-semibold text-accent">
+              برنامه‌ریز مسیر
             </div>
             <h1 className="text-[length:var(--text-xl)] font-bold text-text">برنامه‌ریزی مسیر و پوشش</h1>
           </div>
@@ -678,14 +678,14 @@ export default function PlannerPage() {
               >
                 <Icon name="calendar" size="sm" />
                 <span>{dayLabel(d)}</span>
-                <span className="font-mono text-[length:var(--text-xs)] opacity-80">{dateLabel(d)}</span>
+                <span className="tabular-nums text-[length:var(--text-xs)]">{dateLabel(d)}</span>
                 {count > 0 && (
                   <span
-                    className={`mt-0.5 rounded-full px-1.5 text-[length:var(--text-xs)] font-mono ${
+                    className={`mt-0.5 rounded-full px-1.5 text-[length:var(--text-xs)] tabular-nums ${
                       active ? "bg-accent-ink/20 text-accent-ink" : "bg-white/10 text-text-faint"
                     }`}
                   >
-                    {count}
+                    {faNum(count)}
                   </span>
                 )}
               </button>

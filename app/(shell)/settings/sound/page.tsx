@@ -5,9 +5,8 @@ import { getSessionFromCookies } from "@/lib/session";
 import PageHeader from "@/components/meridian/PageHeader";
 import SoundSettings from "@/components/settings/SoundSettings";
 import EffectsSettings from "@/components/settings/EffectsSettings";
-import { effectsFor } from "@/lib/repo/effects";
+import { companyLookFor } from "@/lib/repo/effects";
 import { getPrefs } from "@/lib/repo/prefs";
-import { soundSkinFor } from "@/lib/repo/soundSkin";
 import { isOwner } from "@/lib/roles";
 import { pageMetadata } from "@/lib/pageMeta";
 
@@ -21,7 +20,7 @@ export default async function SoundSettingsPage() {
   const jar = await cookies();
   const session = await getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
   if (!session) redirect("/login");
-  const [prefs, skin, company] = await Promise.all([getPrefs(session.user.id), soundSkinFor(session.organizationId), effectsFor(session.organizationId)]);
+  const [prefs, { soundSkin: skin, effects: company }] = await Promise.all([getPrefs(session.user.id), companyLookFor(session.organizationId)]);
 
   return (
     <>

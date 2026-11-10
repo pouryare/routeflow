@@ -1,8 +1,8 @@
+import { cache } from "react";
 import { NextRequest, NextResponse } from "next/server";
 import { COOKIE_NAME, parseSessionToken } from "./auth";
 import { getDb, type Role, type UserRow } from "./db";
 import { isVanRole } from "./roles";
-import { rolesFor } from "./repo/userRoles";
 import { scopeForCompany, setRequestScopeResolver, withDbScope, type DbScope } from "./database/scope";
 
 export interface Session {
@@ -54,17 +54,29 @@ export async function getSession(req: NextRequest): Promise<Session | null> {
  *  so both entry points delegate here. One implementation means a page and its API route
  *  can never disagree about who the caller is. */
 export async function getSessionFromCookies(token: string | undefined | null): Promise<Session | null> {
-  /* Finding out who is asking comes before there is a company to scope to, and a platform
-     owner's Login-As actor lives in another company, so these lookups read as "system". */
-  return await withDbScope("system", () => resolveSession(token));
+  return await resolveOnce(token ?? null);
 }
+
+/* Finding out who is asking comes before there is a company to scope to, and a platform
+   owner's Login-As actor lives in another company, so these lookups read as "system".
+   React's cache() shares one answer per cookie for the length of one server render: a page whose
+   header, menu and body each ask "who is this" used to read the user and their roles once for each
+   of them (about 17 times a page, notes/db-index-audit-2026-11-09.md). Outside a render, for
+   example in a route handler, it does not cache, so each request still reads the database once. */
+const resolveOnce = cache(async (token: string | null): Promise<Session | null> =>
+  await withDbScope("system", () => resolveSession(token))
+);
 
 async function resolveSession(token: string | undefined | null): Promise<Session | null> {
   const claims = parseSessionToken(token);
   if (!claims) return null;
 
-  const user = await getDb().prepare("SELECT * FROM users WHERE id = ?").get(claims.uid) as UserRow | undefined;
-  if (!user) return null;
+  /* The user row and their role set in one round trip (they were two, on every request). */
+  const row = await getDb()
+    .prepare("SELECT u.*, ARRAY(SELECT r.role FROM user_roles r WHERE r.user_id = u.id ORDER BY r.role) AS held_roles FROM users u WHERE u.id = ?")
+    .get(claims.uid) as (UserRow & { held_roles: string[] }) | undefined;
+  if (!row) return null;
+  const { held_roles: heldRoles, ...user } = row;
   if (!user.active) return null;
   if (user.token_version !== claims.tv) return null;
 
@@ -87,7 +99,7 @@ async function resolveSession(token: string | undefined | null): Promise<Session
   /* TIER 2 first, because TIER 1 is decided by it. The set is read from the database on
      every request for the same reason the user row is: a role removed by an admin must take
      effect now, not when a 30-day cookie expires. */
-  const held = await rolesFor(user.id);
+  const held = heldRoles as Role[];
 
   /* An account with NO set rows answers from its primary, and the set is REPLACED rather
      than merely consulted. Returning `[]` alongside a populated `.role` would be a person
@@ -166,6 +178,7 @@ const COMPANY_FREE_WRITES = [
   "/api/me/second-factor",
   "/api/me/step-up",
   "/api/admin/impersonate",
+  "/api/admin/archive", // the archive months are the whole server's, not one company's
   "/api/notifications",
   "/api/push",
   "/api/prefs",
@@ -196,6 +209,12 @@ export function scopeView(session: Session): Session {
   return session.role === "platform_owner" && (session.actingOrg ?? null) !== null ? { ...session, role: "owner" } : session;
 }
 
+/* A company's groups, shared for one server render like resolveOnce above: a page asked 16 to 25
+   times. Outside a render it reads every time. Callers must not change the array. */
+const ownerGroupIds = cache(async (organizationId: number): Promise<number[]> =>
+  ((await getDb().prepare("SELECT id FROM groups WHERE organization_id = ?").all(organizationId)) as { id: number }[]).map((r) => r.id)
+);
+
 /** "all" for a platform_owner; otherwise the groups this session may read.
  *
  *  An owner used to return "all", which was right when there was one company in the
@@ -213,12 +232,7 @@ export async function scopeGroupIds(session: Session): Promise<number[] | "all">
   session = scopeView(session);
   if (session.role === "platform_owner") return "all";
 
-  if (session.role === "owner") {
-    const rows = await getDb()
-      .prepare("SELECT id FROM groups WHERE organization_id = ?")
-      .all(session.organizationId) as { id: number }[];
-    return rows.map((r) => r.id);
-  }
+  if (session.role === "owner") return await ownerGroupIds(session.organizationId);
 
   return session.groupId === null ? [] : [session.groupId];
 }

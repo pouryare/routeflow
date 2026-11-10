@@ -7,18 +7,18 @@
  *  the driver who ran it, rather than an order's own salesperson_user_id.
  */
 
-import { deductionFields, deductionsFor, lifetimeDeductions, type DeductionItem } from "./repo/discountDeductions";
+import { deductionFields, deductionsByUser, sumDeductions, type DeductionItem } from "./repo/discountDeductions";
 import { linesByOrder } from "./repo/orderLines";
 import { orderKgOf } from "./repo/orderFigures";
 import type { Db } from "@/lib/database/client";
 import { driverRateFor, type DriverRateRow } from "./driverCommission";
 import { accrualToman } from "./commission";
 import { isToman } from "./money";
-import { insertCommissionPayment, insertDatedRate } from "./repo/commissionPayments";
+import { insertCommissionPayment, insertDatedRate, paidByPerson } from "./repo/commissionPayments";
+import { namesOf } from "./repo/userOrg";
 import type { Period } from "./commissionLedger";
 import { orgClause } from "./orgScope";
 
-import { mapSeq } from "@/lib/seq";
 export interface DriverStop {
   order_id: number;
   order_no: string;
@@ -88,32 +88,36 @@ export async function readDriverRates(
     .all(organizationId) as unknown as (DriverRateRow & { display_name: string | null })[];
 }
 
-/** Every completed stop credited to a driver inside a period, with its accrual.
+/** Every completed stop credited to these drivers, all time, with its accrual, by driver.
  *
  *  Keyed off delivery_runs.driver_user_id, not delivery_stops.delivered_by -- the run
  *  is the assignment a manager made and the unit this business already schedules and
  *  pays around; a helper marking a stop delivered on someone else's run does not move
- *  whose round it was. */
-async function stopsFor(
+ *  whose round it was.
+ *
+ *  All time and all drivers in one query: «still owed» needs the lifetime anyway, and the period
+ *  is a filter on it. A statements page was two of these per driver (19 ms each). */
+async function stopsByDriver(
   db: Db,
-  driverId: number,
-  period: Period,
+  driverIds: number[],
   rates: DriverRateRow[]
-): Promise<DriverStop[]> {
+): Promise<Map<number, (DriverStop & { run_date: string })[]>> {
+  const out = new Map<number, (DriverStop & { run_date: string })[]>();
+  if (driverIds.length === 0) return out;
   const stops = await db
     .prepare(
-      `SELECT ds.order_id, o.order_no, ds.delivered_at, c.business_name AS customer_name,
+      `SELECT dr.driver_user_id, ds.order_id, o.order_no, ds.delivered_at, c.business_name AS customer_name,
               dr.run_date, o.kg_total
          FROM delivery_stops ds
          JOIN delivery_runs dr ON dr.id = ds.run_id
          JOIN orders o ON o.id = ds.order_id
          JOIN customers c ON c.id = o.customer_id
-        WHERE dr.driver_user_id = ?
+        WHERE dr.driver_user_id IN (${driverIds.map(() => "?").join(",")})
           AND ds.status = 'delivered'
-          AND dr.run_date BETWEEN ? AND ?
         ORDER BY dr.run_date, ds.sort_order`
     )
-    .all(driverId, period.from.slice(0, 10), period.to.slice(0, 10)) as unknown as {
+    .all(...driverIds) as unknown as {
+    driver_user_id: number;
     order_id: number;
     order_no: string;
     delivered_at: string | null;
@@ -126,14 +130,14 @@ async function stopsFor(
   // for orders where it is empty. Same value either way, to the bit.
   const lineMap = await linesByOrder(db, stops.filter((s) => s.kg_total === null).map((s) => s.order_id));
 
-  return stops.map((stop) => {
+  for (const stop of stops) {
     const kg = stop.kg_total ?? orderKgOf(lineMap.get(stop.order_id) ?? []);
     // The rate in force on the day the ROUND ran, not when the order was taken -- a
     // driver is paid for the day they drove, the same way a فروشنده is paid for the
     // day they sold.
-    const rate = driverRateFor(rates, driverId, stop.run_date);
+    const rate = driverRateFor(rates, stop.driver_user_id, stop.run_date);
     const perKg = rate?.rate_per_kg_toman ?? 0;
-    return {
+    const row = {
       order_id: stop.order_id,
       order_no: stop.order_no,
       delivered_at: stop.delivered_at ?? stop.run_date,
@@ -141,8 +145,13 @@ async function stopsFor(
       kg,
       rate_per_kg_toman: perKg,
       accrual_toman: accrualToman(kg, perKg),
+      run_date: stop.run_date,
     };
-  });
+    const list = out.get(stop.driver_user_id);
+    if (list) list.push(row);
+    else out.set(stop.driver_user_id, [row]);
+  }
+  return out;
 }
 
 export async function driverStatementFor(
@@ -150,42 +159,43 @@ export async function driverStatementFor(
   driverId: number,
   period: Period
 ): Promise<DriverStatement> {
-  const person = await db
-    .prepare("SELECT id, display_name FROM users WHERE id = ?")
-    .get(driverId) as { id: number; display_name: string } | undefined;
+  return (await driverStatementsFor(db, [driverId], period))[0];
+}
 
+/** The statements of many drivers, in the order given, with one query per kind of row rather than
+ *  eight per driver. */
+async function driverStatementsFor(db: Db, driverIds: number[], period: Period): Promise<DriverStatement[]> {
+  if (driverIds.length === 0) return [];
+  const from = period.from.slice(0, 10);
+  const to = period.to.slice(0, 10);
+  const names = await namesOf(db, driverIds);
   const rates = await db.prepare("SELECT * FROM driver_commission_rates").all() as unknown as DriverRateRow[];
-  const stops = await stopsFor(db, driverId, period, rates);
-  const accrued = stops.reduce((total, s) => total + s.accrual_toman, 0);
+  const stopsBy = await stopsByDriver(db, driverIds, rates);
+  const paidBy = await paidByPerson(db, "driver", driverIds, period);
+  const deductionsBy = await deductionsByUser(db, driverIds, "driver");
 
-  const paidInPeriod = await db
-    .prepare(
-      "SELECT COALESCE(SUM(amount_toman), 0) AS total FROM driver_commission_payments WHERE driver_user_id = ? AND paid_on BETWEEN ? AND ?"
-    )
-    .get(driverId, period.from.slice(0, 10), period.to.slice(0, 10)) as { total: number };
-
-  // Owed is lifetime, same reasoning as the فروشنده ledger: what is still due does not
-  // reset because a report window moved.
-  const lifetimeAccrued = (await stopsFor(
-    db,
-    driverId,
-    { from: "0000-01-01", to: "9999-12-31" },
-    rates
-  )).reduce((total, s) => total + s.accrual_toman, 0);
-  const lifetimePaid = await db
-    .prepare("SELECT COALESCE(SUM(amount_toman), 0) AS total FROM driver_commission_payments WHERE driver_user_id = ?")
-    .get(driverId) as { total: number };
-
-  return {
-    driver_user_id: driverId,
-    display_name: person?.display_name ?? "—",
-    kg: stops.reduce((total, s) => total + s.kg, 0),
-    accrued_toman: accrued,
-    paid_toman: paidInPeriod.total,
-    owed_toman: lifetimeAccrued - (await lifetimeDeductions(db, driverId, "driver")) - lifetimePaid.total,
-    ...deductionFields(accrued, await deductionsFor(db, driverId, "driver", period)),
-    stops,
-  };
+  return driverIds.map((driverId) => {
+    const lifetimeStops = stopsBy.get(driverId) ?? [];
+    const stops = lifetimeStops
+      .filter((s) => s.run_date >= from && s.run_date <= to)
+      .map(({ run_date: _runDate, ...stop }) => stop);
+    const accrued = stops.reduce((total, s) => total + s.accrual_toman, 0);
+    // Owed is lifetime, same reasoning as the فروشنده ledger: what is still due does not
+    // reset because a report window moved.
+    const lifetimeAccrued = lifetimeStops.reduce((total, s) => total + s.accrual_toman, 0);
+    const paid = paidBy.get(driverId);
+    const deductions = deductionsBy.get(driverId) ?? [];
+    return {
+      driver_user_id: driverId,
+      display_name: names.get(driverId)?.display_name ?? "—",
+      kg: stops.reduce((total, s) => total + s.kg, 0),
+      accrued_toman: accrued,
+      paid_toman: paid?.period ?? 0,
+      owed_toman: lifetimeAccrued - sumDeductions(deductions) - (paid?.lifetime ?? 0),
+      ...deductionFields(accrued, deductions.filter((d) => d.order_date >= from && d.order_date <= to)),
+      stops,
+    };
+  });
 }
 
 /** One line per راننده. Same empty-means-nothing rule as allStatements: a manager with
@@ -228,5 +238,5 @@ export async function allDriverStatements(
           .all(groupId, ...org.params)
   ) as unknown as { id: number }[];
 
-  return await mapSeq(people, async (person) => await driverStatementFor(db, person.id, period));
+  return await driverStatementsFor(db, people.map((p) => p.id), period);
 }

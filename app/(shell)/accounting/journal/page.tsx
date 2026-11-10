@@ -123,9 +123,11 @@ export default async function JournalPage({
                 {r.legs.map((l) => (
                   <div key={l.code} className="text-[length:var(--text-xs)]">
                     <span className="tnum">{l.code}</span> {l.nameFa}{" "}
-                    <span className="tnum text-text-muted">
+                    {/* Only the figure is .tnum (nowrap inside AcctTable): the whole bracket was,
+                        and on a phone it ran 80 px past its card. */}
+                    <span className="text-text-muted">
                       ({l.side === "D" ? "بدهکار" : "بستانکار"}{" "}
-                      {faNum(l.amountToman)})
+                      <span className="tnum">{faNum(l.amountToman)}</span>)
                     </span>
                   </div>
                 ))}

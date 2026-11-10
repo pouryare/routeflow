@@ -20,6 +20,8 @@ const PATHS = {
   "storage-jobs": "/api/storages/sweep?task=jobs",
   "storage-daily": "/api/storages/sweep?task=daily",
   "storage-weekly": "/api/storages/sweep?task=weekly",
+  // Old history to the archive twins, nightly (db/migrations/1762700000000_history-archive.sql).
+  archive: "/api/admin/archive",
 };
 
 const which = process.argv[2];

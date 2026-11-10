@@ -39,12 +39,15 @@ export default function PageHeaderCard({
   tabs = [],
   currentHref,
   date,
+  section,
 }: {
   title: string;
   overview: string;
   /** Id into `lib/help/`. Absent means the card shows no trigger rather than an empty one. */
   help?: string;
   date?: string;
+  /** The page's menu section («فروش و دریافت»), shown small above the title, before the date. */
+  section?: string;
   tabs?: AppTab[];
   currentHref?: string;
 }) {
@@ -92,7 +95,13 @@ export default function PageHeaderCard({
       )}
       <div className="phc" ref={card}>
         <div className="phc__body">
-          {date ? <p className="phc__date">{date}</p> : null}
+          {date || section ? (
+            <p className="phc__date">
+              {section ? <span className="phc__section">{section}</span> : null}
+              {section && date ? " · " : null}
+              {date}
+            </p>
+          ) : null}
           <h1 className="phc__title">
             <WordReveal text={title} />
             {/* Only when the page declares one. A trigger that opened "not found" would be

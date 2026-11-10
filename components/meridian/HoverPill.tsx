@@ -4,10 +4,12 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type React from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, LazyMotion, m } from "framer-motion";
 import { activeGroup, currentTab, type AppGroupId, type AppTab } from "@/lib/appNav";
 import { popover, withReducedMotion } from "@/lib/motion";
 import { usePrefersReducedMotion } from "@/lib/usePrefersReducedMotion";
+
+const loadMotion = () => import("@/lib/motionFeatures").then((r) => r.default);
 
 /** `solo`: the role can reach exactly one tab in this group, so the chip is a plain link
  *  to it, named after it, with no menu. */
@@ -255,33 +257,35 @@ export default function HoverPill({
                 {g.label}
               </Link>
 
-              <AnimatePresence>
-                {isOpen && (
-                  <motion.span
-                    className="seg-pop"
-                    role="menu"
-                    aria-label={g.label}
-                    style={popoverStyle(anchor)}
-                    initial={popover.initial}
-                    animate={withReducedMotion(popover.animate, reduced)}
-                    exit={withReducedMotion(popover.exit, reduced)}
-                    onPointerEnter={cancelClose}
-                    onPointerLeave={scheduleClose}
-                  >
-                    {model.tabsByGroup[g.id].map((t) => (
-                      <Link
-                        key={t.href}
-                        href={t.href}
-                        role="menuitem"
-                        aria-current={t.href === model.currentHref ? "page" : undefined}
-                        onClick={() => setOpen(null)}
-                      >
-                        {t.label}
-                      </Link>
-                    ))}
-                  </motion.span>
-                )}
-              </AnimatePresence>
+              <LazyMotion features={loadMotion}>
+                <AnimatePresence>
+                  {isOpen && (
+                    <m.span
+                      className="seg-pop"
+                      role="menu"
+                      aria-label={g.label}
+                      style={popoverStyle(anchor)}
+                      initial={popover.initial}
+                      animate={withReducedMotion(popover.animate, reduced)}
+                      exit={withReducedMotion(popover.exit, reduced)}
+                      onPointerEnter={cancelClose}
+                      onPointerLeave={scheduleClose}
+                    >
+                      {model.tabsByGroup[g.id].map((t) => (
+                        <Link
+                          key={t.href}
+                          href={t.href}
+                          role="menuitem"
+                          aria-current={t.href === model.currentHref ? "page" : undefined}
+                          onClick={() => setOpen(null)}
+                        >
+                          {t.label}
+                        </Link>
+                      ))}
+                    </m.span>
+                  )}
+                </AnimatePresence>
+              </LazyMotion>
             </span>
           );
         })}

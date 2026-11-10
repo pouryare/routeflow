@@ -91,6 +91,10 @@ export default function TutorialProvider({ children }: { children: ReactNode }) 
   }, []);
 
   const update = useCallback((next: TutorialProgress) => {
+    // withOffer and withDone hand back the same object when nothing changed (offered today
+    // already): no write then. Every page open used to PATCH /api/prefs with the same progress.
+    if (next === progressRef.current) return;
+    progressRef.current = next;
     setProgress(next);
     save(next);
   }, []);

@@ -124,3 +124,12 @@ describe("tutorial voice clips reach a driver", () => {
     expect(res.headers.get("location")).toBeNull();
   });
 });
+
+describe("tutorials: an unchanged progress is not written back", () => {
+  it("skips the PATCH when withOffer hands back the same object", async () => {
+    // Every page open PATCHed /api/prefs with the progress it had just read.
+    const { readFileSync } = await import("node:fs");
+    const src = readFileSync("components/tutorials/TutorialProvider.tsx", "utf8");
+    expect(src).toMatch(/if \(next === progressRef\.current\) return;\s*progressRef\.current = next;\s*setProgress\(next\);\s*save\(next\);/);
+  });
+});

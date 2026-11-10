@@ -74,27 +74,36 @@ type Queryable = Pick<pg.PoolClient, "query">;
 
 /** One open transaction. SQLite undoes only the statement that failed and keeps the
  *  transaction going, and the app relies on it (try an insert, catch the duplicate, carry
- *  on). PostgreSQL aborts the whole transaction instead, so each statement runs inside a
- *  savepoint and a failure rolls back to it. Statements on the transaction run one at a time,
- *  so two awaited together cannot interleave their savepoints. */
+ *  on). PostgreSQL aborts the whole transaction instead, so a savepoint always sits just before
+ *  the next statement, and a failure rolls back to it. Statements on the transaction run one at
+ *  a time, so two awaited together cannot interleave their savepoints.
+ *
+ *  After a statement succeeds, the savepoint moves past it with one round trip ("RELEASE; SAVEPOINT"
+ *  sent together). It used to be SAVEPOINT before and RELEASE after, which made three round trips
+ *  for each statement instead of two. After a failure, ROLLBACK TO leaves the savepoint where it is. */
 class TxConn {
   private last: Promise<unknown> = Promise.resolve();
   private readonly client: pg.PoolClient;
+  private armed = false;
   constructor(client: pg.PoolClient) {
     this.client = client;
   }
 
   run(text: string, params?: unknown[]): Promise<pg.QueryResult> {
     const next = this.last.then(async () => {
-      await this.client.query("SAVEPOINT rf_stmt");
+      if (!this.armed) {
+        await this.client.query("SAVEPOINT rf_stmt");
+        this.armed = true;
+      }
+      let r: pg.QueryResult;
       try {
-        const r = await this.client.query(text, params);
-        await this.client.query("RELEASE SAVEPOINT rf_stmt");
-        return r;
+        r = await this.client.query(text, params);
       } catch (e) {
         await this.client.query("ROLLBACK TO SAVEPOINT rf_stmt");
         throw e;
       }
+      await this.client.query("RELEASE SAVEPOINT rf_stmt; SAVEPOINT rf_stmt");
+      return r;
     });
     this.last = next.catch(() => undefined);
     return next;
@@ -114,6 +123,8 @@ export function pgDb(url: string, ready: () => Promise<void> = async () => {}): 
     if (appRole) pool.on("connect", (client) => void client.query(`SET ROLE ${appRole}`));
     return pool;
   };
+  /** The rf.scope each pooled connection was last given outside a transaction. */
+  const sessionScope = new WeakMap<pg.PoolClient, string>();
   /** One statement outside a transaction, on any pooled client, under the caller's company. */
   const once = async (text: string, params?: unknown[]): Promise<pg.QueryResult> => {
     await ready();
@@ -121,7 +132,14 @@ export function pgDb(url: string, ready: () => Promise<void> = async () => {}): 
     const scope = await currentDbScope();
     const client = await open().connect();
     try {
-      await client.query("SELECT set_config('rf.scope', $1, false)", [scope]);
+      /* The setting lives on the connection, so a connection that last ran under this same scope
+         already has it: skipping the call halves the round trips (71,000 extra calls in one walk
+         through every page, notes/db-index-audit-2026-11-09.md). A transaction's own setting is
+         local (below) and ends with it, which leaves this one in place. */
+      if (sessionScope.get(client) !== scope) {
+        await client.query("SELECT set_config('rf.scope', $1, false)", [scope]);
+        sessionScope.set(client, scope);
+      }
       return await client.query(text, params);
     } finally {
       client.release();

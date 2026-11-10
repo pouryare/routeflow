@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { prefsOnce } from "@/lib/prefsOnce";
 import { configureSound } from "@/lib/sound";
 import { isSkin } from "@/lib/soundRecipes";
 
@@ -10,9 +11,10 @@ import { isSkin } from "@/lib/soundRecipes";
 export default function SoundSync() {
   useEffect(() => {
     let stopped = false;
-    void fetch("/api/prefs", { cache: "no-store" })
-      .then(async (res) => {
-        const data = (await res.json().catch(() => null)) as { ok?: boolean; prefs?: { sound?: unknown; sound_volume?: unknown }; soundSkin?: unknown } | null;
+    void prefsOnce()
+      .then(({ status, data: raw }) => {
+        const data = raw as { ok?: boolean; prefs?: { sound?: unknown; sound_volume?: unknown }; soundSkin?: unknown } | null;
+        const res = { ok: status >= 200 && status < 300, status };
         if (stopped) return;
         if (!res.ok || !data?.ok) {
           if (res.status === 401 || res.status === 403) configureSound({ skin: null });

@@ -124,7 +124,7 @@ export default function LeadsPage() {
         <div className="mx-auto flex max-w-5xl flex-col gap-5">
           <div className="flex items-center justify-between">
             <div>
-              <div className="font-mono text-[length:var(--text-xs)] uppercase tracking-[0.12em] text-accent">Prospect Locations</div>
+              <div className="text-[length:var(--text-xs)] font-semibold text-accent">مکان‌های پیشنهادی</div>
               <h1 className="text-[length:var(--text-xl)] font-bold text-text">فهرست مکان‌های پیشنهادی</h1>
             </div>
             <Link href="/map" className="inline-flex items-center gap-2 whitespace-nowrap shrink-0 rounded-[var(--radius-md)] border border-border bg-surface px-3 py-2 text-[length:var(--text-sm)] text-text-muted transition-colors hover:border-accent hover:text-accent"><Icon name="arrow-right" size="sm" />بازگشت به نقشه</Link>

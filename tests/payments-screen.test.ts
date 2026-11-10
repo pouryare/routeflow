@@ -15,9 +15,14 @@ describe("the payments screen", () => {
   it("never counts a VOIDED receipt in a total", () => {
     // A void means the money went back. Counting it and calling the card "collected this
     // month" is the single most misleading number this screen could print.
-    // The server builds the cards (pagePayments) from the live receipts only, not from the filtered rows.
-    expect(panel).toMatch(/const live = all\.filter\(\(p\) => !p\.voided_at\)/);
-    expect(panel).toMatch(/totals: paymentTotals\(live, todayISO, weekAgoISO\)/);
+    // The cards are summed on the server, from receipts read with voided ones hidden.
+    const list = readFileSync("app/api/payments/route.ts", "utf8");
+    const cardSection = list.slice(list.indexOf("const recent ="), list.indexOf("const totals ="));
+    expect(cardSection).toMatch(/voided: "hide"/);
+    expect(list).toMatch(/const totals = paymentTotals\(recent,/);
+    // The screen shows those sums, never a total of its own page of `payments`.
+    expect(panel).toMatch(/setTotals\(body\.totals\)/);
+    expect(panel).not.toMatch(/payments\s*\?\?\s*\[\]\)\.filter/);
   });
 
   it("hides voided rows BY DEFAULT rather than showing them as live money", () => {
@@ -47,15 +52,14 @@ describe("the payments screen", () => {
   });
 
   it("exports the FILTERED set, not everything, so the file matches the screen", () => {
-    // The rows come from the server with the same filter the screen sends (page=all), not from a list held on the phone.
-    expect(panel).toMatch(/api\/payments\?page=all&\$\{filterQuery\}/);
-    expect(panel).toMatch(/paymentsCsv\(body\.payments, customerName\)/);
+    expect(panel).toMatch(/paymentsCsv\(filtered, customerName\)/);
   });
 
   it("paginates rather than rendering every receipt at once", () => {
-    // The server cuts the page (pagePayments in lib/paymentsView.ts); the phone asks for one page at a time.
-    expect(panel).toMatch(/api\/payments\?page=\$\{page\}&\$\{filterQuery\}/);
-    expect(panel).toMatch(/rows: filtered\.slice\(safePage \* size/);
+    // The server sends one page (?page=N) and the panel draws HeroUI's pagination under it.
+    expect(panel).toMatch(/page: String\(page\)/);
+    expect(panel).toMatch(/<ListPager page=\{page\}/);
+    expect(readFileSync("app/api/payments/route.ts", "utf8")).toMatch(/pagePayments\(/);
   });
 
   it("groups by month, derived at render rather than stored", () => {

@@ -17,7 +17,7 @@ export async function readOrderEvents(db: Db, orderId: number): Promise<OrderEve
     .prepare(
       `SELECT e.id, e.from_status, e.to_status, e.action, u.display_name AS actor_name,
               e.note, e.created_at AS at
-         FROM order_events e
+         FROM order_events_all e
          LEFT JOIN users u ON u.id = e.actor_user_id
         WHERE e.order_id = ?
         ORDER BY e.id`,
@@ -34,7 +34,7 @@ export async function readFunnelRows(db: Db, scope: { sql: string; params: numbe
     .prepare(
       `SELECT o.status AS status,
               (SELECT ${stringAgg("COALESCE(e.from_status, '') || ',' || e.to_status")}
-                 FROM order_events e WHERE e.order_id = o.id) AS seen
+                 FROM order_events_all e WHERE e.order_id = o.id) AS seen
          FROM orders o
         WHERE 1 = 1${scope.sql}`,
     )

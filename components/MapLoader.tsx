@@ -2,7 +2,7 @@
 
 import { SkeletonBlock, SkeletonLabel } from "@/components/Skeleton";
 import dynamic from "next/dynamic";
-import { CustomerRow, DistrictProperties } from "@/lib/types";
+import { MapCustomer, DistrictProperties } from "@/lib/types";
 import type { FacilityRow } from "@/lib/facilityTypes";
 import type { Role } from "@/lib/db";
 import type { MapGroup } from "@/components/CoverageMap";
@@ -28,7 +28,7 @@ const CoverageMap = dynamic(() => import("@/components/CoverageMap"), {
 
 export default function MapLoader(props: {
   initialDistricts: DistrictProperties[];
-  initialCustomers: CustomerRow[];
+  initialCustomers: MapCustomer[];
   initialFacilities: FacilityRow[];
   initialLeads: Array<{ id: number; name: string; lat: number; lng: number }>;
   groups: MapGroup[];

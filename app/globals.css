@@ -2021,7 +2021,9 @@ body {
 }
 .meridian .bhead h2 { margin: 0; }
 /* A card with a (?) keeps it on the title row: the title block gives way instead of pushing it to a new line. */
-.meridian .bhead:has(> .mhelp) > :first-child { flex: 1 1 0; min-width: 0; }
+/* At least 10rem, so buttons in the same header wrap to their own line on a phone instead of
+   squeezing the title to one word a line («سفارش‌های اخیر» on /sales/orders). */
+.meridian .bhead:has(> .mhelp) > :first-child { flex: 1 1 0; min-width: min(10rem, 100%); }
 .meridian .bhead > .mhelp { flex: none; }
 /* One heading for a section, inside a card (.bhead) or outside one (SectionHead.tsx), so
    no two sections can disagree again (item 15). Typography only: unlayered rules beat
@@ -2104,15 +2106,21 @@ body {
   radial-gradient(110% 120% at 8% 92%, #4A3A22 0%, transparent 60%),
   linear-gradient(150deg,#332A1D,#4C3E27); }
 .meridian .gcard .k { font-size: 14px; color: var(--gcard-k); }
+/* The figure keeps its size until it would not fit: --chars (set by GradientStat from the figure's
+   own length) shrinks it so every digit stays in the card. A digit is about 0.65em wide; 0.68
+   leaves a little air. 100cqi is the card's inner width, hence container-type on .gcard. */
+.meridian .gcard { container-type: inline-size; }
 .meridian .gcard .v {
-  font-size: 46px; line-height: 1.12; font-weight: 700; letter-spacing: -.03em;
+  --v-size: 46px;
+  font-size: min(var(--v-size), calc(100cqi / (var(--chars, 1) * 0.68)));
+  line-height: 1.12; font-weight: 700; letter-spacing: -.03em;
   margin-top: 6px; color: var(--gcard-ink);
 }
 .meridian .gcard .v small {
   font-size: 17px; font-weight: 500; color: var(--gcard-k);
   margin-inline-start: 8px; letter-spacing: 0;
 }
-.meridian .gcard.small .v { font-size: 32px; }
+.meridian .gcard.small .v { --v-size: 32px; }
 .meridian .gcard .d.sky { color: var(--gcard-chip-sky); }
 .meridian .gcard .d.amber { color: var(--gcard-chip-amber); }
 .meridian .gcard .d {
@@ -2349,6 +2357,7 @@ body {
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
 }
 .meridian .phc__date { margin: 0 0 2px; font-size: 12.5px; color: var(--muted); }
+.meridian .phc__section { color: var(--accent); font-weight: 600; }
 .meridian .phc__overview { margin: 0; max-width: 68ch; font-size: 13.5px; line-height: 1.75; color: var(--muted); }
 
 /* The tab row that sits in the bay. A sibling of the carved element, never a child:
@@ -2980,6 +2989,11 @@ body {
 .pager__link { width: auto; height: auto; min-height: 44px; padding-inline: 14px; text-decoration: none; }
 /* The phone FAB («ثبت») sits over the bottom-left corner, where «صفحهٔ بعد» lands at the end of a list. */
 @media (max-width: 767.98px) { .pager { margin-bottom: 64px; } }
+/* ListPager: HeroUI's Pagination parts (summary above the buttons on a phone, as HeroUI lays it out), every button 44 px (HeroUI's are 36). */
+.listpager { margin-top: var(--space-3); gap: var(--space-2); }
+.listpager .pagination__link { width: auto; min-width: 44px; height: 44px; }
+.listpager .pagination__ellipsis { width: 20px; }
+@media (max-width: 767.98px) { .listpager { margin-bottom: 64px; } }
 /* TextInput / PasswordInput: a 44 px field with its label above, room under it before the next. */
 .textinput { margin-bottom: var(--space-3); gap: 4px; }
 .textinput .label { font-size: var(--text-xs); color: var(--muted); }
@@ -3231,7 +3245,7 @@ body {
   .meridian .bento .tile:first-child { grid-column: 1/-1; }
 }
 @media (max-width: 620px) {
-  .meridian .gcard .v { font-size: 38px; }
+  .meridian .gcard .v { --v-size: 38px; }
   .meridian .pockets { grid-template-columns: 1fr; padding-inline: 16px; }
   .meridian .bento { grid-template-columns: 1fr; padding-inline: 16px; }
   .meridian .board, .meridian .hint { padding-inline: 16px; }
@@ -4648,6 +4662,8 @@ html[data-fx="off"] .meridian .flow-drawer { transition: none; }
 }
 .meridian .crm-views button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-foreground); }
 .meridian .crm-views i { font-style: normal; opacity: .75; margin-inline-start: 4px; font-variant-numeric: tabular-nums; }
+/* Full strength on the lit chip: at .75 over the accent it read 3.4:1, under the 4.5 the text needs. */
+.meridian .crm-views button[aria-pressed="true"] i { opacity: 1; }
 .meridian .crm-list { display: grid; gap: 10px; }
 .meridian .crm-card { display: grid; gap: 6px; padding: 12px 14px; border-radius: var(--r-xl); background: var(--surface); box-shadow: var(--sh-1); border: 1px solid transparent; }
 .meridian .crm-card.hl { border-color: var(--accent); }
@@ -5107,7 +5123,7 @@ html[data-fx="off"] .tourhand { display: none; }
    One scrolling row, 44px chips; the chosen state is accent fill plus a check icon, never colour alone. */
 .meridian .filterchips__row { display: flex; align-items: center; gap: 8px; overflow-x: auto; padding: 2px 0 6px; scrollbar-width: none; }
 .meridian .filterchips__group { display: flex; gap: 8px; flex: none; }
-.meridian .filterchips__group--wrap { flex-wrap: wrap; }
+.meridian .filterchips__group--wrap { flex-wrap: wrap; flex: 1 1 auto; min-width: 0; } /* wraps inside the row, not past the phone */
 .meridian .filterchip {
   min-height: 44px; display: inline-flex; align-items: center; gap: 6px; padding: 0 14px; flex: none;
   border: 1px solid var(--border); border-radius: 999px; background: var(--surface); color: var(--foreground);

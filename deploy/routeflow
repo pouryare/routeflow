@@ -739,6 +739,38 @@ UNIT
   done
 }
 
+# Old history (events, notifications, rule runs, order steps) to the archive twins, then the recount of
+# edited sales days (sales_daily), nightly at 04:00
+# Tehran, before the storage sweep. The app keeps it; nothing is deleted.
+write_archive_timer() {
+  cat > /etc/systemd/system/routeflow-archive.service <<UNIT
+# Written by 'routeflow install'.
+[Unit]
+Description=RouteFlow: move old history to the archive tables, recount edited sales days
+After=$SERVICE.service
+
+[Service]
+Type=oneshot
+User=$APP_USER
+WorkingDirectory=$ROOT/current
+LoadCredentialEncrypted=secrets:$SECRETS
+Environment=SWEEP_BASE_URL=http://127.0.0.1:$APP_PORT
+ExecStart=$ROOT/current/node/bin/node --env-file=%d/secrets scripts/run-sweeps.mjs archive
+UNIT
+  cat > /etc/systemd/system/routeflow-archive.timer <<'UNIT'
+# Written by 'routeflow install'.
+[Unit]
+Description=RouteFlow: move old history to the archive tables, recount edited sales days, nightly
+
+[Timer]
+OnCalendar=*-*-* 04:00:00 Asia/Tehran
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+UNIT
+}
+
 # The shared token the sweep timers send; made once, kept with the other secrets.
 ensure_sweep_token() {
   [ -n "$(secret_value SWEEP_TOKEN)" ] && return 0
@@ -1708,10 +1740,12 @@ APT
   write_motd
   ensure_sweep_token
   write_storage_timers
+  write_archive_timer
   systemctl daemon-reload
   systemctl enable "$SERVICE" >/dev/null
   systemctl enable --now routeflow-upgrade.timer routeflow-cdn-ips.timer routeflow-support-prune.timer >/dev/null
   systemctl enable --now routeflow-storage-jobs.timer routeflow-storage-daily.timer routeflow-storage-weekly.timer >/dev/null
+  systemctl enable --now routeflow-archive.timer >/dev/null
   install -d -o "$APP_USER" -g "$APP_USER" -m 775 "$ROOT/incoming"
   # The key-only user GitHub copies releases as (docs/release-and-deploy.md) may write here, nothing more.
   if [ -n "${DEPLOY_PUBKEY:-}" ] && ! id deploy >/dev/null 2>&1; then

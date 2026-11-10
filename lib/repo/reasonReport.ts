@@ -89,7 +89,7 @@ async function reasonEvents(session: Session, days: number, now: Date = new Date
   const fromHistory = await db
     .prepare(
       `SELECT e.to_status, rc.domain, rc.label_fa, o.id AS order_id, o.total_toman
-         FROM order_events e
+         FROM order_events_all e
          JOIN orders o ON o.id = e.order_id
          LEFT JOIN reason_codes rc ON rc.id = e.reason_code_id
         WHERE e.organization_id = ? AND e.created_at >= ?

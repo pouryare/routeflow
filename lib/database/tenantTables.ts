@@ -118,4 +118,14 @@ export const TENANT_TABLES = [
   "live_viewing",
   "live_connections",
   "live_display_keys",
+  /* Archive twins of the log tables (db/migrations/1762700000000_history-archive.sql): old history,
+     kept, read by reports and the order timeline. order_events_archive is exempt like order_events. */
+  "events_archive",
+  "notifications_archive",
+  "rule_runs_archive",
+  "live_events_archive",
+  /* Saved daily sales totals and the days marked for a recount (lib/repo/salesDaily.ts). */
+  "sales_daily",
+  "sales_daily_products",
+  "sales_daily_marks",
 ] as const satisfies readonly string[];

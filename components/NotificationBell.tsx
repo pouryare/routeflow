@@ -66,7 +66,9 @@ export default function NotificationBell({
   // The live stream says when to read the count; the slow poll only covers a stream that is down.
   useEffect(() => {
     let alive = true;
+    let lastTick = 0;
     async function tick() {
+      lastTick = Date.now();
       try {
         const res = await fetch("/api/notifications?count=1");
         if (!alive) return;
@@ -87,7 +89,11 @@ export default function NotificationBell({
     void tick();
     const h = setInterval(tick, 5 * 60_000);
     const offLive = onLive("notifications", () => void tick());
-    const offOpen = onLiveOpen(() => void tick());
+    /* The stream opening right after the first read would ask again for the same number (two calls on
+       every page load); a reconnect later does need it, to catch what was missed while it was down. */
+    const offOpen = onLiveOpen(() => {
+      if (Date.now() - lastTick > 5_000) void tick();
+    });
     return () => {
       alive = false;
       clearInterval(h);

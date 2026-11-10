@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Layer, Popup, Source, useMap } from "@vis.gl/react-maplibre";
 import type { GeoJSONSource, MapLayerMouseEvent } from "maplibre-gl";
-import { shapeForColor, type CustomerRow } from "@/lib/types";
+import { shapeForColor, type MapCustomer } from "@/lib/types";
 import type { MapInk } from "./mapInk";
 import { MARKER_SHAPES, markerImage } from "./markerImages";
 import { Icon } from "@/components/meridian/Icon";
@@ -29,18 +29,18 @@ export default function CustomerLayer({
   canOrder,
   navAppId,
 }: {
-  customers: (CustomerRow & { lat: number; lng: number })[];
-  colorOf: (c: CustomerRow) => string;
+  customers: (MapCustomer & { lat: number; lng: number })[];
+  colorOf: (c: MapCustomer) => string;
   /** Shape by status as well as colour, for readers who cannot rely on colour. */
   shaped: boolean;
   ink: MapInk;
-  onOpen: (c: CustomerRow) => void;
+  onOpen: (c: MapCustomer) => void;
   /** Whether this person may start an order (the fan only offers what works). */
   canOrder: boolean;
   navAppId: NavAppId;
 }) {
   const { current: map } = useMap();
-  const [stack, setStack] = useState<{ lat: number; lng: number; members: (CustomerRow & { lat: number; lng: number })[] } | null>(null);
+  const [stack, setStack] = useState<{ lat: number; lng: number; members: (MapCustomer & { lat: number; lng: number })[] } | null>(null);
 
   // The shape images belong to the style, so they are added again after a basemap switch.
   useEffect(() => {
@@ -58,7 +58,7 @@ export default function CustomerLayer({
     };
   }, [map]);
 
-  const [fan, setFan] = useState<(CustomerRow & { lat: number; lng: number }) | null>(null);
+  const [fan, setFan] = useState<(MapCustomer & { lat: number; lng: number }) | null>(null);
 
   const byId = useMemo(() => new Map(customers.map((c) => [c.id, c])), [customers]);
   const justHeld = usePinHold(map, byId, setFan);

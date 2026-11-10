@@ -8,14 +8,17 @@ import {
   recordPayment,
   listPayments,
   listPaymentsScoped,
+  pagePayments,
   customerGroupOf,
+  type PaymentScope,
   PaymentError,
   type PaymentMethod,
   type AllocationInput,
 } from "@/lib/repo/payments";
 import { isOwner, MANAGE_ROLES } from "@/lib/roles";
-import { pagePayments, PAYMENTS_PAGE_SIZE, type Payment } from "@/lib/paymentsView";
+import { PAYMENTS_PAGE_SIZE, paymentTotals } from "@/lib/paymentsView";
 import { tehranTodayIso } from "@/lib/jalali";
+
 
 const METHODS: PaymentMethod[] = ["CASH", "POS", "CARD_TO_CARD", "CHEQUE", "CREDIT_NOTE", "OTHER"];
 
@@ -31,41 +34,64 @@ export async function GET(req: NextRequest) {
   const customer_id = customerId ? Number(customerId) : undefined;
   // Owners and the platform key see the organisation's receipts; a group manager their group's;
   // a salesperson the ones they took or whose customer they sold to.
-  const payments = isOwner(session.role)
-    ? await listPayments(session.organizationId, customer_id ? { customer_id } : undefined)
-    : await listPaymentsScoped(session.organizationId, {
-        customer_id,
-        ...(session.role === "group_manager"
-          ? { groupIds: session.groupId === null ? [] : [session.groupId] }
-          : { salespersonId: session.user.id }),
-      });
-  // ?page=N (or "all", for the CSV) sends one filtered page and the summary cards instead of every receipt.
-  // shortcut: the scoped list is still read whole and cut here; move the filter and LIMIT into SQL when one
-  // company holds more than about 50 000 receipts.
-  const sp = req.nextUrl.searchParams;
-  const pageParam = sp.get("page");
-  let send: typeof payments = payments;
-  let extra: Record<string, unknown> = {};
+  const scope: PaymentScope = isOwner(session.role)
+    ? null
+    : session.role === "group_manager"
+      ? { groupIds: session.groupId === null ? [] : [session.groupId] }
+      : { salespersonId: session.user.id };
+
+  /* ?page=N: one page of the list and the receipts the totals cards need, instead of all of them
+     (the CSV export still asks without a page). */
+  const pageParam = req.nextUrl.searchParams.get("page");
   if (pageParam !== null) {
-    const voided = sp.get("voided");
-    const filters = {
-      method: sp.get("method") ?? "",
-      from: sp.get("from") ?? "",
-      to: sp.get("to") ?? "",
-      voided: (voided === "only" || voided === "all" ? voided : "hide") as "hide" | "only" | "all",
-    };
+    const q = req.nextUrl.searchParams;
+    const day = (v: string | null) => (v && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : undefined);
+    const method = q.get("method") ?? "";
+    const voided = q.get("voided");
+    const page = /^\d{1,6}$/.test(pageParam) ? Math.max(1, Number(pageParam)) : 1;
+    const { rows, total } = await pagePayments(
+      session.organizationId,
+      scope,
+      {
+        customer_id,
+        method: METHODS.includes(method as PaymentMethod) ? method : undefined,
+        from: day(q.get("from")),
+        to: day(q.get("to")),
+        voided: voided === "only" || voided === "all" ? voided : "hide",
+      },
+      page,
+      PAYMENTS_PAGE_SIZE
+    );
+    // The totals cards cover today, the last 7 days and this month: the live receipts since the
+    // earlier of a week ago and the first of the month, summed here rather than sent (they were
+    // 119 KB of a 25-row page).
     const now = new Date();
     const today = tehranTodayIso(now);
     const weekAgo = tehranTodayIso(new Date(now.getTime() - 7 * 864e5));
-    const size = PAYMENTS_PAGE_SIZE;
-    const asked = pageParam === "all" ? { page: 0, size: Number.MAX_SAFE_INTEGER } : { page: Number(pageParam) || 0, size };
-    const r = pagePayments(payments as unknown as Payment[], filters, asked.page, asked.size, today, weekAgo);
-    send = r.rows as unknown as typeof payments;
-    extra = { total: r.total, live: r.live, page: r.page, totals: r.totals, page_size: size };
+    const monthStart = today.slice(0, 8) + "01";
+    // shortcut: capped at 5,000 receipts in ~5 weeks; sum in SQL instead if a company outgrows it.
+    const recent = (await pagePayments(session.organizationId, scope, { customer_id, from: weekAgo < monthStart ? weekAgo : monthStart, voided: "hide" }, 1, 5000)).rows;
+    const totals = paymentTotals(recent, today, weekAgo);
+    // An empty filtered list says how many receipts the filter hides (FilteredEmpty).
+    const unfiltered = total === 0 ? (await pagePayments(session.organizationId, scope, { customer_id, voided: "hide" }, 1, 1)).total : 0;
+    const places = await entryPlacesFor(session.organizationId, "payment", rows.map((p) => p.id));
+    return compressedJson(req, {
+      ok: true,
+      payments: rows.map((p) => ({ ...p, place: places.get(p.id) ?? null })),
+      total,
+      page,
+      pageSize: PAYMENTS_PAGE_SIZE,
+      totals,
+      unfiltered,
+    });
   }
+
+  const payments = scope === null
+    ? await listPayments(session.organizationId, customer_id ? { customer_id } : undefined)
+    : await listPaymentsScoped(session.organizationId, { customer_id, ...scope });
   // Z9: where each was taken, when the phone said.
-  const places = await entryPlacesFor(session.organizationId, "payment", send.map((p) => p.id));
-  return compressedJson(req, { ok: true, payments: send.map((p) => ({ ...p, place: places.get(p.id) ?? null })), ...extra });
+  const places = await entryPlacesFor(session.organizationId, "payment", payments.map((p) => p.id));
+  return compressedJson(req, { ok: true, payments: payments.map((p) => ({ ...p, place: places.get(p.id) ?? null })) });
 }
 
 export async function POST(req: NextRequest) {

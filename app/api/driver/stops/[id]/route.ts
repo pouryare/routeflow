@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { isId } from "@/lib/inputChecks";
 import { requireRole } from "@/lib/session";
 import { isToman } from "@/lib/money";
-import { customerDebtsForOrg } from "@/lib/repo/payments";
+import { customerDebt } from "@/lib/repo/payments";
 import { DeliveryError } from "@/lib/delivery";
 import { deferOwnedStop, findOwnedStop, invoiceTotal, recordStopDelivery, storedDeliveries } from "@/lib/repo/driverStops";
 
@@ -67,7 +67,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   // Cash taken at the door can be this invoice plus what the shop already owed, and no more.
   // Anything above that is a typo or a lie, and it goes straight into the receipts.
   const invoice = await invoiceTotal(owned.order_id);
-  const owedBefore = (await customerDebtsForOrg(guard.session.organizationId)).get(owned.customer_id)?.total ?? 0;
+  const owedBefore = (await customerDebt(guard.session.organizationId, owned.customer_id)).total;
   if (collected > invoice + owedBefore) {
     return NextResponse.json({ ok: false, error: "مبلغ دریافتی از بدهی مشتری و مبلغ این سفارش بیشتر است" }, { status: 400 });
   }

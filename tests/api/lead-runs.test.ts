@@ -248,6 +248,16 @@ describe("the manager's roster", () => {
     expect(body.runs.length).toBe(2);
   });
 
+  it("?from= keeps only runs on or after that day, for the planner's calendar", async () => {
+    const all = ((await (await listRuns(...MANAGER())).json()) as { runs: Array<{ run_date: string }> }).runs;
+    const latest = all.map((r) => r.run_date).sort().at(-1)!;
+    const body = (await (await listRuns(...MANAGER(), `?from=${latest}`)).json()) as { runs: Array<{ run_date: string }> };
+    expect(body.runs.length).toBeGreaterThan(0);
+    expect(body.runs.every((r) => r.run_date >= latest)).toBe(true);
+    const later = (await (await listRuns(...MANAGER(), "?from=2999-01-01")).json()) as { runs: unknown[] };
+    expect(later.runs).toEqual([]);
+  });
+
   it("offers assignable drivers, and no one else", async () => {
     const body = (await (await listRuns(...MANAGER(), "?drivers=1")).json()) as { drivers: Array<{ id: number }> };
     const ids = body.drivers.map((d) => d.id);
@@ -378,5 +388,22 @@ describe("assignment awareness", () => {
     const managerView = await assignments(managerId, "group_manager", groupId);
     const ownerView = await assignments(ownerId, "owner", null);
     expect(ownerView.length).toBeGreaterThanOrEqual(managerView.length);
+  });
+});
+
+describe("the manager's list of runs", () => {
+  it("gives each run its own stops, in order, from one query for all of them", async () => {
+    /* lib/repo/leadRuns.ts reads the stops of every listed run in one query and hands them back
+       per run; it used to send one query per run (notes/db-index-audit-2026-11-09.md). */
+    const body = (await (await listRuns(...MANAGER())).json()) as {
+      runs: Array<{ id: number; stops: Array<{ location_id: number; sort_order: number }> }>;
+    };
+    expect(body.runs.length).toBeGreaterThan(1);
+    for (const run of body.runs) {
+      const want = (await getDb()
+        .prepare("SELECT location_id FROM lead_run_stops WHERE run_id = ? ORDER BY sort_order")
+        .all(run.id)) as { location_id: number }[];
+      expect(run.stops.map((s) => s.location_id)).toEqual(want.map((w) => w.location_id));
+    }
   });
 });

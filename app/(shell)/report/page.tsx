@@ -17,15 +17,19 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { COOKIE_NAME } from "@/lib/auth";
 import { getSessionFromCookies } from "@/lib/session";
-import { customerDebtsForOrg } from "@/lib/repo/payments";
+import { customerDebtsForOrgOnce } from "@/lib/repo/payments";
 import PageHeader from "@/components/meridian/PageHeader";
 import { faJalaliDateTime } from "@/lib/jalali";
 import { isVanRole } from "@/lib/roles";
 import { pageMetadata } from "@/lib/pageMeta";
+import Pager from "@/components/accounting/Pager";
+import { pagingFor } from "@/lib/paging";
 
 export const metadata = pageMetadata("/report");
 
 export const dynamic = "force-dynamic";
+
+const CUSTOMERS_PER_PAGE = 50;
 
 function countBy<T extends string>(items: T[]): Record<T, number> {
   const out = {} as Record<T, number>;
@@ -53,9 +57,9 @@ function nearestSite(
 export default async function ReportPage({
   searchParams,
 }: {
-  searchParams: Promise<{ gaps?: string }>;
+  searchParams: Promise<{ gaps?: string; page?: string; all?: string }>;
 }) {
-  const { gaps } = await searchParams;
+  const { gaps, page, all } = await searchParams;
   // Server-rendered page, so the sort lives in the URL rather than in client state --
   // which also means a sorted report stays sorted when printed or shared as a link.
   const sortByDistance = gaps === "near";
@@ -66,7 +70,7 @@ export default async function ReportPage({
   const { districts, customers } = await reportRows(session);
 
   // Debt is computed from delivered orders and payment allocations now.
-  const debtByCustomer = await customerDebtsForOrg(session.organizationId);
+  const debtByCustomer = await customerDebtsForOrgOnce(session.organizationId);
   const debtOf = (id: number) =>
     debtByCustomer.get(id) ?? { total: 0, bucket_0_7: 0, bucket_8_30: 0, bucket_30_plus: 0 };
 
@@ -106,6 +110,12 @@ export default async function ReportPage({
     },
     { d0_7: 0, d8_30: 0, d30: 0 }
   );
+
+  /* The customer table is 50 a page on screen: all 700 at once made the page 1.7 MB. «همه» shows
+     every row, for printing; the CSV always has everyone. */
+  const showAll = all === "1";
+  const paging = pagingFor(page, customers.length, showAll ? Math.max(1, customers.length) : CUSTOMERS_PER_PAGE);
+  const shownCustomers = customers.slice(paging.offset, paging.offset + paging.limit);
 
   const now = new Date();
   const generatedAt = faJalaliDateTime(now.toISOString());
@@ -157,8 +167,8 @@ export default async function ReportPage({
         </div>
 
         <div>
-          <div className="font-mono text-[length:var(--text-xs)] uppercase tracking-[0.12em] text-accent">
-            Coverage Report
+          <div className="text-[length:var(--text-xs)] font-semibold text-accent">
+            گزارش پوشش
           </div>
           <h1 className="text-[length:var(--text-xl)] font-bold text-text">گزارش پوشش و مشتریان</h1>
           <p className="mt-1 inline-block font-mono text-[length:var(--text-xs)] text-text-faint">
@@ -287,7 +297,7 @@ export default async function ReportPage({
                 </tr>
               </thead>
               <tbody>
-                {customers.map((c) => (
+                {shownCustomers.map((c) => (
                   <tr key={c.id} className="border-b border-border last:border-b-0">
                     <td className="px-3 py-2 text-text">{c.business_name}</td>
                     <td dir="ltr" className="px-3 py-2 text-right font-mono text-text-faint">
@@ -306,6 +316,18 @@ export default async function ReportPage({
                 ))}
               </tbody>
             </CardTable>
+          </div>
+          <div className="no-print">
+            <Pager base="/report" params={{ gaps }} paging={paging} />
+            {customers.length > CUSTOMERS_PER_PAGE && (
+              <Link
+                href={showAll ? (gaps ? `/report?gaps=${gaps}` : "/report") : `/report?${gaps ? `gaps=${gaps}&` : ""}all=1`}
+                className="mt-[var(--space-2)] inline-flex min-h-11 items-center gap-2 text-[length:var(--text-sm)] text-accent"
+              >
+                <Icon name={showAll ? "list" : "print"} size="sm" />
+                {showAll ? `${faNum(CUSTOMERS_PER_PAGE)} مشتری در هر صفحه` : `همهٔ ${faNum(customers.length)} مشتری، برای چاپ`}
+              </Link>
+            )}
           </div>
         </section>
       </div>

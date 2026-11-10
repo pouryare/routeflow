@@ -96,3 +96,16 @@ describe("the menu no longer offers the merged routes", () => {
     expect(briefing, "the briefing must still link somewhere").toMatch(/href:\s*[`"]/);
   });
 });
+
+describe("the orders list pages its cards", () => {
+  const src = readFileSync("app/(shell)/sales/orders/page.tsx", "utf8");
+  it("draws one page of cards and a pager, keeping the list's filters", () => {
+    expect(src).toMatch(/const ORDERS_PER_PAGE = 25;/);
+    expect(src).toMatch(/orders\.slice\(paging\.offset, paging\.offset \+ paging\.limit\)/);
+    expect(src).toMatch(/<Pager base="\/sales\/orders" params=\{pageParams\} paging=\{paging\} \/>/);
+    expect(src).toMatch(/pageParams=\{\{ customer: customerParam, min: one\(params, "min"\), max: one\(params, "max"\) \}\}/);
+  });
+  it("a new amount range starts again from page one", () => {
+    expect(readFileSync("components/sales/OrderAmountFilter.tsx", "utf8")).toMatch(/q\.delete\("page"\)/);
+  });
+});

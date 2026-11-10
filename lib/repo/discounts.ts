@@ -24,8 +24,9 @@ import {
   type DiscountStatus,
   type ShareInput,
 } from "@/lib/discounts";
-import { lineTotalToman, type LineSnapshot } from "@/lib/orderMath";
+import { lineTotalToman } from "@/lib/orderMath";
 import { refreshOrderFigures } from "./orderFigures";
+import { linesByOrder } from "./orderLines";
 import { advanceOrder, OrderError } from "./orders";
 
 export class DiscountError extends OrderError {}
@@ -81,13 +82,13 @@ export async function saveDiscountSettings(organizationId: number, s: DiscountSe
 
 /** What the order's lines come to before any discount, delivered quantities where there are some. */
 async function grossTotal(db: Db, orderId: number): Promise<number> {
-  const lines = await db
-    .prepare(
-      `SELECT packs_ordered, packs_delivered, unit_price_toman, unit_cost_toman, qty_per_pack, kg_per_base_unit
-         FROM order_lines WHERE order_id = ?`
-    )
-    .all(orderId) as unknown as LineSnapshot[];
-  return lines.reduce((t, l) => t + lineTotalToman(l), 0);
+  return (await grossTotals(db, [orderId])).get(orderId) ?? 0;
+}
+
+/** The same for many orders in one query, by order id (the approval deck was one query per card). */
+async function grossTotals(db: Db, orderIds: number[]): Promise<Map<number, number>> {
+  const lines = await linesByOrder(db, orderIds);
+  return new Map([...lines].map(([id, ls]) => [id, ls.reduce((t, l) => t + lineTotalToman(l), 0)]));
 }
 
 interface OrderBrief {
@@ -323,14 +324,22 @@ export async function pendingForDecider(organizationId: number, decider: Decider
     kind: DiscountKind; value: number; amount_toman: number; reason: string; note: string | null;
     requested_at: string; requested_by: number; requested_by_name: string; requested_by_role: string;
   }[];
+  const mine = rows.filter((r) => canDecideDiscount({ id: r.requested_by, role: r.requested_by_role }, decider, r.group_id));
+  if (mine.length === 0) return [];
+  const grossBy = await grossTotals(db, mine.map((r) => r.order_id));
+  const shareRows = await db
+    .prepare(
+      `SELECT s.discount_id, u.display_name, s.share_pct FROM discount_commission_shares s JOIN users u ON u.id = s.user_id
+        WHERE s.discount_id IN (${mine.map(() => "?").join(",")}) ORDER BY s.id`
+    )
+    .all(...mine.map((r) => r.id)) as unknown as { discount_id: number; display_name: string; share_pct: number }[];
   const out: PendingDiscountCard[] = [];
-  for (const r of rows) {
-    if (!canDecideDiscount({ id: r.requested_by, role: r.requested_by_role }, decider, r.group_id)) continue;
-    const gross = await grossTotal(db, r.order_id);
+  for (const r of mine) {
+    const gross = grossBy.get(r.order_id) ?? 0;
     const amount = discountAmount(r.kind, r.value, gross);
-    const shares = await db
-      .prepare("SELECT u.display_name, s.share_pct FROM discount_commission_shares s JOIN users u ON u.id = s.user_id WHERE s.discount_id = ? ORDER BY s.id")
-      .all(r.id) as unknown as { display_name: string; share_pct: number }[];
+    const shares = shareRows
+      .filter((s) => s.discount_id === r.id)
+      .map(({ display_name, share_pct }) => ({ display_name, share_pct }));
     out.push({
       id: r.id, order_id: r.order_id, order_no: r.order_no, customer_name: r.customer_name,
       gross_toman: gross, amount_toman: amount, percent: discountPercentOf(amount, gross), reason: r.reason, note: r.note,

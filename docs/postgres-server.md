@@ -33,7 +33,10 @@ PG_SCOPED=1
 SESSION_SECRET=<generated>
 COVERAGE_BACKUP_DIR=/var/lib/routeflow/backups
 ROUTEFLOW_PHOTOS_DIR=/opt/routeflow/data/photos
+PG_POOL_MAX=5          # only on a machine with under 6 GB of memory (the Pi); the app's default is 10
 ```
+
+`routeflow_web` also has `statement_timeout = 15s` set on the role: a query that runs away is stopped instead of holding a connection and a CPU core. The app's reads take 1 to 150 ms. The one known long job, the first recount of the daily sales totals after a migration, raises the limit for its own transaction. If a real page hits the limit, the log says `canceling statement due to statement timeout`; find the query on the status page's slow-queries card before raising the limit.
 
 Add `EnvironmentFile=/etc/routeflow/env` to the app's own unit. Do not run the app with an owner `DATABASE_URL` and no `PG_SCOPED` or `PG_APP_ROLE`: row-level security would not apply. A server set up with the older env file (`PG_APP_ROLE=routeflow_app`, owner login) still works, and `doctor.mjs` warns until it is moved: delete `/etc/routeflow/env` and run `install.sh` again (it keeps the session secret only if you copy it over first), or edit the two lines by hand after the script has created the role.
 

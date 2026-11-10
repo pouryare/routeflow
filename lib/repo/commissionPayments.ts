@@ -89,3 +89,25 @@ export async function insertDatedRate(
       )).lastInsertRowid
   );
 }
+
+/** What each person was paid in a period and in all, one query for everyone, by person id. A
+ *  person with no payment is missing from the map: read it as 0. */
+export async function paidByPerson(
+  db: Db,
+  kind: CommissionPaymentKind,
+  personIds: number[],
+  period: { from: string; to: string }
+): Promise<Map<number, { period: number; lifetime: number }>> {
+  if (personIds.length === 0) return new Map();
+  const { table, person } = KINDS[kind];
+  const rows = await db
+    .prepare(
+      `SELECT ${person} AS person_id,
+              COALESCE(SUM(amount_toman) FILTER (WHERE paid_on BETWEEN ? AND ?), 0) AS period,
+              COALESCE(SUM(amount_toman), 0) AS lifetime
+         FROM ${table} WHERE ${person} IN (${personIds.map(() => "?").join(",")})
+        GROUP BY ${person}`
+    )
+    .all(period.from.slice(0, 10), period.to.slice(0, 10), ...personIds) as unknown as { person_id: number; period: number; lifetime: number }[];
+  return new Map(rows.map((r) => [r.person_id, { period: Number(r.period), lifetime: Number(r.lifetime) }]));
+}

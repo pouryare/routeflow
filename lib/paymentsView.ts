@@ -67,8 +67,6 @@ export function filterPayments(payments: Payment[], f: PaymentFilters): Payment[
   return rows.sort((a, b) => (a.received_at < b.received_at ? 1 : -1));
 }
 
-export type PaymentTotals = ReturnType<typeof paymentTotals>;
-
 /** Today / week / month, by method, from the same live list the table shows, so a card and a row cannot disagree. */
 export function paymentTotals(live: Payment[], todayISO: string, weekAgoISO: string) {
   const monthStart = todayISO.slice(0, 8) + "01";
@@ -83,23 +81,6 @@ export function paymentTotals(live: Payment[], todayISO: string, weekAgoISO: str
     };
   };
   return { today: build(today), week: build(window(weekAgoISO)), month: build(window(monthStart)) };
-}
-
-/** One page of the payments screen, worked out on the server so the phone downloads 25 rows, not every
- *  receipt ever taken: the rows of the page, how many rows the filter keeps, how many live receipts exist
- *  (the empty-state hint), and the today/week/month cards (always from all live receipts, never filtered). */
-export function pagePayments(all: Payment[], f: PaymentFilters, page: number, size: number, todayISO: string, weekAgoISO: string) {
-  const filtered = filterPayments(all, f);
-  const live = all.filter((p) => !p.voided_at);
-  const pageCount = Math.max(1, Math.ceil(filtered.length / size));
-  const safePage = Math.min(Math.max(0, page), pageCount - 1);
-  return {
-    rows: filtered.slice(safePage * size, (safePage + 1) * size),
-    total: filtered.length,
-    live: live.length,
-    page: safePage,
-    totals: paymentTotals(live, todayISO, weekAgoISO),
-  };
 }
 
 /** Jalali month sections: a flat list of 400 receipts is unreadable, grouped by month it is a story. */

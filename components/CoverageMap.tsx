@@ -14,7 +14,7 @@ import AppMap from "@/components/map/AppMap";
 import { BASEMAP_LABELS } from "@/lib/mapStyle";
 import CustomerLayer, { CLUSTER_LAYER, CUSTOMER_LAYER } from "@/components/coverage/CustomerLayer";
 import DistrictLayer, { type DistrictPaint } from "@/components/coverage/DistrictLayer";
-import { DistrictCollection, DistrictFeature, DistrictGeometryMap, DistrictProperties, DistrictPropertiesResponse, CustomerRow, CoverageStatus, STATUS_COLOR, STATUS_LABEL, CustomerColorMode, customerLifecycleColor, debtColor, salespersonColor, inactivityColor, daysSinceLastPurchase, distanceColor, isCustomerColorMode, shapeForColor, type DistrictColorMode, districtGroupColor, isDistrictColorMode } from "@/lib/types";
+import { DistrictCollection, DistrictFeature, DistrictGeometryMap, DistrictProperties, DistrictPropertiesResponse, MapCustomer, CoverageStatus, STATUS_COLOR, STATUS_LABEL, CustomerColorMode, customerLifecycleColor, debtColor, salespersonColor, inactivityColor, daysSinceLastPurchase, distanceColor, isCustomerColorMode, shapeForColor, type DistrictColorMode, districtGroupColor, isDistrictColorMode } from "@/lib/types";
 import {
   PrecisionMode,
   PrecisionTier,
@@ -120,7 +120,7 @@ export default function CoverageMap({
   geometryVersion,
 }: {
   initialDistricts: DistrictProperties[];
-  initialCustomers: CustomerRow[];
+  initialCustomers: MapCustomer[];
   initialFacilities: FacilityRow[];
   initialLeads: Array<{ id: number; name: string; lat: number; lng: number }>;
   groups: MapGroup[];
@@ -152,12 +152,12 @@ export default function CoverageMap({
   const [geometry, setGeometry] = useState<DistrictGeometryMap | null>(null);
   const [precisionMode, setPrecisionMode] = useState<PrecisionMode>("auto");
   const [zoom, setZoom] = useState(11);
-  const [customers, setCustomers] = useState<CustomerRow[]>(initialCustomers);
+  const [customers, setCustomers] = useState<MapCustomer[]>(initialCustomers);
   const [selectedDistrict, setSelectedDistrict] = useState<DistrictFeature | null>(null);
   // A ?c= link opens with that customer already selected. No effect and no flyTo: the
   // customer's own coordinates are what startView above was computed from, so the map
   // simply opens there.
-  const [selectedCustomer, setSelectedCustomer] = useState<CustomerRow | null>(
+  const [selectedCustomer, setSelectedCustomer] = useState<MapCustomer | null>(
     () => (incoming.customerId === undefined ? null : initialCustomers.find((c) => c.id === incoming.customerId) ?? null)
   );
   const [colorMode, setColorMode] = useState<CustomerColorMode>(() =>
@@ -237,11 +237,11 @@ export default function CoverageMap({
      the changed shops and the deleted ids (lib/repo/customerList.ts customersChangedSince). If the count we
      end up with differs from the server's, or the server does not know the bookmark, read the whole list. */
   const customerToken = useRef<string | null>(null);
-  const customerList = useRef<CustomerRow[]>([]);
+  const customerList = useRef<MapCustomer[]>([]);
   const loadCustomers = useCallback(async () => {
     if (customerToken.current) {
       const res = await fetch(`/api/customers?since=${encodeURIComponent(customerToken.current)}`);
-      const delta = res.ok ? ((await res.json().catch(() => null)) as ({ full?: boolean } & CustomerDelta<CustomerRow>) | null) : null;
+      const delta = res.ok ? ((await res.json().catch(() => null)) as ({ full?: boolean } & CustomerDelta<MapCustomer>) | null) : null;
       if (delta && !delta.full) {
         customerToken.current = delta.token;
         const merged = applyCustomerDelta(customerList.current, delta);
@@ -502,7 +502,7 @@ export default function CoverageMap({
   const customerById = useMemo(() => new Map(customers.map((c) => [c.id, c])), [customers]);
 
   const pinnedCustomers = useMemo(
-    () => pruneIds(pinnedIds, new Set(customerById.keys())).map((id) => customerById.get(id) as CustomerRow),
+    () => pruneIds(pinnedIds, new Set(customerById.keys())).map((id) => customerById.get(id) as MapCustomer),
     [pinnedIds, customerById]
   );
 
@@ -512,7 +512,7 @@ export default function CoverageMap({
     () =>
       pruneIds(recentIds, new Set(customerById.keys()))
         .filter((id) => !pinnedIds.includes(id))
-        .map((id) => customerById.get(id) as CustomerRow),
+        .map((id) => customerById.get(id) as MapCustomer),
     [recentIds, pinnedIds, customerById]
   );
 
@@ -521,7 +521,7 @@ export default function CoverageMap({
     return customers
       .filter((c) => c.lifecycle === "active")
       .map((c) => ({ customer: c, days: daysSinceLastPurchase(c, now) }))
-      .filter((x): x is { customer: CustomerRow; days: number } => x.days !== null && x.days > 30)
+      .filter((x): x is { customer: MapCustomer; days: number } => x.days !== null && x.days > 30)
       .sort((a, b) => b.days - a.days)
       .slice(0, 20);
   }, [customers]);
@@ -717,7 +717,7 @@ export default function CoverageMap({
 
   /** Every route to an open customer panel funnels through here, so this is the one
    *  place that has to record the view. */
-  const openCustomer = useCallback((c: CustomerRow) => {
+  const openCustomer = useCallback((c: MapCustomer) => {
     setSelectedCustomer(c);
     setRecentIds((prev) => {
       const next = addRecent(prev, c.id);
@@ -752,7 +752,7 @@ export default function CoverageMap({
     return () => window.removeEventListener(MAP_FOCUS_EVENT, on);
   }, []);
 
-  function flyToCustomer(c: CustomerRow) {
+  function flyToCustomer(c: MapCustomer) {
     openCustomer(c);
     if (c.lat && c.lng && mapRef.current) {
       mapRef.current.flyTo({ center: [c.lng, c.lat], zoom: 15, duration: 1000 });
@@ -840,7 +840,7 @@ export default function CoverageMap({
   /** A customer's marker colour under the active mode. Extracted because the selected
    *  customer is rendered separately from the rest and both must agree. */
   const markerColor = useCallback(
-    (c: CustomerRow): string => {
+    (c: MapCustomer): string => {
       if (colorMode === "debt") return debtColor(c.debt);
       if (colorMode === "phone_sales") return salespersonColor(c.salesperson, salesIndex);
       if (colorMode === "inactivity") return inactivityColor(c);
@@ -879,7 +879,7 @@ export default function CoverageMap({
   const mapCustomers = useMemo(
     () =>
       (layers.customers ? filteredCustomers : []).filter(
-        (c): c is CustomerRow & { lat: number; lng: number } => !!c.lat && !!c.lng && c.id !== selectedCustomer?.id,
+        (c): c is MapCustomer & { lat: number; lng: number } => !!c.lat && !!c.lng && c.id !== selectedCustomer?.id,
       ),
     [layers.customers, filteredCustomers, selectedCustomer],
   );

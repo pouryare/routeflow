@@ -58,3 +58,21 @@ export function periodRange(period: Period, today: string, custom: DayRange = { 
 export function inRange(day: string, r: DayRange): boolean {
   return (r.from === "" || day >= r.from) && (r.to === "" || day <= r.to);
 }
+
+/** The dashboard's time frames (owner decision 2026-11-09): this Jalali season by default, this
+ *  Jalali year, or everything. A season is three Persian months: spring is Farvardin to Khordad.
+ *  Example: on 18 Aban 1405 «این فصل» is 1 Mehr to 18 Aban, «امسال» is 1 Farvardin to 18 Aban. */
+export const DASH_PERIODS = ["quarter", "year", "all"] as const;
+export type DashPeriod = (typeof DASH_PERIODS)[number];
+export const DASH_PERIOD_LABEL: Record<DashPeriod, string> = { quarter: "این فصل", year: "امسال", all: "همهٔ زمان‌ها" };
+
+export function dashPeriod(raw: string | undefined): DashPeriod {
+  return (DASH_PERIODS as readonly string[]).includes(raw ?? "") ? (raw as DashPeriod) : "quarter";
+}
+
+export function dashPeriodRange(period: DashPeriod, today: string): DayRange {
+  const j = toJalali(today);
+  if (period === "all" || !j) return { from: "", to: "" };
+  const firstMonth = period === "year" ? 1 : Math.floor((j.jm - 1) / 3) * 3 + 1;
+  return { from: jalaliToIsoDate(j.jy, firstMonth, 1), to: today };
+}

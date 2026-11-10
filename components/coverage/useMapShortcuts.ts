@@ -3,7 +3,7 @@
 import type { RefObject } from "react";
 import { useEffect } from "react";
 import type { MapRef } from "@vis.gl/react-maplibre";
-import { CustomerRow } from "@/lib/types";
+import { MapCustomer } from "@/lib/types";
 
 /** Keyboard shortcuts for the map, for the half of this app's life that happens at a desk. Moved out of CoverageMap unchanged. */
 export function useMapShortcuts({
@@ -18,8 +18,8 @@ export function useMapShortcuts({
   toast: (message: string, kind: "info" | "success" | "error") => void;
   showShortcuts: boolean;
   setShowShortcuts: (v: boolean) => void;
-  selectedCustomer: CustomerRow | null;
-  setSelectedCustomer: (c: CustomerRow | null) => void;
+  selectedCustomer: MapCustomer | null;
+  setSelectedCustomer: (c: MapCustomer | null) => void;
   sidebarOpen: boolean;
   setSidebarOpen: (f: boolean | ((v: boolean) => boolean)) => void;
 }) {

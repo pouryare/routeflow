@@ -6,6 +6,7 @@ import BooksButton from "@/components/accounting/BooksButton";
 import CardTable from "@/components/CardTable";
 import { FieldInput } from "@/components/FieldInput";
 import { tehranTodayIso, faJalaliDateTime } from "@/lib/jalali";
+import { useRunAfterMount } from "@/lib/useRunAfterMount";
 import { friendlyError } from "@/lib/userMessage";
 import FilterChips from "@/components/mobile/FilterChips";
 import FilteredEmpty from "@/components/FilteredEmpty";
@@ -15,27 +16,27 @@ import BusyIcon from "@/components/meridian/BusyIcon";
 import { useDoneFlash } from "@/lib/useDoneFlash";
 import SectionHead from "@/components/meridian/SectionHead";
 import JalaliDateInput from "@/components/meridian/JalaliDateInput";
-import { Fragment, useCallback, useMemo, useRef, useState } from "react";
-import { useRunAfterMount } from "@/lib/useRunAfterMount";
+import { Fragment, useCallback, useMemo, useState } from "react";
 import { faToman } from "@/lib/format";
 import PaymentFlow from "@/components/flows/PaymentFlow";
 import { autoOpenFlow, currentSearch } from "@/lib/flows/autoOpen";
 import { isToman, toToman } from "@/lib/money";
 import PaymentTotalsCards from "@/components/sales/PaymentTotalsCards";
 import AllocationEditor from "@/components/sales/AllocationEditor";
-import { METHOD_LABEL, groupByMonth, paymentsCsv, type PaymentTotals, type AllocationDraft, type Customer, type OpenOrder, type Payment } from "@/lib/paymentsView";
+import ListPager from "@/components/mobile/ListPager";
+import { METHOD_LABEL, filterPayments, groupByMonth, paymentTotals, paymentsCsv, type AllocationDraft, type Customer, type OpenOrder, type Payment } from "@/lib/paymentsView";
 import CustomerName from "@/components/CustomerName";
 import SmartPicker from "@/components/mobile/SmartPicker";
 import { ChipGroup } from "@/components/mobile/ChipGroup";
 
 export default function PaymentsPanel({ customers, canSeeBooks = false }: { customers: Customer[]; canSeeBooks?: boolean }) {
-  /* One page of receipts as the server cut it (lib/paymentsView.ts pagePayments): the filter, the page, the
-     card totals and the counts all come from there, so the phone never holds every receipt. */
+  /* The server pages the list (25 rows) and sends the totals cards' sums, so the screen no longer
+     downloads every receipt ever taken. */
   const [payments, setPayments] = useState<Payment[] | null>(null);
+  const [totals, setTotals] = useState<ReturnType<typeof paymentTotals>>(() => paymentTotals([], "", ""));
   const [total, setTotal] = useState(0);
-  const [liveCount, setLiveCount] = useState(0);
-  const [pageSize, setPageSize] = useState(25);
-  const [totals, setTotals] = useState<PaymentTotals | null>(null);
+  const [pageCount, setPageCount] = useState(1);
+  const [unfiltered, setUnfiltered] = useState(0);
   const [customerId, setCustomerId] = useState(() => {
     if (typeof window === "undefined") return "";
     const q = new URLSearchParams(window.location.search).get("customer_id");
@@ -71,37 +72,38 @@ export default function PaymentsPanel({ customers, canSeeBooks = false }: { cust
     const r = p === "" ? { from: "", to: "" } : periodRange(p, tehranTodayIso());
     setFFrom(r.from);
     setFTo(r.to);
-    setPage(0);
+    setPage(1);
   }
-  const [page, setPage] = useState(0);
-  const filterQuery = `method=${encodeURIComponent(fMethod)}&from=${fFrom}&to=${fTo}&voided=${fVoided}`;
+  const [page, setPage] = useState(1);
   const [editing, setEditing] = useState<number | null>(null);
   const [draft, setDraft] = useState<AllocationDraft[]>([]);
   const [openOrders, setOpenOrders] = useState<OpenOrder[]>([]);
   const [allocError, setAllocError] = useState<string | null>(null);
 
-  /* A voided payment's money is GONE, so the server counts it nowhere in the totals. Counting it
+  /* A voided payment's money is GONE, so it is counted nowhere in the totals. Counting it
      and calling the result "collected this month" is the most misleading number this screen
      could print. */
-  const pageCount = Math.max(1, Math.ceil(total / pageSize));
-  const safePage = Math.min(page, pageCount - 1);
+  /* Today / week / month, by method: summed on the server (app/api/payments) with the same
+     paymentTotals, from the live receipts of the last week and this month. */
 
   /* Jalali month sections. A flat list of 400 receipts is unreadable; grouped by month it is
      a story. The grouping is derived at render, never stored. */
   const months = useMemo(() => groupByMonth(payments ?? []), [payments]);
 
+  /* The export is every matching receipt, not the page on screen: it asks for the whole list
+     and filters it here, as the screen did before it paged. */
   const exportCsv = useCallback(async () => {
-    // The CSV is every receipt the filter keeps, fetched only now, not held on the phone.
-    const res = await fetch(`/api/payments?page=all&${filterQuery}`);
+    const res = await fetch("/api/payments");
     const body = await res.json().catch(() => null);
-    if (!res.ok || !body) return;
-    const blob = new Blob([paymentsCsv(body.payments, customerName)], { type: "text/csv;charset=utf-8;" });
+    if (!res.ok || !body) return setError(friendlyError(body?.error, "خروجی ساخته نشد؛ دوباره تلاش کنید"));
+    const filtered = filterPayments(body.payments as Payment[], { method: fMethod, from: fFrom, to: fTo, voided: fVoided });
+    const blob = new Blob([paymentsCsv(filtered, customerName)], { type: "text/csv;charset=utf-8;" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
     a.download = "payments.csv";
     a.click();
     URL.revokeObjectURL(a.href);
-  }, [filterQuery, customerName]);
+  }, [customerName, fMethod, fFrom, fTo, fVoided]);
 
   async function openAllocation(paymentId: number) {
     setAllocError(null);
@@ -133,23 +135,27 @@ export default function PaymentsPanel({ customers, canSeeBooks = false }: { cust
     setDraft([]);
   }
 
-  /* Only the newest answer is kept: a slow reply to an old page must not overwrite a newer one. */
-  const loadSeq = useRef(0);
   const load = useCallback(async () => {
-    const seq = ++loadSeq.current;
-    const res = await fetch(`/api/payments?page=${page}&${filterQuery}`);
+    const q = new URLSearchParams({ page: String(page), voided: fVoided });
+    if (fMethod) q.set("method", fMethod);
+    if (fFrom) q.set("from", fFrom);
+    if (fTo) q.set("to", fTo);
+    const res = await fetch(`/api/payments?${q}`);
     const body = await res.json().catch(() => null);
-    if (seq !== loadSeq.current) return;
-    setPayments(res.ok && body ? body.payments : []);
-    if (res.ok && body) {
-      setTotal(body.total);
-      setLiveCount(body.live);
-      setPageSize(body.page_size);
-      setTotals(body.totals);
+    if (!res.ok || !body) {
+      setPayments([]);
+      return;
     }
-  }, [page, filterQuery]);
+    setPayments(body.payments);
+    if (body.totals) setTotals(body.totals);
+    setTotal(body.total);
+    setUnfiltered(body.unfiltered ?? 0);
+    setPageCount(Math.max(1, Math.ceil(body.total / body.pageSize)));
+    // A page past the end (a void emptied the last one) steps back to the real last page.
+    if (body.payments.length === 0 && page > 1 && body.total > 0) setPage(Math.ceil(body.total / body.pageSize));
+  }, [page, fMethod, fFrom, fTo, fVoided, setPage]);
 
-  useRunAfterMount(load); // again whenever the page or a filter changes (load's dependencies)
+  useRunAfterMount(load);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -301,7 +307,7 @@ export default function PaymentsPanel({ customers, canSeeBooks = false }: { cust
         <h2 className="sechead__title">خلاصهٔ دریافتی‌ها</h2>
         {/* Voided receipts are excluded from every figure here: the money was given back,
             so counting it would be the most misleading number this screen could print. */}
-{totals ? <PaymentTotalsCards totals={totals} /> : null}
+<PaymentTotalsCards totals={totals} />
         <h2 className="sechead__title">دریافت‌ها</h2>
         <FilterChips
           groups={[
@@ -319,7 +325,7 @@ export default function PaymentsPanel({ customers, canSeeBooks = false }: { cust
               mode: "single",
               options: Object.entries(METHOD_LABEL).map(([k, v]) => ({ id: k, label: v })),
               value: fMethod,
-              onChange: (v) => { setFMethod(v as string); setPage(0); },
+              onChange: (v) => { setFMethod(v as string); setPage(1); },
             },
             {
               id: "voided",
@@ -329,7 +335,7 @@ export default function PaymentsPanel({ customers, canSeeBooks = false }: { cust
               options: [{ id: "only", label: "فقط باطال‌شده‌ها" }, { id: "all", label: "همه با باطال‌شده‌ها" }],
               value: fVoided,
               sheet: true,
-              onChange: (v) => { setFVoided(v as "hide" | "only" | "all"); setPage(0); },
+              onChange: (v) => { setFVoided(v as "hide" | "only" | "all"); setPage(1); },
             },
           ]}
         />
@@ -349,7 +355,7 @@ export default function PaymentsPanel({ customers, canSeeBooks = false }: { cust
         ) : total === 0 ? (
           <FilteredEmpty
             title="دریافتی با این فیلترها یافت نشد."
-            hidden={liveCount}
+            hidden={unfiltered}
             onClear={() => { choosePeriod(""); setFMethod(""); setFVoided("hide"); }}
           />
         ) : (
@@ -461,31 +467,7 @@ export default function PaymentsPanel({ customers, canSeeBooks = false }: { cust
               </section>
             ))}
 
-            {pageCount > 1 ? (
-              <div className="flex items-center justify-end gap-2 text-xs">
-                <button
-                  type="button"
-                  className="rounded border border-border px-2 py-1 disabled:opacity-40"
-                  disabled={safePage === 0}
-                  onClick={() => setPage(safePage - 1)}
-                >
-                  <Icon name="chevron-right" size="sm" />
-                  صفحهٔ قبل
-                </button>
-                <span className="tnum">
-                  {safePage + 1} / {pageCount}
-                </span>
-                <button
-                  type="button"
-                  className="rounded border border-border px-2 py-1 disabled:opacity-40"
-                  disabled={safePage >= pageCount - 1}
-                  onClick={() => setPage(safePage + 1)}
-                >
-                  صفحهٔ بعد
-                  <Icon name="chevron-left" size="sm" />
-                </button>
-              </div>
-            ) : null}
+            <ListPager page={page} pageCount={pageCount} onPage={setPage} />
           </>
         )}
 

@@ -210,8 +210,8 @@ export default function FacilitiesPage() {
       <div className="mx-auto flex max-w-3xl flex-col gap-5">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <div className="font-mono text-[length:var(--text-xs)] uppercase tracking-[0.12em] text-accent">
-              Our Sites
+            <div className="text-[length:var(--text-xs)] font-semibold text-accent">
+              انبارها و پایگاه‌ها
             </div>
             <h1 className="text-[length:var(--text-xl)] font-bold text-text">مکان‌های ما</h1>
           </div>

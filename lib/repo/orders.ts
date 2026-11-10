@@ -236,7 +236,7 @@ export async function advanceOrder(
         .prepare(
           `SELECT MAX(CASE WHEN to_status = 'CANCELLED' THEN created_at END) AS cancelled_at,
                   MAX(CASE WHEN to_status IN ('DELIVERED','PARTIALLY_DELIVERED') THEN 1 ELSE 0 END) AS delivered
-             FROM order_events WHERE order_id = ? AND organization_id = ?`
+             FROM order_events_all WHERE order_id = ? AND organization_id = ?`
         )
         .get(orderId, organizationId) as { cancelled_at: string | null; delivered: number | null } | undefined;
       if (Number(hist?.delivered ?? 0) > 0) throw new OrderError("سفارشی که تحویل شده بود بازگشایی نمی‌شود");
@@ -304,7 +304,7 @@ export async function orderEvents(
     .db()
     .prepare(
       `SELECT e.*, u.display_name AS actor_name, rc.label_fa AS reason_label
-         FROM order_events e
+         FROM order_events_all e
          LEFT JOIN users u ON u.id = e.actor_user_id
          LEFT JOIN reason_codes rc ON rc.id = e.reason_code_id
         WHERE e.order_id = ? AND e.organization_id = ?

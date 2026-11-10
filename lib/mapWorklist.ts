@@ -1,4 +1,4 @@
-import type { CustomerRow, DistrictProperties } from "@/lib/types";
+import type { MapCustomer, DistrictProperties } from "@/lib/types";
 
 /** The map sidebar's worklist (item 27, spec slice L, direction A + C): with nothing
  *  selected, the panel lists what needs doing IN THE AREA ON SCREEN. Panning and zooming
@@ -19,7 +19,7 @@ export type WorkReminder = {
 
 export type Worklist = {
   /** Buying customers who have gone quiet, longest silence first. */
-  quiet: { customer: CustomerRow; days: number | null }[];
+  quiet: { customer: MapCustomer; days: number | null }[];
   /** Reminders whose customer or district is on screen. */
   reminders: WorkReminder[];
   /** Districts marked as needing coverage whose centre is on screen. */
@@ -44,7 +44,7 @@ const daysBetween = (fromIso: string, today: string) =>
   Math.floor((Date.parse(`${today}T00:00:00Z`) - Date.parse(`${fromIso.slice(0, 10)}T00:00:00Z`)) / 86_400_000);
 
 export function buildWorklist(
-  customers: CustomerRow[],
+  customers: MapCustomer[],
   reminders: WorkReminder[],
   districts: DistrictProperties[],
   bounds: Bounds,

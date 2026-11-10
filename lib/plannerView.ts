@@ -1,7 +1,7 @@
 /** The planner page's plain data: the week's date labels, the shapes of a plan row and an origin, the saved
  *  return-to-origin toggle, and the status styling. No React, so the page file holds the screen only. */
 
-import { tehranTodayIso } from "@/lib/jalali";
+import { faJalaliDate, tehranTodayIso } from "@/lib/jalali";
 import type { CustomerRow } from "@/lib/types";
 import type { SavedLocationRow } from "@/lib/db";
 
@@ -42,8 +42,10 @@ export function plannerDays(now: Date = new Date()): Date[] {
 export function dayLabel(d: Date) {
   return `${WEEKDAYS[d.getDay()]}`;
 }
+/** «۰۸/۱۹»: the Jalali month and day, in Persian digits, like every other date in the app.
+ *  It was the Gregorian «11/10» in Latin digits. */
 export function dateLabel(d: Date) {
-  return `${String(d.getMonth() + 1).padStart(2, "0")}/${String(d.getDate()).padStart(2, "0")}`;
+  return faJalaliDate(toDateStr(d)).slice(5);
 }
 
 // Where the day's distances are measured from. Until this existed the planner fell

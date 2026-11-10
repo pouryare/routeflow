@@ -77,7 +77,9 @@ describe("prefs repo", () => {
 
 describe("company sound skin", () => {
   it("is bubble until the owner picks, then the pick, and the database refuses a skin that is not offered", async () => {
-    const { soundSkinFor, setSoundSkin } = await import("@/lib/repo/soundSkin");
+    const { setSoundSkin } = await import("@/lib/repo/soundSkin");
+    const { companyLookFor } = await import("@/lib/repo/effects");
+    const soundSkinFor = async (org: number) => (await companyLookFor(org)).soundSkin;
     expect(await soundSkinFor(1)).toBe("bubble");
     await setSoundSkin(1, "press");
     expect(await soundSkinFor(1)).toBe("press");

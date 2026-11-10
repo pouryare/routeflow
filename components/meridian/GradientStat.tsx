@@ -1,4 +1,5 @@
-import type { ReactNode } from "react";
+import { isValidElement, type CSSProperties, type ReactNode } from "react";
+import { faNum } from "@/lib/format";
 import { CardHelp } from "@/components/meridian/CardHelp";
 import { Icon, type IconName } from "@/components/meridian/Icon";
 
@@ -56,11 +57,23 @@ export default function GradientStat({
         {label}
         {help ? <CardHelp id={help} /> : null}
       </div>
-      <div className="v mono">
+      <div className="v mono" style={{ "--chars": figureChars(value) } as CSSProperties}>
         {value}
         {unit ? <small>{unit}</small> : null}
       </div>
       {chip ? <div className={`d${chipTone === "sage" ? "" : ` ${chipTone}`}`}>{chip}</div> : null}
     </div>
   );
+}
+
+/** How many characters the figure prints, so the CSS can shrink a long one to fit the card
+ *  («۶۲۹٬۸۷۶٬۷۴۲٬۰۰۰» at full size runs past a phone-width card). A string counts as written; a
+ *  `<CountUp value>` counts as the number it shows. Anything else keeps the full size. */
+export function figureChars(value: ReactNode): number | undefined {
+  if (typeof value === "string") return value.length;
+  if (isValidElement<{ value?: unknown; mode?: string; suffix?: unknown }>(value) && typeof value.props.value === "number") {
+    const figure = value.props.mode === "pct" ? `${faNum(Math.round(value.props.value * 100))}٪` : faNum(Math.round(value.props.value));
+    return figure.length + (typeof value.props.suffix === "string" ? value.props.suffix.length : 0);
+  }
+  return undefined;
 }

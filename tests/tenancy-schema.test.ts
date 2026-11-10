@@ -152,6 +152,7 @@ describe("organization_id backfill", () => {
       "users",              // carries organization_id, but is not scoped *by* TENANT_TABLES
       "order_lines",        // reaches a tenant through orders
       "order_events",       // through orders (carries organization_id for cheap filtering)
+      "order_events_archive", // the same, for order_events rows older than the hot months
       "purchase_lines",     // through purchases
       "delivery_stops",     // through delivery_runs
       "run_facility_stops", // through delivery_runs — a facility visit is not a delivery,
