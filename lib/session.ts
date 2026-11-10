@@ -209,6 +209,12 @@ export function scopeView(session: Session): Session {
   return session.role === "platform_owner" && (session.actingOrg ?? null) !== null ? { ...session, role: "owner" } : session;
 }
 
+/* A company's groups, shared for one server render like resolveOnce above: a page asked 16 to 25
+   times. Outside a render it reads every time. Callers must not change the array. */
+const ownerGroupIds = cache(async (organizationId: number): Promise<number[]> =>
+  ((await getDb().prepare("SELECT id FROM groups WHERE organization_id = ?").all(organizationId)) as { id: number }[]).map((r) => r.id)
+);
+
 /** "all" for a platform_owner; otherwise the groups this session may read.
  *
  *  An owner used to return "all", which was right when there was one company in the
@@ -226,12 +232,7 @@ export async function scopeGroupIds(session: Session): Promise<number[] | "all">
   session = scopeView(session);
   if (session.role === "platform_owner") return "all";
 
-  if (session.role === "owner") {
-    const rows = await getDb()
-      .prepare("SELECT id FROM groups WHERE organization_id = ?")
-      .all(session.organizationId) as { id: number }[];
-    return rows.map((r) => r.id);
-  }
+  if (session.role === "owner") return await ownerGroupIds(session.organizationId);
 
   return session.groupId === null ? [] : [session.groupId];
 }
