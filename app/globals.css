@@ -5118,7 +5118,7 @@ html[data-fx="off"] .tourhand { display: none; }
    One scrolling row, 44px chips; the chosen state is accent fill plus a check icon, never colour alone. */
 .meridian .filterchips__row { display: flex; align-items: center; gap: 8px; overflow-x: auto; padding: 2px 0 6px; scrollbar-width: none; }
 .meridian .filterchips__group { display: flex; gap: 8px; flex: none; }
-.meridian .filterchips__group--wrap { flex-wrap: wrap; }
+.meridian .filterchips__group--wrap { flex-wrap: wrap; flex: 1 1 auto; min-width: 0; } /* wraps inside the row, not past the phone */
 .meridian .filterchip {
   min-height: 44px; display: inline-flex; align-items: center; gap: 6px; padding: 0 14px; flex: none;
   border: 1px solid var(--border); border-radius: 999px; background: var(--surface); color: var(--foreground);
