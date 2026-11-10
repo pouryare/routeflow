@@ -106,6 +106,10 @@ describe("role prefixes", () => {
     expect(proxy(req("/map/sprites/light.json")).status).toBe(307);
     expect(proxy(req("/api/sales/admin/export.csv", "delivery_driver")).status).toBe(403);
   });
+  it("lets both van roles listen on the live channel their screens open", () => {
+    expect(proxy(req("/api/live", "delivery_driver")).status).toBe(200);
+    expect(proxy(req("/api/live", "field_rep")).status).toBe(200);
+  });
   it("lets a driver into /driver", () => {
     expect(proxy(req("/driver", "delivery_driver")).status).toBe(200);
   });

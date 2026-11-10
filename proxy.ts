@@ -262,6 +262,9 @@ export function proxy(req: NextRequest) {
     // one of these routes already scopes to the caller's own session.
     pathname.startsWith("/settings") ||
     pathname.startsWith("/api/notifications") ||
+    // The live channel: /driver's LiveRefresh and bell listen on it, and the route already scopes
+    // a van role to its own runs (lib/live/visibility.ts). Refused here, it 403'd on every page.
+    pathname === "/api/live" ||
     pathname.startsWith("/api/push/subscribe") ||
     // The lead run a driver works, and the visit recorded at the door.
     // /api/leads/locations/[id]/visit has admitted a driver in requireRole since it was
