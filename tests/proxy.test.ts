@@ -96,6 +96,16 @@ describe("role prefixes", () => {
       }
     }
   });
+  it("hands every signed-in role the map's sprites and fonts rather than a redirect to its own page", () => {
+    // A driver's map got /driver back for /map/sprites/light.json: no icons, and two extra renders.
+    for (const role of ["delivery_driver", "field_rep", "shareholder"] as Role[]) {
+      expect(proxy(req("/map/sprites/light.json", role)).status).toBe(200);
+      expect(proxy(req("/fonts/PeydaFaNumWeb-Regular.woff2", role)).status).toBe(200);
+    }
+    // Still a session, and an API path with a dot is still gated.
+    expect(proxy(req("/map/sprites/light.json")).status).toBe(307);
+    expect(proxy(req("/api/sales/admin/export.csv", "delivery_driver")).status).toBe(403);
+  });
   it("lets a driver into /driver", () => {
     expect(proxy(req("/driver", "delivery_driver")).status).toBe(200);
   });

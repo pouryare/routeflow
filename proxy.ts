@@ -7,6 +7,8 @@ import { isShareholderPath, isVanRole, MANAGE_ROLES, OWNER_ROLES } from "@/lib/r
 // a service worker script must return the same bytes regardless of session state, or
 // the browser's SW update check can be fed the login page's HTML instead of the actual
 // script. None of these carry any customer/business data, so exempting them is safe.
+/** The folders under public/: static files, the same for every signed-in role. */
+const PUBLIC_FILE_DIRS = ["/map/", "/fonts/", "/basemap-thumbs/", "/avatars/", "/tutorials/"];
 const PUBLIC_PATHS = ["/login", "/api/login", "/api/login/second-factor", "/api/health", "/sw.js", "/manifest.webmanifest", "/offline", "/icon.svg"];
 
 // A coarse gate on the token's own claims -- NOT an authorisation decision. Middleware
@@ -80,6 +82,13 @@ export function proxy(req: NextRequest) {
     res.cookies.set(COOKIE_NAME, "", { path: "/", maxAge: 0 });
     return res;
   }
+
+  /* A file from public/ (map sprites, fonts, thumbnails) is the same for every role, so the role gates
+     below have nothing to say about it. Without this a driver's map asked for /map/sprites/light.json,
+     was redirected to /driver, and got the whole driver page back instead: no map icons, and two extra
+     server renders of /driver on every visit. Only public/'s own folders, so a page path that happens
+     to end in a dot-something still meets its gate. */
+  if (PUBLIC_FILE_DIRS.some((d) => pathname.startsWith(d)) && /\.[a-z0-9]+$/i.test(pathname)) return NextResponse.next();
 
   /* A shareholder reaches their own page, their settings and signing out; every other path, API included, is
      answered with a way back to /my-share. This is an allowlist, not a list of what to refuse, because a role
