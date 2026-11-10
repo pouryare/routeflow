@@ -1,4 +1,4 @@
-import { DistrictProperties, CustomerRow } from "@/lib/types";
+import { DistrictProperties, MapCustomer } from "@/lib/types";
 import { MapView } from "@/lib/deepLink";
 
 export const VIEW_KEY = "coverage_view";
@@ -29,7 +29,7 @@ export function readStoredView(): MapView | null {
  *  Zoom levels: 15 puts a shop in its street, 13 fits a neighbourhood. */
 export function linkTargetView(
   link: { customerId?: number; districtId?: number },
-  customers: CustomerRow[],
+  customers: MapCustomer[],
   districts: DistrictProperties[]
 ): MapView | null {
   if (link.customerId !== undefined) {

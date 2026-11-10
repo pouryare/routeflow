@@ -1,13 +1,13 @@
 "use client";
 
-import { CustomerRow } from "@/lib/types";
+import { MapCustomer } from "@/lib/types";
 import CollapsibleSection from "@/components/CollapsibleSection";
 import { Icon } from "@/components/meridian/Icon";
 
 /** The sidebar's «سنجاق‌شده» list.. */
 export default function PinnedCustomersSection({ pinnedCustomers, flyToCustomer, togglePinned }: {
-  pinnedCustomers: CustomerRow[];
-  flyToCustomer: (c: CustomerRow) => void;
+  pinnedCustomers: MapCustomer[];
+  flyToCustomer: (c: MapCustomer) => void;
   togglePinned: (id: number) => void;
 }) {
   if (!(pinnedCustomers.length > 0)) return null;

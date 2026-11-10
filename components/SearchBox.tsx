@@ -4,7 +4,7 @@ import { FieldInput } from "@/components/FieldInput";
 import FilterChips from "@/components/mobile/FilterChips";
 import { friendlyError } from "@/lib/userMessage";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { CustomerRow, DistrictFeature } from "@/lib/types";
+import { MapCustomer, DistrictFeature } from "@/lib/types";
 import { matchesQuery } from "@/lib/persian";
 import SearchRecent from "@/components/searchbox/SearchRecent";
 import SearchFavorites from "@/components/searchbox/SearchFavorites";
@@ -14,7 +14,7 @@ import { Icon } from "@/components/meridian/Icon";
 import { COORD_RE, Favorite, GeoResult, SORT_OPTIONS, URL_RE, addFavorite, clearAllRecent, detectInputType, getGeoProvider, isFavorite, loadFavorites, loadRecent, pushRecent, removeFavorite, removeRecent } from "@/components/searchbox/searchBoxStore";
 
 export type Result =
-  | { kind: "customer"; customer: CustomerRow }
+  | { kind: "customer"; customer: MapCustomer }
   | { kind: "district"; district: DistrictFeature };
 
 export { SORT_OPTIONS, detectInputType, loadRecent, pushRecent, removeRecent, clearAllRecent, loadFavorites, addFavorite, removeFavorite, isFavorite };
@@ -44,9 +44,9 @@ export default function SearchBox({
   defaultExpanded,
   inline,
 }: {
-  customers?: CustomerRow[];
+  customers?: MapCustomer[];
   districts?: DistrictFeature[];
-  onSelectCustomer?: (c: CustomerRow) => void;
+  onSelectCustomer?: (c: MapCustomer) => void;
   onSelectDistrict?: (d: DistrictFeature) => void;
   onLocationFound?: (lat: number, lng: number, label: string) => void;
   /** Handed in so the map's "/" shortcut can put the cursor here. Owned by the caller

@@ -1,7 +1,7 @@
 "use client";
 
 import { ChipGroup } from "@/components/mobile/FilterChips";
-import { CustomerRow } from "@/lib/types";
+import { MapCustomer } from "@/lib/types";
 import CollapsibleSection from "@/components/CollapsibleSection";
 import { formatDistanceKm } from "@/lib/geo";
 import { Icon } from "@/components/meridian/Icon";
@@ -9,10 +9,10 @@ import { Icon } from "@/components/meridian/Icon";
 /** The sidebar's «مشتریان نزدیک» list with its radius chips. State and handlers stay in CoverageMap.. */
 export default function NearbyCustomersSection({ myPosition, nearbyCustomers, nearbyRadiusKm, setNearbyRadiusKm, flyToCustomer }: {
   myPosition: unknown;
-  nearbyCustomers: { customer: CustomerRow; km: number }[];
+  nearbyCustomers: { customer: MapCustomer; km: number }[];
   nearbyRadiusKm: number;
   setNearbyRadiusKm: (km: number) => void;
-  flyToCustomer: (c: CustomerRow) => void;
+  flyToCustomer: (c: MapCustomer) => void;
 }) {
   if (!(myPosition)) return null;
   return (

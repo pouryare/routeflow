@@ -1,14 +1,14 @@
 "use client";
 
-import { CustomerRow } from "@/lib/types";
+import { MapCustomer } from "@/lib/types";
 import CollapsibleSection from "@/components/CollapsibleSection";
 import { Icon } from "@/components/meridian/Icon";
 import { burst } from "@/lib/burst";
 
 /** The sidebar's «اخیراً دیده‌شده» list.. */
 export default function RecentCustomersSection({ recentCustomers, flyToCustomer, togglePinned }: {
-  recentCustomers: CustomerRow[];
-  flyToCustomer: (c: CustomerRow) => void;
+  recentCustomers: MapCustomer[];
+  flyToCustomer: (c: MapCustomer) => void;
   togglePinned: (id: number) => void;
 }) {
   if (!(recentCustomers.length > 0)) return null;

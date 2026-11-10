@@ -6,7 +6,7 @@ import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPoi
 import { useHydrated } from "@/lib/useHydrated";
 import { useRouter } from "next/navigation";
 import {
-  CustomerRow,
+  MapCustomer,
   CustomerLifecycle,
   customerLifecycleColor,
   LIFECYCLE_LABEL,
@@ -45,7 +45,7 @@ function customerLink(id: number): string {
 /** Kept in step with the .customer-panel-exit duration in globals.css. */
 const EXIT_MS = 180;
 
-function debtTier(c: CustomerRow): { label: string; color: string; amount: number } | null {
+function debtTier(c: MapCustomer): { label: string; color: string; amount: number } | null {
   const d = c.debt;
   if (!d) return null;
   if (d.bucket_30_plus > 0) return { label: "بدهی بیش از ۳۰ روز", color: STATUS_COLOR.not_allowed, amount: d.bucket_30_plus };
@@ -70,7 +70,7 @@ export default function CustomerDetailPanel({
   onReminderAdded,
   onUpdated,
 }: {
-  customer: CustomerRow;
+  customer: MapCustomer;
   facilities?: FacilityRow[];
   /** Whether this customer is in the sidebar's pinned list. Owned there, not here:
    *  the panel is transient and the list has to outlive it. */

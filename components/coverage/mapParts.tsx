@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { useMap } from "@vis.gl/react-maplibre";
-import { CustomerRow } from "@/lib/types";
+import { MapCustomer } from "@/lib/types";
 import { distanceKm } from "@/lib/geo";
 import { isPlaced, FacilityRow } from "@/lib/facilityTypes";
 import { MapView } from "@/lib/deepLink";
@@ -48,12 +48,12 @@ export function MapWatcher({
 /** The opening view when nothing else has said where to look. Skipped entirely when the
  *  URL carries a view or a target, or when this browser remembers where it was left --
  *  fitting to all customers would throw away the thing the user actually asked for. */
-export function FitToCustomers({ customers, enabled }: { customers: CustomerRow[]; enabled: boolean }) {
+export function FitToCustomers({ customers, enabled }: { customers: MapCustomer[]; enabled: boolean }) {
   const { current: map } = useMap();
   const fitted = useRef(false);
   useEffect(() => {
     if (!map || !enabled || fitted.current) return;
-    const pts = customers.filter((c) => c.lat && c.lng) as (CustomerRow & { lat: number; lng: number })[];
+    const pts = customers.filter((c) => c.lat && c.lng) as (MapCustomer & { lat: number; lng: number })[];
     if (pts.length === 0) return;
     fitted.current = true;
     if (pts.length === 1) {

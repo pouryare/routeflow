@@ -5,7 +5,7 @@ import { tehranTodayIso } from "@/lib/jalali";
 import { useEffect, useRef, useState } from "react";
 import { Alert, Button } from "@heroui/react";
 import { Icon } from "@/components/meridian/Icon";
-import { CustomerRow } from "@/lib/types";
+import { MapCustomer } from "@/lib/types";
 import type { FacilityRow } from "@/lib/facilityTypes";
 import { isPlaced } from "@/lib/facilityTypes";
 import { distanceKm } from "@/lib/geo";
@@ -20,7 +20,7 @@ const FACILITY_SNOOZE_MS = 6 * 60 * 60 * 1000;
 const LEAD_SNOOZE_MS = 30 * 60 * 1000;
 
 type Prompt =
-  | { kind: "customer"; customer: CustomerRow }
+  | { kind: "customer"; customer: MapCustomer }
   | { kind: "facility_arrive"; facility: FacilityRow }
   | { kind: "lead"; lead: { id: number; name: string; lat: number; lng: number } };
 
@@ -33,7 +33,7 @@ export default function GeofenceWatcher({
 }: {
   enabled: boolean;
   facilitiesEnabled?: boolean;
-  customers: CustomerRow[];
+  customers: MapCustomer[];
   facilities?: FacilityRow[];
   leads?: Array<{ id: number; name: string; lat: number; lng: number }>;
 }) {

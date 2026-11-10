@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import { Layer, Source } from "@vis.gl/react-maplibre";
 import type { ExpressionSpecification } from "maplibre-gl";
-import { CustomerRow } from "@/lib/types";
+import { MapCustomer } from "@/lib/types";
 
 // Single-hue sequential ramp (dataviz skill: "sequential = one hue, light->dark,
 // never a rainbow"). Low end recedes toward the dark bg, high end is the app's own
@@ -25,7 +25,7 @@ export default function HeatmapLayer({
   weightByDebt,
   beforeId,
 }: {
-  customers: CustomerRow[];
+  customers: MapCustomer[];
   weightByDebt: boolean;
   beforeId?: string;
 }) {
