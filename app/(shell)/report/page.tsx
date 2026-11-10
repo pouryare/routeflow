@@ -167,8 +167,8 @@ export default async function ReportPage({
         </div>
 
         <div>
-          <div className="font-mono text-[length:var(--text-xs)] uppercase tracking-[0.12em] text-accent">
-            Coverage Report
+          <div className="text-[length:var(--text-xs)] font-semibold text-accent">
+            گزارش پوشش
           </div>
           <h1 className="text-[length:var(--text-xl)] font-bold text-text">گزارش پوشش و مشتریان</h1>
           <p className="mt-1 inline-block font-mono text-[length:var(--text-xs)] text-text-faint">

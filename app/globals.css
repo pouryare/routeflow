@@ -2355,6 +2355,7 @@ body {
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
 }
 .meridian .phc__date { margin: 0 0 2px; font-size: 12.5px; color: var(--muted); }
+.meridian .phc__section { color: var(--accent); font-weight: 600; }
 .meridian .phc__overview { margin: 0; max-width: 68ch; font-size: 13.5px; line-height: 1.75; color: var(--muted); }
 
 /* The tab row that sits in the bay. A sibling of the carved element, never a child:

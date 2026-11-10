@@ -649,8 +649,8 @@ export default function PlannerPage() {
       <div className="mx-auto flex max-w-3xl flex-col gap-5">
         <div className="flex items-center justify-between">
           <div>
-            <div className="font-mono text-[length:var(--text-xs)] uppercase tracking-[0.12em] text-accent">
-              Route Planner
+            <div className="text-[length:var(--text-xs)] font-semibold text-accent">
+              برنامه‌ریز مسیر
             </div>
             <h1 className="text-[length:var(--text-xl)] font-bold text-text">برنامه‌ریزی مسیر و پوشش</h1>
           </div>
