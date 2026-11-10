@@ -2021,7 +2021,9 @@ body {
 }
 .meridian .bhead h2 { margin: 0; }
 /* A card with a (?) keeps it on the title row: the title block gives way instead of pushing it to a new line. */
-.meridian .bhead:has(> .mhelp) > :first-child { flex: 1 1 0; min-width: 0; }
+/* At least 10rem, so buttons in the same header wrap to their own line on a phone instead of
+   squeezing the title to one word a line («سفارش‌های اخیر» on /sales/orders). */
+.meridian .bhead:has(> .mhelp) > :first-child { flex: 1 1 0; min-width: min(10rem, 100%); }
 .meridian .bhead > .mhelp { flex: none; }
 /* One heading for a section, inside a card (.bhead) or outside one (SectionHead.tsx), so
    no two sections can disagree again (item 15). Typography only: unlayered rules beat
