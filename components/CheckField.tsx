@@ -22,8 +22,9 @@ export default function CheckField({
   children?: ReactNode;
 }) {
   return (
-    <Checkbox isSelected={checked} onChange={onChange} isDisabled={disabled} className="checkfield">
-      <Checkbox.Content aria-label={label} className={`checkfield__hit ${className}`.trim()}>
+    // `label` on the Checkbox, which hands it to its input; on Content it named a plain span.
+    <Checkbox isSelected={checked} onChange={onChange} isDisabled={disabled} className="checkfield" aria-label={label}>
+      <Checkbox.Content className={`checkfield__hit ${className}`.trim()}>
         <Checkbox.Control>
           <Checkbox.Indicator />
         </Checkbox.Control>

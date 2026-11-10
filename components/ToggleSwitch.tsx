@@ -22,8 +22,10 @@ export default function ToggleSwitch({
     <Switch isSelected={on} onChange={() => {
       playSound("ui.toggle");
       onChange();
-    }} isDisabled={disabled} className="toggle">
-      <Switch.Content aria-label={label} className="toggle__hit">
+    }} isDisabled={disabled} className="toggle" aria-label={label}>
+      {/* The name goes on the Switch, which hands it to its input. On Content it named a
+          plain span, and every switch reached a screen reader nameless (axe: label). */}
+      <Switch.Content className="toggle__hit">
         <Switch.Control>
           <Switch.Thumb />
         </Switch.Control>
