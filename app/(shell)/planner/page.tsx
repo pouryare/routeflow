@@ -678,14 +678,14 @@ export default function PlannerPage() {
               >
                 <Icon name="calendar" size="sm" />
                 <span>{dayLabel(d)}</span>
-                <span className="font-mono text-[length:var(--text-xs)] opacity-80">{dateLabel(d)}</span>
+                <span className="tabular-nums text-[length:var(--text-xs)]">{dateLabel(d)}</span>
                 {count > 0 && (
                   <span
-                    className={`mt-0.5 rounded-full px-1.5 text-[length:var(--text-xs)] font-mono ${
+                    className={`mt-0.5 rounded-full px-1.5 text-[length:var(--text-xs)] tabular-nums ${
                       active ? "bg-accent-ink/20 text-accent-ink" : "bg-white/10 text-text-faint"
                     }`}
                   >
-                    {count}
+                    {faNum(count)}
                   </span>
                 )}
               </button>

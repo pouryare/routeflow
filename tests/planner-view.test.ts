@@ -21,3 +21,10 @@ describe("planner view helpers", () => {
     expect(out.map((p) => p.key)).toEqual(["c1"]);
   });
 });
+
+describe("the planner's day chips", () => {
+  it("label the day with its Jalali month and day, in Persian digits", async () => {
+    const { dateLabel } = await import("@/lib/plannerView");
+    expect(dateLabel(new Date(2026, 10, 10))).toBe("۰۸/۱۹"); // 2026-11-10 is 19 Aban 1405
+  });
+});
