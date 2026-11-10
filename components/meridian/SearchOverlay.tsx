@@ -4,7 +4,9 @@ import { FieldInput } from "@/components/FieldInput";
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { usePathname, useRouter } from "next/navigation";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { AnimatePresence, LazyMotion, m as motion, useReducedMotion } from "framer-motion";
+
+const loadMotion = () => import("@/lib/motionFeatures").then((r) => r.default);
 import { Icon, type IconName } from "@/components/meridian/Icon";
 import type { AppTab } from "@/lib/appNav";
 import { DUR, EASE } from "@/lib/motion";
@@ -40,7 +42,9 @@ export default function SearchOverlay({ open, onClose, tabs }: { open: boolean; 
   const host = useSyncExternalStore(noSubscribe, portalHost, () => null);
   if (!host) return null;
   return createPortal(
-    <AnimatePresence>{open && <Panel key="sov" onClose={onClose} tabs={tabs} />}</AnimatePresence>,
+    <LazyMotion features={loadMotion}>
+      <AnimatePresence>{open && <Panel key="sov" onClose={onClose} tabs={tabs} />}</AnimatePresence>
+    </LazyMotion>,
     host,
   );
 }
