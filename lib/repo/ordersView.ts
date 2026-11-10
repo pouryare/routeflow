@@ -1,7 +1,7 @@
 import { getDb, plain } from "@/lib/db";
 import { groupFilter, orderFilter, type Session } from "@/lib/session";
 import { readOrder, readOrders, type OrderDetail, type OrderSummary } from "@/lib/orders";
-import { customerDebtsForOrg } from "@/lib/repo/payments";
+import { customerDebtsForOrgOnce } from "@/lib/repo/payments";
 import { readOrderDeliveryHistory } from "@/lib/repo/orderDeliveries";
 import { readJourney, buildJourney } from "@/lib/orderJourney";
 import { eventsByStep } from "@/lib/orderEvents";
@@ -115,7 +115,7 @@ export interface OrderEntryData {
 export async function orderEntryFor(session: Session): Promise<OrderEntryData> {
   const db = getDb();
   const scope = await groupFilter(session);
-  const debtByCustomer = await customerDebtsForOrg(session.organizationId);
+  const debtByCustomer = await customerDebtsForOrgOnce(session.organizationId);
   const customers = (
     plain(
       await db

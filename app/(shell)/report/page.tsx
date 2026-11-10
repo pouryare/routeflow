@@ -17,7 +17,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { COOKIE_NAME } from "@/lib/auth";
 import { getSessionFromCookies } from "@/lib/session";
-import { customerDebtsForOrg } from "@/lib/repo/payments";
+import { customerDebtsForOrgOnce } from "@/lib/repo/payments";
 import PageHeader from "@/components/meridian/PageHeader";
 import { faJalaliDateTime } from "@/lib/jalali";
 import { isVanRole } from "@/lib/roles";
@@ -70,7 +70,7 @@ export default async function ReportPage({
   const { districts, customers } = await reportRows(session);
 
   // Debt is computed from delivered orders and payment allocations now.
-  const debtByCustomer = await customerDebtsForOrg(session.organizationId);
+  const debtByCustomer = await customerDebtsForOrgOnce(session.organizationId);
   const debtOf = (id: number) =>
     debtByCustomer.get(id) ?? { total: 0, bucket_0_7: 0, bucket_8_30: 0, bucket_30_plus: 0 };
 
