@@ -547,6 +547,17 @@ esac
     expect(fs.readdirSync(path.join(root, "incoming"))).toEqual([]);
   });
 
+  it("uses a release GitHub already copied into incoming/ without downloading, and asks", () => {
+    const bin = path.join(root, "nocurl");
+    fs.mkdirSync(bin, { recursive: true });
+    fs.writeFileSync(path.join(bin, "curl"), "#!/bin/bash\nexit 22\n", { mode: 0o755 });
+    fakeTarball("9.9.9");
+    const r = update(bin);
+    expect(r.status).toBe(0);
+    expect(r.stdout).toContain("already waiting in incoming/");
+    expect(r.stdout).toContain("applied tonight");
+  });
+
   it("does nothing when the live version is already the newest", () => {
     const { bin } = fakeGitHub(false);
     fs.mkdirSync(path.join(root, "releases", "9.9.9"), { recursive: true });

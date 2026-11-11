@@ -19,8 +19,8 @@ Ubuntu 26.04 on a 4 GB / 2 CPU / 80 GB Arvan VPS behind Arvan CDN; off-site back
 4. The `deploy` job copies the tarball for the server's machine type into `/opt/routeflow/incoming/`
    over SSH. The `.sha256` goes last, so a half-copied tarball is never picked up.
 5. At 03:30 Tehran (00:00 UTC; `UPGRADE_AT` in `/etc/routeflow/routeflow.conf`) the server runs
-   `routeflow upgrade-scheduled`: the newest waiting version is upgraded to (below). To apply it at once:
-   `sudo routeflow upgrade-scheduled`.
+   `routeflow upgrade-scheduled`: the newest waiting version is upgraded to (below). To apply it when you choose:
+   `sudo routeflow update`: it finds the waiting file, asks "upgrade now?" (default: no, tonight) and does what you answer.
    No SSH deploy secrets (`DEPLOY_*`)? Then the `deploy` job only publishes, and `incoming/` stays empty.
    Use `sudo routeflow update` on the server instead: it downloads the newest release from GitHub (asking for
    a read-only token, never saved), checks the sum, and asks whether to upgrade now or leave it for tonight.
@@ -41,8 +41,8 @@ commands:
 |---|---|
 | `routeflow install [--yes] [tarball]` | Fresh Ubuntu or Debian server: asks for the domain, the backup machine, the company name and the first login's username (with `--yes`, nothing is asked), then packages, firewall (SSH, 80, 443), Tehran time zone, security updates with a reboot only at 02:30, a log cap, PostgreSQL and backups (`db/server/install.sh`), the database connection (a web role and its password, written into the encrypted secrets), the app service, Caddy, the nightly upgrade timer, the first release, the company name and the first login. Run again to re-apply after editing `routeflow.conf`. |
 | `routeflow upgrade <tarball>` | Checks the sum and machine type, unpacks to `releases/<version>`, takes a backup, runs the migrations, switches `current`, waits for `/api/health` with the new version, then the smoke check. |
-| `routeflow update` | Downloads the newest release for this machine from GitHub into `incoming/`, checks the sum, then asks: upgrade now, or tonight (the default). |
-| `routeflow upgrade-scheduled` | What the 03:30 timer runs: the newest tarball in `incoming/` not yet installed. |
+| `routeflow update` | The one command for a new release. Uses the file GitHub already copied into `incoming/`; with none waiting it downloads the newest from GitHub (read-only token, never saved) and checks the sum. Then asks: upgrade now, or tonight (the default). |
+| `routeflow upgrade-scheduled` | What the 03:30 timer runs, with no question: the newest tarball in `incoming/` not yet installed. Not for people; use `update`. |
 | `routeflow rollback` | Back to the previous release (the last 3 are kept). |
 | `routeflow status` | Live release, service, health, disk, last backup, database check. |
 | `routeflow backup [full\|diff\|incr]`, `restore-drill`, `restore <1\|2>` | Backups; `restore` replaces the database and asks you to type RESTORE. |
