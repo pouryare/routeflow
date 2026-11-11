@@ -463,9 +463,15 @@ for x in r.get("assets", []):
   install -d -m 755 "$ROOT/incoming"
   file="$ROOT/incoming/routeflow-$want-linux-$arch.tar.gz"
   say "Downloading $want (live: ${live:-none})"
+  # The line into Iran is slow and drops. A broken download keeps its .part file and the next try (or the next
+  # run of this command) carries on from where it stopped; only a stalled line (under 1 KB/s for a minute) ends one try.
+  local try
   while read -r u name; do
-    curl -fL --max-time 900 "${auth[@]}" -H "Accept: application/octet-stream" -o "$ROOT/incoming/$name.part" "$u" \
-      || { rm -f "$ROOT/incoming/$name.part"; unset GITHUB_TOKEN; die "the download of $name failed"; }
+    for try in 1 2 3 4 5 6 7 8 9 10 11 12; do
+      curl -fL -C - --speed-limit 1024 --speed-time 60 "${auth[@]}" -H "Accept: application/octet-stream" -o "$ROOT/incoming/$name.part" "$u" && continue 2
+      [ "$try" = 12 ] || { warn "the download of $name stopped; trying again from where it stopped ($try of 12)"; sleep 5; }
+    done
+    unset GITHUB_TOKEN; die "the download of $name did not finish. The part that arrived is kept: run the update again to carry on."
   done < <(tail -n +2 <<<"$out")
   unset GITHUB_TOKEN
   # The sum goes in first: the nightly timer ignores a tarball that has no .sha256 yet.

@@ -539,6 +539,21 @@ esac
     expect(fs.readdirSync(path.join(root, "incoming")).sort()).toEqual([name, `${name}.sha256`]);
   });
 
+  it("carries on from the part that arrived when the line drops, instead of starting over", () => {
+    const { bin, name } = fakeGitHub(false);
+    const count = path.join(root, "tries");
+    // The tarball download breaks after 3 bytes the first time; the second asks to resume (-C -) and appends the rest.
+    fs.writeFileSync(path.join(bin, "curl"), fs.readFileSync(path.join(bin, "curl"), "utf8").replace(
+      "*/a/1) printf 'tarball' > \"$out\" ;;",
+      `*/a/1) if [ ! -e "${count}" ]; then printf 'tar' > "$out"; touch "${count}"; exit 18; else case " $* " in *" -C - "*) printf 'ball' >> "$out" ;; *) printf 'ball' > "$out" ;; esac; fi ;;`,
+    ).replace("out=\"\"; url=\"\"", "all=\" $* \"; out=\"\"; url=\"\"").replace('case " $* " in', 'case "$all" in'), { mode: 0o755 });
+    fs.writeFileSync(path.join(bin, "sleep"), "#!/bin/bash\nexit 0\n", { mode: 0o755 });
+    const r = update(bin);
+    expect(r.status).toBe(0);
+    expect(r.stderr).toContain("trying again from where it stopped");
+    expect(fs.readFileSync(path.join(root, "incoming", name), "utf8")).toBe("tarball");
+  });
+
   it("removes a damaged download and says so", () => {
     const { bin } = fakeGitHub(true);
     const r = update(bin);
