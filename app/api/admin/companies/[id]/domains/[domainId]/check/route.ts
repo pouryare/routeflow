@@ -11,7 +11,7 @@ export async function POST(req: NextRequest, ctx: RouteContext<"/api/admin/compa
   const { id, domainId } = await ctx.params;
   const d = await withDbScope("all", () => findDomain(Number(domainId)));
   if (!d || d.organization_id !== Number(id)) return NextResponse.json({ ok: false, error: "نشانی پیدا نشد" }, { status: 404 });
-  const result = await checkDomain(d.hostname);
+  const result = await checkDomain(d.hostname, d.arvan_cname);
   await withDbScope("all", () => setDomainStatus(d.id, result.status, result.error));
   return NextResponse.json({ ok: true, ...result });
 }

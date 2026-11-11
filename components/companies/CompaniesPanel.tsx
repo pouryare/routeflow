@@ -16,7 +16,6 @@ import CompanySheet from "./CompanySheet";
 
 interface Data {
   companies: CompanyRow[];
-  target: string | null;
   main_owner_only: boolean;
 }
 
@@ -78,9 +77,10 @@ export default function CompaniesPanel() {
               مراحل راه‌اندازی یک نشانی
             </summary>
             <ol className="mt-2 flex list-decimal flex-col gap-1 ps-5 text-text-muted">
-              <li>مشتری در DNS دامنهٔ خودش یک رکورد CNAME از نشانی شرکت به <span dir="ltr">{data.target ?? "domains.<دامنهٔ شما>"}</span> می‌زند.</li>
-              <li>شما همان نشانی را در پنل آروان اضافه می‌کنید.</li>
-              <li>در این صفحه «بررسی دوباره» را بزنید تا وضعیت «فعال» شود.</li>
+              <li>شما نشانی را در پنل آروان (CDN) با «تنظیم CNAME» اضافه می‌کنید و مبدأ را آدرس سرور می‌گذارید. آروان یک مقدار CNAME می‌دهد.</li>
+              <li>همان مقدار را زیر نشانی همین‌جا ذخیره کنید و به مشتری بدهید تا در DNS دامنهٔ خودش رکورد CNAME را با آن بسازد.</li>
+              <li>در پنل آروان HTTPS نشانی را روشن کنید (گواهی را آروان می‌دهد).</li>
+              <li>اینجا «بررسی دوباره» را بزنید تا وضعیت «فعال» شود.</li>
             </ol>
           </details>
 
@@ -109,7 +109,6 @@ export default function CompaniesPanel() {
         <CompanySheet
           key={sheet === "new" ? "new" : sheet.id}
           editing={sheet === "new" ? null : sheet}
-          target={data.target}
           onClose={() => setSheet(null)}
           onSaved={() => {
             setSheet(null);
@@ -165,6 +164,7 @@ function CompanyCard({ c, checking, setChecking, act, onAdd, onEdit }: {
               </div>
               {d.status !== "active" && d.last_error && <span className="text-xs text-text-muted">{d.last_error}</span>}
               {d.last_checked_at && <span className="text-xs text-text-faint">آخرین بررسی: {faJalaliDateTime(d.last_checked_at)}</span>}
+              <CnameField companyId={c.id} d={d} act={act} />
               <div className="flex flex-wrap gap-2">
                 <Button
                   variant="secondary"
@@ -205,6 +205,26 @@ function CompanyCard({ c, checking, setChecking, act, onAdd, onEdit }: {
       </div>
     </section>
 
+  );
+}
+
+/** The CNAME value Arvan gave for this address: saved here, given to the customer, and what the check compares DNS with. */
+function CnameField({ companyId, d, act }: { companyId: number; d: CompanyDomainRow; act: (p: Promise<string | null>) => Promise<void> }) {
+  const [value, setValue] = useState(d.arvan_cname ?? "");
+  const same = value.trim().toLowerCase() === (d.arvan_cname ?? "");
+  return (
+    <div className="flex flex-col gap-1">
+      <label className="flex flex-col gap-1 text-xs text-text-muted">
+        مقدار CNAME از آروان
+        <FieldInput dir="ltr" value={value} onChange={(e) => setValue(e.target.value)} placeholder="abc123.cname.arvancdn.ir" autoCapitalize="off" />
+      </label>
+      {!same && (
+        <Button variant="secondary" className="min-h-[44px] self-start" onPress={() => act(send(`/api/admin/companies/${companyId}/domains/${d.id}`, "PATCH", { arvan_cname: value.trim() }))}>
+          <Icon name="save" size="sm" />
+          ذخیره مقدار
+        </Button>
+      )}
+    </div>
   );
 }
 

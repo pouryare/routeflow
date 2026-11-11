@@ -1,12 +1,6 @@
 import { promises as dns } from "node:dns";
 import type { DomainStatus } from "@/lib/repo/companyDomains";
 
-/** The name a company points its address at (CNAME): `domains.` + the main address. MAIN_HOST is set by `routeflow install`. */
-export function dnsTarget(): string | null {
-  const main = process.env.MAIN_HOST?.trim().toLowerCase();
-  return main ? `domains.${main.replace(/^app\./, "")}` : null;
-}
-
 /** Private, loopback and link-local addresses: a check must never become a request to our own network. */
 export function isPrivateAddress(ip: string): boolean {
   if (ip.includes(":")) return ip === "::1" || /^f[cd]/i.test(ip) || /^fe80/i.test(ip) || ip.startsWith("::ffff:");
@@ -21,11 +15,10 @@ interface DomainCheck {
 
 /** How far an address has got, seen from outside:
  *  - it answers /api/health with this app's answer -> active;
- *  - otherwise DNS already points at us (CNAME to the target, or the same IPs) -> waiting_arvan;
- *  - otherwise -> waiting_dns.
- *  shortcut: an address that reaches the app by any route counts as done, so this works whether or not
- *  Arvan sits in front; tighten it once the Arvan hand-off is confirmed. */
-export async function checkDomain(hostname: string): Promise<DomainCheck> {
+ *  - otherwise the customer's CNAME already points at the value Arvan gave -> waiting_arvan (Arvan is not serving it yet);
+ *  - otherwise -> waiting_dns (no Arvan value stored yet, or the CNAME is not set).
+ *  shortcut: an address that reaches the app by any route counts as done; tighten it once the Arvan hand-off is seen live. */
+export async function checkDomain(hostname: string, arvanCname: string | null): Promise<DomainCheck> {
   let addrs: string[] = [];
   try {
     addrs = await dns.resolve4(hostname);
@@ -44,21 +37,14 @@ export async function checkDomain(hostname: string): Promise<DomainCheck> {
     }
   }
 
-  const target = dnsTarget();
-  if (!addrs.length) {
-    return { status: "waiting_dns", error: target ? `هنوز رکوردی برای این نشانی دیده نمی‌شود. رکورد CNAME را به ${target} بزنید.` : "هنوز رکوردی برای این نشانی دیده نمی‌شود." };
+  if (!arvanCname) return { status: "waiting_dns", error: "اول نشانی را در پنل آروان اضافه کنید و مقدار CNAME آروان را اینجا بنویسید." };
+  let pointsAtArvan = false;
+  try {
+    pointsAtArvan = (await dns.resolveCname(hostname)).some((c) => c.toLowerCase().replace(/\.$/, "") === arvanCname);
+  } catch {
+    /* no CNAME record */
   }
-  let pointsAtUs = false;
-  if (target) {
-    try {
-      const cnames = (await dns.resolveCname(hostname)).map((c) => c.toLowerCase().replace(/\.$/, ""));
-      const ours = await dns.resolve4(target).catch(() => [] as string[]);
-      pointsAtUs = cnames.includes(target) || addrs.some((a) => ours.includes(a));
-    } catch {
-      /* not a CNAME */
-    }
-  }
-  return pointsAtUs
-    ? { status: "waiting_arvan", error: "DNS درست است؛ نشانی را در پنل آروان اضافه کنید و دوباره بررسی کنید." }
-    : { status: "waiting_dns", error: target ? `نشانی هنوز به ${target} اشاره نمی‌کند.` : "نشانی هنوز به این سرور اشاره نمی‌کند." };
+  return pointsAtArvan
+    ? { status: "waiting_arvan", error: "DNS درست است. در پنل آروان HTTPS نشانی را فعال کنید و دوباره بررسی کنید." }
+    : { status: "waiting_dns", error: `مشتری باید رکورد CNAME نشانی را به ${arvanCname} بزند.` };
 }
