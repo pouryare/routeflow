@@ -5,6 +5,7 @@ import { Icon } from "@/components/meridian/Icon";
 import { useState } from "react";
 import { Button, Popover } from "@heroui/react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import SkinToggle from "@/components/meridian/SkinToggle";
 import FontPicker from "@/components/FontPicker";
 import ContrastToggle from "@/components/ContrastToggle";
@@ -39,6 +40,13 @@ export default function ProfileMenu({
   showSync: boolean;
 }) {
   const [open, setOpen] = useState(false);
+  const router = useRouter();
+  // The cookie is cleared by the server; then the login form, with every screen of this person dropped.
+  async function signOut() {
+    await fetch("/api/logout", { method: "POST" }).catch(() => null);
+    router.push("/login");
+    router.refresh();
+  }
   // Idea I8: a thin ring round the picture shows how far the first-steps list is; it goes when complete.
   const { role: tutRole, progress } = useTutorials();
   const steps = tutRole ? firstSteps(tutRole, progress, TUTORIALS) : null;
@@ -101,6 +109,12 @@ export default function ProfileMenu({
               <span>کنتراست بالا</span>
               <ContrastToggle />
             </div>
+
+            <div className="pm__sep" />
+
+            <Button variant="ghost" className="pm__link" onPress={() => void signOut()}>
+              <Icon name="logout" size="sm" /> خروج از حساب
+            </Button>
           </Popover.Dialog>
         </Popover.Content>
       </Popover>
