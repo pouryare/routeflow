@@ -10,6 +10,7 @@
 #   sudo routeflow rollback | status | backup [full|diff|incr] | restore-drill | restore | logs
 #   sudo routeflow doctor | install-report | check-pi         # checks any time | the final check again | the Pi link
 #   sudo routeflow cdn-ips [--open|--only]                    # refresh Arvan's address list | open the web ports | Arvan only
+#   sudo routeflow arvan-probe [domain]                       # read-only: what the saved Arvan key can reach (paste the report)
 #   sudo routeflow export [--anonymise] [--encrypt] [file] | import <file> | sql <fix.sql>
 #   sudo routeflow upgrade --check <tarball> | maintenance on|off | reset-login <user>
 #   sudo routeflow rebuild <secrets.tar.asc> [tarball]        # a new server from the secrets copy and the Pi
@@ -1204,6 +1205,63 @@ stale_web_rules() {
   done
 }
 
+# Read-only: asks Arvan which parts of its CDN API this server's key can reach for the main domain and prints a
+# short report (paths, answers, setting names; keys and tokens are never printed). Meant to be pasted to whoever
+# builds the next Arvan feature (for instance a WAF rule that lets photo uploads through), so nothing is guessed.
+cmd_arvan_probe() {
+  need_root arvan-probe
+  load_conf
+  local key domain=${1:-${DOMAIN:-}} out
+  key=$(secret_value ARVAN_API_KEY)
+  [ -n "$key" ] || die "no Arvan key saved yet: sudo routeflow secrets set ARVAN_API_KEY"
+  [ -n "$domain" ] || die "usage: routeflow arvan-probe [domain]"
+  out="$CONF_DIR/arvan-probe.txt"
+  ARVAN_API_KEY=$key python3 - "$domain" <<'PY' | tee "$out"
+import json, os, re, sys, urllib.request, urllib.error
+host = sys.argv[1].lower()
+labels = host.split(".")
+keep = 3 if len(labels) > 2 and labels[-2] in ("co", "ac", "gov", "org", "net", "sch", "id") and len(labels[-1]) == 2 else 2
+root = ".".join(labels[-keep:])
+base = os.environ.get("ARVAN_API_BASE", "https://napi.arvancloud.ir/cdn/4.0")
+key = os.environ["ARVAN_API_KEY"]
+SECRET = re.compile(r"key|token|secret|password|private|cert|ns_keys?$", re.I)
+def shape(v, depth=0):
+    if isinstance(v, dict):
+        if depth >= 2: return "{%s}" % ",".join(list(v)[:12])
+        return "{" + ", ".join("%s: %s" % (k, "<hidden>" if SECRET.search(k) else shape(x, depth + 1)) for k, x in list(v.items())[:14]) + ("…" if len(v) > 14 else "") + "}"
+    if isinstance(v, list):
+        return "[%d]" % len(v) + (" " + shape(v[0], depth + 1) if v else "")
+    s = json.dumps(v, ensure_ascii=False)
+    return s if len(s) <= 40 else s[:37] + "…"
+def get(path):
+    req = urllib.request.Request(base + path, headers={"Authorization": key if key.lower().startswith("apikey ") else "Apikey " + key, "Accept": "application/json"})
+    try:
+        with urllib.request.urlopen(req, timeout=20) as r:
+            return r.status, r.read()
+    except urllib.error.HTTPError as e:
+        return e.code, e.read()
+    except Exception as e:
+        return 0, str(e).encode()
+paths = ["/domains", "/domains/%s", "/domains/%s/dns-records", "/domains/%s/ssl", "/domains/%s/caching", "/domains/%s/waf",
+  "/domains/%s/waf/rules", "/domains/%s/waf/exceptions", "/domains/%s/waf/whitelist", "/domains/%s/firewall", "/domains/%s/firewall/rules",
+  "/domains/%s/page-rules", "/domains/%s/ddos", "/domains/%s/rate-limit", "/domains/%s/load-balancers", "/domains/%s/acceleration",
+  "/domains/%s/https", "/domains/%s/upload-limit", "/domains/%s/security", "/domains/%s/settings", "/domains/%s/custom-pages",
+  "/domains/%s/cname-setup", "/domains/%s/ssl/certificates", "/domains/%s/analytics", "/domains/%s/logs",
+  "/swagger.json", "/openapi.json", "/docs"]
+print("Arvan probe for %s (read-only, %d paths). Paste everything below." % (root, len(paths)))
+for p in paths:
+    path = p % root if "%s" in p else p
+    code, body = get(path)
+    try:
+        j = json.loads(body)
+        msg = shape(j.get("data", j)) if code == 200 else (j.get("message") or "")
+    except Exception:
+        msg = (body[:60].decode("utf-8", "replace") if code else body.decode("utf-8", "replace"))
+    print("%3s GET %s  %s" % (code or "ERR", path, msg[:240]))
+PY
+  say "Saved in $out"
+}
+
 cmd_cdn_ips() {
   need_root cdn-ips
   load_conf
@@ -1944,6 +2002,7 @@ main() {
     status-short) status_short ;;
     doctor) cmd_doctor ;;
     cdn-ips) cmd_cdn_ips "$@" ;;
+    arvan-probe) cmd_arvan_probe "$@" ;;
     check-pi) cmd_check_pi ;;
     install-report) cmd_install_report ;;
     rebuild) cmd_rebuild "$@" ;;

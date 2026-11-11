@@ -116,6 +116,11 @@ What it does around the questions (all in `deploy/routeflow`):
   account), so only the SSL-mode step stays by hand. The key is kept in the encrypted secrets as `ARVAN_API_KEY`
   (the same key the «شرکت‌ها» page uses). With `--yes`, set `ARVAN_API_KEY` in the environment. Not run against
   the real Arvan yet; if Arvan refuses, the installer prints Arvan's message and falls back to the by-hand step.
+- **`sudo routeflow arvan-probe [domain]`** (read-only): asks Arvan which parts of its CDN API the saved key can reach
+  for the main domain (settings, WAF, firewall, page rules, cache and more: path, answer code, setting names; keys and
+  tokens are never printed) and saves the report in `/etc/routeflow/arvan-probe.txt`. Paste it to whoever builds the
+  next Arvan feature, e.g. the rule that lets photo uploads (`/api/photos`, `/api/photos/avatar`) past Arvan's
+  512 KB WAF body limit, so no endpoint is guessed.
 - **It runs in the background** (a systemd unit). Closing the window or losing the connection does not stop
   it; `sudo tail -f /var/log/routeflow-install.log` shows it again. The first login is kept in a root-only
   file and shown by `sudo routeflow first-login` (once). If you lose it: `sudo routeflow reset-login <user>`.
