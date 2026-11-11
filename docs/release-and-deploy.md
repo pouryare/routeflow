@@ -182,18 +182,22 @@ Each company can have its own web address (`app.tamino.ir`). The platform owner 
   (`/api/domains/ask`); the app says yes only for an address a company has registered. The app also gets
   `MAIN_HOST=<your domain>`, so an address that is neither the main one nor registered is refused at sign-in.
   Run `routeflow install` again on an existing server to get both files.
-- **What the customer does.** Adds a CNAME for their address pointing at `domains.<your domain>`. You create
-  that one name once, with an A record to the server, in the Arvan panel.
-- **What you do in Arvan.** Add each company address in the Arvan panel too, since Arvan shows the certificate to
-  the browser. (By hand for now; the app only reports how far an address has got. Not yet checked against Arvan:
-  whether it accepts a customer-owned domain by CNAME or needs a nameserver move.)
-- **Status.** «بررسی دوباره» looks at the address from outside: waiting for DNS, waiting for Arvan, or active
-  (it answers `/api/health` with this app's answer).
+- **Arvan does the certificate.** Company addresses use Arvan's CNAME setup (docs.arvancloud.ir/en/cdn/domain/cname-setup:
+  `partial` domain type, the domain's own DNS stays where it is). Caddy's file for them always uses its own internal
+  certificate, so Arvan must be set not to verify the origin's certificate, as for the main address.
+- **Steps for each address** (the page lists them). You add the address in your Arvan panel with «تنظیم CNAME», origin
+  = the server's address, and Arvan gives a CNAME value (a name like `<hash>.cname.arvancdn.ir`). You save that value
+  under the address on «شرکت‌ها» and give it to the customer, who creates the CNAME in their own DNS. Then you turn
+  HTTPS on for the address in the Arvan panel (Arvan issues and renews the certificate) and press «بررسی دوباره».
+- **Status.** «بررسی دوباره» reports: waiting for DNS (no Arvan value saved yet, or the customer's CNAME is not
+  there), waiting for Arvan (the CNAME is right; HTTPS or activation is pending, which Arvan says can take up to 24
+  hours), or active (the address answers `/api/health` with this app's answer).
+- The page does not call Arvan's API; adding the address there stays a manual step. Read from Arvan's docs through
+  search snippets only (the docs site answered 503 from this environment), so check the panel wording on first use.
 - **Closing the main address.** Until every company has an active address, leave the main address open. Then
   «فقط مدیر سامانه» on the same page makes it platform-owner only. A company with no active address cannot
   sign in once it is closed.
-- Caddy 2.6 (Ubuntu's package) was used to validate both files; the certificate flow itself has not been run
-  on a real server.
+- Caddy 2.6 (Ubuntu's package) validated both files; the certificate flow was tried locally (see the pull request).
 
 ## Running from inside Iran
 
