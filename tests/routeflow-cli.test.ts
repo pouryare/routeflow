@@ -528,7 +528,7 @@ esac
   }
   const update = (bin: string) =>
     spawnSync("bash", ["-c", `. "${SCRIPT}"; need_root() { :; }; cmd_update`], {
-      encoding: "utf8", env: { ...process.env, ROUTEFLOW_ROOT: root, PATH: `${bin}:${process.env.PATH}`, ROUTEFLOW_API: "http://x" },
+      encoding: "utf8", env: { ...process.env, ROUTEFLOW_ROOT: root, PATH: `${bin}:${process.env.PATH}`, ROUTEFLOW_API: "http://x", UPGRADE_AT: "*-*-* 03:30:00 Asia/Tehran" },
     });
 
   it("downloads this machine's files into incoming/ and leaves them for tonight when not asked to upgrade now", () => {
@@ -536,6 +536,7 @@ esac
     const r = update(bin);
     expect(r.status).toBe(0);
     expect(r.stdout).toContain("applied tonight");
+    expect(r.stdout).toContain("tonight at 03:30,");
     expect(fs.readdirSync(path.join(root, "incoming")).sort()).toEqual([name, `${name}.sha256`]);
   });
 
