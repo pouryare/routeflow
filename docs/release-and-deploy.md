@@ -220,8 +220,8 @@ Each company can have its own web address (`app.tamino.ir`). The platform owner 
   its nameservers to the ones Arvan gives. The customer then no longer controls that domain's DNS records.
 - **Steps** (the page lists them). (1) Once per domain: add it in your Arvan panel, give the customer the nameservers.
   (2) In Arvan DNS add an A record for the address (e.g. `app`) to the server, cloud on. (3) In the Arvan HTTPS section
-  get the free certificate. (4) Press «بررسی دوباره» on «شرکت‌ها». The saved-CNAME field from the CNAME route is
-  optional and unused in this route.
+  get the free certificate. (4) Press «بررسی دوباره» on «شرکت‌ها». The page has no field for an Arvan CNAME value
+  (it was removed: the free plan never uses it).
 - **Status.** «بررسی دوباره» reports: waiting for DNS (the address does not reach the app yet: nameservers not moved or
   the A record missing), or active (the address answers `/api/health` with this app's answer).
 - **Arvan API (built, not yet tried against the real panel).** Put a key with CDN permission on the server with

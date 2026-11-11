@@ -8,6 +8,7 @@ import { GoButton } from "@/components/tapflow/Answer";
 import { FieldInput } from "@/components/FieldInput";
 import { Icon } from "@/components/meridian/Icon";
 import { useRunAfterMount } from "@/lib/useRunAfterMount";
+import { useToast } from "@/components/ToastProvider";
 import { friendlyError } from "@/lib/userMessage";
 import { faNum } from "@/lib/format";
 import { faJalaliDateTime } from "@/lib/jalali";
@@ -51,10 +52,14 @@ export default function CompaniesPanel() {
   }, []);
   useRunAfterMount(load);
 
-  const act = async (p: Promise<string | null>) => {
+  const toast = useToast();
+  // The reload comes first: it clears the error line, so the failure of this action must be set after it.
+  // ok is the toast on success: most of these actions change nothing you can see.
+  const act = async (p: Promise<string | null>, ok?: string) => {
     const err = await p;
-    setError(err);
     await load();
+    setError(err);
+    if (!err && ok) toast(ok, "success");
   };
 
   return (
@@ -96,7 +101,7 @@ export default function CompaniesPanel() {
             <Button
               variant="secondary"
               className="min-h-[44px] self-start"
-              onPress={() => act(send("/api/admin/main-address", "POST", { owner_only: !data.main_owner_only }))}
+              onPress={() => act(send("/api/admin/main-address", "POST", { owner_only: !data.main_owner_only }), data.main_owner_only ? "نشانی اصلی برای همه باز شد" : "نشانی اصلی فقط برای مدیر سامانه شد")}
             >
               <Icon name={data.main_owner_only ? "unlink" : "key"} size="sm" />
               {data.main_owner_only ? "باز کردن برای همه" : "فقط مدیر سامانه"}
@@ -115,6 +120,7 @@ export default function CompaniesPanel() {
           onSaved={() => {
             setSheet(null);
             void load();
+            toast("شرکت ذخیره شد", "success");
           }}
         />
       )}
@@ -125,6 +131,7 @@ export default function CompaniesPanel() {
           onSaved={() => {
             setAdding(null);
             void load();
+            toast("نشانی ذخیره شد؛ وضعیتش روی کارت شرکت است", "success");
           }}
         />
       )}
@@ -137,7 +144,7 @@ function CompanyCard({ c, arvan, checking, setChecking, act, onAdd, onEdit }: {
   arvan: boolean;
   checking: number | null;
   setChecking: (id: number | null) => void;
-  act: (p: Promise<string | null>) => Promise<void>;
+  act: (p: Promise<string | null>, ok?: string) => Promise<void>;
   onAdd: () => void;
   onEdit: () => void;
 }) {
@@ -167,7 +174,6 @@ function CompanyCard({ c, arvan, checking, setChecking, act, onAdd, onEdit }: {
               </div>
               {d.status !== "active" && d.last_error && <span className="text-xs text-text-muted">{d.last_error}</span>}
               {d.last_checked_at && <span className="text-xs text-text-faint">آخرین بررسی: {faJalaliDateTime(d.last_checked_at)}</span>}
-              <CnameField companyId={c.id} d={d} act={act} />
               <div className="flex flex-wrap gap-2">
                 <Button
                   variant="secondary"
@@ -175,7 +181,7 @@ function CompanyCard({ c, arvan, checking, setChecking, act, onAdd, onEdit }: {
                   isDisabled={checking === d.id}
                   onPress={async () => {
                     setChecking(d.id);
-                    await act(send(`/api/admin/companies/${c.id}/domains/${d.id}/check`, "POST"));
+                    await act(send(`/api/admin/companies/${c.id}/domains/${d.id}/check`, "POST"), "وضعیت نشانی دوباره بررسی شد");
                     setChecking(null);
                   }}
                 >
@@ -183,12 +189,12 @@ function CompanyCard({ c, arvan, checking, setChecking, act, onAdd, onEdit }: {
                   {checking === d.id ? "در حال بررسی…" : "بررسی دوباره"}
                 </Button>
                 {arvan && (
-                  <Button variant="secondary" className="min-h-[44px]" onPress={() => act(send(`/api/admin/companies/${c.id}/domains/${d.id}/arvan`, "POST"))}>
+                  <Button variant="secondary" className="min-h-[44px]" onPress={() => act(send(`/api/admin/companies/${c.id}/domains/${d.id}/arvan`, "POST"), "تنظیم در آروان انجام شد")}>
                     <Icon name="link" size="sm" />
                     تنظیم در آروان
                   </Button>
                 )}
-                <Button variant="secondary" className="min-h-[44px]" onPress={() => act(send(`/api/admin/companies/${c.id}/domains/${d.id}`, "DELETE"))}>
+                <Button variant="secondary" className="min-h-[44px]" onPress={() => act(send(`/api/admin/companies/${c.id}/domains/${d.id}`, "DELETE"), "نشانی حذف شد")}>
                   <Icon name="trash" size="sm" />
                   حذف نشانی
                 </Button>
@@ -207,33 +213,13 @@ function CompanyCard({ c, arvan, checking, setChecking, act, onAdd, onEdit }: {
           <Icon name="edit" size="sm" />
           ویرایش
         </Button>
-        <Button variant="secondary" className="min-h-[44px]" onPress={() => act(send(`/api/admin/companies/${c.id}`, "PATCH", { active: !c.active }))}>
+        <Button variant="secondary" className="min-h-[44px]" onPress={() => act(send(`/api/admin/companies/${c.id}`, "PATCH", { active: !c.active }), c.active ? "شرکت غیرفعال شد" : "شرکت فعال شد")}>
           <Icon name={c.active ? "ban" : "check"} size="sm" />
           {c.active ? "غیرفعال کردن" : "فعال کردن"}
         </Button>
       </div>
     </section>
 
-  );
-}
-
-/** The CNAME value Arvan gave for this address: saved here, given to the customer, and what the check compares DNS with. */
-function CnameField({ companyId, d, act }: { companyId: number; d: CompanyDomainRow; act: (p: Promise<string | null>) => Promise<void> }) {
-  const [value, setValue] = useState(d.arvan_cname ?? "");
-  const same = value.trim().toLowerCase() === (d.arvan_cname ?? "");
-  return (
-    <div className="flex flex-col gap-1">
-      <label className="flex flex-col gap-1 text-xs text-text-muted">
-        مقدار CNAME از آروان
-        <FieldInput dir="ltr" value={value} onChange={(e) => setValue(e.target.value)} placeholder="abc123.cname.arvancdn.ir" autoCapitalize="off" />
-      </label>
-      {!same && (
-        <Button variant="secondary" className="min-h-[44px] self-start" onPress={() => act(send(`/api/admin/companies/${companyId}/domains/${d.id}`, "PATCH", { arvan_cname: value.trim() }))}>
-          <Icon name="save" size="sm" />
-          ذخیره مقدار
-        </Button>
-      )}
-    </div>
   );
 }
 
@@ -272,12 +258,12 @@ function AddressSheet({ company, onClose, onSaved }: { company: CompanyRow; onCl
 }
 
 /** The server's address that every company address points at, and the Arvan shortcuts that act on all of them. */
-function ArvanSection({ arvan, act }: { arvan: Data["arvan"]; act: (p: Promise<string | null>) => Promise<void> }) {
+function ArvanSection({ arvan, act }: { arvan: Data["arvan"]; act: (p: Promise<string | null>, ok?: string) => Promise<void> }) {
   const [ip, setIp] = useState(arvan.server_ip ?? "");
   const [busy, setBusy] = useState(false);
-  const run = async (p: Promise<string | null>) => {
+  const run = async (p: Promise<string | null>, ok: string) => {
     setBusy(true);
-    await act(p);
+    await act(p, ok);
     setBusy(false);
   };
   return (
@@ -291,12 +277,12 @@ function ArvanSection({ arvan, act }: { arvan: Data["arvan"]; act: (p: Promise<s
         <FieldInput dir="ltr" inputMode="decimal" value={ip} onChange={(e) => setIp(e.target.value)} placeholder="185.1.2.3" autoCapitalize="off" />
       </label>
       <div className="flex flex-wrap gap-2">
-        <Button variant="secondary" className="min-h-[44px]" isDisabled={busy || !ip.trim() || ip.trim() === (arvan.server_ip ?? "")} onPress={() => run(send("/api/admin/server-ip", "POST", { ip: ip.trim() }))}>
+        <Button variant="secondary" className="min-h-[44px]" isDisabled={busy || !ip.trim() || ip.trim() === (arvan.server_ip ?? "")} onPress={() => run(send("/api/admin/server-ip", "POST", { ip: ip.trim() }), "IP سرور ذخیره شد")}>
           <Icon name="refresh" size="sm" />
           تغییر IP سرور
         </Button>
         {arvan.configured && (
-          <Button variant="secondary" className="min-h-[44px]" isDisabled={busy} onPress={() => run(send("/api/admin/arvan-purge", "POST"))}>
+          <Button variant="secondary" className="min-h-[44px]" isDisabled={busy} onPress={() => run(send("/api/admin/arvan-purge", "POST"), "حافظهٔ موقت آروان خالی شد")}>
             <Icon name="sparkle" size="sm" />
             خالی کردن حافظهٔ موقت
           </Button>
