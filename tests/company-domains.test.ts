@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 
+process.env.ROUTEFLOW_DB_PATH = "/tmp/rf-company-domains.db"; // each test file gets its own database from this name
 process.env.SESSION_SECRET = "test-secret";
 import { normalizeHostname } from "@/lib/companyHost";
 import { mayUseAddress, type HostKind } from "@/lib/repo/companyDomains";
