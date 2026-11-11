@@ -126,6 +126,18 @@ What it does around the questions (all in `deploy/routeflow`):
   tokens are never printed) and saves the report in `/etc/routeflow/arvan-probe.txt`. Paste it to whoever builds the
   next Arvan feature, e.g. the rule that lets photo uploads (`/api/photos`, `/api/photos/avatar`) past Arvan's
   512 KB WAF body limit, so no endpoint is guessed.
+  **First real report (owner's server, 2026-11-11, free plan):** the key reads domains, DNS records, `ssl`, `caching`,
+  `firewall/rules`, `page-rules`, `load-balancers`, `acceleration`, `custom-pages` and `ssl/certificates` (200). These
+  paths do not exist (404), so do not call them: `waf`, `waf/exceptions`, `waf/whitelist`, `firewall`, `ddos`,
+  `rate-limit`, `https`, `upload-limit`, `security`, `settings`, `cname-setup`, `analytics`, `logs`. Arvan's managed
+  HTTPS was on after the install (an active Let's Encrypt `*.routeflows.ir` certificate). A rule made by hand in the panel
+  (Firewall settings, "Allow" when URI Path starts with `/api/photos`) reads back at `GET /domains/<domain>/firewall/rules`
+  as `{id, name, filter_expr: '((http.request.uri.path starts_with "/api/photos"))', action: "allow", action_details: {},
+  is_enabled: true, priority: 1, note: "", is_account_level: false}`. **A rule name with a hyphen is refused** ("title
+  contains illegal characters"); letters only (`routeflowphototest`) were accepted. The create call (POST to the same path)
+  has not met the real Arvan yet. The installer (`routeflow install`, after the A record) and the app (when a company address
+  is added, `lib/arvan.ts`) now make one rule, `routeflowphotos`, for `/api/photos` (covers `/api/photos/avatar`), unless a rule for
+  that path exists; a refusal prints Arvan's message and the by-hand steps, and never stops the install.
 - **It runs in the background** (a systemd unit). Closing the window or losing the connection does not stop
   it; `sudo tail -f /var/log/routeflow-install.log` shows it again. The first login is kept in a root-only
   file and shown by `sudo routeflow first-login` (once). If you lose it: `sudo routeflow reset-login <user>`.

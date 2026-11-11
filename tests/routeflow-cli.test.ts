@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { execFileSync, spawnSync } from "node:child_process";
+import { execFile, execFileSync, spawnSync } from "node:child_process";
+import http from "node:http";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -87,6 +88,21 @@ describe("routeflow: unpacking a release", () => {
     fs.writeFileSync(`${t}.sha256`, `${"0".repeat(64)}  x\n`);
     expect(run(`unpack_release "${t}"`).code).not.toBe(0);
     expect(fs.existsSync(path.join(root, "releases", "0.1.0"))).toBe(false);
+  });
+
+  it("starts a stopped first install over, but keeps a release that is live", () => {
+    const t = fakeTarball("0.1.0");
+    fs.mkdirSync(path.join(root, "releases", "0.1.0"), { recursive: true });
+    fs.writeFileSync(path.join(root, "releases", "0.1.0", "leftover"), "");
+    expect(run(`unpack_release "${t}"`).code).toBe(0);
+    expect(fs.existsSync(path.join(root, "releases", "0.1.0", "leftover"))).toBe(false);
+    fs.symlinkSync("releases/0.1.0", path.join(root, "current"));
+    expect(run(`unpack_release "${t}"`).code).not.toBe(0);
+  });
+
+  it("is quiet when there is no terminal to set the title on", () => {
+    const r = spawnSync("setsid", ["bash", "-c", `. "${SCRIPT}"; set_title test`], { encoding: "utf8", env: { ...process.env, ROUTEFLOW_ROOT: root } });
+    expect(r.stderr).toBe("");
   });
 
   it("refuses a tarball built for the other machine type", () => {
@@ -404,6 +420,44 @@ describe("install.sh", () => {
     const r = spawnSync("bash", [path.join(dir, "install.sh")], { encoding: "utf8" });
     expect(r.status).not.toBe(0);
     expect(r.stdout + r.stderr).toContain("FAILED");
+  });
+});
+
+describe("installer: Arvan record and photo upload rule", () => {
+  it("points the address at the server and makes one hyphen-free allow rule, then leaves it alone", async () => {
+    const seen: { method: string; url: string; body: Record<string, unknown> }[] = [];
+    const rules: Record<string, unknown>[] = [];
+    const server = http.createServer((req, res) => {
+      let raw = "";
+      req.on("data", (c) => (raw += c));
+      req.on("end", () => {
+        const body = raw ? JSON.parse(raw) : {};
+        seen.push({ method: req.method ?? "", url: req.url ?? "", body });
+        const url = req.url ?? "";
+        let data: unknown = {};
+        if (url.endsWith("/firewall/rules") && req.method === "GET") data = rules;
+        else if (url.endsWith("/firewall/rules") && req.method === "POST") rules.push(body);
+        else if (url.includes("/dns-records") && req.method === "GET") data = [];
+        res.setHeader("Content-Type", "application/json");
+        res.end(JSON.stringify({ data }));
+      });
+    });
+    await new Promise<void>((ok) => server.listen(0, "127.0.0.1", ok));
+    const base = `http://127.0.0.1:${(server.address() as { port: number }).port}`;
+    const once = () =>
+      new Promise<string>((ok, bad) =>
+        execFile("bash", ["-c", `. "${SCRIPT}"; DOMAIN=app.x.ir; ARVAN_API_KEY=k; arvan_point_domain 1.2.3.4`], { env: { ...process.env, ROUTEFLOW_ROOT: root, ARVAN_API_BASE: base } }, (e, out, err) => (e ? bad(new Error(err)) : ok(out + err)))
+      );
+    try {
+      expect(await once()).toContain("photo upload rule made");
+      expect(await once()).toContain("already there");
+    } finally {
+      server.close();
+    }
+    expect(rules).toHaveLength(1);
+    expect(rules[0]).toMatchObject({ name: "routeflowphotos", action: "allow", filter_expr: '((http.request.uri.path starts_with "/api/photos"))' });
+    expect(String(rules[0].name)).toMatch(/^[A-Za-z0-9]+$/);
+    expect(seen.some((c) => c.method === "POST" && c.url.endsWith("/dns-records"))).toBe(true);
   });
 });
 

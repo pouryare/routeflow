@@ -73,7 +73,7 @@ time_left() {
   printf '  (about %s min left)' "$(( (left + 59) / 60 ))"
 }
 # 23: the terminal's title tells the state, so you can work in another window meanwhile.
-set_title() { if [ -w /dev/tty ]; then printf '\033]0;%s\007' "$1" >/dev/tty 2>/dev/null || true; fi; }
+set_title() { { printf '\033]0;%s\007' "$1" >/dev/tty; } 2>/dev/null || true; }  # the braces keep bash's own "no tty" error quiet
 step_times() {
   local now t; now=$(date +%s)
   [ -z "$STEP_PREV" ] || STEP_TIMES+=("$((now - STEP_T)) s  $STEP_PREV"); STEP_PREV=""
@@ -141,7 +141,11 @@ unpack_release() {
   here=$(machine_arch) || die "unsupported machine type $(uname -m)"
   [ "$arch" = "$here" ] || die "$(basename "$tarball") is for $arch, this machine is $here"
   verify_checksum "$tarball" || die "refusing an unverified release"
-  [ ! -e "$ROOT/releases/$version" ] || die "release $version is already unpacked; use: routeflow switch $version"
+  if [ -e "$ROOT/releases/$version" ]; then
+    # A first install that stopped (say, at the migrations) leaves its release folder and no live release: start it over.
+    [ -z "$(current_version)" ] || die "release $version is already unpacked; use: routeflow switch $version"
+    rm -rf "${ROOT:?}/releases/$version"
+  fi
   mkdir -p "$ROOT/releases"
   tmp=$(mktemp -d "$ROOT/releases/.unpack.XXXXXX")
   tar -xzf "$tarball" -C "$tmp" --strip-components=1
@@ -1732,9 +1736,22 @@ if found: call("PUT", "/domains/%s/dns-records/%s" % (root, found[0]["id"]), rec
 else: call("POST", "/domains/%s/dns-records" % root, rec)
 try: call("PATCH", "/domains/%s/ssl" % root, {"ssl_status": True, "certificate": "managed"})
 except SystemExit: pass
+# Photo uploads are bigger than Arvan's firewall body limit (512 KB): an "allow" rule for /api/photos. The name takes
+# letters and digits only (Arvan refuses a hyphen). shortcut: the fields come from a rule made by hand in the panel.
+try:
+    rules = call("GET", "/domains/%s/firewall/rules" % root) or []
+    if any('"/api/photos"' in (r.get("filter_expr") or "") for r in rules):
+        print("Arvan: the photo upload rule is already there")
+    else:
+        call("POST", "/domains/%s/firewall/rules" % root, {"name": "routeflowphotos", "filter_expr": '((http.request.uri.path starts_with "/api/photos"))',
+             "action": "allow", "action_details": {}, "is_enabled": True, "priority": 1, "note": ""})
+        print("Arvan: photo upload rule made (/api/photos is let past the firewall)")
+except SystemExit as e:
+    print("Arvan did not make the photo upload rule (%s); add it by hand in Firewall settings: URI Path starts with /api/photos, Allow" % e)
 PY
   ) || { warn "$out"; return 1; }
   say "Arvan: $DOMAIN now points at $1 with the cloud on"
+  [ -z "$out" ] || say "$out"
 }
 
 # The server's public IPv4: the first address that is not private, loopback or carrier-grade NAT.

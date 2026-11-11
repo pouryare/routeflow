@@ -85,7 +85,30 @@ export async function arvanSetup(hostname: string, ip: string): Promise<ArvanSta
   }
   await arvanPointAt(hostname, ip);
   await call("PATCH", `/domains/${root}/ssl`, { ssl_status: true, certificate: "managed" }).catch(() => undefined);
+  await arvanAllowUploads(hostname).catch(() => undefined); // best effort, like HTTPS: the address works without it, photos may not
   return state;
+}
+
+/** Arvan's firewall refuses big request bodies (512 KB with its protection on), which a phone photo exceeds. An
+ *  "allow" rule for the upload paths lets them through. Does nothing when a rule for them is already there.
+ *  Rule names take letters and digits only (a hyphen is refused). shortcut: the rule's field names come from reading
+ *  back a rule made by hand in the panel; the create call itself has not met the real Arvan yet. */
+const PHOTO_RULE = { name: "routeflowphotos", path: "/api/photos" };
+
+export async function arvanAllowUploads(hostname: string): Promise<void> {
+  const root = splitHost(hostname).root;
+  const list = await call("GET", `/domains/${root}/firewall/rules`);
+  const has = (Array.isArray(list.data) ? list.data : []).some((r: { filter_expr?: string }) => r.filter_expr?.includes(`"${PHOTO_RULE.path}"`));
+  if (has) return;
+  await call("POST", `/domains/${root}/firewall/rules`, {
+    name: PHOTO_RULE.name,
+    filter_expr: `((http.request.uri.path starts_with "${PHOTO_RULE.path}"))`,
+    action: "allow",
+    action_details: {},
+    is_enabled: true,
+    priority: 1,
+    note: "",
+  });
 }
 
 export async function arvanPurge(hostname: string): Promise<void> {
