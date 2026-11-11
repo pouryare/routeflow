@@ -1,5 +1,6 @@
 import { promises as dns } from "node:dns";
 import type { DomainStatus } from "@/lib/repo/companyDomains";
+import type { ArvanState } from "@/lib/arvan";
 
 /** Private, loopback and link-local addresses: a check must never become a request to our own network. */
 export function isPrivateAddress(ip: string): boolean {
@@ -18,7 +19,7 @@ interface DomainCheck {
  *  - otherwise the customer's CNAME already points at the value Arvan gave -> waiting_arvan (Arvan is not serving it yet);
  *  - otherwise -> waiting_dns (no Arvan value stored yet, or the CNAME is not set).
  *  shortcut: an address that reaches the app by any route counts as done; tighten it once the Arvan hand-off is seen live. */
-export async function checkDomain(hostname: string, arvanCname: string | null): Promise<DomainCheck> {
+export async function checkDomain(hostname: string, arvanCname: string | null, arvan: ArvanState | null = null): Promise<DomainCheck> {
   let addrs: string[] = [];
   try {
     addrs = await dns.resolve4(hostname);
@@ -37,6 +38,14 @@ export async function checkDomain(hostname: string, arvanCname: string | null): 
     }
   }
 
+  if (arvan) {
+    return arvan.active
+      ? { status: "waiting_arvan", error: "دامنه در آروان فعال است؛ گواهی یا انتشار DNS هنوز تمام نشده. کمی بعد دوباره بررسی کنید." }
+      : {
+          status: "waiting_dns",
+          error: arvan.ns.length ? `این نیم‌سرورها را به مشتری بدهید تا در ثبت‌کنندهٔ دامنه بگذارد: ${arvan.ns.join("، ")}` : "دامنه در آروان اضافه شد؛ نیم‌سرورها هنوز آماده نیست.",
+        };
+  }
   if (!arvanCname) return { status: "waiting_dns", error: "نشانی هنوز به برنامه نمی‌رسد. نیم‌سرورهای دامنه باید روی آروان باشد و رکورد A نشانی با ابر روشن ساخته شده باشد." };
   let pointsAtArvan = false;
   try {

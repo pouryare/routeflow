@@ -56,6 +56,11 @@ export async function setPlatformSetting(key: string, value: string): Promise<vo
     .run(key, value);
 }
 
+/** The server's public address that company addresses point at: set on the page, else SERVER_IP. */
+export async function serverIp(): Promise<string | null> {
+  return (await platformSetting("server_ip")) ?? process.env.SERVER_IP ?? null;
+}
+
 /** Is the main address closed to everyone but platform owners? (Off until the owner switches it on.) */
 export async function mainAddressOwnerOnly(): Promise<boolean> {
   return (await platformSetting("main_address_owner_only")) === "1";

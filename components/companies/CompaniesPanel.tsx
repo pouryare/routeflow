@@ -17,6 +17,7 @@ import CompanySheet from "./CompanySheet";
 interface Data {
   companies: CompanyRow[];
   main_owner_only: boolean;
+  arvan: { configured: boolean; server_ip: string | null };
 }
 
 const STATUS: Record<CompanyDomainRow["status"], { label: string; tone: string }> = {
@@ -68,7 +69,7 @@ export default function CompaniesPanel() {
       ) : (
         <>
           {data.companies.map((c) => (
-            <CompanyCard key={c.id} c={c} checking={checking} setChecking={setChecking} act={act} onAdd={() => setAdding(c)} onEdit={() => setSheet(c)} />
+            <CompanyCard key={c.id} c={c} arvan={data.arvan.configured} checking={checking} setChecking={setChecking} act={act} onAdd={() => setAdding(c)} onEdit={() => setSheet(c)} />
           ))}
 
           <details className="card p-[var(--space-4)] text-sm">
@@ -77,12 +78,13 @@ export default function CompaniesPanel() {
               مراحل راه‌اندازی یک نشانی
             </summary>
             <ol className="mt-2 flex list-decimal flex-col gap-1 ps-5 text-text-muted">
-              <li>یک بار برای هر دامنه: دامنهٔ مشتری (مثلاً taminodis.ir) را در پنل آروان اضافه کنید و نیم‌سرورهایی را که آروان می‌دهد به مشتری بدهید تا در ثبت‌کنندهٔ دامنه‌اش بگذارد.</li>
-              <li>در «رکوردهای DNS» آروان یک رکورد A برای نشانی (مثلاً app) به آدرس سرور بسازید و ابر را روشن کنید.</li>
-              <li>در بخش HTTPS آروان گواهی رایگان نشانی را بگیرید (آروان آن را می‌دهد و تمدید می‌کند).</li>
+              <li>نشانی را برای شرکت اضافه کنید. اگر کلید آروان روی سرور باشد، دامنه، رکورد A و HTTPS خودکار در آروان ساخته می‌شود؛ وگرنه «تنظیم در آروان» را بزنید.</li>
+              <li>دو نیم‌سروری که زیر نشانی نوشته می‌شود را به مشتری بدهید تا یک بار در ثبت‌کنندهٔ دامنه‌اش بگذارد (این کار فقط دست خود مشتری است).</li>
               <li>اینجا «بررسی دوباره» را بزنید تا وضعیت «فعال» شود.</li>
             </ol>
           </details>
+
+          <ArvanSection arvan={data.arvan} act={act} />
 
           <section className="card flex flex-col gap-2 p-[var(--space-4)]">
             <h2 className="sechead__title m-0">نشانی اصلی سامانه</h2>
@@ -130,8 +132,9 @@ export default function CompaniesPanel() {
   );
 }
 
-function CompanyCard({ c, checking, setChecking, act, onAdd, onEdit }: {
+function CompanyCard({ c, arvan, checking, setChecking, act, onAdd, onEdit }: {
   c: CompanyRow;
+  arvan: boolean;
   checking: number | null;
   setChecking: (id: number | null) => void;
   act: (p: Promise<string | null>) => Promise<void>;
@@ -179,6 +182,12 @@ function CompanyCard({ c, checking, setChecking, act, onAdd, onEdit }: {
                   <Icon name="refresh" size="sm" />
                   {checking === d.id ? "در حال بررسی…" : "بررسی دوباره"}
                 </Button>
+                {arvan && (
+                  <Button variant="secondary" className="min-h-[44px]" onPress={() => act(send(`/api/admin/companies/${c.id}/domains/${d.id}/arvan`, "POST"))}>
+                    <Icon name="link" size="sm" />
+                    تنظیم در آروان
+                  </Button>
+                )}
                 <Button variant="secondary" className="min-h-[44px]" onPress={() => act(send(`/api/admin/companies/${c.id}/domains/${d.id}`, "DELETE"))}>
                   <Icon name="trash" size="sm" />
                   حذف نشانی
@@ -259,5 +268,40 @@ function AddressSheet({ company, onClose, onSaved }: { company: CompanyRow; onCl
         </GoButton>
       </div>
     </BottomSheet>
+  );
+}
+
+/** The server's address that every company address points at, and the Arvan shortcuts that act on all of them. */
+function ArvanSection({ arvan, act }: { arvan: Data["arvan"]; act: (p: Promise<string | null>) => Promise<void> }) {
+  const [ip, setIp] = useState(arvan.server_ip ?? "");
+  const [busy, setBusy] = useState(false);
+  const run = async (p: Promise<string | null>) => {
+    setBusy(true);
+    await act(p);
+    setBusy(false);
+  };
+  return (
+    <section className="card flex flex-col gap-2 p-[var(--space-4)]">
+      <h2 className="sechead__title m-0">آروان و آدرس سرور</h2>
+      {!arvan.configured && (
+        <p className="m-0 text-sm text-text-muted">کلید آروان روی سرور تنظیم نشده (ARVAN_API_KEY)؛ مراحل آروان را باید خودتان در پنل آروان انجام دهید.</p>
+      )}
+      <label className="flex flex-col gap-1 text-xs text-text-muted">
+        IP عمومی سرور
+        <FieldInput dir="ltr" inputMode="decimal" value={ip} onChange={(e) => setIp(e.target.value)} placeholder="185.1.2.3" autoCapitalize="off" />
+      </label>
+      <div className="flex flex-wrap gap-2">
+        <Button variant="secondary" className="min-h-[44px]" isDisabled={busy || !ip.trim() || ip.trim() === (arvan.server_ip ?? "")} onPress={() => run(send("/api/admin/server-ip", "POST", { ip: ip.trim() }))}>
+          <Icon name="refresh" size="sm" />
+          تغییر IP سرور
+        </Button>
+        {arvan.configured && (
+          <Button variant="secondary" className="min-h-[44px]" isDisabled={busy} onPress={() => run(send("/api/admin/arvan-purge", "POST"))}>
+            <Icon name="sparkle" size="sm" />
+            خالی کردن حافظهٔ موقت
+          </Button>
+        )}
+      </div>
+    </section>
   );
 }
