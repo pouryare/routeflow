@@ -185,15 +185,19 @@ Each company can have its own web address (`app.tamino.ir`). The platform owner 
 - **Arvan does the certificate.** Company addresses use Arvan's CNAME setup (docs.arvancloud.ir/en/cdn/domain/cname-setup:
   `partial` domain type, the domain's own DNS stays where it is). Caddy's file for them always uses its own internal
   certificate, so Arvan must be set not to verify the origin's certificate, as for the main address.
-- **Steps for each address** (the page lists them). You add the address in your Arvan panel with «تنظیم CNAME», origin
-  = the server's address, and Arvan gives a CNAME value (a name like `<hash>.cname.arvancdn.ir`). You save that value
-  under the address on «شرکت‌ها» and give it to the customer, who creates the CNAME in their own DNS. Then you turn
-  HTTPS on for the address in the Arvan panel (Arvan issues and renews the certificate) and press «بررسی دوباره».
+- **Plan.** Arvan's CNAME setup is Enterprise-plan only, and the domain must be on Growth, Professional or
+  Enterprise. Confirm the plan before telling a customer to set a CNAME.
+- **Steps for each address** (the page lists them; from Arvan's CNAME Setup guide). (1) Add the address in your Arvan
+  panel and make an A record for it to the server's address. (2) Dashboard, Traffic transfer type, «Upgrade to CNAME»,
+  «Convert Domain Type»: Arvan gives a CNAME value (`<hash>.cname.arvancdn.ir`). (3) Save that value under the address on
+  «شرکت‌ها» and give it to the customer, who deletes any old record for that name and creates the CNAME in their own
+  DNS. (4) When the address shows Active in the Arvan panel, issue the free certificate there (Let's Encrypt, HTTP-01;
+  Arvan renews it). Then press «بررسی دوباره».
 - **Status.** «بررسی دوباره» reports: waiting for DNS (no Arvan value saved yet, or the customer's CNAME is not
   there), waiting for Arvan (the CNAME is right; HTTPS or activation is pending, which Arvan says can take up to 24
   hours), or active (the address answers `/api/health` with this app's answer).
-- The page does not call Arvan's API; adding the address there stays a manual step. Read from Arvan's docs through
-  search snippets only (the docs site answered 503 from this environment), so check the panel wording on first use.
+- The page does not call Arvan's API (it has `POST /cdn/4.0/domains/<domain>/cname-setup/convert`); adding the address
+  there stays a manual step.
 - **Closing the main address.** Until every company has an active address, leave the main address open. Then
   «فقط مدیر سامانه» on the same page makes it platform-owner only. A company with no active address cannot
   sign in once it is closed.
