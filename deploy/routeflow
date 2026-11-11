@@ -7,6 +7,7 @@
 #   sudo DOMAIN=app.example.ir routeflow install --yes        # no questions; tarball from incoming/ or here
 #   sudo routeflow first-login | support-file                 # the first login again | one file to send for help
 #   sudo routeflow update                                     # fetch the newest release from GitHub, then ask: now or tonight
+#   sudo routeflow github-deploy                              # let GitHub copy each release here: guided, you only paste 4 secrets
 #   sudo routeflow upgrade routeflow-0.2.0-linux-x64.tar.gz   # upgrade now (otherwise: tonight, below)
 #   sudo routeflow rollback | status | backup [full|diff|incr] | restore-drill | restore | logs
 #   sudo routeflow doctor | install-report | check-pi         # checks any time | the final check again | the Pi link
@@ -475,6 +476,51 @@ for x in r.get("assets", []):
   if [ "$now" = 1 ]; then cmd_upgrade "$file"; else say "Waiting in incoming/. It is applied tonight at ${UPGRADE_AT:-03:30}, or at once with: sudo routeflow upgrade-scheduled"; fi
 }
 
+# routeflow github-deploy: sets up GitHub copying each new release to this server (the deploy job in
+# .github/workflows/release.yml). Everything on the server is done here; only the GitHub secrets are pasted by
+# the person, one at a time, and the secret key is shown on the terminal only and shredded at the end.
+# The line for DEPLOY_KNOWN_HOSTS: this server's address and its own ed25519 host key.
+deploy_known_hosts() { awk -v ip="$1" '{print ip, $1, $2; exit}' "${2:-/etc/ssh/ssh_host_ed25519_key.pub}"; }
+
+deploy_wait() { read -r -p "  Press Enter when it is done > " _ </dev/tty || die "cancelled"; }
+
+cmd_github_deploy() {
+  need_root github-deploy
+  load_conf
+  interactive || die "github-deploy guides you step by step: run it in a terminal (sudo routeflow github-deploy)"
+  local repo=${ROUTEFLOW_REPO:-pouryare/routeflow} ip=${DEPLOY_HOST:-} dir
+  [ -n "$ip" ] || ip=$(ip -4 route get 1.1.1.1 2>/dev/null | awk '{for (i = 1; i < NF; i++) if ($i == "src") {print $(i + 1); exit}}')
+  [ -n "$ip" ] || die "could not find this server's address; run: sudo DEPLOY_HOST=<its public address> routeflow github-deploy"
+  [ -r /etc/ssh/ssh_host_ed25519_key.pub ] || die "this server has no ed25519 SSH host key (/etc/ssh/ssh_host_ed25519_key.pub)"
+  command -v ssh-keygen >/dev/null || apt-get install -y -q openssh-client >/dev/null
+  say "The key-only user GitHub copies releases as"
+  id deploy >/dev/null 2>&1 || { useradd -m -s /bin/bash deploy; passwd -l deploy >/dev/null; }
+  usermod -aG "$APP_USER" deploy
+  install -d -m 700 -o deploy -g deploy ~deploy/.ssh
+  dir=$(mktemp -d); chmod 700 "$dir"
+  trap 'shred -u "$dir"/key "$dir"/key.pub 2>/dev/null; rm -rf "$dir"; trap - RETURN' RETURN
+  ssh-keygen -q -t ed25519 -N "" -C github-deploy -f "$dir/key"
+  # One GitHub key at a time: an older one made here is replaced.
+  touch ~deploy/.ssh/authorized_keys
+  grep -v ' github-deploy$' ~deploy/.ssh/authorized_keys >"$dir/keep" || true
+  cat "$dir/keep" "$dir/key.pub" >~deploy/.ssh/authorized_keys
+  chown deploy:deploy ~deploy/.ssh/authorized_keys; chmod 600 ~deploy/.ssh/authorized_keys
+  {
+    printf '\nA new key was made and given to the deploy user. Now four short steps on GitHub.\n'
+    printf '\nStep 1 of 4. Open https://github.com/%s/settings/environments\n  Open the environment called production (press "New environment" if there is none).\n' "$repo"
+    deploy_wait
+    printf '\nStep 2 of 4. Under "Environment secrets" press "Add environment secret".\n  Name:  DEPLOY_SSH_KEY\n  Value: everything between the lines below, including the BEGIN and END lines (select with the mouse, copy):\n\n'
+    cat "$dir/key"
+    printf '\n'
+    deploy_wait
+    printf '\nStep 3 of 4. Add two more environment secrets:\n  Name: DEPLOY_USER   Value: deploy\n  Name: DEPLOY_HOST   Value: %s\n' "$ip"
+    deploy_wait
+    printf '\nStep 4 of 4. Add the last one:\n  Name:  DEPLOY_KNOWN_HOSTS\n  Value: %s\n' "$(deploy_known_hosts "$ip")"
+    deploy_wait
+    printf '\nThe secret key is deleted from this server now. The next release (a v... tag) is copied here by GitHub.\n'
+  } >/dev/tty
+}
+
 cmd_rollback() {
   local to from
   need_root rollback
@@ -640,7 +686,7 @@ q7() {
   ask OFFSITE_USER "   User on the Pi for the backups." "${OFFSITE_USER:-rfbackup}"
   ask OFFSITE_PATH "   Folder on the Pi for the backups." "${OFFSITE_PATH:-/srv/routeflow-pgbackrest}"
 }
-q8() { ask_valid DEPLOY_PUBKEY "8. Should GitHub upload new versions by itself? Paste its public key (starts with ssh-ed25519), or press Enter to skip.
+q8() { ask_valid DEPLOY_PUBKEY "8. Should GitHub upload new versions by itself? Press Enter to set it up after the install (sudo routeflow github-deploy makes the key and guides you), or paste a public key now.
    Skipping is fine: you can copy the release file by hand." "${DEPLOY_PUBKEY:-}" valid_pubkey "a public key line such as: ssh-ed25519 AAAA... name"; }
 
 q9() {
@@ -1743,7 +1789,7 @@ install_report() {
 
 # Idea 11: what to do next, in order.
 install_next_steps() {
-  printf '\nNext, in this order:\n  1. Open https://%s and sign in with the first login above; change the password.\n  2. Turn on Google Authenticator for it (Account menu).\n  3. sudo routeflow secrets backup   (and keep the file in the private repo, never the public one)\n  4. sudo routeflow secrets set TELEGRAM_BOT_TOKEN   (and the SMS key) so alerts reach you\n' "$DOMAIN"
+  printf '\nNext, in this order:\n  1. Open https://%s and sign in with the first login above; change the password.\n  2. Turn on Google Authenticator for it (Account menu).\n  3. sudo routeflow secrets backup   (and keep the file in the private repo, never the public one)\n  4. sudo routeflow secrets set TELEGRAM_BOT_TOKEN   (and the SMS key) so alerts reach you\n  5. sudo routeflow github-deploy   (GitHub copies each new release here; it guides you, you only paste 4 secrets)\n' "$DOMAIN"
   # Idea 18: scan it with a phone instead of typing the address.
   if command -v qrencode >/dev/null 2>&1; then printf '\nOpen it on your phone:\n'; qrencode -t ANSIUTF8 "https://$DOMAIN" || true; fi
 }
@@ -2031,9 +2077,10 @@ APT
 menu() {
   command -v whiptail >/dev/null || die "whiptail is not installed; run a command instead (routeflow help)"
   local choice arg
-  choice=$(whiptail --title "RouteFlow $(current_version)" --menu "What do you want to do?" 20 76 11 \
+  choice=$(whiptail --title "RouteFlow $(current_version)" --menu "What do you want to do?" 21 76 12 \
     status "Check the app, database, disk and backups" \
     update "Fetch the newest release from GitHub; upgrade now or tonight" \
+    github-deploy "Let GitHub copy each new release here (guided)" \
     upgrade "Upgrade to a release tarball now" \
     upgrade-scheduled "Apply the waiting release now instead of tonight" \
     rollback "Go back to the previous release" \
@@ -2055,7 +2102,7 @@ menu() {
   esac
 }
 
-usage() { sed -n '2,20p' "$0" | sed 's/^# \{0,1\}//'; }
+usage() { sed -n '2,21p' "$0" | sed 's/^# \{0,1\}//'; }
 
 main() {
   local cmd=${1:-}
@@ -2065,6 +2112,7 @@ main() {
     upgrade) cmd_upgrade "$@" ;;
     upgrade-scheduled) cmd_upgrade_scheduled ;;
     update) cmd_update ;;
+    github-deploy) cmd_github_deploy ;;
     rollback | switch) cmd_rollback "$@" ;;
     status) cmd_status ;;
     status-short) status_short ;;

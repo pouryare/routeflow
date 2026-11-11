@@ -372,6 +372,13 @@ Each company can have its own web address (`app.tamino.ir`). The platform owner 
 
 ## Setting up the GitHub deploy
 
+Easiest: `sudo routeflow github-deploy` (also step 5 of the install's "Next" list). It makes the `deploy` user and a
+new key pair, then shows the four GitHub secrets one at a time (`DEPLOY_SSH_KEY`, `DEPLOY_USER`, `DEPLOY_HOST`,
+`DEPLOY_KNOWN_HOSTS`), waiting for Enter after each; only pasting them into GitHub is by hand. The secret key
+is shown on the terminal only and is deleted when the command ends. Run it again to replace the key.
+
+By hand, instead:
+
 With `DEPLOY_PUBKEY` set, the install makes the `deploy` user with that key. By hand instead:
 
 ```sh

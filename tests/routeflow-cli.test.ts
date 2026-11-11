@@ -557,6 +557,20 @@ esac
   });
 });
 
+describe("routeflow github-deploy", () => {
+  it("builds the DEPLOY_KNOWN_HOSTS line from the server's own host key, without the comment", () => {
+    const pub = path.join(root, "host.pub");
+    fs.writeFileSync(pub, "ssh-ed25519 AAAAC3Nz root@ubuntu\n");
+    expect(run(`deploy_known_hosts 37.32.8.229 "${pub}"`).out).toBe("37.32.8.229 ssh-ed25519 AAAAC3Nz");
+  });
+
+  it("needs a terminal and changes nothing without one", () => {
+    const r = run("need_root() { :; }; cmd_github_deploy");
+    expect(r.code).not.toBe(0);
+    expect(r.err).toContain("run it in a terminal");
+  });
+});
+
 describe("install progress", () => {
   it("draws a bar that fills with the steps and lists the time of each", () => {
     expect(run("progress_bar 0 10").out).toBe("░░░░░░░░░░");
