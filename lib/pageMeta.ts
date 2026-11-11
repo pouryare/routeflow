@@ -333,6 +333,13 @@ export const PAGE_META: Record<string, PageMeta> = {
     overview:
       "جای عکس‌ها و رسیدهای شرکت: فضاهای S3 خودتان (مثل آروان)، اینکه هر نوع فایل کجا برود، کپی پشتیبان، سطل زباله و گزارش. تا یک فضا اضافه نشود، عکس و رسید ثبت نمی‌شود.",
   },
+  "/sales/admin/companies": {
+    title: "شرکت‌ها",
+    titleEn: "Companies",
+    help: "page.companies",
+    overview:
+      "ساخت شرکت تازه با نام، لوگو و مدیر اول، و نشانی اینترنتی هر شرکت (مثل app.example.ir). کاربران هر شرکت فقط از نشانی خودشان وارد می‌شوند و نام و لوگوی شرکت را در صفحهٔ ورود می‌بینند.",
+  },
   "/sales/admin/status": {
     title: "وضعیت سامانه",
     titleEn: "System status",
