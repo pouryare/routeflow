@@ -8,6 +8,8 @@ import { haptic } from "@/lib/haptics";
 import { playSound } from "@/lib/sound";
 import { withCount } from "@/lib/mergeCount";
 import { flyTo } from "@/lib/flyTo";
+import { feedbackFor } from "@/lib/actionFeedback";
+import { friendlyError } from "@/lib/userMessage";
 
 type ToastVariant = "success" | "error" | "info";
 
@@ -107,7 +109,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
      undo belongs to its own action. */
   const open = useRef(new Map<string, { id: string; n: number }>());
 
-  const showToast = useCallback<ShowToast>((message, variant = "info", action, fly) => {
+  const show = useCallback<ShowToast>((message, variant = "info", action, fly) => {
     if (variant !== "info") haptic(variant);
     const base = {
       variant: HERO_VARIANT[variant],
@@ -157,6 +159,39 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       },
     });
   }, []);
+
+  /* Every change a person makes through /api gets a toast. A screen that says its own words calls
+     showToast; one that says nothing gets the generic sentence of lib/actionFeedback.ts, held back
+     for half a second so the screen's own toast, if there is one, replaces it instead of doubling it. */
+  const generic = useRef<number[]>([]);
+  const showToast = useCallback<ShowToast>((...args) => {
+    generic.current.forEach((t) => window.clearTimeout(t));
+    generic.current = [];
+    show(...args);
+  }, [show]);
+
+  useEffect(() => {
+    const original = window.fetch;
+    window.fetch = async (input, init) => {
+      const res = await original(input, init);
+      try {
+        const req = input instanceof Request ? input : null;
+        const url = new URL(typeof input === "string" || input instanceof URL ? String(input) : input.url, window.location.origin);
+        const message = url.origin === window.location.origin ? feedbackFor(init?.method ?? req?.method ?? "GET", url.pathname) : null;
+        if (message && res.status !== 401) {
+          const later = (text: string, variant: ToastVariant) => generic.current.push(window.setTimeout(() => show(text, variant), 500));
+          if (res.ok) later(message, "success");
+          else void res.clone().json().then((d: { error?: string }) => later(friendlyError(d.error, "انجام نشد؛ دوباره تلاش کنید"), "error")).catch(() => later("انجام نشد؛ دوباره تلاش کنید", "error"));
+        }
+      } catch {
+        /* feedback is a courtesy: never break the request it watches */
+      }
+      return res;
+    };
+    return () => {
+      window.fetch = original;
+    };
+  }, [show]);
 
   return (
     <ToastContext.Provider value={showToast}>

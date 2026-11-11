@@ -528,7 +528,7 @@ esac
   }
   const update = (bin: string) =>
     spawnSync("bash", ["-c", `. "${SCRIPT}"; need_root() { :; }; cmd_update`], {
-      encoding: "utf8", env: { ...process.env, ROUTEFLOW_ROOT: root, PATH: `${bin}:${process.env.PATH}`, ROUTEFLOW_API: "http://x" },
+      encoding: "utf8", env: { ...process.env, ROUTEFLOW_ROOT: root, PATH: `${bin}:${process.env.PATH}`, ROUTEFLOW_API: "http://x", UPGRADE_AT: "*-*-* 03:30:00 Asia/Tehran" },
     });
 
   it("downloads this machine's files into incoming/ and leaves them for tonight when not asked to upgrade now", () => {
@@ -536,7 +536,54 @@ esac
     const r = update(bin);
     expect(r.status).toBe(0);
     expect(r.stdout).toContain("applied tonight");
+    expect(r.stdout).toContain("tonight at 03:30,");
     expect(fs.readdirSync(path.join(root, "incoming")).sort()).toEqual([name, `${name}.sha256`]);
+  });
+
+  it("carries on from the part that arrived when the line drops, instead of starting over", () => {
+    const { bin, name } = fakeGitHub(false);
+    const count = path.join(root, "tries");
+    // The tarball download breaks after 3 bytes the first time; the second asks to resume (-C -) and appends the rest.
+    fs.writeFileSync(path.join(bin, "curl"), fs.readFileSync(path.join(bin, "curl"), "utf8").replace(
+      "*/a/1) printf 'tarball' > \"$out\" ;;",
+      `*/a/1) if [ ! -e "${count}" ]; then printf 'tar' > "$out"; touch "${count}"; exit 18; else case " $* " in *" -C - "*) printf 'ball' >> "$out" ;; *) printf 'ball' > "$out" ;; esac; fi ;;`,
+    ).replace("out=\"\"; url=\"\"", "all=\" $* \"; out=\"\"; url=\"\"").replace('case " $* " in', 'case "$all" in'), { mode: 0o755 });
+    fs.writeFileSync(path.join(bin, "sleep"), "#!/bin/bash\nexit 0\n", { mode: 0o755 });
+    const r = update(bin);
+    expect(r.status).toBe(0);
+    expect(r.stderr).toContain("trying again from where it stopped");
+    expect(fs.readFileSync(path.join(root, "incoming", name), "utf8")).toBe("tarball");
+  });
+
+  it("fetches a big file in several pieces side by side and joins them in order", () => {
+    const bin = path.join(root, "bigbin");
+    fs.mkdirSync(bin, { recursive: true });
+    const name = `routeflow-9.9.9-linux-${HOST_ARCH}.tar.gz`;
+    const size = 5 * 1024 * 1024 + 123; // over the 4 MiB line, and not a multiple of the piece size
+    const payload = path.join(root, "payload.bin");
+    execFileSync("bash", ["-c", `head -c ${size} /dev/urandom > "${payload}"`]);
+    const sum = execFileSync("bash", ["-c", `sha256sum "${payload}" | cut -d' ' -f1`], { encoding: "utf8" }).trim();
+    const rel = JSON.stringify({ tag_name: "v9.9.9", assets: [
+      { name, url: "http://x/a/1", size }, { name: `${name}.sha256`, url: "http://x/a/2", size: 99 },
+    ] });
+    fs.writeFileSync(path.join(bin, "curl"), `#!/bin/bash
+all=" $* "; out=""; url=""; range=""
+while [ $# -gt 0 ]; do case "$1" in -o) out=$2; shift ;; -r) range=$2; shift ;; http*) url=$1 ;; esac; shift; done
+case "$url" in
+  */releases/latest) echo '${rel}' ;;
+  */a/1) case "$all" in *redirect_url*) printf 'http://x/blob/1' ;; *) echo "direct download" >&2; exit 1 ;; esac ;;
+  */blob/1) a=\${range%-*}; b=\${range#*-}; tail -c +$((a + 1)) "${payload}" | head -c $((b - a + 1)) ;;
+  */a/2) printf '%s  ${name}\\n' '${sum}' > "$out" ;;
+esac
+`, { mode: 0o755 });
+    fs.writeFileSync(path.join(bin, "sleep"), "#!/bin/bash\nexit 0\n", { mode: 0o755 });
+    const r = spawnSync("bash", ["-c", `. "${SCRIPT}"; need_root() { :; }; cmd_update`], {
+      encoding: "utf8", env: { ...process.env, ROUTEFLOW_ROOT: root, PATH: `${bin}:${process.env.PATH}`, ROUTEFLOW_API: "http://x", DOWNLOAD_SEGMENTS: "4", UPGRADE_AT: "*-*-* 03:30:00 Asia/Tehran" },
+    });
+    expect(r.stderr).not.toContain("did not finish");
+    expect(r.status).toBe(0);
+    expect(fs.readdirSync(path.join(root, "incoming")).sort()).toEqual([name, `${name}.sha256`]);
+    expect(fs.readFileSync(path.join(root, "incoming", name)).equals(fs.readFileSync(payload))).toBe(true);
   });
 
   it("removes a damaged download and says so", () => {
@@ -556,6 +603,65 @@ esac
     expect(r.status).toBe(0);
     expect(r.stdout).toContain("already waiting in incoming/");
     expect(r.stdout).toContain("applied tonight");
+  });
+
+  // The small update: a live release with a BASE_ID, and a new release published as a full pair and an app pair.
+  function smallUpdateSetup(newBase: string) {
+    const live = path.join(root, "releases", "9.9.8");
+    for (const d of ["node/bin", "node_modules/lib", "tools/node_modules"]) fs.mkdirSync(path.join(live, d), { recursive: true });
+    fs.writeFileSync(path.join(live, "node", "bin", "node"), "live-node");
+    fs.writeFileSync(path.join(live, "BASE_ID"), "base-one\n");
+    fs.symlinkSync("releases/9.9.8", path.join(root, "current"));
+    const top = `routeflow-9.9.9-linux-${HOST_ARCH}`;
+    const stage = path.join(root, "appstage", top);
+    fs.mkdirSync(stage, { recursive: true });
+    fs.writeFileSync(path.join(stage, "server.js"), "new-app");
+    fs.writeFileSync(path.join(stage, "BASE_ID"), `${newBase}\n`);
+    const app = path.join(root, "appstage", `${top}.app.tar.gz`);
+    execFileSync("tar", ["-czf", app, "-C", path.join(root, "appstage"), top]);
+    const sum = execFileSync("sha256sum", [app], { encoding: "utf8" }).split(" ")[0];
+    const bin = path.join(root, "smallbin");
+    fs.mkdirSync(bin, { recursive: true });
+    const rel = JSON.stringify({ tag_name: "v9.9.9", assets: [
+      { name: `${top}.tar.gz`, url: "http://x/a/1", size: 99 }, { name: `${top}.tar.gz.sha256`, url: "http://x/a/2", size: 99 },
+      { name: `${top}.app.tar.gz`, url: "http://x/a/3", size: 99 }, { name: `${top}.app.tar.gz.sha256`, url: "http://x/a/4", size: 99 },
+    ] });
+    // The full tarball must NOT be asked for when the base is the same: its url answers with a failure and a marker.
+    fs.writeFileSync(path.join(bin, "curl"), `#!/bin/bash
+out=""; url=""
+while [ $# -gt 0 ]; do case "$1" in -o) out=$2; shift ;; http*) url=$1 ;; esac; shift; done
+case "$url" in
+  */releases/latest) echo '${rel}' ;;
+  */a/1) touch "${root}/full-asked"; printf 'full' > "$out" ;;
+  */a/2) touch "${root}/full-asked"; printf '%s  x\\n' 0 > "$out" ;;
+  */a/3) cp "${app}" "$out" ;;
+  */a/4) printf '%s  ${top}.app.tar.gz\\n' '${sum}' > "$out" ;;
+esac
+`, { mode: 0o755 });
+    return { bin, top };
+  }
+
+  it("downloads only the app part when Node and the libraries are unchanged, and puts the full tarball together", () => {
+    const { bin, top } = smallUpdateSetup("base-one");
+    const r = update(bin);
+    expect(r.stdout).toContain("Only the app part");
+    expect(r.status).toBe(0);
+    expect(fs.existsSync(path.join(root, "full-asked"))).toBe(false);
+    const tarball = path.join(root, "incoming", `${top}.tar.gz`);
+    const listing = execFileSync("tar", ["-tzf", tarball], { encoding: "utf8" });
+    expect(listing).toContain(`${top}/server.js`);
+    expect(listing).toContain(`${top}/node/bin/node`);
+    expect(listing).toContain(`${top}/tools/node_modules/`);
+    expect(fs.readFileSync(`${tarball}.sha256`, "utf8")).toContain(`${top}.tar.gz`);
+    expect(fs.readdirSync(root).filter((n) => n.startsWith(".update."))).toEqual([]);
+  });
+
+  it("falls back to the whole release when a library changed", () => {
+    const { bin } = smallUpdateSetup("base-two");
+    const r = update(bin);
+    expect(r.stdout).toContain("fetching the whole release");
+    expect(fs.existsSync(path.join(root, "full-asked"))).toBe(true);
+    expect(fs.readdirSync(root).filter((n) => n.startsWith(".update."))).toEqual([]);
   });
 
   it("does nothing when the live version is already the newest", () => {
