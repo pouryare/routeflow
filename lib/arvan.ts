@@ -93,7 +93,7 @@ export async function arvanSetup(hostname: string, ip: string): Promise<ArvanSta
  *  "allow" rule for the upload paths lets them through. Does nothing when a rule for them is already there.
  *  Rule names take letters and digits only (a hyphen is refused). shortcut: the rule's field names come from reading
  *  back a rule made by hand in the panel; the create call itself has not met the real Arvan yet. */
-export const PHOTO_RULE = { name: "routeflowphotos", path: "/api/photos" };
+const PHOTO_RULE = { name: "routeflowphotos", path: "/api/photos" };
 
 export async function arvanAllowUploads(hostname: string): Promise<void> {
   const root = splitHost(hostname).root;
