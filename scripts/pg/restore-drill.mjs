@@ -20,6 +20,7 @@ import os from "node:os";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import pg from "pg";
+import { databaseName } from "../_db.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const STANZA = process.env.PGBACKREST_STANZA || "routeflow";
@@ -91,7 +92,7 @@ async function drill(repoKey, live) {
       throw new Error(`the restored server did not start: ${log || e.message}`);
     }
     running = true;
-    const dbName = new URL(LIVE).pathname.slice(1) || "postgres";
+    const dbName = databaseName(LIVE);
     const counts = await tableCounts(`postgres://${os.userInfo().username}@/${dbName}?host=${encodeURIComponent(dir)}&port=${port}`);
     const tables = Object.keys(live);
     const missing = tables.filter((t) => !(t in counts));
