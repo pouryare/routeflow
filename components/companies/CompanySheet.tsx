@@ -23,10 +23,12 @@ function Field({ label, hint, children }: { label: string; hint?: ReactNode; chi
 }
 
 /** Create a company (name, logo, address, first owner) or, with `editing`, change its name and logo. */
-export default function CompanySheet({ editing, onClose, onSaved }: {
+export default function CompanySheet({ editing, onClose, onSaved, onAddAddress }: {
   editing: CompanyRow | null;
   onClose: () => void;
   onSaved: () => void;
+  /** Editing only: opens the new-address sheet for this company (the card's own button is only for a company with no address). */
+  onAddAddress?: () => void;
 }) {
   const [name, setName] = useState(editing?.name ?? "");
   const [hostname, setHostname] = useState("");
@@ -126,6 +128,12 @@ export default function CompanySheet({ editing, onClose, onSaved }: {
           <p role="alert" className="rounded-md border border-crit/40 bg-crit/10 px-3 py-2 text-sm text-crit">
             {error}
           </p>
+        )}
+        {onAddAddress && (
+          <Button variant="secondary" className="min-h-[44px]" onPress={onAddAddress}>
+            <Icon name="plus" size="sm" />
+            افزودن نشانی دیگر
+          </Button>
         )}
         <GoButton icon="save" isDisabled={busy || !ready} onPress={save}>
           {busy ? "در حال ذخیره…" : editing ? "ذخیره" : "ساخت شرکت"}

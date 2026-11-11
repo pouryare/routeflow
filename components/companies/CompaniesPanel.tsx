@@ -5,6 +5,7 @@ import { Button } from "@heroui/react";
 import StickyAction from "@/components/mobile/StickyAction";
 import BottomSheet from "@/components/mobile/BottomSheet";
 import { GoButton } from "@/components/tapflow/Answer";
+import SlideConfirm from "@/components/mobile/SlideConfirm";
 import { FieldInput } from "@/components/FieldInput";
 import { Icon } from "@/components/meridian/Icon";
 import { useRunAfterMount } from "@/lib/useRunAfterMount";
@@ -60,6 +61,7 @@ export default function CompaniesPanel() {
     await load();
     setError(err);
     if (!err && ok) toast(ok, "success");
+    return err;
   };
 
   return (
@@ -89,7 +91,7 @@ export default function CompaniesPanel() {
             </ol>
           </details>
 
-          <ArvanSection arvan={data.arvan} act={act} />
+          <ArvanSection arvan={data.arvan} addresses={data.companies.reduce((n, c) => n + c.domains.length, 0)} act={act} />
 
           <section className="card flex flex-col gap-2 p-[var(--space-4)]">
             <h2 className="sechead__title m-0">نشانی اصلی سامانه</h2>
@@ -117,6 +119,7 @@ export default function CompaniesPanel() {
           key={sheet === "new" ? "new" : sheet.id}
           editing={sheet === "new" ? null : sheet}
           onClose={() => setSheet(null)}
+          onAddAddress={sheet === "new" ? undefined : () => { setAdding(sheet); setSheet(null); }}
           onSaved={() => {
             setSheet(null);
             void load();
@@ -144,7 +147,7 @@ function CompanyCard({ c, arvan, checking, setChecking, act, onAdd, onEdit }: {
   arvan: boolean;
   checking: number | null;
   setChecking: (id: number | null) => void;
-  act: (p: Promise<string | null>, ok?: string) => Promise<void>;
+  act: (p: Promise<string | null>, ok?: string) => Promise<string | null>;
   onAdd: () => void;
   onEdit: () => void;
 }) {
@@ -205,10 +208,12 @@ function CompanyCard({ c, arvan, checking, setChecking, act, onAdd, onEdit }: {
       )}
 
       <div className="flex flex-wrap gap-2">
-        <Button variant="secondary" className="min-h-[44px]" onPress={onAdd}>
-          <Icon name="plus" size="sm" />
-          افزودن نشانی
-        </Button>
+        {c.domains.length === 0 && (
+          <Button variant="secondary" className="min-h-[44px]" onPress={onAdd}>
+            <Icon name="plus" size="sm" />
+            افزودن نشانی
+          </Button>
+        )}
         <Button variant="secondary" className="min-h-[44px]" onPress={onEdit}>
           <Icon name="edit" size="sm" />
           ویرایش
@@ -258,36 +263,79 @@ function AddressSheet({ company, onClose, onSaved }: { company: CompanyRow; onCl
 }
 
 /** The server's address that every company address points at, and the Arvan shortcuts that act on all of them. */
-function ArvanSection({ arvan, act }: { arvan: Data["arvan"]; act: (p: Promise<string | null>, ok?: string) => Promise<void> }) {
-  const [ip, setIp] = useState(arvan.server_ip ?? "");
+function ArvanSection({ arvan, addresses, act }: { arvan: Data["arvan"]; addresses: number; act: (p: Promise<string | null>, ok?: string) => Promise<string | null> }) {
+  const [changing, setChanging] = useState(false);
   const [busy, setBusy] = useState(false);
-  const run = async (p: Promise<string | null>, ok: string) => {
-    setBusy(true);
-    await act(p, ok);
-    setBusy(false);
-  };
   return (
     <section className="card flex flex-col gap-2 p-[var(--space-4)]">
       <h2 className="sechead__title m-0">آروان و آدرس سرور</h2>
       {!arvan.configured && (
         <p className="m-0 text-sm text-text-muted">کلید آروان روی سرور تنظیم نشده (ARVAN_API_KEY)؛ مراحل آروان را باید خودتان در پنل آروان انجام دهید.</p>
       )}
-      <label className="flex flex-col gap-1 text-xs text-text-muted">
+      <p className="m-0 text-xs text-text-muted">
         IP عمومی سرور
-        <FieldInput dir="ltr" inputMode="decimal" value={ip} onChange={(e) => setIp(e.target.value)} placeholder="185.1.2.3" autoCapitalize="off" />
-      </label>
+        <bdi dir="ltr" className="block text-base text-text">{arvan.server_ip ?? "تنظیم نشده"}</bdi>
+      </p>
       <div className="flex flex-wrap gap-2">
-        <Button variant="secondary" className="min-h-[44px]" isDisabled={busy || !ip.trim() || ip.trim() === (arvan.server_ip ?? "")} onPress={() => run(send("/api/admin/server-ip", "POST", { ip: ip.trim() }), "IP سرور ذخیره شد")}>
+        <Button variant="secondary" className="min-h-[44px]" onPress={() => setChanging(true)}>
           <Icon name="refresh" size="sm" />
           تغییر IP سرور
         </Button>
         {arvan.configured && (
-          <Button variant="secondary" className="min-h-[44px]" isDisabled={busy} onPress={() => run(send("/api/admin/arvan-purge", "POST"), "حافظهٔ موقت آروان خالی شد")}>
+          <Button
+            variant="secondary"
+            className="min-h-[44px]"
+            isDisabled={busy}
+            onPress={async () => {
+              setBusy(true);
+              await act(send("/api/admin/arvan-purge", "POST"), "حافظهٔ موقت آروان خالی شد");
+              setBusy(false);
+            }}
+          >
             <Icon name="sparkle" size="sm" />
             خالی کردن حافظهٔ موقت
           </Button>
         )}
       </div>
+      {changing && <ServerIpSheet current={arvan.server_ip} addresses={addresses} act={act} onClose={() => setChanging(false)} />}
     </section>
+  );
+}
+
+// shortcut: the same pattern as app/api/admin/server-ip/route.ts; share it from lib/ when a third place needs it.
+const IPV4 = /^(25[0-5]|2[0-4]\d|1?\d?\d)(\.(25[0-5]|2[0-4]\d|1?\d?\d)){3}$/;
+
+/** New server IP: type it, then slide to confirm. The slide is there because it moves every company address in Arvan at once. */
+function ServerIpSheet({ current, addresses, act, onClose }: { current: string | null; addresses: number; act: (p: Promise<string | null>, ok?: string) => Promise<string | null>; onClose: () => void }) {
+  const [ip, setIp] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const valid = IPV4.test(ip.trim()) && ip.trim() !== current;
+  return (
+    <BottomSheet open onClose={onClose} title="تغییر IP سرور" closeLabel="بستن" dirty={!!ip}>
+      <div className="flex flex-col gap-[var(--space-3)]">
+        <label className="flex flex-col gap-1 text-xs text-text-muted">
+          IP تازهٔ سرور
+          <FieldInput dir="ltr" inputMode="decimal" value={ip} onChange={(e) => setIp(e.target.value)} placeholder="185.1.2.3" autoCapitalize="off" />
+        </label>
+        <p className="m-0 text-sm text-text-muted">
+          {addresses > 0 ? `${faNum(addresses)} نشانی شرکت‌ها در آروان یک‌جا به این IP منتقل می‌شوند.` : "هنوز نشانی‌ای ثبت نشده؛ فقط IP ذخیره می‌شود."}
+        </p>
+        {error && (
+          <p role="alert" className="rounded-md border border-crit/40 bg-crit/10 px-3 py-2 text-sm text-crit">
+            {error}
+          </p>
+        )}
+        <SlideConfirm
+          isDisabled={!valid}
+          onConfirm={async () => {
+            const err = await act(send("/api/admin/server-ip", "POST", { ip: ip.trim() }), "IP سرور ذخیره شد");
+            if (err) setError(err);
+            else onClose();
+          }}
+        >
+          بکشید تا IP عوض شود
+        </SlideConfirm>
+      </div>
+    </BottomSheet>
   );
 }
