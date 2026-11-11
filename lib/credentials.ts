@@ -24,3 +24,14 @@ function pick(alphabet: string, n: number, rand: RandomBytes): string {
 export const generatePassword = (rand: RandomBytes = browserRandom, length = PASSWORD_LENGTH) => pick(PASSWORD_ALPHABET, length, rand);
 /** `user-` and five characters: inside the server's 3-40 Latin letters/digits/dash rule. */
 export const generateUsername = (rand: RandomBytes = browserRandom) => `user-${pick(USERNAME_ALPHABET, 5, rand)}`;
+
+/** A first login to offer when a company is made: «taminodis.admin» for app.taminodis.ir. It comes from
+ *  the address (the part before the last dot, e.g. «taminodis»), else from the name when that is written
+ *  in Latin letters, else «company». The owner can change it. */
+export function suggestOwnerUsername(hostname: string, name: string): string {
+  const parts = hostname.trim().toLowerCase().split(".").filter(Boolean);
+  const fromHost = parts.length >= 2 ? parts[parts.length - 2] : "";
+  const fromName = name.trim().toLowerCase().replace(/[^a-z0-9]+/g, "");
+  const slug = (fromHost.replace(/[^a-z0-9-]/g, "") || fromName || "company").slice(0, 30);
+  return `${slug}.admin`;
+}

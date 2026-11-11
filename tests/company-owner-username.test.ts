@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { suggestOwnerUsername } from "@/lib/companyInput";
+import { suggestOwnerUsername } from "@/lib/credentials";
 
 describe("suggestOwnerUsername", () => {
   it("uses the name before the top-level domain", () => {

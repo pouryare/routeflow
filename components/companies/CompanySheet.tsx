@@ -8,8 +8,7 @@ import { FieldInput } from "@/components/FieldInput";
 import { Icon } from "@/components/meridian/Icon";
 import SectionHead from "@/components/meridian/SectionHead";
 import { friendlyError } from "@/lib/userMessage";
-import { generatePassword } from "@/lib/credentials";
-import { suggestOwnerUsername } from "@/lib/companyInput";
+import { generatePassword, suggestOwnerUsername } from "@/lib/credentials";
 import { logoFromFile } from "./logo";
 import type { CompanyRow } from "@/lib/repo/companies";
 
