@@ -14,3 +14,14 @@ export function parseLogo(v: unknown): { data: Buffer; type: LogoType } | null |
 
 export const MIN_PASSWORD = 8;
 export const USERNAME_RE = /^[A-Za-z0-9._-]{3,40}$/;
+
+/** A first login to offer when a company is made: «taminodis.admin» for app.taminodis.ir. It comes from
+ *  the address (the part before the last dot, e.g. «taminodis»), else from the name when that is written
+ *  in Latin letters, else «company». The owner can change it. */
+export function suggestOwnerUsername(hostname: string, name: string): string {
+  const parts = hostname.trim().toLowerCase().split(".").filter(Boolean);
+  const fromHost = parts.length >= 2 ? parts[parts.length - 2] : "";
+  const fromName = name.trim().toLowerCase().replace(/[^a-z0-9]+/g, "");
+  const slug = (fromHost.replace(/[^a-z0-9-]/g, "") || fromName || "company").slice(0, 30);
+  return `${slug}.admin`;
+}

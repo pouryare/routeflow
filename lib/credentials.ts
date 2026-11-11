@@ -21,6 +21,6 @@ function pick(alphabet: string, n: number, rand: RandomBytes): string {
   return out;
 }
 
-export const generatePassword = (rand: RandomBytes = browserRandom) => pick(PASSWORD_ALPHABET, PASSWORD_LENGTH, rand);
+export const generatePassword = (rand: RandomBytes = browserRandom, length = PASSWORD_LENGTH) => pick(PASSWORD_ALPHABET, length, rand);
 /** `user-` and five characters: inside the server's 3-40 Latin letters/digits/dash rule. */
 export const generateUsername = (rand: RandomBytes = browserRandom) => `user-${pick(USERNAME_ALPHABET, 5, rand)}`;

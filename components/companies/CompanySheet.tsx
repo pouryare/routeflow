@@ -5,10 +5,11 @@ import { Button } from "@heroui/react";
 import BottomSheet from "@/components/mobile/BottomSheet";
 import { GoButton } from "@/components/tapflow/Answer";
 import { FieldInput } from "@/components/FieldInput";
-import { FieldPassword } from "@/components/PasswordRoll";
 import { Icon } from "@/components/meridian/Icon";
 import SectionHead from "@/components/meridian/SectionHead";
 import { friendlyError } from "@/lib/userMessage";
+import { generatePassword } from "@/lib/credentials";
+import { suggestOwnerUsername } from "@/lib/companyInput";
 import { logoFromFile } from "./logo";
 import type { CompanyRow } from "@/lib/repo/companies";
 
@@ -32,16 +33,20 @@ export default function CompanySheet({ editing, onClose, onSaved, onAddAddress }
 }) {
   const [name, setName] = useState(editing?.name ?? "");
   const [hostname, setHostname] = useState("");
-  const [username, setUsername] = useState("");
-  const [displayName, setDisplayName] = useState("");
-  const [password, setPassword] = useState("");
+  // The first owner's login is offered, not asked for: «taminodis.admin», «مدیر <نام شرکت>» and a strong
+  // password made here. Each stays the offer until the person types in it.
+  const [typedUser, setTypedUser] = useState<string | null>(null);
+  const [typedDisplay, setTypedDisplay] = useState<string | null>(null);
+  const [password, setPassword] = useState(() => (editing ? "" : generatePassword(undefined, 14)));
+  const username = typedUser ?? suggestOwnerUsername(hostname, name);
+  const displayName = typedDisplay ?? (name.trim() ? `مدیر ${name.trim()}` : "");
   // undefined: logo untouched; null: remove it; string: a new one
   const [logo, setLogo] = useState<string | null | undefined>(undefined);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const dirty = !!(name !== (editing?.name ?? "") || hostname || username || password || logo !== undefined);
+  const dirty = !!(name !== (editing?.name ?? "") || hostname || typedUser !== null || typedDisplay !== null || logo !== undefined);
   const shown = logo === undefined ? null : logo;
   const ready = name.trim() && (editing || (username.trim() && displayName.trim() && password.length >= 8));
 
@@ -113,13 +118,18 @@ export default function CompanySheet({ editing, onClose, onSaved, onAddAddress }
             </Field>
             <SectionHead as="h3" title="مدیر اول شرکت" />
             <Field label="نام نمایشی">
-              <FieldInput value={displayName} onChange={(e) => setDisplayName(e.target.value)} maxLength={80} />
+              <FieldInput value={displayName} onChange={(e) => setTypedDisplay(e.target.value)} maxLength={80} />
             </Field>
             <Field label="نام کاربری">
-              <FieldInput dir="ltr" value={username} onChange={(e) => setUsername(e.target.value)} autoComplete="off" autoCapitalize="off" />
+              <FieldInput dir="ltr" value={username} onChange={(e) => setTypedUser(e.target.value)} autoComplete="off" autoCapitalize="off" />
             </Field>
-            <Field label="رمز موقت" hint="حداقل ۸ نویسه. در اولین ورود باید رمز را عوض کند.">
-              <FieldPassword label="رمز موقت" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" />
+            <Field label="رمز موقت" hint="رمز قوی آماده است؛ بعد از ساخت شرکت دیگر دیده نمی‌شود، پس همین‌جا کپی کنید. در اولین ورود باید رمز را عوض کند.">
+              <div className="flex items-center gap-[var(--space-2)]">
+                <FieldInput dir="ltr" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="off" autoCapitalize="off" spellCheck={false} />
+                <Button variant="secondary" className="min-h-[44px]" aria-label="رمز تازه" onPress={() => setPassword(generatePassword(undefined, 14))}>
+                  <Icon name="refresh" size="sm" />
+                </Button>
+              </div>
             </Field>
           </>
         )}
