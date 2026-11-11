@@ -173,6 +173,8 @@ export function appTabs(session: { role: Role }): AppTab[] {
     { href: "/sales/admin/status", label: "وضعیت سامانه", group: "org", ready: isOwner(r) },
     // Company storages (docs/storage.md): where the company's photos and receipts are kept.
     { href: "/sales/admin/storage", label: "فضای ذخیره‌سازی", group: "org", ready: isOwner(r) },
+    // Companies and their web addresses: the founder only (the page and the API both check platform_owner).
+    { href: "/sales/admin/companies", label: "شرکت‌ها", group: "org", ready: r === "platform_owner" },
     // The lunar holidays nothing offline can compute (Eid, Tasua, Ashura). The page existed
     // with no link to it; isOwner mirrors the gate in sales/admin/layout.tsx.
     { href: "/sales/admin/holidays", label: "تعطیلات", group: "org", ready: isOwner(r) },

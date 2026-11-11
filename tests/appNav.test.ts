@@ -157,7 +157,7 @@ describe("where each destination lives", () => {
   });
 
   it("organisation settings hold users, groups and our own sites", () => {
-    expect(hrefsIn("org")).toEqual(["/facilities", "/sales/admin/discounts", "/sales/admin/groups", "/sales/admin/holidays", "/sales/admin/logins", "/sales/admin/rating-tags", "/sales/admin/status", "/sales/admin/storage", "/sales/admin/users"].sort());
+    expect(hrefsIn("org")).toEqual(["/facilities", "/sales/admin/companies", "/sales/admin/discounts", "/sales/admin/groups", "/sales/admin/holidays", "/sales/admin/logins", "/sales/admin/rating-tags", "/sales/admin/status", "/sales/admin/storage", "/sales/admin/users"].sort());
   });
 
   it("names say what is on the page: my tasks, the sales summary, production batches", () => {

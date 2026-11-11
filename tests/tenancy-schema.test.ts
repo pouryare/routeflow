@@ -177,6 +177,7 @@ describe("organization_id backfill", () => {
       "notification_prefs",      // per-user loud-channel prefs; reaches a tenant through user_id
       "notification_channels",   // per-user loud-channel master switch; through user_id
       "notification_deliveries", // per-user push/telegram flush log; through user_id
+      "platform_settings",  // switches of the whole platform (main_address_owner_only), no company owns them
       "app_meta",           // key/value store for migration markers -- not tenant data
       "representative_onboarding_steps", // reaches a tenant through representative_profiles
       "payment_allocations", // reaches a tenant through payments

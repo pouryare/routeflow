@@ -46,6 +46,33 @@ function CredentialFields({ username, setUsername, password, setPassword, failed
   );
 }
 
+/** The name and logo of the company whose address this is (from /api/login/brand); RouteFlow's own on the main address. */
+function LoginBrand() {
+  const [brand, setBrand] = useState<{ kind: string; name?: string; logo?: string | null } | null>(null);
+  useEffect(() => {
+    fetch("/api/login/brand").then((r) => r.json()).then((d) => d?.ok && setBrand(d)).catch(() => null);
+  }, []);
+  return (
+    <>
+      <div className="mb-[var(--space-4)] flex items-center justify-center gap-[var(--space-2)]">
+        {brand?.kind === "company" && brand.logo ? (
+          <span role="img" aria-label={brand.name ?? ""} className="block h-12 w-40 bg-contain bg-center bg-no-repeat" style={{ backgroundImage: `url(${brand.logo})` }} />
+        ) : (
+          <Icon name="map" size="lg" className="text-[var(--accent)]" />
+        )}
+        <div className="font-mono text-xs tracking-[0.12em] text-[var(--accent)] uppercase">
+          {brand?.kind === "company" ? brand.name : "RouteFlow"}
+        </div>
+      </div>
+      {brand?.kind === "unknown" && (
+        <p role="alert" className="mb-[var(--space-4)] text-center text-[length:var(--text-sm)] text-[var(--danger)]">
+          این نشانی در سامانه ثبت نشده است.
+        </p>
+      )}
+    </>
+  );
+}
+
 function LoginForm() {
   const router = useRouter();
   const params = useSearchParams();
@@ -61,7 +88,6 @@ function LoginForm() {
   const [done, flash] = useDoneFlash();
   const nextPathRef = useRef<string | null>(null);
   const clearedRef = useRef(false);
-
   // proxy.ts only sets ?next= when it turned someone away from a page they asked for, so
   // its presence means "you were signed in a moment ago, and now you are not". Without
   // saying so, an expired session looks exactly like a broken app: the map they expected
@@ -127,12 +153,7 @@ function LoginForm() {
     <div className="meridian min-h-screen flex items-center justify-center p-[var(--space-4)]">
       <main className="w-full max-w-sm">
         <div className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--surface-raised)] p-[var(--space-6)]">
-          <div className="mb-[var(--space-4)] flex items-center justify-center gap-[var(--space-2)]">
-            <Icon name="map" size="lg" className="text-[var(--accent)]" />
-            <div className="font-mono text-xs tracking-[0.12em] text-[var(--accent)] uppercase">
-              RouteFlow
-            </div>
-          </div>
+          <LoginBrand />
           <h1 className="mb-[var(--space-1)] text-center text-[length:var(--text-xl)] font-bold text-[var(--foreground)]">
             <LeanTitle><WordReveal text="نقشه پوشش مشتریان" /></LeanTitle>
           </h1>

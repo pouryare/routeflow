@@ -171,6 +171,30 @@ same server, add `/etc/caddy/sites/othersite.caddy` with its own `othersite.exam
 `routeflow install` rewrites only `routeflow.caddy`, never the other files. An older install that imported
 `/etc/caddy/routeflow.caddy` is moved to the new layout on the next install.
 
+## Company addresses
+
+Each company can have its own web address (`app.tamino.ir`). The platform owner adds it in the app, on
+«شرکت‌ها» (`/sales/admin/companies`); nothing is edited on the server by hand.
+
+- **What the server does.** `routeflow install` writes a second file, `/etc/caddy/sites/routeflow-companies.caddy`,
+  that accepts any address and passes it to the app, and adds `on_demand_tls { ask ... }` to the Caddyfile's
+  global block. Before Caddy makes a certificate for a name it has not seen, it asks the app
+  (`/api/domains/ask`); the app says yes only for an address a company has registered. The app also gets
+  `MAIN_HOST=<your domain>`, so an address that is neither the main one nor registered is refused at sign-in.
+  Run `routeflow install` again on an existing server to get both files.
+- **What the customer does.** Adds a CNAME for their address pointing at `domains.<your domain>`. You create
+  that one name once, with an A record to the server, in the Arvan panel.
+- **What you do in Arvan.** Add each company address in the Arvan panel too, since Arvan shows the certificate to
+  the browser. (By hand for now; the app only reports how far an address has got. Not yet checked against Arvan:
+  whether it accepts a customer-owned domain by CNAME or needs a nameserver move.)
+- **Status.** «بررسی دوباره» looks at the address from outside: waiting for DNS, waiting for Arvan, or active
+  (it answers `/api/health` with this app's answer).
+- **Closing the main address.** Until every company has an active address, leave the main address open. Then
+  «فقط مدیر سامانه» on the same page makes it platform-owner only. A company with no active address cannot
+  sign in once it is closed.
+- Caddy 2.6 (Ubuntu's package) was used to validate both files; the certificate flow itself has not been run
+  on a real server.
+
 ## Running from inside Iran
 
 `routeflow install` also sets up the following (owner's pick, 2026-11-06). Each one can be changed in

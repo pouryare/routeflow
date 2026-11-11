@@ -13,6 +13,7 @@
  *  and a second copy of the answer is a second thing to keep in step. */
 export const TENANT_TABLES = [
   "groups",
+  "company_domains",
   "customers",
   /* districts is deliberately ABSENT: it is shared geography, not tenant data. Tehran's
      22 منطقه are the same for every organisation, and per-tenant copies of the same

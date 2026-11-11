@@ -204,6 +204,16 @@ export interface CommissionTiers {
   valid_from: string;
 }
 
+export interface CompanyDomains {
+  created_at: string;
+  hostname: string;
+  id: Generated<number>;
+  last_checked_at: string | null;
+  last_error: string | null;
+  organization_id: number;
+  status: Generated<string>;
+}
+
 export interface Contacts {
   active: Generated<number>;
   best_time: string | null;
@@ -1068,6 +1078,8 @@ export interface Organizations {
   effects: Generated<string>;
   id: Generated<number>;
   legal_form: Generated<string>;
+  logo_data: string | null;
+  logo_type: string | null;
   maintenance_from: string | null;
   maintenance_note: string | null;
   maintenance_to: string | null;
@@ -1147,6 +1159,11 @@ export interface PlatformAccessLog {
   organization_id: number;
   path: string;
   platform_user_id: number;
+}
+
+export interface PlatformSettings {
+  key: string;
+  value: string;
 }
 
 export interface ProductCosts {
@@ -1860,6 +1877,7 @@ export interface DB {
   commission_payments: CommissionPayments;
   commission_rates: CommissionRates;
   commission_tiers: CommissionTiers;
+  company_domains: CompanyDomains;
   contacts: Contacts;
   credit_approvals: CreditApprovals;
   crm_not_duplicates: CrmNotDuplicates;
@@ -1926,6 +1944,7 @@ export interface DB {
   payments: Payments;
   photos: Photos;
   platform_access_log: PlatformAccessLog;
+  platform_settings: PlatformSettings;
   product_costs: ProductCosts;
   product_prices: ProductPrices;
   products: Products;

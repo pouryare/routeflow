@@ -660,7 +660,7 @@ WorkingDirectory=$ROOT/current
 EnvironmentFile=$ENV_FILE
 # The secrets, decrypted by systemd into a private folder only this service can read (%d).
 LoadCredentialEncrypted=secrets:$SECRETS
-Environment=NODE_ENV=production PORT=$APP_PORT HOSTNAME=127.0.0.1
+Environment=NODE_ENV=production PORT=$APP_PORT HOSTNAME=127.0.0.1 MAIN_HOST=$DOMAIN
 ExecStart=$ROOT/current/node/bin/node --env-file=%d/secrets server.js
 Restart=on-failure
 RestartSec=3
@@ -827,6 +827,35 @@ $DOMAIN {
 	}
 }
 CADDY
+  # Company addresses (docs/release-and-deploy.md): any address a platform owner registers in the app reaches the
+  # app. Caddy asks the app before it makes a certificate for a name it has not seen, so only registered names get one.
+  local od=""; [ "${CERT_MODE:-auto}" = internal ] && od=" internal"
+  cat > "$CADDY_DIR/sites/routeflow-companies.caddy" <<CADDY
+# Written by 'routeflow install': every registered company address, whatever its name.
+https:// {
+	tls$od {
+		on_demand
+	}
+	@compress not path /api/live
+	encode @compress zstd gzip
+	request_body {
+		max_size 25MB
+	}
+	reverse_proxy 127.0.0.1:$APP_PORT
+}
+CADDY
+  # The permission check is a global option, so it goes in the Caddyfile itself (a global block inside an
+  # imported file is refused): into the existing global block, or a new one at the top.
+  if ! grep -q on_demand_tls "$CADDY_DIR/Caddyfile" 2>/dev/null; then
+    local ask="	on_demand_tls {
+		ask http://127.0.0.1:$APP_PORT/api/domains/ask
+	}"
+    if grep -q '^{' "$CADDY_DIR/Caddyfile" 2>/dev/null; then
+      awk -v ask="$ask" '!done && /^\{/ { print; print ask; done=1; next } { print }' "$CADDY_DIR/Caddyfile" > "$CADDY_DIR/Caddyfile.new" && mv "$CADDY_DIR/Caddyfile.new" "$CADDY_DIR/Caddyfile"
+    else
+      { printf '{\n%s\n}\n\n' "$ask"; cat "$CADDY_DIR/Caddyfile"; } > "$CADDY_DIR/Caddyfile.new" && mv "$CADDY_DIR/Caddyfile.new" "$CADDY_DIR/Caddyfile"
+    fi
+  fi
   # Older installs imported $CADDY_DIR/routeflow.caddy by name: move to the glob.
   rm -f "$CADDY_DIR/routeflow.caddy"
   sed -i '\|^import /etc/caddy/routeflow.caddy$|d' "$CADDY_DIR/Caddyfile" 2>/dev/null || true
@@ -1266,7 +1295,7 @@ cmd_uninstall() {
   shopt -u nullglob
   systemctl daemon-reload
   rm -rf "$ROOT/releases" "$ROOT/current" "$ROOT/incoming"
-  rm -f "$CADDY_DIR/sites/routeflow.caddy" /usr/local/bin/routeflow /etc/update-motd.d/90-routeflow "$CONF_DIR/install-steps"
+  rm -f "$CADDY_DIR/sites/routeflow.caddy" "$CADDY_DIR/sites/routeflow-companies.caddy" /usr/local/bin/routeflow /etc/update-motd.d/90-routeflow "$CONF_DIR/install-steps"
   systemctl reload caddy 2>/dev/null || true
   say "The app is removed. Install again with a release file; the database and photos are still here."
   echo "To remove the database too, by hand: sudo -u postgres dropdb $DB_NAME"
