@@ -43,6 +43,8 @@ const PUBLIC_BY_DESIGN: Record<string, string> = {
   "POST logout/route.ts": "clearing a cookie needs no session; idempotent",
   "GET map/tiles/[z]/[x]/[y]/route.ts": "basemap tiles: public map data, served cookie-free so the CDN can cache each tile",
   "GET health/route.ts": "liveness check for the outside monitor and upgrades: answers only ok, the version and live-stream counts, no data",
+  "GET login/brand/route.ts": "the sign-in page asks which company's name and logo to show for the address it was opened on; nothing else",
+  "GET domains/ask/route.ts": "Caddy asks before making a certificate; with no cookie and no X-Forwarded-For it answers 200/404 only for the address named",
   "DELETE admin/impersonate/route.ts": "ends a Login-As; with no saved owner session it only clears both cookies",
 };
 

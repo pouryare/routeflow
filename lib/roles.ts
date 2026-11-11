@@ -39,6 +39,11 @@ export const ROLES: Role[] = [
  *  is how a field rep ends up holding the whole sales shell. Gate on membership here. */
 export const VAN_ROLES: Role[] = ["field_rep", "delivery_driver"];
 
+/** The founder's role: the one that spans every company. */
+export function isPlatformOwner(role: string): boolean {
+  return role === "platform_owner";
+}
+
 export function isVanRole(role: Role): boolean {
   return VAN_ROLES.includes(role);
 }

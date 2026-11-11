@@ -58,7 +58,7 @@ export async function listCompanies(): Promise<CompanyRow[]> {
   }));
 }
 
-export interface NewCompany {
+interface NewCompany {
   name: string;
   hostname: string | null;
   logo: { data: Buffer; type: LogoType } | null;

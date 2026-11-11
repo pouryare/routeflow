@@ -336,7 +336,6 @@ export const PAGE_META: Record<string, PageMeta> = {
   "/sales/admin/companies": {
     title: "شرکت‌ها",
     titleEn: "Companies",
-    help: "page.companies",
     overview:
       "ساخت شرکت تازه با نام، لوگو و مدیر اول، و نشانی اینترنتی هر شرکت (مثل app.example.ir). کاربران هر شرکت فقط از نشانی خودشان وارد می‌شوند و نام و لوگوی شرکت را در صفحهٔ ورود می‌بینند.",
   },

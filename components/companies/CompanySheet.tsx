@@ -7,6 +7,7 @@ import { GoButton } from "@/components/tapflow/Answer";
 import { FieldInput } from "@/components/FieldInput";
 import { FieldPassword } from "@/components/PasswordRoll";
 import { Icon } from "@/components/meridian/Icon";
+import SectionHead from "@/components/meridian/SectionHead";
 import { friendlyError } from "@/lib/userMessage";
 import { logoFromFile } from "./logo";
 import type { CompanyRow } from "@/lib/repo/companies";
@@ -85,8 +86,7 @@ export default function CompanySheet({ editing, target, onClose, onSaved }: {
 
         <div className="flex items-center gap-[var(--space-3)]" data-tour="company-logo">
           {shown ? (
-            // eslint-disable-next-line @next/next/no-img-element -- a small local preview
-            <img src={shown} alt="پیش‌نمایش لوگو" className="h-14 w-14 rounded-md border border-border object-contain" />
+            <span role="img" aria-label="پیش‌نمایش لوگو" className="block h-14 w-14 rounded-md border border-border bg-contain bg-center bg-no-repeat" style={{ backgroundImage: `url(${shown})` }} />
           ) : (
             <span className="grid h-14 w-14 place-items-center rounded-md border border-dashed border-border text-text-faint">
               <Icon name="image" size="md" />
@@ -110,7 +110,7 @@ export default function CompanySheet({ editing, target, onClose, onSaved }: {
             <Field label="نشانی شرکت (اختیاری)" hint={target ? `مشتری یک رکورد CNAME از این نشانی به ${target} می‌زند. مراحل بعد از ذخیره نشان داده می‌شود.` : "مثلاً app.example.ir"}>
               <FieldInput dir="ltr" value={hostname} onChange={(e) => setHostname(e.target.value)} placeholder="app.example.ir" autoCapitalize="off" data-tour="company-host" />
             </Field>
-            <h3 className="m-0 text-sm font-medium">مدیر اول شرکت</h3>
+            <SectionHead as="h3" title="مدیر اول شرکت" />
             <Field label="نام نمایشی">
               <FieldInput value={displayName} onChange={(e) => setDisplayName(e.target.value)} maxLength={80} />
             </Field>

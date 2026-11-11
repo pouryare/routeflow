@@ -3,6 +3,7 @@
  *  withDbScope("system") (lib/database/scope.ts). */
 
 import { getDb } from "@/lib/db";
+import { isPlatformOwner } from "@/lib/roles";
 
 export type DomainStatus = "waiting_dns" | "waiting_arvan" | "active" | "failed";
 
@@ -39,7 +40,12 @@ export async function resolveHost(host: string | null): Promise<HostKind> {
   return !main || host === main ? { kind: "main" } : { kind: "unknown" };
 }
 
-export async function platformSetting(key: string): Promise<string | null> {
+/** Has a company registered this address (in any state)? Caddy's permission check for making a certificate. */
+export async function isRegisteredHost(host: string): Promise<boolean> {
+  return !!(await getDb().prepare("SELECT organization_id FROM company_domains WHERE hostname = ?").get(host));
+}
+
+async function platformSetting(key: string): Promise<string | null> {
   const row = await getDb().prepare("SELECT value FROM platform_settings WHERE key = ?").get(key) as { value: string } | undefined;
   return row?.value ?? null;
 }
@@ -62,7 +68,7 @@ export function mayUseAddress(
   user: { role: string; organization_id: number | null },
   mainOwnerOnly: boolean
 ): boolean {
-  if (user.role === "platform_owner") return true;
+  if (isPlatformOwner(user.role)) return true;
   if (host.kind === "company") return user.organization_id === host.organizationId;
   if (host.kind === "main") return !mainOwnerOnly;
   return false;

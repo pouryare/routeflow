@@ -69,69 +69,7 @@ export default function CompaniesPanel() {
       ) : (
         <>
           {data.companies.map((c) => (
-            <section key={c.id} className="card flex flex-col gap-2 p-[var(--space-4)]">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <h2 className="sechead__title m-0 flex items-center gap-2">
-                  <Icon name="building" size="md" />
-                  {c.name}
-                </h2>
-                <span className={`text-xs ${c.active ? "text-success" : "text-crit"}`}>{c.active ? "فعال" : "غیرفعال"}</span>
-              </div>
-              <p className="m-0 text-xs text-text-muted">
-                {faNum(c.users)} کاربر فعال{c.has_logo ? " · لوگو دارد" : " · بدون لوگو"}
-              </p>
-
-              {c.domains.length === 0 ? (
-                <p className="m-0 text-sm text-text-muted">هنوز نشانی ندارد؛ کاربران این شرکت نمی‌توانند وارد شوند.</p>
-              ) : (
-                <ul className="m-0 flex list-none flex-col p-0">
-                  {c.domains.map((d) => (
-                    <li key={d.id} className="flex flex-col gap-1 border-b border-border py-2 last:border-b-0">
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <span dir="ltr" className="text-sm">{d.hostname}</span>
-                        <span className={`text-xs ${STATUS[d.status].tone}`}>{STATUS[d.status].label}</span>
-                      </div>
-                      {d.status !== "active" && d.last_error && <span className="text-xs text-text-muted">{d.last_error}</span>}
-                      {d.last_checked_at && <span className="text-xs text-text-faint">آخرین بررسی: {faJalaliDateTime(d.last_checked_at)}</span>}
-                      <div className="flex flex-wrap gap-2">
-                        <Button
-                          variant="secondary"
-                          className="min-h-[44px]"
-                          isDisabled={checking === d.id}
-                          onPress={async () => {
-                            setChecking(d.id);
-                            await act(send(`/api/admin/companies/${c.id}/domains/${d.id}/check`, "POST"));
-                            setChecking(null);
-                          }}
-                        >
-                          <Icon name="refresh" size="sm" />
-                          {checking === d.id ? "در حال بررسی…" : "بررسی دوباره"}
-                        </Button>
-                        <Button variant="secondary" className="min-h-[44px]" onPress={() => act(send(`/api/admin/companies/${c.id}/domains/${d.id}`, "DELETE"))}>
-                          <Icon name="trash" size="sm" />
-                          حذف نشانی
-                        </Button>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              )}
-
-              <div className="flex flex-wrap gap-2">
-                <Button variant="secondary" className="min-h-[44px]" onPress={() => setAdding(c)}>
-                  <Icon name="link" size="sm" />
-                  افزودن نشانی
-                </Button>
-                <Button variant="secondary" className="min-h-[44px]" onPress={() => setSheet(c)}>
-                  <Icon name="edit" size="sm" />
-                  ویرایش
-                </Button>
-                <Button variant="secondary" className="min-h-[44px]" onPress={() => act(send(`/api/admin/companies/${c.id}`, "PATCH", { active: !c.active }))}>
-                  <Icon name={c.active ? "ban" : "check"} size="sm" />
-                  {c.active ? "غیرفعال کردن" : "فعال کردن"}
-                </Button>
-              </div>
-            </section>
+            <CompanyCard key={c.id} c={c} checking={checking} setChecking={setChecking} act={act} onAdd={() => setAdding(c)} onEdit={() => setSheet(c)} />
           ))}
 
           <details className="card p-[var(--space-4)] text-sm">
@@ -190,6 +128,83 @@ export default function CompaniesPanel() {
         />
       )}
     </div>
+  );
+}
+
+function CompanyCard({ c, checking, setChecking, act, onAdd, onEdit }: {
+  c: CompanyRow;
+  checking: number | null;
+  setChecking: (id: number | null) => void;
+  act: (p: Promise<string | null>) => Promise<void>;
+  onAdd: () => void;
+  onEdit: () => void;
+}) {
+  return (
+
+    <section className="card flex flex-col gap-2 p-[var(--space-4)]">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 className="sechead__title m-0 flex items-center gap-2">
+          <Icon name="building" size="md" />
+          {c.name}
+        </h2>
+        <span className={`text-xs ${c.active ? "text-success" : "text-crit"}`}>{c.active ? "فعال" : "غیرفعال"}</span>
+      </div>
+      <p className="m-0 text-xs text-text-muted">
+        {faNum(c.users)} کاربر فعال{c.has_logo ? " · لوگو دارد" : " · بدون لوگو"}
+      </p>
+
+      {c.domains.length === 0 ? (
+        <p className="m-0 text-sm text-text-muted">هنوز نشانی ندارد؛ کاربران این شرکت نمی‌توانند وارد شوند.</p>
+      ) : (
+        <ul className="m-0 flex list-none flex-col p-0">
+          {c.domains.map((d) => (
+            <li key={d.id} className="flex flex-col gap-1 border-b border-border py-2 last:border-b-0">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span dir="ltr" className="text-sm">{d.hostname}</span>
+                <span className={`text-xs ${STATUS[d.status].tone}`}>{STATUS[d.status].label}</span>
+              </div>
+              {d.status !== "active" && d.last_error && <span className="text-xs text-text-muted">{d.last_error}</span>}
+              {d.last_checked_at && <span className="text-xs text-text-faint">آخرین بررسی: {faJalaliDateTime(d.last_checked_at)}</span>}
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant="secondary"
+                  className="min-h-[44px]"
+                  isDisabled={checking === d.id}
+                  onPress={async () => {
+                    setChecking(d.id);
+                    await act(send(`/api/admin/companies/${c.id}/domains/${d.id}/check`, "POST"));
+                    setChecking(null);
+                  }}
+                >
+                  <Icon name="refresh" size="sm" />
+                  {checking === d.id ? "در حال بررسی…" : "بررسی دوباره"}
+                </Button>
+                <Button variant="secondary" className="min-h-[44px]" onPress={() => act(send(`/api/admin/companies/${c.id}/domains/${d.id}`, "DELETE"))}>
+                  <Icon name="trash" size="sm" />
+                  حذف نشانی
+                </Button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <div className="flex flex-wrap gap-2">
+        <Button variant="secondary" className="min-h-[44px]" onPress={onAdd}>
+          <Icon name="plus" size="sm" />
+          افزودن نشانی
+        </Button>
+        <Button variant="secondary" className="min-h-[44px]" onPress={onEdit}>
+          <Icon name="edit" size="sm" />
+          ویرایش
+        </Button>
+        <Button variant="secondary" className="min-h-[44px]" onPress={() => act(send(`/api/admin/companies/${c.id}`, "PATCH", { active: !c.active }))}>
+          <Icon name={c.active ? "ban" : "check"} size="sm" />
+          {c.active ? "غیرفعال کردن" : "فعال کردن"}
+        </Button>
+      </div>
+    </section>
+
   );
 }
 
