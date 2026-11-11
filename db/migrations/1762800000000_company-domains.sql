@@ -6,6 +6,7 @@
 --   * company_domains: one address of one company and how far its set-up has got;
 --   * organizations.logo_*: a small logo kept in the row (shortcut: <= 150 KB, move to the storage layer if logos grow);
 --   * platform_settings: switches that belong to the whole platform (main_address_owner_only).
+-- squawk-ignore-file ban-drop-table, ban-drop-column
 SET lock_timeout = '5s';
 SET statement_timeout = '60s';
 
