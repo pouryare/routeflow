@@ -21,6 +21,8 @@ function loginUrlFor(req: NextRequest, pathname: string): URL {
   // The login form reads this to say that a session ended, rather than showing a bare
   // form to someone who believed they were still signed in.
   url.searchParams.set("next", pathname);
+  // Only someone who HAD a cookie is told their session ended; a first visit just gets the form.
+  if (req.cookies.get(COOKIE_NAME)?.value) url.searchParams.set("expired", "1");
   return url;
 }
 

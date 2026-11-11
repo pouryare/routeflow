@@ -96,12 +96,13 @@ function LoginForm() {
   useEffect(() => {
     const next = params.get("next");
     if (next && !clearedRef.current) {
-      setBounced(true);
+      setBounced(params.get("expired") === "1");
       nextPathRef.current = safeNextPath(next);
       clearedRef.current = true;
       // Remove ?next= from URL without triggering navigation
       const url = new URL(window.location.href);
       url.searchParams.delete("next");
+      url.searchParams.delete("expired");
       window.history.replaceState({}, "", url.toString());
     }
   }, [params]);

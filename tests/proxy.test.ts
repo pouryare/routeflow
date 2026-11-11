@@ -72,6 +72,12 @@ describe("the retired shared-password session", () => {
     const res = proxy(new NextRequest("http://localhost/planner"));
     expect(res.headers.get("location")).toContain("next=%2Fplanner");
   });
+
+  it("says a session ended only when the browser sent a cookie", () => {
+    expect(proxy(new NextRequest("http://localhost/planner")).headers.get("location")).not.toContain("expired=1");
+    const stale = new NextRequest("http://localhost/planner", { headers: { cookie: `${COOKIE_NAME}=garbage` } });
+    expect(proxy(stale).headers.get("location")).toContain("expired=1");
+  });
 });
 
 describe("role prefixes", () => {
