@@ -405,6 +405,50 @@ describe("install.sh", () => {
   });
 });
 
+describe("install.sh download", () => {
+  // A fake curl: the release list and the two asset downloads come from here, or everything fails.
+  function setup(works: boolean) {
+    const dir = path.join(root, "dl");
+    fs.mkdirSync(path.join(dir, "bin"), { recursive: true });
+    fs.copyFileSync(path.join(process.cwd(), "scripts", "release", "install.sh"), path.join(dir, "install.sh"));
+    const name = `routeflow-0.0.1-linux-${HOST_ARCH}.tar.gz`;
+    const rel = JSON.stringify({ assets: [
+      { name, url: "http://x/asset/1" }, { name: `${name}.sha256`, url: "http://x/asset/2" },
+      { name: "routeflow-0.0.1-linux-other.tar.gz", url: "http://x/asset/3" },
+    ] });
+    fs.writeFileSync(path.join(dir, "bin", "curl"), `#!/bin/bash
+[ ${works ? 1 : 0} = 1 ] || exit 22
+out=""; url=""
+while [ $# -gt 0 ]; do case "$1" in -o) out=$2; shift ;; http*) url=$1 ;; esac; shift; done
+case "$url" in
+  */releases/latest) echo '${rel}' ;;
+  */asset/1) printf 'not a tarball' > "$out" ;;
+  */asset/2) printf '%s  ${name}\\n' '0000000000000000000000000000000000000000000000000000000000000000' > "$out" ;;
+esac
+`, { mode: 0o755 });
+    return dir;
+  }
+
+  it("downloads this machine's release files, then checks them", () => {
+    const dir = setup(true);
+    const r = spawnSync("bash", [path.join(dir, "install.sh")], {
+      encoding: "utf8", input: "\n", env: { ...process.env, PATH: `${dir}/bin:${process.env.PATH}`, ROUTEFLOW_API: "http://x" },
+    });
+    expect(r.stdout).toContain(`downloading routeflow-0.0.1-linux-${HOST_ARCH}.tar.gz`);
+    expect(r.stdout).not.toContain("linux-other");
+    expect(r.stdout + r.stderr).toContain("FAILED"); // the fake file does not match its sum: the check ran
+  });
+
+  it("says how to upload the files by hand when the download fails, and waits", () => {
+    const dir = setup(false);
+    const r = spawnSync("bash", [path.join(dir, "install.sh")], {
+      encoding: "utf8", input: "\n", timeout: 3000, env: { ...process.env, PATH: `${dir}/bin:${process.env.PATH}`, ROUTEFLOW_API: "http://x" },
+    });
+    expect(r.stdout).toContain("Upload the files by hand");
+    expect(r.stdout).toContain("scp routeflow-*-linux-");
+  });
+});
+
 describe("install progress", () => {
   it("draws a bar that fills with the steps and lists the time of each", () => {
     expect(run("progress_bar 0 10").out).toBe("░░░░░░░░░░");
