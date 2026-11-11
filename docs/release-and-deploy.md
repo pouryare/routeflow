@@ -21,6 +21,9 @@ Ubuntu 26.04 on a 4 GB / 2 CPU / 80 GB Arvan VPS behind Arvan CDN; off-site back
 5. At 03:30 Tehran (00:00 UTC; `UPGRADE_AT` in `/etc/routeflow/routeflow.conf`) the server runs
    `routeflow upgrade-scheduled`: the newest waiting version is upgraded to (below). To apply it at once:
    `sudo routeflow upgrade-scheduled`.
+   No SSH deploy secrets (`DEPLOY_*`)? Then the `deploy` job only publishes, and `incoming/` stays empty.
+   Use `sudo routeflow update` on the server instead: it downloads the newest release from GitHub (asking for
+   a read-only token, never saved), checks the sum, and asks whether to upgrade now or leave it for tonight.
 
 "Run workflow" on the Release action builds the same tarballs without a tag and keeps them for 7 days, to
 try a build first.
@@ -38,6 +41,7 @@ commands:
 |---|---|
 | `routeflow install [--yes] [tarball]` | Fresh Ubuntu or Debian server: asks for the domain, the backup machine, the company name and the first login's username (with `--yes`, nothing is asked), then packages, firewall (SSH, 80, 443), Tehran time zone, security updates with a reboot only at 02:30, a log cap, PostgreSQL and backups (`db/server/install.sh`), the database connection (a web role and its password, written into the encrypted secrets), the app service, Caddy, the nightly upgrade timer, the first release, the company name and the first login. Run again to re-apply after editing `routeflow.conf`. |
 | `routeflow upgrade <tarball>` | Checks the sum and machine type, unpacks to `releases/<version>`, takes a backup, runs the migrations, switches `current`, waits for `/api/health` with the new version, then the smoke check. |
+| `routeflow update` | Downloads the newest release for this machine from GitHub into `incoming/`, checks the sum, then asks: upgrade now, or tonight (the default). |
 | `routeflow upgrade-scheduled` | What the 03:30 timer runs: the newest tarball in `incoming/` not yet installed. |
 | `routeflow rollback` | Back to the previous release (the last 3 are kept). |
 | `routeflow status` | Live release, service, health, disk, last backup, database check. |
@@ -367,6 +371,13 @@ Each company can have its own web address (`app.tamino.ir`). The platform owner 
     already the defaults, or they do nothing for this server.
 
 ## Setting up the GitHub deploy
+
+Easiest: `sudo routeflow github-deploy` (also step 5 of the install's "Next" list). It makes the `deploy` user and a
+new key pair, then shows the four GitHub secrets one at a time (`DEPLOY_SSH_KEY`, `DEPLOY_USER`, `DEPLOY_HOST`,
+`DEPLOY_KNOWN_HOSTS`), waiting for Enter after each; only pasting them into GitHub is by hand. The secret key
+is shown on the terminal only and is deleted when the command ends. Run it again to replace the key.
+
+By hand, instead:
 
 With `DEPLOY_PUBKEY` set, the install makes the `deploy` user with that key. By hand instead:
 
