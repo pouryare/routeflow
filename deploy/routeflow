@@ -73,7 +73,7 @@ time_left() {
   printf '  (about %s min left)' "$(( (left + 59) / 60 ))"
 }
 # 23: the terminal's title tells the state, so you can work in another window meanwhile.
-set_title() { if [ -w /dev/tty ]; then printf '\033]0;%s\007' "$1" >/dev/tty 2>/dev/null || true; fi; }
+set_title() { { printf '\033]0;%s\007' "$1" >/dev/tty; } 2>/dev/null || true; }  # the braces keep bash's own "no tty" error quiet
 step_times() {
   local now t; now=$(date +%s)
   [ -z "$STEP_PREV" ] || STEP_TIMES+=("$((now - STEP_T)) s  $STEP_PREV"); STEP_PREV=""
@@ -141,7 +141,11 @@ unpack_release() {
   here=$(machine_arch) || die "unsupported machine type $(uname -m)"
   [ "$arch" = "$here" ] || die "$(basename "$tarball") is for $arch, this machine is $here"
   verify_checksum "$tarball" || die "refusing an unverified release"
-  [ ! -e "$ROOT/releases/$version" ] || die "release $version is already unpacked; use: routeflow switch $version"
+  if [ -e "$ROOT/releases/$version" ]; then
+    # A first install that stopped (say, at the migrations) leaves its release folder and no live release: start it over.
+    [ -z "$(current_version)" ] || die "release $version is already unpacked; use: routeflow switch $version"
+    rm -rf "${ROOT:?}/releases/$version"
+  fi
   mkdir -p "$ROOT/releases"
   tmp=$(mktemp -d "$ROOT/releases/.unpack.XXXXXX")
   tar -xzf "$tarball" -C "$tmp" --strip-components=1

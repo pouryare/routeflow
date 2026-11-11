@@ -198,6 +198,8 @@ else
   echo "  $ENV_FILE exists, left as it is."
 fi
 install -d -o postgres -g "$APP_USER" -m 2775 /var/lib/routeflow/backups
+# The restore drill runs as postgres and makes its scratch copy here; the folder must exist and be its own.
+install -d -o postgres -g postgres -m 700 /var/lib/routeflow/restore-drill
 
 if [ "$NO_MIGRATE" = 0 ]; then
   step "Migrations and the final check"

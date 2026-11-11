@@ -89,6 +89,21 @@ describe("routeflow: unpacking a release", () => {
     expect(fs.existsSync(path.join(root, "releases", "0.1.0"))).toBe(false);
   });
 
+  it("starts a stopped first install over, but keeps a release that is live", () => {
+    const t = fakeTarball("0.1.0");
+    fs.mkdirSync(path.join(root, "releases", "0.1.0"), { recursive: true });
+    fs.writeFileSync(path.join(root, "releases", "0.1.0", "leftover"), "");
+    expect(run(`unpack_release "${t}"`).code).toBe(0);
+    expect(fs.existsSync(path.join(root, "releases", "0.1.0", "leftover"))).toBe(false);
+    fs.symlinkSync("releases/0.1.0", path.join(root, "current"));
+    expect(run(`unpack_release "${t}"`).code).not.toBe(0);
+  });
+
+  it("is quiet when there is no terminal to set the title on", () => {
+    const r = spawnSync("setsid", ["bash", "-c", `. "${SCRIPT}"; set_title test`], { encoding: "utf8", env: { ...process.env, ROUTEFLOW_ROOT: root } });
+    expect(r.stderr).toBe("");
+  });
+
   it("refuses a tarball built for the other machine type", () => {
     const t = fakeTarball("0.1.0", HOST_ARCH === "x64" ? "arm64" : "x64");
     const r = run(`unpack_release "${t}"`);
