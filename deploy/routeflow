@@ -156,6 +156,7 @@ unpack_release() {
     rm -rf "${tmp:?}/data/$d"
     ln -s "$ROOT/data/$d" "$tmp/data/$d"
   done
+  chmod 755 "$tmp" # mktemp makes it 700, root only: the app user could not open its own release
   mv "$tmp" "$ROOT/releases/$version"
   echo "$version"
 }
