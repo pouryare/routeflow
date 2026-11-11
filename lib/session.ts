@@ -178,7 +178,7 @@ const COMPANY_FREE_WRITES = [
   "/api/me/second-factor",
   "/api/me/step-up",
   "/api/admin/impersonate",
-  "/api/admin/companies", "/api/admin/main-address", // creating and editing companies is the founder's own job, above any one company
+  "/api/admin/companies", "/api/admin/main-address", "/api/admin/server-ip", "/api/admin/arvan-purge", // creating and editing companies is the founder's own job, above any one company
   "/api/admin/archive", // the archive months are the whole server's, not one company's
   "/api/notifications",
   "/api/push",

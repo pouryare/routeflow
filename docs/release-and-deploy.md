@@ -193,8 +193,16 @@ Each company can have its own web address (`app.tamino.ir`). The platform owner 
   optional and unused in this route.
 - **Status.** «بررسی دوباره» reports: waiting for DNS (the address does not reach the app yet: nameservers not moved or
   the A record missing), or active (the address answers `/api/health` with this app's answer).
-- The page does not call Arvan's API (it has `POST /cdn/4.0/domains/<domain>/cname-setup/convert`); adding the address
-  there stays a manual step.
+- **Arvan API (built, not yet tried against the real panel).** Put a key with CDN permission on the server with
+  `sudo routeflow secrets set ARVAN_API_KEY` (the value is asked, never typed on the command line), and restart the
+  app. The page then does the Arvan steps itself when an address is added («تنظیم در آروان» retries them): adds the
+  customer's domain (full mode), makes the `app` A record to the server with the cloud on, turns HTTPS on, and shows
+  the two nameservers for the customer in the status line. The server's public IP is set in the «آروان و آدرس سرور»
+  section (or `SERVER_IP`); «تغییر IP سرور» moves every company address's A record to a new VPS in one go, and
+  «خالی کردن حافظهٔ موقت» empties Arvan's cache for all company domains. Without the key the page shows the manual steps.
+  Paths and field names come from client libraries, not Arvan's reference, so the first real run may show a message
+  from Arvan that needs a small fix in `lib/arvan.ts`. Not built: certificate expiry warnings, firewall rules,
+  under-attack mode, path rules for `/api/live`.
 - **Closing the main address.** Until every company has an active address, leave the main address open. Then
   «فقط مدیر سامانه» on the same page makes it platform-owner only. A company with no active address cannot
   sign in once it is closed.
