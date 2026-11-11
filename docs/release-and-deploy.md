@@ -135,7 +135,9 @@ What it does around the questions (all in `deploy/routeflow`):
   as `{id, name, filter_expr: '((http.request.uri.path starts_with "/api/photos"))', action: "allow", action_details: {},
   is_enabled: true, priority: 1, note: "", is_account_level: false}`. **A rule name with a hyphen is refused** ("title
   contains illegal characters"); letters only (`routeflowphototest`) were accepted. The create call (POST to the same path)
-  is not verified yet: build it from this shape and read the panel's own error text if Arvan refuses.
+  has not met the real Arvan yet. The installer (`routeflow install`, after the A record) and the app (when a company address
+  is added, `lib/arvan.ts`) now make one rule, `routeflowphotos`, for `/api/photos` (covers `/api/photos/avatar`), unless a rule for
+  that path exists; a refusal prints Arvan's message and the by-hand steps, and never stops the install.
 - **It runs in the background** (a systemd unit). Closing the window or losing the connection does not stop
   it; `sudo tail -f /var/log/routeflow-install.log` shows it again. The first login is kept in a root-only
   file and shown by `sudo routeflow first-login` (once). If you lose it: `sudo routeflow reset-login <user>`.

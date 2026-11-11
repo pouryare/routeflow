@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { arvanPointAt, arvanSetup, splitHost } from "@/lib/arvan";
+import { arvanAllowUploads, arvanPointAt, arvanSetup, splitHost } from "@/lib/arvan";
 import { checkDomain } from "@/lib/domainCheck";
 
 describe("splitHost", () => {
@@ -17,6 +17,7 @@ type Call = { method: string; url: string; body: unknown };
 function fakeArvan(opts: { active?: boolean } = {}) {
   const calls: Call[] = [];
   const domains = new Map<string, { id: string; name: string }[]>();
+  const rules: { filter_expr?: string }[] = [];
   vi.stubGlobal("fetch", async (url: string, init: RequestInit = {}) => {
     const method = init.method ?? "GET";
     const body = init.body ? JSON.parse(String(init.body)) : undefined;
@@ -31,6 +32,11 @@ function fakeArvan(opts: { active?: boolean } = {}) {
     if (!m || !domains.has(m[1])) return reply(404);
     const recs = domains.get(m[1])!;
     if (!m[2]) return reply(200, { ns_keys: ["a.ns.arvancdn.ir", "b.ns.arvancdn.ir"], status: opts.active ? "active" : "pending" });
+    if (m[2] === "/firewall/rules" && method === "GET") return reply(200, rules);
+    if (m[2] === "/firewall/rules" && method === "POST") {
+      rules.push(body);
+      return reply(201, {});
+    }
     if (m[2] === "/dns-records" && method === "GET") return reply(200, recs.map((r) => ({ ...r, type: "a" })));
     if (m[2] === "/dns-records" && method === "POST") {
       recs.push({ id: "r1", name: body.name });
@@ -38,7 +44,7 @@ function fakeArvan(opts: { active?: boolean } = {}) {
     }
     return reply(200, {});
   });
-  return { calls };
+  return { calls, rules };
 }
 
 beforeEach(() => {
@@ -66,6 +72,16 @@ describe("arvanSetup", () => {
     expect(put?.url).toContain("/dns-records/r1");
     expect(put?.body).toMatchObject({ value: [{ ip: "185.9.9.9" }] });
     expect(calls.filter((c) => c.method === "POST" && c.url.endsWith("/dns-records"))).toHaveLength(1);
+  });
+
+  it("lets photo uploads past Arvan's firewall with a hyphen-free rule, once", async () => {
+    const { calls, rules } = fakeArvan();
+    await arvanSetup("app.taminodis.ir", "185.1.2.3");
+    await arvanAllowUploads("app.taminodis.ir");
+    const posts = calls.filter((c) => c.method === "POST" && c.url.endsWith("/firewall/rules"));
+    expect(posts).toHaveLength(1);
+    expect(rules[0]).toMatchObject({ name: "routeflowphotos", action: "allow", filter_expr: '((http.request.uri.path starts_with "/api/photos"))' });
+    expect(String((posts[0].body as { name: string }).name)).toMatch(/^[A-Za-z0-9]+$/);
   });
 
   it("sends the key as an Apikey header", async () => {
