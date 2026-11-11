@@ -1,5 +1,4 @@
 import { describe, it, expect } from "vitest";
-// @ts-expect-error plain ESM script helper
 import { databaseName } from "../scripts/_db.mjs";
 
 describe("databaseName", () => {
