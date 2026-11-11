@@ -78,6 +78,8 @@ describe("routeflow: unpacking a release", () => {
     expect(fs.readlinkSync(path.join(rel, "data", "cache"))).toBe(path.join(root, "data", "cache"));
     expect(fs.readlinkSync(path.join(rel, "data", "held"))).toBe(path.join(root, "data", "held"));
     expect(fs.existsSync(path.join(rel, "data", "tehran-districts.json"))).toBe(true);
+    // The app user is not root: a release folder only root can enter ("Permission denied" on node/bin/node).
+    expect(fs.statSync(rel).mode & 0o755).toBe(0o755);
   });
 
   it("refuses a tarball whose sum does not match, and leaves nothing behind", () => {
