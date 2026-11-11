@@ -555,6 +555,37 @@ esac
     expect(fs.readFileSync(path.join(root, "incoming", name), "utf8")).toBe("tarball");
   });
 
+  it("fetches a big file in several pieces side by side and joins them in order", () => {
+    const bin = path.join(root, "bigbin");
+    fs.mkdirSync(bin, { recursive: true });
+    const name = `routeflow-9.9.9-linux-${HOST_ARCH}.tar.gz`;
+    const size = 5 * 1024 * 1024 + 123; // over the 4 MiB line, and not a multiple of the piece size
+    const payload = path.join(root, "payload.bin");
+    execFileSync("bash", ["-c", `head -c ${size} /dev/urandom > "${payload}"`]);
+    const sum = execFileSync("bash", ["-c", `sha256sum "${payload}" | cut -d' ' -f1`], { encoding: "utf8" }).trim();
+    const rel = JSON.stringify({ tag_name: "v9.9.9", assets: [
+      { name, url: "http://x/a/1", size }, { name: `${name}.sha256`, url: "http://x/a/2", size: 99 },
+    ] });
+    fs.writeFileSync(path.join(bin, "curl"), `#!/bin/bash
+all=" $* "; out=""; url=""; range=""
+while [ $# -gt 0 ]; do case "$1" in -o) out=$2; shift ;; -r) range=$2; shift ;; http*) url=$1 ;; esac; shift; done
+case "$url" in
+  */releases/latest) echo '${rel}' ;;
+  */a/1) case "$all" in *redirect_url*) printf 'http://x/blob/1' ;; *) echo "direct download" >&2; exit 1 ;; esac ;;
+  */blob/1) a=\${range%-*}; b=\${range#*-}; tail -c +$((a + 1)) "${payload}" | head -c $((b - a + 1)) ;;
+  */a/2) printf '%s  ${name}\\n' '${sum}' > "$out" ;;
+esac
+`, { mode: 0o755 });
+    fs.writeFileSync(path.join(bin, "sleep"), "#!/bin/bash\nexit 0\n", { mode: 0o755 });
+    const r = spawnSync("bash", ["-c", `. "${SCRIPT}"; need_root() { :; }; cmd_update`], {
+      encoding: "utf8", env: { ...process.env, ROUTEFLOW_ROOT: root, PATH: `${bin}:${process.env.PATH}`, ROUTEFLOW_API: "http://x", DOWNLOAD_SEGMENTS: "4", UPGRADE_AT: "*-*-* 03:30:00 Asia/Tehran" },
+    });
+    expect(r.stderr).not.toContain("did not finish");
+    expect(r.status).toBe(0);
+    expect(fs.readdirSync(path.join(root, "incoming")).sort()).toEqual([name, `${name}.sha256`]);
+    expect(fs.readFileSync(path.join(root, "incoming", name)).equals(fs.readFileSync(payload))).toBe(true);
+  });
+
   it("removes a damaged download and says so", () => {
     const { bin } = fakeGitHub(true);
     const r = update(bin);

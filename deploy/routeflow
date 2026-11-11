@@ -429,6 +429,50 @@ cmd_upgrade_scheduled() {
   cmd_upgrade "$next"
 }
 
+# One release file into incoming/<name>.part. The line into Iran is slow and drops, and a single connection is often
+# the capped part of it, so a big file is cut into DOWNLOAD_SEGMENTS pieces (8) fetched side by side, each carrying on
+# from the bytes it already has if it breaks (12 tries; 1 KB/s for a minute counts as stalled). A small file goes in one
+# stream with the same resume. The caller checks the sum. Run again after a failure: the pieces that arrived are kept.
+download_asset() {
+  local u=$1 name=$2 size=$3 dest="$ROOT/incoming/$2.part" n=${DOWNLOAD_SEGMENTS:-8} i try chunk pids=() printer="" fail=0 got
+  if [ "$size" -lt 4194304 ] || [ "$n" -lt 2 ]; then
+    for try in 1 2 3 4 5 6 7 8 9 10 11 12; do
+      curl -fL -C - --speed-limit 1024 --speed-time 60 "${auth[@]}" -H "Accept: application/octet-stream" -o "$dest" "$u" && return 0
+      [ "$try" = 12 ] || { warn "the download of $name stopped; trying again from where it stopped ($try of 12)"; sleep 5; }
+    done
+    return 1
+  fi
+  chunk=$(( (size + n - 1) / n ))
+  rm -f "$dest"   # a single-stream part of an older run: the pieces below are what resumes now
+  for ((i = 0; i < n; i++)); do
+    (
+      a=$((i * chunk)); b=$(( (i + 1) * chunk - 1 )); [ "$b" -lt "$size" ] || b=$((size - 1))
+      seg="$dest.$i"
+      for try in 1 2 3 4 5 6 7 8 9 10 11 12; do
+        have=0; [ ! -f "$seg" ] || have=$(stat -c %s "$seg")
+        [ $((a + have)) -le "$b" ] || exit 0
+        # The signed link GitHub redirects to expires in minutes: ask for a fresh one on every try, and send the token only to GitHub.
+        loc=$(curl -fsS "${auth[@]}" -H "Accept: application/octet-stream" -o /dev/null -w '%{redirect_url}' "$u" 2>/dev/null || true)
+        if [ -n "$loc" ]; then curl -fsS --speed-limit 1024 --speed-time 60 -r "$((a + have))-$b" "$loc" >> "$seg" && exit 0
+        else curl -fsS --speed-limit 1024 --speed-time 60 "${auth[@]}" -H "Accept: application/octet-stream" -r "$((a + have))-$b" "$u" >> "$seg" && exit 0; fi
+        sleep 5
+      done
+      exit 1
+    ) &
+    pids+=($!)
+  done
+  if [ -t 2 ]; then
+    ( while :; do got=$(cat "$dest".* 2>/dev/null | wc -c); printf '\r  %s: %d of %d MB ' "$name" $((got / 1048576)) $((size / 1048576)) >&2; sleep 2; done ) &
+    printer=$!
+  fi
+  for i in "${pids[@]}"; do wait "$i" || fail=1; done
+  [ -z "$printer" ] || { kill "$printer" 2>/dev/null; wait "$printer" 2>/dev/null; printf '\r%60s\r' '' >&2; }
+  [ "$fail" = 0 ] || return 1
+  for ((i = 0; i < n; i++)); do cat "$dest.$i"; done > "$dest"
+  [ "$(stat -c %s "$dest")" = "$size" ] || { rm -f "$dest" "$dest".[0-9]*; warn "the pieces of $name do not add up to $size bytes; start the update again"; return 1; }
+  rm -f "$dest".[0-9]*
+}
+
 # routeflow update: the one command for a new release. A release GitHub already copied into incoming/ is used
 # as it is; with none waiting, the newest one is downloaded from GitHub (a private repo needs a read-only token,
 # asked once and never saved). Either way it then asks whether to upgrade now or leave it for the nightly timer
@@ -444,14 +488,14 @@ fetch_release() {
   [ -z "${GITHUB_TOKEN:-}" ] || auth=(-H "Authorization: Bearer $GITHUB_TOKEN")
   rel=$(curl -fsSL --max-time 30 "${auth[@]}" -H "Accept: application/vnd.github+json" "$api/repos/$repo/releases/latest") \
     || { unset GITHUB_TOKEN; die "could not reach GitHub, or the repo is private and the token is missing or wrong"; }
-  # First line: the version. Then one "<asset api url> <name>" line per file of this machine.
+  # First line: the version. Then one "<asset api url> <name> <bytes>" line per file of this machine.
   out=$(printf '%s' "$rel" | python3 -c '
 import json, sys
 r = json.load(sys.stdin); a = sys.argv[1]
 print(r["tag_name"].lstrip("v"))
 for x in r.get("assets", []):
     if x["name"].endswith("-linux-%s.tar.gz" % a) or x["name"].endswith("-linux-%s.tar.gz.sha256" % a):
-        print(x["url"], x["name"])' "$arch") || { unset GITHUB_TOKEN; die "could not read the release from GitHub"; }
+        print(x["url"], x["name"], x.get("size", 0))' "$arch") || { unset GITHUB_TOKEN; die "could not read the release from GitHub"; }
   want=$(head -1 <<<"$out")
   live=$(current_version)
   if [ -n "$live" ] && [ "$(printf '%s\n%s\n' "$live" "$want" | sort -V | tail -1)" = "$live" ]; then
@@ -463,15 +507,8 @@ for x in r.get("assets", []):
   install -d -m 755 "$ROOT/incoming"
   file="$ROOT/incoming/routeflow-$want-linux-$arch.tar.gz"
   say "Downloading $want (live: ${live:-none})"
-  # The line into Iran is slow and drops. A broken download keeps its .part file and the next try (or the next
-  # run of this command) carries on from where it stopped; only a stalled line (under 1 KB/s for a minute) ends one try.
-  local try
-  while read -r u name; do
-    for try in 1 2 3 4 5 6 7 8 9 10 11 12; do
-      curl -fL -C - --speed-limit 1024 --speed-time 60 "${auth[@]}" -H "Accept: application/octet-stream" -o "$ROOT/incoming/$name.part" "$u" && continue 2
-      [ "$try" = 12 ] || { warn "the download of $name stopped; trying again from where it stopped ($try of 12)"; sleep 5; }
-    done
-    unset GITHUB_TOKEN; die "the download of $name did not finish. The part that arrived is kept: run the update again to carry on."
+  while read -r u name size; do
+    download_asset "$u" "$name" "${size:-0}" || { unset GITHUB_TOKEN; die "the download of $name did not finish. What arrived is kept: run the update again to carry on."; }
   done < <(tail -n +2 <<<"$out")
   unset GITHUB_TOKEN
   # The sum goes in first: the nightly timer ignores a tarball that has no .sha256 yet.
