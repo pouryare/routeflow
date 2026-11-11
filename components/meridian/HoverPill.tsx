@@ -101,6 +101,15 @@ function slideThumb(root: HTMLElement | null, current: string) {
   if (!on || !thumb) return;
   thumb.style.width = `${on.offsetWidth}px`;
   thumb.style.transform = `translateX(${on.offsetLeft}px)`;
+  /* The row scrolls sideways on a phone. The last chip («تنظیمات سازمان», left end in RTL) sat
+     outside the visible part, so the thumb slid to a place nobody could see and only its
+     edge showed as a dark dot. Bring the chosen chip into view, inside the row only (not
+     scrollIntoView, which would also scroll the page). */
+  const left = on.offsetLeft;
+  const right = left + on.offsetWidth;
+  const view = root.scrollLeft;
+  if (left < view) root.scrollLeft = left - 8;
+  else if (right > view + root.clientWidth) root.scrollLeft = right - root.clientWidth + 8;
 }
 
 /** How long the popover survives the pointer leaving, so a diagonal move from the chip

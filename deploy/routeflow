@@ -6,7 +6,7 @@
 #   sudo routeflow install [tarball]                          # the same questions; runs in the background
 #   sudo DOMAIN=app.example.ir routeflow install --yes        # no questions; tarball from incoming/ or here
 #   sudo routeflow first-login | support-file                 # the first login again | one file to send for help
-#   sudo routeflow update                                     # fetch the newest release from GitHub, then ask: now or tonight
+#   sudo routeflow update                                     # the waiting or newest release: asks now or tonight
 #   sudo routeflow github-deploy                              # let GitHub copy each release here: guided, you only paste 4 secrets
 #   sudo routeflow upgrade routeflow-0.2.0-linux-x64.tar.gz   # upgrade now (otherwise: tonight, below)
 #   sudo routeflow rollback | status | backup [full|diff|incr] | restore-drill | restore | logs
@@ -18,7 +18,7 @@
 #   sudo routeflow rebuild <secrets.tar.asc> [tarball]        # a new server from the secrets copy and the Pi
 #   sudo routeflow support-key add "<ssh key>" 3d | list | remove   # a helper's key that expires by itself
 #   sudo routeflow secrets list | set KEY | unset KEY | backup [file] | restore <file>
-#   routeflow upgrade-scheduled                               # the nightly timer: newest tarball in incoming/
+#   routeflow upgrade-scheduled                               # what the nightly timer runs (not for you: use update)
 #   sudo routeflow                                            # Whiptail menu
 #
 # A release tarball (scripts/release/pack.sh) holds the built app, its own Node, the migrations and
@@ -429,13 +429,13 @@ cmd_upgrade_scheduled() {
   cmd_upgrade "$next"
 }
 
-# routeflow update: fetch the newest release for this machine from GitHub into incoming/, then ask
-# whether to apply it now or leave it for the nightly timer (the default: not now). A private repo needs
-# a read-only token, asked once and never saved.
-cmd_update() {
-  need_root update
-  load_conf
-  local repo=${ROUTEFLOW_REPO:-pouryare/routeflow} api=${ROUTEFLOW_API:-https://api.github.com} arch rel out want live u name file now auth=()
+# routeflow update: the one command for a new release. A release GitHub already copied into incoming/ is used
+# as it is; with none waiting, the newest one is downloaded from GitHub (a private repo needs a read-only token,
+# asked once and never saved). Either way it then asks whether to upgrade now or leave it for the nightly timer
+# (the default: not now).
+# Sets update_file to the downloaded tarball, or leaves it empty when the server is already on the newest.
+fetch_release() {
+  local repo=${ROUTEFLOW_REPO:-pouryare/routeflow} api=${ROUTEFLOW_API:-https://api.github.com} arch rel out want live u name file auth=()
   arch=$(machine_arch) || die "unsupported machine: $(uname -m)"
   if [ -z "${GITHUB_TOKEN:-}" ] && interactive; then
     printf '\nIf the repo is private, paste a read-only GitHub token (nothing shows as you type; it is not saved).\nPress Enter with nothing to try without one.\n' >/dev/tty
@@ -472,8 +472,29 @@ for x in r.get("assets", []):
   mv "$file.sha256.part" "$file.sha256"
   mv "$file.part" "$file"
   verify_checksum "$file" || { rm -f "$file" "$file.sha256"; die "the downloaded file is damaged; it was removed. Run the update again."; }
-  ask_yes now "Release $want is downloaded and checked. Upgrade now? (No: it is applied tonight at ${UPGRADE_AT:-03:30}.)" 0
-  if [ "$now" = 1 ]; then cmd_upgrade "$file"; else say "Waiting in incoming/. It is applied tonight at ${UPGRADE_AT:-03:30}, or at once with: sudo routeflow upgrade-scheduled"; fi
+  update_file=$file
+}
+
+# Is $1 a newer version than the live one (or is nothing live)?
+newer_than_live() { local live; live=$(current_version); [ -z "$live" ] || [ "$(printf '%s\n%s\n' "$live" "$1" | sort -V | tail -1)" != "$live" ]; }
+
+cmd_update() {
+  need_root update
+  load_conf
+  local file want now
+  file=$(newest_incoming)
+  [ -z "$file" ] || read -r want _ < <(parse_tarball_name "$file")
+  if [ -n "$file" ] && newer_than_live "$want"; then
+    say "Release $want is already waiting in incoming/ (sent by GitHub)"
+  else
+    update_file=""
+    fetch_release
+    file=$update_file
+    [ -n "$file" ] || return 0
+    read -r want _ < <(parse_tarball_name "$file")
+  fi
+  ask_yes now "Release $want is ready. Upgrade now? (No: it is applied tonight at ${UPGRADE_AT:-03:30}.)" 0
+  if [ "$now" = 1 ]; then cmd_upgrade "$file"; else say "Waiting in incoming/. It is applied tonight at ${UPGRADE_AT:-03:30}, or whenever you run: sudo routeflow update"; fi
 }
 
 # routeflow github-deploy: sets up GitHub copying each new release to this server (the deploy job in
@@ -2077,12 +2098,11 @@ APT
 menu() {
   command -v whiptail >/dev/null || die "whiptail is not installed; run a command instead (routeflow help)"
   local choice arg
-  choice=$(whiptail --title "RouteFlow $(current_version)" --menu "What do you want to do?" 21 76 12 \
+  choice=$(whiptail --title "RouteFlow $(current_version)" --menu "What do you want to do?" 20 76 11 \
     status "Check the app, database, disk and backups" \
     update "Fetch the newest release from GitHub; upgrade now or tonight" \
     github-deploy "Let GitHub copy each new release here (guided)" \
     upgrade "Upgrade to a release tarball now" \
-    upgrade-scheduled "Apply the waiting release now instead of tonight" \
     rollback "Go back to the previous release" \
     backup "Run a backup now" \
     restore-drill "Test that the newest backup restores" \

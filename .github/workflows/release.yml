@@ -88,7 +88,7 @@ jobs:
           fi
 
   # Drops the new tarball in the server's incoming/ folder; the server applies it at UPGRADE_AT
-  # (03:30 Tehran) with `routeflow upgrade-scheduled`. Runs only when the "production" environment
+  # (03:30 Tehran) with `routeflow upgrade-scheduled` (or earlier, on a question, with `routeflow update`). Runs only when the "production" environment
   # has its SSH settings (see docs/release-and-deploy.md); otherwise the release is just published.
   deploy:
     needs: build
@@ -125,4 +125,4 @@ jobs:
           scp "${ssh_opts[@]}" "out/$name" "$DEPLOY_USER@$DEPLOY_HOST:/opt/routeflow/incoming/$name.part"
           ssh "${ssh_opts[@]}" "$DEPLOY_USER@$DEPLOY_HOST" "mv /opt/routeflow/incoming/$name.part /opt/routeflow/incoming/$name"
           scp "${ssh_opts[@]}" "out/$name.sha256" "$DEPLOY_USER@$DEPLOY_HOST:/opt/routeflow/incoming/"
-          echo "Sent $name; the server applies it at its scheduled hour (or now: sudo routeflow upgrade-scheduled)."
+          echo "Sent $name; the server applies it at its scheduled hour (or when you choose: sudo routeflow update)."

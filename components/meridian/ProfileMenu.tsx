@@ -28,12 +28,15 @@ export default function ProfileMenu({
   name,
   roleLabel,
   links,
+  showSync,
 }: {
   userId: number;
   name: string;
   roleLabel: string;
   /** From lib/accountLinks: only what this role can open. */
   links: AccountLink[];
+  /** False for roles that have no sync client (the platform owner): the row would say «not synced» forever. */
+  showSync: boolean;
 }) {
   const [open, setOpen] = useState(false);
   // Idea I8: a thin ring round the picture shows how far the first-steps list is; it goes when complete.
@@ -80,7 +83,7 @@ export default function ProfileMenu({
 
             <div className="pm__sep" />
 
-            <SyncRow />
+            {showSync ? <SyncRow /> : null}
 
             <div className="pm__row">
               <span>پوسته</span>

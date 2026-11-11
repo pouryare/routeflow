@@ -7,6 +7,7 @@ import BottomSheet from "@/components/mobile/BottomSheet";
 import { GoButton } from "@/components/tapflow/Answer";
 import { Icon } from "@/components/meridian/Icon";
 import { useRunAfterMount } from "@/lib/useRunAfterMount";
+import { useToast } from "@/components/ToastProvider";
 import { friendlyError } from "@/lib/userMessage";
 import { faNum } from "@/lib/format";
 import { faJalaliDateTime } from "@/lib/jalali";
@@ -53,10 +54,12 @@ export default function StoragePanel({ isPlatform, allCompanies }: { isPlatform:
   }, [allCompanies]);
   useRunAfterMount(load);
 
-  const act = async (p: Promise<string | null>) => {
+  const toast = useToast();
+  const act = async (p: Promise<string | null>, ok?: string) => {
     const err = await p;
+    await load(); // first: the reload clears the error line, so this action's error is set after it
     setError(err);
-    await load();
+    if (!err && ok) toast(ok, "success");
     return err;
   };
 
@@ -103,7 +106,7 @@ export default function StoragePanel({ isPlatform, allCompanies }: { isPlatform:
         ))
       )}
 
-      {data && storages.length > 0 && <RulesCard data={data} onSave={(rules, move) => act(send("/api/storages/rules", "PUT", { rules, move_existing: move }))} />}
+      {data && storages.length > 0 && <RulesCard data={data} onSave={(rules, move) => act(send("/api/storages/rules", "PUT", { rules, move_existing: move }), "قانون‌های ذخیره‌سازی ذخیره شد")} />}
 
       {data?.moves.map((m) => (
         <MoveCard
@@ -111,7 +114,7 @@ export default function StoragePanel({ isPlatform, allCompanies }: { isPlatform:
           m={m}
           fromName={byId(m.from_storage_id)?.name ?? "دیسک سرور"}
           toName={byId(m.to_storage_id)?.name ?? "؟"}
-          onClose={(deleteOld) => act(send(`/api/storages/moves/${m.id}`, "POST", { delete_old: deleteOld }))}
+          onClose={(deleteOld) => act(send(`/api/storages/moves/${m.id}`, "POST", { delete_old: deleteOld }), deleteOld ? "انتقال بسته شد و فایل‌های قدیمی پاک شد" : "انتقال بسته شد")}
         />
       ))}
 
@@ -158,6 +161,7 @@ export default function StoragePanel({ isPlatform, allCompanies }: { isPlatform:
           onSaved={() => {
             setSheet(null);
             void load();
+            toast("فضا ذخیره شد", "success");
           }}
           editing={sheet === "new" ? null : sheet}
           others={storages}
@@ -172,7 +176,7 @@ export default function StoragePanel({ isPlatform, allCompanies }: { isPlatform:
           others={storages.filter((s) => s.id !== removing.id && s.state === "active")}
           onClose={() => setRemoving(null)}
           onRemove={async (to) => {
-            const err = await act(send(`/api/storages/${removing.id}${to ? `?to=${to}` : ""}`, "DELETE"));
+            const err = await act(send(`/api/storages/${removing.id}${to ? `?to=${to}` : ""}`, "DELETE"), "فضا برداشته شد");
             if (!err) setRemoving(null);
             return err;
           }}

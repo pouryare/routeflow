@@ -11,7 +11,7 @@ import { organizationName } from "@/lib/repo/organizations";
 import { cookies } from "next/headers";
 import { COOKIE_NAME } from "@/lib/auth";
 import { getSessionFromCookies } from "@/lib/session";
-import { canSell, roleLabel } from "@/lib/roles";
+import { canSell, hasSyncClient, roleLabel } from "@/lib/roles";
 import ProfileMenu from "@/components/meridian/ProfileMenu";
 import { accountLinks } from "@/lib/accountLinks";
 import NotificationBell from "@/components/NotificationBell";
@@ -96,6 +96,7 @@ export default async function AppHeader() {
             name={session.user.display_name}
             roleLabel={roleLabel(session.role)}
             links={accountLinks(session)}
+            showSync={hasSyncClient(session.role)}
           />
         </div>
       </div>

@@ -11,6 +11,7 @@ import { useRunAfterMount } from "@/lib/useRunAfterMount";
 import { friendlyError } from "@/lib/userMessage";
 import { Icon } from "@/components/meridian/Icon";
 import { useCallback, useRef, useState } from "react";
+import { generatePassword } from "@/lib/credentials";
 
 import Avatar from "@/components/meridian/Avatar";
 import UserAddFlow from "@/components/flows/UserAddFlow";
@@ -215,6 +216,9 @@ export default function AdminUsersPage() {
     const gData = await gRes.json();
     setUsers(uData.users ?? []);
     setGroups(gData.groups ?? []);
+    /* A company with no accounts yet (made before «مدیر اول» was part of the form) needs an owner first:
+       offer the role and a strong password, so only the username is left to type. */
+    if ((uData.users ?? []).length === 0) setForm((f) => (f.password || f.username ? f : { ...f, role: "owner", password: generatePassword(undefined, 14) }));
   }, []);
 
   useRunAfterMount(load);

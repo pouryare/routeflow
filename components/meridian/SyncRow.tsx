@@ -14,7 +14,7 @@ export default function SyncRow() {
     <div className="pm__row">
       <span>همگام‌سازی</span>
       <span className={`pm__sync pm__sync--${badge ? badge.tone : "good"}`}>
-        {badge ? badge.label : `همگام · ${since(lastSynced)}`}
+        {badge ? badge.label : lastSynced ? `همگام · ${since(lastSynced)}` : "هنوز همگام نشده"}
       </span>
     </div>
   );

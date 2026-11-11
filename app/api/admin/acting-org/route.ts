@@ -29,7 +29,8 @@ async function guard(req: NextRequest) {
 export async function GET(req: NextRequest) {
   const g = await guard(req);
   if (!g.ok) return g.response;
-  return NextResponse.json({ ok: true, organizations: await listOrganizations(), acting: g.session.actingOrg ?? null, home: g.session.user.organization_id });
+  // no-store: a CDN or the browser must never answer «which company am I in» from an old copy.
+  return NextResponse.json({ ok: true, organizations: await listOrganizations(), acting: g.session.actingOrg ?? null, home: g.session.user.organization_id }, { headers: { "Cache-Control": "no-store" } });
 }
 
 /** POST { organization_id }: act as that company's owner; null (or 0) goes back to all companies. */
