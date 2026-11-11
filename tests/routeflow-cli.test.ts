@@ -505,6 +505,58 @@ esac
   });
 });
 
+describe("routeflow update", () => {
+  // A fake curl: the release list and the two files come from here. The sum is right unless `damaged`.
+  function fakeGitHub(damaged: boolean) {
+    const bin = path.join(root, "fakebin");
+    fs.mkdirSync(bin, { recursive: true });
+    const name = `routeflow-9.9.9-linux-${HOST_ARCH}.tar.gz`;
+    const rel = JSON.stringify({ tag_name: "v9.9.9", assets: [
+      { name, url: "http://x/a/1" }, { name: `${name}.sha256`, url: "http://x/a/2" }, { name: "routeflow-9.9.9-linux-other.tar.gz", url: "http://x/a/3" },
+    ] });
+    const good = execFileSync("bash", ["-c", "printf 'tarball' | sha256sum | cut -d' ' -f1"], { encoding: "utf8" }).trim();
+    fs.writeFileSync(path.join(bin, "curl"), `#!/bin/bash
+out=""; url=""
+while [ $# -gt 0 ]; do case "$1" in -o) out=$2; shift ;; http*) url=$1 ;; esac; shift; done
+case "$url" in
+  */releases/latest) echo '${rel}' ;;
+  */a/1) printf 'tarball' > "$out" ;;
+  */a/2) printf '%s  ${name}\\n' '${damaged ? "0".repeat(64) : good}' > "$out" ;;
+esac
+`, { mode: 0o755 });
+    return { bin, name };
+  }
+  const update = (bin: string) =>
+    spawnSync("bash", ["-c", `. "${SCRIPT}"; need_root() { :; }; cmd_update`], {
+      encoding: "utf8", env: { ...process.env, ROUTEFLOW_ROOT: root, PATH: `${bin}:${process.env.PATH}`, ROUTEFLOW_API: "http://x" },
+    });
+
+  it("downloads this machine's files into incoming/ and leaves them for tonight when not asked to upgrade now", () => {
+    const { bin, name } = fakeGitHub(false);
+    const r = update(bin);
+    expect(r.status).toBe(0);
+    expect(r.stdout).toContain("applied tonight");
+    expect(fs.readdirSync(path.join(root, "incoming")).sort()).toEqual([name, `${name}.sha256`]);
+  });
+
+  it("removes a damaged download and says so", () => {
+    const { bin } = fakeGitHub(true);
+    const r = update(bin);
+    expect(r.status).not.toBe(0);
+    expect(r.stderr).toContain("damaged");
+    expect(fs.readdirSync(path.join(root, "incoming"))).toEqual([]);
+  });
+
+  it("does nothing when the live version is already the newest", () => {
+    const { bin } = fakeGitHub(false);
+    fs.mkdirSync(path.join(root, "releases", "9.9.9"), { recursive: true });
+    fs.symlinkSync("releases/9.9.9", path.join(root, "current"));
+    const r = update(bin);
+    expect(r.stdout).toContain("Already on 9.9.9");
+    expect(fs.existsSync(path.join(root, "incoming"))).toBe(false);
+  });
+});
+
 describe("install progress", () => {
   it("draws a bar that fills with the steps and lists the time of each", () => {
     expect(run("progress_bar 0 10").out).toBe("░░░░░░░░░░");
