@@ -37,7 +37,7 @@ export async function checkDomain(hostname: string, arvanCname: string | null): 
     }
   }
 
-  if (!arvanCname) return { status: "waiting_dns", error: "اول نشانی را در پنل آروان اضافه کنید و مقدار CNAME آروان را اینجا بنویسید." };
+  if (!arvanCname) return { status: "waiting_dns", error: "نشانی هنوز به برنامه نمی‌رسد. نیم‌سرورهای دامنه باید روی آروان باشد و رکورد A نشانی با ابر روشن ساخته شده باشد." };
   let pointsAtArvan = false;
   try {
     pointsAtArvan = (await dns.resolveCname(hostname)).some((c) => c.toLowerCase().replace(/\.$/, "") === arvanCname);

@@ -182,20 +182,17 @@ Each company can have its own web address (`app.tamino.ir`). The platform owner 
   (`/api/domains/ask`); the app says yes only for an address a company has registered. The app also gets
   `MAIN_HOST=<your domain>`, so an address that is neither the main one nor registered is refused at sign-in.
   Run `routeflow install` again on an existing server to get both files.
-- **Arvan does the certificate.** Company addresses use Arvan's CNAME setup (docs.arvancloud.ir/en/cdn/domain/cname-setup:
-  `partial` domain type, the domain's own DNS stays where it is). Caddy's file for them always uses its own internal
+- **Arvan does the certificate.** Caddy's file for them always uses its own internal
   certificate, so Arvan must be set not to verify the origin's certificate, as for the main address.
-- **Plan.** Arvan's CNAME setup is Enterprise-plan only, and the domain must be on Growth, Professional or
-  Enterprise. Confirm the plan before telling a customer to set a CNAME.
-- **Steps for each address** (the page lists them; from Arvan's CNAME Setup guide). (1) Add the address in your Arvan
-  panel and make an A record for it to the server's address. (2) Dashboard, Traffic transfer type, «Upgrade to CNAME»,
-  «Convert Domain Type»: Arvan gives a CNAME value (`<hash>.cname.arvancdn.ir`). (3) Save that value under the address on
-  «شرکت‌ها» and give it to the customer, who deletes any old record for that name and creates the CNAME in their own
-  DNS. (4) When the address shows Active in the Arvan panel, issue the free certificate there (Let's Encrypt, HTTP-01;
-  Arvan renews it). Then press «بررسی دوباره».
-- **Status.** «بررسی دوباره» reports: waiting for DNS (no Arvan value saved yet, or the customer's CNAME is not
-  there), waiting for Arvan (the CNAME is right; HTTPS or activation is pending, which Arvan says can take up to 24
-  hours), or active (the address answers `/api/health` with this app's answer).
+- **Free plan (owner decision 2026-11-11).** Arvan's CNAME setup is Enterprise-plan only, so it is not used. A
+  customer's domain (e.g. `taminodis.ir`) is added to your Arvan account as a full domain and the customer moves
+  its nameservers to the ones Arvan gives. The customer then no longer controls that domain's DNS records.
+- **Steps** (the page lists them). (1) Once per domain: add it in your Arvan panel, give the customer the nameservers.
+  (2) In Arvan DNS add an A record for the address (e.g. `app`) to the server, cloud on. (3) In the Arvan HTTPS section
+  get the free certificate. (4) Press «بررسی دوباره» on «شرکت‌ها». The saved-CNAME field from the CNAME route is
+  optional and unused in this route.
+- **Status.** «بررسی دوباره» reports: waiting for DNS (the address does not reach the app yet: nameservers not moved or
+  the A record missing), or active (the address answers `/api/health` with this app's answer).
 - The page does not call Arvan's API (it has `POST /cdn/4.0/domains/<domain>/cname-setup/convert`); adding the address
   there stays a manual step.
 - **Closing the main address.** Until every company has an active address, leave the main address open. Then
