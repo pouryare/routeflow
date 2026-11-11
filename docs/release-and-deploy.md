@@ -108,6 +108,11 @@ What it does around the questions (all in `deploy/routeflow`):
 - **One command.** Put `install.sh`, the tarball and its `.sha256` (all three are in the release, or in the
   zip of a manual Release run) in one folder on the server and run `sudo bash install.sh`. It checks the
   checksum first, then unpacks and starts the questions.
+  **Only `install.sh` is needed on the server:** with no tarball next to it, it downloads the newest GitHub
+  release for this machine itself. A private repo needs a read-only token (fine-grained, this repo only,
+  Contents: read), asked once with nothing shown as you type, never saved; Enter tries without. If the download
+  fails it prints the release page and the `scp` command, then waits until both files are in the folder and
+  continues by itself. It needs a published release (a tag), not a manual workflow run.
 - **Answers are checked as typed** (domain, username, SSH key, Pi address; the Pi must answer on port 22
   or you confirm). At the summary, type a number to change that answer.
 - **A pause for the Arvan panel**: the A record with the cloud ON and the SSL mode, before it starts.
