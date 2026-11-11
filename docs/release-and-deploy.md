@@ -111,6 +111,11 @@ What it does around the questions (all in `deploy/routeflow`):
 - **Answers are checked as typed** (domain, username, SSH key, Pi address; the Pi must answer on port 22
   or you confirm). At the summary, type a number to change that answer.
 - **A pause for the Arvan panel**: the A record with the cloud ON and the SSL mode, before it starts.
+- **Arvan API key (question 9, optional).** With a key the installer makes that A record itself (this server's
+  public IP, cloud on, Arvan's managed HTTPS on; the domain, e.g. `routeflows.ir`, must already be in your Arvan
+  account), so only the SSL-mode step stays by hand. The key is kept in the encrypted secrets as `ARVAN_API_KEY`
+  (the same key the «شرکت‌ها» page uses). With `--yes`, set `ARVAN_API_KEY` in the environment. Not run against
+  the real Arvan yet; if Arvan refuses, the installer prints Arvan's message and falls back to the by-hand step.
 - **It runs in the background** (a systemd unit). Closing the window or losing the connection does not stop
   it; `sudo tail -f /var/log/routeflow-install.log` shows it again. The first login is kept in a root-only
   file and shown by `sudo routeflow first-login` (once). If you lose it: `sudo routeflow reset-login <user>`.

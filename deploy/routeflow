@@ -589,12 +589,19 @@ q7() {
 q8() { ask_valid DEPLOY_PUBKEY "8. Should GitHub upload new versions by itself? Paste its public key (starts with ssh-ed25519), or press Enter to skip.
    Skipping is fine: you can copy the release file by hand." "${DEPLOY_PUBKEY:-}" valid_pubkey "a public key line such as: ssh-ed25519 AAAA... name"; }
 
+q9() {
+  local k
+  printf '\n9. Arvan API key (optional). With it I add the A record for the address in Arvan myself and keep the key for the app,\n   which then sets up each company address. Press Enter to skip (nothing is asked again; a saved key stays).\n' >/dev/tty
+  read -r -s -p "  > " k </dev/tty || die "cancelled"; printf '\n' >/dev/tty
+  [ -z "$k" ] || ARVAN_API_KEY=$k
+}
+
 answers_summary() {
   printf '\n---- Summary ----\n'
   printf ' 1 Address:      %s\n 2 Company:      %s\n 3 First login:  %s\n' "$DOMAIN" "${COMPANY_NAME:-(none)}" "$OWNER_USER"
   printf ' 4 Password:     %s\n' "$([ -n "${OWNER_PASSWORD:-}" ] && echo "your own" || echo "a random one, shown once at the end")"
   printf ' 5 Certificate:  %s\n 6 Arvan only:   %s\n' "$([ "$CERT_MODE" = internal ] && echo "Caddy's own" || echo "Let's Encrypt / origin certificate")" "$([ "$CDN_ONLY" = 1 ] && echo yes || echo no)"
-  printf ' 7 Backup Pi:    %s\n 8 GitHub key:  %s\n' "${OFFSITE_HOST:-no (this server only)}" "$([ -n "${DEPLOY_PUBKEY:-}" ] && echo yes || echo no)"
+  printf ' 7 Backup Pi:    %s\n 8 GitHub key:  %s\n 9 Arvan key:    %s\n' "${OFFSITE_HOST:-no (this server only)}" "$([ -n "${DEPLOY_PUBKEY:-}" ] && echo yes || echo no)" "$([ -n "${ARVAN_API_KEY:-}" ] && echo "yes (the A record is made for you)" || echo "no (you add the A record by hand)")"
 }
 
 # The questions of a hand-run install, in the order a person thinks about them. With --yes the answers
@@ -607,15 +614,15 @@ install_questions() {
     printf '\n==== RouteFlow install: a few questions ====\n'
     printf 'Press Enter to keep the answer shown in [brackets]. You can change any answer before it starts.\n'
   } >/dev/tty
-  q1; q2; q3; q4; q5; q6; q7; q8
+  q1; q2; q3; q4; q5; q6; q7; q8; q9
   while :; do
     answers_summary >/dev/tty
-    printf '\nPress Enter to start (about 10 minutes), a number 1 to 8 to change that answer, or Q to quit.\n' >/dev/tty
+    printf '\nPress Enter to start (about 10 minutes), a number 1 to 9 to change that answer, or Q to quit.\n' >/dev/tty
     read -r -p "  [start] > " c </dev/tty || die "cancelled"
     case "$c" in
       "" | [yYبه]*) break ;;
       [qQ]*) die "stopped, nothing was changed" ;;
-      [1-8]) if [ "$c" = 4 ]; then PW_PRESET=0; fi; "q$c" ;;
+      [1-9]) if [ "$c" = 4 ]; then PW_PRESET=0; fi; "q$c" ;;
     esac
   done
 }
@@ -1515,6 +1522,7 @@ detach_install() {
   local tarball self log=/var/log/routeflow-install.log tailpid
   self=$(readlink -f "$0"); tarball=$(readlink -f "$1")
   if [ -n "${OWNER_PASSWORD:-}" ]; then ( umask 077; printf '%s' "$OWNER_PASSWORD" > "$CONF_DIR/.owner-password" ); fi
+  if [ -n "${ARVAN_API_KEY:-}" ]; then ( umask 077; printf '%s' "$ARVAN_API_KEY" > "$CONF_DIR/.arvan-key" ); fi
   rm -f "$CONF_DIR/first-login" "$CONF_DIR/last-install-ok"
   touch "$log"
   say "Running in the background. Closing this window or losing the connection does not stop it."
@@ -1629,13 +1637,76 @@ install_next_steps() {
   if command -v qrencode >/dev/null 2>&1; then printf '\nOpen it on your phone:\n'; qrencode -t ANSIUTF8 "https://$DOMAIN" || true; fi
 }
 
+# Needs an Arvan API key in ARVAN_API_KEY. Makes the A record for $DOMAIN point at this server with the cloud on
+# (changes the record when it exists) and turns Arvan's managed HTTPS on, best effort. Prints Arvan's own message on failure.
+# shortcut: paths and fields come from API client libraries, not Arvan's reference; the first real run may need a fix here
+# and in lib/arvan.ts. ARVAN_API_BASE exists for the test.
+arvan_point_domain() {
+  local out
+  out=$(ARVAN_API_KEY=$ARVAN_API_KEY python3 - "$DOMAIN" "$1" 2>&1 <<'PY'
+import json, os, sys, urllib.request, urllib.error
+host, ip = sys.argv[1].lower(), sys.argv[2]
+labels = host.split(".")
+keep = 3 if len(labels) > 2 and labels[-2] in ("co", "ac", "gov", "org", "net", "sch", "id") and len(labels[-1]) == 2 else 2
+root, name = ".".join(labels[-keep:]), ".".join(labels[:-keep]) or "@"
+base = os.environ.get("ARVAN_API_BASE", "https://napi.arvancloud.ir/cdn/4.0")
+key = os.environ["ARVAN_API_KEY"]
+def call(method, path, body=None, ok404=False):
+    req = urllib.request.Request(base + path, method=method, data=None if body is None else json.dumps(body).encode(),
+        headers={"Authorization": key if key.lower().startswith("apikey ") else "Apikey " + key, "Content-Type": "application/json", "Accept": "application/json"})
+    try:
+        with urllib.request.urlopen(req, timeout=20) as r:
+            return json.loads(r.read() or b"{}").get("data")
+    except urllib.error.HTTPError as e:
+        if e.code == 404 and ok404: return None
+        try: msg = json.loads(e.read()).get("message")
+        except Exception: msg = None
+        sys.exit("Arvan: %s" % (msg or e.code))
+    except Exception as e:
+        sys.exit("Arvan: %s" % e)
+if call("GET", "/domains/" + root, ok404=True) is None:
+    sys.exit("Arvan: %s is not in your Arvan account yet; add the domain there first" % root)
+rec = {"type": "a", "name": name, "value": [{"ip": ip, "port": None, "weight": None, "country": ""}], "ttl": 120, "cloud": True,
+       "upstream_https": "default", "ip_filter_mode": {"count": "single", "order": "none", "geo_filter": "none"}}
+found = [r for r in (call("GET", "/domains/%s/dns-records?search=%s" % (root, name)) or []) if str(r.get("type", "")).lower() == "a" and r.get("name") == name]
+if found: call("PUT", "/domains/%s/dns-records/%s" % (root, found[0]["id"]), rec)
+else: call("POST", "/domains/%s/dns-records" % root, rec)
+try: call("PATCH", "/domains/%s/ssl" % root, {"ssl_status": True, "certificate": "managed"})
+except SystemExit: pass
+PY
+  ) || { warn "$out"; return 1; }
+  say "Arvan: $DOMAIN now points at $1 with the cloud on"
+}
+
+# The server's public IPv4: the first address that is not private, loopback or carrier-grade NAT.
+public_ip() {
+  hostname -I 2>/dev/null | tr ' ' '\n' | awk -F. 'NF==4 && !($1==10 || $1==127 || ($1==172 && $2>=16 && $2<=31) || ($1==192 && $2==168) || ($1==169 && $2==254) || ($1==100 && $2>=64 && $2<=127)) {print; exit}'
+}
+
+# Keeps the key for the app: moved from the install's root-only file (or the environment) into the encrypted secrets.
+ensure_arvan_key() {
+  local f="$CONF_DIR/.arvan-key" t
+  [ -n "${ARVAN_API_KEY:-}" ] || { [ -f "$f" ] && ARVAN_API_KEY=$(cat "$f"); }
+  rm -f "$f"
+  [ -n "${ARVAN_API_KEY:-}" ] || return 0
+  t=$(secret_tmp)
+  secrets_read >"$t/old"
+  printf 'ARVAN_API_KEY=%s\n' "$ARVAN_API_KEY" >"$t/new"
+  merge_env "$t/old" "$t/new" >"$t/all"
+  secrets_write "$t/all"
+  rm -rf "$t"
+  say "Arvan key saved with the other secrets"
+}
+
 # Idea 17: stop for the steps only a person can do, in the Arvan panel, instead of failing at the end.
 pause_for_arvan() {
+  local resolved me go a_done=0
+  me=$(public_ip); me=${me:-$(hostname -I 2>/dev/null | awk '{print $1}')}
+  if [ -n "${ARVAN_API_KEY:-}" ] && [ -n "$me" ] && arvan_point_domain "$me"; then a_done=1; fi
   interactive || return 0
-  local resolved me go
-  me=$(hostname -I 2>/dev/null | awk '{print $1}')
   resolved=$(getent ahostsv4 "$DOMAIN" 2>/dev/null | awk 'NR==1{print $1}' || true)
-  printf '\nBefore I start, two things only you can do in the Arvan panel:\n  a. Add an A record  %s  ->  this server'"'"'s IP (%s), with the cloud switch ON.\n' "$DOMAIN" "${me:-unknown}" >/dev/tty
+  if [ "$a_done" = 1 ]; then printf '\nBefore I start, one thing only you can do in the Arvan panel (the A record is already made):\n' >/dev/tty
+  else printf '\nBefore I start, two things only you can do in the Arvan panel:\n  a. Add an A record  %s  ->  this server'"'"'s IP (%s), with the cloud switch ON.\n' "$DOMAIN" "${me:-unknown}" >/dev/tty; fi
   if [ "${CERT_MODE:-internal}" = internal ]; then printf '  b. Set SSL to "do not verify the origin" (you chose Caddy'"'"'s own certificate).\n' >/dev/tty; else printf '  b. Put the origin certificate in %s/tls/ (origin.crt, origin.key) if you use one.\n' "$CONF_DIR" >/dev/tty; fi
   if [ -n "$resolved" ]; then printf '  (%s already resolves to %s.)\n' "$DOMAIN" "$resolved" >/dev/tty; fi
   go=1; ask_yes go "Done, or do it after the install?  Yes = go on now." 1
@@ -1771,6 +1842,7 @@ APT
   write_support_timer
   write_motd
   ensure_sweep_token
+  ensure_arvan_key
   write_storage_timers
   write_archive_timer
   systemctl daemon-reload
