@@ -61,6 +61,11 @@ function LoginForm() {
   const [done, flash] = useDoneFlash();
   const nextPathRef = useRef<string | null>(null);
   const clearedRef = useRef(false);
+  // The company whose address this is (name and logo), from /api/login/brand; null on the main address.
+  const [brand, setBrand] = useState<{ kind: string; name?: string; logo?: string | null } | null>(null);
+  useEffect(() => {
+    fetch("/api/login/brand").then((r) => r.json()).then((d) => d?.ok && setBrand(d)).catch(() => null);
+  }, []);
 
   // proxy.ts only sets ?next= when it turned someone away from a page they asked for, so
   // its presence means "you were signed in a moment ago, and now you are not". Without
@@ -128,11 +133,21 @@ function LoginForm() {
       <main className="w-full max-w-sm">
         <div className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--surface-raised)] p-[var(--space-6)]">
           <div className="mb-[var(--space-4)] flex items-center justify-center gap-[var(--space-2)]">
-            <Icon name="map" size="lg" className="text-[var(--accent)]" />
+            {brand?.kind === "company" && brand.logo ? (
+              // eslint-disable-next-line @next/next/no-img-element -- a small data: logo, nothing to optimise
+              <img src={brand.logo} alt={brand.name ?? ""} className="h-12 max-w-[10rem] object-contain" />
+            ) : (
+              <Icon name="map" size="lg" className="text-[var(--accent)]" />
+            )}
             <div className="font-mono text-xs tracking-[0.12em] text-[var(--accent)] uppercase">
-              RouteFlow
+              {brand?.kind === "company" ? brand.name : "RouteFlow"}
             </div>
           </div>
+          {brand?.kind === "unknown" && (
+            <p role="alert" className="mb-[var(--space-4)] text-center text-[length:var(--text-sm)] text-[var(--danger)]">
+              این نشانی در سامانه ثبت نشده است.
+            </p>
+          )}
           <h1 className="mb-[var(--space-1)] text-center text-[length:var(--text-xl)] font-bold text-[var(--foreground)]">
             <LeanTitle><WordReveal text="نقشه پوشش مشتریان" /></LeanTitle>
           </h1>

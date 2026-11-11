@@ -9,7 +9,7 @@ import { isShareholderPath, isVanRole, MANAGE_ROLES, OWNER_ROLES } from "@/lib/r
 // script. None of these carry any customer/business data, so exempting them is safe.
 /** The folders under public/: static files, the same for every signed-in role. */
 const PUBLIC_FILE_DIRS = ["/map/", "/fonts/", "/basemap-thumbs/", "/avatars/", "/tutorials/"];
-const PUBLIC_PATHS = ["/login", "/api/login", "/api/login/second-factor", "/api/health", "/sw.js", "/manifest.webmanifest", "/offline", "/icon.svg"];
+const PUBLIC_PATHS = ["/login", "/api/login", "/api/login/second-factor", "/api/login/brand", "/api/health", "/sw.js", "/manifest.webmanifest", "/offline", "/icon.svg"];
 
 // A coarse gate on the token's own claims -- NOT an authorisation decision. Middleware
 // cannot safely reach SQLite, so it cannot know that a user has since been demoted or

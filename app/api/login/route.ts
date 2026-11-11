@@ -5,6 +5,8 @@ import { secondFactorRequired } from "@/lib/repo/secondFactor";
 import { clientKey, rateLimit, rateLimitReset } from "@/lib/rateLimit";
 import { findUserByUsername } from "@/lib/users";
 import { recordLogin, type LoginResult } from "@/lib/repo/loginEvents";
+import { mainAddressOwnerOnly, mayUseAddress, resolveHost } from "@/lib/repo/companyDomains";
+import { requestHostname } from "@/lib/companyHost";
 
 const LOGIN_MAX_ATTEMPTS = 5;
 const LOGIN_MAX_ATTEMPTS_PER_IP = 30;
@@ -56,7 +58,12 @@ async function signIn(req: NextRequest) {
       await recordLogin({ organizationId: user.organization_id, userId: user.id, result, ip, userAgent: req.headers.get("user-agent") });
     }
   };
-  if (!user || !user.active || typeof password !== "string" || !matches) {
+  /* Which door this is (lib/repo/companyDomains.ts): a company's own address lets only that company's people
+     in, and the main address may be closed to everyone but platform owners. Refused with the same message as a
+     wrong password, so the form does not say which company a username belongs to. */
+  const host = await resolveHost(requestHostname(req.headers));
+  const allowedHere = !user || mayUseAddress(host, user, await mainAddressOwnerOnly());
+  if (!user || !user.active || typeof password !== "string" || !matches || !allowedHere) {
     // Only for a real account: a username that does not exist is not stored (lib/repo/loginEvents.ts).
     if (user) await log(user.active ? "bad_password" : "inactive");
     return NextResponse.json({ ok: false, error: BAD_CREDENTIALS }, { status: 401 });
