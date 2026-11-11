@@ -605,6 +605,65 @@ esac
     expect(r.stdout).toContain("applied tonight");
   });
 
+  // The small update: a live release with a BASE_ID, and a new release published as a full pair and an app pair.
+  function smallUpdateSetup(newBase: string) {
+    const live = path.join(root, "releases", "9.9.8");
+    for (const d of ["node/bin", "node_modules/lib", "tools/node_modules"]) fs.mkdirSync(path.join(live, d), { recursive: true });
+    fs.writeFileSync(path.join(live, "node", "bin", "node"), "live-node");
+    fs.writeFileSync(path.join(live, "BASE_ID"), "base-one\n");
+    fs.symlinkSync("releases/9.9.8", path.join(root, "current"));
+    const top = `routeflow-9.9.9-linux-${HOST_ARCH}`;
+    const stage = path.join(root, "appstage", top);
+    fs.mkdirSync(stage, { recursive: true });
+    fs.writeFileSync(path.join(stage, "server.js"), "new-app");
+    fs.writeFileSync(path.join(stage, "BASE_ID"), `${newBase}\n`);
+    const app = path.join(root, "appstage", `${top}.app.tar.gz`);
+    execFileSync("tar", ["-czf", app, "-C", path.join(root, "appstage"), top]);
+    const sum = execFileSync("sha256sum", [app], { encoding: "utf8" }).split(" ")[0];
+    const bin = path.join(root, "smallbin");
+    fs.mkdirSync(bin, { recursive: true });
+    const rel = JSON.stringify({ tag_name: "v9.9.9", assets: [
+      { name: `${top}.tar.gz`, url: "http://x/a/1", size: 99 }, { name: `${top}.tar.gz.sha256`, url: "http://x/a/2", size: 99 },
+      { name: `${top}.app.tar.gz`, url: "http://x/a/3", size: 99 }, { name: `${top}.app.tar.gz.sha256`, url: "http://x/a/4", size: 99 },
+    ] });
+    // The full tarball must NOT be asked for when the base is the same: its url answers with a failure and a marker.
+    fs.writeFileSync(path.join(bin, "curl"), `#!/bin/bash
+out=""; url=""
+while [ $# -gt 0 ]; do case "$1" in -o) out=$2; shift ;; http*) url=$1 ;; esac; shift; done
+case "$url" in
+  */releases/latest) echo '${rel}' ;;
+  */a/1) touch "${root}/full-asked"; printf 'full' > "$out" ;;
+  */a/2) touch "${root}/full-asked"; printf '%s  x\\n' 0 > "$out" ;;
+  */a/3) cp "${app}" "$out" ;;
+  */a/4) printf '%s  ${top}.app.tar.gz\\n' '${sum}' > "$out" ;;
+esac
+`, { mode: 0o755 });
+    return { bin, top };
+  }
+
+  it("downloads only the app part when Node and the libraries are unchanged, and puts the full tarball together", () => {
+    const { bin, top } = smallUpdateSetup("base-one");
+    const r = update(bin);
+    expect(r.stdout).toContain("Only the app part");
+    expect(r.status).toBe(0);
+    expect(fs.existsSync(path.join(root, "full-asked"))).toBe(false);
+    const tarball = path.join(root, "incoming", `${top}.tar.gz`);
+    const listing = execFileSync("tar", ["-tzf", tarball], { encoding: "utf8" });
+    expect(listing).toContain(`${top}/server.js`);
+    expect(listing).toContain(`${top}/node/bin/node`);
+    expect(listing).toContain(`${top}/tools/node_modules/`);
+    expect(fs.readFileSync(`${tarball}.sha256`, "utf8")).toContain(`${top}.tar.gz`);
+    expect(fs.readdirSync(root).filter((n) => n.startsWith(".update."))).toEqual([]);
+  });
+
+  it("falls back to the whole release when a library changed", () => {
+    const { bin } = smallUpdateSetup("base-two");
+    const r = update(bin);
+    expect(r.stdout).toContain("fetching the whole release");
+    expect(fs.existsSync(path.join(root, "full-asked"))).toBe(true);
+    expect(fs.readdirSync(root).filter((n) => n.startsWith(".update."))).toEqual([]);
+  });
+
   it("does nothing when the live version is already the newest", () => {
     const { bin } = fakeGitHub(false);
     fs.mkdirSync(path.join(root, "releases", "9.9.9"), { recursive: true });

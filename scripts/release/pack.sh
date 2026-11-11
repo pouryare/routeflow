@@ -15,7 +15,10 @@
 #   db/migrations db/server scripts/ the migrations and server scripts (backup, doctor, users)
 #   tools/node_modules/              node-pg-migrate and pg, for the migrations
 #   bin/routeflow                    the server command
-#   VERSION ARCH NODE_VERSION
+#   VERSION ARCH NODE_VERSION BASE_ID
+#
+# Next to the tarball a <name>.app.tar.gz (+ .sha256) is made: the same without node/, node_modules/ and tools/,
+# for `routeflow update` to download when those are unchanged (BASE_ID).
 
 set -euo pipefail
 
@@ -72,12 +75,19 @@ curl -fsSL "$NODE_DIST/SHASUMS256.txt" | grep " $NODE_TAR\$" | (cd "$CACHE" && s
 mkdir -p "$OUT/node/bin"
 tar -xJf "$CACHE/$NODE_TAR" -C "$OUT/node/bin" --strip-components=2 "node-v$NODE_VERSION-linux-$ARCH/bin/node"
 
+# What the small update relies on: a fingerprint of the three folders that rarely change. A release whose
+# fingerprint equals the live one's can be put together from the live copy plus the small .app.tar.gz.
+(cd "$OUT" && find node node_modules tools -type f -print0 | LC_ALL=C sort -z | xargs -0 sha256sum | sha256sum | cut -c1-32) > "$OUT/BASE_ID"
+
 echo "$VERSION" > "$OUT/VERSION"
 echo "$ARCH" > "$OUT/ARCH"
 echo "$NODE_VERSION" > "$OUT/NODE_VERSION"
 
 tar -czf "dist/$NAME.tar.gz" -C dist "$NAME"
 (cd dist && sha256sum "$NAME.tar.gz" > "$NAME.tar.gz.sha256")
+# The small one: everything but node/, node_modules/ and tools/ (see BASE_ID above and fetch_app_update in deploy/routeflow).
+tar -czf "dist/$NAME.app.tar.gz" -C dist --exclude="$NAME/node" --exclude="$NAME/node_modules" --exclude="$NAME/tools" "$NAME"
+(cd dist && sha256sum "$NAME.app.tar.gz" > "$NAME.app.tar.gz.sha256")
 cp scripts/release/install.sh dist/install.sh
 rm -rf "$OUT"
 echo "dist/$NAME.tar.gz ($(du -h "dist/$NAME.tar.gz" | cut -f1))"

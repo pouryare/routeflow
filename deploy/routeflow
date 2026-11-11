@@ -434,7 +434,7 @@ cmd_upgrade_scheduled() {
 # from the bytes it already has if it breaks (12 tries; 1 KB/s for a minute counts as stalled). A small file goes in one
 # stream with the same resume. The caller checks the sum. Run again after a failure: the pieces that arrived are kept.
 download_asset() {
-  local u=$1 name=$2 size=$3 dest="$ROOT/incoming/$2.part" n=${DOWNLOAD_SEGMENTS:-8} i try chunk pids=() printer="" fail=0 got
+  local u=$1 name=$2 size=$3 dest="${4:-$ROOT/incoming}/$2.part" n=${DOWNLOAD_SEGMENTS:-8} i try chunk pids=() printer="" fail=0 got
   if [ "$size" -lt 4194304 ] || [ "$n" -lt 2 ]; then
     for try in 1 2 3 4 5 6 7 8 9 10 11 12; do
       curl -fL -C - --speed-limit 1024 --speed-time 60 "${auth[@]}" -H "Accept: application/octet-stream" -o "$dest" "$u" && return 0
@@ -473,13 +473,45 @@ download_asset() {
   rm -f "$dest".[0-9]*
 }
 
+# The small update. A release also comes as <name>.app.tar.gz: everything except node/, node_modules/ and tools/
+# (Node itself and the libraries, most of the 90 MB), which change only when a dependency does. When the live release
+# carries the very same BASE_ID, only the app part is downloaded and the full tarball is put together here from the
+# live release's own copy of those three folders. Any doubt (no BASE_ID on the live release, a different one, a
+# failed or damaged download) returns 1 and the caller downloads the whole release as before.
+fetch_app_update() {
+  local lines=$1 file=$2 want=$3 arch=$4 live tmp u name size top new appf=""
+  live=$(readlink -f "$ROOT/current" 2>/dev/null) || return 1
+  [ -f "$live/BASE_ID" ] && [ -d "$live/node" ] && [ -d "$live/node_modules" ] && [ -d "$live/tools" ] || return 1
+  [ "$(grep -c . <<<"$lines")" = 2 ] || return 1
+  tmp=$(mktemp -d "$ROOT/.update.XXXXXX") || return 1
+  top=routeflow-$want-linux-$arch
+  say "Only the app part has to be downloaded (Node and the libraries are the same as on the live release)"
+  while read -r u name size; do
+    download_asset "$u" "$name" "${size:-0}" "$tmp" || { warn "the small download failed; fetching the whole release"; rm -rf "$tmp"; return 1; }
+    mv "$tmp/$name.part" "$tmp/$name"
+    case $name in *.sha256) ;; *) appf=$name ;; esac
+  done <<<"$lines"
+  verify_checksum "$tmp/$appf" || { warn "the small download is damaged; fetching the whole release"; rm -rf "$tmp"; return 1; }
+  new=$(tar -xzOf "$tmp/$appf" "$top/BASE_ID" 2>/dev/null || true)
+  if [ -z "$new" ] || [ "$new" != "$(cat "$live/BASE_ID")" ]; then
+    say "Node or a library changed in $want; fetching the whole release"; rm -rf "$tmp"; return 1
+  fi
+  tar -xzf "$tmp/$appf" -C "$tmp" && cp -a "$live/node" "$live/node_modules" "$live/tools" "$tmp/$top/" \
+    && tar -czf "$file.part" -C "$tmp" "$top" \
+    && (cd "$(dirname "$file")" && sha256sum "$(basename "$file").part" | sed 's/\.part$//' > "$file.sha256") \
+    || { warn "could not put the release together; fetching the whole release"; rm -rf "$tmp" "$file.part" "$file.sha256"; return 1; }
+  rm -rf "$tmp"
+  mv "$file.part" "$file"
+  verify_checksum "$file" || { rm -f "$file" "$file.sha256"; return 1; }
+}
+
 # routeflow update: the one command for a new release. A release GitHub already copied into incoming/ is used
 # as it is; with none waiting, the newest one is downloaded from GitHub (a private repo needs a read-only token,
 # asked once and never saved). Either way it then asks whether to upgrade now or leave it for the nightly timer
 # (the default: not now).
 # Sets update_file to the downloaded tarball, or leaves it empty when the server is already on the newest.
 fetch_release() {
-  local repo=${ROUTEFLOW_REPO:-pouryare/routeflow} api=${ROUTEFLOW_API:-https://api.github.com} arch rel out want live u name file auth=()
+  local repo=${ROUTEFLOW_REPO:-pouryare/routeflow} api=${ROUTEFLOW_API:-https://api.github.com} arch rel out want live u name size file full app auth=()
   arch=$(machine_arch) || die "unsupported machine: $(uname -m)"
   if [ -z "${GITHUB_TOKEN:-}" ] && interactive; then
     printf '\nIf the repo is private, paste a read-only GitHub token (nothing shows as you type; it is not saved).\nPress Enter with nothing to try without one.\n' >/dev/tty
@@ -494,7 +526,7 @@ import json, sys
 r = json.load(sys.stdin); a = sys.argv[1]
 print(r["tag_name"].lstrip("v"))
 for x in r.get("assets", []):
-    if x["name"].endswith("-linux-%s.tar.gz" % a) or x["name"].endswith("-linux-%s.tar.gz.sha256" % a):
+    if x["name"].endswith(("-linux-%s.tar.gz" % a, "-linux-%s.tar.gz.sha256" % a, "-linux-%s.app.tar.gz" % a, "-linux-%s.app.tar.gz.sha256" % a)):
         print(x["url"], x["name"], x.get("size", 0))' "$arch") || { unset GITHUB_TOKEN; die "could not read the release from GitHub"; }
   want=$(head -1 <<<"$out")
   live=$(current_version)
@@ -503,13 +535,18 @@ for x in r.get("assets", []):
     say "Already on $live; the newest release is $want. Nothing to do."
     return 0
   fi
-  [ "$(tail -n +2 <<<"$out" | wc -l)" = 2 ] || { unset GITHUB_TOKEN; die "release $want has no linux-$arch files"; }
+  full=$(tail -n +2 <<<"$out" | grep -v '\.app\.tar\.gz' || true)
+  [ "$(grep -c . <<<"$full")" = 2 ] || { unset GITHUB_TOKEN; die "release $want has no linux-$arch files"; }
   install -d -m 755 "$ROOT/incoming"
   file="$ROOT/incoming/routeflow-$want-linux-$arch.tar.gz"
   say "Downloading $want (live: ${live:-none})"
+  app=$(tail -n +2 <<<"$out" | grep '\.app\.tar\.gz' || true)
+  if [ -n "$app" ] && fetch_app_update "$app" "$file" "$want" "$arch"; then
+    unset GITHUB_TOKEN; update_file=$file; return 0
+  fi
   while read -r u name size; do
     download_asset "$u" "$name" "${size:-0}" || { unset GITHUB_TOKEN; die "the download of $name did not finish. What arrived is kept: run the update again to carry on."; }
-  done < <(tail -n +2 <<<"$out")
+  done <<<"$full"
   unset GITHUB_TOKEN
   # The sum goes in first: the nightly timer ignores a tarball that has no .sha256 yet.
   mv "$file.sha256.part" "$file.sha256"
