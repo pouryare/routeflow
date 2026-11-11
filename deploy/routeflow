@@ -810,6 +810,7 @@ $DOMAIN {
 	header @maintenance Cache-Control "no-store"
 	header @maintenance Content-Type "text/html; charset=utf-8"
 	respond @maintenance \`$(maintenance_page)\` 503
+	respond /api/domains/ask 404
 	reverse_proxy 127.0.0.1:$APP_PORT
 	$(caddy_tls_line)
 	# H. While the app restarts (an upgrade), a short Persian page instead of an error. Never cached,
@@ -829,13 +830,15 @@ $DOMAIN {
 CADDY
   # Company addresses (docs/release-and-deploy.md): any address a platform owner registers in the app reaches the
   # app. Caddy asks the app before it makes a certificate for a name it has not seen, so only registered names get one.
-  local od=""; [ "${CERT_MODE:-auto}" = internal ] && od=" internal"
   cat > "$CADDY_DIR/sites/routeflow-companies.caddy" <<CADDY
 # Written by 'routeflow install': every registered company address, whatever its name.
 https:// {
-	tls$od {
+	# Arvan shows the certificate to the browser, so the origin only needs one of its own (Arvan set not to check it).
+	tls internal {
 		on_demand
 	}
+	# Only Caddy itself may ask the app which addresses are registered.
+	respond /api/domains/ask 404
 	@compress not path /api/live
 	encode @compress zstd gzip
 	request_body {

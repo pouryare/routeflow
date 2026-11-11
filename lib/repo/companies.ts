@@ -11,6 +11,7 @@ export interface CompanyDomainRow {
   status: DomainStatus;
   last_checked_at: string | null;
   last_error: string | null;
+  arvan_cname: string | null;
 }
 export interface CompanyRow {
   id: number;
@@ -43,7 +44,7 @@ export async function listCompanies(): Promise<CompanyRow[]> {
     )
     .all()) as unknown as { id: number; name: string; active: number; created_at: string; has_logo: boolean | number; users: number | string }[];
   const doms = (await db
-    .prepare("SELECT id, organization_id, hostname, status, last_checked_at, last_error FROM company_domains ORDER BY id")
+    .prepare("SELECT id, organization_id, hostname, status, last_checked_at, last_error, arvan_cname FROM company_domains ORDER BY id")
     .all()) as unknown as (CompanyDomainRow & { organization_id: number })[];
   return orgs.map((o) => ({
     id: o.id,
@@ -54,7 +55,7 @@ export async function listCompanies(): Promise<CompanyRow[]> {
     users: Number(o.users),
     domains: doms
       .filter((d) => d.organization_id === o.id)
-      .map((d) => ({ id: d.id, hostname: d.hostname, status: d.status, last_checked_at: d.last_checked_at, last_error: d.last_error })),
+      .map((d) => ({ id: d.id, hostname: d.hostname, status: d.status, last_checked_at: d.last_checked_at, last_error: d.last_error, arvan_cname: d.arvan_cname })),
   }));
 }
 
@@ -119,10 +120,15 @@ export async function addDomain(organizationId: number, hostname: string): Promi
   return r.id;
 }
 
-export async function findDomain(id: number): Promise<{ id: number; organization_id: number; hostname: string } | undefined> {
-  return (await getDb().prepare("SELECT id, organization_id, hostname FROM company_domains WHERE id = ?").get(id)) as
-    | { id: number; organization_id: number; hostname: string }
+export async function findDomain(id: number): Promise<{ id: number; organization_id: number; hostname: string; arvan_cname: string | null } | undefined> {
+  return (await getDb().prepare("SELECT id, organization_id, hostname, arvan_cname FROM company_domains WHERE id = ?").get(id)) as
+    | { id: number; organization_id: number; hostname: string; arvan_cname: string | null }
     | undefined;
+}
+
+/** The CNAME value Arvan gave for this address (null clears it). */
+export async function setArvanCname(id: number, value: string | null): Promise<void> {
+  await getDb().prepare("UPDATE company_domains SET arvan_cname = ? WHERE id = ?").run(value, id);
 }
 
 export async function setDomainStatus(id: number, status: DomainStatus, error: string | null): Promise<void> {

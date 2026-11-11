@@ -5,7 +5,6 @@ import { isUniqueViolation } from "@/lib/database/errors";
 import { normalizeHostname } from "@/lib/companyHost";
 import { createCompany, listCompanies } from "@/lib/repo/companies";
 import { mainAddressOwnerOnly } from "@/lib/repo/companyDomains";
-import { dnsTarget } from "@/lib/domainCheck";
 import { MIN_PASSWORD, parseLogo, USERNAME_RE } from "@/lib/companyInput";
 
 const bad = (error: string, status = 400) => NextResponse.json({ ok: false, error }, { status });
@@ -15,7 +14,7 @@ export async function GET(req: NextRequest) {
   const guard = await requireRole(req, ["platform_owner"]);
   if (!guard.ok) return guard.response;
   return await withDbScope("all", async () =>
-    NextResponse.json({ ok: true, companies: await listCompanies(), target: dnsTarget(), main_owner_only: await mainAddressOwnerOnly() })
+    NextResponse.json({ ok: true, companies: await listCompanies(), main_owner_only: await mainAddressOwnerOnly() })
   );
 }
 

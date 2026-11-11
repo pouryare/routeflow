@@ -3,10 +3,10 @@ import { describe, it, expect } from "vitest";
 process.env.ROUTEFLOW_DB_PATH = "/tmp/rf-companies-repo.db"; // each test file gets its own database from this name
 process.env.SESSION_SECRET = "test-secret";
 
-const { createCompany, listCompanies, sniffLogo, updateCompany, addDomain } = await import("@/lib/repo/companies");
+const { createCompany, listCompanies, sniffLogo, updateCompany, addDomain, findDomain, setArvanCname } = await import("@/lib/repo/companies");
 const { resolveHost } = await import("@/lib/repo/companyDomains");
 const { parseLogo } = await import("@/lib/companyInput");
-const { isPrivateAddress } = await import("@/lib/domainCheck");
+const { isPrivateAddress, checkDomain } = await import("@/lib/domainCheck");
 const { withDbScope } = await import("@/lib/database/scope");
 const { isUniqueViolation } = await import("@/lib/database/errors");
 
@@ -58,5 +58,18 @@ describe("logo and address checks", () => {
   it("never lets a check reach the private network", () => {
     for (const ip of ["10.0.0.5", "127.0.0.1", "192.168.1.1", "172.20.0.1", "169.254.1.1", "::1"]) expect(isPrivateAddress(ip)).toBe(true);
     expect(isPrivateAddress("8.8.8.8")).toBe(false);
+  });
+});
+
+describe("Arvan CNAME value", () => {
+  it("is kept per address, and an address with none saved asks for it", async () => {
+    const id = await withDbScope("all", () => createCompany({ name: "چهارم", hostname: "app.cr-four.invalid", logo: null, owner: owner("cr-four") }));
+    const d = (await withDbScope("all", listCompanies)).find((c) => c.id === id)!.domains[0];
+    expect(d.arvan_cname).toBeNull();
+    await withDbScope("all", () => setArvanCname(d.id, "abc123.cname.arvancdn.ir"));
+    expect((await withDbScope("all", () => findDomain(d.id)))?.arvan_cname).toBe("abc123.cname.arvancdn.ir");
+    const none = await checkDomain("app.cr-four.invalid", null);
+    expect(none.status).toBe("waiting_dns");
+    expect(none.error).toContain("آروان");
   });
 });

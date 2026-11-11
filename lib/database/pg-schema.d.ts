@@ -205,6 +205,7 @@ export interface CommissionTiers {
 }
 
 export interface CompanyDomains {
+  arvan_cname: string | null;
   created_at: string;
   hostname: string;
   id: Generated<number>;

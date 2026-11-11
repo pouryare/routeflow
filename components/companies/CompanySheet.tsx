@@ -23,9 +23,8 @@ function Field({ label, hint, children }: { label: string; hint?: ReactNode; chi
 }
 
 /** Create a company (name, logo, address, first owner) or, with `editing`, change its name and logo. */
-export default function CompanySheet({ editing, target, onClose, onSaved }: {
+export default function CompanySheet({ editing, onClose, onSaved }: {
   editing: CompanyRow | null;
-  target: string | null;
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -107,7 +106,7 @@ export default function CompanySheet({ editing, target, onClose, onSaved }: {
 
         {!editing && (
           <>
-            <Field label="نشانی شرکت (اختیاری)" hint={target ? `مشتری یک رکورد CNAME از این نشانی به ${target} می‌زند. مراحل بعد از ذخیره نشان داده می‌شود.` : "مثلاً app.example.ir"}>
+            <Field label="نشانی شرکت (اختیاری)" hint="مثلاً app.example.ir. مراحل آروان بعد از ذخیره در صفحه نشان داده می‌شود.">
               <FieldInput dir="ltr" value={hostname} onChange={(e) => setHostname(e.target.value)} placeholder="app.example.ir" autoCapitalize="off" data-tour="company-host" />
             </Field>
             <SectionHead as="h3" title="مدیر اول شرکت" />

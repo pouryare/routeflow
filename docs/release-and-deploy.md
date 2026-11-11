@@ -182,18 +182,23 @@ Each company can have its own web address (`app.tamino.ir`). The platform owner 
   (`/api/domains/ask`); the app says yes only for an address a company has registered. The app also gets
   `MAIN_HOST=<your domain>`, so an address that is neither the main one nor registered is refused at sign-in.
   Run `routeflow install` again on an existing server to get both files.
-- **What the customer does.** Adds a CNAME for their address pointing at `domains.<your domain>`. You create
-  that one name once, with an A record to the server, in the Arvan panel.
-- **What you do in Arvan.** Add each company address in the Arvan panel too, since Arvan shows the certificate to
-  the browser. (By hand for now; the app only reports how far an address has got. Not yet checked against Arvan:
-  whether it accepts a customer-owned domain by CNAME or needs a nameserver move.)
-- **Status.** «بررسی دوباره» looks at the address from outside: waiting for DNS, waiting for Arvan, or active
-  (it answers `/api/health` with this app's answer).
+- **Arvan does the certificate.** Caddy's file for them always uses its own internal
+  certificate, so Arvan must be set not to verify the origin's certificate, as for the main address.
+- **Free plan (owner decision 2026-11-11).** Arvan's CNAME setup is Enterprise-plan only, so it is not used. A
+  customer's domain (e.g. `taminodis.ir`) is added to your Arvan account as a full domain and the customer moves
+  its nameservers to the ones Arvan gives. The customer then no longer controls that domain's DNS records.
+- **Steps** (the page lists them). (1) Once per domain: add it in your Arvan panel, give the customer the nameservers.
+  (2) In Arvan DNS add an A record for the address (e.g. `app`) to the server, cloud on. (3) In the Arvan HTTPS section
+  get the free certificate. (4) Press «بررسی دوباره» on «شرکت‌ها». The saved-CNAME field from the CNAME route is
+  optional and unused in this route.
+- **Status.** «بررسی دوباره» reports: waiting for DNS (the address does not reach the app yet: nameservers not moved or
+  the A record missing), or active (the address answers `/api/health` with this app's answer).
+- The page does not call Arvan's API (it has `POST /cdn/4.0/domains/<domain>/cname-setup/convert`); adding the address
+  there stays a manual step.
 - **Closing the main address.** Until every company has an active address, leave the main address open. Then
   «فقط مدیر سامانه» on the same page makes it platform-owner only. A company with no active address cannot
   sign in once it is closed.
-- Caddy 2.6 (Ubuntu's package) was used to validate both files; the certificate flow itself has not been run
-  on a real server.
+- Caddy 2.6 (Ubuntu's package) validated both files; the certificate flow was tried locally (see the pull request).
 
 ## Running from inside Iran
 
