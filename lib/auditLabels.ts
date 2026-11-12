@@ -53,7 +53,7 @@ const OPS: Record<string, string> = { insert: "ساخته شد", update: "تغی
 
 export const auditOp = (op: string) => OPS[op] ?? op;
 export const auditTable = (t: string) => AUDIT_TABLES[t] ?? t;
-export const auditColumn = (c: string) => COLUMNS[c] ?? c;
+const auditColumn = (c: string) => COLUMNS[c] ?? c;
 
 const show = (v: unknown): string => (v === null || v === undefined || v === "" ? "—" : typeof v === "boolean" ? (v ? "بله" : "خیر") : String(v));
 
