@@ -572,6 +572,40 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
   </details>
 - **S24. «گزارش مشکل برنامه» button.** One line and an optional screenshot with page, role, version, phone and connection attached; a list for the owner.
 
+- **EV1. Rules timer on the server.** The rules sweep (callback and follow-up tasks, escalation, push and Telegram flush) runs every 5 minutes from a systemd timer, like the storage sweeps. Today it runs only when someone taps «به‌روزرسانی کارها».
+  <details><summary>Full decision</summary>
+
+  **Rules timer (EV1, plan `docs/plans/event-architecture-2026-11-12.md` E1).** `deploy/routeflow` writes `routeflow-rules.service` and `.timer` (every 5 minutes, same shape as the storage timers) that run `scripts/run-sweeps.mjs rules`; nothing in the app changes. Check on the server first with `systemctl list-timers`. When the worker (EV3) has schedules, the timer is deleted in the same commit. Decided 2026-11-12 (owner: everything in the review's adopt list).
+
+  </details>
+- **EV2. Events always inside the save.** An event is saved in the same transaction as the change it describes, then handled right after commit; a crash in between loses nothing.
+  <details><summary>Full decision</summary>
+
+  **Events inside the save (EV2, plan E2).** `events` gets `handled_at`, `attempts`, `next_try_at`, `last_error`. `emitEvent` only inserts; `drainEvents` runs the rule engine for unhandled rows with `SKIP LOCKED` and marks them, called right after commit so reactions are as fast as today. The CRM writes (`lib/repo/crm/write.ts`, which emit after the transaction) move inside; payments already are. The nightly archive moves only handled events. Money postings stay inside the same save as the order or payment: only notices, push, SMS, Telegram, analytics and exports may be late.
+
+  </details>
+- **EV3. Background worker.** Reactions, schedules, retries and exports run in a worker started with the app; a card on «وضعیت سامانه» shows queue length and failures.
+  <details><summary>Full decision</summary>
+
+  **Background worker (EV3, plan E3; decisions 10.22).** Starts inside the app process from `instrumentation.ts` (the release is a standalone bundle, so a separate script cannot import `lib/**`), claims jobs with `SKIP LOCKED`, runs handlers under the system scope. Jobs: event drain, rules sweep every 5 minutes (replaces EV1), notification flush; later exports (E7), SMS, Telegram, statements (F18). **Library: open** (pg-boss 12.38.2, MIT, or a small queue of our own on `events`).
+
+  </details>
+- **EV4. Audit record, first slice of F27.** One append-only record of old and new values for important fields, with who changed them; an owner-only history list on the record and on «وضعیت سامانه».
+  <details><summary>Full decision</summary>
+
+  **Audit record (EV4, plan E4, answers F27).** `audit_log` filled by one generic trigger on a short list of tables (orders, order lines, payments, customers' owner and credit limit, users' role and active, product prices, company settings); changed columns only; actor from `rf.actor`, set beside `rf.scope`; refuses update and delete; cost, margin and credit changes visible only to roles that can see them (T6). Not in this slice: anomaly rules, the money hash chain (D6) and the permission log (E6), which sit on top of it. Does not replace `order_events`, `activities`, F99, F100 or F110.
+
+  </details>
+- **EV5. Event list.** `docs/events.md`: each event name, who emits it, who reacts, fact or request; a test fails when an emitted name is missing.
+  <details><summary>Full decision</summary>
+
+  **Event list (EV5, plan E5).** One row per event kind. A small Vitest guard reads every `kind:` passed to `emitEvent`. Requests named like facts (`reassign.requested`) are decided one by one.
+
+  </details>
+- **EV-L1. Funnel and speed reports from history.** Leads, attempts, conversations, samples, purchases; days from lead to first order; who calls new leads fastest, from `activities` and `events`. Needs a sample event first. Starts after EV2, with the reporting group.
+- **EV-L2. Who may write which table.** A ratchet in `scripts/check-architecture.mjs`: journals and ledger lines only from the ledger files, stock moves only from the stock files, `audit_log` and `events` only from their own modules. Starts at today's count; after EV2.
+- **EV-L3. Read tables only when slow.** A new summary table only when a screen is measurably slow, refreshed by the worker, like `sales_daily`.
+
 ### Mobile, input, offline and help
 
 - **UIB-C. Forms that keep your work.** Drafts survive a closed tab, an unsaved-changes bar, phone keyboard handling, and instant updates with a rollback.
@@ -919,7 +953,7 @@ All 148 entries of `docs/future-features.md` (F1 to F148), grouped by area, with
 | F19 | Salesperson earnings view and commission simulator | S | yes | — | Built (first slice) | FB27 |
 | F25 | Staff scheduling and attendance | L |  | — | Not built | — |
 | F26 | Field expenses and petty cash | M |  | — | Not built | D15 |
-| F27 | Audit trail and anomaly detection | M | yes | — | Not built | T-skip, D6, E6 |
+| F27 | Audit trail and anomaly detection | M | yes | — | Planned: first slice is EV4 | T-skip, D6, E6, EV4 |
 | F48 | Change approvals (second-person sign-off) | M | yes | F27 | Not built | — |
 | F51 | SLA and escalation rules | M | yes | — | Partly built | FB43, S5 |
 | F82 | Approval delegation while away | M | yes | F27, F48 | Not built | T13 |
@@ -1015,7 +1049,7 @@ Groups of entries that cover the same ground from different angles. Design each 
 |---|---|---|
 | Customer messaging channel | F6, F79, F18, F45, F120, F55, F136, F141, F70 | decide the provider, consent and opt-out once (SMS, Telegram or WhatsApp); every customer-facing entry waits on it |
 | Approvals | F48, F76, F82, F102, F129, F143, F71 | one request shape, one inbox, delegation and Telegram buttons as views of it |
-| History and audit | F27, F73, F99, F100, F110, F111, F78 | a common change record instead of a table per feature |
+| History and audit | F27, F73, F99, F100, F110, F111, F78 | a common change record instead of a table per feature (EV4 `audit_log`, with events saved inside the save, EV2) |
 | Purchasing side | F66, F87, F118, F121, F11, F31 | purchase orders first; appointments, pickup, pre-orders and forecasts hang off them |
 | Returns and quality | F12, F42, F80, F119, F144, F17 | reasons, receiving, pickup and analytics share the same data |
 | Proof of delivery | F17, F120, F139, F69 | one proof model: receiver, photo, signature, code, waybill |
@@ -1025,8 +1059,8 @@ Groups of entries that cover the same ground from different angles. Design each 
 | Order entry shortcuts | F58, F60, F62, F72, F114, F131, F44 | usual basket, templates, warnings and desk entry on one order path |
 | Pricing | F56, F65, F21, F64, F89, F83 | dated prices, uplift, promotions, minimums and discounts must agree on one price rule |
 | Reporting | F14, F123, F144, F32, F134, F92, F67, F16 | one safe query layer and one set of scoped reads |
-| Offline | F13, F75, F105 | one outbox and conflict policy |
-| Telegram | F124, F143, F109, F106 | one worker, one identity binding, one permission check |
+| Offline | F13, F75, F105 | one outbox and conflict policy (the server side is EV2 and EV3) |
+| Telegram | F124, F143, F109, F106 | one worker (EV3), one identity binding, one permission check |
 | Staff pay and expenses | F24, F25, F26, F88, F90, F19 | commission, attendance and reimbursements meet in the monthly summary |
 | Help and content | F84, F112, F133, F39 | one content store for help, release notes and training |
 | Sessions and access | F106, F107, F110, F128, F109 | sign-in security as one design |
@@ -1040,7 +1074,7 @@ A suggestion in waves. Within a wave the order is flexible; across waves it foll
 
 **Wave 0 — quick wins.** The 22 quick wins (listed under Done). They add visible value, touch little, and several (F99, F100, F110, F108, F138) are groundwork for later waves.
 
-**Wave 1 — foundations.** First slices of F27 (audit record), F48 (one approval type), F107 → F106 (sessions, then two-step login), F66 (purchase orders, once the ordering practice is confirmed) and the single decision on the customer message channel (F6/F79). The SMS provider is decided (Farazsms); consent, opt-out and any other channel are still open.
+**Wave 1 — foundations.** First slices of F27 (audit record, EV4, built together with events inside the save EV2 and the worker EV3, plan `docs/plans/event-architecture-2026-11-12.md`), F48 (one approval type), F107 → F106 (sessions, then two-step login), F66 (purchase orders, once the ordering practice is confirmed) and the single decision on the customer message channel (F6/F79). The SMS provider is decided (Farazsms); consent, opt-out and any other channel are still open.
 
 **Order set by the owner on 2026-11-01:** street loop first, then the book fixes (replace Holoo), then office depth, then no-code flexibility (see "Owner direction" in the ground facts). The waves below stay as the dependency map.
 
@@ -1068,6 +1102,7 @@ Statements in the entries that I could not confirm from the code. Check them bef
 - F132: what feeds the urgent driver commission rate, and whether anything sets the priority value.
 - F147 (document templates): how far the existing print code goes.
 - Whether any screen closes a fiscal period.
+- EV1: whether push and Telegram really go unsent on the live server today (read from the installer; check `systemctl list-timers`). EV3: pg-boss without self-migration, `send` inside our own transaction, and the `routeflow_app` role.
 
 Platform claims in [docs/decisions.md section 10](decisions.md#10-platform-facts-and-decisions-not-features), all unverified:
 
