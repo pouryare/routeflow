@@ -30,7 +30,8 @@ export const RISKY = [
 /** The up part of a node-pg-migrate SQL file, without comments. */
 export function upSql(text) {
   const up = text.split(/^--\s*Down Migration\b.*$/m)[0];
-  return up.replace(/--.*$/gm, "").replace(/\/\*[\s\S]*?\*\//g, "");
+  /* Function bodies ($$ ... $$) are text at migration time and run later; what they contain is not a change. */
+  return up.replace(/--.*$/gm, "").replace(/\/\*[\s\S]*?\*\//g, "").replace(/\$\$[\s\S]*?\$\$/g, "$$$$");
 }
 
 /** A column added NOT NULL without a DEFAULT: inserts from the old release fail. */

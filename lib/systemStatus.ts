@@ -27,6 +27,11 @@ export interface StatusFacts {
   lastDigestAt: string | null;
   failedSignIns24h: number;
   dbBytes: number | null;
+  /** E2/E3: events whose reaction has not run yet, how many of them gave up after their attempts, and the
+   *  oldest one's time. The worker re-runs them every minute, so a few minutes of pending is normal. */
+  pendingEvents: number;
+  failedEvents: number;
+  oldestPendingEventAt: string | null;
 }
 
 export interface StatusLine {
@@ -109,6 +114,19 @@ export function statusLines(f: StatusFacts, now: Date = new Date()): StatusLine[
       detail: !f.lastDigestAt
         ? "هنوز خلاصه‌ای ساخته نشده؛ اجرای خودکار «به‌روزرسانی کارها» روی سرور باید هر صبح بعد از ساعت ۷ انجام شود"
         : "خلاصهٔ کارهای روز که هر صبح برای مالک فرستاده می‌شود",
+    },
+    {
+      key: "reactions",
+      label: "واکنش‌های خودکار",
+      // The worker retries every minute; stuck for a quarter of an hour, or given up, needs a look.
+      tone: f.failedEvents > 0 ? "bad" : f.pendingEvents === 0 ? "good" : ageTone(f.oldestPendingEventAt, now, 0.25, 2),
+      at: f.oldestPendingEventAt,
+      detail:
+        f.pendingEvents === 0
+          ? "همهٔ رویدادها واکنششان را گرفته‌اند"
+          : f.failedEvents > 0
+            ? `${f.failedEvents.toLocaleString("fa-IR")} رویداد بعد از چند بار تلاش هنوز واکنش نگرفته‌اند؛ به پشتیبانی خبر بدهید`
+            : `${f.pendingEvents.toLocaleString("fa-IR")} رویداد در صف واکنش است و دوباره تلاش می‌شود`,
     },
     {
       key: "signins",

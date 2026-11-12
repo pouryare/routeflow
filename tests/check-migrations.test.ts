@@ -17,6 +17,11 @@ describe("migration markers", () => {
     expect(check("a.sql", sql)).toEqual([]);
   });
 
+  it("does not count what a function body says, only what the file runs", () => {
+    const sql = up("CREATE FUNCTION f() RETURNS void AS $$ BEGIN DELETE FROM orders; UPDATE orders SET a = 1; END; $$ LANGUAGE plpgsql;");
+    expect(check("a.sql", sql)).toEqual([]);
+  });
+
   it("counts an UNLOGGED table as new too", () => {
     const sql = up("CREATE UNLOGGED TABLE seen (id int, org int);\nALTER TABLE seen ENABLE ROW LEVEL SECURITY;\nCREATE POLICY p ON seen USING (true);");
     expect(check("a.sql", sql)).toEqual([]);
