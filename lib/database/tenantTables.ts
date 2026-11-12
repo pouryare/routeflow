@@ -129,4 +129,6 @@ export const TENANT_TABLES = [
   "sales_daily",
   "sales_daily_products",
   "sales_daily_marks",
+  /* The shared «who changed what» record, filled by triggers (docs/plans/event-architecture-2026-11-12.md E4). */
+  "audit_log",
 ] as const satisfies readonly string[];

@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { COOKIE_NAME, parseSessionToken } from "./auth";
 import { getDb, type Role, type UserRow } from "./db";
 import { isVanRole } from "./roles";
-import { scopeForCompany, setRequestScopeResolver, withDbScope, type DbScope } from "./database/scope";
+import { scopeForCompany, setRequestActorResolver, setRequestScopeResolver, withDbScope, type DbScope } from "./database/scope";
 
 export interface Session {
   user: UserRow;
@@ -150,6 +150,14 @@ setRequestScopeResolver(COOKIE_NAME, async (token) => {
   if (scopeCache.size > 1000) scopeCache.clear();
   scopeCache.set(token, { scope, until: now + SCOPE_TTL_MS });
   return scope;
+});
+
+/* The audit record's actor: read straight from the signed cookie, no lookup. `act` is the owner who is
+   really driving under Login-As (lib/auth.ts), `uid` is whose account it is. */
+setRequestActorResolver((token) => {
+  const claims = parseSessionToken(token);
+  if (!claims) return "";
+  return claims.act ? `${claims.uid}:${claims.act}` : String(claims.uid);
 });
 
 export async function requireRole(req: NextRequest, roles: Role[]): Promise<Guard> {

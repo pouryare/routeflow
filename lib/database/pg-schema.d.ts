@@ -92,6 +92,18 @@ export interface AppMeta {
   value: string | null;
 }
 
+export interface AuditLog {
+  actor_user_id: number | null;
+  changes_json: string;
+  created_at: string;
+  id: Generated<number>;
+  impersonated_by: number | null;
+  op: string;
+  organization_id: number;
+  row_id: number;
+  table_name: string;
+}
+
 export interface Batches {
   batch_code: string;
   created_at: string;
@@ -1878,6 +1890,7 @@ export interface DB {
   activity_log: ActivityLog;
   alerts: Alerts;
   app_meta: AppMeta;
+  audit_log: AuditLog;
   batches: Batches;
   capacity_factors: CapacityFactors;
   cheques: Cheques;

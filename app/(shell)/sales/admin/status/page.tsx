@@ -20,6 +20,8 @@ import LiveConnectionsCard from "@/components/meridian/LiveConnectionsCard";
 import { connectionsOf } from "@/lib/repo/liveConnections";
 import SlowQueriesCard from "@/components/meridian/SlowQueriesCard";
 import { slowQueries } from "@/lib/repo/slowQueries";
+import AuditHistoryCard from "@/components/meridian/AuditHistoryCard";
+import { auditHistory } from "@/lib/repo/auditLog";
 import ArchiveMonthsForm from "@/components/meridian/ArchiveMonthsForm";
 import { archiveHotMonths } from "@/lib/repo/historyArchive";
 
@@ -46,6 +48,7 @@ export default async function StatusPage() {
   const docs = await documentSettingsFor(session.organizationId);
   const pushMinutes = await taskPushMinutes(session.organizationId);
   const connections = await connectionsOf(session.organizationId);
+  const changes = await auditHistory(session.organizationId, { limit: 100 });
   // The query counters are the whole server's, every company's together: the platform owner's only.
   const platform = session.hasRole("platform_owner");
   const slow = platform ? await slowQueries() : undefined;
@@ -72,6 +75,9 @@ export default async function StatusPage() {
       </section>
       <div className="mt-[var(--space-4)]">
         <LiveConnectionsCard rows={connections} />
+      </div>
+      <div className="mt-[var(--space-4)]">
+        <AuditHistoryCard rows={changes} />
       </div>
       {slow !== undefined ? (
         <div className="mt-[var(--space-4)]">
