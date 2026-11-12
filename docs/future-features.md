@@ -604,6 +604,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 **Prerequisites:** `activity_log`, the briefing exceptions panel.
 
+**Planned 2026-11-12:** the first slice is roadmap EV4 (`audit_log`, one generic trigger, owner-only history list); the anomaly rules, the money hash chain (D6) and the permission log (E6) come after it. See `docs/plans/event-architecture-2026-11-12.md` E4.
+
 **EspoCRM study (2026-10-30, E6):** for permissions, the answer to question 1 is a who/when/old/new log of role, group, active state, password resets and company settings, shown on the owner status page. See `docs/roadmap-archive.md` 1h.
 
 ---

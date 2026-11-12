@@ -60,7 +60,7 @@ The PostgreSQL rows here are now decided (10.1). The plan is phased: P1 an async
 | PostgreSQL, self-hosted, with `wal_level = logical`, PostGIS, `pg_trgm`, `btree_gist` and `pg_stat_statements` | everything; geofencing (F38), rep map (F68), mileage (F103), search (F98, F148, F10, F3) | with the move |
 | Row-level security keyed on a per-transaction organisation setting; the same setting feeds one audit trigger | tenant safety now and when a second company arrives; F27, F73, F99, F100, F111 | with the move (`organization_id` already exists on the tenant tables) |
 | `pg` with Kysely (types generated from the database) and plain SQL migration files; not Prisma | everything | with the move |
-| A pg-boss worker process: retries, schedules, jobs enqueued in the same transaction as the write | sweeps, F16, F18, F67, F79, F127, F138 | with the move |
+| A pg-boss worker process: retries, schedules, jobs enqueued in the same transaction as the write (chosen again by the owner 2026-11-12; planned as EV3, started inside the app process, see 10.22) | sweeps, F16, F18, F67, F79, F127, F138 | Wave 1 |
 | Real Postgres in tests, one template database per test file | the database tests | with the move |
 | Backups with point-in-time restore (pgBackRest or WAL-G) and an encrypted off-site copy; self-hosted error tracking and uptime check | F34, F108, F138 | with the move, early |
 | S3-compatible object storage, self-hosted | F1, F17, F26, F34, F147 | first wave that stores files |
@@ -441,3 +441,42 @@ Six follow-ups after the index audit (`notes/db-index-audit-2026-11-09.md`, PR #
 | Dashboard totals | **Own saved daily totals with changed-day marks** (`lib/repo/salesDaily.ts`). Any change to an order, a line or a payment marks the order's day, and marked days are recounted just before the next read and again by the nightly 04:00 run, so a total is right even when the past is edited and the morning dashboard does not wait. pg_ivm was rejected (an extension to install and keep in step with every Postgres upgrade). The dashboard opens on **this Jalali season**, with «امسال» and «همهٔ زمان‌ها» beside it. |
 | Seed speed | Delegated. Demo seed runs with `synchronous_commit=off`; it stays sequential because order numbers and credit holds depend on order. |
 | Slow queries | A card on «وضعیت سامانه» for the platform owner, from `pg_stat_statements`: the ten slowest app queries on average, with how often each ran. |
+
+### 10.22 Events, outbox, worker and audit (2026-11-12, owner decision)
+
+The owner reviewed a long discussion on audit logs, event-driven design, event sourcing, the transactional outbox, pragmatic DDD and CQRS, and chose **everything in the adopt and later lists, none of the skip list**. Plan: [`docs/plans/event-architecture-2026-11-12.md`](plans/event-architecture-2026-11-12.md). Review note: `notes/event-architecture-review-2026-11-12.md` in the project files. Nothing is built yet.
+
+**Where RouteFlow stands.** Already built: the `events` table and rule engine, `order_events`, append-only `activities`, ledger and stock moves that cannot be edited (event sourcing exactly where it pays), the order state machine (commands), the phone outbox with `sync_mutations`, the live layer (10.7) as an outbox, and the decision against Kafka, Kubernetes and microservices (10.3). Missing: a rules timer on the server, events written inside the save everywhere, a worker, the shared audit record (F27).
+
+| Choice | Decision | Roadmap |
+|---|---|---|
+| Rules timer every 5 minutes (systemd) | Adopt now; replaced by a worker schedule later | EV1 |
+| An event is saved in the same transaction as its change, handled right after commit, and picked up again if the process died in between | Adopt | EV2 |
+| Background worker for reactions that may be late (notices, push, SMS, Telegram, analytics, exports) | Adopt; starts inside the app process, because the release is a standalone bundle. **Library: pg-boss** (owner, 2026-11-12; 12.38.2, MIT, Node 22.12 or newer), chosen over a small queue of our own on `events` | EV3 |
+| One audit record (`audit_log`) by a generic trigger, first slice of F27 | Adopt | EV4 |
+| An event list document with a test | Adopt | EV5 |
+| Funnel reports from history; table-write ownership checks; read tables only when slow | Later | EV-L1 to EV-L3 |
+| Full event sourcing for customers, orders and leads | **Skip** (money and stock already work that way) | |
+| Kafka, RabbitMQ, microservices, a separate read database, DDD ceremony (repositories and factories for every table), blockchain | **Skip** (see 10.3; the hash chain D6 covers tamper evidence for money) | |
+
+**Rule kept.** Ledger postings, stock reservations and commission stay inside the same save as the order or payment. The discussion suggested accounting could react to a delivery later in the background; that would allow half-saved money, so it is not adopted. Only things that can be a few seconds late go to the worker.
+
+**Second review, same day** (a shared conversation «Kafka RabbitMQ Or None»): same conclusion, no Kafka or RabbitMQ, PostgreSQL with pg-boss. Kept our difference: the worker starts inside the app process and moves to its own process when the first CPU-heavy job (OCR, large export, 80-stop route optimization) arrives. Not adopted: `pg_cron` (pg-boss schedules), `pgmq` (pg-boss chosen), `pg_uuidv7` (PostgreSQL 18 has `uuidv7()`). Already installed: PostGIS, `pg_trgm`, `btree_gist`, `pg_stat_statements`, `pg_duckdb`. End-to-end encryption for the planned chat would break the decision that the owner may read any chat (FB9) and rule out server-side search and `pgvector` on that text; reopen FB9 first if E2EE is wanted.
+
+**Existing-solutions search (CLAUDE.md rule).** Worker: pg-boss (chosen in 10.2 on 2026-10-23), Graphile Worker, BullMQ (needs Redis, rejected in 10.6), `node-cron` (schedules only), or our own small queue (`storage_jobs` and the lead-import runner are already two hand-rolled ones). Audit: no library; a generic trigger is a few dozen lines of SQL. Event list: no library.
+
+### 10.23 Academy, van catalogue and operational independence (2026-11-12, owner decision)
+
+Plan: [`docs/plans/academy-catalogue-independence-2026-11-12.md`](plans/academy-catalogue-independence-2026-11-12.md). Roadmap: AC1 to AC6, AC-L1, VC1 to VC4, OI1 to OI3, with F59, T13, S23 and F39.
+
+| Choice | Decision |
+|---|---|
+| Academy content | Two layers: lessons shipped with the app (general and app related, the same for every company) and lessons each company writes in categories of its own, stored per company |
+| Who writes company lessons | Owner; managers for their own group; any «مربی» (trainer), a permission the owner gives to anyone |
+| Quizzes | Next slice; the first slice ends a lesson with «خواندم» |
+| Van catalogue | A page for `field_rep` and `delivery_driver`. Step 1 takes orders for later (van stock shown as approximate); step 2 sells from van stock once van loading (F30) exists |
+| Libraries | None added: plain text editor with headings and photos, photos in the company's own storage and the existing photo viewer, price list saved with the browser print already in use. A rich-text library (for example TipTap) was left out on purpose |
+| Practice mode (F39) | Later; design not decided |
+| Handover, lend, cover | Planned (F59, T13, S23); F59 waits for the audit record EV4 |
+
+**Existing-solutions search (CLAUDE.md rule).** Done in the plan, section 6. The owner chose to build with what the repo has.
