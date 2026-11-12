@@ -113,6 +113,22 @@ describe("pullSince", () => {
     expect(custIds).not.toContain(custOther);
   });
 
+  it("never sends a van role what the goods cost us, but still sends it to the owner", async () => {
+    const db = getDb();
+    await db.prepare("UPDATE products SET avg_cost_toman = 700 WHERE id = ?").run(product);
+    await runFor(driverA, custA);
+    await db.prepare("UPDATE order_lines SET unit_cost_toman = 650").run();
+    await db.prepare("UPDATE orders SET cost_toman = 650").run();
+    const van = await pullSince(sess(driverA, "delivery_driver", 1, groupA), null);
+    for (const [table, col] of [["products", "avg_cost_toman"], ["order_lines", "unit_cost_toman"], ["orders", "cost_toman"]] as const) {
+      const rows = van.rows.filter((r) => r.table === table);
+      expect(rows.length).toBeGreaterThan(0);
+      expect(rows.every((r) => Number(r.row[col]) === 0)).toBe(true);
+    }
+    const owner = await pullSince(sess(ownerA, "owner", 1, null), null);
+    expect(owner.rows.find((r) => r.table === "products")!.row.avg_cost_toman).toBe(700);
+  });
+
   it("sends a driver open runs and recent finished ones, not old finished history", async () => {
     const today = new Date().toISOString().slice(0, 10);
     const oldDone = await runFor(driverA, custA, "2026-01-03");
