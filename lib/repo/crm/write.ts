@@ -136,6 +136,7 @@ function replayOr400(cfg: FlowConfig, ctx: FlowContext, answers: FlowAnswer[]): 
   return st;
 }
 
+/** Called inside the save's `db.tx`, so the events commit with the change (docs/plans/event-architecture-2026-11-12.md E2). */
 const emitAll = async (org: number, events: EventInput[]) => { for (const e of events) await emitEvent(org, e); };
 
 /** The contact this activity is with: an existing one named by the flow, or a new one created from its answers. */
@@ -255,8 +256,8 @@ export async function applyFlowCore(
     }
     if (after.sales_stage !== core.sales_stage) events.push({ ...base, kind: "stage.changed", metadata: { from: core.sales_stage, to: after.sales_stage } });
     if (after.temperature !== core.temperature) events.push({ ...base, kind: "temperature.changed", metadata: { from: core.temperature, to: after.temperature } });
+    await emitAll(org, events);
   });
-  await emitAll(org, events);
   return { customerId, activityId, nextTaskId, acc };
 }
 
@@ -460,8 +461,8 @@ export async function createLead(session: Session, input: { answers: FlowAnswer[
     await recomputeState(db, id);
     events.push({ kind: "lead.created", entity_type: "customer", entity_id: id, actor_user_id: session.user.id, metadata: { source: acc.source ?? null } });
     if (verification === "verified") events.push({ kind: "lead.verified", entity_type: "customer", entity_id: id, actor_user_id: session.user.id });
+    await emitAll(org, events);
   });
-  await emitAll(org, events);
   return { id, nextTaskId, acc };
 }
 
@@ -475,8 +476,8 @@ export async function claimBusiness(session: Session, id: number): Promise<void>
     await db.prepare("UPDATE customers SET owner_user_id = ? WHERE id = ? AND owner_user_id IS NULL").run(session.user.id, id);
     await recordOwnerChange(db, { organizationId: core.organization_id, customerId: id, actorUserId: session.user.id, reason: "pool_claim", what: "owner", fromId: null, toId: session.user.id, at });
     if (core.next_task_id) await db.prepare("UPDATE tasks SET assignee_user_id = ? WHERE id = ? AND status = 'open' AND assignee_user_id IS NULL").run(session.user.id, core.next_task_id);
+    await emitEvent(core.organization_id, { kind: "lead.claimed", entity_type: "customer", entity_id: id, actor_user_id: session.user.id });
   });
-  await emitEvent(core.organization_id, { kind: "lead.claimed", entity_type: "customer", entity_id: id, actor_user_id: session.user.id });
 }
 
 /** A rep found a phone that belongs to a business they cannot see: ask its group's manager. */

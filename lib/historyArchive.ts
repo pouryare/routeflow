@@ -28,7 +28,7 @@ export function archiveCutoff(today: string, months: number): string {
  *  A rule run moves only once it is resolved: an open one is still the rule engine's cooldown
  *  and escalation state (lib/repo/rules.ts). */
 export const MONTHLY_ARCHIVE = [
-  { table: "events", time: "occurred_at", also: "" },
+  { table: "events", time: "occurred_at", also: "AND NOT pending" },
   { table: "notifications", time: "created_at", also: "" },
   { table: "rule_runs", time: "fired_at", also: "AND resolved_at IS NOT NULL" },
   { table: "order_events", time: "created_at", also: "" },

@@ -496,28 +496,36 @@ export interface EntryPlaces {
 
 export interface Events {
   actor_user_id: number | null;
+  attempts: Generated<number>;
   created_at: string;
   entity_id: number | null;
   entity_type: string | null;
   id: Generated<number>;
   impersonated_by: number | null;
   kind: string;
+  last_error: string | null;
   metadata_json: string | null;
+  next_try_at: string | null;
   occurred_at: string;
   organization_id: number;
+  pending: Generated<boolean>;
 }
 
 export interface EventsArchive {
   actor_user_id: number | null;
+  attempts: Generated<number>;
   created_at: string;
   entity_id: number | null;
   entity_type: string | null;
   id: number;
   impersonated_by: number | null;
   kind: string;
+  last_error: string | null;
   metadata_json: string | null;
+  next_try_at: string | null;
   occurred_at: string;
   organization_id: number;
+  pending: Generated<boolean>;
 }
 
 export interface ExpenseReceipts {
