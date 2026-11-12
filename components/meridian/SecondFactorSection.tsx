@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import SectionHead from "@/components/meridian/SectionHead";
 import { Icon } from "@/components/meridian/Icon";
+import QrCode from "@/components/meridian/QrCode";
 
 type Status = { enabled: boolean; pending: boolean; recoveryLeft: number };
 
@@ -89,8 +90,9 @@ export default function SecondFactorSection() {
       ) : setup ? (
         <div className="flex flex-col gap-[var(--space-2)]">
           <p className="m-0 text-[length:var(--text-sm)] text-[var(--muted)]">
-            این کلید را در برنامهٔ احراز هویت (مثل Google Authenticator) وارد کنید، سپس کد ۶ رقمی را بنویسید.
+            کد QR را با برنامهٔ احراز هویت (مثل Google Authenticator) اسکن کنید، سپس کد ۶ رقمی را بنویسید. اگر اسکن نشد، کلید زیر را دستی وارد کنید.
           </p>
+          <QrCode text={setup.uri} label="کد QR ورود دومرحله‌ای" />
           <div dir="ltr" className="select-all break-all rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] p-[var(--space-3)] font-mono text-[length:var(--text-sm)]">
             {setup.secret}
           </div>
