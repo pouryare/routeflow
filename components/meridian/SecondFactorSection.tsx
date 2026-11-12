@@ -90,9 +90,13 @@ export default function SecondFactorSection() {
       ) : setup ? (
         <div className="flex flex-col gap-[var(--space-2)]">
           <p className="m-0 text-[length:var(--text-sm)] text-[var(--muted)]">
-            کد QR را با برنامهٔ احراز هویت (مثل Google Authenticator) اسکن کنید، سپس کد ۶ رقمی را بنویسید. اگر اسکن نشد، کلید زیر را دستی وارد کنید.
+            این کلید را در برنامهٔ احراز هویت (مثل Google Authenticator) وارد کنید، سپس کد ۶ رقمی را بنویسید.
           </p>
-          <QrCode text={setup.uri} label="کد QR ورود دومرحله‌ای" />
+          {/* shortcut: "PC" means a mouse-like device (hover + fine pointer); phones scan nothing on their own screen. */}
+          <div className="hidden [@media(hover:hover)_and_(pointer:fine)]:block">
+            <p className="m-0 mb-[var(--space-2)] text-[length:var(--text-sm)] text-[var(--muted)]">یا کد QR را با گوشی اسکن کنید:</p>
+            <QrCode text={setup.uri} label="کد QR ورود دومرحله‌ای" />
+          </div>
           <div dir="ltr" className="select-all break-all rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] p-[var(--space-3)] font-mono text-[length:var(--text-sm)]">
             {setup.secret}
           </div>
