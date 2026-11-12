@@ -587,7 +587,7 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
 - **EV3. Background worker.** Reactions, schedules, retries and exports run in a worker started with the app; a card on «وضعیت سامانه» shows queue length and failures.
   <details><summary>Full decision</summary>
 
-  **Background worker (EV3, plan E3; decisions 10.22).** Starts inside the app process from `instrumentation.ts` (the release is a standalone bundle, so a separate script cannot import `lib/**`), claims jobs with `SKIP LOCKED`, runs handlers under the system scope. Jobs: event drain, rules sweep every 5 minutes (replaces EV1), notification flush; later exports (E7), SMS, Telegram, statements (F18). **Library: pg-boss** (owner, 2026-11-12; 12.38.2, MIT), not a queue of our own.
+  **Background worker (EV3, plan E3; decisions 10.22).** Starts inside the app process from `instrumentation.ts` (the release is a standalone bundle, so a separate script cannot import `lib/**`), claims jobs with `SKIP LOCKED`, runs handlers under the system scope. Jobs: event drain, rules sweep every 5 minutes (replaces EV1), notification flush; later exports (E7), SMS, Telegram, statements (F18), and, each with its own entry, route optimization, OCR (F1), photo processing and bank import (F10). **Split into its own process** when the first CPU-heavy job arrives. **Library: pg-boss** (owner, 2026-11-12; 12.38.2, MIT), not a queue of our own.
 
   </details>
 - **EV4. Audit record, first slice of F27.** One append-only record of old and new values for important fields, with who changed them; an owner-only history list on the record and on «وضعیت سامانه».

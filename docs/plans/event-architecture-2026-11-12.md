@@ -120,6 +120,20 @@ Order matters: E1 is a small fix for the live server; E2 makes events safe; E3 b
 | EV-L2 | **Who may write which table.** A new metric in `scripts/check-architecture.mjs`: writes to `journals` and `ledger_entries` only from the ledger files, `stock_movements` only from the stock files, `audit_log` and `events` only from their own modules. Starts as a ratchet at today's count (like `rawRoleChecks`), never a rewrite | after E2, as one small PR |
 | EV-L3 | **Read tables only when slow.** A new summary table is added only when a screen is measurably slow (the `pg_stat_statements` card exists), refreshed by the worker, following `sales_daily` | when a screen needs it |
 
+### Later queues for the worker (from the second review, 2026-11-12)
+
+A second shared conversation (project note `kafka-rabbitmq-pgextensions-review-2026-11-12.md`) reached the same conclusion: no Kafka or RabbitMQ, PostgreSQL with pg-boss, money writes inside the transaction. It adds these queue ideas. None is built in this batch; each starts with its own roadmap entry.
+
+| Queue idea | Roadmap | Note |
+|---|---|---|
+| Route optimization (VROOM) for big days only | delivery planner, F7 | Moving one stop stays synchronous; 80 stops across vehicles is a job. Ten quick edits should make one run (pg-boss singleton keys drop duplicates; verify) |
+| Cheque and invoice OCR | F1 | Slow and failure-prone, the clearest queue case |
+| Photo processing (thumbnail, compression, orphan cleanup) | storages | `storage_jobs` can move onto pg-boss later |
+| Bank statement import | F10 | Parse, match, propose, a person reviews exceptions |
+| Offline post-sync work (notices, recalculation, conflict analysis) | F13, F105 | The write itself stays synchronous |
+
+**When to split the worker into its own process:** the first time a job is CPU-heavy (OCR, a large export, an 80-stop optimization) and could slow web requests on the same small server. Handlers do not change; the split needs a build step so the worker can import `lib/**`. `pg_cron` and `pgmq` are not adopted: pg-boss already schedules and queues.
+
 ## 6. Where it sits on the roadmap
 
 - `docs/roadmap.md` §1 «Platform, security and administration» gets the new group «Events, worker and audit (2026-11-12)» with E1 to E5, EV-L1 to EV-L3.
