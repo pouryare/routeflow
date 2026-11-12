@@ -1,6 +1,6 @@
 # Events, outbox, worker and audit: plan
 
-_Plan, 2026-11-12. Requested by the owner after reviewing a long discussion on audit logs, event-driven design, event sourcing, the transactional outbox, pragmatic DDD and CQRS. The owner asked for everything in the review's «adopt» and «later» lists, and for none of the «skip» list. **Nothing is built yet.** One question is open (section 9)._
+_Plan, 2026-11-12. Requested by the owner after reviewing a long discussion on audit logs, event-driven design, event sourcing, the transactional outbox, pragmatic DDD and CQRS. The owner asked for everything in the review's «adopt» and «later» lists, and for none of the «skip» list. **Nothing is built yet.** The one question (worker library) is answered: pg-boss (section 9)._
 
 Review note with the full comparison: `notes/event-architecture-review-2026-11-12.md` in the project files.
 
@@ -81,7 +81,7 @@ Order matters: E1 is a small fix for the live server; E2 makes events safe; E3 b
 
 **Placement (decided by me, small and reversible): inside the app process first.** The release is a `.next/standalone` bundle, and handlers are TypeScript in `lib/repo`; a separate process would need its own build and a second systemd unit. `instrumentation.ts` already resumes lead imports at boot, so the worker starts there (Node runtime only). It can move to its own unit later without changing handlers. Safe with two app servers because jobs are claimed with `SKIP LOCKED`.
 
-**Library: open question 1 (section 9).** Recommended: `pg-boss`. Facts checked 2026-11-12: version 12.38.2, MIT, last modified 2026-11-10, needs Node 22.12 or newer (the app is on Node 24). It keeps its own `pgboss` schema in our database.
+**Library: pg-boss (owner, 2026-11-12, section 9).** Facts checked 2026-11-12: version 12.38.2, MIT, last modified 2026-11-10, needs Node 22.12 or newer (the app is on Node 24). It keeps its own `pgboss` schema in our database.
 
 **What:**
 1. Jobs: `events.drain` (E2's drain, so a retry is automatic), `rules.sweep` (every 5 minutes, replaces E1's timer), `notifications.flush`; the nightly archive and storage sweeps may move across later, one at a time. Future: exports (E7), SMS (Farazsms), Telegram, statements (F18).
@@ -140,6 +140,6 @@ E1, E2, E3 and E5 have no screen except the status card. E4 adds the history lis
 
 ## 9. Questions
 
-1. **Worker library** (open, one decision card): pg-boss, or a small queue of our own on the `events` table. Answer is recorded in decisions 10.22 and `TODO-REPORT.md`.
+1. **Worker library: answered 2026-11-12, pg-boss** (against a small queue of our own on the `events` table). Recorded in decisions 10.22.
 
 Everything else in this plan is a small, reversible choice made here: worker inside the app process first; E2 before E3 so the worker has safe events to read; audit first slice without anomaly rules.

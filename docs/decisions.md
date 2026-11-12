@@ -60,7 +60,7 @@ The PostgreSQL rows here are now decided (10.1). The plan is phased: P1 an async
 | PostgreSQL, self-hosted, with `wal_level = logical`, PostGIS, `pg_trgm`, `btree_gist` and `pg_stat_statements` | everything; geofencing (F38), rep map (F68), mileage (F103), search (F98, F148, F10, F3) | with the move |
 | Row-level security keyed on a per-transaction organisation setting; the same setting feeds one audit trigger | tenant safety now and when a second company arrives; F27, F73, F99, F100, F111 | with the move (`organization_id` already exists on the tenant tables) |
 | `pg` with Kysely (types generated from the database) and plain SQL migration files; not Prisma | everything | with the move |
-| A pg-boss worker process: retries, schedules, jobs enqueued in the same transaction as the write (planned 2026-11-12 as EV3, started inside the app process; library still open, see 10.22) | sweeps, F16, F18, F67, F79, F127, F138 | Wave 1 |
+| A pg-boss worker process: retries, schedules, jobs enqueued in the same transaction as the write (chosen again by the owner 2026-11-12; planned as EV3, started inside the app process, see 10.22) | sweeps, F16, F18, F67, F79, F127, F138 | Wave 1 |
 | Real Postgres in tests, one template database per test file | the database tests | with the move |
 | Backups with point-in-time restore (pgBackRest or WAL-G) and an encrypted off-site copy; self-hosted error tracking and uptime check | F34, F108, F138 | with the move, early |
 | S3-compatible object storage, self-hosted | F1, F17, F26, F34, F147 | first wave that stores files |
@@ -452,7 +452,7 @@ The owner reviewed a long discussion on audit logs, event-driven design, event s
 |---|---|---|
 | Rules timer every 5 minutes (systemd) | Adopt now; replaced by a worker schedule later | EV1 |
 | An event is saved in the same transaction as its change, handled right after commit, and picked up again if the process died in between | Adopt | EV2 |
-| Background worker for reactions that may be late (notices, push, SMS, Telegram, analytics, exports) | Adopt; starts inside the app process, because the release is a standalone bundle. **Library open:** pg-boss 12.38.2 (MIT, Node 22.12 or newer) against a small queue of our own on `events` | EV3 |
+| Background worker for reactions that may be late (notices, push, SMS, Telegram, analytics, exports) | Adopt; starts inside the app process, because the release is a standalone bundle. **Library: pg-boss** (owner, 2026-11-12; 12.38.2, MIT, Node 22.12 or newer), chosen over a small queue of our own on `events` | EV3 |
 | One audit record (`audit_log`) by a generic trigger, first slice of F27 | Adopt | EV4 |
 | An event list document with a test | Adopt | EV5 |
 | Funnel reports from history; table-write ownership checks; read tables only when slow | Later | EV-L1 to EV-L3 |
