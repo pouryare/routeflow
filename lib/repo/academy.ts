@@ -5,6 +5,7 @@ import type { Session } from "@/lib/session";
 import { MANAGE_ROLES, isOwner } from "@/lib/roles";
 import { makeRepo } from "./base";
 import { stringAgg } from "@/lib/database/dialect";
+import { companyLessonId, companySlug, listCategories, listCompanyLessons, stillDone, canEditLesson, type LessonRow } from "./academyLessons";
 
 export class AcademyError extends Error {}
 
@@ -111,6 +112,10 @@ export interface AcademyModule {
   status: string;
   /** F133: roles that must finish this lesson. Absent or empty: optional for everyone. */
   required_for?: string[];
+  /** The heading it sits under on the Academy page. */
+  category_fa?: string;
+  /** Roles the lesson is shown to; absent means everyone. */
+  audience?: string[];
 }
 
 export function academyManifest(): AcademyModule[] {
@@ -132,26 +137,91 @@ export function lessonBody(slug: string): string | null {
 }
 
 export async function markLessonDone(organizationId: number, userId: number, lessonSlug: string): Promise<void> {
-  await getDb()
+  const db = getDb();
+  let versionRead = 1;
+  const lessonId = companyLessonId(lessonSlug);
+  if (lessonId !== null) {
+    const l = (await db.prepare("SELECT version FROM academy_lessons WHERE id = ? AND organization_id = ? AND status = 'published'").get(lessonId, organizationId)) as { version: number } | undefined;
+    if (!l) throw new AcademyError("درس پیدا نشد");
+    versionRead = Number(l.version);
+  } else if (!academyManifest().some((m) => m.slug === lessonSlug)) {
+    throw new AcademyError("درس پیدا نشد");
+  }
+  await db
     .prepare(
-      `INSERT INTO lesson_progress (organization_id, user_id, lesson_slug, completed_at)
-       VALUES (?, ?, ?, ?)
-       ON CONFLICT (organization_id, user_id, lesson_slug) DO UPDATE SET completed_at = excluded.completed_at`
+      `INSERT INTO lesson_progress (organization_id, user_id, lesson_slug, completed_at, version_read)
+       VALUES (?, ?, ?, ?, ?)
+       ON CONFLICT (organization_id, user_id, lesson_slug)
+       DO UPDATE SET completed_at = excluded.completed_at, version_read = excluded.version_read`
     )
-    .run(organizationId, userId, lessonSlug, new Date().toISOString());
+    .run(organizationId, userId, lessonSlug, new Date().toISOString(), versionRead);
 }
 
 export async function lessonProgress(
   organizationId: number,
   userId: number
-): Promise<{ lesson_slug: string; completed_at: string }[]> {
+): Promise<{ lesson_slug: string; completed_at: string; version_read: number }[]> {
   return plain(
     await getDb()
       .prepare(
-        "SELECT lesson_slug, completed_at FROM lesson_progress WHERE organization_id = ? AND user_id = ?"
+        "SELECT lesson_slug, completed_at, version_read FROM lesson_progress WHERE organization_id = ? AND user_id = ?"
       )
-      .all(organizationId, userId) as unknown as { lesson_slug: string; completed_at: string }[]
+      .all(organizationId, userId) as unknown as { lesson_slug: string; completed_at: string; version_read: number }[]
   );
+}
+
+/** One row of the Academy page: a shipped lesson or a company lesson, with this person's state on it. */
+export interface AcademyItem {
+  slug: string;
+  title: string;
+  /** "RouteFlow" lessons ship with the app; "company" lessons were written by this company. */
+  layer: "routeflow" | "company";
+  category: string;
+  required: boolean;
+  done: boolean;
+  /** Finished once, but the lesson changed since and the author asked for a re-read, or it changed at all. */
+  updated: boolean;
+  draft: boolean;
+  /** Required and not done: the day it was due (ISO date), when the author set a deadline. */
+  dueOn: string | null;
+  canEdit: boolean;
+  /** The company lesson's own id, for the editor. */
+  id: number | null;
+}
+
+const addDays = (iso: string, days: number) => new Date(Date.parse(iso) + days * 86_400_000).toISOString().slice(0, 10);
+
+/** Everything the Academy page lists for this person, shipped lessons first, then each company category. */
+export async function academyOverview(session: Session): Promise<AcademyItem[]> {
+  const progress = new Map((await lessonProgress(session.organizationId, session.user.id)).map((p) => [p.lesson_slug, p]));
+  const out: AcademyItem[] = [];
+  const held = (roles: string[]) => roles.some((r) => session.hasRole(r as never));
+  for (const m of academyManifest()) {
+    if (m.audience && m.audience.length > 0 && !isOwner(session.role) && !held(m.audience)) continue;
+    const p = progress.get(m.slug);
+    out.push({
+      slug: m.slug, title: m.title_fa, layer: "routeflow", category: m.category_fa ?? "درس‌ها",
+      required: held(m.required_for ?? []), done: !!p, updated: false, draft: false, dueOn: null, canEdit: false, id: null,
+    });
+  }
+  const categories = new Map((await listCategories(session.organizationId)).map((c) => [c.id, c]));
+  const lessons = await listCompanyLessons(session);
+  const order = [...categories.keys()];
+  lessons.sort((a, b) => (order.indexOf(a.category_id ?? -1) + 1 || 999) - (order.indexOf(b.category_id ?? -1) + 1 || 999) || a.id - b.id);
+  for (const l of lessons) {
+    const p = progress.get(companySlug(l.id));
+    const roles = l.roles ? l.roles.split(",") : [];
+    const required = l.status === "published" && Boolean(l.required) && held(roles);
+    const done = !!p && stillDone(l, Number(p.version_read));
+    out.push({
+      slug: companySlug(l.id), title: l.title, layer: "company",
+      category: l.category_id ? categories.get(l.category_id)?.title ?? "درس‌های شرکت" : "درس‌های شرکت",
+      required, done, updated: !!p && Number(p.version_read) < Number(l.version), draft: l.status === "draft",
+      dueOn: required && !done && l.due_days ? addDays(session.user.created_at, Number(l.due_days)) : null,
+      canEdit: canEditLesson(session, l), id: l.id,
+    });
+  }
+  return out;
 }
 
 export interface TrainingPerson {
@@ -168,7 +238,12 @@ export interface TrainingPerson {
  *  `required_for` list appear. */
 export async function trainingStatus(session: Session): Promise<{ lessons: AcademyModule[]; people: TrainingPerson[] } | null> {
   if (!MANAGE_ROLES.includes(session.role)) return null;
-  const lessons = academyManifest().filter((m) => (m.required_for ?? []).length > 0);
+  const company = (await listCompanyLessons(session)).filter((l) => l.status === "published" && l.required && l.roles);
+  const requiredCompany: AcademyModule[] = company.map((l) => ({
+    slug: companySlug(l.id), module: 0, title_fa: l.title, order: 1000 + l.id, status: "ready", required_for: l.roles.split(","),
+  }));
+  const rereads = new Map(company.map((l) => [companySlug(l.id), l as LessonRow]));
+  const lessons = [...academyManifest().filter((m) => (m.required_for ?? []).length > 0), ...requiredCompany];
   const roles = [...new Set(lessons.flatMap((m) => m.required_for ?? []))];
   if (lessons.length === 0 || roles.length === 0) return { lessons, people: [] };
   const db = getDb();
@@ -187,8 +262,10 @@ export async function trainingStatus(session: Session): Promise<{ lessons: Acade
   }[];
   const done = new Set(
     (await db
-      .prepare("SELECT user_id, lesson_slug FROM lesson_progress WHERE organization_id = ?")
-      .all(session.organizationId) as unknown as { user_id: number; lesson_slug: string }[]).map((r) => `${r.user_id}:${r.lesson_slug}`)
+      .prepare("SELECT user_id, lesson_slug, version_read FROM lesson_progress WHERE organization_id = ?")
+      .all(session.organizationId) as unknown as { user_id: number; lesson_slug: string; version_read: number }[])
+      .filter((r) => { const l = rereads.get(r.lesson_slug); return !l || stillDone(l, Number(r.version_read)); })
+      .map((r) => `${r.user_id}:${r.lesson_slug}`)
   );
   const people: TrainingPerson[] = [];
   for (const r of rows) {

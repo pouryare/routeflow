@@ -1,7 +1,10 @@
 "use client";
 
 import { FieldInput } from "@/components/FieldInput";
+import Link from "next/link";
 import { useMemo, useState } from "react";
+import type { AcademyItem } from "@/lib/repo/academy";
+import { faJalaliDate } from "@/lib/jalali";
 import { Icon } from "@/components/meridian/Icon";
 import { faNum } from "@/lib/format";
 import { outcomeLabel } from "@/lib/tasks/labels";
@@ -15,11 +18,6 @@ interface Card {
   title_fa: string;
   script_fa: string;
 }
-interface Module {
-  slug: string;
-  title_fa: string;
-  status: string;
-}
 
 /** /sales/academy as a learning path (item 23, the `onboarding` block family).
  *
@@ -29,25 +27,21 @@ interface Module {
  *  are, the next thing to do, the modules as numbered steps; then the objection library
  *  as expandable cards, labelled in Persian, searchable with the same normaliser as the
  *  rest of the app. */
-export default function AcademyPath({ cards, modules, done }: { cards: Card[]; modules: Module[]; done: string[] }) {
+export default function AcademyPath({ cards, items }: { cards: Card[]; items: AcademyItem[] }) {
   const [q, setQ] = useState("");
-  const [complete, setComplete] = useState<string[]>(done);
-  const [busy, setBusy] = useState<string | null>(null);
 
-  async function mark(slug: string) {
-    setBusy(slug);
-    const res = await fetch("/api/sales/academy/lessons", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ lesson_slug: slug }),
-    }).catch(() => null);
-    setBusy(null);
-    if (res?.ok) setComplete((c) => [...new Set([...c, slug])]);
-  }
-
-  const doneCount = modules.filter((m) => complete.includes(m.slug)).length;
-  const next = modules.find((m) => !complete.includes(m.slug)) ?? null;
-  const pct = modules.length ? Math.round((doneCount / modules.length) * 100) : 0;
+  const lessons = items.filter((i) => !i.draft);
+  const doneCount = lessons.filter((i) => i.done).length;
+  const next = lessons.find((i) => !i.done && i.required) ?? lessons.find((i) => !i.done) ?? null;
+  const pct = lessons.length ? Math.round((doneCount / lessons.length) * 100) : 0;
+  // Shipped lessons first, then the company's categories, each heading once, in the order given.
+  const sections = items.reduce<{ key: string; layer: AcademyItem["layer"]; category: string; rows: AcademyItem[] }[]>((acc, i) => {
+    const key = `${i.layer}:${i.category}`;
+    const sec = acc.find((x) => x.key === key);
+    if (sec) sec.rows.push(i);
+    else acc.push({ key, layer: i.layer, category: i.category, rows: [i] });
+    return acc;
+  }, []);
 
   const filtered = useMemo(
     () =>
@@ -70,9 +64,9 @@ export default function AcademyPath({ cards, modules, done }: { cards: Card[]; m
             مسیر یادگیری
           </h3>
           <p className="acad__muted">
-            {modules.length === 0
+            {lessons.length === 0
               ? "هنوز درسی تعریف نشده است."
-              : `${faNum(doneCount)} از ${faNum(modules.length)} درس تمام شده`}
+              : `${faNum(doneCount)} از ${faNum(lessons.length)} درس خوانده شده`}
           </p>
           <div className="acad__bar" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label="پیشرفت در مسیر">
             <span style={{ width: `${pct}%` }} />
@@ -80,47 +74,40 @@ export default function AcademyPath({ cards, modules, done }: { cards: Card[]; m
         </div>
         {next ? (
           <div className="acad__next">
-            <span className="acad__muted">درس بعدی</span>
-            <b>{next.title_fa}</b>
-            <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn solid" disabled={busy === next.slug} onClick={() => void mark(next.slug)}>
-              <Icon name="check" size="sm" /> تمام کردم
-            </button>
+            <span className="acad__muted">{next.required ? "درس اجباری بعدی" : "درس بعدی"}</span>
+            <b>{next.title}</b>
+            <Link href={`/sales/academy/lesson/${next.slug}`} className="inline-flex items-center justify-center gap-[var(--space-2)] btn solid">
+              <Icon name="arrow-left" size="sm" /> بخوانید
+            </Link>
           </div>
-        ) : modules.length > 0 ? (
+        ) : lessons.length > 0 ? (
           <div className="acad__next acad__next--done">
             <Icon name="flag" size="md" />
-            <b>همهٔ درس‌ها تمام شده است.</b>
+            <b>همهٔ درس‌ها را خوانده‌اید.</b>
           </div>
         ) : null}
       </section>
 
-      {modules.length > 0 ? (
-        <ol className="acad__steps" aria-label="درس‌ها">
-          {modules.map((m, i) => {
-            const isDone = complete.includes(m.slug);
-            const isNext = next?.slug === m.slug;
-            return (
-              <li key={m.slug} className={`acad__step${isDone ? " acad__step--done" : ""}${isNext ? " acad__step--next" : ""}`}>
-                <span className="acad__dot" aria-hidden="true">
-                  {isDone ? <Icon name="check" size="sm" /> : faNum(i + 1)}
-                </span>
-                <span className="acad__step-text">
-                  <b>{m.title_fa}</b>
-                  {m.status === "stub" ? <span className="acad__chip">در حال تدوین</span> : null}
-                </span>
-                {isDone ? (
-                  <span className="acad__muted">تمام شد</span>
-                ) : (
-                  <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn ghost" disabled={busy === m.slug} onClick={() => void mark(m.slug)}>
-                    <Icon name="check" size="md" />
-                    تمام کردم
-                  </button>
-                )}
+      {sections.map((sec) => (
+        <section key={sec.key} aria-label={sec.category}>
+          <h3 className="sechead__title sechead__title--minor">
+            {sec.category} <span className="acad__chip acad__chip--quiet">{sec.layer === "routeflow" ? "RouteFlow" : "شرکت"}</span>
+          </h3>
+          <ol className="acad__steps">
+            {sec.rows.map((m) => (
+              <li key={m.slug} className={`acad__step${m.done ? " acad__step--done" : ""}${next?.slug === m.slug ? " acad__step--next" : ""}`}>
+                <span className="acad__dot" aria-hidden="true">{m.done ? <Icon name="check" size="sm" /> : <Icon name="note" size="sm" />}</span>
+                <Link href={`/sales/academy/lesson/${m.slug}`} className="acad__step-text">
+                  <b>{m.title}</b>
+                  {m.required && !m.done ? <span className="acad__chip">اجباری{m.dueOn ? ` تا ${faJalaliDate(m.dueOn)}` : ""}</span> : null}
+                  {m.updated ? <span className="acad__chip">به‌روز شد</span> : null}
+                  {m.draft ? <span className="acad__chip acad__chip--quiet">پیش‌نویس</span> : null}
+                </Link>
               </li>
-            );
-          })}
-        </ol>
-      ) : null}
+            ))}
+          </ol>
+        </section>
+      ))}
 
       <section className="acad__library" aria-labelledby="acad-library">
         <div className="acad__library-head">

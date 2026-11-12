@@ -131,4 +131,8 @@ export const TENANT_TABLES = [
   "sales_daily_marks",
   /* The shared «who changed what» record, filled by triggers (docs/plans/event-architecture-2026-11-12.md E4). */
   "audit_log",
+  /* Company lessons and the pictures inside them and on products (AC1, VC1). */
+  "academy_categories",
+  "academy_lessons",
+  "content_images",
 ] as const satisfies readonly string[];

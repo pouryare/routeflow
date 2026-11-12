@@ -19,6 +19,33 @@ export type Generated<T> = T extends ColumnType<infer S, infer I, infer U>
 
 export type Timestamp = ColumnType<Date, Date | string, Date | string>;
 
+export interface AcademyCategories {
+  created_at: string;
+  id: Generated<number>;
+  organization_id: number;
+  sort_order: Generated<number>;
+  title: string;
+}
+
+export interface AcademyLessons {
+  body: Generated<string>;
+  category_id: number | null;
+  created_at: string;
+  created_by: number | null;
+  due_days: number | null;
+  group_id: number | null;
+  id: Generated<number>;
+  organization_id: number;
+  required: Generated<boolean>;
+  reread_version: Generated<number>;
+  roles: Generated<string>;
+  status: Generated<string>;
+  title: string;
+  updated_at: string;
+  updated_by: number | null;
+  version: Generated<number>;
+}
+
 export interface Accounts {
   active: Generated<number>;
   code: string;
@@ -244,6 +271,14 @@ export interface Contacts {
   role: Generated<string>;
   updated_at: string;
   whatsapp: string | null;
+}
+
+export interface ContentImages {
+  created_at: string;
+  created_by: number | null;
+  file_stem: string;
+  id: Generated<number>;
+  organization_id: number;
 }
 
 export interface CreditApprovals {
@@ -767,6 +802,7 @@ export interface LessonProgress {
   lesson_slug: string;
   organization_id: number;
   user_id: number;
+  version_read: Generated<number>;
 }
 
 export interface LiveConnections {
@@ -1817,6 +1853,7 @@ export interface Users {
   active: Generated<number>;
   avatar_stem: string | null;
   avatar_url: string | null;
+  can_teach: Generated<boolean>;
   created_at: string;
   display_name: string;
   group_id: number | null;
@@ -1885,6 +1922,8 @@ export interface WeatherSnapshots {
 }
 
 export interface DB {
+  academy_categories: AcademyCategories;
+  academy_lessons: AcademyLessons;
   accounts: Accounts;
   activities: Activities;
   activity_log: ActivityLog;
@@ -1901,6 +1940,7 @@ export interface DB {
   commission_tiers: CommissionTiers;
   company_domains: CompanyDomains;
   contacts: Contacts;
+  content_images: ContentImages;
   credit_approvals: CreditApprovals;
   crm_not_duplicates: CrmNotDuplicates;
   customer_tags: CustomerTags;

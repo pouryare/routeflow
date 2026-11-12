@@ -17,6 +17,7 @@ const TILE_CACHE = "map-tiles-v4";
 const DATA_CACHE = "map-data-v3";
 const GEOMETRY_CACHE = "map-geometry-v3";
 const VOICE_CACHE = "tutorial-voice-v1";
+const IMAGE_CACHE = "content-images-v1";
 const OFFLINE_URL = "/offline";
 
 self.addEventListener("install", (event) => {
@@ -31,7 +32,7 @@ self.addEventListener("activate", (event) => {
       .then((keys) =>
         Promise.all(
           keys
-            .filter((k) => ![SHELL_CACHE, TILE_CACHE, DATA_CACHE, GEOMETRY_CACHE, VOICE_CACHE].includes(k))
+            .filter((k) => ![SHELL_CACHE, TILE_CACHE, DATA_CACHE, GEOMETRY_CACHE, VOICE_CACHE, IMAGE_CACHE].includes(k))
             .map((k) => caches.delete(k))
         )
       )
@@ -203,6 +204,13 @@ self.addEventListener("fetch", (event) => {
   // may refuse; revisit if it shows on iPhones.
   if (url.pathname.startsWith("/tutorials/voice/") && url.pathname.endsWith(".mp3")) {
     event.respondWith(cacheFirst(new Request(request.url), VOICE_CACHE));
+    return;
+  }
+
+  // Lesson and product pictures never change under their address (a new picture is a new id), so a
+  // picture seen once shows again with no signal.
+  if (url.pathname.startsWith("/api/content-images/")) {
+    event.respondWith(cacheFirst(request, IMAGE_CACHE));
     return;
   }
 

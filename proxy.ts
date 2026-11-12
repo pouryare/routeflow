@@ -259,6 +259,8 @@ export function proxy(req: NextRequest) {
     // Phase 8: the objection library is useful at the door.
     pathname.startsWith("/sales/academy") ||
     pathname.startsWith("/api/sales/academy") ||
+    // Lesson and product pictures, read by every role.
+    pathname.startsWith("/api/content-images") ||
     // Notifications Phase 2: a driver receives delivery.failed and task.assigned, so they
     // own the same opt-in matrix, quiet hours and device linking as everyone else. Every
     // one of these routes already scopes to the caller's own session.

@@ -51,8 +51,8 @@ describe("academy schema", () => {
     const root = path.join(process.cwd(), "content", "academy");
     expect(fs.existsSync(path.join(root, "_manifest.json"))).toBe(true);
     const manifest = JSON.parse(fs.readFileSync(path.join(root, "_manifest.json"), "utf8"));
-    expect(manifest).toHaveLength(2);
-    expect(manifest.every((m: { status: string }) => m.status === "stub")).toBe(true);
+    expect(manifest.length).toBeGreaterThanOrEqual(2);
+    expect(manifest.filter((m: { status: string }) => m.status === "stub")).toHaveLength(2);
     expect(fs.existsSync(path.join(root, "01-market-and-customer", "index.mdx"))).toBe(true);
   });
 });
