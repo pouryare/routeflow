@@ -633,6 +633,25 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
 
   </details>
 
+- **AC1 to AC6. Academy with company lessons.** Lessons shipped with the app (general and app related) plus lessons each company writes in its own categories; reader, editor, required per role, manager table, links to tutorials and product pages. Van roles reach it from a card on `/driver`.
+  <details><summary>Full decision</summary>
+
+  **Academy now (owner, 2026-11-12; plan `docs/plans/academy-catalogue-independence-2026-11-12.md`).** Two layers on one screen: «RouteFlow» lessons shipped as files (about 10 in Persian, drafted by the agent, reviewed by the owner: AC5) and «شرکت» lessons stored per company in categories the company creates (AC1, AC2). Editor `/sales/academy/manage` (AC3) for the owner, managers (own group) and any «مربی» (trainer), a permission the owner can give to anyone. Required per role with days after hire, the F133 table includes company lessons, «به‌روز شد» when a lesson changes (AC4). Links with tutorials, objection cards and product pages (AC6). **No new library:** plain text with headings and photos, photos in the company's storage. **Quizzes are the next slice** (AC-L1); the first slice ends a lesson with «خواندم».
+
+  </details>
+- **VC1 to VC4. Catalogue for van roles.** A page for `field_rep` and `delivery_driver`: search, category chips, photo, packings, this shop's price, stock on the van (approximate), add to order, show to the customer, save as picture or PDF. Product information (photos, category, three selling points, a «how to say it» line) is edited by owner and managers.
+  <details><summary>Full decision</summary>
+
+  **Catalogue now (owner, 2026-11-12).** Today `/sales/products` sends van roles to `/driver`, so they have no catalogue, and a product has no photo or description. **Both, in two steps:** step 1 takes orders for later with van stock shown as approximate (VC1 to VC3b); step 2 sells from van stock at the door once van loading (F30) exists, with samples (F52) (VC4). Cost and margin are never sent to van roles. The first version shows or saves the price list; sending it to the shop waits for the message channel (F6, F79). Needs a check that the van screens read the catalogue offline (F75).
+
+  </details>
+- **OI1 to OI3. Operational independence.** Manager view of each new hire's tutorials and required lessons (OI1), a first-week checklist per role as an Academy category (OI2), a one-page «if X breaks, read Y» runbook index (OI3). With F59 handover, T13 lend and S23 cover, which keep their own entries. Practice mode (F39) is later.
+  <details><summary>Full decision</summary>
+
+  **Owner, 2026-11-12:** plan everything good from the shared «Systematize RouteFlow Operations» chat. Goal: a new person, or someone covering for an absent colleague, can work from the app alone. The pieces and their order are in the plan. F59 needs the audit record (EV4). F39: design not decided, later (a practice order must never message a real customer).
+
+  </details>
+
 ### Messaging, chat and telephony
 
 - **FB9. Internal chat, phase 1: threads on orders and customers.** A native chat, no outside server. Phase 1 is a thread on every order and customer. The owner may read any 1:1 or group chat and members see a notice.
@@ -1082,6 +1101,8 @@ A suggestion in waves. Within a wave the order is flexible; across waves it foll
 
 **Wave 3 — delivery and stock.** F57 (time windows), F69 (instructions), F17 → F120 (proof and codes), F80 → F119 (returns), F30 → F94 and F93 (loading and bins), F66 → F87/F118/F121, F81 (capacity warning).
 
+**Wave 2b — people and content (2026-11-12).** S23 and OI3 (no prerequisite); AC1 → AC2 → AC5 → AC3 → AC4 (Academy); VC1 → VC2 → VC3 (van catalogue); after EV4: F59 → T13; OI1 and OI2 after AC4; later AC-L1, VC4 (with F30) and F39.
+
 **Wave 4 — heavier or external.** F4 (telephony), F10 (bank formats), F1 (OCR), F13/F105 (more offline), F126/F127 (tenant tooling), F139 (carriers), F124/F143 (Telegram bot and approvals), F14/F123 (report builders).
 
 ### 6.4 Claims not yet verified
@@ -1095,7 +1116,8 @@ Statements in the entries that I could not confirm from the code. Check them bef
 - F69: whether the driver stop card shows customer or order notes.
 - F71: who can set `blocked` and whether it stops order entry.
 - F73: how a confirmed order is edited.
-- F75: whether the sales screens read the catalogue offline.
+- F75: whether the sales screens read the catalogue offline (VC2 needs the answer).
+- AC1: that `lesson_progress` can carry the lesson kind and version without a data move; AC3: that a «مربی» flag fits the role checks without a new role. VC1: that product photos can serve small thumbnails.
 - F97: whether run planning fills the vehicle on each run (a code comment says it does not; the column exists).
 - F102: whether orders awaiting review appear in a decision deck.
 - F113: gestures need testing on real phones; not possible in the build container.

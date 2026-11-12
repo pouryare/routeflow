@@ -464,3 +464,19 @@ The owner reviewed a long discussion on audit logs, event-driven design, event s
 **Second review, same day** (a shared conversation «Kafka RabbitMQ Or None»): same conclusion, no Kafka or RabbitMQ, PostgreSQL with pg-boss. Kept our difference: the worker starts inside the app process and moves to its own process when the first CPU-heavy job (OCR, large export, 80-stop route optimization) arrives. Not adopted: `pg_cron` (pg-boss schedules), `pgmq` (pg-boss chosen), `pg_uuidv7` (PostgreSQL 18 has `uuidv7()`). Already installed: PostGIS, `pg_trgm`, `btree_gist`, `pg_stat_statements`, `pg_duckdb`. End-to-end encryption for the planned chat would break the decision that the owner may read any chat (FB9) and rule out server-side search and `pgvector` on that text; reopen FB9 first if E2EE is wanted.
 
 **Existing-solutions search (CLAUDE.md rule).** Worker: pg-boss (chosen in 10.2 on 2026-10-23), Graphile Worker, BullMQ (needs Redis, rejected in 10.6), `node-cron` (schedules only), or our own small queue (`storage_jobs` and the lead-import runner are already two hand-rolled ones). Audit: no library; a generic trigger is a few dozen lines of SQL. Event list: no library.
+
+### 10.23 Academy, van catalogue and operational independence (2026-11-12, owner decision)
+
+Plan: [`docs/plans/academy-catalogue-independence-2026-11-12.md`](plans/academy-catalogue-independence-2026-11-12.md). Roadmap: AC1 to AC6, AC-L1, VC1 to VC4, OI1 to OI3, with F59, T13, S23 and F39.
+
+| Choice | Decision |
+|---|---|
+| Academy content | Two layers: lessons shipped with the app (general and app related, the same for every company) and lessons each company writes in categories of its own, stored per company |
+| Who writes company lessons | Owner; managers for their own group; any «مربی» (trainer), a permission the owner gives to anyone |
+| Quizzes | Next slice; the first slice ends a lesson with «خواندم» |
+| Van catalogue | A page for `field_rep` and `delivery_driver`. Step 1 takes orders for later (van stock shown as approximate); step 2 sells from van stock once van loading (F30) exists |
+| Libraries | None added: plain text editor with headings and photos, photos in the company's own storage and the existing photo viewer, price list saved with the browser print already in use. A rich-text library (for example TipTap) was left out on purpose |
+| Practice mode (F39) | Later; design not decided |
+| Handover, lend, cover | Planned (F59, T13, S23); F59 waits for the audit record EV4 |
+
+**Existing-solutions search (CLAUDE.md rule).** Done in the plan, section 6. The owner chose to build with what the repo has.
