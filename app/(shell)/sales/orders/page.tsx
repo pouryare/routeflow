@@ -93,6 +93,16 @@ function barsFor(seed: number, total: number): [number, number, number, number] 
   return out as [number, number, number, number];
 }
 
+/** FB4: say how many orders the filters hide, and offer to clear them. */
+function HiddenNote({ hidden, clearHref }: { hidden: number; clearHref: string }) {
+  return (
+    <p className="m-0 mt-2 text-[length:var(--text-sm)] text-[var(--muted)]">
+      {faNum(hidden)} سفارش با این فیلتر دیده نمی‌شود.{" "}
+      <Link href={clearHref} className="text-[var(--accent-text)]">پاک کردن فیلتر</Link>
+    </p>
+  );
+}
+
 /** «فهرست» — the pocket list, which is what this route always showed. */
 function ListView({
   orders,
@@ -169,12 +179,7 @@ function ListView({
 
       <div className="kblock__body">
         <OrderFilters reps={reps} views={views} />
-        {(filtered || range) && totalCount > orders.length ? (
-          <p className="m-0 mt-2 text-[length:var(--text-sm)] text-[var(--muted)]">
-            {faNum(totalCount - orders.length)} سفارش با این فیلتر دیده نمی‌شود.{" "}
-            <Link href={focused ? `/sales/orders?customer=${focused.id}` : "/sales/orders"} className="text-[var(--accent-text)]">پاک کردن فیلتر</Link>
-          </p>
-        ) : null}
+        {(filtered || range) && totalCount > orders.length ? <HiddenNote hidden={totalCount - orders.length} clearHref={focused ? `/sales/orders?customer=${focused.id}` : "/sales/orders"} /> : null}
       </div>
       {bounds && <OrderAmountFilter key={range ? range.join("-") : "all"} bounds={bounds} active={range} amounts={amounts} />}
 

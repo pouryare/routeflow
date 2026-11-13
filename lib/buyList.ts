@@ -3,7 +3,7 @@
  *  goes in a group of its own, "no supplier yet". */
 export interface BuyProduct { productId: number; name: string; unit: string; onHand: number; reorderPoint: number | null; target: number | null; sellOff: boolean }
 export interface BuyPrice { supplierId: number; supplier: string; productId: number; price: number; minQty: number | null; deliveryDays: number | null }
-export interface BuyLine { productId: number; name: string; unit: string; qty: number; price: number | null; deliveryDays: number | null }
+interface BuyLine { productId: number; name: string; unit: string; qty: number; price: number | null; deliveryDays: number | null }
 export interface BuyGroup { supplierId: number | null; supplier: string; lines: BuyLine[]; totalToman: number }
 
 export function buyQty(p: BuyProduct, minQty: number | null): number {
