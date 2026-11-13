@@ -130,6 +130,22 @@ async function networkFirstShell(request) {
   }
 }
 
+// A page asks the worker to keep a copy of some pages for the day without a signal (the van catalogue is warmed
+// from /driver, so it opens offline even if it was never visited). Same-origin paths only.
+self.addEventListener("message", (event) => {
+  const d = event.data;
+  if (!d || d.type !== "warm" || !Array.isArray(d.urls)) return;
+  event.waitUntil(
+    caches.open(SHELL_CACHE).then((cache) =>
+      Promise.all(
+        d.urls
+          .filter((u) => typeof u === "string" && u.startsWith("/") && !u.startsWith("//"))
+          .map((u) => fetch(u, { credentials: "same-origin" }).then((r) => (r.ok && !r.redirected ? cache.put(u, r) : undefined)).catch(() => undefined)),
+      ),
+    ),
+  );
+});
+
 self.addEventListener("push", (event) => {
   let data = { title: "یادآوری", body: "یک یادآوری معوق دارید.", url: "/" };
   try {

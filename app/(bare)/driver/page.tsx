@@ -23,6 +23,7 @@ import SectionHead from "@/components/meridian/SectionHead";
 import { isVanRole } from "@/lib/roles";
 import NotAVanNotice from "@/components/meridian/NotAVanNotice";
 import DriverLinks from "@/components/driver/DriverLinks";
+import WarmOffline from "@/components/driver/WarmOffline";
 import FirstStepsCard from "@/components/tutorials/FirstStepsCard";
 import { driverLinks } from "@/lib/driverLinks";
 
@@ -32,6 +33,9 @@ import LiveRefresh from "@/components/LiveRefresh";
 export const metadata: Metadata = { title: "مسیر امروز" };
 
 export const dynamic = "force-dynamic";
+
+/** Pages kept for the day without a signal. */
+const WARM = ["/sales/catalogue"];
 
 /** Phase 6: one line of weather from the run's frozen forecast, or null. */
 function weatherLine(run: { weather_json?: string | null }): string | null {
@@ -123,6 +127,7 @@ export default async function DriverPage() {
           </button>
         </form>
       </header>
+      <WarmOffline urls={WARM} />
       <DriverLinks links={driverLinks(session)} />
       <FirstStepsCard />
 
