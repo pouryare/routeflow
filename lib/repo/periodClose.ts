@@ -1,7 +1,7 @@
 import { getDb } from "@/lib/db";
 import { jalaliMonthLength, jalaliToIsoDate, todayJalali } from "@/lib/jalali";
 import { LedgerError } from "@/lib/repo/ledgerCore";
-import { mayClose, reopenProblem } from "@/lib/periodClose";
+import { mayClose, reopenProblem, openRangeProblem, OPENING_HOURS } from "@/lib/periodClose";
 
 export interface CloseChecklist {
   /** Orders of that month still waiting (draft, review, credit hold). */
@@ -60,4 +60,19 @@ export async function reopenPeriod(organizationId: number, periodKey: string, by
     .prepare("UPDATE fiscal_periods SET status = 'open', reopen_reason = ?, reopened_at = ?, reopened_by = ? WHERE organization_id = ? AND period_key = ? AND status = 'closed'")
     .run(reason.trim(), new Date().toISOString(), by, organizationId, periodKey);
   if (!res.changes) throw new LedgerError("این ماه بسته نیست");
+}
+
+/** B2: open days fromDay..toDay of a closed month for OPENING_HOURS hours. Logged by the row itself (who, when, why). */
+export async function openRange(organizationId: number, periodKey: string, fromDay: number, toDay: number, by: number, reason: string): Promise<void> {
+  const problem = reopenProblem(reason);
+  if (problem) throw new LedgerError(problem);
+  const closed = await getDb().prepare("SELECT 1 AS ok FROM fiscal_periods WHERE organization_id = ? AND period_key = ? AND status = 'closed'").get(organizationId, periodKey);
+  if (!closed) throw new LedgerError("این ماه بسته نیست");
+  const [jy, jm] = periodKey.split("-").map(Number);
+  const rangeProblem = openRangeProblem(fromDay, toDay, jalaliMonthLength(jy, jm));
+  if (rangeProblem) throw new LedgerError(rangeProblem);
+  const now = new Date();
+  await getDb()
+    .prepare("INSERT INTO period_openings (organization_id, period_key, from_date, to_date, reason, opened_by, opened_at, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
+    .run(organizationId, periodKey, jalaliToIsoDate(jy, jm, fromDay), jalaliToIsoDate(jy, jm, toDay), reason.trim(), by, now.toISOString(), new Date(now.getTime() + OPENING_HOURS * 3_600_000).toISOString());
 }

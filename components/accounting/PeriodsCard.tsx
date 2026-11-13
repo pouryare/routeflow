@@ -6,11 +6,13 @@ import SectionHead from "@/components/meridian/SectionHead";
 import { Icon } from "@/components/meridian/Icon";
 import BottomSheet from "@/components/mobile/BottomSheet";
 import { ChipGroup } from "@/components/mobile/ChipGroup";
-import { FieldArea } from "@/components/FieldInput";
+import { FieldArea, FieldInput } from "@/components/FieldInput";
 import { GoButton } from "@/components/tapflow/Answer";
 import { friendlyError } from "@/lib/userMessage";
 import { faDigits, faNum } from "@/lib/format";
 import { mayClose } from "@/lib/periodClose";
+
+const latin = (v: string) => v.replace(/[۰-۹]/g, (d) => String("۰۱۲۳۴۵۶۷۸۹".indexOf(d)));
 
 interface Period { periodKey: string; status: "open" | "closed" }
 
@@ -22,6 +24,9 @@ export default function PeriodsCard({ periods, currentKey }: { periods: Period[]
   const [list, setList] = useState<{ waitingOrders: number; onTheRoad: number; needsAttention: number } | null>(null);
   const [counted, setCounted] = useState<string[]>([]);
   const [reason, setReason] = useState("");
+  const [days, setDays] = useState(false); // B2: open only a few days of the closed month
+  const [fromDay, setFromDay] = useState("");
+  const [toDay, setToDay] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -29,6 +34,9 @@ export default function PeriodsCard({ periods, currentKey }: { periods: Period[]
     setTarget(p);
     setError(null);
     setReason("");
+    setDays(false);
+    setFromDay("");
+    setToDay("");
     setCounted([]);
     setList(null);
     if (p.status === "open") {
@@ -41,7 +49,7 @@ export default function PeriodsCard({ periods, currentKey }: { periods: Period[]
     if (!target) return;
     setBusy(true);
     setError(null);
-    const res = await fetch("/api/accounting/periods", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ period: target.periodKey, action: target.status === "open" ? "close" : "reopen", reason }) }).catch(() => null);
+    const res = await fetch("/api/accounting/periods", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ period: target.periodKey, action: target.status === "open" ? "close" : days ? "open_range" : "reopen", reason, fromDay: Number(latin(fromDay)), toDay: Number(latin(toDay)) }) }).catch(() => null);
     const j = (await res?.json().catch(() => ({}))) as { error?: string } | undefined;
     setBusy(false);
     if (res?.ok) {
@@ -79,7 +87,16 @@ export default function PeriodsCard({ periods, currentKey }: { periods: Period[]
               <ChipGroup wrap group={{ id: "counted", label: "فهرست", mode: "multi", value: counted, onChange: (v) => setCounted(v as string[]), options: [{ id: "cash", label: "صندوق را شمرده‌ام" }] }} />
             </>
           ) : (
+            <>
+              <ChipGroup wrap group={{ id: "scope", label: "چه مقدار باز شود", mode: "single", value: days ? "days" : "all", onChange: (v) => setDays(v === "days"), options: [{ id: "all", label: "کل ماه" }, { id: "days", label: "فقط چند روز (تا فردا)" }] }} />
+              {days ? (
+                <div className="flex gap-[var(--space-2)]">
+                  <FieldInput inputMode="numeric" value={fromDay} onChange={(e) => setFromDay(e.target.value)} placeholder="از روز" aria-label="از روز" className="w-full" />
+                  <FieldInput inputMode="numeric" value={toDay} onChange={(e) => setToDay(e.target.value)} placeholder="تا روز" aria-label="تا روز" className="w-full" />
+                </div>
+              ) : null}
             <FieldArea value={reason} onChange={(e) => setReason(e.target.value)} rows={2} className="w-full resize-none text-[length:var(--text-base)]" placeholder="دلیل بازکردن ماه" />
+            </>
           )}
           {error ? <p className="m-0 text-[length:var(--text-sm)]" style={{ color: "var(--danger)" }}>{error}</p> : null}
           <GoButton icon={closing ? "archive" : "undo"} isDisabled={busy || (closing ? list === null || counted.length === 0 : reason.trim() === "")} onPress={() => void save()}>{closing ? "ماه را ببند" : "ماه را باز کن"}</GoButton>

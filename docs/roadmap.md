@@ -419,6 +419,7 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
   <details><summary>Full decision</summary>
 
   **Open a date range in a closed month (B2, extends A2).** The owner opens one date range with a reason; it closes again by itself after a set time. Logged. A2 stays one lock for all areas.
+  **Built (batch C):** in the «بازکردن» sheet of a closed month, «فقط چند روز» takes a from-day and to-day and a reason (with the authenticator code); entries dated in those days are accepted for 24 hours, then the month is closed again by itself. Table `period_openings` keeps who, when and why. Z7 is built too: the close checklist counts expenses with no receipt or note.
 
   </details>
 - **Z7. Needs attention.** A filter chip for entries with no photo, note or supplier; the month-close checklist shows the count. Partly built 2026-11-05: the «نیاز به بررسی» chip on recent expenses; the month-close count waits for A2.

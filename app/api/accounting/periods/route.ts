@@ -3,7 +3,7 @@ import { requireRole } from "@/lib/session";
 import { OWNER_ROLES } from "@/lib/roles";
 import { guardStepUp } from "@/lib/repo/stepUp";
 import { LedgerError } from "@/lib/repo/ledgerCore";
-import { closeChecklist, closePeriod, reopenPeriod } from "@/lib/repo/periodClose";
+import { closeChecklist, closePeriod, reopenPeriod, openRange } from "@/lib/repo/periodClose";
 
 const KEY = /^\d{4}-\d{2}$/;
 
@@ -16,17 +16,21 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({ ok: true, checklist: await closeChecklist(guard.session.organizationId, period) });
 }
 
-/** A2: { period, action: "close" | "reopen", reason? }. Reopening asks for the authenticator code and a reason. */
+/** A2: { period, action: "close" | "reopen" | "open_range", reason?, fromDay?, toDay? }. Reopening asks for the authenticator code and a reason. */
 export async function POST(req: NextRequest) {
   const guard = await requireRole(req, OWNER_ROLES);
   if (!guard.ok) return guard.response;
-  const body = (await req.json().catch(() => null)) as { period?: unknown; action?: unknown; reason?: unknown } | null;
-  if (typeof body?.period !== "string" || !KEY.test(body.period) || (body.action !== "close" && body.action !== "reopen")) {
+  const body = (await req.json().catch(() => null)) as { period?: unknown; action?: unknown; reason?: unknown; fromDay?: unknown; toDay?: unknown } | null;
+  if (typeof body?.period !== "string" || !KEY.test(body.period) || (body.action !== "close" && body.action !== "reopen" && body.action !== "open_range")) {
     return NextResponse.json({ ok: false, error: "درخواست نامعتبر است" }, { status: 400 });
   }
   try {
     if (body.action === "close") await closePeriod(guard.session.organizationId, body.period, guard.session.user.id);
-    else {
+    else if (body.action === "open_range") {
+      const stepUp = await guardStepUp(req, guard.session, "reopen_period");
+      if (stepUp) return stepUp;
+      await openRange(guard.session.organizationId, body.period, Number(body.fromDay), Number(body.toDay), guard.session.user.id, typeof body.reason === "string" ? body.reason : "");
+    } else {
       const stepUp = await guardStepUp(req, guard.session, "reopen_period");
       if (stepUp) return stepUp;
       await reopenPeriod(guard.session.organizationId, body.period, guard.session.user.id, typeof body.reason === "string" ? body.reason : "");
