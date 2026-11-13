@@ -6,11 +6,12 @@ import type { Db } from "@/lib/database/client";
  *  later rename or a deleted group does not rewrite the history. `actorUserId` null means the
  *  system did it (a territory recompute). */
 
-export type OwnerChangeReason = "pool_claim" | "territory";
+export type OwnerChangeReason = "pool_claim" | "territory" | "handover";
 
 const REASON_LABEL: Record<OwnerChangeReason, string> = {
   pool_claim: "برداشتن از استخر گروه",
   territory: "تغییر محدودهٔ گروه‌ها",
+  handover: "واگذاری کارهای یک همکار",
 };
 
 const NOBODY = "بدون مسئول";

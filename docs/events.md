@@ -20,6 +20,7 @@ Every fact the app writes to the `events` table with `emitEvent` or `tryEmitEven
 | `stage.changed` | fact | `lib/repo/crm/write.ts` | None yet |
 | `temperature.changed` | fact | `lib/repo/crm/write.ts` | None yet |
 | `reassign.requested` | request | `lib/repo/crm/write.ts` (a rep found a phone owned by another group) | The task it creates for the group manager; no rule |
+| `records.handed_over` | fact | `lib/repo/handover.ts` (the owner hands one person's customers and open tasks to another) | None yet (the «به شما سپرده شد» notice, E2) |
 | `auth.impersonation_started`, `auth.impersonation_ended` | fact | `app/api/admin/impersonate/route.ts` | None yet (the access review card reads them) |
 | `system.test` | fact | `lib/repo/notification-test.ts`, a test notification only; never saved to `events` | The notification fan-out |
 | `lead_import.slow` | fact | `lib/repo/leadImportNotify.ts`, handed straight to the notification fan-out; never saved to `events` | The notification fan-out |

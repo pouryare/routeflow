@@ -104,6 +104,7 @@ export default function LessonManager({ lessons, categories, roles, people, isOw
           {lessons.map((l) => (
             <li key={l.id} className="acad__step">
               <button type="button" className="acad__step-text" style={{ textAlign: "start", minHeight: 44 }} onClick={() => open(l)}>
+                <Icon name="edit" size="sm" />
                 <b>{l.title}</b>
                 <span className="acad__chip acad__chip--quiet">{catTitle(l.category_id)}</span>
                 <span className="acad__chip">{l.status === "published" ? "منتشر شده" : "پیش‌نویس"}</span>
@@ -161,7 +162,7 @@ export default function LessonManager({ lessons, categories, roles, people, isOw
               placeholder={"متن درس. «## » سرتیتر می‌سازد و «- » یک نکته."} maxLength={20000} />
             <input ref={fileRef} type="file" accept="image/*" hidden onChange={(e) => void addPicture(e.target.files?.[0])} />
             <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn ghost" disabled={busy} onClick={() => fileRef.current?.click()}>
-              <Icon name="image" size="md" /> افزودن تصویر
+              <Icon name="plus" size="md" /> افزودن تصویر
             </button>
             <CheckField checked={draft.required} onChange={(v) => setDraft({ ...draft, required: v })}>خواندن این درس اجباری است</CheckField>
             {draft.required && (
@@ -182,7 +183,7 @@ export default function LessonManager({ lessons, categories, roles, people, isOw
               </button>
               {draft.id > 0 && (
                 <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn ghost" disabled={busy} onClick={() => void remove()}>
-                  <Icon name="trash" size="md" /> پاک کردن درس
+                  <Icon name="x" size="md" /> پاک کردن درس
                 </button>
               )}
             </div>

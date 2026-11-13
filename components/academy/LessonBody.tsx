@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import dynamic from "next/dynamic";
+import { Icon } from "@/components/meridian/Icon";
 
 const PhotoLightbox = dynamic(() => import("@/components/PhotoLightbox"), { ssr: false }) as typeof import("@/components/PhotoLightbox").default;
 
@@ -48,8 +49,8 @@ export default function LessonBody({ text }: { text: string }) {
         const at = photos.findIndex((p) => p.id === b.id);
         return (
           <button key={i} type="button" className="lesson__img" aria-label="بزرگ‌نمایی تصویر" onClick={() => setOpen(at)}>
-            {/* eslint-disable-next-line @next/next/no-img-element -- served from the company's storage, sized by the server */}
             <img src={`/api/content-images/${b.id}/file`} alt="" loading="lazy" />
+            <Icon name="maximize" size="sm" className="lesson__zoom" />
           </button>
         );
       })}

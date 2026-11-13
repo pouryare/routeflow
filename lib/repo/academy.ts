@@ -176,7 +176,8 @@ export interface AcademyItem {
   title: string;
   /** "RouteFlow" lessons ship with the app; "company" lessons were written by this company. */
   layer: "routeflow" | "company";
-  category: string;
+  /** The heading it sits under on the page. */
+  heading: string;
   required: boolean;
   done: boolean;
   /** Finished once, but the lesson changed since and the author asked for a re-read, or it changed at all. */
@@ -200,7 +201,7 @@ export async function academyOverview(session: Session): Promise<AcademyItem[]> 
     if (m.audience && m.audience.length > 0 && !isOwner(session.role) && !held(m.audience)) continue;
     const p = progress.get(m.slug);
     out.push({
-      slug: m.slug, title: m.title_fa, layer: "routeflow", category: m.category_fa ?? "درس‌ها",
+      slug: m.slug, title: m.title_fa, layer: "routeflow", heading: m.category_fa ?? "درس‌ها",
       required: held(m.required_for ?? []), done: !!p, updated: false, draft: false, dueOn: null, canEdit: false, id: null,
     });
   }
@@ -215,7 +216,7 @@ export async function academyOverview(session: Session): Promise<AcademyItem[]> 
     const done = !!p && stillDone(l, Number(p.version_read));
     out.push({
       slug: companySlug(l.id), title: l.title, layer: "company",
-      category: l.category_id ? categories.get(l.category_id)?.title ?? "درس‌های شرکت" : "درس‌های شرکت",
+      heading: l.category_id ? categories.get(l.category_id)?.title ?? "درس‌های شرکت" : "درس‌های شرکت",
       required, done, updated: !!p && Number(p.version_read) < Number(l.version), draft: l.status === "draft",
       dueOn: required && !done && l.due_days ? addDays(session.user.created_at, Number(l.due_days)) : null,
       canEdit: canEditLesson(session, l), id: l.id,

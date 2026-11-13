@@ -1,5 +1,17 @@
 [
   {
+    "slug": "09-first-week",
+    "title_fa": "هفتهٔ اول شما",
+    "category_fa": "هفتهٔ اول",
+    "order": 0,
+    "status": "ready",
+    "required_for": [
+      "phone_sales",
+      "field_rep",
+      "delivery_driver"
+    ]
+  },
+  {
     "slug": "10-sign-in-and-security",
     "title_fa": "ورود به برنامه و امنیت حساب",
     "category_fa": "شروع کار",

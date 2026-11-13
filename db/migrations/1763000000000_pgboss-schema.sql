@@ -1,6 +1,6 @@
 -- Up Migration
 -- rf: expand-only
--- squawk-ignore-file require-concurrent-index-creation, prefer-robust-stmts, prefer-bigint-over-int, prefer-text-field, ban-char-field, ban-drop-table, prefer-identity, prefer-timestamptz, constraint-missing-not-valid, adding-foreign-key-constraint, adding-not-nullable-field, ban-create-domain-with-constraint, ban-concurrent-index-creation-in-transaction, require-timeout-settings, transaction-nesting, disallowed-unique-constraint, ban-drop-column, renaming-table, renaming-column
+-- squawk-ignore-file ban-drop-schema, require-concurrent-index-creation, prefer-robust-stmts, prefer-bigint-over-int, prefer-text-field, ban-char-field, ban-drop-table, prefer-identity, prefer-timestamptz, constraint-missing-not-valid, adding-foreign-key-constraint, adding-not-nullable-field, ban-create-domain-with-constraint, ban-concurrent-index-creation-in-transaction, require-timeout-settings, transaction-nesting, disallowed-unique-constraint, ban-drop-column, renaming-table, renaming-column
 --
 -- The background worker's queue (docs/plans/event-architecture-2026-11-12.md E3, decisions 10.22).
 -- Everything below up to the GRANTs is the text pg-boss 12.38.2 gives for a new install:

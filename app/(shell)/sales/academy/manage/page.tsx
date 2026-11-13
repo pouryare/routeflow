@@ -6,7 +6,11 @@ import { getSessionFromCookies } from "@/lib/session";
 import { canAuthorLessons, canEditLesson, listCategories, listCompanyLessons, listPeopleForTrainers } from "@/lib/repo/academyLessons";
 import { isOwner, ROLES } from "@/lib/roles";
 import { Icon } from "@/components/meridian/Icon";
+import { pageMetadata } from "@/lib/pageMeta";
+import PageHeader from "@/components/meridian/PageHeader";
 import LessonManager from "@/components/academy/LessonManager";
+
+export const metadata = pageMetadata("/sales/academy/manage");
 
 export const dynamic = "force-dynamic";
 
@@ -23,6 +27,8 @@ export default async function ManageLessonsPage() {
   }));
 
   return (
+    <>
+    <PageHeader route="/sales/academy/manage" />
     <div className="kblock p-[var(--space-4)]" dir="rtl">
       <Link href="/sales/academy" className="acad__muted inline-flex items-center gap-[var(--space-2)] min-h-[44px]">
         <Icon name="arrow-right" size="sm" /> آموزش
@@ -32,5 +38,6 @@ export default async function ManageLessonsPage() {
         <LessonManager lessons={lessons} categories={categories.map((c) => ({ id: c.id, title: c.title }))} roles={ROLES} people={people} isOwner={isOwner(session.role)} />
       </div>
     </div>
+    </>
   );
 }

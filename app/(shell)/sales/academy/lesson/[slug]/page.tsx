@@ -10,6 +10,8 @@ import { Icon } from "@/components/meridian/Icon";
 import LessonBody from "@/components/academy/LessonBody";
 import LessonDone from "@/components/academy/LessonDone";
 
+export const metadata = { title: "درس" };
+
 export const dynamic = "force-dynamic";
 
 export default async function LessonPage({ params }: { params: Promise<{ slug: string }> }) {

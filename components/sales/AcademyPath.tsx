@@ -35,11 +35,11 @@ export default function AcademyPath({ cards, items }: { cards: Card[]; items: Ac
   const next = lessons.find((i) => !i.done && i.required) ?? lessons.find((i) => !i.done) ?? null;
   const pct = lessons.length ? Math.round((doneCount / lessons.length) * 100) : 0;
   // Shipped lessons first, then the company's categories, each heading once, in the order given.
-  const sections = items.reduce<{ key: string; layer: AcademyItem["layer"]; category: string; rows: AcademyItem[] }[]>((acc, i) => {
-    const key = `${i.layer}:${i.category}`;
+  const sections = items.reduce<{ key: string; layer: AcademyItem["layer"]; heading: string; rows: AcademyItem[] }[]>((acc, i) => {
+    const key = `${i.layer}:${i.heading}`;
     const sec = acc.find((x) => x.key === key);
     if (sec) sec.rows.push(i);
-    else acc.push({ key, layer: i.layer, category: i.category, rows: [i] });
+    else acc.push({ key, layer: i.layer, heading: i.heading, rows: [i] });
     return acc;
   }, []);
 
@@ -89,9 +89,9 @@ export default function AcademyPath({ cards, items }: { cards: Card[]; items: Ac
       </section>
 
       {sections.map((sec) => (
-        <section key={sec.key} aria-label={sec.category}>
+        <section key={sec.key} aria-label={sec.heading}>
           <h3 className="sechead__title sechead__title--minor">
-            {sec.category} <span className="acad__chip acad__chip--quiet">{sec.layer === "routeflow" ? "RouteFlow" : "شرکت"}</span>
+            {sec.heading} <span className="acad__chip acad__chip--quiet">{sec.layer === "routeflow" ? "RouteFlow" : "شرکت"}</span>
           </h3>
           <ol className="acad__steps">
             {sec.rows.map((m) => (
