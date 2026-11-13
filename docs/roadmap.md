@@ -269,7 +269,7 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
 
   **Buy list grouped by supplier (D17, the F11 first slice).** «لیست خرید»: products under their reorder point, minus what is on order, rounded up to the supplier minimum, grouped by the cheapest or fastest supplier. Tick to make a purchase draft per supplier; a person confirms.
 
-  **Built (batch C, first slice):** page `/sales/stock/buy-list` (owner; link on the stock page): products at or under their reorder point (not «تصفیه»), quantity = target less shelf (at least the supplier's minimum), grouped by the cheapest supplier price row (quicker on a tie), a group «بدون تأمین‌کننده» for the rest, with a toman total. Not built: «minus what is on order» and purchase drafts, because there are no purchase orders yet (F66). D27 and F31 wait for the same thing.
+  **Built (batch C, first slice):** page `/sales/stock/buy-list` (owner; link on the stock page): products at or under their reorder point (not «تصفیه»), quantity = target less shelf (at least the supplier's minimum), grouped by the cheapest supplier price row (quicker on a tie), a group «بدون تأمین‌کننده» for the rest, with a toman total. **Completed (batch C part 3):** the list now counts units on open purchase orders as stock, and each supplier's group has «پیش‌نویس سفارش خرید», which makes a draft on `/sales/stock/orders`.
   </details>
 - **D19. Labels at goods receipt.** Print a label per batch or pallet (product, batch, expiry, QR) and an A4 PDF of barcodes.
   <details><summary>Full decision</summary>
@@ -738,7 +738,7 @@ Decided, but each needs something first. The "waits for" part is in the line. Th
 
 ### Stock, warehouse and suppliers
 
-- **D27. «Arrives on…» date.** Order entry shows «+300 expected Tuesday» beside a shortage. Comes after D17.
+- **D27. «Arrives on…» date.** Order entry shows «+300 expected Tuesday» beside a shortage. Comes after D17. **Built (2026-11-13):** the order form says «۳۰۰ عدد تا … می‌رسد» under the product picker for a product with an open purchase order.
 
 ### Money: credit, payments and cash
 
@@ -961,7 +961,7 @@ All 148 entries of `docs/future-features.md` (F1 to F148), grouped by area, with
 | F31 | Supplier scorecards and price history | S | yes | F12 | Small, waits for a prerequisite | D16 |
 | F33 | Seasonal and holiday planning | M | yes | F11 | Partly built | — |
 | F42 | Complaint root-cause analytics | S | yes | F12, F31 | Small, waits for a prerequisite | — |
-| F66 | Supplier order tracking (purchase orders) | L | yes | F11, F31 | Not built | — |
+| F66 | Supplier order tracking (purchase orders) | L | yes | F11, F31 | Built (first slice, 2026-11-13): orders with status, expected day and lines; made as drafts from the buy list; receive against an order (partial keeps the rest open, «بستن با کسری» closes it); late ones on top; feeds D17, D27 and F31. Not built: a hand-made order form, price difference flag at receipt | F87, F118, F121 |
 | F80 | Warehouse returns handling | M | yes | F12 | Not built | B1 |
 | F87 | Warehouse receiving appointments | M | yes | F31, F66 | Not built | — |
 | F93 | Warehouse bin locations and stock transfers | M | yes | F1, F30 | Not built | FB31 |

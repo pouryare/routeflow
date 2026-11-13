@@ -1537,6 +1537,28 @@ export interface PurchaseLines {
   unit_cost_toman: number;
 }
 
+export interface PurchaseOrderLines {
+  base_qty: number;
+  id: Generated<number>;
+  product_id: number;
+  purchase_order_id: number;
+  received_qty: Generated<number>;
+  unit_cost_toman: Generated<number>;
+}
+
+export interface PurchaseOrders {
+  created_at: string;
+  created_by: number;
+  expected_date: string | null;
+  id: Generated<number>;
+  notes: string | null;
+  ordered_at: string | null;
+  organization_id: number;
+  received_at: string | null;
+  status: Generated<string>;
+  supplier_id: number;
+}
+
 export interface Purchases {
   created_at: string;
   created_by: number;
@@ -1545,6 +1567,7 @@ export interface Purchases {
   notes: string | null;
   organization_id: number | null;
   purchase_date: string;
+  purchase_order_id: number | null;
   supplier: string | null;
   supplier_id: number | null;
 }
@@ -2330,6 +2353,8 @@ export interface DB {
   profit_split_lines: ProfitSplitLines;
   profit_splits: ProfitSplits;
   purchase_lines: PurchaseLines;
+  purchase_order_lines: PurchaseOrderLines;
+  purchase_orders: PurchaseOrders;
   purchases: Purchases;
   push_subscriptions: PushSubscriptions;
   quality_complaints: QualityComplaints;

@@ -280,6 +280,11 @@ export const PAGE_META: Record<string, PageMeta> = {
     titleEn: "Buy list",
     overview: "کالاهایی که به نقطهٔ سفارش رسیده‌اند، به تفکیک ارزان‌ترین تأمین‌کننده و با رعایت حداقل سفارش او.",
   },
+  "/sales/stock/orders": {
+    title: "سفارش‌های خرید",
+    titleEn: "Purchase orders",
+    overview: "سفارش‌هایی که به تأمین‌کننده داده‌اید و هنوز نرسیده‌اند، با تاریخ انتظار و آنچه رسیده است.",
+  },
   "/sales/stock/on-date": {
     title: "موجودی در یک روز",
     titleEn: "Stock on a date",
