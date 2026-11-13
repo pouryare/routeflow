@@ -18,6 +18,8 @@ export const TENANT_TABLES = [
   "van_positions",
   "custom_fields",
   "custom_field_values",
+  "chat_messages",
+  "chat_reads",
   "reconciled_entries",
   "reconciliations",
   "change_requests",
