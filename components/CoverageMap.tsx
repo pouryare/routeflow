@@ -118,6 +118,7 @@ export default function CoverageMap({
   groups,
   role,
   geometryVersion,
+  limits,
 }: {
   initialDistricts: DistrictProperties[];
   initialCustomers: MapCustomer[];
@@ -126,6 +127,8 @@ export default function CoverageMap({
   groups: MapGroup[];
   role: Role;
   geometryVersion: string;
+  /** The company's own numbers (D30); the defaults when left out. */
+  limits?: { quietDays: number; ageingDays: number; staleDays: number };
 }) {
   // --- Deep links -------------------------------------------------------------------
   // Read once, on the first render, before the map exists: the opening view is a
@@ -731,9 +734,9 @@ export default function CoverageMap({
   const worklist = useMemo(
     () =>
       viewBounds
-        ? buildWorklist(customers, dueReminders, districtProps, viewBounds, tehranTodayIso())
+        ? buildWorklist(customers, dueReminders, districtProps, viewBounds, tehranTodayIso(), undefined, limits?.quietDays)
         : null,
-    [customers, dueReminders, districtProps, viewBounds],
+    [customers, dueReminders, districtProps, viewBounds, limits?.quietDays],
   );
 
   /* The header's search overlay sends a picked customer here when the map is already open,
@@ -969,7 +972,7 @@ export default function CoverageMap({
           {/* Silent while the data is current. Every figure on this map -- debts,
               statuses, last-purchase dates -- comes from a spreadsheet somebody has to
               remember to import, and nothing goes visibly wrong when they forget. */}
-          <DataFreshness syncedAt={newestSync(customers)} className="mt-2" />
+          <DataFreshness syncedAt={newestSync(customers)} className="mt-2" ageingDays={limits?.ageingDays} staleDays={limits?.staleDays} />
 
           {positionStatus === "denied" && (
             <p className="mt-2 flex flex-wrap items-center gap-1.5 text-[length:var(--text-xs)] leading-5 text-crit">

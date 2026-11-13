@@ -6,6 +6,7 @@ import { activeUserWithRoleInOrg, findCustomerInOrg } from "@/lib/repo/orgRefs";
 import { productInOrg } from "@/lib/repo/catalogueAdmin";
 import { OrderError } from "@/lib/orders";
 import { orderMixIn, ordersIn, placeOrder } from "@/lib/repo/routeAdapters";
+import { thresholdsFor } from "@/lib/repo/thresholds";
 import { parseOrderRequest } from "@/lib/orderRequest";
 import { isOrderChannel } from "@/lib/orderChannel";
 import { parseDiscountBody } from "@/lib/discounts";
@@ -71,7 +72,7 @@ export async function GET(req: NextRequest) {
   const usual = customerId ? await customerUsualBasket(scope, Number(customerId)) : [];
 
   // F72: open orders from the last 24 hours, so order entry can ask before a double entry.
-  const recent_open = customerId ? await recentOpenOrders(scope, Number(customerId)) : [];
+  const recent_open = customerId ? await recentOpenOrders(scope, Number(customerId), (await thresholdsFor(guard.session.organizationId)).duplicate_order_hours) : [];
 
   // F40: what a new customer is still missing before the first delivery (a warning only).
   const org = orgScopeId(guard.session);

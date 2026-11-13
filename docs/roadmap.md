@@ -510,7 +510,7 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
   **Tamper-evident money log (D6, answers F27).** One hash chain per company over money events only (order confirmed, payment, cheque status, journal posted, month closed, leftover closed); the owner has a «check the chain» button. Not every edit.
 
   </details>
-- **D30. Owner-set thresholds.** One settings card for numbers now fixed in code (stalled order days, quiet customer days, ageing days, duplicate order window, snooze days).
+- **D30. Owner-set thresholds.** One settings card for numbers now fixed in code (stalled order days, quiet customer days, ageing days, duplicate order window, snooze days). **Built 2026-11-13 (batch B).** Five numbers are columns on `organizations` (stalled order days, quiet customer days, data ageing and stale days, duplicate-order hours) with the old values as defaults; `lib/thresholds.ts` is the one list, `thresholdsFor` reads it, and the owner's status page card «حدهای هشدار» saves it (reset button; changes show in the change history through an audit trigger). Wired to the action center, the order-entry duplicate warning, the map's quiet list and the data-age banners. Not done: the alert snooze days (no such number exists in code yet).
   <details><summary>Full decision</summary>
 
   **Owner-set thresholds (D30).** One settings card for the numbers now fixed in code: stalled order days (`actionCenter.ts`, 2), quiet customer days (`mapWorklist.ts`, 45), data ageing days (`freshness.ts`, 7 and 14), duplicate order window (`duplicateOrder.ts`, 24 hours), alert snooze days (7). Current values are the defaults; reset button; changes logged.

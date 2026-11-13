@@ -1,3 +1,4 @@
+import { thresholdsFor } from "@/lib/repo/thresholds";
 import CardTable from "@/components/CardTable";
 import { Icon } from "@/components/meridian/Icon";
 import Link from "next/link";
@@ -68,6 +69,7 @@ export default async function ReportPage({
   if (!session) redirect("/login");
   if (isVanRole(session.role)) redirect("/driver");
   const { districts, customers } = await reportRows(session);
+  const limits = await thresholdsFor(session.organizationId);
 
   // Debt is computed from delivered orders and payment allocations now.
   const debtByCustomer = await customerDebtsForOrgOnce(session.organizationId);
@@ -177,7 +179,7 @@ export default async function ReportPage({
           {/* The timestamp above is when this page was built; this is how old the
               numbers on it are. They are not the same question, and only the second one
               can be wrong. */}
-          <DataFreshness syncedAt={newestSync(customers)} now={now} className="mt-1" />
+          <DataFreshness syncedAt={newestSync(customers)} now={now} className="mt-1" ageingDays={limits.data_ageing_days} staleDays={limits.data_stale_days} />
         </div>
 
         <section>

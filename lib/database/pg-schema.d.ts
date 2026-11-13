@@ -1172,7 +1172,10 @@ export interface Organizations {
   created_at: string;
   delivery_note_footer: string | null;
   discount_auto_pass_pct: Generated<number>;
+  data_ageing_days: Generated<number>;
+  data_stale_days: Generated<number>;
   discount_commission_pct: Generated<number>;
+  duplicate_order_hours: Generated<number>;
   effects: Generated<string>;
   id: Generated<number>;
   legal_form: Generated<string>;
@@ -1184,10 +1187,12 @@ export interface Organizations {
   name: string;
   order_prefix: string | null;
   plan: Generated<string>;
+  quiet_customer_days: Generated<number>;
   rating_tags_json: string | null;
   receipt_footer: string | null;
   slug: string;
   sound_skin: Generated<string>;
+  stalled_order_days: Generated<number>;
   step_up_required: Generated<boolean>;
   task_push_minutes: Generated<number>;
 }

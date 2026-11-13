@@ -1,3 +1,4 @@
+import { thresholdsFor } from "@/lib/repo/thresholds";
 import { Suspense } from "react";
 import { ORDER_STATUS_LABEL } from "@/lib/orderStateMachine";
 import { cookies } from "next/headers";
@@ -69,6 +70,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
      page for exactly this reason, and folding it into a page they CAN reach would have
      handed them the aggregate by the back door -- so the read itself is skipped, not
      just the markup. One clock for the whole section, so its day boundaries agree. */
+  const limits = await thresholdsFor(session.organizationId);
   const coverageNow = new Date();
   const coverage = session.role === "phone_sales" ? null : await coverageAnalytics(session, coverageNow);
 
@@ -303,7 +305,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
       {coverage && (
         <CollapsibleSection help="card.dash-coverage" title="پوشش و میدان" icon="compass" storageKey="dash-coverage">
-          <CoveragePanels data={coverage} now={coverageNow} />
+          <CoveragePanels data={coverage} now={coverageNow} ageingDays={limits.data_ageing_days} staleDays={limits.data_stale_days} />
         </CollapsibleSection>
       )}
 

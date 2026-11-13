@@ -26,6 +26,9 @@ export interface StatusFacts {
   forecastAt: string | null;
   lastSyncAt: string | null;
   customersSyncedAt: string | null;
+  /** The company's own limits for that age (D30); the defaults when left out. */
+  dataAgeingDays?: number;
+  dataStaleDays?: number;
   lastNotificationAt: string | null;
   /** F16: when the newest owner morning digest was queued. It is written by the rule sweep, so
    *  its age also says whether the server's sweep timer runs in the morning. */
@@ -78,7 +81,7 @@ export function statusLines(f: StatusFacts, now: Date = new Date()): StatusLine[
       ? "نسخهٔ بیرونی تنظیم نشده؛ اگر این سرور از بین برود، پشتیبان هم می‌رود. در راهنمای سرور بخش ماشین دوم را ببینید."
       : `روی ماشین دوم${f.backup?.photosOffsite === false ? " · عکس‌ها هنوز فقط روی همین سرورند" : ""}`;
 
-  const freshness = freshnessTier(f.customersSyncedAt, now);
+  const freshness = freshnessTier(f.customersSyncedAt, now, f.dataAgeingDays, f.dataStaleDays);
   return [
     { key: "backup", label: "پشتیبان شبانه", tone: backupTone, at: f.backup?.finishedAt ?? null, detail: backupDetail },
     { key: "backup_offsite", label: "نسخهٔ بیرونی پشتیبان", tone: offsiteTone, at: off?.newestAt ?? null, detail: offsiteDetail },

@@ -11,6 +11,8 @@ import { maintenanceFor } from "@/lib/repo/maintenance";
 import AccessReviewCard from "@/components/meridian/AccessReviewCard";
 import DocumentSettingsForm from "@/components/meridian/DocumentSettingsForm";
 import TaskPushForm from "@/components/meridian/TaskPushForm";
+import { thresholdsFor } from "@/lib/repo/thresholds";
+import ThresholdsForm from "@/components/meridian/ThresholdsForm";
 import { taskPushMinutes } from "@/lib/repo/taskPush";
 import { documentSettingsFor } from "@/lib/repo/documentSettings";
 import { accessReview } from "@/lib/accessReview";
@@ -43,7 +45,8 @@ export default async function StatusPage() {
   const jar = await cookies();
   const session = await getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
   if (!session) redirect("/login");
-  const lines = statusLines(await statusFacts(session.organizationId));
+  const limits = await thresholdsFor(session.organizationId);
+  const lines = statusLines({ ...(await statusFacts(session.organizationId)), dataAgeingDays: limits.data_ageing_days, dataStaleDays: limits.data_stale_days });
   const maintenance = await maintenanceFor(session.organizationId);
   const review = accessReview(await accessUsers(session.organizationId), new Date().toISOString());
   const logins = await recentImpersonations(session.organizationId);
@@ -108,6 +111,9 @@ export default async function StatusPage() {
       </div>
       <div className="mt-[var(--space-4)]">
         <TaskPushForm minutes={pushMinutes} />
+      </div>
+      <div className="mt-[var(--space-4)]">
+        <ThresholdsForm values={limits} />
       </div>
     </>
   );
