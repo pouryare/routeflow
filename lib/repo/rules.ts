@@ -30,6 +30,8 @@ export interface RuleRow {
   escalate_after_min: number | null;
   escalate_to_role: string | null;
   active: number;
+  /** F130: most firings per day for this company; null = no cap. */
+  daily_budget?: number | null;
 }
 
 interface ActionSpec {
@@ -229,6 +231,16 @@ async function fire(
   );
 }
 
+/** F130: has this rule already fired its daily budget for the company today? shortcut: the day is the UTC date of the
+ *  timestamp, not the Tehran day; switch to Tehran midnight if the budget ever has to match the owner's morning. */
+async function overBudget(organizationId: number, rule: RuleRow, nowIso: string, db?: Db): Promise<boolean> {
+  if (!rule.daily_budget) return false;
+  const r = (await (db ?? getDb())
+    .prepare("SELECT COUNT(*) AS n FROM rule_runs WHERE organization_id = ? AND rule_id = ? AND fired_at >= ?")
+    .get(organizationId, rule.id, nowIso.slice(0, 10))) as { n: number };
+  return Number(r.n) >= Number(rule.daily_budget);
+}
+
 export interface FiredRun {
   rule_code: string;
   run_id: number;
@@ -247,6 +259,7 @@ export async function runEventRules(
   for (const rule of await rulesFor(organizationId)) {
     if (rule.trigger_kind !== event.kind) continue;
     if (await liveRun(organizationId, rule.id, event.entity_type, event.entity_id, now, db)) continue;
+    if (await overBudget(organizationId, rule, now, db)) continue;
     const conds: RuleCondition[] = rule.condition_json ? JSON.parse(rule.condition_json) : [];
     if (!evaluateConditions(conds, meta)) continue;
     // A malformed action_json would throw out of fire() and abort every *later* rule for
@@ -287,6 +300,7 @@ export async function runSweepRules(organizationId: number, asOfIso: string = ne
     const rule = rules.get(code);
     if (!rule || rule.trigger_kind !== "sweep") return;
     if (await liveRun(organizationId, rule.id, entityType, entityId, asOfIso)) return;
+    if (await overBudget(organizationId, rule, asOfIso)) return;
     out.push({ rule_code: code, run_id: await fire(organizationId, rule, entityType, entityId, ctx, asOfIso) });
   };
 
@@ -548,7 +562,7 @@ export class RuleError extends Error {}
  *  copying the rest of the shape from the base (tenant or default) rule. */
 export async function setTenantRuleOverride(
   organizationId: number,
-  input: { code: string; active?: boolean; cooldown_min?: number }
+  input: { code: string; active?: boolean; cooldown_min?: number; daily_budget?: number | null }
 ): Promise<void> {
   const db = getDb();
   const base = await db
@@ -562,10 +576,10 @@ export async function setTenantRuleOverride(
   await db.prepare(
     `INSERT INTO rules
        (organization_id, code, name, trigger_kind, condition_json, action_kind, action_json,
-        cooldown_min, escalate_after_min, escalate_to_role, active, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        cooldown_min, escalate_after_min, escalate_to_role, active, created_at, updated_at, daily_budget)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT (organization_id, code) DO UPDATE SET
-       active = excluded.active, cooldown_min = excluded.cooldown_min, updated_at = excluded.updated_at`
+       active = excluded.active, cooldown_min = excluded.cooldown_min, updated_at = excluded.updated_at, daily_budget = excluded.daily_budget`
   ).run(
     organizationId,
     base.code,
@@ -579,7 +593,9 @@ export async function setTenantRuleOverride(
     base.escalate_to_role,
     input.active === false ? 0 : 1,
     now,
-    now
+    now,
+    // undefined keeps the base rule's budget; null clears it
+    input.daily_budget === undefined ? base.daily_budget ?? null : input.daily_budget
   );
 }
 
@@ -605,6 +621,7 @@ export interface RuleOverview {
   cooldownMin: number;
   active: boolean;
   fired14: number;
+  dailyBudget: number | null;
 }
 
 /** F130: every rule of a company, the switched-off ones too, with how often it fired in the last 14 days. */
@@ -624,6 +641,30 @@ export async function rulesOverview(organizationId: number, nowIso: string = new
     .all(organizationId, since)) as unknown as { code: string; n: number }[];
   const count = new Map(fired.map((f) => [f.code, Number(f.n)]));
   return [...byCode.values()]
-    .map((r) => ({ code: r.code, name: r.name, trigger: (r.trigger_kind === "sweep" ? "sweep" : "event") as "event" | "sweep", action: r.action_kind, cooldownMin: Number(r.cooldown_min), active: r.active === 1, fired14: count.get(r.code) ?? 0 }))
+    .map((r) => ({ code: r.code, name: r.name, trigger: (r.trigger_kind === "sweep" ? "sweep" : "event") as "event" | "sweep", action: r.action_kind, cooldownMin: Number(r.cooldown_min), active: r.active === 1, fired14: count.get(r.code) ?? 0, dailyBudget: r.daily_budget == null ? null : Number(r.daily_budget) }))
     .sort((a, b) => a.name.localeCompare(b.name, "fa"));
+}
+
+export interface RuleFiring {
+  firedAt: string;
+  entityType: string | null;
+  entityId: number | null;
+  /** What it made: the task or alert title, or the rule's own name for a notification. */
+  title: string;
+}
+
+/** F130 firing log: the last firings of one rule for the company, newest first. */
+export async function ruleFirings(organizationId: number, code: string, limit = 30): Promise<RuleFiring[]> {
+  const rows = (await getDb()
+    .prepare(
+      `SELECT u.fired_at, u.entity_type, u.entity_id, COALESCE(t.title, a.title, r.name) AS title
+         FROM rule_runs u
+         JOIN rules r ON r.id = u.rule_id
+         LEFT JOIN tasks t ON t.id = u.task_id
+         LEFT JOIN alerts a ON a.id = u.alert_id
+        WHERE u.organization_id = ? AND r.code = ?
+        ORDER BY u.id DESC LIMIT ?`
+    )
+    .all(organizationId, code, limit)) as unknown as { fired_at: string; entity_type: string | null; entity_id: number | null; title: string }[];
+  return rows.map((r) => ({ firedAt: r.fired_at, entityType: r.entity_type, entityId: r.entity_id == null ? null : Number(r.entity_id), title: r.title }));
 }

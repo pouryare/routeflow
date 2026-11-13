@@ -1704,6 +1704,7 @@ export interface Rules {
   condition_json: string | null;
   cooldown_min: Generated<number>;
   created_at: string;
+  daily_budget: number | null;
   escalate_after_min: number | null;
   escalate_to_role: string | null;
   id: Generated<number>;
