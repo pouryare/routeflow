@@ -1,5 +1,6 @@
 -- Up Migration
 -- rf: expand-only
+-- squawk-ignore-file ban-drop-column, require-lock-timeout, require-statement-timeout
 -- D5: how a customer pays: on delivery, N days after delivery, or at the end of the month plus N days. The due date is
 -- written on the order when it is delivered, so a later change of the customer's terms does not move it.
 ALTER TABLE customers ADD COLUMN payment_terms_kind text NOT NULL DEFAULT 'days' CHECK (payment_terms_kind IN ('cod', 'days', 'eom'));

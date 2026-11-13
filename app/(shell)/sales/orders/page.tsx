@@ -161,7 +161,9 @@ function ListView({
         <CardHelp id="card.orders-recent" />
       </div>
 
-      <OrderFilters reps={reps} />
+      <div className="kblock__body">
+        <OrderFilters reps={reps} />
+      </div>
       {bounds && <OrderAmountFilter key={range ? range.join("-") : "all"} bounds={bounds} active={range} amounts={amounts} />}
 
       {orders.length === 0 ? (

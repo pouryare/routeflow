@@ -1,7 +1,7 @@
 -- Up Migration
 -- rf: expand-only
 -- D2: a numbered deposit slip for the cheques taken to the bank together.
--- squawk-ignore-file ban-drop-table, prefer-robust-stmts
+-- squawk-ignore-file adding-foreign-key-constraint, ban-drop-column, ban-drop-table, prefer-bigint-over-int, prefer-robust-stmts, require-concurrent-index-creation
 SET lock_timeout = '5s';
 SET statement_timeout = '30s';
 

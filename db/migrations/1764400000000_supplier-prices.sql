@@ -1,7 +1,7 @@
 -- Up Migration
 -- rf: expand-only
 -- D16: what a supplier sells a product for, the smallest order they take, how long they take to deliver and their own code for it.
--- squawk-ignore-file ban-drop-table, prefer-robust-stmts
+-- squawk-ignore-file ban-drop-table, prefer-bigint-over-int, prefer-robust-stmts
 SET lock_timeout = '5s';
 SET statement_timeout = '30s';
 

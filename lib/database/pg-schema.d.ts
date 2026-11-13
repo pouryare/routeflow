@@ -180,6 +180,34 @@ export interface CapacityFactors {
   updated_at: string;
 }
 
+export interface CashHandovers {
+  confirmed_by: number;
+  counted_toman: number;
+  created_at: string;
+  expected_toman: number;
+  holder_id: number;
+  id: Generated<number>;
+  organization_id: number;
+  reason: string | null;
+  through_at: string;
+}
+
+export interface ChangeRequests {
+  customer_id: number;
+  decided_at: string | null;
+  decided_by: number | null;
+  decision_note: string | null;
+  id: Generated<number>;
+  kind: string;
+  new_value: number | null;
+  old_value: number | null;
+  organization_id: number;
+  reason: string;
+  requested_at: string;
+  requested_by: number;
+  status: Generated<string>;
+}
+
 export interface Cheques {
   amount_toman: number;
   bank_name: string | null;
@@ -188,6 +216,7 @@ export interface Cheques {
   cleared_at: string | null;
   created_at: string;
   customer_id: number;
+  deposit_slip_id: number | null;
   deposited_at: string | null;
   due_date: string;
   id: Generated<number>;
@@ -266,6 +295,15 @@ export interface CompanyDomains {
   last_error: string | null;
   organization_id: number;
   status: Generated<string>;
+}
+
+export interface ContactPreferences {
+  channel: string;
+  customer_id: number;
+  organization_id: number;
+  reason: string;
+  set_at: string;
+  set_by: number;
 }
 
 export interface Contacts {
@@ -506,6 +544,16 @@ export interface DeliveryStops {
   sync_xid: Generated<string | null>;
 }
 
+export interface DepositSlips {
+  cheque_count: number;
+  created_at: string;
+  created_by: number;
+  id: Generated<number>;
+  organization_id: number;
+  slip_no: number;
+  total_toman: number;
+}
+
 export interface DiscountCommissionShares {
   amount_toman: Generated<number>;
   discount_id: number;
@@ -639,6 +687,9 @@ export interface FiscalPeriods {
   id: Generated<number>;
   organization_id: number;
   period_key: string;
+  reopen_reason: string | null;
+  reopened_at: string | null;
+  reopened_by: number | null;
   status: Generated<string>;
 }
 
@@ -1138,15 +1189,12 @@ export interface Orders {
   created_at: string;
   created_by: number;
   created_source: string | null;
-  ship_address: string | null;
-  ship_name: string | null;
-  ship_phone: string | null;
   credit_hold: Generated<number>;
   credit_override_by: number | null;
   customer_id: number;
   delivered_at: string | null;
-  due_date: string | null;
   discount_toman: Generated<number>;
+  due_date: string | null;
   group_id: number | null;
   id: Generated<number>;
   invoice_sent_at: string | null;
@@ -1164,6 +1212,9 @@ export interface Orders {
   requested_day: string | null;
   requested_kind: string | null;
   salesperson_user_id: number | null;
+  ship_address: string | null;
+  ship_name: string | null;
+  ship_phone: string | null;
   status: Generated<string>;
   sync_xid: Generated<string | null>;
   total_toman: number | null;
@@ -1175,10 +1226,10 @@ export interface Organizations {
   contact_name: string | null;
   contact_phone: string | null;
   created_at: string;
-  delivery_note_footer: string | null;
-  discount_auto_pass_pct: Generated<number>;
   data_ageing_days: Generated<number>;
   data_stale_days: Generated<number>;
+  delivery_note_footer: string | null;
+  discount_auto_pass_pct: Generated<number>;
   discount_commission_pct: Generated<number>;
   duplicate_order_hours: Generated<number>;
   effects: Generated<string>;
@@ -1275,6 +1326,11 @@ export interface PlatformAccessLog {
 export interface PlatformSettings {
   key: string;
   value: string;
+}
+
+export interface PrivateCategories {
+  account_id: number;
+  organization_id: number;
 }
 
 export interface ProblemReports {
@@ -1435,6 +1491,21 @@ export interface ReasonCodes {
   id: Generated<number>;
   label_fa: string;
   organization_id: number | null;
+}
+
+export interface ReconciledEntries {
+  ledger_entry_id: number;
+  organization_id: number;
+  reconciliation_id: number;
+}
+
+export interface Reconciliations {
+  account_id: number;
+  counted_toman: number;
+  created_at: string;
+  created_by: number;
+  id: Generated<number>;
+  organization_id: number;
 }
 
 export interface Reminders {
@@ -1815,6 +1886,17 @@ export interface StoredFiles {
   variants: string;
 }
 
+export interface SupplierPrices {
+  delivery_days: number | null;
+  min_qty: number | null;
+  organization_id: number;
+  price_toman: number;
+  product_id: number;
+  supplier_code: string | null;
+  supplier_id: number;
+  updated_at: string;
+}
+
 export interface Suppliers {
   active: Generated<number>;
   created_at: string;
@@ -2017,6 +2099,8 @@ export interface DB {
   audit_log: AuditLog;
   batches: Batches;
   capacity_factors: CapacityFactors;
+  cash_handovers: CashHandovers;
+  change_requests: ChangeRequests;
   cheques: Cheques;
   churn_models: ChurnModels;
   churn_scores: ChurnScores;
@@ -2024,6 +2108,7 @@ export interface DB {
   commission_rates: CommissionRates;
   commission_tiers: CommissionTiers;
   company_domains: CompanyDomains;
+  contact_preferences: ContactPreferences;
   contacts: Contacts;
   content_images: ContentImages;
   credit_approvals: CreditApprovals;
@@ -2037,6 +2122,7 @@ export interface DB {
   delivery_lines: DeliveryLines;
   delivery_runs: DeliveryRuns;
   delivery_stops: DeliveryStops;
+  deposit_slips: DepositSlips;
   discount_commission_shares: DiscountCommissionShares;
   districts: Districts;
   driver_commission_payments: DriverCommissionPayments;
@@ -2094,6 +2180,7 @@ export interface DB {
   photos: Photos;
   platform_access_log: PlatformAccessLog;
   platform_settings: PlatformSettings;
+  private_categories: PrivateCategories;
   problem_reports: ProblemReports;
   product_costs: ProductCosts;
   product_prices: ProductPrices;
@@ -2107,6 +2194,8 @@ export interface DB {
   quality_complaints: QualityComplaints;
   rate_limits: RateLimits;
   reason_codes: ReasonCodes;
+  reconciled_entries: ReconciledEntries;
+  reconciliations: Reconciliations;
   reminders: Reminders;
   representative_onboarding_steps: RepresentativeOnboardingSteps;
   representative_profiles: RepresentativeProfiles;
@@ -2135,6 +2224,7 @@ export interface DB {
   storage_rules: StorageRules;
   storages: Storages;
   stored_files: StoredFiles;
+  supplier_prices: SupplierPrices;
   suppliers: Suppliers;
   sync_mutations: SyncMutations;
   targets: Targets;

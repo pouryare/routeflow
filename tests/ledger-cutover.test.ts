@@ -89,8 +89,9 @@ describe("the payment cutover", () => {
     });
   });
 
-  it("REFUSES a CREDIT_NOTE rather than guessing an account", async () => {
-    await expect((async () => await receipt(500_000, "CREDIT_NOTE", "2026-07-21T11:00:00.000Z"))()).rejects.toThrow();
+  it("posts a CREDIT_NOTE (goods back, B1) to sales returns, not to cash", async () => {
+    const id = await receipt(500_000, "CREDIT_NOTE", "2026-07-21T11:00:00.000Z");
+    expect((await legsOf(id)).map((l) => l.code).sort()).toEqual(["1201", "4102"]);
   });
 
   it("does NOT recognise revenue on a payment -- allocation posts nothing", async () => {

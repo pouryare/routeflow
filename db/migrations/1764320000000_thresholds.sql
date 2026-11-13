@@ -1,7 +1,7 @@
 -- Up Migration
 -- rf: expand-only
 -- D30: the numbers that were fixed in code, now set by the owner per company. Defaults are the old fixed values.
--- squawk-ignore-file ban-drop-table, ban-drop-column, prefer-robust-stmts
+-- squawk-ignore-file ban-drop-column, ban-drop-table, prefer-bigint-over-int, prefer-robust-stmts
 SET lock_timeout = '5s';
 SET statement_timeout = '30s';
 

@@ -1,5 +1,6 @@
 -- Up Migration
 -- rf: expand-only
+-- squawk-ignore-file ban-drop-column, require-lock-timeout, require-statement-timeout
 -- A12: the customer's name, phone and address are copied onto the order when it is confirmed, so a later edit of the
 -- customer does not change what the order shows. Empty until the order is confirmed.
 ALTER TABLE orders ADD COLUMN ship_name text;

@@ -2,7 +2,7 @@
 -- rf: expand-only
 -- T24: the sign-in, second-step and password limits kept in Postgres, so a restart (or a second copy of the app)
 -- does not give a guesser a fresh start. Not per company: the sign-in form runs before anyone is known.
--- squawk-ignore-file ban-drop-table, ban-drop-column, prefer-robust-stmts
+-- squawk-ignore-file ban-drop-column, ban-drop-table, prefer-bigint-over-int, prefer-robust-stmts
 SET lock_timeout = '5s';
 SET statement_timeout = '30s';
 

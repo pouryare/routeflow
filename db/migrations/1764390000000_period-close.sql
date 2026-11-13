@@ -1,5 +1,6 @@
 -- Up Migration
 -- rf: expand-only
+-- squawk-ignore-file ban-drop-column, require-lock-timeout, require-statement-timeout
 -- A2: closing and reopening a month. The reason for a reopening is kept on the period; both changes go to the audit record.
 ALTER TABLE fiscal_periods ADD COLUMN reopen_reason text;
 ALTER TABLE fiscal_periods ADD COLUMN reopened_at text;

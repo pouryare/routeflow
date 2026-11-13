@@ -123,6 +123,7 @@ describe("orders", () => {
         "created_source",
         // F85: how the order reached the company (phone, visit, message, driver, standing).
         "channel",
+        "due_date",
         "created_at",
         "updated_at",
       ].sort()

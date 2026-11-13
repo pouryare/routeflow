@@ -31,9 +31,9 @@ export default function OrderFilters({ reps }: { reps: string[] }) {
   });
 
   return (
-    <div className="flex flex-col gap-[var(--space-2)] px-6 pb-3" data-tour="orders-filters">
+    <div className="flex flex-col gap-[var(--space-2)] pb-3" data-tour="orders-filters">
       <form
-        role="search"
+        aria-label="جستجو در سفارش‌ها"
         className="flex items-center gap-[var(--space-2)]"
         onSubmit={(e) => {
           e.preventDefault();

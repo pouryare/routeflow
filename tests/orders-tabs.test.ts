@@ -48,7 +48,7 @@ describe("the orders host serves three views", () => {
   it("all three views use the same limit", () => {
     // 100 / 60 / 60 meant the two quieter pages silently truncated. 100 is the one that
     // was not truncating, so it is the one the list uses.
-    expect(view).toMatch(/limit:\s*100\b/);
+    expect(view).toMatch(/limit:\s*opts\.limit \?\? 100\b/);
     expect(view).not.toMatch(/limit:\s*60\b/);
   });
 
@@ -103,7 +103,7 @@ describe("the orders list pages its cards", () => {
     expect(src).toMatch(/const ORDERS_PER_PAGE = 25;/);
     expect(src).toMatch(/orders\.slice\(paging\.offset, paging\.offset \+ paging\.limit\)/);
     expect(src).toMatch(/<Pager base="\/sales\/orders" params=\{pageParams\} paging=\{paging\} \/>/);
-    expect(src).toMatch(/pageParams=\{\{ customer: customerParam, min: one\(params, "min"\), max: one\(params, "max"\) \}\}/);
+    expect(src).toMatch(/pageParams=\{\{ customer: customerParam, min: one\(params, "min"\), max: one\(params, "max"\), limit: one\(params, "limit"\), \.\.\.query \}\}/);
   });
   it("a new amount range starts again from page one", () => {
     expect(readFileSync("components/sales/OrderAmountFilter.tsx", "utf8")).toMatch(/q\.delete\("page"\)/);

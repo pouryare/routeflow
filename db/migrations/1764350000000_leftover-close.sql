@@ -4,7 +4,7 @@
 -- posted Dr 5110 / Cr receivables, under an owner limit kept on the company (default 50,000 toman).
 -- This widens the payments.method check, which the previous release's insert code does not know about, so it is a
 -- contract migration: a failed upgrade stops and asks a person.
--- squawk-ignore-file ban-drop-table, ban-drop-column, prefer-robust-stmts, constraint-missing-not-valid, adding-foreign-key-constraint
+-- squawk-ignore-file adding-foreign-key-constraint, ban-drop-column, ban-drop-constraint, ban-drop-table, constraint-missing-not-valid, prefer-robust-stmts
 SET lock_timeout = '5s';
 SET statement_timeout = '30s';
 

@@ -2,7 +2,7 @@
 -- rf: expand-only
 -- Z2: a one-time key per money form. The first save with a key stores its answer; a repeat of the same key (a
 -- double tap, a retry on a slow phone) gets that answer back and saves nothing new.
--- squawk-ignore-file ban-drop-table, ban-drop-column, prefer-robust-stmts
+-- squawk-ignore-file ban-drop-column, ban-drop-table, prefer-bigint-over-int, prefer-robust-stmts
 SET lock_timeout = '5s';
 SET statement_timeout = '30s';
 

@@ -87,6 +87,7 @@ describe("tutorial targets", () => {
   // screen has a tutorial that points at it or at a step of its flow. A gap needs a written reason.
   const NO_TUTORIAL_YET: Record<string, string> = {
     "open:place": "shortcut: no tutorial for setting a customer's place yet; written before 0.1 (see TODO-REPORT.md)",
+    "open:transfer": "shortcut: no tutorial for moving money between own accounts yet; owner-only screen, listed in TODO-REPORT.md",
   };
   it("every main «open:» button has a tutorial or a written reason", () => {
     const opens = new Set<string>();

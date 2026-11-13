@@ -8,6 +8,7 @@ import { isId } from "@/lib/inputChecks";
 import { slipView } from "@/lib/repo/depositSlips";
 import { Icon } from "@/components/meridian/Icon";
 import PrintButton from "@/components/PrintButton";
+import PageHeader from "@/components/meridian/PageHeader";
 import SectionHead from "@/components/meridian/SectionHead";
 import { faNum, faToman } from "@/lib/format";
 import { faJalaliDate } from "@/lib/jalali";
@@ -27,6 +28,7 @@ export default async function SlipPage({ params }: { params: Promise<{ id: strin
   if (!slip) notFound();
   return (
     <div dir="rtl" className="mx-auto flex max-w-3xl flex-col gap-[var(--space-4)] p-[var(--space-4)]">
+      <PageHeader route="/sales/cheques" />
       <SectionHead title={`برگهٔ واریز شمارهٔ ${faNum(slip.slipNo)}`} sub={`${faJalaliDate(slip.createdAt)} · ${faNum(slip.cheques.length)} چک · جمع ${faToman(slip.total)}`} />
       <ul className="m-0 flex list-none flex-col gap-[var(--space-2)] p-0 text-[length:var(--text-sm)]">
         {slip.cheques.map((c) => (
