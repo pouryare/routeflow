@@ -24,6 +24,7 @@ export const STEP_UP_ACTIONS = {
   own_phone: { label: "تغییر شمارهٔ موبایل خودتان", critical: false },
   order_change_delivered: { label: "لغو یا ویرایش سفارش تحویل‌شده", critical: false },
   payment_edit: { label: "ویرایش یا حذف پرداخت ثبت‌شده", critical: false },
+  reopen_period: { label: "بازکردن ماه بسته‌شده", critical: false },
   hard_delete: { label: "حذف همیشگی", critical: true },
   owner_settings: { label: "تغییر تنظیمات مالک", critical: false },
   second_factor_off: { label: "غیرفعال یا بازنشانی برنامهٔ احراز هویت", critical: true },

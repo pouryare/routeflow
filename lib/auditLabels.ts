@@ -16,10 +16,12 @@ export const AUDIT_TABLES: Record<string, string> = {
   groups: "گروه",
   commission_rates: "نرخ پورسانت",
   storages: "فضای ذخیره‌سازی",
+  fiscal_periods: "ماه حسابداری",
 };
 
 const COLUMNS: Record<string, string> = {
   status: "وضعیت",
+  reopen_reason: "دلیل بازکردن ماه",
   total_toman: "جمع (تومان)",
   discount_toman: "تخفیف (تومان)",
   group_id: "گروه",

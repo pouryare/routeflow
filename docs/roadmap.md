@@ -390,6 +390,7 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
   <details><summary>Full decision</summary>
 
   **Close a month (A2).** `fiscal_periods` and the closed-month refusal in `postJournal` exist, but nothing sets a month to closed (`lib/repo/reports.ts` only reads it). The owner closes a month after a short checklist (deliveries posted, drafts listed, cash counted); reopening needs a reason; both are logged (E6). A closed month refuses new entries; corrections go into the next open month. D26 (month pack) and E5 (own-mistake window) need this.
+  **Built (batch B):** «بستن ماه» card on the journal page (owner): a month before the current one is closed after a checklist (unfinished orders of the month, «صندوق را شمرده‌ام»); reopening needs a reason and the authenticator code; both go to the audit record (`fiscal_periods`). The closed-month refusal in `postJournal` was already there. D26 and E5 can now build on it.
 
   </details>
 - **A11. Discounts given report.** Toman given as discount by rep, customer and product, approvals versus auto-passes.
