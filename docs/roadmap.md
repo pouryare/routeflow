@@ -474,7 +474,7 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
   The code guard on creating an owner or manager, customer export, changing your own mobile number, hard deletes, cancelling or editing a delivered order, authenticator reset and overwrite imports (the rules and the guard exist; each route needs one line).
 
   </details>
-- **FB41. Log retention with a preview.** Each growing log gets a keep-for-N-days setting; the status page shows what the next purge would delete.
+- **FB41. Log retention with a preview.** Each growing log gets a keep-for-N-days setting; the status page shows what the next purge would delete. **Built 2026-11-13 (batch B).** Registry in `lib/logRetention.ts` (sign-in log, notification deliveries, finished sync rows, idempotency keys; 7 to 3650 days, platform-wide like the archive). A nightly worker job `logs.purge` deletes in batches; the platform owner's status page card «نگهداری گزارش‌های فنی» shows the days and tonight's row count per log. Not covered: the SMS ledger and outbox tables do not exist yet (add them to the registry when they do).
   <details><summary>Full decision</summary>
 
   **Log retention with a preview.** Each growing log table (SMS ledger, sign-in log, outbox, notifications) gets a keep-for-N-days setting. The owner status page shows how many rows the next nightly purge would delete.

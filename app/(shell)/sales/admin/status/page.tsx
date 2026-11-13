@@ -23,6 +23,8 @@ import { slowQueries } from "@/lib/repo/slowQueries";
 import AuditHistoryCard from "@/components/meridian/AuditHistoryCard";
 import { auditHistory } from "@/lib/repo/auditLog";
 import ArchiveMonthsForm from "@/components/meridian/ArchiveMonthsForm";
+import LogRetentionForm from "@/components/meridian/LogRetentionForm";
+import { retentionPreview } from "@/lib/repo/logRetention";
 import { archiveHotMonths } from "@/lib/repo/historyArchive";
 
 export const metadata = pageMetadata("/sales/admin/status");
@@ -53,6 +55,7 @@ export default async function StatusPage() {
   const platform = session.hasRole("platform_owner");
   const slow = platform ? await slowQueries() : undefined;
   const hotMonths = platform ? await archiveHotMonths() : undefined;
+  const retention = platform ? await retentionPreview() : undefined;
 
   return (
     <>
@@ -87,6 +90,11 @@ export default async function StatusPage() {
       {hotMonths !== undefined ? (
         <div className="mt-[var(--space-4)]">
           <ArchiveMonthsForm months={hotMonths} />
+        </div>
+      ) : null}
+      {retention !== undefined ? (
+        <div className="mt-[var(--space-4)]">
+          <LogRetentionForm rows={retention} />
         </div>
       ) : null}
       <div className="mt-[var(--space-4)]">
