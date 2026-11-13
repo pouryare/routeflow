@@ -295,6 +295,7 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
   <details><summary>Full decision</summary>
 
   **Calendar view of cheques by due date.** Phone: an agenda grouped by day (`DayChips`); desk: a Jalali month grid with daily sums. Payment promises (F50) and tasks reuse it later (T8).
+  **Built (batch C, phone agenda only):** on the cheques page a card «سررسید چک‌های در دست» lists the cheques in hand by due day, soonest first, with the day's sum; the customer name opens the customer. The desk month grid is not built; promises and tasks do not use it yet.
 
   </details>
 - **D1. Money in hand per driver and rep.** Cash and cheques go to the person's own box; the office counts at day end; a gap is saved with a reason.
