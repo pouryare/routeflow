@@ -2883,11 +2883,12 @@ body {
 .meridian .acad__next--done { flex-direction: row; align-items: center; color: var(--success); }
 .meridian .lesson { display: flex; flex-direction: column; gap: 12px; margin-block: 12px; line-height: 1.9; }
 .meridian .lesson p, .meridian .lesson ul { margin: 0; }
-.meridian .lesson ul { padding-inline-start: 20px; display: flex; flex-direction: column; gap: 6px; }
+.meridian .lesson ul { list-style: disc; padding-inline-start: 20px; display: flex; flex-direction: column; gap: 6px; }
 .meridian .lesson__img { display: block; padding: 0; border: 0; background: none; border-radius: 12px; overflow: hidden; max-width: 28rem; }
 .meridian .lesson__img { position: relative; }
 .meridian .lesson__img img { display: block; width: 100%; height: auto; }
 .meridian .lesson__zoom { position: absolute; inset-block-end: 8px; inset-inline-start: 8px; padding: 4px; border-radius: 8px; background: rgb(0 0 0 / .45); color: #fff; }
+.meridian .acad__edit { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; width: 100%; min-height: 44px; text-align: start; background: none; border: 0; padding: 0; color: inherit; }
 .meridian .acad__steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
 .meridian .acad__step {
   display: grid; grid-template-columns: 32px minmax(0, 1fr) auto; gap: 12px; align-items: center;

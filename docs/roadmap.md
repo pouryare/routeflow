@@ -633,19 +633,19 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
 
   </details>
 
-- **AC1 to AC6. Academy with company lessons.** Lessons shipped with the app (general and app related) plus lessons each company writes in its own categories; reader, editor, required per role, manager table, links to tutorials and product pages. Van roles reach it from a card on `/driver`.
+- **AC1 to AC6. Academy with company lessons. Built 2026-11-13 (PR #82).** Not in this slice: the link from an objection card or a product page to a lesson, the push for an overdue lesson, and the lesson-to-tutorial «نشانم بده» button. Lessons shipped with the app (general and app related) plus lessons each company writes in its own categories; reader, editor, required per role, manager table, links to tutorials and product pages. Van roles reach it from a card on `/driver`.
   <details><summary>Full decision</summary>
 
   **Academy now (owner, 2026-11-12; plan `docs/plans/academy-catalogue-independence-2026-11-12.md`).** Two layers on one screen: «RouteFlow» lessons shipped as files (about 10 in Persian, drafted by the agent, reviewed by the owner: AC5) and «شرکت» lessons stored per company in categories the company creates (AC1, AC2). Editor `/sales/academy/manage` (AC3) for the owner, managers (own group) and any «مربی» (trainer), a permission the owner can give to anyone. Required per role with days after hire, the F133 table includes company lessons, «به‌روز شد» when a lesson changes (AC4). Links with tutorials, objection cards and product pages (AC6). **No new library:** plain text with headings and photos, photos in the company's storage. **Quizzes are the next slice** (AC-L1); the first slice ends a lesson with «خواندم».
 
   </details>
-- **VC1 to VC4. Catalogue for van roles.** A page for `field_rep` and `delivery_driver`: search, category chips, photo, packings, this shop's price, stock on the van (approximate), add to order, show to the customer, save as picture or PDF. Product information (photos, category, three selling points, a «how to say it» line) is edited by owner and managers.
+- **VC1 to VC4. Catalogue for van roles. VC1, VC2, VC3 (show and print) and VC3b built 2026-11-13 (PR #82).** Not in this slice: this shop's price and visibility at a stop (F62, F89; the customer prices are not in the phone's synced data), add to order (a van role has no order screen yet), save as a picture, VC4. The page is `/sales/catalogue` (under the shell so it keeps the bottom bar), cached by the service worker after a visit, not read from the phone's local database. A page for `field_rep` and `delivery_driver`: search, category chips, photo, packings, this shop's price, stock on the van (approximate), add to order, show to the customer, save as picture or PDF. Product information (photos, category, three selling points, a «how to say it» line) is edited by owner and managers.
   <details><summary>Full decision</summary>
 
   **Catalogue now (owner, 2026-11-12).** Today `/sales/products` sends van roles to `/driver`, so they have no catalogue, and a product has no photo or description. **Both, in two steps:** step 1 takes orders for later with van stock shown as approximate (VC1 to VC3b); step 2 sells from van stock at the door once van loading (F30) exists, with samples (F52) (VC4). Cost and margin are never sent to van roles. The first version shows or saves the price list; sending it to the shop waits for the message channel (F6, F79). Needs a check that the van screens read the catalogue offline (F75).
 
   </details>
-- **OI1 to OI3. Operational independence.** Manager view of each new hire's tutorials and required lessons (OI1), a first-week checklist per role as an Academy category (OI2), a one-page «if X breaks, read Y» runbook index (OI3). With F59 handover, T13 lend and S23 cover, which keep their own entries. Practice mode (F39) is later.
+- **OI1 to OI3. Operational independence. OI2 (a «هفتهٔ اول» lesson) and OI3 (`docs/runbook-index.md`) built 2026-11-13; OI1 not built (the manager table already shows required lessons per person; tutorials per person are not in it).** Manager view of each new hire's tutorials and required lessons (OI1), a first-week checklist per role as an Academy category (OI2), a one-page «if X breaks, read Y» runbook index (OI3). With F59 handover, T13 lend and S23 cover, which keep their own entries. Practice mode (F39) is later.
   <details><summary>Full decision</summary>
 
   **Owner, 2026-11-12:** plan everything good from the shared «Systematize RouteFlow Operations» chat. Goal: a new person, or someone covering for an absent colleague, can work from the app alone. The pieces and their order are in the plan. F59 needs the audit record (EV4). F39: design not decided, later (a practice order must never message a real customer).
@@ -675,7 +675,7 @@ Decided, but each needs something first. The "waits for" part is in the line. Th
 
 - **FB36. Saved smart segments.** A customer filter saved by name, usable by promotions and reminders. Comes with F28 and F21.
 - **T12. F122 custom fields rules.** Text, number, choice, date, yes/no; up to ten; archive instead of delete. Waits for F122.
-- **T13. F82 / F59 lend a rep's customers.** A manager lends customers to a colleague for N days; access ends by itself. Waits for F82 / F59.
+- **T13. F82 / F59 lend (F59 handover built 2026-11-13, owner only, on the users page; T13 not built) a rep's customers.** A manager lends customers to a colleague for N days; access ends by itself. Waits for F82 / F59.
 - **E2. «به شما سپرده شد» notice.** One push when records are handed to you; many at once become one push. Built with S6, T4 and F59.
 - **E16. F122 conditional custom fields.** A custom field may show and require itself when another field matches. Waits for F122.
 - **S7. Merge with a choice per field.** Pick name, phone, pin, address, owner; the losing phone is kept as a second number. Part of F148.

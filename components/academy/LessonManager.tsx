@@ -103,7 +103,7 @@ export default function LessonManager({ lessons, categories, roles, people, isOw
         <ul className="acad__steps" aria-label="درس‌های شرکت">
           {lessons.map((l) => (
             <li key={l.id} className="acad__step">
-              <button type="button" className="acad__step-text" style={{ textAlign: "start", minHeight: 44 }} onClick={() => open(l)}>
+              <button type="button" className="acad__edit" onClick={() => open(l)}>
                 <Icon name="edit" size="sm" />
                 <b>{l.title}</b>
                 <span className="acad__chip acad__chip--quiet">{catTitle(l.category_id)}</span>

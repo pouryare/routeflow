@@ -35,7 +35,7 @@ export default async function ManageLessonsPage() {
       </Link>
       <h2 style={{ marginTop: 4 }}>مدیریت درس‌ها</h2>
       <div className="kblock__body">
-        <LessonManager lessons={lessons} categories={categories.map((c) => ({ id: c.id, title: c.title }))} roles={ROLES} people={people} isOwner={isOwner(session.role)} />
+        <LessonManager lessons={lessons} categories={categories.map((c) => ({ id: c.id, title: c.title }))} roles={ROLES.filter((r) => r !== "shareholder")} people={people} isOwner={isOwner(session.role)} />
       </div>
     </div>
     </>

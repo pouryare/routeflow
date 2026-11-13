@@ -37,7 +37,7 @@ export default function CatalogueBrowser({ items, asOf, hasVan }: { items: Item[
 
   return (
     <div className="catalogue" dir="rtl">
-      <p className="acad__muted">قیمت‌ها تا {faJalaliDateTime(asOf)}{hasVan ? ". موجودی ماشین تقریبی است." : ""}</p>
+      <p className="acad__muted">قیمت‌ها تا <bdi>{faJalaliDateTime(asOf)}</bdi>{hasVan ? ". موجودی ماشین تقریبی است." : ""}</p>
       <FieldInput value={q} onChange={(e) => setQ(e.target.value)} placeholder="جستجوی کالا…" aria-label="جستجوی کالا" />
       {categories.length > 0 && (
         <ChipGroup wrap group={{
