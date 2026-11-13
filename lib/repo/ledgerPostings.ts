@@ -20,13 +20,17 @@ async function accountOrThrow(code: string): Promise<number> {
  *  guess on their behalf. Guessing is how a receipt lands in the wrong ledger and nobody
  *  notices for a quarter. */
 export async function cashAccountFor(method: string): Promise<number> {
-  if (method === "CREDIT_NOTE" || method === "OTHER") {
+  if (method === "CREDIT_NOTE" || method === "OTHER" || method === "LEFTOVER") {
     throw new LedgerError("برای این روش پرداخت باید حساب را خودتان انتخاب کنید");
   }
-  // LEFTOVER (D3) is not money coming in: the balance is forgiven, so the other side is the write-off expense.
-  const code = method === "LEFTOVER" ? "5110" : method === "CASH" ? "1101" : method === "CHEQUE" ? "1202" : "1102";
+  const code = method === "CASH" ? "1101" : method === "CHEQUE" ? "1202" : "1102";
   return await accountOrThrow(code);
 }
+
+/** Where a customer receipt's money side goes. A LEFTOVER (D3) is no money coming in: the balance is forgiven, so the
+ *  other side is the write-off expense. Only receipts may use it; an expense, a supplier payment or a commission paid
+ *  by "LEFTOVER" is refused by cashAccountFor. */
+const receiptAccountFor = async (method: string): Promise<number> => (method === "LEFTOVER" ? await accountOrThrow("5110") : await cashAccountFor(method));
 
 /** A customer receipt: Dr cash (or cheques receivable) / Cr accounts receivable.
  *
@@ -54,7 +58,7 @@ export async function postReceipt(
     createdBy: input.receivedBy,
     memo: input.memo ?? null,
     legs: [
-      { accountId: await cashAccountFor(input.method), side: "D", amountToman: input.amountToman },
+      { accountId: await receiptAccountFor(input.method), side: "D", amountToman: input.amountToman },
       {
         accountId: await accountOrThrow("1201"),
         side: "C",
@@ -122,7 +126,7 @@ export async function postReceiptReversal(
     memo: `ابطال: ${input.reason}`,
     legs: [
       // Sides flipped: the cash comes back out, the receivable goes back up.
-      { accountId: await cashAccountFor(input.method), side: "C", amountToman: input.amountToman },
+      { accountId: await receiptAccountFor(input.method), side: "C", amountToman: input.amountToman },
       {
         accountId: await accountOrThrow("1201"),
         side: "D",

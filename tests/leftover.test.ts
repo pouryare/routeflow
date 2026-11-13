@@ -13,6 +13,7 @@ process.env.SESSION_SECRET = "test-secret";
 
 const { getDb } = await import("@/lib/db");
 const { customerDebt, voidPayment } = await import("@/lib/repo/payments");
+const { cashAccountFor } = await import("@/lib/repo/ledgerPostings");
 const { closeLeftover } = await import("@/lib/repo/leftover");
 const { setThresholds, thresholdsFor } = await import("@/lib/repo/thresholds");
 import type { Session } from "@/lib/session";
@@ -107,6 +108,10 @@ describe("D3 close a small leftover", () => {
     await expect(closeLeftover(as("group_manager"), custId, 1_000, "nonsense")).rejects.toThrow(/دلیل/);
     await closeLeftover(as("owner"), custId, 60_000, "small_discount");
     expect((await customerDebt(1, custId)).total).toBe(140_000);
+  });
+
+  it("cannot be used to pay an expense", async () => {
+    await expect(cashAccountFor("LEFTOVER")).rejects.toThrow();
   });
 
   it("follows the limit the owner sets", async () => {
