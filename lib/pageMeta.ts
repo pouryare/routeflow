@@ -201,6 +201,13 @@ export const PAGE_META: Record<string, PageMeta> = {
     overview:
       "درآمد منهای بهای تمام‌شده و هزینه‌ها، برای یک دوره. اگر بهای تمام‌شدهٔ بخشی از فروش‌ها معلوم نباشد، صفحه صریحاً اعلام می‌کند که سود نمایش‌داده‌شده بیش از واقع است.",
   },
+  "/accounting/money": {
+    title: "ورودی و خروجی پول",
+    titleEn: "Money in and out",
+    help: "page.money",
+    overview:
+      "پولی که در یک ماه به صندوق و بانک آمد و از آن‌ها رفت، با مانده اول و آخر ماه، مستقیماً از دفتر.",
+  },
   "/accounting/payables": {
     title: "بدهی تأمین‌کنندگان",
     titleEn: "Accounts payable",

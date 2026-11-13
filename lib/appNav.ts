@@ -154,6 +154,7 @@ export function appTabs(session: { role: Role }): AppTab[] {
     { href: "/accounting/journal", label: "دفتر روزنامه", group: "accounts", ready: isOwner(r) || r === "group_manager" },
     { href: "/accounting/balance-sheet", label: "ترازنامه", group: "accounts", ready: isOwner(r) },
     { href: "/accounting/income-statement", label: "سود و زیان", group: "accounts", ready: isOwner(r) },
+    { href: "/accounting/money", label: "ورودی و خروجی پول", group: "accounts", ready: isOwner(r) },
     { href: "/accounting/payables", label: "بدهی تأمین‌کنندگان", group: "accounts", ready: isOwner(r) },
     { href: "/accounting/expenses", label: "هزینه‌ها", group: "accounts", ready: isOwner(r) || r === "group_manager" },
     { href: "/accounting/suppliers", label: "تأمین‌کنندگان", group: "accounts", ready: isOwner(r) },

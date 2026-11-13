@@ -350,6 +350,7 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
 
   **Money in and out (A5).** A monthly page «ورودی و خروجی پول»: money in (receipts, cheques cashed), money out (suppliers, expenses by category, commission, loans), opening and closing cash and bank, read from the ledger legs of the money accounts. No new tables.
 
+  **Built (batch C, first slice):** page `/accounting/money` (owner, tab «ورودی و خروجی پول» in the accounts group): per month, money in and out of the cash, bank and petty-cash accounts grouped by what posted it (expenses by category), opening and closing balance. Moves between own accounts net to zero and are left out. Z5 (calendar tab) and Z20 (month so far) are not built yet.
   </details>
 - **B1. Credit note.** A manager makes a credit for goods returned after delivery; applied to open orders or paid back. Suppliers get the same document.
   <details><summary>Full decision</summary>
