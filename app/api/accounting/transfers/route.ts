@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireRole } from "@/lib/session";
 import { OWNER_ROLES } from "@/lib/roles";
-import { getDb } from "@/lib/db";
-import { LedgerError, postTransfer } from "@/lib/repo/ledgerPostings";
+import { LedgerError, recordTransfer } from "@/lib/repo/ledgerPostings";
 import { once } from "@/lib/repo/idempotency";
 
 /** A4: move money between own accounts: { from, to, amount_toman, fee_toman?, date, tracking? } (codes 1101, 1102, 1103). */
@@ -14,10 +13,8 @@ async function post(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "درخواست نامعتبر است" }, { status: 400 });
   }
   try {
-    const db = getDb();
-    const id = await db.tx(() =>
-      postTransfer(db, {
-        organizationId: guard.session.organizationId,
+    const id = await recordTransfer({
+      organizationId: guard.session.organizationId,
         from: b.from as string,
         to: b.to as string,
         amountToman: b.amount_toman as number,
@@ -25,8 +22,7 @@ async function post(req: NextRequest) {
         postedAt: `${b.date}T12:00:00.000Z`,
         tracking: typeof b.tracking === "string" ? b.tracking.slice(0, 60) : null,
         by: guard.session.user.id,
-      })
-    );
+    });
     return NextResponse.json({ ok: true, id });
   } catch (e) {
     if (e instanceof LedgerError) return NextResponse.json({ ok: false, error: e.message }, { status: 400 });

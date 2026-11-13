@@ -253,6 +253,7 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
 
   </details>
 - **D16. Supplier price rows.** Per product and supplier: price, minimum quantity, delivery days, supplier code.
+  **Built (batch B):** table `supplier_prices`; «قیمت‌های این تأمین‌کننده» section on the supplier page (owner) lists, adds, changes and removes rows; the purchase form fills the cost when the supplier name and product match a row, shows delivery days and code, and warns under the minimum. D17 and F31 can read the rows.
   <details><summary>Full decision</summary>
 
   **Supplier price rows (D16).** Per product and supplier: price, minimum quantity, delivery days, supplier code. Purchase entry pre-fills the price and warns under the minimum; feeds D17 and F31.

@@ -341,6 +341,12 @@ export async function postTransfer(db: Db, input: { organizationId: number; from
   });
 }
 
+/** postTransfer in its own transaction, for the route. */
+export async function recordTransfer(input: Parameters<typeof postTransfer>[1]): Promise<number> {
+  const db = getDb();
+  return await db.tx(() => postTransfer(db, input));
+}
+
 /** Void an expense (H6): post the mirror entry and leave the original in the books. The «آخرین هزینه‌ها» list stops
  *  showing it (a reversal points at it); the journal and the books still show both. One transaction.
  *  Refused: a journal that is not an expense of this company, one already voided, a closed period (postJournal). */
