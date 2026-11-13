@@ -90,6 +90,7 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
 
   **Totals for the filtered list.** Orders, payments and cheques lists show a count and the toman sum for the current filter; the lead pool and task board show a count per column. Computed on the server with the same filter (T7).<br><br>**Total of the list (Z17).** A strip on the payments, expenses and orders lists that follows the filters and the selected rows. Not checked on every list.
 
+  **Built (batch C, first slice):** the orders list heading shows the toman sum of the orders left after the search and filters. Not yet: payments, cheques and expenses lists, ticked rows, counts per column on the lead pool and task board.
   </details>
 - **T21. Export follows what you see.** Export writes the current filter and sort, or only ticked rows, up to a row cap, and says how many rows. Customer export stays behind the authenticator code.
   <details><summary>Full decision</summary>

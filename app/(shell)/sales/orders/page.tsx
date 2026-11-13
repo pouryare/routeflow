@@ -135,7 +135,7 @@ function ListView({
           <div className="n">
             {orders.length === 0
               ? "سفارشی پیدا نشد"
-              : `${faNum(orders.length)} سفارش، از ${faNum(customerCount)} مشتری · روی هر کارت بزنید`}
+              : `${faNum(orders.length)} سفارش، از ${faNum(customerCount)} مشتری، جمعاً ${faToman(orders.reduce((s, o) => s + o.total_toman, 0))} · روی هر کارت بزنید`}
           </div>
         </div>
         <div className="acts">
