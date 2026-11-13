@@ -24,6 +24,7 @@ import { roundToman, sumToman } from "./money";
 import { postPurchase } from "./repo/ledgerPostings";
 import { daysBetween } from "@/lib/database/dialect";
 import { tehranTodayIso } from "@/lib/jalali";
+import { applyReceipt, PurchaseOrderError } from "./repo/purchaseOrders";
 
 export class PurchaseError extends Error {}
 
@@ -55,6 +56,8 @@ export interface PurchaseInput {
   /** Required, not optional: readPurchases is per-tenant now, and a receipt with a NULL
    *  organisation drops out of its own owner's purchase history without an error. */
   organization_id: number;
+  /** F66: the purchase order this receipt arrives against; its lines are counted off. */
+  purchase_order_id?: number | null;
   lines: PurchaseLineInput[];
 }
 
@@ -81,8 +84,8 @@ export async function recordPurchase(db: Db, input: PurchaseInput): Promise<numb
     const purchaseId = Number(
       (await db
         .prepare(
-          `INSERT INTO purchases (supplier, supplier_id, purchase_date, invoice_no, notes, created_by, created_at, organization_id)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+          `INSERT INTO purchases (supplier, supplier_id, purchase_date, invoice_no, notes, created_by, created_at, organization_id, purchase_order_id)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
         )
         .run(
           input.supplier?.trim() || null,
@@ -92,9 +95,18 @@ export async function recordPurchase(db: Db, input: PurchaseInput): Promise<numb
           input.notes?.trim() || null,
           input.created_by,
           now,
-          input.organization_id
+          input.organization_id,
+          input.purchase_order_id ?? null
         )).lastInsertRowid
     );
+    if (input.purchase_order_id) {
+      try {
+        await applyReceipt(db, input.organization_id, input.purchase_order_id, input.lines);
+      } catch (e) {
+        if (e instanceof PurchaseOrderError) throw new PurchaseError(e.message);
+        throw e;
+      }
+    }
 
     const insertLine = db.prepare(
       `INSERT INTO purchase_lines (purchase_id, product_id, base_qty, unit_cost_toman, created_at)

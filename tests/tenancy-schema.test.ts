@@ -154,6 +154,7 @@ describe("organization_id backfill", () => {
       "order_events",       // through orders (carries organization_id for cheap filtering)
       "order_events_archive", // the same, for order_events rows older than the hot months
       "purchase_lines",     // through purchases
+      "purchase_order_lines", // through purchase_orders
       "delivery_stops",     // through delivery_runs
       "run_facility_stops", // through delivery_runs — a facility visit is not a delivery,
                             // but it still belongs to exactly one run
