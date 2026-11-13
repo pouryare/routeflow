@@ -1,6 +1,7 @@
 "use client";
 
 import { AnswerLink } from "@/components/tapflow/Answer";
+import ReportProblem from "@/components/ReportProblem";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useLayoutEffect, useRef, useState } from "react";
@@ -75,6 +76,7 @@ export default function BottomNav({ primary, more, account }: BottomTabs) {
               {account.map((l) => (
                 <AnswerLink key={l.href} href={l.href} icon={l.icon} onPress={() => setMoreOpen(false)}>{l.label}</AnswerLink>
               ))}
+              <ReportProblem className="tf-opt" onOpen={() => setMoreOpen(false)} />
             </div>
           </section>
         )}

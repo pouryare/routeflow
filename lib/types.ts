@@ -1,4 +1,5 @@
 import { distanceKm, type LatLng } from "./geo";
+import type { ContactOff } from "./contactPrefs";
 export type CoverageStatus = "visited" | "needs_coverage" | "not_allowed" | "unknown";
 
 // Mirrors the --good/--warn/--crit/--neutral tokens in MASTER.md. Duplicated as literal
@@ -39,9 +40,9 @@ export const STATUS_LABEL: Record<CoverageStatus, string> = {
  *  exclusive reading of the same polygons -- one at a time, with the legend swapping to
  *  match, because MASTER.md's rule is that a colour means one thing. An amber district
  *  must never be ambiguous between "needs coverage" and "belongs to گروه غرب". */
-export type DistrictColorMode = "status" | "group";
+export type DistrictColorMode = "status" | "group" | "money";
 
-export const DISTRICT_COLOR_MODES: DistrictColorMode[] = ["status", "group"];
+export const DISTRICT_COLOR_MODES: DistrictColorMode[] = ["status", "group", "money"];
 
 /** Guards a mode arriving from a deep link, which anyone can hand-edit. */
 export function isDistrictColorMode(v: unknown): v is DistrictColorMode {
@@ -112,10 +113,15 @@ export interface CustomerRow {
   province: string | null;
   lat: number | null;
   lng: number | null;
+  /** The district the customer sits in (U2 money map); only the map page reads it. */
+  district_id?: number | null;
+  /** S15: channels this customer asked us not to use; absent when none. */
+  contact_off?: ContactOff[];
   lifecycle: CustomerLifecycle;
   customer_type: CustomerType | null;
   parent_customer_id: number | null;
   payment_terms_days: number;
+  payment_terms_kind?: string;
   hard_credit_block: number;
   credit_limit_toman: number | null;
   qualified_at: string | null;

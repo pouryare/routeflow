@@ -17,10 +17,13 @@ export interface Customer {
   province: string | null;
   lat: number | null;
   lng: number | null;
+  district_id?: number | null;
+  contact_off?: import("../contactPrefs").ContactOff[];
   lifecycle: CustomerLifecycle;
   customer_type: CustomerType | null;
   parent_customer_id: number | null;
   payment_terms_days: number;
+  payment_terms_kind?: string;
   hard_credit_block: number;
   credit_limit_toman: number | null;
   qualified_at: string | null;
@@ -193,6 +196,8 @@ export interface UserRow {
   must_change_password: number;
   /** 1 when the owner made this person a «مربی»: may write company lessons (AC3). */
   can_teach?: number;
+  /** Last time the app was used, noted every few minutes (E17 idle sign-out). */
+  last_active_at?: string | null;
 }
 
 export type LocationResolution = "direct" | "pluscode" | "browser" | "nominatim" | "manual" | "unresolved";

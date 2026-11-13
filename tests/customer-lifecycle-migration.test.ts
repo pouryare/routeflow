@@ -29,6 +29,7 @@ describe("customers M2 migration", () => {
       "lifecycle",
       "parent_customer_id",
       "payment_terms_days",
+      "payment_terms_kind",
       "hard_credit_block",
       "qualified_at",
       "first_order_at",

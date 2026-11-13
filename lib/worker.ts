@@ -14,12 +14,17 @@ import { withDbScope } from "@/lib/database/scope";
 import { allOrgIds } from "@/lib/repo/organizations";
 import { drainEvents } from "@/lib/repo/events";
 import { sweepCompanyRules } from "@/lib/repo/rulesSweep";
+import { purgeLogs } from "@/lib/repo/logRetention";
+import { reviveLostLeads } from "@/lib/repo/leadRevive";
 
 export const QUEUES = {
   /** Re-run reactions that failed or were cut off, every minute. */
   eventsDrain: "events.drain",
   /** The rules sweep for every company, every 5 minutes (replaces the systemd rules timer). */
   rulesSweep: "rules.sweep",
+  /** Old rows of the machine logs (lib/logRetention.ts), every night (FB41). */
+  logsPurge: "logs.purge",
+  leadsRevive: "leads.revive",
 } as const;
 
 /** Failed jobs are kept 14 days so the status card can show them. */
@@ -54,14 +59,24 @@ export async function startWorker(connectionString = process.env.DATABASE_URL): 
   const queue = { retryLimit: 3, retryDelay: 30, retryBackoff: true, deleteAfterSeconds: RETENTION_DAYS * 86400 } as const;
   await b.createQueue(QUEUES.eventsDrain, queue);
   await b.createQueue(QUEUES.rulesSweep, queue);
+  await b.createQueue(QUEUES.logsPurge, queue);
+  await b.createQueue(QUEUES.leadsRevive, queue);
   await b.work(QUEUES.eventsDrain, async () => {
     await eachCompany((id) => drainEvents(id));
   });
   await b.work(QUEUES.rulesSweep, async () => {
     await eachCompany((id) => sweepCompanyRules(id));
   });
+  await b.work(QUEUES.logsPurge, async () => {
+    await withDbScope("system", () => purgeLogs());
+  });
+  await b.work(QUEUES.leadsRevive, async () => {
+    await eachCompany((id) => reviveLostLeads(id));
+  });
   await b.schedule(QUEUES.eventsDrain, "* * * * *");
   await b.schedule(QUEUES.rulesSweep, "*/5 * * * *");
+  await b.schedule(QUEUES.logsPurge, "30 23 * * *");
+  await b.schedule(QUEUES.leadsRevive, "0 3 * * *");
   boss = b;
   return b;
 }

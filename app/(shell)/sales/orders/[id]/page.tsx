@@ -113,11 +113,14 @@ export default async function OrderDetailPage({
       <BentoStrip>
         <BentoIdentity
           eyebrow={order.order_no}
-          title={order.customer_name}
+          title={order.ship_name ?? order.customer_name}
           meta={
             <>
               {faJalaliDate(order.order_date)} · {statusLabel(order.status)}
               {order.salesperson_name && ` · ${order.salesperson_name}`}
+              {order.ship_phone && <> · <span dir="ltr">{order.ship_phone}</span></>}
+              {order.ship_address && ` · ${order.ship_address}`}
+              {order.due_date && ` · سررسید ${faJalaliDate(order.due_date)}`}
             </>
           }
         >

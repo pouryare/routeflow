@@ -26,7 +26,9 @@ export type PaymentMethod =
   | "CARD_TO_CARD"
   | "CHEQUE"
   | "CREDIT_NOTE"
-  | "OTHER";
+  | "OTHER"
+  /** D3: a small balance closed by a manager. Not cash: never counted as money collected. */
+  | "LEFTOVER";
 
 export interface PaymentRow {
   id: number;

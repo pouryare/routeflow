@@ -7,6 +7,7 @@
  *  is filtered to open rows, a recent window, or a stalled set.
  */
 
+import { thresholdsFor } from "@/lib/repo/thresholds";
 import { getDb } from "@/lib/db";
 import { groupFilter, orderFilter, type Session } from "@/lib/session";
 import { FULFILLED_ORDER_STATUSES, sqlStatusList } from "@/lib/orderStateMachine";
@@ -48,7 +49,6 @@ const DAY_MS = 86_400_000;
 const IMPACT_REF_TOMAN = 20_000_000;
 const OVERDUE_WARN_TOMAN = 2_000_000;
 const OVERDUE_CRIT_TOMAN = 20_000_000;
-const STALLED_DAYS = 2;
 
 const norm = (toman: number): number => Math.max(0, Math.min(1, toman / IMPACT_REF_TOMAN));
 
@@ -102,7 +102,8 @@ interface StalledRow {
 async function stalledOrderCandidates(session: Session): Promise<Candidate[]> {
   const db = getDb();
   const scope = orderFilter(session, "o");
-  const cutoff = new Date(Date.now() - STALLED_DAYS * DAY_MS).toISOString();
+  const stalledDays = (await thresholdsFor(session.organizationId)).stalled_order_days;
+  const cutoff = new Date(Date.now() - stalledDays * DAY_MS).toISOString();
   const rows = await db
     .prepare(
       `SELECT * FROM (SELECT o.id, o.status,
@@ -119,7 +120,7 @@ async function stalledOrderCandidates(session: Session): Promise<Candidate[]> {
 
   const now = Date.now();
   return rows.map((r) => {
-    const staleDays = r.last_event ? (now - Date.parse(r.last_event)) / DAY_MS : STALLED_DAYS + 1;
+    const staleDays = r.last_event ? (now - Date.parse(r.last_event)) / DAY_MS : stalledDays + 1;
     return {
       key: `stalled_order:${r.id}`,
       kind: "stalled_order" as const,

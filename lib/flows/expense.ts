@@ -138,6 +138,8 @@ export interface RecentExpense {
   memo: string | null;
   hasReceipt: boolean;
   enteredBy: string | null;
+  /** Z11: the category is private and this viewer is not an owner: show dots, not the amount. */
+  hidden?: boolean;
   /** Z9: where the phone was when it was entered. */
   place?: { lat: number; lng: number } | null;
 }

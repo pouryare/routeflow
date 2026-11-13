@@ -5,6 +5,7 @@
   "unscopedTenantSelects": 9,
   "rawRoleChecks": 57,
   "longFunctions": 63,
-  "unusedExports": 210,
+  "unusedExports": 209,
+  "foreignTableWrites": 2,
   "agentLitterFiles": 0
 }

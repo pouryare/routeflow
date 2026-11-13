@@ -22,6 +22,10 @@ import { phoneHint } from "@/lib/fieldShape";
 import FieldShapeHint from "@/components/FieldShapeHint";
 import { useToast } from "@/components/ToastProvider";
 import CustomerBento from "@/components/meridian/CustomerBento";
+import PaymentTermsSheet from "@/components/PaymentTermsSheet";
+import CreditLimitSheet from "@/components/CreditLimitSheet";
+import { faToman } from "@/lib/format";
+import { termLabel, isTermKind } from "@/lib/paymentTerms";
 import CustomerName from "@/components/CustomerName";
 import CustomerPriceHistory from "@/components/PriceHistoryList";
 import BusinessDetails from "./BusinessDetails";
@@ -52,6 +56,8 @@ export default function BusinessProfile({ initial, initialTimeline, canOrder }: 
   const [profile, setProfile] = useState(initial), [history, setHistory] = useState(initialTimeline);
   const [edit, setEdit] = useState<Edit | null>(null), [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [termsOpen, setTermsOpen] = useState(false);
+  const [limitOpen, setLimitOpen] = useState(false);
   const [intel, setIntel] = useState<{ ctx: FlowContext; st: FlowState } | null>(null);
   const [hours, setHours] = useState<{ ctx: FlowContext; st: FlowState } | null>(null);
   const lock = useRef(false), toast = useToast();
@@ -156,7 +162,7 @@ export default function BusinessProfile({ initial, initialTimeline, canOrder }: 
     </section><CustomerBento data={profile.summary} />
     {profile.open && <CustomerOpenItems data={profile.open} />}
     <CustomerPriceHistory customerId={profile.business.id} />
-    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}><Link className="btn ghost" style={TOUCH} href={`/sales/orders?customer=${profile.business.id}`}><Icon name="receipt" size="md" />همهٔ سفارش‌ها</Link></div>
+    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}><Link className="btn ghost" style={TOUCH} href={`/sales/orders?customer=${profile.business.id}`}><Icon name="receipt" size="md" />همهٔ سفارش‌ها</Link>{profile.canSetTerms && <button type="button" className="btn ghost" style={TOUCH} data-tour="payment-terms" onClick={() => setTermsOpen(true)}><Icon name="calendar" size="md" />شرایط پرداخت: {termLabel(isTermKind(profile.business.payment_terms_kind) ? profile.business.payment_terms_kind : "days", profile.business.payment_terms_days)}</button>}{profile.canSetTerms && <button type="button" className="btn ghost" style={TOUCH} data-tour="credit-limit" onClick={() => setLimitOpen(true)}><Icon name="receipt" size="md" />سقف اعتبار: {profile.business.credit_limit_toman === null ? "بدون سقف" : faToman(profile.business.credit_limit_toman)}</button>}</div>{limitOpen && <CreditLimitSheet open onClose={() => setLimitOpen(false)} customerId={profile.business.id} name={profile.business.business_name} limit={profile.business.credit_limit_toman} isOwner={profile.isOwner} onDone={() => void reload().catch(() => undefined)} />}{termsOpen && <PaymentTermsSheet open onClose={() => setTermsOpen(false)} customerId={profile.business.id} name={profile.business.business_name} kind={profile.business.payment_terms_kind} days={profile.business.payment_terms_days} onDone={() => void reload().catch(() => undefined)} />}
     <section className="tile"><h2>تاریخچه</h2>{!history.items.length && <p>رویدادی ثبت نشده است.</p>}
       {history.items.map(i => <article key={`${i.kind}-${i.id}`} style={{ padding: "12px 0", borderBottom: "1px solid var(--border)" }}>{i.href ? <Link href={i.href}>{i.title}</Link> : <strong>{i.title}</strong>}<p>{i.sub}</p><small><time dateTime={i.at} dir="ltr">{faJalaliDateTime(i.at)}</time> {i.who}</small></article>)}
       {history.nextBefore && <button className="inline-flex items-center justify-center gap-[var(--space-2)] btn ghost" style={TOUCH} disabled={busy} onClick={() => void more()}>

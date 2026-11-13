@@ -76,10 +76,15 @@ export interface JournalReport {
  *  correction. */
 export async function journalReport(
   organizationId: number,
-  filter?: { periodKey?: string; sourceType?: string; limit?: number; offset?: number }
+  filter?: { periodKey?: string; sourceType?: string; limit?: number; offset?: number; hideAccountIds?: number[] }
 ): Promise<JournalReport> {
   const where: string[] = ["j.organization_id = ?"];
   const args: unknown[] = [organizationId];
+  // Z11: a journal that touches a private category is left out for a viewer who may not see its amount.
+  if (filter?.hideAccountIds?.length) {
+    where.push(`NOT EXISTS (SELECT 1 FROM ledger_entries h WHERE h.journal_id = j.id AND h.account_id IN (${filter.hideAccountIds.map(() => "?").join(",")}))`);
+    args.push(...filter.hideAccountIds);
+  }
   if (filter?.periodKey) {
     where.push("j.period_key = ?");
     args.push(filter.periodKey);
@@ -435,8 +440,8 @@ export async function expensesByCategory(organizationId: number, filter?: { peri
   }
   return await getDb()
     .prepare(
-      `SELECT * FROM (SELECT a.code, a.name_fa AS nameFa,
-              COALESCE(SUM(e.amount_toman), 0) AS amountToman
+      `SELECT * FROM (SELECT a.id, a.code, a.name_fa AS nameFa,
+              COALESCE(SUM(CASE WHEN e.side = 'D' THEN e.amount_toman ELSE -e.amount_toman END), 0) AS amountToman
          FROM ledger_entries e
          JOIN journals j ON j.id = e.journal_id
          JOIN accounts a ON a.id = e.account_id
@@ -475,7 +480,7 @@ export async function recentExpenses(organizationId: number, limit = 30): Promis
 
 /** Who entered what. Accountability, not a second set of books: a group_manager may enter
  *  expenses, so the report names them rather than silently pooling the money. */
-export async function expensesByEnterer(organizationId: number) {
+export async function expensesByEnterer(organizationId: number, hideAccountIds: number[] = []) {
   return await getDb()
     .prepare(
       `SELECT u.display_name AS displayName, COUNT(*) AS entries,
@@ -485,9 +490,11 @@ export async function expensesByEnterer(organizationId: number) {
          JOIN accounts a ON a.id = e.account_id
          LEFT JOIN users u ON u.id = j.created_by
         WHERE e.organization_id = ? AND a.type = 'EXPENSE' AND a.code <> '5101'
+          AND j.reverses_journal_id IS NULL AND NOT EXISTS (SELECT 1 FROM journals r WHERE r.reverses_journal_id = j.id)
+          ${hideAccountIds.length ? `AND a.id NOT IN (${hideAccountIds.map(() => "?").join(",")})` : ""}
         GROUP BY j.created_by, u.id ORDER BY amountToman DESC`
     )
-    .all(organizationId);
+    .all(organizationId, ...hideAccountIds);
 }
 
 /** One posting in an account's statement, plus the running balance after it. */

@@ -5,15 +5,16 @@ import { stringAgg } from "@/lib/database/dialect";
 /** Statuses where the goods have not left yet: a second copy of one of these is still fixable. */
 const OPEN = "'DRAFT', 'PENDING_REVIEW', 'PENDING_CREDIT', 'ON_HOLD', 'CONFIRMED', 'PLANNED', 'READY', 'OUT_FOR_DELIVERY'";
 
-/** F72: the customer's open orders created in the last 24 hours, newest first, with the set of
+/** F72: the customer's open orders created in the last 24 hours (or the company's own window, D30), newest first, with the set of
  *  products on each, for the duplicate-order question. `scope` is the caller's orderFilter
  *  fragment on alias `o`: a person is only warned about orders they could open. */
 export async function recentOpenOrders(
   scope: { sql: string; params: number[] },
   customerId: number,
+  windowHours = DUPLICATE_WINDOW_HOURS,
   now = new Date(),
 ): Promise<OpenOrderBrief[]> {
-  const since = new Date(now.getTime() - DUPLICATE_WINDOW_HOURS * 3600_000).toISOString();
+  const since = new Date(now.getTime() - windowHours * 3600_000).toISOString();
   const rows = await getDb()
     .prepare(
       `SELECT o.id, o.order_no, o.created_at, ${stringAgg("ol.product_id", { distinct: true })} AS products

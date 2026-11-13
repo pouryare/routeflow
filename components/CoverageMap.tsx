@@ -14,6 +14,7 @@ import AppMap from "@/components/map/AppMap";
 import { BASEMAP_LABELS } from "@/lib/mapStyle";
 import CustomerLayer, { CLUSTER_LAYER, CUSTOMER_LAYER } from "@/components/coverage/CustomerLayer";
 import DistrictLayer, { type DistrictPaint } from "@/components/coverage/DistrictLayer";
+import { districtMoney, moneyFill } from "@/lib/districtMoney";
 import { DistrictCollection, DistrictFeature, DistrictGeometryMap, DistrictProperties, DistrictPropertiesResponse, MapCustomer, CoverageStatus, STATUS_COLOR, STATUS_LABEL, CustomerColorMode, customerLifecycleColor, debtColor, salespersonColor, inactivityColor, daysSinceLastPurchase, distanceColor, isCustomerColorMode, shapeForColor, type DistrictColorMode, districtGroupColor, isDistrictColorMode } from "@/lib/types";
 import {
   PrecisionMode,
@@ -28,7 +29,7 @@ import CollapsibleSection, { SectionFilterContext } from "./CollapsibleSection";
 import CustomerFilters from "./CustomerFilters";
 import SearchBox from "./SearchBox";
 import LocateControl from "./LocateControl";
-import { canSell } from "@/lib/roles";
+import { canSell, isOwner, MANAGE_ROLES } from "@/lib/roles";
 import MyLocationMarker from "./MyLocationMarker";
 import { useMyPosition } from "./MyPositionProvider";
 import GeofenceWatcher from "./GeofenceWatcher";
@@ -118,6 +119,7 @@ export default function CoverageMap({
   groups,
   role,
   geometryVersion,
+  limits,
 }: {
   initialDistricts: DistrictProperties[];
   initialCustomers: MapCustomer[];
@@ -126,6 +128,8 @@ export default function CoverageMap({
   groups: MapGroup[];
   role: Role;
   geometryVersion: string;
+  /** The company's own numbers (D30); the defaults when left out. */
+  limits?: { quietDays: number; ageingDays: number; staleDays: number; leftoverLimit?: number };
 }) {
   // --- Deep links -------------------------------------------------------------------
   // Read once, on the first render, before the map exists: the opening view is a
@@ -553,6 +557,7 @@ export default function CoverageMap({
     return m;
   }, [salespeople]);
 
+  const moneyByDistrict = useMemo(() => districtMoney(customers), [customers]);
   const groupColors = useMemo(() => new Map(groups.map((g) => [g.id, g.color])), [groups]);
 
   const activeBasemap = basemapDef(basemap);
@@ -731,9 +736,9 @@ export default function CoverageMap({
   const worklist = useMemo(
     () =>
       viewBounds
-        ? buildWorklist(customers, dueReminders, districtProps, viewBounds, tehranTodayIso())
+        ? buildWorklist(customers, dueReminders, districtProps, viewBounds, tehranTodayIso(), undefined, limits?.quietDays)
         : null,
-    [customers, dueReminders, districtProps, viewBounds],
+    [customers, dueReminders, districtProps, viewBounds, limits?.quietDays],
   );
 
   /* The header's search overlay sends a picked customer here when the map is already open,
@@ -812,7 +817,9 @@ export default function CoverageMap({
       const fill =
         districtColorMode === "group"
           ? districtGroupColor(feature.properties.group_id ?? null, groupColors)
-          : status === "unknown"
+          : districtColorMode === "money"
+            ? moneyFill(moneyByDistrict.get(feature.properties.id), ink.unknown)
+            : status === "unknown"
             ? ink.unknown
             : STATUS_COLOR[status];
       const level = feature.properties.level === "mantaghe" ? "mantaghe" : "mahalle";
@@ -829,12 +836,12 @@ export default function CoverageMap({
         fill,
         // Territory reads as a filled area rather than a tint: in group mode the fill is the
         // whole point, where in status mode it sits under markers that have to stay legible.
-        fillOpacity: (selected ? 0.55 : districtColorMode === "group" ? 0.45 : level === "mantaghe" ? 0.08 : 0.35) * dim,
+        fillOpacity: (selected ? 0.55 : districtColorMode === "group" || districtColorMode === "money" ? 0.45 : level === "mantaghe" ? 0.08 : 0.35) * dim,
         lineOpacity: (selected ? 1 : level === "mantaghe" ? 0.5 : 0.8) * dim,
         selected,
       };
     },
-    [districtColorMode, groupColors, ink, bulkSelectedIds, corridorDistrictIds],
+    [districtColorMode, groupColors, moneyByDistrict, ink, bulkSelectedIds, corridorDistrictIds],
   );
 
   /** A customer's marker colour under the active mode. Extracted because the selected
@@ -969,7 +976,7 @@ export default function CoverageMap({
           {/* Silent while the data is current. Every figure on this map -- debts,
               statuses, last-purchase dates -- comes from a spreadsheet somebody has to
               remember to import, and nothing goes visibly wrong when they forget. */}
-          <DataFreshness syncedAt={newestSync(customers)} className="mt-2" />
+          <DataFreshness syncedAt={newestSync(customers)} className="mt-2" ageingDays={limits?.ageingDays} staleDays={limits?.staleDays} />
 
           {positionStatus === "denied" && (
             <p className="mt-2 flex flex-wrap items-center gap-1.5 text-[length:var(--text-xs)] leading-5 text-crit">
@@ -1255,6 +1262,8 @@ export default function CoverageMap({
             onClose={() => setSelectedCustomer(null)}
             onReminderAdded={loadReminders}
             onUpdated={loadCustomers}
+            canEditContact={canSell(role)}
+            leftover={limits?.leftoverLimit !== undefined && MANAGE_ROLES.includes(role) ? { limit: limits.leftoverLimit, owner: isOwner(role) } : undefined}
           />
         )}
       </div>
@@ -1273,6 +1282,7 @@ export default function CoverageMap({
       {selectedDistrict && (
         <DistrictEditor
           district={selectedDistrict}
+          money={moneyByDistrict.get(selectedDistrict.properties.id)}
           onClose={() => setSelectedDistrict(null)}
           onReminderAdded={loadReminders}
           onSaved={() => {

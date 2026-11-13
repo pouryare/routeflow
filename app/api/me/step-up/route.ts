@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
-import { rateLimit } from "@/lib/rateLimit";
+import { rateLimitDb } from "@/lib/repo/rateLimitDb";
 import { checkSecondFactor, secondFactorRequired } from "@/lib/repo/secondFactor";
 import { trustCookieFor, verifierOf } from "@/lib/repo/stepUp";
 import { normaliseCode } from "@/lib/stepUp";
@@ -15,7 +15,10 @@ export async function POST(req: NextRequest) {
   if (!await secondFactorRequired(person)) {
     return NextResponse.json({ ok: false, error: "ورود دومرحله‌ای هنوز فعال نیست؛ از «امنیت حساب» فعالش کنید" }, { status: 409 });
   }
-  const limit = rateLimit(`stepup:${person}`, 5, 10 * 60_000);
+  const limit = await rateLimitDb(`stepup:${person}`, [
+    { max: 5, windowMs: 10 * 60_000 },
+    { max: 20, windowMs: 60 * 60_000 },
+  ]);
   if (!limit.allowed) {
     return NextResponse.json({ ok: false, error: `تلاش‌های ناموفق زیاد بود؛ ${Math.ceil(limit.retryAfterSeconds / 60)} دقیقه دیگر دوباره امتحان کنید` }, { status: 429 });
   }

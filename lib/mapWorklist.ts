@@ -50,6 +50,7 @@ export function buildWorklist(
   bounds: Bounds,
   today: string,
   limit = WORKLIST_LIMIT,
+  quietDays = QUIET_DAYS,
 ): Worklist & { totals: { quiet: number; reminders: number; uncovered: number } } {
   const visible = customers.filter((c) => inBounds(c.lat, c.lng, bounds));
   const byId = new Map(customers.map((c) => [c.id, c]));
@@ -60,7 +61,7 @@ export function buildWorklist(
     .map((c) => ({ customer: c, days: c.last_purchase_date ? daysBetween(c.last_purchase_date, today) : null }))
     /* Marked dormant counts whatever the date says; an active customer counts once the
        silence passes the threshold. An active one with no purchase date is not guessed at. */
-    .filter((x) => x.customer.lifecycle === "dormant" || (x.days !== null && x.days >= QUIET_DAYS))
+    .filter((x) => x.customer.lifecycle === "dormant" || (x.days !== null && x.days >= quietDays))
     .sort((a, b) => (b.days ?? Infinity) - (a.days ?? Infinity));
 
   const remindersAll = reminders.filter((r) => {

@@ -30,7 +30,7 @@ async function figures(session: Session, w: DayWindow): Promise<WeekFigures> {
   const paid = await db
     .prepare(
       `SELECT COALESCE(SUM(p.amount_toman), 0) AS t FROM payments p JOIN customers c ON c.id = p.customer_id
-        WHERE p.voided_at IS NULL AND p.received_at >= ? AND p.received_at < ? AND p.organization_id = ?${c.sql}`
+        WHERE p.voided_at IS NULL AND p.method NOT IN ('LEFTOVER','CREDIT_NOTE') AND p.received_at >= ? AND p.received_at < ? AND p.organization_id = ?${c.sql}`
     )
     .get(w.from, w.toExcl, session.organizationId, ...c.params) as { t: number };
   return { orders: sold.n, sales_toman: sold.t, delivered: delivered.n, collected_toman: paid.t };

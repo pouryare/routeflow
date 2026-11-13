@@ -5,6 +5,7 @@ import SmartPicker from "@/components/mobile/SmartPicker";
 import KeypadField from "@/components/mobile/KeypadField";
 import { tehranTodayIso } from "@/lib/jalali";
 import { useMemo, useState } from "react";
+import { idemKeeper } from "@/lib/idemKey";
 import { friendlyError } from "@/lib/userMessage";
 import { useRouter } from "next/navigation";
 import JalaliDatePicker from "@/components/JalaliDatePicker";
@@ -12,6 +13,7 @@ import { toNumber, toToman } from "@/lib/money";
 import { faToman, faNum } from "@/lib/format";
 import BusyIcon from "@/components/meridian/BusyIcon";
 import { Icon } from "@/components/meridian/Icon";
+import { minQtyWarning, priceRowFor, type SupplierPriceRow } from "@/lib/supplierPrice";
 
 interface Product {
   id: number;
@@ -36,7 +38,8 @@ const LABEL = "mb-[var(--space-1)] block text-[length:var(--text-xs)] text-[var(
  *  carton is rarely the carton we sell. Converting once here, where the person is
  *  holding the invoice, beats carrying two pack sizes through every stock query.
  */
-export default function PurchaseEntry({ products }: { products: Product[] }) {
+export default function PurchaseEntry({ products, prices = [] }: { products: Product[]; prices?: SupplierPriceRow[] }) {
+  const [idem] = useState(idemKeeper);
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
@@ -53,6 +56,9 @@ export default function PurchaseEntry({ products }: { products: Product[] }) {
   const parsedCost = toToman(cost);
   const parsedQty = toNumber(qty) ?? NaN;
   const product = products.find((p) => String(p.id) === pickProduct) ?? null;
+  // D16: this supplier's own price row for the picked product, if one was entered.
+  const priceRow = product ? priceRowFor(prices, supplier, product.id) : undefined;
+  const minWarning = minQtyWarning(priceRow, parsedQty);
 
   const resolved = useMemo(
     () =>
@@ -82,7 +88,7 @@ export default function PurchaseEntry({ products }: { products: Product[] }) {
     try {
       const res = await fetch("/api/sales/purchases", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...idem.headers() },
         body: JSON.stringify({
           supplier: supplier || null,
           purchase_date: purchaseDate,
@@ -99,6 +105,7 @@ export default function PurchaseEntry({ products }: { products: Product[] }) {
         setMessage({ kind: "error", text: friendlyError(json.error, "خرید ثبت نشد؛ دوباره تلاش کنید") });
         return;
       }
+      idem.renew();
       setMessage({ kind: "ok", text: "خرید ثبت شد و میانگین قیمت به‌روز شد" });
       setLines([]);
       setSupplier("");
@@ -196,7 +203,11 @@ export default function PurchaseEntry({ products }: { products: Product[] }) {
           label="کالا"
           items={products.map((p) => ({ id: String(p.id), label: p.name }))}
           value={pickProduct}
-          onChange={setPickProduct}
+          onChange={(v) => {
+            setPickProduct(v);
+            const row = priceRowFor(prices, supplier, Number(v));
+            if (row) setCost(String(row.price_toman));
+          }}
         />
         <KeypadField label="تعداد" value={qty} onChange={setQty} decimal unit={product?.base_unit} />
         <div className="flex flex-col gap-1 text-xs text-text-muted">قیمت واحد<KeypadField label="قیمت هر واحد" value={cost} onChange={setCost} unit="تومان" /></div>
@@ -209,6 +220,12 @@ export default function PurchaseEntry({ products }: { products: Product[] }) {
           <Icon name="plus" size="sm" />
           افزودن قلم
         </button>
+        {priceRow ? (
+          <p className="m-0 text-[length:var(--text-xs)] text-[var(--muted)] md:col-span-4">
+            قیمت این تأمین‌کننده: {faToman(priceRow.price_toman)}{priceRow.delivery_days != null ? ` · تحویل ${faNum(priceRow.delivery_days)} روزه` : ""}{priceRow.supplier_code ? ` · کد ${priceRow.supplier_code}` : ""}
+            {minWarning ? <strong style={{ color: "var(--warning)" }}> · {minWarning}</strong> : null}
+          </p>
+        ) : null}
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-[var(--space-3)]">

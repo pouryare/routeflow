@@ -67,13 +67,13 @@ describe("background worker (E3)", () => {
     }
   }, 30_000);
 
-  it("startWorker schedules both queues, and an event job re-runs a pending reaction", async () => {
+  it("startWorker schedules its queues, and an event job re-runs a pending reaction", async () => {
     const boss = await startWorker(await ownUrl());
     expect(boss).not.toBeNull();
     expect(workerRunning()).toBe(true);
     try {
       const names = (await boss!.getSchedules()).map((x) => x.name).sort();
-      expect(names).toEqual([QUEUES.eventsDrain, QUEUES.rulesSweep].sort());
+      expect(names).toEqual([QUEUES.eventsDrain, QUEUES.rulesSweep, QUEUES.logsPurge, QUEUES.leadsRevive].sort());
       const now = new Date().toISOString();
       const db = getDb();
       await db.prepare("INSERT INTO users (username,password_hash,display_name,role,active,created_at,organization_id) VALUES ('wo','x','م','owner',1,?,1)").run(now);

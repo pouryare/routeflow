@@ -4,12 +4,15 @@ import { OWNER_ROLES } from "@/lib/roles";
 import { exportWorkbook } from "@/lib/repo/dataIO";
 import { ordersForExport } from "@/lib/repo/salesWrites";
 import { emitEvent } from "@/lib/repo/events";
+import { guardStepUp } from "@/lib/repo/stepUp";
 
 /** F34: the whole company as one Excel file (customers, products, prices, orders, payments). Owner only: a file
  *  is the easiest way out for a whole table, so every download leaves an event for the history. */
 export async function GET(req: NextRequest) {
   const guard = await requireRole(req, OWNER_ROLES);
   if (!guard.ok) return guard.response;
+  const stepUp = await guardStepUp(req, guard.session, "export_customers");
+  if (stepUp) return stepUp;
   const org = orgScopeId(guard.session);
   if (org === null) return NextResponse.json({ ok: false, error: "ابتدا یک شرکت را انتخاب کنید" }, { status: 400 });
 

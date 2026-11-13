@@ -16,14 +16,19 @@ export default function DataFreshness({
   syncedAt,
   now,
   className = "",
+  ageingDays,
+  staleDays,
 }: {
   syncedAt: string | null;
   /** Passed in rather than read here, so a server-rendered page has one clock reading
    *  for the whole render instead of one per component. */
   now?: Date;
   className?: string;
+  /** The company's own limits (D30); the defaults when left out. */
+  ageingDays?: number;
+  staleDays?: number;
 }) {
-  const tier = freshnessTier(syncedAt, now);
+  const tier = freshnessTier(syncedAt, now, ageingDays, staleDays);
   if (tier === "fresh") return null;
 
   const days = daysSince(syncedAt, now);

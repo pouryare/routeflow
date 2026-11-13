@@ -11,6 +11,9 @@ import { supplierOf } from "@/lib/repo/suppliers";
 import { pageMetadata } from "@/lib/pageMeta";
 import type { Metadata } from "next";
 import { faNum } from "@/lib/format";
+import SupplierPrices from "@/components/accounting/SupplierPrices";
+import { allSupplierPrices } from "@/lib/repo/supplierPrices";
+import { activeProducts } from "@/lib/repo/stockPageView";
 
 export const dynamic = "force-dynamic";
 
@@ -42,6 +45,8 @@ export default async function SupplierStatementPage({
   if (!supplier) notFound();
 
   const rows = await supplierStatement(organizationId, id);
+  const prices = (await allSupplierPrices(organizationId)).filter((p) => p.supplier_id === id);
+  const products = (await activeProducts(organizationId)).map((p) => ({ id: p.id, name: p.name }));
 
   const { lines, closingToman: running } = withRunningBalance(rows, "C");
 
@@ -65,6 +70,8 @@ export default async function SupplierStatementPage({
           </Link>
         }
       />
+
+      <SupplierPrices supplierId={id} rows={prices.map((p) => ({ product_id: p.product_id, product_name: p.product_name, price_toman: p.price_toman, min_qty: p.min_qty, delivery_days: p.delivery_days, supplier_code: p.supplier_code }))} products={products} />
 
       <AcctTable
         head={["سند", "تاریخ", "شرح", "حساب", "بدهکار", "بستانکار", "مانده"]}

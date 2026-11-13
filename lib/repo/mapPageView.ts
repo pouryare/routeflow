@@ -29,7 +29,7 @@ export async function mapPageData(session: Session) {
 function mapCustomer(c: CustomerRow): MapCustomer {
   return {
     id: c.id, customer_code: c.customer_code, business_name: c.business_name, contact_person: c.contact_person,
-    phone: c.phone, address: c.address, city: c.city, province: c.province, lat: c.lat, lng: c.lng,
+    phone: c.phone, address: c.address, city: c.city, province: c.province, lat: c.lat, lng: c.lng, district_id: c.district_id, contact_off: c.contact_off,
     lifecycle: c.lifecycle, salesperson: c.salesperson, debt: c.debt, notes: c.notes, synced_at: c.synced_at,
     last_purchase_date: c.last_purchase_date,
   };

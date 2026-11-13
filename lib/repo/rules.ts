@@ -596,3 +596,34 @@ export async function resolveRuleRunsFor(
     )
     .run(new Date().toISOString(), organizationId, entityType, entityId);
 }
+
+export interface RuleOverview {
+  code: string;
+  name: string;
+  trigger: "event" | "sweep";
+  action: RuleRow["action_kind"];
+  cooldownMin: number;
+  active: boolean;
+  fired14: number;
+}
+
+/** F130: every rule of a company, the switched-off ones too, with how often it fired in the last 14 days. */
+export async function rulesOverview(organizationId: number, nowIso: string = new Date().toISOString()): Promise<RuleOverview[]> {
+  const db = getDb();
+  const rows = (await db
+    .prepare("SELECT *, (organization_id IS NOT NULL) AS is_tenant FROM rules WHERE organization_id = ? OR organization_id IS NULL")
+    .all(organizationId)) as unknown as (RuleRow & { is_tenant: number })[];
+  const byCode = new Map<string, RuleRow & { is_tenant: number }>();
+  for (const r of rows) {
+    const existing = byCode.get(r.code);
+    if (!existing || r.is_tenant) byCode.set(r.code, r);
+  }
+  const since = addDaysIso(nowIso.slice(0, 10), -14);
+  const fired = (await db
+    .prepare("SELECT r.code, COUNT(*) AS n FROM rule_runs u JOIN rules r ON r.id = u.rule_id WHERE u.organization_id = ? AND u.fired_at >= ? GROUP BY r.code")
+    .all(organizationId, since)) as unknown as { code: string; n: number }[];
+  const count = new Map(fired.map((f) => [f.code, Number(f.n)]));
+  return [...byCode.values()]
+    .map((r) => ({ code: r.code, name: r.name, trigger: (r.trigger_kind === "sweep" ? "sweep" : "event") as "event" | "sweep", action: r.action_kind, cooldownMin: Number(r.cooldown_min), active: r.active === 1, fired14: count.get(r.code) ?? 0 }))
+    .sort((a, b) => a.name.localeCompare(b.name, "fa"));
+}

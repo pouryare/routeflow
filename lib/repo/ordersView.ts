@@ -22,7 +22,7 @@ export interface OrdersList {
 }
 
 /** The newest 100 orders the session can see, optionally narrowed to one visible customer. */
-export async function ordersListFor(session: Session, opts: { customerId?: number } = {}): Promise<OrdersList> {
+export async function ordersListFor(session: Session, opts: { customerId?: number; limit?: number } = {}): Promise<OrdersList> {
   const db = getDb();
   const scope = await groupFilter(session);
   const focused =
@@ -32,7 +32,7 @@ export async function ordersListFor(session: Session, opts: { customerId?: numbe
           .prepare(`SELECT id, business_name FROM customers WHERE id = ?${scope.sql}`)
           .get(opts.customerId, ...scope.params) as { id: number; business_name: string } | undefined) ?? null);
 
-  const orders = await readOrders(db, orderFilter(session), { limit: 100, customerId: focused?.id });
+  const orders = await readOrders(db, orderFilter(session), { limit: opts.limit ?? 100, customerId: focused?.id });
   const onARun = new Set(
     (
       plain(

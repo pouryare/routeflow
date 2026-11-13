@@ -10,6 +10,7 @@ import {
   voidPaymentTxn,
   type AllocationInput,
 } from "./payments";
+import { postChequeCleared } from "./ledgerPostings";
 import { isUniqueViolation } from "@/lib/database/errors";
 
 /** A refusal the caller shows the user, not a bug. */
@@ -186,6 +187,17 @@ export async function advanceCheque(
         `چک ${cheque.cheque_no} برگشت خورد — پیگیری کنید`,
         now
       );
+    }
+
+    if (to === "cleared") {
+      await postChequeCleared(db, {
+        organizationId,
+        chequeId: id,
+        amountToman: cheque.amount_toman,
+        clearedAt: now,
+        clearedBy: actor,
+        memo: `وصول چک ${cheque.cheque_no}`,
+      });
     }
 
     let replacementId: number | null = null;

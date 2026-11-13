@@ -29,8 +29,8 @@ describe("links out of /driver", () => {
 
   it("renders each as a word with its icon, as a full-size target", () => {
     const h = renderToStaticMarkup(createElement(DriverLinks, { links: driverLinks({ role: "delivery_driver" }) }));
-    for (const w of ["آموزش", "تنظیمات اعلان‌ها", "امنیت و ورود", "صدا", "آموزش برنامه"]) expect(h).toContain(w);
-    expect((h.match(/<svg/g) ?? []).length).toBe(6);
+    for (const w of ["آموزش", "تنظیمات اعلان‌ها", "امنیت و ورود", "صدا", "آموزش برنامه", "گزارش مشکل برنامه"]) expect(h).toContain(w);
+    expect((h.match(/<svg/g) ?? []).length).toBe(7);
     expect(h).toContain("min-h-11");
   });
 });

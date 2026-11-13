@@ -6,6 +6,8 @@ import { getSessionFromCookies } from "@/lib/session";
 import PaymentsPanel from "@/components/sales/PaymentsPanel";
 import PageHeader from "@/components/meridian/PageHeader";
 import { isVanRole, isOwner } from "@/lib/roles";
+import CashInHandCard from "@/components/sales/CashInHandCard";
+import { holdings } from "@/lib/repo/cashInHand";
 import { pageMetadata } from "@/lib/pageMeta";
 
 export const metadata = pageMetadata("/sales/payments");
@@ -27,6 +29,7 @@ export default async function PaymentsPage() {
   return (
     <>
       <PageHeader route="/sales/payments" />
+      {isOwner(session.role) ? <CashInHandCard items={await holdings(session.organizationId)} /> : null}
       <PaymentsPanel customers={customers} canSeeBooks={isOwner(session.role)} />
     </>
   );

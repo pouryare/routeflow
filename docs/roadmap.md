@@ -55,6 +55,7 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
 
   </details>
 - **FB1. Orders list you can search and filter.** Filter chips for status, payment, rep and day; a count; load more past 100; paste many order numbers or phones to find them.
+  **Built (batch B):** search box (any of the pasted order numbers, names or phones; Persian digits read) and chips for status group, day, payment and rep on the orders list, all kept in the address; «نمایش ۱۰۰ سفارش قدیمی‌تر» raises the read from 100 to at most 1,000. The filters run on the orders read, not in SQL (`lib/orderListFilter.ts`).
   <details><summary>Full decision</summary>
 
   **Orders list you can search and filter.** `/sales/orders` reads at most 100 orders and takes no filter inputs. Add `FilterChips` for status, payment, rep and day, a count, «load more» past 100, and one paste-many search (paste order numbers or phones, get just those).
@@ -166,7 +167,9 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
 - **S4. Complaint waiting states and duplicate-of.** Waiting on customer or supplier stops the SLA clock; close as a duplicate of another.
 - **S6. Fair lead assignment per group.** Per group: pool (default), round robin, or least open work; people on leave are skipped. **Built 2026-11-13 (PR #84).** A setting per group on the groups page (stays in the pool, round robin, fewest open leads). It applies when a manager adds a lead and leaves it in the pool; people on leave (S23), inactive people and other groups are skipped, and with nobody available the lead stays in the pool. Not built: applying it to imported or claimed customers.
 - **S15. Do-not-call and contact preferences.** Three switches per customer (calls, promo messages, service messages) with reason, date and who.
+  **Built (batch B):** table `contact_preferences` (a row = off, with reason, day, who). Button «ترجیح تماس» in the map customer panel (all selling roles) opens a sheet of three chips; the phone shows «تماس نشود» and the «تماس بگیر» cards on the today page fall back to «ساخت سفارش». No SMS sender exists yet, so promo and service switches are stored and shown only; the message sender (Farazsms, T16) must read them when built.
 - **S16. Revive lost leads.** After a wait that depends on the lost reason (price 60 days, already supplied 120, not interested 180), back to the pool with a call-again task.
+  **Built (batch B):** daily worker job `leads.revive` (03:00) returns a lost or not-interested lead to the pool after its rest (price 60, supplier 120, no need 180, others in `lib/leadRevive.ts`; wrong contact and closed never), with a call task naming the lost reason; leads with calls switched off (S15) stay lost. The owner's own days are read from `app_meta` key `revive_days:<company>` (JSON by reason); no settings form yet.
 
 ### Orders, pricing and promotions
 
@@ -210,6 +213,7 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
   <details><summary>Full decision</summary>
 
   **Freeze customer details on the order (A12).** At confirm, copy name, phone and address (tax IDs once D7 exists) onto the order; `orders` keeps only `customer_id` today, so reprints show the customer's current data. Reprints use the copy. «Forget a person» (D20) clears these copies too.
+  **Built (batch B):** migration adds `orders.ship_name/ship_phone/ship_address`, filled by the `freezeCustomer` effect at the first confirm (also on credit approval and hold release, never overwritten). The order page shows the copy. No printed invoice exists yet, so reprints (and «forget a person», D20) are still to wire when D7 lands.
 
   </details>
 
@@ -249,6 +253,7 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
 
   </details>
 - **D16. Supplier price rows.** Per product and supplier: price, minimum quantity, delivery days, supplier code.
+  **Built (batch B):** table `supplier_prices`; «قیمت‌های این تأمین‌کننده» section on the supplier page (owner) lists, adds, changes and removes rows; the purchase form fills the cost when the supplier name and product match a row, shows delivery days and code, and warns under the minimum. D17 and F31 can read the rows.
   <details><summary>Full decision</summary>
 
   **Supplier price rows (D16).** Per product and supplier: price, minimum quantity, delivery days, supplier code. Purchase entry pre-fills the price and warns under the minimum; feeds D17 and F31.
@@ -299,7 +304,7 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
   **Cheque deposit slips and more than one bank account (D2).** Tick cheques on the board, pick the bank account, get a numbered slip with count, total and a printable list. A bounce takes the cheque out and reopens the debt. Works with D1 (driver box, office box, bank).
 
   </details>
-- **D3. Close a small leftover.** A manager closes a small balance with a reason under an owner limit (default 50,000 toman).
+- **D3. Close a small leftover.** A manager closes a small balance with a reason under an owner limit (default 50,000 toman). **Built 2026-11-13 (batch B).** New payment method `LEFTOVER` (contract migration widens the method check) closes a balance without cash: Dr 5110 «بخشودگی و گردکردن» / Cr receivables, settling the oldest unpaid orders; void works as for any receipt; it is left out of the collected-money totals (KPI, week compare, payment cards). The limit (default 50,000 toman) is a threshold in the owner's «حدهای هشدار» card. UI: «بستن مانده کوچک» button + sheet (reason chips) in the customer panel on the map, shown to managers only when the balance is one they may close. Reasons: rounding, bank fee, small discount, other. Not built: bad debt write-off (owner, separate).
   <details><summary>Full decision</summary>
 
   **Close a small leftover (D3).** A manager closes a small remaining balance with a reason (rounding, bank fee, small discount) under an owner-set limit (default 50,000 toman); bigger amounts and bad debt need the owner. Ledger entry plus log line.
@@ -318,12 +323,14 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
 
   </details>
 - **D5. Payment term kinds.** Cash on delivery, N days after delivery, or end of month plus N. Due date saved on the order at delivery.
+  **Built (batch B):** customers get a term kind (`payment_terms_kind`: cash on delivery, N days after, end of month + N) beside the days; managers set it with «شرایط پرداخت» on the customer page (`PUT /api/customers/[id]/terms`, audited). `orders.due_date` is written once at delivery (`lib/paymentTerms.ts`) and shown as «سررسید» on the order page. Not yet: overdue lists using the due date (aging still counts from delivery).
   <details><summary>Full decision</summary>
 
   **Payment term kinds (D5, answers F83).** Cash on delivery, N days after delivery, or end of month plus N days. The due date is saved on the order at delivery, so later changes to the customer do not rewrite it.
 
   </details>
 - **A4. Transfer between own accounts.** One «انتقال وجه» form: from, to, amount, date, tracking number, optional fee.
+  **Built (batch B):** «انتقال وجه» button on the expenses page (owner) opens a sheet: from and to (cash box, bank, petty cash), amount, date, bank tracking number (kept in the memo), optional fee (leaves the source, posted to «سایر»). One balanced MANUAL journal, `POST /api/accounting/transfers`, safe against a double tap. No dedicated bank-fee account yet.
   <details><summary>Full decision</summary>
 
   **Transfer between own accounts (A4).** One «انتقال وجه» form: from, to, amount, date, bank tracking number, optional fee; one balanced entry. D1 (driver box to office), D2 (cash deposit to bank) and A3 reuse it. Petty cash `1103` is in the chart but unused today.
@@ -348,7 +355,7 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
 
   </details>
 
-- **H5. Cleared cheque reaches the bank.** When a cheque is marked «وصول شد», one entry moves it from cheques receivable to the bank.
+- **H5. Cleared cheque reaches the bank.** When a cheque is marked «وصول شد», one entry moves it from cheques receivable to the bank. **Built 2026-11-13 (batch B).** Clearing a cheque posts Dr bank 1102 / Cr 1202 in the same save (`postChequeCleared`). No catch-up for cheques cleared before this (all data is dummy). The bank account is fixed to 1102 until D2 lets you pick one.
   <details><summary>Full decision</summary>
 
   **Cleared cheque reaches the bank (H5, Holoo comparison, fixes a wrong number).** Today `advanceCheque` (`lib/repo/cheques.ts`) only changes the status on «به بانک سپرده شد» and «وصول شد»; the money stays in `1202` چک‌های دریافتنی and the bank `1102` is too low by every cleared cheque. On «وصول شد» post Dr bank / Cr `1202`, with the account chosen the way D2 picks it. Cheques already cleared get one catch-up entry. A bounce already voids the payment and works. Built first of the Holoo fixes. Not checked: whether any report works around it.
@@ -379,18 +386,21 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
   <details><summary>Full decision</summary>
 
   **Money map (U2).** Customer pins can already be coloured by debt (`debtColor` in `lib/types.ts`: over 30 days red, 8 to 30 orange) and the map has a debt heat switch (`CoverageMap.tsx`), but district colours only know «status» and «group» (`DistrictColorMode`). Add a «money» mode: each district shaded by what is owed there, and a tap shows «38M owed, 20M older than 30 days, 6 shops». Small build on layers and numbers that exist. A supporting feature for demos, easy for a rival to copy, so it is not the moat.
+  **Built (batch B):** third district colour mode «پول» (red when any debt is older than 30 days, green when only fresh, grey none); the district sheet says «X تومان بدهی، Y بیش از ۳۰ روز، N مغازه». `lib/districtMoney.ts`; map customers now carry `district_id`.
 
   </details>
 - **A2. Close a month.** Owner closes a month after a short checklist; reopening needs a reason; a closed month refuses entries.
   <details><summary>Full decision</summary>
 
   **Close a month (A2).** `fiscal_periods` and the closed-month refusal in `postJournal` exist, but nothing sets a month to closed (`lib/repo/reports.ts` only reads it). The owner closes a month after a short checklist (deliveries posted, drafts listed, cash counted); reopening needs a reason; both are logged (E6). A closed month refuses new entries; corrections go into the next open month. D26 (month pack) and E5 (own-mistake window) need this.
+  **Built (batch B):** «بستن ماه» card on the journal page (owner): a month before the current one is closed after a checklist (unfinished orders of the month, «صندوق را شمرده‌ام»); reopening needs a reason and the authenticator code; both go to the audit record (`fiscal_periods`). The closed-month refusal in `postJournal` was already there. D26 and E5 can now build on it.
 
   </details>
 - **A11. Discounts given report.** Toman given as discount by rep, customer and product, approvals versus auto-passes.
   <details><summary>Full decision</summary>
 
   **Discounts given (A11).** A monthly report of toman given as discount by rep, customer and product, with approvals versus auto-passes. No page reads `order_discounts` for a report today.
+  **Built (batch B):** card «تخفیف‌های ۳۰ روز اخیر» on /sales/admin/discounts (owner): total, with or without approval, top five by rep, customer, product (an order's discount shared by line value). `lib/discountReport.ts`.
 
   </details>
 - **A6. Expense categories per company.** A small per-company category table pointing at the shared accounts. Decide before a second company.
@@ -428,6 +438,7 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
   <details><summary>Full decision</summary>
 
   **Void an expense or a purchase (H6, Holoo comparison).** Payments can be voided and re-allocated, but expenses and purchases have no edit or void route (only the receipt photo), so a 2,000,000 fuel entry typed instead of 200,000 cannot be corrected from the app. Add a «باطل کردن» button with a reason on expenses and purchases: it posts the mirror entry (as `postReceiptReversal` does for payments), the original stays visible, and the log names who did it. Expenses first. Voiding a purchase must recompute the product's average cost and show the affected orders, so it waits with B6.
+  **Built (batch B, expenses only):** `voidExpense` posts the mirror journal (type REVERSAL, points at the original); `recentExpenses` hides the voided row, the books keep both; category and enterer reports net by side. Button «باطل کردن» on owner rows of the expense page, `POST /api/accounting/expenses/[id]/void`. Purchase void waits for B6. Account 5110 is now a system category.
 
   </details>
 
@@ -438,6 +449,7 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
 
   **Live commission preview (first slice of F19).** The commission editor shows the result for sample sales values as the rule changes, using the same calculation as payroll so the preview cannot drift from the real engine.
 
+  **Built (batch B):** under the rate form, a live list of what the typed rate pays on sample sales (100, 500, 2,000 kg; or two group sales for managers), by `accrualToman`. The tier plan already had its own preview.
   </details>
 - **D15. Money rules for expenses.** Owner sets limits per expense category and role; over the limit the expense waits for approval.
   <details><summary>Full decision</summary>
@@ -468,13 +480,13 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
 
 ### Platform, security and administration
 
-- **UIB-A2. Code guard on the remaining sensitive actions.** The rule and the guard exist; each of these needs one line: creating an owner or manager, customer export, changing your own mobile, hard deletes, cancelling or editing a delivered order, authenticator reset, overwrite imports. Partly built 2026-11-05: the guard is now on creating an owner or manager, returning a delivered order, and the hard deletes of groups and districts; customer export, changing your own mobile and overwrite imports have no route yet.
+- **UIB-A2. Code guard on the remaining sensitive actions.** The rule and the guard exist; each of these needs one line: creating an owner or manager, customer export, changing your own mobile, hard deletes, cancelling or editing a delivered order, authenticator reset, overwrite imports. Partly built 2026-11-05: the guard is now on creating an owner or manager, returning a delivered order, and the hard deletes of groups and districts. **Batch B (2026-11-13):** the Excel export asks for the code too (it is a fetch now, so the code sheet can repeat it), and an upload that changes existing rows asks (`import_overwrite`). Not built: changing your own mobile (no route yet).
   <details><summary>Full decision</summary>
 
   The code guard on creating an owner or manager, customer export, changing your own mobile number, hard deletes, cancelling or editing a delivered order, authenticator reset and overwrite imports (the rules and the guard exist; each route needs one line).
 
   </details>
-- **FB41. Log retention with a preview.** Each growing log gets a keep-for-N-days setting; the status page shows what the next purge would delete.
+- **FB41. Log retention with a preview.** Each growing log gets a keep-for-N-days setting; the status page shows what the next purge would delete. **Built 2026-11-13 (batch B).** Registry in `lib/logRetention.ts` (sign-in log, notification deliveries, finished sync rows, idempotency keys; 7 to 3650 days, platform-wide like the archive). A nightly worker job `logs.purge` deletes in batches; the platform owner's status page card «نگهداری گزارش‌های فنی» shows the days and tonight's row count per log. Not covered: the SMS ledger and outbox tables do not exist yet (add them to the registry when they do).
   <details><summary>Full decision</summary>
 
   **Log retention with a preview.** Each growing log table (SMS ledger, sign-in log, outbox, notifications) gets a keep-for-N-days setting. The owner status page shows how many rows the next nightly purge would delete.
@@ -498,7 +510,7 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
   **Recycle bin (F111): a JSON copy in a trash table**, not a `deleted_at` column; first types reminders, tasks and photos, per-company keep-for-N-days in the log-retention setting. A link to a deleted item shows who deleted it and when, with a restore button for managers (T3, T18).
 
   </details>
-- **T24. Rate limiter moved to Postgres.** Short and long windows per person and IP.
+- **T24. Rate limiter moved to Postgres.** Short and long windows per person and IP. **Built 2026-11-13 (batch B).** Sign-in, second-step code, step-up code and own-password limits now live in table `rate_limits` (`lib/repo/rateLimitDb.ts`), each with a short and a long window (sign-in by name 5 in 15 minutes and 20 an hour). The in-memory limiter stays for live-update pings. Tests: `tests/rateLimitDb.test.ts`.
   <details><summary>Full decision</summary>
 
   **Rate limiter move to Postgres.** Give each rule a short and a long window, keyed by person and IP (for example 5 code tries a minute and 20 an hour) (T24).
@@ -510,7 +522,7 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
   **Tamper-evident money log (D6, answers F27).** One hash chain per company over money events only (order confirmed, payment, cheque status, journal posted, month closed, leftover closed); the owner has a «check the chain» button. Not every edit.
 
   </details>
-- **D30. Owner-set thresholds.** One settings card for numbers now fixed in code (stalled order days, quiet customer days, ageing days, duplicate order window, snooze days).
+- **D30. Owner-set thresholds.** One settings card for numbers now fixed in code (stalled order days, quiet customer days, ageing days, duplicate order window, snooze days). **Built 2026-11-13 (batch B).** Five numbers are columns on `organizations` (stalled order days, quiet customer days, data ageing and stale days, duplicate-order hours) with the old values as defaults; `lib/thresholds.ts` is the one list, `thresholdsFor` reads it, and the owner's status page card «حدهای هشدار» saves it (reset button; changes show in the change history through an audit trigger). Wired to the action center, the order-entry duplicate warning, the map's quiet list and the data-age banners. Not done: the alert snooze days (no such number exists in code yet).
   <details><summary>Full decision</summary>
 
   **Owner-set thresholds (D30).** One settings card for the numbers now fixed in code: stalled order days (`actionCenter.ts`, 2), quiet customer days (`mapWorklist.ts`, 45), data ageing days (`freshness.ts`, 7 and 14), duplicate order window (`duplicateOrder.ts`, 24 hours), alert snooze days (7). Current values are the defaults; reset button; changes logged.
@@ -534,7 +546,7 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
   **Access and settings change log (E6, answers F27 question 1 for permissions).** A who/when/old/new line for role, group, active state and password resets of users, and for company settings (discount auto-pass percent, code for sensitive actions, the D30 thresholds), shown on the owner status page beside the access review card (D3-3). Today `setRoles`, user edits and these settings write no log line.
 
   </details>
-- **E17. Sign out after idle time.** Owner sets idle hours per role; drivers and reps stay signed in so offline work is not lost.
+- **E17. Sign out after idle time.** Owner sets idle hours per role; drivers and reps stay signed in so offline work is not lost. **Built 2026-11-13 (batch B).** Owner sets idle hours for owner, group manager, rep manager and shareholder on the status page («خروج خودکار بی‌فعالیت»); drivers and reps are never listed. `users.last_active_at` is touched at most every 5 minutes per process; `resolveSession` signs out when the later of that and the sign-in's start is older than the limit. A Login-As session is not timed. Rules are cached 60 s per company.
   <details><summary>Full decision</summary>
 
   **Sign out after idle time (E17).** The owner sets idle hours per role (for example 12 for owner, managers and accountant); drivers and reps stay signed in so offline work is not lost. Today a sign-in lives 30 days whether used or not.
@@ -546,13 +558,14 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
   **Background exports and bulk edits (E7).** Exports over about 1,000 rows (T21) and bulk edits over about 100 records (T4) run on the job runner with a progress count and a push when ready; the file is kept 24 hours.
 
   </details>
-- **Z2. No double save.** Every money form sends a one-time key; a repeat returns the first result.
+- **Z2. No double save.** Every money form sends a one-time key; a repeat returns the first result. **Built 2026-11-13 (batch B).** Money forms (receipt, cheque, expense, purchase, receiving) send an `Idempotency-Key` header (`lib/idemKey.ts`); `once()` in `lib/repo/idempotency.ts` wraps those four POST routes, stores the first answer in `idempotency_keys` and returns it for a repeat (409 while the first is running; a failed first try forgets the key). Offline payments keep their own `client_uuid`. No visible screen change, so no tutorial. Keys are purged by FB41.
   <details><summary>Full decision</summary>
 
   **No double save (Z2).** Every money form (payments, expenses, cheques, transfers, purchases) sends a one-time key; a repeat returns the first result and saves nothing new. One shared helper. Offline sync already does this with `client_uuid`; the online forms and the journal table do not.
 
   </details>
 - **Z11. Owner-only amounts.** The owner marks an expense category private; others see dots and totals still count it.
+  **Built (batch B):** table `private_categories`; the owner ticks categories in «دسته‌های خصوصی» on the expenses page. For a group manager the category row, the recent-expense lines and the repeat prefill show dots, the totals and the by-enterer table leave them out, and the journal page hides any journal that touches a private category. Owner-only pages (income statement, trial balance, exports) already hide everything from others.
   <details><summary>Full decision</summary>
 
   **Hide money (Z3).** An eye in the top bar turns every money number into dots until tapped again; for everyone, remembered per person on that phone. **Owner-only amounts (Z11):** the owner marks an expense category private; others see the line with dots and owner totals still count it. It must also hide the amount in totals and exports for others.
@@ -570,33 +583,33 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
   **Merge duplicates (Z16).** «ادغام در…» moves all rows of a supplier, product or district to another and retires the old one: owner only, typed-name confirm, a log line. Expense and money categories wait until the ledger question is decided (re-point the label, or post a reversal pair).
 
   </details>
-- **S24. «گزارش مشکل برنامه» button.** One line and an optional screenshot with page, role, version, phone and connection attached; a list for the owner.
+- **S24. «گزارش مشکل برنامه» button.** One line and an optional screenshot with page, role, version, phone and connection attached; a list for the owner. **Built 2026-11-13 (batch B).** «گزارش مشکل برنامه» in the account menu (desk), «حساب من» (phone) and the driver's links: a sheet with a line and an optional screenshot (shrunk, kept in the row); the page, role, app version, phone and connection go along. Table `problem_reports`; the owner's status page card lists open reports with «دیدن تصویر» and «انجام شد». Ten reports an hour per person.
 
-- **EV1. Rules timer on the server.** The rules sweep (callback and follow-up tasks, escalation, push and Telegram flush) runs every 5 minutes from a systemd timer, like the storage sweeps. Today it runs only when someone taps «به‌روزرسانی کارها».
+- **EV1. Rules timer on the server.** The rules sweep (callback and follow-up tasks, escalation, push and Telegram flush) runs every 5 minutes from a systemd timer, like the storage sweeps. Today it runs only when someone taps «به‌روزرسانی کارها». **Built (2026-11-12 to 13, ef35fca and earlier; EV1's timer was replaced by the worker).**
   <details><summary>Full decision</summary>
 
   **Rules timer (EV1, plan `docs/plans/event-architecture-2026-11-12.md` E1).** `deploy/routeflow` writes `routeflow-rules.service` and `.timer` (every 5 minutes, same shape as the storage timers) that run `scripts/run-sweeps.mjs rules`; nothing in the app changes. Check on the server first with `systemctl list-timers`. When the worker (EV3) has schedules, the timer is deleted in the same commit. Decided 2026-11-12 (owner: everything in the review's adopt list).
 
   </details>
-- **EV2. Events always inside the save.** An event is saved in the same transaction as the change it describes, then handled right after commit; a crash in between loses nothing.
+- **EV2. Events always inside the save.** An event is saved in the same transaction as the change it describes, then handled right after commit; a crash in between loses nothing. **Built (2026-11-12 to 13).**
   <details><summary>Full decision</summary>
 
   **Events inside the save (EV2, plan E2).** `events` gets `handled_at`, `attempts`, `next_try_at`, `last_error`. `emitEvent` only inserts; `drainEvents` runs the rule engine for unhandled rows with `SKIP LOCKED` and marks them, called right after commit so reactions are as fast as today. The CRM writes (`lib/repo/crm/write.ts`, which emit after the transaction) move inside; payments already are. The nightly archive moves only handled events. Money postings stay inside the same save as the order or payment: only notices, push, SMS, Telegram, analytics and exports may be late.
 
   </details>
-- **EV3. Background worker.** Reactions, schedules, retries and exports run in a worker started with the app; a card on «وضعیت سامانه» shows queue length and failures.
+- **EV3. Background worker.** Reactions, schedules, retries and exports run in a worker started with the app; a card on «وضعیت سامانه» shows queue length and failures. **Built (2026-11-12 to 13).**
   <details><summary>Full decision</summary>
 
   **Background worker (EV3, plan E3; decisions 10.22).** Starts inside the app process from `instrumentation.ts` (the release is a standalone bundle, so a separate script cannot import `lib/**`), claims jobs with `SKIP LOCKED`, runs handlers under the system scope. Jobs: event drain, rules sweep every 5 minutes (replaces EV1), notification flush; later exports (E7), SMS, Telegram, statements (F18), and, each with its own entry, route optimization, OCR (F1), photo processing and bank import (F10). **Split into its own process** when the first CPU-heavy job arrives. **Library: pg-boss** (owner, 2026-11-12; 12.38.2, MIT), not a queue of our own.
 
   </details>
-- **EV4. Audit record, first slice of F27.** One append-only record of old and new values for important fields, with who changed them; an owner-only history list on the record and on «وضعیت سامانه».
+- **EV4. Audit record, first slice of F27.** One append-only record of old and new values for important fields, with who changed them; an owner-only history list on the record and on «وضعیت سامانه». **Built (2026-11-12 to 13).**
   <details><summary>Full decision</summary>
 
   **Audit record (EV4, plan E4, answers F27).** `audit_log` filled by one generic trigger on a short list of tables (orders, order lines, payments, customers' owner and credit limit, users' role and active, product prices, company settings); changed columns only; actor from `rf.actor`, set beside `rf.scope`; refuses update and delete; cost, margin and credit changes visible only to roles that can see them (T6). Not in this slice: anomaly rules, the money hash chain (D6) and the permission log (E6), which sit on top of it. Does not replace `order_events`, `activities`, F99, F100 or F110.
 
   </details>
-- **EV5. Event list.** `docs/events.md`: each event name, who emits it, who reacts, fact or request; a test fails when an emitted name is missing.
+- **EV5. Event list.** `docs/events.md`: each event name, who emits it, who reacts, fact or request; a test fails when an emitted name is missing. **Built (2026-11-12 to 13).**
   <details><summary>Full decision</summary>
 
   **Event list (EV5, plan E5).** One row per event kind. A small Vitest guard reads every `kind:` passed to `emitEvent`. Requests named like facts (`reassign.requested`) are decided one by one.
@@ -604,6 +617,7 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
   </details>
 - **EV-L1. Funnel and speed reports from history.** Leads, attempts, conversations, samples, purchases; days from lead to first order; who calls new leads fastest, from `activities` and `events`. Needs a sample event first. Starts after EV2, with the reporting group.
 - **EV-L2. Who may write which table.** A ratchet in `scripts/check-architecture.mjs`: journals and ledger lines only from the ledger files, stock moves only from the stock files, `audit_log` and `events` only from their own modules. Starts at today's count; after EV2.
+  **Built (batch B):** metric `foreignTableWrites` in `scripts/check-architecture.mjs` (journals and ledger lines: `lib/repo/ledgerCore.ts`; stock moves: `stock.ts`; `audit_log`: `auditLog.ts`; `events`: `events.ts`). Baseline 2: the delivery undo in `lib/delivery.ts` deletes stock moves, and `leadImportNotify.ts` inserts an event. To fix when those two are moved.
 - **EV-L3. Read tables only when slow.** A new summary table only when a screen is measurably slow, refreshed by the worker, like `sales_daily`.
 
 ### Mobile, input, offline and help
@@ -885,7 +899,7 @@ All 148 entries of `docs/future-features.md` (F1 to F148), grouped by area, with
 | F65 | Small-quantity price uplift | M | yes | F48, F56, F64 | Not built | — |
 | F71 | Customer credit holds by rep | M | yes | F48 | Not built | — |
 | F72 | Duplicate order warning | S | yes | — | Built (first slice) | — |
-| F73 | Order edit history | M | yes | F27, F48 | Not built | FB3 |
+| F73 | Order edit history | M | yes | F27, F48 | Built (first slice) | FB3 |
 | F76 | Order approval by value | M | yes | F48, F51 | Not built | — |
 | F89 | Customer price history | S | yes | F29, F56 | Built (first slice) | — |
 | F96 | Inter-group order transfers | L | yes | F48 | Not built | — |
@@ -975,7 +989,7 @@ All 148 entries of `docs/future-features.md` (F1 to F148), grouped by area, with
 | F25 | Staff scheduling and attendance | L |  | — | Not built | — |
 | F26 | Field expenses and petty cash | M |  | — | Not built | D15 |
 | F27 | Audit trail and anomaly detection | M | yes | — | Planned: first slice is EV4 | T-skip, D6, E6, EV4 |
-| F48 | Change approvals (second-person sign-off) | M | yes | F27 | Not built | — |
+| F48 | Change approvals (second-person sign-off) | M | yes | F27 | Built (first slice) | — |
 | F51 | SLA and escalation rules | M | yes | — | Partly built | FB43, S5 |
 | F82 | Approval delegation while away | M | yes | F27, F48 | Not built | T13 |
 | F88 | Staff expense reimbursement | M | yes | F26, F48 | Not built | D15 |
@@ -1138,3 +1152,17 @@ Platform claims in [docs/decisions.md section 10](decisions.md#10-platform-facts
 - ~~Whether MapLibre needs the right-to-left text plugin~~: answered 2026-10-28, MapLibre 6 shapes Persian itself and labels render in Peyda (see 10.1, map tiles).
 - Whether Google Play and Cafe Bazaar or Myket rules allow updating web code inside the Android app.
 
+
+**F48 built (batch B, first slice).** Table `change_requests`. One kind so far: raising or removing a customer's credit limit. «سقف اعتبار» on the customer page (`PUT /api/customers/[id]/credit-limit`): an owner, or any lowering, applies at once; a group manager's raise waits as a request with a reason. The owner decides on the discounts admin page («درخواست‌های سقف اعتبار», `POST /api/change-requests/[id]/decide`, authenticator code asked, cannot approve one's own request). Not yet: price edits, other kinds, expiry of old requests, a push to the owner, an audit line for the request itself.
+
+**F73 + FB3 built (batch B, first slice).** `lib/orderEditRules.ts` is the one rule for what may change at each stage (lines on a draft only; the priority flag until the order is finished), used by `addLine`, the priority repo and the order page. A priority change writes an `edit` event in `order_events` with «اولویت: عادی ← فوری» and the actor, which shows on the order timeline (journey page). Not yet: a required reason after confirmation, history for dates, address and notes (no screen edits them), and the offline-sync copy of the rule.
+
+**A3 built (batch B).** Tables `reconciliations` and `reconciled_entries`. «مطابقت صندوق و بانک» on the journal page (owner): pick the cash box, bank or petty cash, type the counted balance, tick open lines until the gap is zero, save. Saving checks the sum again on the server, ticked lines leave the list and cannot be ticked twice (a mistake is fixed by a reversal journal). Shortcut: all open lines up to the last 500, no date filter yet; no bank file import (F10).
+
+**D2 built (batch B, first slice).** Table `deposit_slips` and `cheques.deposit_slip_id`. «ثبت به‌عنوان واریز» on the cheques board now deposits the ticked cheques together under one numbered slip (`POST /api/cheques/deposit`, number counts up per company) and opens the slip page `/sales/cheques/slips/[id]` with count, total and the list, to print or save as PDF. A bounce still voids the payment and reopens the debt (already built). Not yet: several bank accounts (the books have one bank account, 1102).
+
+**D1 built (batch B, first slice).** Table `cash_handovers`. «پول در دست» on the payments page (owner): per rep, driver and phone-sales person, the cash they collected since the office last counted them. «شمارش» saves the counted amount; a different amount needs a reason. Not yet: the ledger still books a cash receipt straight into the office cash account (1101), so a gap is recorded but not posted; cheques in hand are not in the box; no action-centre line for a gap.
+
+**B1 built (batch B, first slice; F12 reason codes only).** «برگشت از فروش» on the customer panel (managers): an amount up to what the customer owes and a reason (damaged, expired, wrong item, refused, other). It is a `CREDIT_NOTE` payment: it settles the oldest unpaid orders, posts Dr 4102 sales returns / Cr receivables, is not counted as money collected, and a void reverses it (`POST /api/payments/credit-note`). Not yet: paying the credit back in cash, a supplier credit note, stock movement and disposition (F80: restock, quarantine, write-off), recall tracing by batch (F12), a limit for managers.
+
+**F130 built (batch B, first slice: the list, not the builder).** «قانون‌ها» at `/sales/admin/rules` (owner, under «تنظیمات سازمان»): every rule of the company including the switched-off ones, with its kind (task, alert, notice), trigger (event or periodic check), waiting time and firings in the last 14 days. The owner can switch a rule on or off and change its waiting time. `PATCH /api/rules` is now owner-only (it was open to group managers, who have no screen for it) and checks the waiting time (1 to 43200 minutes). Not yet: creating or editing conditions (react-querybuilder, decided 2026-10-23), draft and publish, dry run, a daily firing budget with auto-pause.

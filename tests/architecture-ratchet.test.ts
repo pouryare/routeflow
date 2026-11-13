@@ -3,7 +3,7 @@ import { describe, it, expect } from "vitest";
 /* The tool behind `npm run check:architecture`. The ratchet itself runs in CI; this pins the
  * two pieces of logic that could quietly make it useless: what counts as a runtime import, and
  * whether a cycle is actually found. */
-const { valueImports, cycles, measure } = await import("../scripts/check-architecture.mjs");
+const { valueImports, cycles, measure, foreignTableWrites } = await import("../scripts/check-architecture.mjs");
 
 describe("valueImports", () => {
   it("keeps runtime imports and re-exports, drops type-only ones", () => {
@@ -42,8 +42,15 @@ describe("measure", () => {
   it("returns a number for every metric the baseline records", () => {
     const { totals } = measure();
     expect(Object.keys(totals).sort()).toEqual(
-      ["agentLitterFiles", "dbImportsOutsideLib", "dbModuleLines", "importCycles", "longFunctions", "rawRoleChecks", "unscopedTenantSelects", "unusedExports"].sort(),
+      ["agentLitterFiles", "dbImportsOutsideLib", "dbModuleLines", "foreignTableWrites", "importCycles", "longFunctions", "rawRoleChecks", "unscopedTenantSelects", "unusedExports"].sort(),
     );
     for (const v of Object.values(totals)) expect(Number.isFinite(v)).toBe(true);
   }, 120_000); // measures the whole tree: it parses every source file and runs knip
+});
+
+describe("foreignTableWrites (EV-L2)", () => {
+  it("lets the owner write its table and flags another file that does", () => {
+    expect(foreignTableWrites(["lib/repo/ledgerCore.ts", "lib/repo/stock.ts", "lib/repo/auditLog.ts", "lib/repo/events.ts"])).toEqual([]);
+    expect(foreignTableWrites(["lib/delivery.ts"]).map((w: { table: string }) => w.table)).toContain("stock_movements");
+  });
 });

@@ -5,6 +5,7 @@
  *  six months as it did on the day it was taken. Commission is paid off these numbers.
  */
 
+import { editRule } from "./orderEditRules";
 import { MAX_LINES_PER_ORDER, MAX_NOTES_LENGTH, MAX_PACKS_PER_LINE, isValidPacks } from "./orderLimits";
 import { refreshOrderFigures } from "./repo/orderFigures";
 import type { Db } from "@/lib/database/client";
@@ -101,6 +102,12 @@ export interface OrderDetail {
   priority: string;
   customer_id: number;
   customer_name: string;
+  /** A12: name, phone and address as they were when the order was confirmed; null before that. */
+  ship_name?: string | null;
+  ship_phone?: string | null;
+  /** D5: the day payment is due; set when the order is delivered. */
+  due_date?: string | null;
+  ship_address?: string | null;
   group_id: number | null;
   salesperson_user_id: number | null;
   salesperson_name: string | null;
@@ -374,9 +381,8 @@ export async function addLine(db: Db, orderId: number, line: LineInput): Promise
     | undefined;
   if (!order) throw new OrderError("سفارش پیدا نشد");
   assertValidLine(line);
-  if (order.status !== "DRAFT") {
-    throw new OrderError("سفارش تأییدشده ویرایش نمی‌شود؛ برای اصلاح، قلم برگشتی ثبت کنید");
-  }
+  const rule = editRule("line", order.status);
+  if (!rule.ok) throw new OrderError(rule.why);
   await insertLine(db, orderId, order.order_date, line, new Date().toISOString());
   await touch(db, orderId);
 }
@@ -563,6 +569,7 @@ export interface OrderSummary {
   /** Carried so a card can open the customer sheet without a second lookup per row. */
   customer_id: number;
   customer_name: string;
+  customer_phone?: string | null;
   /** The order's territory. Carried for the same reason as customer_id: the assignment board
    *  has to know which vans can legally take this order BEFORE the reader drops it, and a
    *  second lookup per card is how that check ends up missing. */
@@ -612,7 +619,7 @@ export async function readOrders(
     .prepare(
       `SELECT o.id, o.order_no, o.status, o.priority, o.order_date, o.payment_status, o.paid_toman,
               o.requested_day, o.requested_kind, o.discount_toman,
-              o.group_id, o.customer_id, c.business_name AS customer_name, u.display_name AS salesperson_name
+              o.group_id, o.customer_id, c.business_name AS customer_name, c.phone AS customer_phone, u.display_name AS salesperson_name
          FROM orders o
          JOIN customers c ON c.id = o.customer_id
          LEFT JOIN users u ON u.id = o.salesperson_user_id

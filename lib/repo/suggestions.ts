@@ -2,6 +2,7 @@ import { getDb } from "@/lib/db";
 import type { Session } from "@/lib/session";
 import { tehranTodayIso } from "@/lib/jalali";
 import { FULFILLED_ORDER_STATUSES, sqlStatusList } from "@/lib/orderStateMachine";
+import { contactOffByCustomer } from "@/lib/repo/contactPrefs";
 import { buildSuggestions, typicalGap, type ChurnSignal, type ReorderSignal, type Suggestion } from "@/lib/briefingSuggestions";
 
 /** The suggestions for a phone salesperson: their OWN customers (the ones they have sold to),
@@ -25,6 +26,9 @@ export async function suggestionsFor(session: Session): Promise<Suggestion[]> {
     .all(org, org, user) as unknown as ChurnSignal[];
 
   const reorder = await reorderSignals(org, user, today);
+  // S15: a customer who asked not to be called gets no «تماس بگیر» card, only «ساخت سفارش».
+  const off = await contactOffByCustomer(org);
+  for (const c of churn) if (off.get(c.customerId)?.some((o) => o.channel === "calls")) c.phone = null;
   return buildSuggestions({ churn, reorder });
 }
 
@@ -51,6 +55,7 @@ export async function reorderSignals(org: number, user: number, today: string): 
     byCustomer.set(r.customerId, e);
   }
   const reorder: ReorderSignal[] = [];
+  const off = await contactOffByCustomer(org);
   for (const [customerId, e] of byCustomer) {
     const gap = typicalGap(e.days);
     if (gap === null) continue;
@@ -58,7 +63,7 @@ export async function reorderSignals(org: number, user: number, today: string): 
     reorder.push({
       customerId,
       name: e.name,
-      phone: e.phone,
+      phone: off.get(customerId)?.some((o) => o.channel === "calls") ? null : e.phone,
       daysSinceLast: Math.round((todayMs - Date.parse(`${last}T00:00:00Z`)) / 86_400_000),
       typicalGapDays: gap,
     });

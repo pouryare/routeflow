@@ -7,6 +7,7 @@ import { Button } from "@heroui/react";
 import { FileTrigger } from "react-aria-components";
 import { SkipButton } from "@/components/tapflow/Answer";
 import { useMemo, useRef, useState } from "react";
+import { idemKeeper } from "@/lib/idemKey";
 import { useRouter } from "next/navigation";
 import TapFlow, { type CustomStepApi } from "@/components/tapflow/TapFlow";
 import { Icon } from "@/components/meridian/Icon";
@@ -48,6 +49,7 @@ export default function ExpenseFlow({
   onClose: () => void;
   onReopen?: () => void;
 }) {
+  const [idem] = useState(idemKeeper);
   const router = useRouter();
   const today = useMemo(() => tehranTodayIso(), []);
   const repeatSupplier = repeat?.supplier ?? null;
@@ -75,11 +77,12 @@ export default function ExpenseFlow({
       writeLastMethod("expense", st.values.method);
       const res = await fetch("/api/accounting/expenses", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...idem.headers() },
         body: JSON.stringify(withPlace({ body: expenseRequest(ctx, st) }, position).body),
       });
       const json = (await res.json().catch(() => ({}))) as { error?: string; id?: number };
       if (!res.ok) return { ok: false, error: json.error };
+      idem.renew();
       const file = hasPhoto(st) ? receipt.current : null;
       if (file && typeof json.id === "number") {
         // The expense is saved either way; a failed picture is reported but does not undo it.

@@ -1,6 +1,8 @@
+import { idleRulesFor, touchActive } from "@/lib/repo/idleSignout";
+import { idleExpired } from "@/lib/idleSignout";
 import { cache } from "react";
 import { NextRequest, NextResponse } from "next/server";
-import { COOKIE_NAME, parseSessionToken } from "./auth";
+import { COOKIE_NAME, MAX_AGE_SECONDS, parseSessionToken } from "./auth";
 import { getDb, type Role, type UserRow } from "./db";
 import { isVanRole } from "./roles";
 import { scopeForCompany, setRequestActorResolver, setRequestScopeResolver, withDbScope, type DbScope } from "./database/scope";
@@ -79,6 +81,17 @@ async function resolveSession(token: string | undefined | null): Promise<Session
   const { held_roles: heldRoles, ...user } = row;
   if (!user.active) return null;
   if (user.token_version !== claims.tv) return null;
+
+  /* E17: idle sign-out. The later of the last recorded use and the start of this sign-in (the token's expiry minus
+     its life) counts, so signing in again always starts fresh. An owner acting as someone (Login-As) is the actor's
+     own session and is not timed here. */
+  if (claims.act === undefined && user.organization_id !== null) {
+    const rules = await idleRulesFor(user.organization_id);
+    const signedInMs = (claims.exp - MAX_AGE_SECONDS) * 1000;
+    const lastMs = Math.max(signedInMs, user.last_active_at ? Date.parse(user.last_active_at) : 0);
+    if (idleExpired(rules, claims.role as Role, lastMs, Date.now())) return null;
+    await touchActive(user.id);
+  }
 
   /* An impersonation is only as valid as the actor behind it. A deactivated or demoted
      actor ends it on the very next request, not when the cookie expires.

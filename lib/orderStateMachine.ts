@@ -58,6 +58,7 @@ export type OrderRole = "phone_sales" | "group_manager" | "owner"
  *  run in listed order inside the caller's transaction. */
 export type OrderEffect =
   | "reserveStock"
+  | "freezeCustomer"
   | "releaseReservations"
   | "consumeReservations"
   | "createCreditApprovalTask"
@@ -90,15 +91,15 @@ export const ORDER_TRANSITIONS: readonly OrderTransition[] = [
   // `system`: the rule sweep cancels a draft nobody touched for two weeks (FB40, lib/repo/staleDrafts.ts).
   { from: "DRAFT", action: "cancel", to: "CANCELLED", roles: ["phone_sales", "group_manager", "owner", "system"], effects: ["releaseReservations"] },
 
-  { from: "PENDING_REVIEW", action: "passReview", to: "CONFIRMED", roles: ["group_manager", "owner", "system"], effects: ["reserveStock"] },
+  { from: "PENDING_REVIEW", action: "passReview", to: "CONFIRMED", roles: ["group_manager", "owner", "system"], effects: ["freezeCustomer", "reserveStock"] },
   { from: "PENDING_REVIEW", action: "flagCredit", to: "PENDING_CREDIT", roles: ["system"], effects: ["createCreditApprovalTask"] },
   { from: "PENDING_REVIEW", action: "cancel", to: "CANCELLED", roles: ["group_manager", "owner"], effects: ["releaseReservations"] },
 
-  { from: "PENDING_CREDIT", action: "approveCredit", to: "CONFIRMED", roles: ["group_manager", "owner"], effects: ["clearCreditHold", "reserveStock"] },
+  { from: "PENDING_CREDIT", action: "approveCredit", to: "CONFIRMED", roles: ["group_manager", "owner"], effects: ["clearCreditHold", "freezeCustomer", "reserveStock"] },
   { from: "PENDING_CREDIT", action: "rejectCredit", to: "ON_HOLD", roles: ["group_manager", "owner"] },
   { from: "PENDING_CREDIT", action: "cancel", to: "CANCELLED", roles: ["group_manager", "owner"], effects: ["releaseReservations"] },
 
-  { from: "ON_HOLD", action: "releaseHold", to: "CONFIRMED", roles: ["group_manager", "owner"], effects: ["clearCreditHold", "reserveStock"] },
+  { from: "ON_HOLD", action: "releaseHold", to: "CONFIRMED", roles: ["group_manager", "owner"], effects: ["clearCreditHold", "freezeCustomer", "reserveStock"] },
   { from: "ON_HOLD", action: "cancel", to: "CANCELLED", roles: ["group_manager", "owner"], effects: ["releaseReservations"] },
 
   { from: "CONFIRMED", action: "plan", to: "PLANNED", roles: ["group_manager", "owner", "system"] },
