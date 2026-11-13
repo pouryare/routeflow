@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { COOKIE_NAME } from "@/lib/auth";
 import { getSessionFromCookies } from "@/lib/session";
 import { MANAGE_ROLES } from "@/lib/roles";
-import { leadSourceReport, topReferrers, REVENUE_WINDOW_DAYS } from "@/lib/repo/leadSources";
+import { leadSourceReport, orderChannelReport, topReferrers, REVENUE_WINDOW_DAYS } from "@/lib/repo/leadSources";
 import CustomerName from "@/components/CustomerName";
 import PageHeader from "@/components/meridian/PageHeader";
 import { faNum } from "@/lib/format";
@@ -24,6 +24,7 @@ export default async function LeadSourcesPage() {
 
   const rows = await leadSourceReport(session);
   const referrers = await topReferrers(session);
+  const channels = await orderChannelReport(session);
   const totals = rows.reduce((t, r) => ({ leads: t.leads + r.leads, converted: t.converted + r.converted }), { leads: 0, converted: 0 });
 
   return (
@@ -68,6 +69,28 @@ export default async function LeadSourcesPage() {
               <p className="mt-2 text-[length:var(--text-xs)] text-text-faint">
                 «مشتری شد» یعنی دست‌کم یک سفارش تحویل‌شده دارد. هزینهٔ هر منبع هنوز ثبت نمی‌شود، پس بازده هزینه اینجا نیست.
               </p>
+            </>
+          )}
+        </div>
+      </section>
+      <section className="kblock" dir="rtl">
+        <div className="bhead">
+          <h2>سفارش‌ها به تفکیک راه ثبت</h2>
+        </div>
+        <div className="kblock__body">
+          {channels.length === 0 ? (
+            <p className="text-[length:var(--text-sm)] text-[var(--muted)]">هنوز سفارش تحویل‌شده‌ای نیست.</p>
+          ) : (
+            <>
+              <ul className="m-0 flex list-none flex-col gap-[var(--space-2)] p-0 text-[length:var(--text-sm)]">
+                {channels.map((c) => (
+                  <li key={c.channel ?? "none"} className="flex items-baseline justify-between gap-[var(--space-2)] border-b border-border pb-[var(--space-2)]">
+                    <span className={c.channel ? "text-text" : "text-warn"}>{c.label}</span>
+                    <span className="tabular-nums text-text-muted">{faNum(c.orders)} سفارش · {faNum(c.revenue)} تومان</span>
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-2 text-[length:var(--text-xs)] text-text-faint">راه ثبت را هنگام ساخت سفارش با یک لمس انتخاب کنید؛ سفارش‌های قدیمی‌تر «بدون ثبت» می‌مانند.</p>
             </>
           )}
         </div>

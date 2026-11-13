@@ -1121,6 +1121,7 @@ export interface OrderLines {
 }
 
 export interface Orders {
+  channel: string | null;
   client_uuid: string | null;
   cost_toman: number | null;
   created_at: string;

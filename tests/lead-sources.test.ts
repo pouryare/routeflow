@@ -11,7 +11,7 @@ const { getDb } = await import("@/lib/db");
 const { ensureWarehouse } = await import("./helpers/ensureWarehouse");
 const { createProduct, createPackaging, setPrice } = await import("@/lib/catalogue");
 const { createOrder } = await import("@/lib/orders");
-const { leadSourceReport } = await import("@/lib/repo/leadSources");
+const { leadSourceReport, orderChannelReport } = await import("@/lib/repo/leadSources");
 
 afterAll(() => fs.rmSync(path.dirname(dbPath), { recursive: true, force: true }));
 
@@ -31,16 +31,16 @@ describe("leadSourceReport (F137)", async () => {
   const product = await createProduct(db, { name: "کره", kg_per_base_unit: 0.25, organization_id: 1 });
   const packaging = await createPackaging(db, { product_id: product, name: "جعبه", qty_per_pack: 10 });
   await setPrice(db, { product_id: product, price_toman: 1000, valid_from: "2026-01-01" });
-  const order = async (date: string, packs: number) => {
+  const order = async (date: string, packs: number, channel?: "phone" | "visit") => {
     const o = await createOrder(db, {
-      customer_id: insta, order_date: date, created_by: owner, organization_id: 1, salesperson_user_id: owner,
+      customer_id: insta, order_date: date, created_by: owner, organization_id: 1, salesperson_user_id: owner, channel,
       lines: [{ product_id: product, packaging_id: packaging, packs }],
     });
     await db.prepare("UPDATE orders SET status = 'DELIVERED' WHERE id = ?").run(o.id);
   };
-  await order("2026-01-10", 2); // first delivered order
-  await order("2026-03-01", 3); // inside 90 days
-  await order("2026-06-01", 50); // outside the window
+  await order("2026-01-10", 2, "phone"); // first delivered order
+  await order("2026-03-01", 3, "phone"); // inside 90 days
+  await order("2026-06-01", 50); // outside the window, channel not said
 
   it("counts leads and customers per source, with revenue in the first 90 days only", async () => {
     const rows = await leadSourceReport(sess("owner"));
@@ -48,6 +48,13 @@ describe("leadSourceReport (F137)", async () => {
     expect(ig).toMatchObject({ label: "اینستاگرام", leads: 2, converted: 1, rate: 0.5, revenue90: 5000 });
     expect(rows.find((r) => r.source === null)).toMatchObject({ label: "بدون منبع", leads: 1, converted: 0 });
     expect(rows[0].source).toBe("INSTAGRAM");
+  });
+
+  it("F85: delivered orders and value per channel, with the unsaid ones in their own row", async () => {
+    const rows = await orderChannelReport(sess("owner"));
+    expect(rows.find((r) => r.channel === "phone")).toMatchObject({ label: "تماس تلفنی", orders: 2, revenue: 5000 });
+    expect(rows.find((r) => r.channel === null)).toMatchObject({ label: "بدون ثبت", orders: 1, revenue: 50000 });
+    expect(rows[0].channel).toBeNull();
   });
 
   it("a role outside the CRM gets nothing", async () => {

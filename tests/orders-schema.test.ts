@@ -118,6 +118,8 @@ describe("orders", () => {
         "created_by",
         // T5: how the order was made (form, quick, offline, import, ...).
         "created_source",
+        // F85: how the order reached the company (phone, visit, message, driver, standing).
+        "channel",
         "created_at",
         "updated_at",
       ].sort()

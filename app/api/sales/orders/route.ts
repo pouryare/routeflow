@@ -7,10 +7,11 @@ import { productInOrg } from "@/lib/repo/catalogueAdmin";
 import { OrderError } from "@/lib/orders";
 import { orderMixIn, ordersIn, placeOrder } from "@/lib/repo/routeAdapters";
 import { parseOrderRequest } from "@/lib/orderRequest";
+import { isOrderChannel } from "@/lib/orderChannel";
 import { parseDiscountBody } from "@/lib/discounts";
 import { DiscountError } from "@/lib/repo/discounts";
 import { customerPriceHistory } from "@/lib/repo/customerPrices";
-import { SELL_ROLES } from "@/lib/roles";
+import { SELL_ROLES, isVanRole } from "@/lib/roles";
 import { customerUsualBasket } from "@/lib/repo/usualBasket";
 import { recentOpenOrders } from "@/lib/repo/recentOpenOrders";
 import { onboardingFor } from "@/lib/repo/onboarding";
@@ -92,6 +93,7 @@ export async function POST(req: NextRequest) {
     requested_kind?: unknown;
     salesperson_user_id?: unknown;
     notes?: unknown;
+    channel?: unknown;
     credit_override?: unknown;
     discount?: unknown;
     lines?: unknown;
@@ -102,6 +104,9 @@ export async function POST(req: NextRequest) {
   const discountBody = parseDiscountBody(body?.discount);
   if (!discountBody.ok) return NextResponse.json({ ok: false, error: discountBody.error }, { status: 400 });
   const { orderDate, requestedDay, kind, lines } = parsed;
+  if (body?.channel != null && !isOrderChannel(body.channel)) return NextResponse.json({ ok: false, error: "راه ثبت سفارش نامعتبر است" }, { status: 400 });
+  // F85: a driver's order is raised at the door; for everyone else the form asks (empty when skipped).
+  const channel = isOrderChannel(body?.channel) ? body.channel : isVanRole(session.role) ? "driver" : null;
 
   // Rule 1: a lead becomes a customer when it buys. Until this existed, a pin could not
   // receive an order at all -- the route required a customers.id and a lead lives in
@@ -176,6 +181,7 @@ export async function POST(req: NextRequest) {
       salesperson_user_id: salespersonId,
       credit_override_by: body?.credit_override ? session.user.id : null,
       notes: typeof body?.notes === "string" ? body.notes : null,
+      channel,
       // Asked for with the order; it waits for the manager or owner unless the rules let it through.
       discount: discountBody.discount
         ? { request: discountBody.discount, asker: { id: session.user.id, role: session.role } }
