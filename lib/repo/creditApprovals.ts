@@ -16,6 +16,8 @@ export interface CreditApprovalRow {
   customer_balance_toman: number;
   credit_limit_toman: number | null;
   overage_toman: number;
+  /** "credit": over the customer's limit; "value": over the company's order-value limit (F76). */
+  kind: "credit" | "value";
   status: "pending" | "approved" | "rejected" | "expired";
   decided_by: number | null;
   decided_at: string | null;
@@ -34,23 +36,27 @@ export async function requestApproval(
     customer_id: number;
     customer_balance_toman: number;
     credit_limit_toman: number | null;
+    /** Left out: a credit request. "value" is an order held for its size; it applies to representatives too. */
+    kind?: "credit" | "value";
   }
 ): Promise<number> {
   const db = creditApprovalsRepo.db();
+  const kind = input.kind ?? "credit";
   const isRep = await db
     .prepare("SELECT 1 FROM representative_profiles WHERE customer_id = ? AND organization_id = ?")
     .get(input.customer_id, organizationId);
-  if (isRep) {
+  if (isRep && kind === "credit") {
     throw new CreditApprovalError("نماینده مشمول کنترل اعتبار نیست — تسویه با چک یا نقد است");
   }
+  // For a held-for-size order the "balance" is the order's total and the "limit" is the value limit, so the overage reads the same way.
   const overage = Math.max(0, input.customer_balance_toman - (input.credit_limit_toman ?? 0));
   return Number(
     (await db
       .prepare(
         `INSERT INTO credit_approvals
            (organization_id, order_id, requested_by, requested_at,
-            customer_balance_toman, credit_limit_toman, overage_toman, status)
-         VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')`
+            customer_balance_toman, credit_limit_toman, overage_toman, status, kind)
+         VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?)`
       )
       .run(
         organizationId,
@@ -59,7 +65,8 @@ export async function requestApproval(
         new Date().toISOString(),
         input.customer_balance_toman,
         input.credit_limit_toman,
-        overage
+        overage,
+        kind
       )).lastInsertRowid
   );
 }
@@ -114,6 +121,9 @@ registerOrderEffectHandlers({
       .get(orderId) as { customer_id: number } | undefined;
     if (!order) return;
     const now = new Date().toISOString();
+    const held = (await conn
+      .prepare("SELECT kind FROM credit_approvals WHERE order_id = ? AND status = 'pending' ORDER BY id DESC LIMIT 1")
+      .get(orderId)) as { kind: string } | undefined;
     await conn
       .prepare(
         `INSERT INTO reminders (entity_type, entity_id, due_date, message, resolved, created_at)
@@ -122,7 +132,7 @@ registerOrderEffectHandlers({
       .run(
         order.customer_id,
         now.slice(0, 10),
-        "سفارش از سقف اعتبار مشتری عبور کرد — نیازمند تأیید مدیر",
+        held?.kind === "value" ? "سفارش از سقف مبلغ بدون تأیید بزرگ‌تر است — نیازمند تأیید مدیر" : "سفارش از سقف اعتبار مشتری عبور کرد — نیازمند تأیید مدیر",
         now
       );
   },
@@ -153,6 +163,7 @@ export interface PendingApprovalCard {
   id: number;
   order_no: string;
   customer_name: string;
+  kind: "credit" | "value";
   customer_balance_toman: number;
   credit_limit_toman: number | null;
   overage_toman: number;
@@ -169,7 +180,7 @@ export async function pendingForDeck(organizationId: number, scopeGroupId?: numb
   const rows = (await getDb()
     .prepare(
       `SELECT ca.id, o.customer_id, o.order_no, c.business_name AS customer_name, ca.customer_balance_toman,
-              ca.credit_limit_toman, ca.overage_toman, ca.requested_at
+              ca.credit_limit_toman, ca.overage_toman, ca.requested_at, ca.kind
          FROM credit_approvals ca
          JOIN orders o ON o.id = ca.order_id
          JOIN customers c ON c.id = o.customer_id

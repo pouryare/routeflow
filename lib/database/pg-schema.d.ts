@@ -382,6 +382,7 @@ export interface CreditApprovals {
   decided_at: string | null;
   decided_by: number | null;
   id: Generated<number>;
+  kind: Generated<string>;
   order_id: number;
   organization_id: number;
   overage_toman: number;
@@ -1313,6 +1314,7 @@ export interface Organizations {
   maintenance_note: string | null;
   maintenance_to: string | null;
   name: string;
+  order_approval_limit_toman: Generated<number>;
   order_prefix: string | null;
   plan: Generated<string>;
   quiet_customer_days: Generated<number>;
