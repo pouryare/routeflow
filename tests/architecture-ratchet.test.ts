@@ -42,7 +42,7 @@ describe("measure", () => {
   it("returns a number for every metric the baseline records", () => {
     const { totals } = measure();
     expect(Object.keys(totals).sort()).toEqual(
-      ["agentLitterFiles", "dbImportsOutsideLib", "dbModuleLines", "importCycles", "longFunctions", "rawRoleChecks", "unscopedTenantSelects", "unusedExports"].sort(),
+      ["agentLitterFiles", "dbImportsOutsideLib", "dbModuleLines", "foreignTableWrites", "importCycles", "longFunctions", "rawRoleChecks", "unscopedTenantSelects", "unusedExports"].sort(),
     );
     for (const v of Object.values(totals)) expect(Number.isFinite(v)).toBe(true);
   }, 120_000); // measures the whole tree: it parses every source file and runs knip
