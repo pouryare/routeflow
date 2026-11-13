@@ -427,6 +427,25 @@ export async function submitOrder(
 
   await advanceOrder(organizationId, orderId, "submit", actor);
 
+  /* F76: an order bigger than the company's limit waits for a manager, whoever the customer is. A signed-in
+     owner is the one who would approve it, so their own order goes on. A sample carries no value. */
+  if (order.order_type !== "SAMPLE" && !(actor.role === "owner" && actor.id != null)) {
+    const limit = Number(((await db.prepare("SELECT order_approval_limit_toman AS n FROM organizations WHERE id = ?").get(organizationId)) as { n: number } | undefined)?.n ?? 0);
+    const orderTotal = orderTotalToman(await linesOf(db, orderId));
+    if (limit > 0 && orderTotal > limit) {
+      await db.prepare("UPDATE orders SET credit_hold = 1 WHERE id = ? AND organization_id = ?").run(orderId, organizationId);
+      await requestApproval(organizationId, {
+        order_id: orderId,
+        requested_by: actor.id ?? order.created_by,
+        customer_id: order.customer_id,
+        customer_balance_toman: orderTotal,
+        credit_limit_toman: limit,
+        kind: "value",
+      });
+      return await advanceOrder(organizationId, orderId, "flagCredit", { id: actor.id, role: "system" });
+    }
+  }
+
   const isRepresentative = !!await db
     .prepare("SELECT 1 FROM representative_profiles WHERE customer_id = ? AND organization_id = ?")
     .get(order.customer_id, organizationId);

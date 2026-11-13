@@ -6,8 +6,8 @@ import { ChipGroup } from "@/components/mobile/ChipGroup";
 import { faNum } from "@/lib/format";
 import { faJalaliDate } from "@/lib/jalali";
 
-interface Person { id: number; display_name: string }
-interface Away { id: number; display_name: string; leave_until: string; leave_reason: string | null; customers: number; tasks: number }
+interface Person { id: number; display_name: string; manager?: boolean }
+interface Away { id: number; display_name: string; leave_until: string; leave_reason: string | null; delegate_name: string | null; customers: number; tasks: number }
 
 const DAYS = [
   { id: "1", label: "امروز" },
@@ -32,6 +32,7 @@ export default function LeaveCard({ people }: { people: Person[] }) {
   const [who, setWho] = useState("");
   const [days, setDays] = useState("7");
   const [reason, setReason] = useState("مرخصی");
+  const [cover, setCover] = useState("");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
 
@@ -45,10 +46,10 @@ export default function LeaveCard({ people }: { people: Person[] }) {
 
   async function send(userId: number, d: number | null) {
     setBusy(true); setMsg("");
-    const r = await call("/api/admin/leave", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ user_id: userId, days: d, reason }) });
+    const r = await call("/api/admin/leave", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ user_id: userId, days: d, reason, delegate_id: cover ? Number(cover) : null }) });
     setBusy(false);
     if (!r.ok) { setMsg(r.error ?? "ثبت نشد"); return; }
-    setWho("");
+    setWho(""); setCover("");
     await load();
   }
 
@@ -65,6 +66,7 @@ export default function LeaveCard({ people }: { people: Person[] }) {
               <div>
                 <p className="font-medium">{a.display_name}</p>
                 <p className="text-sm text-text-muted">{a.leave_reason ? `${a.leave_reason} · ` : ""}تا {faJalaliDate(a.leave_until)}</p>
+                {a.delegate_name && <p className="text-sm text-text-muted">تأییدها را {a.delegate_name} می‌دهد</p>}
                 {a.customers + a.tasks > 0 && <p className="text-sm text-warn">هنوز {faNum(a.customers)} مشتری و {faNum(a.tasks)} کار باز دست اوست</p>}
               </div>
               <button type="button" disabled={busy} onClick={() => void send(a.id, null)} className="btn min-h-[44px] inline-flex items-center gap-[var(--space-2)]">
@@ -83,6 +85,12 @@ export default function LeaveCard({ people }: { people: Person[] }) {
           <ChipGroup wrap group={{ id: "leave-days", label: "مدت", mode: "single", value: days, options: DAYS, onChange: (v) => setDays((v as string) || days) }} />
           <p className="mb-1 mt-3 text-sm">دلیل</p>
           <ChipGroup wrap group={{ id: "leave-reason", label: "دلیل", mode: "single", value: reason, options: REASONS.map((r) => ({ id: r, label: r })), onChange: (v) => setReason(v as string) }} />
+          {people.find((p) => String(p.id) === who)?.manager && (
+            <>
+              <p className="mb-1 mt-3 text-sm">تأیید سفارش‌ها در نبود او را چه کسی بدهد؟ (اختیاری)</p>
+              <ChipGroup wrap group={{ id: "leave-cover", label: "جانشین", mode: "single", value: cover, options: people.filter((p) => p.manager && String(p.id) !== who).map((p) => ({ id: String(p.id), label: p.display_name })), onChange: (v) => setCover(v as string) }} />
+            </>
+          )}
           <button type="button" disabled={busy} onClick={() => void send(Number(who), Number(days))} className="btn solid mt-3 inline-flex min-h-[44px] items-center justify-center gap-[var(--space-2)]">
             <Icon name="calendar" size="md" /> ثبت مرخصی
           </button>

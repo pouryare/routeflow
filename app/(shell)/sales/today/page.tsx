@@ -4,7 +4,7 @@ import DiscountDeckEntry from "@/components/flows/DiscountDeckEntry";
 import { pendingForDecider } from "@/lib/repo/discounts";
 import DuplicatesDeckEntry from "@/components/flows/DuplicatesDeckEntry";
 import { duplicatePairs } from "@/lib/repo/crm/duplicates";
-import { pendingForDeck, creditScopeOf } from "@/lib/repo/creditApprovals";
+import { pendingForDeck, approvalScopeFor } from "@/lib/repo/creditApprovals";
 import ActionCards from "@/components/mobile/ActionCard";
 import { suggestionsFor } from "@/lib/repo/suggestions";
 import { redirect } from "next/navigation";
@@ -93,7 +93,7 @@ export default async function SalesTodayPage() {
 
       {MANAGE_ROLES.includes(session.role) && (
         <div className="mb-3 flex flex-wrap gap-2">
-          <CreditDeckEntry approvals={await pendingForDeck(session.organizationId, creditScopeOf(session))} />
+          <CreditDeckEntry approvals={await pendingForDeck(session.organizationId, await approvalScopeFor(session))} />
           <DiscountDeckEntry
             approvals={await pendingForDecider(session.organizationId, { id: session.user.id, role: session.role, group_id: session.groupId })}
           />

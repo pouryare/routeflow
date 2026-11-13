@@ -916,7 +916,7 @@ All 148 entries of `docs/future-features.md` (F1 to F148), grouped by area, with
 | F71 | Customer credit holds by rep | M | yes | F48 | Not built | — |
 | F72 | Duplicate order warning | S | yes | — | Built (first slice) | — |
 | F73 | Order edit history | M | yes | F27, F48 | Built (delivery day, due date, address, notes with a reason) | FB3 |
-| F76 | Order approval by value | M | yes | F48, F51 | Not built | — |
+| F76 | Order approval by value | M | yes | F48, F51 | Built (first slice, 2026-11-13): company limit «سقف سفارش بدون تأیید» in the thresholds page (0 = off); a bigger order waits in the credit approvals deck as a «value» request; a signed-in owner's own order passes. No per-role or per-customer limit yet | — |
 | F89 | Customer price history | S | yes | F29, F56 | Built (first slice) | — |
 | F96 | Inter-group order transfers | L | yes | F48 | Not built | — |
 | F114 | Carton completion nudges | S | yes | F58, F65 | Small, waits for a prerequisite | — |
@@ -1007,7 +1007,7 @@ All 148 entries of `docs/future-features.md` (F1 to F148), grouped by area, with
 | F27 | Audit trail and anomaly detection | M | yes | — | Planned: first slice is EV4 | T-skip, D6, E6, EV4 |
 | F48 | Change approvals (second-person sign-off) | M | yes | F27 | Built (credit limit, order edits, expiry; no price-list kind yet) | — |
 | F51 | SLA and escalation rules | M | yes | — | Partly built | FB43, S5 |
-| F82 | Approval delegation while away | M | yes | F27, F48 | Not built | T13 |
+| F82 | Approval delegation while away | M | yes | F27, F48 | Built (first slice, 2026-11-13): when a manager is sent on leave, the leave card can name a colleague who then decides that manager's group credit and order-size approvals until the leave ends. Other approval kinds follow when they exist | T13 |
 | F88 | Staff expense reimbursement | M | yes | F26, F48 | Not built | D15 |
 | F95 | Staff birthdays and work anniversaries | S | yes | F86, F90 | Small, waits for a prerequisite | — |
 | F102 | Manager approval inbox | M | yes | F48, F76, F82, F88 | Not built | — |
