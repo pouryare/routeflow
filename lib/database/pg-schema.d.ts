@@ -304,6 +304,18 @@ export interface CrmNotDuplicates {
   organization_id: number;
 }
 
+export interface CustomerLoans {
+  created_at: string;
+  created_by: number | null;
+  customer_id: number;
+  from_user_id: number;
+  id: Generated<number>;
+  organization_id: number;
+  returned_at: string | null;
+  to_user_id: number;
+  until: string;
+}
+
 export interface Customers {
   address: string | null;
   area_label: string | null;
@@ -1953,6 +1965,7 @@ export interface DB {
   content_images: ContentImages;
   credit_approvals: CreditApprovals;
   crm_not_duplicates: CrmNotDuplicates;
+  customer_loans: CustomerLoans;
   customer_tags: CustomerTags;
   customers: Customers;
   deleted_rows: DeletedRows;
