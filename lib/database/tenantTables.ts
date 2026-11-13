@@ -14,6 +14,9 @@
 export const TENANT_TABLES = [
   "cash_handovers",
   "bank_accounts",
+  "period_openings",
+  "year_closes",
+  "saved_views",
   "cash_refunds",
   "deposit_slips",
   "payment_promises",

@@ -204,7 +204,6 @@ export const PAGE_META: Record<string, PageMeta> = {
   "/accounting/money": {
     title: "ورودی و خروجی پول",
     titleEn: "Money in and out",
-    help: "page.money",
     overview:
       "پولی که در یک ماه به صندوق و بانک آمد و از آن‌ها رفت، با مانده اول و آخر ماه، مستقیماً از دفتر.",
   },
@@ -277,15 +276,13 @@ export const PAGE_META: Record<string, PageMeta> = {
   },
 
   "/sales/stock/buy-list": {
-    title: "لیست خرید",
+    title: "فهرست خرید",
     titleEn: "Buy list",
-    help: "page.stock",
     overview: "کالاهایی که به نقطهٔ سفارش رسیده‌اند، به تفکیک ارزان‌ترین تأمین‌کننده و با رعایت حداقل سفارش او.",
   },
   "/sales/stock/on-date": {
     title: "موجودی در یک روز",
     titleEn: "Stock on a date",
-    help: "page.stock",
     overview: "موجودی هر کالا در پایان یک روز گذشته، از حرکت‌های انبار.",
   },
 

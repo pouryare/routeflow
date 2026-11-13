@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 
+process.env.ROUTEFLOW_DB_PATH = `/tmp/rf-promise-wake-${Date.now()}-${Math.random().toString(36).slice(2)}.db`;
 process.env.SESSION_SECRET = "test-secret";
 const { getDb } = await import("@/lib/db");
 const { wakePromises } = await import("@/lib/repo/promises");

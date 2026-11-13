@@ -111,7 +111,7 @@ export default async function StockPage() {
     {isOwner(session.role) ? (
       <Link href="/sales/stock/buy-list" className="mb-3 ms-4 inline-flex min-h-[44px] items-center gap-2 text-[length:var(--text-sm)] text-[var(--accent-text)]">
         <Icon name="receipt" size="md" />
-        لیست خرید
+        فهرست خرید
       </Link>
     ) : null}
     <div className="flex flex-col gap-[var(--space-5)]">

@@ -56,6 +56,7 @@ export default function SavedViewsBar({ views }: { views: SavedView[] }) {
         <div className="flex flex-wrap gap-[var(--space-2)]" role="group" aria-label="نمای‌های ذخیره‌شده">
           {views.map((v) => (
             <button key={v.id} type="button" aria-pressed={active?.id === v.id || from?.id === v.id} onClick={() => apply(v)} className={`${BTN} ${active?.id === v.id || from?.id === v.id ? "border-accent text-[var(--accent-text)]" : ""}`}>
+              <Icon name="star" size="md" />
               {v.name}
             </button>
           ))}
@@ -66,10 +67,10 @@ export default function SavedViewsBar({ views }: { views: SavedView[] }) {
           <span className="text-[length:var(--text-sm)]">«{from.name}» را تغییر داده‌اید</span>
           <button type="button" disabled={busy} className={BTN} onClick={async () => { if (await call({ method: "POST", body: JSON.stringify({ id: from.id, query: current }) })) router.refresh(); }}>
             <Icon name="save" size="md" />
-            ذخیره
+            ذخیرهٔ تغییر
           </button>
           <button type="button" className={BTN} onClick={() => setNaming(true)}>
-            <Icon name="plus" size="md" />
+            <Icon name="save" size="md" />
             ذخیره به‌عنوان نمای تازه
           </button>
           <button type="button" className={BTN} onClick={() => apply(from)}>
@@ -95,7 +96,7 @@ export default function SavedViewsBar({ views }: { views: SavedView[] }) {
         <div className="flex flex-col gap-[var(--space-3)]" dir="rtl">
           <FieldInput value={name} onChange={(e) => setName(e.target.value)} placeholder="نام نما، مثلاً «امروز باز»" aria-label="نام نما" className="w-full" />
           {error ? <p className="m-0 text-[length:var(--text-sm)]" style={{ color: "var(--danger)" }}>{error}</p> : null}
-          <GoButton icon="save" isDisabled={busy || name.trim() === ""} onPress={() => void saveNew()}>ذخیره</GoButton>
+          <GoButton icon="save" isDisabled={busy || name.trim() === ""} onPress={() => void saveNew()}>ذخیرهٔ نما</GoButton>
         </div>
       </BottomSheet>
     </div>

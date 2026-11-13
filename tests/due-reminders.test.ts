@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { dueDateFor, parseDays, serializeDays } from "@/lib/dueReminders";
 
+process.env.ROUTEFLOW_DB_PATH = `/tmp/rf-due-reminders-${Date.now()}-${Math.random().toString(36).slice(2)}.db`;
 process.env.SESSION_SECRET = "test-secret";
 const { getDb } = await import("@/lib/db");
 const { queueDueReminders, setDueReminderDays } = await import("@/lib/repo/dueReminders");

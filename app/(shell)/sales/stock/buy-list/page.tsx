@@ -30,13 +30,14 @@ export default async function BuyListPage() {
   return (
     <>
       <PageHeader route="/sales/stock/buy-list" />
-      <SectionHead title="لیست خرید" sub={groups.length ? "کالاهای رسیده به نقطهٔ سفارش، به تفکیک ارزان‌ترین تأمین‌کننده" : "فعلاً کالایی به نقطهٔ سفارش نرسیده است."} />
+      <SectionHead title="فهرست خرید" sub={groups.length ? "کالاهای رسیده به نقطهٔ سفارش، به تفکیک ارزان‌ترین تأمین‌کننده" : "فعلاً کالایی به نقطهٔ سفارش نرسیده است."} />
       {groups.map((g) => (
         <section key={g.supplier} className="card mb-[var(--space-3)] flex flex-col gap-[var(--space-2)] p-[var(--space-4)]">
-          <h3 className="m-0 text-[length:var(--text-base)]">
-            {g.supplierId ? <Link href={`/accounting/suppliers/${g.supplierId}`} className="text-[var(--accent-text)]">{g.supplier}</Link> : g.supplier}
-            {g.totalToman > 0 ? <span className="ms-2 text-[length:var(--text-sm)] text-[var(--muted)]">{faToman(g.totalToman)}</span> : null}
-          </h3>
+          <SectionHead
+            as="h3"
+            title={g.supplierId ? <Link href={`/accounting/suppliers/${g.supplierId}`} className="text-[var(--accent-text)]">{g.supplier}</Link> : g.supplier}
+            sub={g.totalToman > 0 ? faToman(g.totalToman) : undefined}
+          />
           <ul className="m-0 flex list-none flex-col gap-[var(--space-1)] p-0 text-[length:var(--text-sm)]">
             {g.lines.map((l) => (
               <li key={l.productId} className="flex justify-between gap-2">

@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { monthSoFar, splitMoney } from "@/lib/moneyFlow";
 
+process.env.ROUTEFLOW_DB_PATH = `/tmp/rf-money-flow-${Date.now()}-${Math.random().toString(36).slice(2)}.db`;
 process.env.SESSION_SECRET = "test-secret";
 const { getDb } = await import("@/lib/db");
 const { postJournal, accountIdByCode } = await import("@/lib/repo/ledger");

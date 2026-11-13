@@ -35,9 +35,15 @@ export default async function MoneyPage({ searchParams }: { searchParams: Promis
         sub={`ماه ${faDigits(key)}: از ${faNum(flow.opening)} شروع شد و با ${faNum(flow.closing)} تومان تمام می‌شود`}
         actions={
           <div className="flex flex-wrap gap-2 text-[length:var(--text-sm)]">
-            {keys.map((k) => (
-              <Link key={k} href={`/accounting/money?period=${k}`} className={`rounded-[var(--radius-sm)] border px-2 py-1 ${k === key ? "border-accent text-[var(--accent-text)]" : "border-border"}`}>
-                {faDigits(k)}
+            {keys.map((k) => ({ periodKey: k })).map((p) => (
+              <Link
+                key={p.periodKey}
+                href={`/accounting/money?period=${p.periodKey}`}
+                className={`rounded-[var(--radius-sm)] border px-2 py-1 ${
+                  p.periodKey === key ? "border-accent text-[var(--accent-text)]" : "border-border"
+                }`}
+              >
+                {p.periodKey}
               </Link>
             ))}
           </div>

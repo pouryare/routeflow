@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { orderChangeLine } from "@/lib/orderChangeText";
 
+process.env.ROUTEFLOW_DB_PATH = `/tmp/rf-order-change-notice-${Date.now()}-${Math.random().toString(36).slice(2)}.db`;
 process.env.SESSION_SECRET = "test-secret";
 const { getDb } = await import("@/lib/db");
 const { applyOrderDetail } = await import("@/lib/repo/orderEdits");
