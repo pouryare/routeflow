@@ -273,6 +273,8 @@ export interface AdvancedStockRow extends StockRow {
   target_stock: number | null;
   /** D32 «تصفیه»: still sold, never bought again. */
   sell_off: boolean;
+  /** D7: the product's own VAT rate; null follows the company's. */
+  vat_pct: number | null;
   status: StockStatus;
   /** Average base_unit delivered per day over the last VELOCITY_WINDOW_DAYS. */
   daily_rate: number;
@@ -302,8 +304,8 @@ export async function advancedStockPosition(db: Db, organizationId: number | nul
   const base = await stockPosition(db, organizationId);
 
   const thresholds = await db
-    .prepare("SELECT id, reorder_point, target_stock, sell_off FROM products WHERE active = 1")
-    .all() as unknown as { id: number; reorder_point: number | null; target_stock: number | null; sell_off: number }[];
+    .prepare("SELECT id, reorder_point, target_stock, sell_off, vat_pct FROM products WHERE active = 1")
+    .all() as unknown as { id: number; reorder_point: number | null; target_stock: number | null; sell_off: number; vat_pct: number | null }[];
   const thresholdById = new Map(thresholds.map((t) => [t.id, t]));
 
   const windowStart = new Date(Date.now() - VELOCITY_WINDOW_DAYS * 86_400_000).toISOString().slice(0, 10);
@@ -372,6 +374,7 @@ export async function advancedStockPosition(db: Db, organizationId: number | nul
       reorder_point: reorderPoint,
       target_stock: targetStock,
       sell_off: sellOff,
+      vat_pct: t?.vat_pct ?? null,
       status: sellOff ? "ok" : stockStatus(row.on_hand, reorderPoint, targetStock),
       daily_rate: dailyRate,
       days_left: dailyRate > 0 ? row.on_hand / dailyRate : null,

@@ -43,6 +43,7 @@ describe("products", () => {
       [
         // organization_id joined every tenant table once RouteFlow became multi-tenant.
         "organization_id",
+        "vat_pct",
         "id",
         "name",
         "sku",

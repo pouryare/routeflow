@@ -82,6 +82,9 @@ describe("orders", () => {
         "group_id",
         "salesperson_user_id",
         "ship_address",
+        "official",
+        "invoice_year",
+        "invoice_no",
         "ship_name",
         "ship_phone",
         "status",
@@ -187,6 +190,7 @@ describe("order_lines", () => {
   it("has the columns the sales module needs", async () => {
     expect((await cols("order_lines")).sort()).toEqual(
       [
+        "vat_pct",
         "id",
         "order_id",
         "product_id",

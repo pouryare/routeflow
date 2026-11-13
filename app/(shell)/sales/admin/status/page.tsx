@@ -19,6 +19,8 @@ import { thresholdsFor } from "@/lib/repo/thresholds";
 import ThresholdsForm from "@/components/meridian/ThresholdsForm";
 import { taskPushMinutes } from "@/lib/repo/taskPush";
 import { documentSettingsFor } from "@/lib/repo/documentSettings";
+import { invoiceSettingsFor } from "@/lib/repo/invoice";
+import InvoiceSettingsForm from "@/components/meridian/InvoiceSettingsForm";
 import { accessReview } from "@/lib/accessReview";
 import { accessUsers, recentImpersonations } from "@/lib/repo/accessReview";
 import { pageMetadata } from "@/lib/pageMeta";
@@ -57,6 +59,7 @@ export default async function StatusPage() {
   const review = accessReview(await accessUsers(session.organizationId), new Date().toISOString());
   const logins = await recentImpersonations(session.organizationId);
   const docs = await documentSettingsFor(session.organizationId);
+  const invoiceSettings = await invoiceSettingsFor(session.organizationId);
   const pushMinutes = await taskPushMinutes(session.organizationId);
   const connections = await connectionsOf(session.organizationId);
   const changes = await auditHistory(session.organizationId, { limit: 100 });
@@ -117,6 +120,7 @@ export default async function StatusPage() {
       </div>
       <div className="mt-[var(--space-4)]">
         <DocumentSettingsForm current={docs} />
+        <InvoiceSettingsForm current={invoiceSettings} />
       </div>
       <div className="mt-[var(--space-4)]">
         <TaskPushForm minutes={pushMinutes} />
