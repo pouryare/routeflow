@@ -1270,6 +1270,22 @@ export interface PlatformSettings {
   value: string;
 }
 
+export interface ProblemReports {
+  app_version: string | null;
+  connection: string | null;
+  created_at: string;
+  done_at: string | null;
+  id: Generated<number>;
+  message: string;
+  organization_id: number;
+  page: string | null;
+  role: string;
+  screenshot_data: string | null;
+  status: Generated<string>;
+  user_agent: string | null;
+  user_id: number;
+}
+
 export interface ProductCosts {
   cost_toman: number;
   created_at: string;
@@ -2070,6 +2086,7 @@ export interface DB {
   photos: Photos;
   platform_access_log: PlatformAccessLog;
   platform_settings: PlatformSettings;
+  problem_reports: ProblemReports;
   product_costs: ProductCosts;
   product_prices: ProductPrices;
   products: Products;

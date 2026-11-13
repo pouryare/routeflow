@@ -15,6 +15,7 @@ import { useTutorials } from "@/components/tutorials/TutorialProvider";
 import { TUTORIALS } from "@/lib/tutorials/catalog";
 import { firstSteps } from "@/lib/tutorials/engine";
 import type { AccountLink } from "@/lib/accountLinks";
+import ReportProblem from "@/components/ReportProblem";
 
 /** The one control at the end of the top bar: the viewer's avatar, opening a HeroUI Popover
  *  that holds everything that used to sit loose beside it -- the account links and the
@@ -111,6 +112,8 @@ export default function ProfileMenu({
             </div>
 
             <div className="pm__sep" />
+
+            <ReportProblem className="pm__link" onOpen={() => setOpen(false)} />
 
             <Button variant="ghost" className="pm__link" onPress={() => void signOut()}>
               <Icon name="logout" size="sm" /> خروج از حساب

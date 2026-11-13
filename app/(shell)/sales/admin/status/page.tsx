@@ -11,6 +11,8 @@ import { maintenanceFor } from "@/lib/repo/maintenance";
 import AccessReviewCard from "@/components/meridian/AccessReviewCard";
 import DocumentSettingsForm from "@/components/meridian/DocumentSettingsForm";
 import TaskPushForm from "@/components/meridian/TaskPushForm";
+import ProblemReportsCard from "@/components/meridian/ProblemReportsCard";
+import { openProblemReports } from "@/lib/repo/problemReports";
 import { thresholdsFor } from "@/lib/repo/thresholds";
 import ThresholdsForm from "@/components/meridian/ThresholdsForm";
 import { taskPushMinutes } from "@/lib/repo/taskPush";
@@ -46,6 +48,7 @@ export default async function StatusPage() {
   const session = await getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
   if (!session) redirect("/login");
   const limits = await thresholdsFor(session.organizationId);
+  const reports = await openProblemReports(session.organizationId);
   const lines = statusLines({ ...(await statusFacts(session.organizationId)), dataAgeingDays: limits.data_ageing_days, dataStaleDays: limits.data_stale_days });
   const maintenance = await maintenanceFor(session.organizationId);
   const review = accessReview(await accessUsers(session.organizationId), new Date().toISOString());
@@ -79,6 +82,9 @@ export default async function StatusPage() {
           ))}
         </ul>
       </section>
+      <div className="mt-[var(--space-4)]">
+        <ProblemReportsCard rows={reports} />
+      </div>
       <div className="mt-[var(--space-4)]">
         <LiveConnectionsCard rows={connections} />
       </div>

@@ -570,7 +570,7 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
   **Merge duplicates (Z16).** «ادغام در…» moves all rows of a supplier, product or district to another and retires the old one: owner only, typed-name confirm, a log line. Expense and money categories wait until the ledger question is decided (re-point the label, or post a reversal pair).
 
   </details>
-- **S24. «گزارش مشکل برنامه» button.** One line and an optional screenshot with page, role, version, phone and connection attached; a list for the owner.
+- **S24. «گزارش مشکل برنامه» button.** One line and an optional screenshot with page, role, version, phone and connection attached; a list for the owner. **Built 2026-11-13 (batch B).** «گزارش مشکل برنامه» in the account menu (desk), «حساب من» (phone) and the driver's links: a sheet with a line and an optional screenshot (shrunk, kept in the row); the page, role, app version, phone and connection go along. Table `problem_reports`; the owner's status page card lists open reports with «دیدن تصویر» and «انجام شد». Ten reports an hour per person.
 
 - **EV1. Rules timer on the server.** The rules sweep (callback and follow-up tasks, escalation, push and Telegram flush) runs every 5 minutes from a systemd timer, like the storage sweeps. Today it runs only when someone taps «به‌روزرسانی کارها».
   <details><summary>Full decision</summary>
