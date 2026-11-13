@@ -59,6 +59,10 @@ describe("handover", () => {
     expect(notes[0].note).toContain("leaver-");
     expect(notes[0].note).toContain("heir-");
     expect(Number(((await db.prepare("SELECT COUNT(*) AS n FROM events WHERE kind = 'records.handed_over'").get()) as { n: number }).n)).toBe(1);
+    // E2: the person who received the work is told, the one who gave it up is not
+    const told = (await db.prepare("SELECT user_id, title_fa, body_fa FROM notifications WHERE type_code = 'records.handed_over' AND user_id IN (?, ?)").all(heir, leaver)) as { user_id: number; title_fa: string; body_fa: string }[];
+    expect(told.map((n) => Number(n.user_id))).toEqual([heir]);
+    expect(told[0].body_fa).toBe("2 مشتری و 1 کار");
   });
 
   it("refuses a non-owner, the same person, a missing person and an inactive or non-selling receiver", async () => {

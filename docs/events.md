@@ -20,7 +20,7 @@ Every fact the app writes to the `events` table with `emitEvent` or `tryEmitEven
 | `stage.changed` | fact | `lib/repo/crm/write.ts` | None yet |
 | `temperature.changed` | fact | `lib/repo/crm/write.ts` | None yet |
 | `reassign.requested` | request | `lib/repo/crm/write.ts` (a rep found a phone owned by another group) | The task it creates for the group manager; no rule |
-| `records.handed_over` | fact | `lib/repo/handover.ts` (the owner hands one person's customers and open tasks to another) | None yet (the «به شما سپرده شد» notice, E2) |
+| `records.handed_over` | fact | `lib/repo/handover.ts` (the owner hands one person's customers and open tasks to another) | Rule `notify_records_handed_over`: the person who received the work gets «کارهای یک همکار به شما سپرده شد» |
 | `data.exported` | fact | `app/api/admin/data/export/route.ts` (the owner downloads the whole company as one Excel file) | None yet (the access review card can list who exported) |
 | `data.imported` | fact | `lib/repo/dataIO.ts` (`applyPlan`, an Excel upload the owner confirmed; metadata counts customers, products and prices) | None yet |
 | `auth.impersonation_started`, `auth.impersonation_ended` | fact | `app/api/admin/impersonate/route.ts` | None yet (the access review card reads them) |

@@ -89,6 +89,7 @@ function metaStr(meta: Record<string, unknown>, key: string): string | null {
  *  and Phase 2 concatenates several into one push line. */
 const TEMPLATES: Record<string, (m: Record<string, unknown>) => { title_fa: string; body_fa: string | null }> = {
   "task.assigned": (m) => ({ title_fa: "کار جدید برای شما", body_fa: metaStr(m, "title") }),
+  "records.handed_over": (m) => ({ title_fa: "کارهای یک همکار به شما سپرده شد", body_fa: [metaStr(m, "customers") ? `${metaStr(m, "customers")} مشتری` : null, metaStr(m, "tasks") ? `${metaStr(m, "tasks")} کار` : null].filter(Boolean).join(" و ") || null }),
   "order.confirmed": (m) => ({ title_fa: "سفارش تأیید شد", body_fa: labelOrder(m) }),
   "order.rejected": (m) => ({ title_fa: "سفارش رد/لغو شد", body_fa: labelOrder(m) }),
   "order.created": (m) => ({ title_fa: "سفارش تازه ثبت شد", body_fa: labelOrder(m) }),
@@ -202,6 +203,9 @@ export async function recipientsFor(
   if (typeCode === "task.assigned" || typeCode === "task.due_soon") {
     const a = ctx.meta["assignee_user_id"];
     if (typeof a === "number") out.add(a);
+  } else if (typeCode === "records.handed_over") {
+    // E2: the event is about the person who received the work (F59).
+    if (ctx.entity_type === "user" && ctx.entity_id != null) out.add(ctx.entity_id);
   } else if (typeCode === "order.confirmed" || typeCode === "order.rejected") {
     if (orderId) {
       const sp = await orderSalesperson(organizationId, orderId);
