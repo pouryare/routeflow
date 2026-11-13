@@ -4,7 +4,7 @@
  *
  *  Returns null for requests that are not a person's action: the sync engine, the live stream, sign-in and
  *  sign-out, tutorial progress, marking notifications read, search, activity pings and UI preferences. */
-const QUIET_PREFIXES = ["/api/sync", "/api/live", "/api/login", "/api/logout", "/api/me/sign-out", "/api/me/step", "/api/me/role", "/api/tutorials", "/api/search", "/api/activity", "/api/prefs", "/api/push", "/api/admin/acting-org", "/api/sales/pings"];
+const QUIET_PREFIXES = ["/api/sync", "/api/live", "/api/login", "/api/logout", "/api/me/sign-out", "/api/me/step", "/api/me/role", "/api/tutorials", "/api/search", "/api/activity", "/api/prefs", "/api/push", "/api/admin/acting-org", "/api/admin/data/preview", "/api/sales/pings"];
 
 export function feedbackFor(method: string, pathname: string): string | null {
   const m = method.toUpperCase();

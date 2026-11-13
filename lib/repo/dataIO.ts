@@ -10,7 +10,7 @@ import type { Db } from "@/lib/database/client";
 import { tehranTodayIso, faJalaliDate } from "@/lib/jalali";
 import { setPrice } from "@/lib/catalogue";
 import { emitEvent } from "@/lib/repo/events";
-import { COLUMNS, KIND_LABEL, priceKey, type Existing, type ImportKind, type Plan, type PlanItem, type Table } from "@/lib/dataIO/importPlan";
+import { COLUMNS, KIND_LABEL, planImport, priceKey, type Existing, type ImportKind, type Plan, type PlanItem, type Table } from "@/lib/dataIO/importPlan";
 import { ordersForExport } from "@/lib/repo/salesWrites";
 import { ORDER_STATUS_LABEL } from "@/lib/orderStateMachine";
 
@@ -235,4 +235,12 @@ export async function exportWorkbook(organizationId: number, orders: Awaited<Ret
 /** The company's groups, for choosing where new customers go; and whether one id is really this company's. */
 export async function groupsOf(organizationId: number): Promise<{ id: number; name: string }[]> {
   return (await getDb().prepare("SELECT id, name FROM groups WHERE organization_id = ? ORDER BY name").all(organizationId)) as unknown as { id: number; name: string }[];
+}
+
+/** An uploaded file turned into the plan of what it would change; shared by the preview and the confirmed import. */
+export async function planFromUpload(organizationId: number, file: File): Promise<Plan> {
+  if (file.size > MAX_UPLOAD_BYTES) throw new DataIOError("فایل از ۵ مگابایت بزرگ‌تر است", 413);
+  const plan = planImport(await readTables(Buffer.from(await file.arrayBuffer()), file.name), await loadExisting(organizationId));
+  if (!plan.kinds.length) throw new DataIOError("برگه‌ای با سرستون‌های مشتریان، کالاها یا قیمت‌ها پیدا نشد؛ فایل خروجی را الگو کنید");
+  return plan;
 }

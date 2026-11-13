@@ -14,9 +14,8 @@ interface Reply { ok?: boolean; error?: string; plan?: Plan; result?: { saved: n
 async function send(file: File, confirm: boolean, groupId: string): Promise<Reply> {
   const body = new FormData();
   body.set("file", file);
-  if (confirm) body.set("confirm", "1");
   if (groupId) body.set("group_id", groupId);
-  const res = await fetch("/api/admin/data/import", { method: "POST", body }).catch(() => null);
+  const res = await fetch(confirm ? "/api/admin/data/import" : "/api/admin/data/preview", { method: "POST", body }).catch(() => null);
   if (!res) return { error: "ارتباط برقرار نشد" };
   return ((await res.json().catch(() => null)) as Reply | null) ?? { error: "پاسخ نامعتبر" };
 }
