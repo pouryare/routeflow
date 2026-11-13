@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { getDb } from "@/lib/db";
 import { newestForecastAt } from "./forecast";
+import { pendingEventStats } from "./events";
 import type { BackupStatus, StatusFacts } from "../systemStatus";
 
 /** The facts behind the owner's status page (F108), for one organisation. The backup status and
@@ -47,6 +48,13 @@ export async function statusFacts(organizationId: number, now: Date = new Date()
         dayAgo
       ) ?? 0,
   };
+  const events = await pendingEventStats(organizationId);
   const dbBytes = (await one<number>("SELECT pg_database_size(current_database()) AS t")) ?? 0;
-  return { ...facts, dbBytes: dbBytes > 0 ? dbBytes : null };
+  return {
+    ...facts,
+    dbBytes: dbBytes > 0 ? dbBytes : null,
+    pendingEvents: events.pending,
+    failedEvents: events.failed,
+    oldestPendingEventAt: events.oldest,
+  };
 }

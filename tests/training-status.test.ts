@@ -31,14 +31,17 @@ describe("trainingStatus (F133)", async () => {
   await markLessonDone(1, phone, "01-market-and-customer");
 
   it("the manifest names who each lesson is required for", () => {
-    expect(academyManifest().map((m) => m.required_for)).toEqual([["phone_sales", "field_rep", "group_manager"], ["phone_sales"]]);
+    const bySlug = Object.fromEntries(academyManifest().map((m) => [m.slug, m.required_for]));
+    expect(bySlug["01-market-and-customer"]).toEqual(["phone_sales", "field_rep", "group_manager"]);
+    expect(bySlug["02-phone-sales"]).toEqual(["phone_sales"]);
   });
 
   it("the owner sees everyone with a required lesson: done, still to do, or not required", async () => {
     const t = (await trainingStatus(sess(99, "owner", null)))!;
-    expect(new Set(t.people.map((p) => p.name))).toEqual(new Set(["پریسا", "فرهاد"]));
-    expect(t.people.find((p) => p.id === phone)!.lessons).toEqual({ "01-market-and-customer": "done", "02-phone-sales": "todo" });
-    expect(t.people.find((p) => p.id === field)!.lessons).toEqual({ "01-market-and-customer": "todo", "02-phone-sales": "na" });
+    // داوود the driver now has required lessons too (the shipped RouteFlow lessons), but not the two sales ones.
+    expect(t.people.map((p) => p.name)).toEqual(expect.arrayContaining(["پریسا", "فرهاد"]));
+    expect(t.people.find((p) => p.id === phone)!.lessons).toMatchObject({ "01-market-and-customer": "done", "02-phone-sales": "todo" });
+    expect(t.people.find((p) => p.id === field)!.lessons).toMatchObject({ "01-market-and-customer": "todo", "02-phone-sales": "na" });
     const html = renderToStaticMarkup(h(TrainingTable, t));
     expect(html).toContain("انجام شد");
     expect(html).toContain("مانده");

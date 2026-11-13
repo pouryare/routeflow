@@ -27,7 +27,7 @@ import { AsyncLocalStorage } from "node:async_hooks";
 import { createHash } from "node:crypto";
 import pg from "pg";
 import type { Db, Row, Statement } from "./client";
-import { currentDbScope } from "./scope";
+import { currentDbActor, currentDbScope } from "./scope";
 
 pg.types.setTypeParser(20, (v) => Number(v)); // int8: COUNT, SUM of integers, ids
 pg.types.setTypeParser(1700, (v) => Number(v)); // numeric: SUM and AVG of bigint
@@ -129,7 +129,7 @@ export function pgDb(url: string, ready: () => Promise<void> = async () => {}): 
   const once = async (text: string, params?: unknown[]): Promise<pg.QueryResult> => {
     await ready();
     if (!scoped) return await (open() as Queryable).query(text, params);
-    const scope = await currentDbScope();
+    const scope = `${await currentDbScope()}|${await currentDbActor()}`;
     const client = await open().connect();
     try {
       /* The setting lives on the connection, so a connection that last ran under this same scope
@@ -137,7 +137,8 @@ export function pgDb(url: string, ready: () => Promise<void> = async () => {}): 
          through every page, notes/db-index-audit-2026-11-09.md). A transaction's own setting is
          local (below) and ends with it, which leaves this one in place. */
       if (sessionScope.get(client) !== scope) {
-        await client.query("SELECT set_config('rf.scope', $1, false)", [scope]);
+        const [sc, actor] = scope.split("|");
+        await client.query("SELECT set_config('rf.scope', $1, false), set_config('rf.actor', $2, false)", [sc, actor]);
         sessionScope.set(client, scope);
       }
       return await client.query(text, params);
@@ -175,7 +176,9 @@ export function pgDb(url: string, ready: () => Promise<void> = async () => {}): 
       const client = await open().connect();
       try {
         await client.query("BEGIN");
-        if (scoped) await client.query("SELECT set_config('rf.scope', $1, true)", [await currentDbScope()]);
+        if (scoped) {
+          await client.query("SELECT set_config('rf.scope', $1, true), set_config('rf.actor', $2, true)", [await currentDbScope(), await currentDbActor()]);
+        }
         const out = await txClient.run(new TxConn(client), fn);
         await client.query("COMMIT");
         return out;

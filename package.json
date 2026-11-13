@@ -44,6 +44,7 @@
     "next": "^16.4.2",
     "open-location-code": "^1.0.3",
     "pg": "^8.23.1",
+    "pg-boss": "12.38.2",
     "playwright": "^1.62.1",
     "pmtiles": "^4.5.0",
     "react": "^19.3.0",

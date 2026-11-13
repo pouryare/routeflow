@@ -14,6 +14,9 @@ const facts = (over: Partial<StatusFacts> = {}): StatusFacts => ({
   lastDigestAt: hoursAgo(5),
   failedSignIns24h: 0,
   dbBytes: 1_048_576,
+  pendingEvents: 0,
+  failedEvents: 0,
+  oldestPendingEventAt: null,
   ...over,
 });
 
@@ -29,6 +32,13 @@ describe("statusLines", () => {
     expect(tone(facts({ backup: { ...facts().backup!, ok: false, error: "disk full" } }), "backup")).toBe("bad");
     expect(tone(facts({ backup: { ...facts().backup!, finishedAt: hoursAgo(36) } }), "backup")).toBe("warn");
     expect(tone(facts({ backup: { ...facts().backup!, finishedAt: hoursAgo(50) } }), "backup")).toBe("bad");
+  });
+
+  it("flags reactions that are stuck or have given up", () => {
+    expect(tone(facts({ pendingEvents: 2, oldestPendingEventAt: hoursAgo(0.05) }), "reactions")).toBe("good");
+    expect(tone(facts({ pendingEvents: 2, oldestPendingEventAt: hoursAgo(0.5) }), "reactions")).toBe("warn");
+    expect(tone(facts({ pendingEvents: 2, oldestPendingEventAt: hoursAgo(3) }), "reactions")).toBe("bad");
+    expect(tone(facts({ pendingEvents: 1, failedEvents: 1, oldestPendingEventAt: hoursAgo(0.01) }), "reactions")).toBe("bad");
   });
 
   it("flags stale nightly jobs and many failed sign-ins", () => {

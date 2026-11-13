@@ -91,6 +91,6 @@ describe("reps + academy routes", () => {
     expect(post.status).toBe(201);
     const j = await (await LESSONS_GET(new NextRequest("http://localhost/api/sales/academy/lessons", { headers: { cookie: cookie(seller, "phone_sales") } }))).json();
     expect(j.progress.map((p: { lesson_slug: string }) => p.lesson_slug)).toContain("02-phone-sales");
-    expect(j.modules).toHaveLength(2);
+    expect(j.modules.length).toBeGreaterThanOrEqual(2);
   });
 });

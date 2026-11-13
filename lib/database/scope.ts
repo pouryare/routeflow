@@ -55,6 +55,35 @@ export async function currentDbScope(): Promise<DbScope> {
   return resolver ? await resolver(jar.get(cookieName)?.value) : "";
 }
 
+/* Who is asking, for the audit record (db/migrations/*_audit-log.sql): "<user id>", or
+ * "<user id>:<owner id>" under Login-As, or "" for work no person asked for. It travels to the database
+ * as `rf.actor`, set in the same call as `rf.scope`. */
+const explicitActor = new AsyncLocalStorage<string>();
+type ActorResolver = (sessionCookie: string | undefined) => string;
+let actorResolver: ActorResolver | null = null;
+
+/** Runs `fn` with every statement in it attributed to `actor` (a job acting for a person, a test). */
+export function withDbActor<T>(actor: string, fn: () => Promise<T>): Promise<T> {
+  return explicitActor.run(actor, fn);
+}
+
+/** lib/session.ts registers how a request's session cookie names its person. */
+export function setRequestActorResolver(fn: ActorResolver): void {
+  actorResolver = fn;
+}
+
+/** The actor for the statement about to run. */
+export async function currentDbActor(): Promise<string> {
+  const set = explicitActor.getStore();
+  if (set !== undefined) return set;
+  try {
+    const jar = await cookies();
+    return actorResolver ? actorResolver(jar.get(cookieName)?.value) : "";
+  } catch {
+    return ""; // not inside a request: a job
+  }
+}
+
 /** The scope a signed-in session reads under. */
 export function scopeForCompany(organizationId: number | null): DbScope {
   return organizationId == null ? "all" : `org:${organizationId}`;

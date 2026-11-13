@@ -298,6 +298,18 @@ export const PAGE_META: Record<string, PageMeta> = {
     overview:
       "کتابخانهٔ پاسخ به اعتراض‌های رایج و نکات فروش. کوتاه و قابل مرور پشت درٔ مشتری.",
   },
+  "/sales/academy/manage": {
+    title: "مدیریت درس‌ها",
+    titleEn: "Manage lessons",
+    overview:
+      "درس‌های خود شرکت را بنویسید، عکس بگذارید و برای نقش‌ها اجباری کنید. مالک مربی‌ها را هم تعیین می‌کند.",
+  },
+  "/sales/catalogue": {
+    title: "کالاها",
+    titleEn: "Catalogue",
+    overview:
+      "کالاها با عکس، بسته‌بندی و قیمت، برای وقتی پشت در مشتری سؤال می‌کنند. بدون اینترنت هم آخرین نسخه دیده می‌شود.",
+  },
   "/sales/complaints": {
     title: "شکایات",
     titleEn: "Complaints",

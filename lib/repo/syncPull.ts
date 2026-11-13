@@ -35,6 +35,12 @@ const tableRank = (t: string) => {
   const i = PULL_TABLE_ORDER.indexOf(t);
   return i < 0 ? PULL_TABLE_ORDER.length : i;
 };
+/** Columns that hold our cost, by table (see `hideCost` in pullSince). */
+const COST_COLUMNS: Record<string, string[]> = {
+  products: ["avg_cost_toman"],
+  order_lines: ["unit_cost_toman"],
+  orders: ["cost_toman"],
+};
 const rowId = (r: PullRow) => Number((r.row as { id?: unknown }).id) || 0;
 const cursorOf = (r: PullRow) => `${r.table}:${rowId(r)}`;
 
@@ -86,9 +92,13 @@ export async function pullSince(session: Session, since: string | null, page?: P
   /* "Changed since the watermark": the transaction that last wrote the row is not below it. */
   const changed = (alias: string) => `${alias}sync_xid >= CAST(? AS xid8)`;
   const rows: PullRow[] = [];
+  /* What a van role must never carry on its phone: what the goods cost us. Zero is the "unknown" value the
+     columns already use, so nothing on the phone breaks. Done here, once, so no table can forget it. */
+  const hideCost = isVanRole(session.role);
   const add = (table: string, list: Record<string, unknown>[]) => {
     for (const r of list) {
       delete r.sync_xid; // bookkeeping for the watermark, not part of the row
+      if (hideCost) for (const col of COST_COLUMNS[table] ?? []) if (col in r) r[col] = 0;
       rows.push({ table, row: r });
     }
   };

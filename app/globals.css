@@ -2881,6 +2881,14 @@ body {
 .meridian .acad__next { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; min-width: 0; }
 .meridian .acad__next b { font-size: 14px; color: var(--foreground); }
 .meridian .acad__next--done { flex-direction: row; align-items: center; color: var(--success); }
+.meridian .lesson { display: flex; flex-direction: column; gap: 12px; margin-block: 12px; line-height: 1.9; }
+.meridian .lesson p, .meridian .lesson ul { margin: 0; }
+.meridian .lesson ul { list-style: disc; padding-inline-start: 20px; display: flex; flex-direction: column; gap: 6px; }
+.meridian .lesson__img { display: block; padding: 0; border: 0; background: none; border-radius: 12px; overflow: hidden; max-width: 28rem; }
+.meridian .lesson__img { position: relative; }
+.meridian .lesson__img img { display: block; width: 100%; height: auto; }
+.meridian .lesson__zoom { position: absolute; inset-block-end: 8px; inset-inline-start: 8px; padding: 4px; border-radius: 8px; background: rgb(0 0 0 / .45); color: #fff; }
+.meridian .acad__edit { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; width: 100%; min-height: 44px; text-align: start; background: none; border: 0; padding: 0; color: inherit; }
 .meridian .acad__steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
 .meridian .acad__step {
   display: grid; grid-template-columns: 32px minmax(0, 1fr) auto; gap: 12px; align-items: center;
@@ -5815,3 +5823,19 @@ html[data-toasts-paused] .app-toasts [data-slot="toast-close"]::before { animati
   --border-strong: #8C99A6;
   --accent-text: color-mix(in oklab, var(--accent) 50%, white);
 }
+
+/* The van catalogue (plan VC2): a card per product, picture on the start side, price as the loudest line. */
+.meridian .catalogue { display: flex; flex-direction: column; gap: 12px; }
+.meridian .catalogue__list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+.meridian .catalogue__card { display: flex; gap: 12px; padding: 12px; border-radius: 16px; background: var(--surface); box-shadow: var(--sh-1); }
+.meridian .catalogue__img, .meridian .catalogue__noimg { width: 96px; height: 96px; flex: none; border-radius: 12px; object-fit: cover; background: var(--surface-tertiary); display: grid; place-items: center; color: var(--muted); }
+.meridian .catalogue__body { display: flex; flex-direction: column; gap: 6px; min-width: 0; flex: 1; }
+.meridian .catalogue__body h3 { margin: 0; font-size: 16px; }
+.meridian .catalogue__packs, .meridian .catalogue__points { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.meridian .catalogue__packs li { display: flex; justify-content: space-between; gap: 8px; }
+.meridian .catalogue__packs b { font-variant-numeric: tabular-nums; }
+.meridian .catalogue__packs--big { font-size: 22px; }
+.meridian .catalogue__points li::before { content: "• "; }
+.meridian .catalogue__say { margin: 0; color: var(--accent-text); }
+.meridian .catalogue__show { display: flex; flex-direction: column; gap: 16px; }
+.meridian .catalogue__show .catalogue__img, .meridian .catalogue__show .catalogue__noimg { width: 100%; height: auto; max-height: 50vh; aspect-ratio: 4 / 3; }

@@ -1,4 +1,197 @@
 [
-  { "slug": "01-market-and-customer", "module": 1, "title_fa": "مبانی بازار و مشتری", "order": 1, "status": "stub", "required_for": ["phone_sales", "field_rep", "group_manager"] },
-  { "slug": "02-phone-sales", "module": 2, "title_fa": "فروش تلفنی", "order": 2, "status": "stub", "required_for": ["phone_sales"] }
+  {
+    "slug": "09-first-week",
+    "title_fa": "هفتهٔ اول شما",
+    "category_fa": "هفتهٔ اول",
+    "order": 0,
+    "status": "ready",
+    "required_for": [
+      "phone_sales",
+      "field_rep",
+      "delivery_driver"
+    ]
+  },
+  {
+    "slug": "10-sign-in-and-security",
+    "title_fa": "ورود به برنامه و امنیت حساب",
+    "category_fa": "شروع کار",
+    "order": 1,
+    "status": "ready",
+    "required_for": [
+      "phone_sales",
+      "field_rep",
+      "delivery_driver",
+      "group_manager",
+      "rep_manager"
+    ]
+  },
+  {
+    "slug": "11-install-and-offline",
+    "title_fa": "نصب روی گوشی و کار بدون اینترنت",
+    "category_fa": "شروع کار",
+    "order": 2,
+    "status": "ready",
+    "required_for": [
+      "field_rep",
+      "delivery_driver"
+    ]
+  },
+  {
+    "slug": "12-today-and-my-tasks",
+    "title_fa": "صفحهٔ «امروز» و «کارهای من»",
+    "category_fa": "شروع کار",
+    "order": 3,
+    "status": "ready",
+    "audience": [
+      "phone_sales",
+      "field_rep",
+      "group_manager",
+      "rep_manager",
+      "owner",
+      "platform_owner"
+    ],
+    "required_for": [
+      "phone_sales"
+    ]
+  },
+  {
+    "slug": "13-take-an-order",
+    "title_fa": "ثبت یک سفارش",
+    "category_fa": "فروش و دریافت",
+    "order": 4,
+    "status": "ready",
+    "audience": [
+      "phone_sales",
+      "field_rep",
+      "delivery_driver",
+      "group_manager",
+      "owner",
+      "platform_owner"
+    ],
+    "required_for": [
+      "phone_sales",
+      "field_rep"
+    ]
+  },
+  {
+    "slug": "14-record-a-payment",
+    "title_fa": "ثبت یک دریافت",
+    "category_fa": "فروش و دریافت",
+    "order": 5,
+    "status": "ready",
+    "audience": [
+      "phone_sales",
+      "field_rep",
+      "delivery_driver",
+      "group_manager",
+      "owner",
+      "platform_owner"
+    ],
+    "required_for": [
+      "phone_sales",
+      "field_rep"
+    ]
+  },
+  {
+    "slug": "15-customer-page",
+    "title_fa": "صفحهٔ مشتری",
+    "category_fa": "فروش و دریافت",
+    "order": 6,
+    "status": "ready",
+    "audience": [
+      "phone_sales",
+      "field_rep",
+      "group_manager",
+      "rep_manager",
+      "owner",
+      "platform_owner"
+    ]
+  },
+  {
+    "slug": "20-driver-day",
+    "title_fa": "روز یک راننده",
+    "category_fa": "روز راننده",
+    "order": 7,
+    "status": "ready",
+    "audience": [
+      "delivery_driver",
+      "field_rep",
+      "group_manager",
+      "owner",
+      "platform_owner"
+    ],
+    "required_for": [
+      "delivery_driver"
+    ]
+  },
+  {
+    "slug": "21-unload-the-van",
+    "title_fa": "تخلیهٔ وانت",
+    "category_fa": "روز راننده",
+    "order": 8,
+    "status": "ready",
+    "audience": [
+      "delivery_driver",
+      "field_rep",
+      "group_manager",
+      "owner",
+      "platform_owner"
+    ],
+    "required_for": [
+      "delivery_driver"
+    ]
+  },
+  {
+    "slug": "22-pay-at-the-door",
+    "title_fa": "دریافت پول سر در",
+    "category_fa": "روز راننده",
+    "order": 9,
+    "status": "ready",
+    "audience": [
+      "delivery_driver",
+      "field_rep",
+      "group_manager",
+      "owner",
+      "platform_owner"
+    ],
+    "required_for": [
+      "delivery_driver",
+      "field_rep"
+    ]
+  },
+  {
+    "slug": "23-report-a-problem",
+    "title_fa": "گزارش مشکل",
+    "category_fa": "روز راننده",
+    "order": 10,
+    "status": "ready",
+    "required_for": [
+      "delivery_driver",
+      "field_rep"
+    ]
+  },
+  {
+    "slug": "01-market-and-customer",
+    "module": 1,
+    "title_fa": "مبانی بازار و مشتری",
+    "order": 101,
+    "status": "stub",
+    "category_fa": "فروش (در حال تدوین)",
+    "required_for": [
+      "phone_sales",
+      "field_rep",
+      "group_manager"
+    ]
+  },
+  {
+    "slug": "02-phone-sales",
+    "module": 2,
+    "title_fa": "فروش تلفنی",
+    "order": 102,
+    "status": "stub",
+    "category_fa": "فروش (در حال تدوین)",
+    "required_for": [
+      "phone_sales"
+    ]
+  }
 ]

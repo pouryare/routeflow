@@ -25,6 +25,7 @@ const EXEMPT: Record<string, string> = {
     "which would be the wrong copy over a single record. Giving detail routes a header of " +
     "their own — titled by the record — is a design question, not a correctness fix.",
   "app/(shell)/sales/reps/[id]/page.tsx": "Same as orders/[id]: a record, not a section.",
+  "app/(shell)/sales/academy/lesson/[slug]/page.tsx": "One lesson being read: it has its own title and a back link to the Academy.",
 };
 
 /** Strips block and line comments.

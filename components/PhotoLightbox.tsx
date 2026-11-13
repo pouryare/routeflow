@@ -12,17 +12,19 @@ export type LightboxPhoto = { id: number; caption?: string | null };
  *  backdrop to close, pinch or double-tap to zoom (receipts and cheques are read here), swipe
  *  between photos. The phone's back button closes it like a sheet. Loaded through next/dynamic
  *  by its callers, so its code arrives with the first photo opened, not with the page. */
-export default function PhotoLightbox<P extends LightboxPhoto>({ photos, index, onClose, actions }: {
+export default function PhotoLightbox<P extends LightboxPhoto>({ photos, index, onClose, actions, srcOf = (id) => `/api/photos/${id}/file?format=webp` }: {
   photos: P[];
   /** The photo shown, or -1 when closed. */
   index: number;
   onClose: () => void;
   /** The row under the photo: copy link, delete. */
   actions?: (photo: P) => ReactNode;
+  /** Where a photo's bytes are served from; lesson and product pictures have their own route. */
+  srcOf?: (id: number) => string;
 }) {
   const open = index >= 0;
   useBackToClose(open, onClose);
-  const slides = photos.map((p) => ({ src: `/api/photos/${p.id}/file?format=webp`, alt: p.caption ?? "" }));
+  const slides = photos.map((p) => ({ src: srcOf(p.id), alt: p.caption ?? "" }));
   return (
     <Lightbox
       open={open}

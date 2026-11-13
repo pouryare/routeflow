@@ -19,6 +19,33 @@ export type Generated<T> = T extends ColumnType<infer S, infer I, infer U>
 
 export type Timestamp = ColumnType<Date, Date | string, Date | string>;
 
+export interface AcademyCategories {
+  created_at: string;
+  id: Generated<number>;
+  organization_id: number;
+  sort_order: Generated<number>;
+  title: string;
+}
+
+export interface AcademyLessons {
+  body: Generated<string>;
+  category_id: number | null;
+  created_at: string;
+  created_by: number | null;
+  due_days: number | null;
+  group_id: number | null;
+  id: Generated<number>;
+  organization_id: number;
+  required: Generated<boolean>;
+  reread_version: Generated<number>;
+  roles: Generated<string>;
+  status: Generated<string>;
+  title: string;
+  updated_at: string;
+  updated_by: number | null;
+  version: Generated<number>;
+}
+
 export interface Accounts {
   active: Generated<number>;
   code: string;
@@ -90,6 +117,18 @@ export interface Alerts {
 export interface AppMeta {
   key: string;
   value: string | null;
+}
+
+export interface AuditLog {
+  actor_user_id: number | null;
+  changes_json: string;
+  created_at: string;
+  id: Generated<number>;
+  impersonated_by: number | null;
+  op: string;
+  organization_id: number;
+  row_id: number;
+  table_name: string;
 }
 
 export interface Batches {
@@ -232,6 +271,14 @@ export interface Contacts {
   role: Generated<string>;
   updated_at: string;
   whatsapp: string | null;
+}
+
+export interface ContentImages {
+  created_at: string;
+  created_by: number | null;
+  file_stem: string;
+  id: Generated<number>;
+  organization_id: number;
 }
 
 export interface CreditApprovals {
@@ -496,28 +543,36 @@ export interface EntryPlaces {
 
 export interface Events {
   actor_user_id: number | null;
+  attempts: Generated<number>;
   created_at: string;
   entity_id: number | null;
   entity_type: string | null;
   id: Generated<number>;
   impersonated_by: number | null;
   kind: string;
+  last_error: string | null;
   metadata_json: string | null;
+  next_try_at: string | null;
   occurred_at: string;
   organization_id: number;
+  pending: Generated<boolean>;
 }
 
 export interface EventsArchive {
   actor_user_id: number | null;
+  attempts: Generated<number>;
   created_at: string;
   entity_id: number | null;
   entity_type: string | null;
   id: number;
   impersonated_by: number | null;
   kind: string;
+  last_error: string | null;
   metadata_json: string | null;
+  next_try_at: string | null;
   occurred_at: string;
   organization_id: number;
+  pending: Generated<boolean>;
 }
 
 export interface ExpenseReceipts {
@@ -747,6 +802,7 @@ export interface LessonProgress {
   lesson_slug: string;
   organization_id: number;
   user_id: number;
+  version_read: Generated<number>;
 }
 
 export interface LiveConnections {
@@ -1193,14 +1249,18 @@ export interface Products {
   active: Generated<number>;
   avg_cost_toman: Generated<number>;
   base_unit: Generated<string>;
+  category: string | null;
   created_at: string;
+  how_to_say: string | null;
   id: Generated<number>;
+  image_id: number | null;
   kg_per_base_unit: Generated<number>;
   name: string;
   notes: string | null;
   organization_id: number | null;
   reorder_point: number | null;
   sell_off: Generated<number>;
+  selling_points: string | null;
   shelf_life_days: number | null;
   sku: string | null;
   sync_xid: Generated<string | null>;
@@ -1797,6 +1857,7 @@ export interface Users {
   active: Generated<number>;
   avatar_stem: string | null;
   avatar_url: string | null;
+  can_teach: Generated<boolean>;
   created_at: string;
   display_name: string;
   group_id: number | null;
@@ -1865,11 +1926,14 @@ export interface WeatherSnapshots {
 }
 
 export interface DB {
+  academy_categories: AcademyCategories;
+  academy_lessons: AcademyLessons;
   accounts: Accounts;
   activities: Activities;
   activity_log: ActivityLog;
   alerts: Alerts;
   app_meta: AppMeta;
+  audit_log: AuditLog;
   batches: Batches;
   capacity_factors: CapacityFactors;
   cheques: Cheques;
@@ -1880,6 +1944,7 @@ export interface DB {
   commission_tiers: CommissionTiers;
   company_domains: CompanyDomains;
   contacts: Contacts;
+  content_images: ContentImages;
   credit_approvals: CreditApprovals;
   crm_not_duplicates: CrmNotDuplicates;
   customer_tags: CustomerTags;

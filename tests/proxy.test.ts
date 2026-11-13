@@ -320,8 +320,8 @@ describe("the menu and the gate agree, in BOTH directions", () => {
   });
 
   it("gives a van role only the van menu", () => {
-    expect(appTabs({ role: "field_rep" } as never).filter((t) => t.ready).length).toBe(2);
-    expect(appTabs({ role: "delivery_driver" } as never).filter((t) => t.ready).length).toBe(2);
+    expect(appTabs({ role: "field_rep" } as never).filter((t) => t.ready).length).toBe(3);
+    expect(appTabs({ role: "delivery_driver" } as never).filter((t) => t.ready).length).toBe(3);
   });
 
   it("refuses a phone sales rep the pin pool, and sends them where their leads actually live", () => {

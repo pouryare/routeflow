@@ -37,6 +37,8 @@ const nextConfig = (phase: string): NextConfig => ({
   /* The release tarball ships .next/standalone (server.js plus only the traced node_modules), so the
      server needs no npm install and no SWC to read this file. `next start` still works for CI and dev. */
   output: "standalone",
+  /* The background worker's queue library is loaded by Node at run time, not bundled (lib/worker.ts). */
+  serverExternalPackages: ["pg-boss"],
   async headers() {
     const CSP = csp(phase === PHASE_DEVELOPMENT_SERVER);
     return [

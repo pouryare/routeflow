@@ -16,9 +16,9 @@ export const PRIMARY_BY_ROLE: Partial<Record<Role, string[]>> = {
   group_manager: ["/sales/today", "/crm", "/sales/orders", "/map"],
   rep_manager: ["/sales/today", "/crm", "/sales/tasks", "/map"],
   phone_sales: ["/sales/today", "/crm", "/sales/pocket", "/sales/orders"],
-  // Vans: the bar is simply their two tabs (appNav writes that menu out by hand).
-  field_rep: ["/driver", "/sales/academy"],
-  delivery_driver: ["/driver", "/sales/academy"],
+  // Vans: the bar is simply their three tabs (appNav writes that menu out by hand).
+  field_rep: ["/driver", "/sales/catalogue", "/sales/academy"],
+  delivery_driver: ["/driver", "/sales/catalogue", "/sales/academy"],
 };
 
 /** One glyph per bar destination. Every item is icon AND word (the icon rule), and the glyph is
@@ -31,6 +31,7 @@ export const TAB_ICON: Record<string, IconName> = {
   "/sales/tasks": "list",
   "/map": "map",
   "/driver": "route",
+  "/sales/catalogue": "package",
   "/sales/academy": "star",
 };
 

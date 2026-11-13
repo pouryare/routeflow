@@ -2,7 +2,7 @@ import { compressedJson } from "@/lib/httpCache";
 import { NextRequest, NextResponse } from "next/server";
 import { requireRole } from "@/lib/session";
 import { addProduct, catalogueFor } from "@/lib/repo/salesWrites";
-import { MANAGE_ROLES, OWNER_ROLES } from "@/lib/roles";
+import { isVanRole, MANAGE_ROLES, OWNER_ROLES } from "@/lib/roles";
 import { logProductChange } from "@/lib/repo/productLog";
 import { isUniqueViolation } from "@/lib/database/errors";
 
@@ -25,7 +25,9 @@ export async function GET(req: NextRequest) {
     onDate: url.searchParams.get("on") ?? undefined,
   });
 
-  return compressedJson(req, { ok: true, products });
+  // What the goods cost us never reaches a van phone (the sync pull zeroes it the same way).
+  const shown = isVanRole(guard.session.role) ? products.map((p) => ({ ...p, avg_cost_toman: 0 })) : products;
+  return compressedJson(req, { ok: true, products: shown });
 }
 
 export async function POST(req: NextRequest) {

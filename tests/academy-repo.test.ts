@@ -71,10 +71,19 @@ describe("academy repo", () => {
     expect(Object.getPrototypeOf(p[0])).toBe(Object.prototype);
   });
 
-  it("academyManifest lists the two stub modules in order", () => {
+  it("every shipped lesson in the manifest has a text file with a title, and slugs are unique", () => {
     const m = academyManifest();
-    expect(m.map((x) => x.slug)).toEqual(["01-market-and-customer", "02-phone-sales"]);
-    expect(m.every((x) => x.status === "stub")).toBe(true);
+    expect(m.length).toBeGreaterThanOrEqual(10);
+    expect(new Set(m.map((x) => x.slug)).size).toBe(m.length);
+    for (const x of m) {
+      const text = fs.readFileSync(path.join(process.cwd(), "content", "academy", x.slug, "index.mdx"), "utf8");
+      expect(text.startsWith("# "), x.slug).toBe(true);
+    }
+  });
+
+  it("markLessonDone refuses a lesson that does not exist", async () => {
+    await expect(markLessonDone(1, uid, "no-such-lesson")).rejects.toThrow();
+    await expect(markLessonDone(1, uid, "c-99999")).rejects.toThrow();
   });
 
   it("listObjectionCards returns one row per (code, type)", async () => {

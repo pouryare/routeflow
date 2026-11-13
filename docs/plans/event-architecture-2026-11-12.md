@@ -63,7 +63,7 @@ Order matters: E1 is a small fix for the live server; E2 makes events safe; E3 b
 **Why:** an event must exist if and only if its change exists.
 
 **What:**
-1. Migration: add to `events` the outbox columns `handled_at`, `attempts`, `next_try_at`, `last_error`, and a partial index on `handled_at IS NULL`. Time columns follow the table's existing text ISO style.
+1. Migration: add to `events` the outbox columns `pending` (default false, so old rows and rows from the previous release count as handled), `attempts`, `next_try_at`, `last_error`, and a partial index on `pending`. (Built as `pending`, not `handled_at`, so the migration is expand-only.) Time columns follow the table's existing text ISO style.
 2. `emitEvent(org, input, db)` becomes insert only. It no longer runs the rule engine itself.
 3. A new `drainEvents(org)` takes unhandled events with `FOR UPDATE SKIP LOCKED`, runs the rule engine for each (`runEventRules`), marks `handled_at`, and on failure records `attempts`, `last_error` and a backoff `next_try_at`. Callers run it right after commit, so reactions are as fast as today.
 4. Every call site moves inside its transaction: CRM `emitAll` (the real fix), order moves, impersonation start and end, lead import notify, rules' own sweep events. Payments already are.
