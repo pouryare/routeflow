@@ -19,6 +19,8 @@ import { toggleFavourite as toggleId } from "@/lib/favourites";
 import StickyAction from "@/components/mobile/StickyAction";
 import { useToast } from "@/components/ToastProvider";
 import { tehranTodayIso } from "@/lib/jalali";
+import Link from "next/link";
+import { buildMapLink } from "@/lib/deepLink";
 
 const VIEW_LABEL: Record<CrmView, string> = {
   today: "پیگیری امروز", hot: "داغ", my_leads: "سرنخ‌های من", my_customers: "مشتریان من",
@@ -155,6 +157,13 @@ export default function CrmBoard({ initialRows, initialCounts, initialView, canP
           <Icon name="heart" size="md" filled={onlyFavs} />
           دلخواه‌ها<i>{faDigits(String(favs.length))}</i>
         </button>
+        {shown.length > 0 ? (
+          // S14: the picked customers, or else the list as filtered, opened on the map.
+          <Link href={`/map${buildMapLink({ customerIds: selecting && picked.length > 0 ? picked : shown.map((r) => r.id) })}`} prefetch={false} className="inline-flex items-center gap-[var(--space-2)]" data-tour="crm:on-map">
+            <Icon name="map" size="md" />
+            {selecting && picked.length > 0 ? `${faDigits(String(picked.length))} انتخاب‌شده روی نقشه` : "فهرست روی نقشه"}
+          </Link>
+        ) : null}
         {canPlan ? (
           <button type="button" aria-pressed={selecting} onClick={() => (selecting ? stopSelecting() : setSelecting(true))}>
             <Icon name={selecting ? "x" : "check"} size="md" />

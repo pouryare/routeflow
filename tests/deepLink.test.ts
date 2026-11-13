@@ -108,3 +108,14 @@ describe("district colour mode in the link", () => {
     expect(buildMapLink({})).toBe("");
   });
 });
+
+describe("S14 a list on the map", () => {
+  it("round-trips customer ids, drops junk, and caps a pasted list", async () => {
+    const { buildMapLink, parseMapLink, parseIds } = await import("@/lib/deepLink");
+    expect(buildMapLink({ customerIds: [5, 9, 12] })).toBe("?ids=5%2C9%2C12");
+    expect(parseMapLink("?ids=5,9,12").customerIds).toEqual([5, 9, 12]);
+    expect(parseIds("5,x,-3,2.5,7")).toEqual([5, 7]);
+    expect(parseIds("")).toBeUndefined();
+    expect(parseIds(Array.from({ length: 600 }, (_, i) => i + 1).join(","))).toHaveLength(500);
+  });
+});
