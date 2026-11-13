@@ -498,7 +498,7 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
   **Recycle bin (F111): a JSON copy in a trash table**, not a `deleted_at` column; first types reminders, tasks and photos, per-company keep-for-N-days in the log-retention setting. A link to a deleted item shows who deleted it and when, with a restore button for managers (T3, T18).
 
   </details>
-- **T24. Rate limiter moved to Postgres.** Short and long windows per person and IP.
+- **T24. Rate limiter moved to Postgres.** Short and long windows per person and IP. **Built 2026-11-13 (batch B).** Sign-in, second-step code, step-up code and own-password limits now live in table `rate_limits` (`lib/repo/rateLimitDb.ts`), each with a short and a long window (sign-in by name 5 in 15 minutes and 20 an hour). The in-memory limiter stays for live-update pings. Tests: `tests/rateLimitDb.test.ts`.
   <details><summary>Full decision</summary>
 
   **Rate limiter move to Postgres.** Give each rule a short and a long window, keyed by person and IP (for example 5 code tries a minute and 20 an hour) (T24).

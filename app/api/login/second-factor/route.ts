@@ -1,13 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withDbScope } from "@/lib/database/scope";
 import { COOKIE_NAME, MAX_AGE_SECONDS, createSessionToken, parseChallengeToken } from "@/lib/auth";
-import { clientKey, rateLimit, rateLimitReset } from "@/lib/rateLimit";
+import { clientKey } from "@/lib/rateLimit";
+import { rateLimitDb, rateLimitDbReset, type LimitRule } from "@/lib/repo/rateLimitDb";
 import { findUserById } from "@/lib/users";
 import { checkSecondFactor } from "@/lib/repo/secondFactor";
 import { recordLogin } from "@/lib/repo/loginEvents";
 
 const MAX_ATTEMPTS = 5;
 const WINDOW_MS = 15 * 60 * 1000;
+const CODE_RULES: LimitRule[] = [
+  { max: MAX_ATTEMPTS, windowMs: WINDOW_MS },
+  { max: 20, windowMs: 60 * 60 * 1000 },
+];
 const REFUSED = "کد نادرست است یا منقضی شده";
 
 /** Second step of the founder's sign-in: the proof the password passed plus a code from the authenticator
@@ -25,8 +30,8 @@ async function secondStep(req: NextRequest) {
   }
 
   // Per account as well as per address: six digits is a small space, so guesses are slowed hard.
-  const limit = rateLimit(`2fa:${uid}`, MAX_ATTEMPTS, WINDOW_MS);
-  const ipLimit = rateLimit(`2fa-ip:${clientKey(req)}`, 30, WINDOW_MS);
+  const limit = await rateLimitDb(`2fa:${uid}`, CODE_RULES);
+  const ipLimit = await rateLimitDb(`2fa-ip:${clientKey(req)}`, [{ max: 30, windowMs: WINDOW_MS }]);
   if (!limit.allowed || !ipLimit.allowed) {
     const wait = Math.max(limit.retryAfterSeconds, ipLimit.retryAfterSeconds);
     return NextResponse.json(
@@ -45,7 +50,7 @@ async function secondStep(req: NextRequest) {
     if (user) await log("bad_code");
     return NextResponse.json({ ok: false, error: REFUSED }, { status: 401 });
   }
-  rateLimitReset(`2fa:${uid}`);
+  await rateLimitDbReset(`2fa:${uid}`, CODE_RULES);
   await log("success");
 
   const res = NextResponse.json({ ok: true });

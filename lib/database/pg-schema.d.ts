@@ -1393,6 +1393,12 @@ export interface QualityComplaints {
   status: Generated<string>;
 }
 
+export interface RateLimits {
+  attempts: number;
+  key: string;
+  reset_at: number;
+}
+
 export interface ReasonCodes {
   active: Generated<number>;
   code: string;
@@ -2069,6 +2075,7 @@ export interface DB {
   purchases: Purchases;
   push_subscriptions: PushSubscriptions;
   quality_complaints: QualityComplaints;
+  rate_limits: RateLimits;
   reason_codes: ReasonCodes;
   reminders: Reminders;
   representative_onboarding_steps: RepresentativeOnboardingSteps;

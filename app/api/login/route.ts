@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { withDbScope } from "@/lib/database/scope";
 import { createChallengeToken, createSessionToken, verifyPassword, COOKIE_NAME, MAX_AGE_SECONDS } from "@/lib/auth";
 import { secondFactorRequired } from "@/lib/repo/secondFactor";
-import { clientKey, rateLimit, rateLimitReset } from "@/lib/rateLimit";
+import { clientKey } from "@/lib/rateLimit";
+import { rateLimitDb, rateLimitDbReset, type LimitRule } from "@/lib/repo/rateLimitDb";
 import { findUserByUsername } from "@/lib/users";
 import { recordLogin, type LoginResult } from "@/lib/repo/loginEvents";
 import { mainAddressOwnerOnly, mayUseAddress, resolveHost } from "@/lib/repo/companyDomains";
@@ -11,6 +12,12 @@ import { requestHostname } from "@/lib/companyHost";
 const LOGIN_MAX_ATTEMPTS = 5;
 const LOGIN_MAX_ATTEMPTS_PER_IP = 30;
 const LOGIN_WINDOW_MS = 15 * 60 * 1000;
+/* T24: the short window is 5 tries in 15 minutes; the long one stops a slow guesser (20 tries an hour). */
+const LOGIN_RULES: LimitRule[] = [
+  { max: LOGIN_MAX_ATTEMPTS, windowMs: LOGIN_WINDOW_MS },
+  { max: 20, windowMs: 60 * 60 * 1000 },
+];
+const LOGIN_IP_RULES: LimitRule[] = [{ max: LOGIN_MAX_ATTEMPTS_PER_IP, windowMs: LOGIN_WINDOW_MS }];
 // One message for "no such user", "wrong password" and "deactivated account". Telling
 // them apart would turn this endpoint into a way to enumerate who works here.
 const BAD_CREDENTIALS = "نام کاربری یا رمز عبور اشتباه است";
@@ -31,11 +38,11 @@ async function signIn(req: NextRequest) {
   // "unknown", and a tight shared limit let one person's typos lock everybody out. The tight
   // limit is per address AND username, so guessing one account is slowed without one visitor
   // being able to lock a colleague out from another machine.
-  const ipLimit = rateLimit(`login-ip:${ip}`, LOGIN_MAX_ATTEMPTS_PER_IP, LOGIN_WINDOW_MS);
+  const ipLimit = await rateLimitDb(`login-ip:${ip}`, LOGIN_IP_RULES);
   const early = (await req.clone().json().catch(() => null)) as { username?: unknown } | null;
   const nameKey = typeof early?.username === "string" ? early.username.trim().toLowerCase().slice(0, 80) : "";
   const key = `login:${ip}:${nameKey}`;
-  const limit = ipLimit.allowed ? rateLimit(key, LOGIN_MAX_ATTEMPTS, LOGIN_WINDOW_MS) : ipLimit;
+  const limit = ipLimit.allowed ? await rateLimitDb(key, LOGIN_RULES) : ipLimit;
   if (!limit.allowed) {
     return NextResponse.json(
       { ok: false, error: `تعداد تلاش‌های ناموفق بیش از حد مجاز بود. ${Math.ceil(limit.retryAfterSeconds / 60)} دقیقه دیگر دوباره امتحان کنید.` },
@@ -69,7 +76,7 @@ async function signIn(req: NextRequest) {
     return NextResponse.json({ ok: false, error: BAD_CREDENTIALS }, { status: 401 });
   }
 
-  rateLimitReset(key);
+  await rateLimitDbReset(key, LOGIN_RULES);
 
   /* The founder's account sees every company, so the password alone is not enough for it once a second
      step has been switched on. No session yet: only a short-lived proof the password passed, which the
