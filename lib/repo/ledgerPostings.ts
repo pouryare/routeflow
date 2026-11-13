@@ -23,7 +23,8 @@ export async function cashAccountFor(method: string): Promise<number> {
   if (method === "CREDIT_NOTE" || method === "OTHER") {
     throw new LedgerError("برای این روش پرداخت باید حساب را خودتان انتخاب کنید");
   }
-  const code = method === "CASH" ? "1101" : method === "CHEQUE" ? "1202" : "1102";
+  // LEFTOVER (D3) is not money coming in: the balance is forgiven, so the other side is the write-off expense.
+  const code = method === "LEFTOVER" ? "5110" : method === "CASH" ? "1101" : method === "CHEQUE" ? "1202" : "1102";
   return await accountOrThrow(code);
 }
 

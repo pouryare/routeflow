@@ -66,6 +66,7 @@ const COLUMNS: Record<string, string> = {
   quiet_customer_days: "مشتری ساکت (روز)",
   data_ageing_days: "داده در حال کهنه شدن (روز)",
   data_stale_days: "داده کهنه (روز)",
+  leftover_limit_toman: "سقف بستن مانده کوچک (تومان)",
   duplicate_order_hours: "هشدار سفارش تکراری (ساعت)",
   plan: "طرح",
   maintenance_from: "شروع تعمیر",

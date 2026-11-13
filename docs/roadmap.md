@@ -299,7 +299,7 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
   **Cheque deposit slips and more than one bank account (D2).** Tick cheques on the board, pick the bank account, get a numbered slip with count, total and a printable list. A bounce takes the cheque out and reopens the debt. Works with D1 (driver box, office box, bank).
 
   </details>
-- **D3. Close a small leftover.** A manager closes a small balance with a reason under an owner limit (default 50,000 toman).
+- **D3. Close a small leftover.** A manager closes a small balance with a reason under an owner limit (default 50,000 toman). **Built 2026-11-13 (batch B).** New payment method `LEFTOVER` (contract migration widens the method check) closes a balance without cash: Dr 5110 «بخشودگی و گردکردن» / Cr receivables, settling the oldest unpaid orders; void works as for any receipt; it is left out of the collected-money totals (KPI, week compare, payment cards). The limit (default 50,000 toman) is a threshold in the owner's «حدهای هشدار» card. UI: «بستن مانده کوچک» button + sheet (reason chips) in the customer panel on the map, shown to managers only when the balance is one they may close. Reasons: rounding, bank fee, small discount, other. Not built: bad debt write-off (owner, separate).
   <details><summary>Full decision</summary>
 
   **Close a small leftover (D3).** A manager closes a small remaining balance with a reason (rounding, bank fee, small discount) under an owner-set limit (default 50,000 toman); bigger amounts and bad debt need the owner. Ledger entry plus log line.

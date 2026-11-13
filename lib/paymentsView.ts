@@ -8,6 +8,7 @@ export const METHOD_LABEL: Record<string, string> = {
   CHEQUE: "چک",
   CREDIT_NOTE: "بستانکاری",
   OTHER: "سایر",
+  LEFTOVER: "تسویه مانده",
 };
 
 /** Receipts per page on the payments screen; the server cuts the pages with it. */
@@ -68,7 +69,8 @@ export function filterPayments(payments: Payment[], f: PaymentFilters): Payment[
 }
 
 /** Today / week / month, by method, from the same live list the table shows, so a card and a row cannot disagree. */
-export function paymentTotals(live: Payment[], todayISO: string, weekAgoISO: string) {
+export function paymentTotals(all: Payment[], todayISO: string, weekAgoISO: string) {
+  const live = all.filter((p) => p.method !== "LEFTOVER"); // a closed leftover is forgiven, not collected (D3)
   const monthStart = todayISO.slice(0, 8) + "01";
   const window = (from: string) => live.filter((p) => p.received_at.slice(0, 10) >= from);
   const today = live.filter((p) => p.received_at.slice(0, 10) === todayISO);

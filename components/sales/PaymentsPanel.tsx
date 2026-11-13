@@ -266,7 +266,7 @@ export default function PaymentsPanel({ customers, canSeeBooks = false }: { cust
             <ChipGroup
               wrap
               group={{ id: "method", label: "روش", mode: "single", neutral: "__none", value: method, onChange: (v) => { if (v !== "__none") setMethod(v as string); },
-                options: Object.entries(METHOD_LABEL).map(([k, v]) => ({ id: k, label: v })) }}
+                options: Object.entries(METHOD_LABEL).filter(([k]) => k !== "LEFTOVER" && k !== "CREDIT_NOTE").map(([k, v]) => ({ id: k, label: v })) }}
             />
           </label>
         </div>

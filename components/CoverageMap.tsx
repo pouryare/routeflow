@@ -28,7 +28,7 @@ import CollapsibleSection, { SectionFilterContext } from "./CollapsibleSection";
 import CustomerFilters from "./CustomerFilters";
 import SearchBox from "./SearchBox";
 import LocateControl from "./LocateControl";
-import { canSell } from "@/lib/roles";
+import { canSell, isOwner, MANAGE_ROLES } from "@/lib/roles";
 import MyLocationMarker from "./MyLocationMarker";
 import { useMyPosition } from "./MyPositionProvider";
 import GeofenceWatcher from "./GeofenceWatcher";
@@ -128,7 +128,7 @@ export default function CoverageMap({
   role: Role;
   geometryVersion: string;
   /** The company's own numbers (D30); the defaults when left out. */
-  limits?: { quietDays: number; ageingDays: number; staleDays: number };
+  limits?: { quietDays: number; ageingDays: number; staleDays: number; leftoverLimit?: number };
 }) {
   // --- Deep links -------------------------------------------------------------------
   // Read once, on the first render, before the map exists: the opening view is a
@@ -1258,6 +1258,7 @@ export default function CoverageMap({
             onClose={() => setSelectedCustomer(null)}
             onReminderAdded={loadReminders}
             onUpdated={loadCustomers}
+            leftover={limits?.leftoverLimit !== undefined && MANAGE_ROLES.includes(role) ? { limit: limits.leftoverLimit, owner: isOwner(role) } : undefined}
           />
         )}
       </div>

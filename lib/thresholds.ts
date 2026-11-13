@@ -6,6 +6,7 @@ export const THRESHOLDS = [
   { key: "quiet_customer_days", label: "مشتری ساکت", hint: "مشتری فعالی که این‌قدر روز سفارش نداده در فهرست نقشه می‌آید", unit: "روز", def: 45, min: 7, max: 365 },
   { key: "data_ageing_days", label: "داده در حال کهنه شدن", hint: "پس از این‌قدر روز از آخرین بارگذاری اکسل هشدار زرد می‌آید", unit: "روز", def: 7, min: 1, max: 90 },
   { key: "data_stale_days", label: "داده کهنه", hint: "پس از این‌قدر روز هشدار قرمز می‌آید (باید از مورد بالا بیشتر باشد)", unit: "روز", def: 14, min: 2, max: 180 },
+  { key: "leftover_limit_toman", label: "سقف بستن مانده کوچک", hint: "مدیر تا این مبلغ می‌تواند مانده‌ای را با ذکر دلیل ببندد؛ بیشتر از آن را فقط مالک می‌بندد", unit: "تومان", def: 50000, min: 0, max: 100_000_000 },
   { key: "duplicate_order_hours", label: "هشدار سفارش تکراری", hint: "سفارش باز مشابهی که در این‌قدر ساعت اخیر ثبت شده هشدار می‌دهد", unit: "ساعت", def: 24, min: 1, max: 168 },
 ] as const;
 

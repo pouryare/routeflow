@@ -52,7 +52,7 @@ export default async function Home() {
         groups={visibleGroups}
         role={session.role}
         geometryVersion={version}
-        limits={{ quietDays: limits.quiet_customer_days, ageingDays: limits.data_ageing_days, staleDays: limits.data_stale_days }}
+        limits={{ quietDays: limits.quiet_customer_days, ageingDays: limits.data_ageing_days, staleDays: limits.data_stale_days, leftoverLimit: limits.leftover_limit_toman }}
       />
     </>
   );

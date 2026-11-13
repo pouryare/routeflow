@@ -1179,6 +1179,7 @@ export interface Organizations {
   effects: Generated<string>;
   id: Generated<number>;
   idle_signout_json: string | null;
+  leftover_limit_toman: Generated<number>;
   legal_form: Generated<string>;
   logo_data: string | null;
   logo_type: string | null;
