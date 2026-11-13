@@ -54,6 +54,8 @@ export interface PostInput {
   memo?: string | null;
   sourceId?: number | null;
   reversesJournalId?: number | null;
+  /** D2: which of the company's bank accounts the bank leg belongs to. */
+  bankAccountId?: number | null;
 }
 
 /** 'YYYY-MM-DD' -> '1405-04'. Derived here, never trusted from a caller: a period_key
@@ -137,8 +139,8 @@ export async function postJournal(db: Db, input: PostInput): Promise<number> {
       .prepare(
         `INSERT INTO journals
            (organization_id, seq, posted_at, period_key, memo, source_type, source_id,
-            reverses_journal_id, created_by, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+            reverses_journal_id, created_by, created_at, bank_account_id)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       )
       .run(
         orgId,
@@ -150,7 +152,8 @@ export async function postJournal(db: Db, input: PostInput): Promise<number> {
         input.sourceId ?? null,
         input.reversesJournalId ?? null,
         input.createdBy,
-        now
+        now,
+        input.bankAccountId ?? null
       )).lastInsertRowid
   );
 

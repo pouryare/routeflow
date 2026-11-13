@@ -145,6 +145,14 @@ export interface AuditLog {
   table_name: string;
 }
 
+export interface BankAccounts {
+  created_at: string;
+  created_by: number;
+  id: Generated<number>;
+  name: string;
+  organization_id: number;
+}
+
 export interface Batches {
   batch_code: string;
   created_at: string;
@@ -589,6 +597,7 @@ export interface DeliveryStops {
 }
 
 export interface DepositSlips {
+  bank_account_id: number | null;
   cheque_count: number;
   created_at: string;
   created_by: number;
@@ -801,6 +810,7 @@ export interface IdempotencyKeys {
 }
 
 export interface Journals {
+  bank_account_id: number | null;
   created_at: string;
   created_by: number;
   id: Generated<number>;
@@ -2169,6 +2179,7 @@ export interface DB {
   app_meta: AppMeta;
   assets: Assets;
   audit_log: AuditLog;
+  bank_accounts: BankAccounts;
   batches: Batches;
   capacity_factors: CapacityFactors;
   cash_handovers: CashHandovers;

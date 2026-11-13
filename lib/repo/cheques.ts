@@ -190,7 +190,11 @@ export async function advanceCheque(
     }
 
     if (to === "cleared") {
+      const slipBank = (await db
+        .prepare("SELECT s.bank_account_id FROM deposit_slips s JOIN cheques c ON c.deposit_slip_id = s.id WHERE c.id = ?")
+        .get(id)) as { bank_account_id: number | null } | undefined;
       await postChequeCleared(db, {
+        bankAccountId: slipBank?.bank_account_id ?? null,
         organizationId,
         chequeId: id,
         amountToman: cheque.amount_toman,
