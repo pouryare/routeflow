@@ -1003,14 +1003,14 @@ All 148 entries of `docs/future-features.md` (F1 to F148), grouped by area, with
 |---|---|---|---|---|---|---|
 | F19 | Salesperson earnings view and commission simulator | S | yes | — | Built (first slice) | FB27 |
 | F25 | Staff scheduling and attendance | L |  | — | Not built | — |
-| F26 | Field expenses and petty cash | M |  | — | Not built | D15 |
+| F26 | Field expenses and petty cash | M |  | — | Built (first slice, 2026-11-13): costs are filed as claims on «هزینه‌های من» (all staff, drivers too); the company limit «سقف تأیید هزینه توسط مدیر گروه» (default 500,000 toman) decides who may approve. No cash advance or petty-cash box balance yet. | D15 |
 | F27 | Audit trail and anomaly detection | M | yes | — | Planned: first slice is EV4 | T-skip, D6, E6, EV4 |
 | F48 | Change approvals (second-person sign-off) | M | yes | F27 | Built (credit limit, order edits, expiry; no price-list kind yet) | — |
 | F51 | SLA and escalation rules | M | yes | — | Partly built | FB43, S5 |
 | F82 | Approval delegation while away | M | yes | F27, F48 | Built (first slice, 2026-11-13): when a manager is sent on leave, the leave card can name a colleague who then decides that manager's group credit and order-size approvals until the leave ends. Other approval kinds follow when they exist | T13 |
-| F88 | Staff expense reimbursement | M | yes | F26, F48 | Not built | D15 |
+| F88 | Staff expense reimbursement | M | yes | F26, F48 | Built (2026-11-13): approved claim books Dr expense (with the group) / Cr 2107 «بدهی به کارکنان»; the owner pays a person back in one entry from the cash box or bank. Nobody approves their own claim except the owner. | D15 |
 | F95 | Staff birthdays and work anniversaries | S | yes | F86, F90 | Small, waits for a prerequisite | — |
-| F102 | Manager approval inbox | M | yes | F48, F76, F82, F88 | Not built | — |
+| F102 | Manager approval inbox | M | yes | F48, F76, F82, F88 | Built (first slice, 2026-11-13): a fourth button on «امروز» next to credit, discount and duplicates: staff costs waiting for this manager. Orders awaiting review are not in a deck yet. | — |
 | F129 | Approval chains | L | yes | F48, F76, F82, F102 | Not built | — |
 | F130 | Rule builder screen | L | yes | F51 | Partly built | T1, T9, S9 |
 | F133 | Required training and completion tracking | S | yes | F84, F112 | Built (first slice) | — |

@@ -1,5 +1,7 @@
 import { cookies } from "next/headers";
 import CreditDeckEntry from "@/components/flows/CreditDeckEntry";
+import ClaimsInboxEntry from "@/components/expenses/ClaimsInboxEntry";
+import { claimsToDecide } from "@/lib/repo/expenseClaims";
 import DiscountDeckEntry from "@/components/flows/DiscountDeckEntry";
 import { pendingForDecider } from "@/lib/repo/discounts";
 import DuplicatesDeckEntry from "@/components/flows/DuplicatesDeckEntry";
@@ -96,6 +98,9 @@ export default async function SalesTodayPage() {
           <CreditDeckEntry approvals={await pendingForDeck(session.organizationId, await approvalScopeFor(session))} />
           <DiscountDeckEntry
             approvals={await pendingForDecider(session.organizationId, { id: session.user.id, role: session.role, group_id: session.groupId })}
+          />
+          <ClaimsInboxEntry
+            count={(await claimsToDecide({ role: session.role, organizationId: session.organizationId, userId: session.user.id, groupId: session.groupId })).length}
           />
           <DuplicatesDeckEntry pairs={(await duplicatePairs(session)).map((p) => ({ ...p, keep: { ...p.keep }, drop: { ...p.drop } }))} />
         </div>
