@@ -55,6 +55,7 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
 
   </details>
 - **FB1. Orders list you can search and filter.** Filter chips for status, payment, rep and day; a count; load more past 100; paste many order numbers or phones to find them.
+  **Built (batch B):** search box (any of the pasted order numbers, names or phones; Persian digits read) and chips for status group, day, payment and rep on the orders list, all kept in the address; «نمایش ۱۰۰ سفارش قدیمی‌تر» raises the read from 100 to at most 1,000. The filters run on the orders read, not in SQL (`lib/orderListFilter.ts`).
   <details><summary>Full decision</summary>
 
   **Orders list you can search and filter.** `/sales/orders` reads at most 100 orders and takes no filter inputs. Add `FilterChips` for status, payment, rep and day, a count, «load more» past 100, and one paste-many search (paste order numbers or phones, get just those).

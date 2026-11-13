@@ -32,6 +32,9 @@ import { pageMetadata } from "@/lib/pageMeta";
 import LiveRefresh from "@/components/LiveRefresh";
 import Pager from "@/components/accounting/Pager";
 import { pagingFor, type Paging } from "@/lib/paging";
+import OrderFilters from "@/components/sales/OrderFilters";
+import { filterOrders } from "@/lib/orderListFilter";
+import { tehranTodayIso } from "@/lib/jalali";
 
 export const metadata = pageMetadata("/sales/orders");
 
@@ -100,8 +103,15 @@ function ListView({
   amounts,
   paging,
   pageParams,
+  reps,
+  filtered,
+  more,
 }: {
   orders: OrderSummary[];
+  /** FB1: who sold the listed orders (for the rep chips), whether a search or chip is on, and the link that reads 100 more. */
+  reps: string[];
+  filtered: boolean;
+  more: string | null;
   /** Which slice of `orders` is drawn; the heading still counts them all. */
   paging: Paging;
   /** The list's other filters, kept by the pager's links. */
@@ -151,11 +161,14 @@ function ListView({
         <CardHelp id="card.orders-recent" />
       </div>
 
+      <OrderFilters reps={reps} />
       {bounds && <OrderAmountFilter key={range ? range.join("-") : "all"} bounds={bounds} active={range} amounts={amounts} />}
 
       {orders.length === 0 ? (
         <p style={{ padding: "0 24px 28px", color: "var(--muted)", fontSize: 13.5 }}>
-          {range
+          {filtered
+            ? "سفارشی با این جستجو یا فیلتر پیدا نشد."
+            : range
             ? "سفارشی در این بازهٔ مبلغ نیست."
             : focused
             ? `برای ${focused.business_name} هنوز سفارشی ثبت نشده است.`
@@ -209,6 +222,14 @@ function ListView({
       {paging.pageCount > 1 && (
         <div className="kblock__body">
           <Pager base="/sales/orders" params={pageParams} paging={paging} />
+        </div>
+      )}
+      {more && (
+        <div className="kblock__body">
+          <Link className="btn ghost" href={more}>
+            <Icon name="plus" size="md" />
+            نمایش ۱۰۰ سفارش قدیمی‌تر
+          </Link>
         </div>
       )}
     </div>
@@ -396,12 +417,21 @@ export default async function OrdersPage({
   const orderParam = one(params, "order");
   const customerId = customerParam !== undefined && /^\d+$/.test(customerParam) ? Number(customerParam) : undefined;
 
-  const { focused, orders: allOrders, onARun } = await ordersListFor(session, { customerId });
+  const limitParam = Number(one(params, "limit"));
+  const limit = Number.isInteger(limitParam) && limitParam >= 100 ? Math.min(limitParam, 1000) : 100;
+  const { focused, orders: allOrders, onARun } = await ordersListFor(session, { customerId, limit });
   /* The amount filter belongs to the list view only; the board and journey read every order. */
   const amounts = allOrders.map((o) => o.total_toman);
   const bounds = boundsOf(amounts);
   const range = bounds ? parseRange(one(params, "min"), one(params, "max"), bounds) : null;
-  const orders = view === "" ? allOrders.filter((o) => inRange(o.total_toman, range)) : allOrders;
+  const query = { q: one(params, "q"), status: one(params, "status"), payment: one(params, "payment"), rep: one(params, "rep"), day: one(params, "day") };
+  const isFiltered = Object.values(query).some(Boolean);
+  const orders =
+    view === ""
+      ? filterOrders(allOrders, query, tehranTodayIso()).filter((o) => inRange(o.total_toman, range))
+      : allOrders;
+  // shortcut: filters read the newest `limit` orders; «older» raises it by 100 up to 1,000, then a server-side search is needed.
+  const more = view === "" && allOrders.length >= limit && limit < 1000 ? `/sales/orders?${new URLSearchParams({ ...Object.fromEntries(Object.entries({ customer: customerParam, min: one(params, "min"), max: one(params, "max"), ...query }).filter(([, v]) => v)), limit: String(limit + 100) } as Record<string, string>)}` : null;
 
   const mode = one(params, "mode") === "all" ? "all" : "one";
   const askedOrderId = orderParam !== undefined && /^\d+$/.test(orderParam) ? Number(orderParam) : undefined;
@@ -425,7 +455,10 @@ export default async function OrdersPage({
           range={range}
           amounts={amounts}
           paging={pagingFor(one(params, "page"), orders.length, ORDERS_PER_PAGE)}
-          pageParams={{ customer: customerParam, min: one(params, "min"), max: one(params, "max") }}
+          pageParams={{ customer: customerParam, min: one(params, "min"), max: one(params, "max"), limit: one(params, "limit"), ...query }}
+          reps={[...new Set(allOrders.map((o) => o.salesperson_name).filter((n): n is string => !!n))]}
+          filtered={isFiltered}
+          more={more}
         />
       )}
     </>
