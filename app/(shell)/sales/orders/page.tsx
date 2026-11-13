@@ -33,6 +33,7 @@ import LiveRefresh from "@/components/LiveRefresh";
 import Pager from "@/components/accounting/Pager";
 import { pagingFor, type Paging } from "@/lib/paging";
 import OrderFilters from "@/components/sales/OrderFilters";
+import { listViews, type SavedView } from "@/lib/repo/savedViews";
 import { filterOrders } from "@/lib/orderListFilter";
 import { tehranTodayIso } from "@/lib/jalali";
 
@@ -106,7 +107,9 @@ function ListView({
   reps,
   filtered,
   more,
+  views,
 }: {
+  views: SavedView[];
   orders: OrderSummary[];
   /** FB1: who sold the listed orders (for the rep chips), whether a search or chip is on, and the link that reads 100 more. */
   reps: string[];
@@ -162,7 +165,7 @@ function ListView({
       </div>
 
       <div className="kblock__body">
-        <OrderFilters reps={reps} />
+        <OrderFilters reps={reps} views={views} />
       </div>
       {bounds && <OrderAmountFilter key={range ? range.join("-") : "all"} bounds={bounds} active={range} amounts={amounts} />}
 
@@ -461,6 +464,7 @@ export default async function OrdersPage({
           reps={[...new Set(allOrders.map((o) => o.salesperson_name).filter((n): n is string => !!n))]}
           filtered={isFiltered}
           more={more}
+          views={await listViews(session.organizationId, session.user.id)}
         />
       )}
     </>

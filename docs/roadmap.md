@@ -71,6 +71,7 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
   <details><summary>Full decision</summary>
 
   **Saved views.** Per person, named filter sets on the orders and customers lists, stored on the server.
+  **Built (batch C, orders list only):** under the filter chips, a person's saved views as chips (table `saved_views`, personal, on the server); tap applies, «ذخیرهٔ این فیلتر» names a new one, «حذف نما» removes it. The customers list has no saved views yet (its filters are not in the address).
 
   </details>
 - **FB7. Keyboard triage on desk.** J/K, X, E, S keys on the action centre, tasks and orders list. Must match the physical key so it works with the Persian layout.
@@ -109,6 +110,7 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
 
   **Unsaved-changes bar.** Changing a saved view's filters shows Save, Save as new view and Reset. Views stay personal; no sharing to roles (T2).
 
+  **Built (batch C, orders list):** after a saved view's filter is changed the bar offers «ذخیره», «ذخیره به‌عنوان نمای تازه» and «بازنشانی». Views stay personal.
   </details>
 - **T11. New record pre-filled from the filter.** «مشتری جدید» from a filtered list opens with that group and rep set.
   <details><summary>Full decision</summary>

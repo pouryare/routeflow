@@ -7,10 +7,12 @@ import FilterChips from "@/components/mobile/FilterChips";
 import { Icon } from "@/components/meridian/Icon";
 import { DAY_CHOICES, STATUS_GROUPS } from "@/lib/orderListFilter";
 import { PAYMENT_STATUS_LABEL } from "@/lib/orderStateMachine";
+import SavedViewsBar from "@/components/sales/SavedViewsBar";
+import type { SavedView } from "@/lib/repo/savedViews";
 
 /** FB1: search box and filter chips of the orders list. Every choice is kept in the address (?q=&status=&payment=&rep=&day=),
  *  so the page reads the list again and a filtered view can be shared. Pasting many order numbers or phones into the box finds all of them. */
-export default function OrderFilters({ reps }: { reps: string[] }) {
+export default function OrderFilters({ reps, views }: { reps: string[]; views: SavedView[] }) {
   const router = useRouter();
   const path = usePathname();
   const search = useSearchParams();
@@ -61,6 +63,7 @@ export default function OrderFilters({ reps }: { reps: string[] }) {
           ...(reps.length > 1 ? [single("rep", "فروشنده", reps.map((r) => ({ id: r, label: r })), true)] : []),
         ]}
       />
+      <SavedViewsBar views={views} />
     </div>
   );
 }
