@@ -11,7 +11,9 @@ import YearCloseCard from "@/components/accounting/YearCloseCard";
 import { yearList } from "@/lib/repo/yearClose";
 import ReconcileCard from "@/components/accounting/ReconcileCard";
 import { todayJalali } from "@/lib/jalali";
-import { isOwner } from "@/lib/roles";
+import { ACCOUNTING_ROLES } from "@/lib/roles";
+import ManualJournalCard, { ReverseManualButton } from "@/components/accounting/ManualJournalCard";
+import { postableAccounts } from "@/lib/repo/manualJournal";
 import { hiddenAccountIdsFor } from "@/lib/repo/privateCategories";
 import { journalReport, listPeriods } from "@/lib/repo/reports";
 import Pager from "@/components/accounting/Pager";
@@ -53,6 +55,7 @@ export default async function JournalPage({
   }
   const periods = await listPeriods(organizationId);
   const years = await yearList(organizationId);
+  const manualAccounts = (await postableAccounts()).map((a) => ({ id: String(a.id), label: `${a.code} ${a.nameFa}` }));
   const withReceipt = await journalsWithReceipt(organizationId, report.rows.map((r) => r.journalId));
   const reversed = report.rows.filter((r) => r.reversedByJournalId !== null).length;
 
@@ -62,9 +65,10 @@ export default async function JournalPage({
   return (
     <>
       <PageHeader route="/accounting/journal" />
-      {session && isOwner(session.role) ? <PeriodsCard periods={periods.map((p) => ({ periodKey: p.periodKey, status: p.status }))} currentKey={`${todayJalali().jy}-${String(todayJalali().jm).padStart(2, "0")}`} /> : null}
-      {session && isOwner(session.role) ? <YearCloseCard years={years} currentYear={todayJalali().jy} /> : null}
-      {session && isOwner(session.role) ? <ReconcileCard /> : null}
+      {session && ACCOUNTING_ROLES.includes(session.role) ? <PeriodsCard periods={periods.map((p) => ({ periodKey: p.periodKey, status: p.status }))} currentKey={`${todayJalali().jy}-${String(todayJalali().jm).padStart(2, "0")}`} /> : null}
+      {session && ACCOUNTING_ROLES.includes(session.role) ? <YearCloseCard years={years} currentYear={todayJalali().jy} /> : null}
+      {session && ACCOUNTING_ROLES.includes(session.role) ? <ReconcileCard /> : null}
+      {session && ACCOUNTING_ROLES.includes(session.role) ? <ManualJournalCard accounts={manualAccounts} /> : null}
       <SectionHead
         title="دفتر روزنامه"
         sub={`${faNum(report.total)} سند${reversed ? ` — ${faNum(reversed)} سند ابطال‌شده${paging.pageCount > 1 ? " در این صفحه" : ""}` : ""}`}
@@ -127,6 +131,7 @@ export default async function JournalPage({
                     معکوسِ #{r.reversesJournalId}
                   </span>
                 ) : null}
+                {r.sourceType === "MANUAL" && !struck && session && ACCOUNTING_ROLES.includes(session.role) ? <ReverseManualButton journalId={r.journalId} /> : null}
                 {r.sourceType === "EXPENSE" && !struck ? <ReceiptButton journalId={r.journalId} has={withReceipt.has(r.journalId)} /> : null}
                 {r.createdByName ? (
                   <span className="mr-2 text-[length:var(--text-xs)] text-text-muted">

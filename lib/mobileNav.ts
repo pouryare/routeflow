@@ -96,7 +96,7 @@ export const APP_SHORTCUTS: { label: string; href: string }[] = [
 
 export function quickActionsFor(session: { role: Role }): QuickAction[] {
   // A shareholder's login is the one read-only page; every action here writes.
-  if (isVanRole(session.role) || session.role === "shareholder") return [];
+  if (isVanRole(session.role) || session.role === "shareholder" || session.role === "accountant") return [];
   const reachable = new Set(appTabs(session).filter((t) => t.ready).map((t) => t.href));
   return QUICK_ACTIONS.filter((a) => (!a.requires || reachable.has(a.requires)) && !a.except?.includes(session.role));
 }

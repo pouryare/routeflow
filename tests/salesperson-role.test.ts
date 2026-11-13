@@ -42,7 +42,7 @@ describe("the salesperson role", () => {
   });
 
   it("still rejects a role that is not in the list", async () => {
-    await expect((async () => await insertUser("nobody", "accountant"))()).rejects.toThrow();
+    await expect((async () => await insertUser("nobody", "astronaut"))()).rejects.toThrow();
   });
 
   it("keeps the roles that existed before, under their new names", async () => {
