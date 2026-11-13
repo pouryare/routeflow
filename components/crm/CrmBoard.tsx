@@ -20,7 +20,8 @@ import StickyAction from "@/components/mobile/StickyAction";
 import { useToast } from "@/components/ToastProvider";
 import { tehranTodayIso } from "@/lib/jalali";
 import Link from "next/link";
-import { buildMapLink } from "@/lib/deepLink";
+import { actionsFor } from "@/lib/actionList";
+import type { Role } from "@/lib/roles";
 
 const VIEW_LABEL: Record<CrmView, string> = {
   today: "پیگیری امروز", hot: "داغ", my_leads: "سرنخ‌های من", my_customers: "مشتریان من",
@@ -32,11 +33,13 @@ const NEXT_MODE: ReadonlySet<CrmView> = new Set<CrmView>(["today", "hot"]);
 type CallFlow = { kind: "call"; customerId: number; entry: "call" | "talked_now"; open: boolean };
 type LeadFlow = { kind: "lead"; open: boolean; prefillPhone: string | null };
 
-export default function CrmBoard({ initialRows, initialCounts, initialView, canPlan }: {
+export default function CrmBoard({ initialRows, initialCounts, initialView, canPlan, role }: {
   initialRows: BusinessRow[]; initialCounts: Record<CrmView, number>; initialView: CrmView;
   /** The roles whose API lets them add stops to the day plan (MANAGE_ROLES): only they get «انتخاب». */
   canPlan: boolean;
+  role: Role;
 }) {
+  const mapAction = actionsFor(role, "customer-selection").find((a) => a.id === "customers-on-map");
   const [view, setView] = useState<CrmView>(initialView);
   const [q, setQ] = useState("");
   const [rows, setRows] = useState(initialRows);
@@ -157,10 +160,10 @@ export default function CrmBoard({ initialRows, initialCounts, initialView, canP
           <Icon name="heart" size="md" filled={onlyFavs} />
           دلخواه‌ها<i>{faDigits(String(favs.length))}</i>
         </button>
-        {shown.length > 0 ? (
-          // S14: the picked customers, or else the list as filtered, opened on the map.
-          <Link href={`/map${buildMapLink({ customerIds: selecting && picked.length > 0 ? picked : shown.map((r) => r.id) })}`} prefetch={false} className="inline-flex items-center gap-[var(--space-2)]" data-tour="crm:on-map">
-            <Icon name="map" size="md" />
+        {shown.length > 0 && mapAction ? (
+          // S14 + T14: the picked customers, or else the list as filtered, opened on the map; the action list says who may.
+          <Link href={mapAction.href!(selecting && picked.length > 0 ? picked : shown.map((r) => r.id))} prefetch={false} className="inline-flex items-center gap-[var(--space-2)]" data-tour="crm:on-map">
+            <Icon name={mapAction.icon} size="md" />
             {selecting && picked.length > 0 ? `${faDigits(String(picked.length))} انتخاب‌شده روی نقشه` : "فهرست روی نقشه"}
           </Link>
         ) : null}
