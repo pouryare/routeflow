@@ -36,7 +36,8 @@ describe("trusted window", () => {
     expect(readTrust(key, c, 8, 3, now)).toBeNull();
     expect(readTrust(key, c, 7, 4, now)).toBeNull();
     expect(readTrust(crypto.randomBytes(32), c, 7, 3, now)).toBeNull();
-    expect(readTrust(key, c.slice(0, -2) + "xx", 7, 3, now)).toBeNull();
+    const dot = c.indexOf(".") + 1; // change the first signature character: the last one can carry unused bits, so a change there may decode to the same bytes
+    expect(readTrust(key, c.slice(0, dot) + (c[dot] === "A" ? "B" : "A") + c.slice(dot + 1), 7, 3, now)).toBeNull();
     expect(readTrust(key, "garbage", 7, 3, now)).toBeNull();
     expect(readTrust(key, undefined, 7, 3, now)).toBeNull();
   });
