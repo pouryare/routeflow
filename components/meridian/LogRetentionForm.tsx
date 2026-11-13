@@ -35,7 +35,7 @@ export default function LogRetentionForm({ rows }: { rows: RetentionRow[] }) {
           {msg?.id === r.id ? <p className="m-0 text-[length:var(--text-xs)]" style={{ color: msg.ok ? "var(--success)" : "var(--danger)" }}>{msg.text}</p> : null}
           <button type="button" disabled={busy === r.id} onClick={() => void save(r.id)} className="inline-flex min-h-[44px] items-center justify-center gap-[var(--space-2)] self-start rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--accent)] px-[var(--space-4)] text-[length:var(--text-sm)] text-accent-ink">
             <Icon name="save" size="md" />
-            ذخیره
+            ذخیرهٔ نگهداری
           </button>
         </div>
       ))}

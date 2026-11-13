@@ -12,6 +12,10 @@
  *  Child tables are absent on purpose -- order_lines reaches its tenant through orders,
  *  and a second copy of the answer is a second thing to keep in step. */
 export const TENANT_TABLES = [
+  "contact_preferences",
+  "idempotency_keys",
+  "private_categories",
+  "problem_reports",
   "groups",
   "company_domains",
   "customers",

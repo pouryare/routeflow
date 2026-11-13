@@ -6,7 +6,7 @@ import { Icon } from "@/components/meridian/Icon";
 import { friendlyError } from "@/lib/userMessage";
 import { IDLE_ROLES, type IdleRules } from "@/lib/idleSignout";
 
-const LABEL: Record<(typeof IDLE_ROLES)[number], string> = { owner: "مالک", group_manager: "مدیر گروه", rep_manager: "مدیر ویزیتورها", shareholder: "سهام‌دار" };
+const LABEL: Record<(typeof IDLE_ROLES)[number], string> = { owner: "مالک", group_manager: "مدیر گروه", rep_manager: "مدیر نمایندگان", shareholder: "سهام‌دار" };
 
 /** «خروج خودکار بی‌فعالیت», on the owner's status page (E17): after how many idle hours each role signs in again.
  *  Empty or 0 = never. Drivers and reps are not listed: their phone must keep working with no signal. Example:
@@ -26,7 +26,7 @@ export default function IdleSignoutForm({ rules }: { rules: IdleRules }) {
     <section className="card flex flex-col gap-[var(--space-3)] p-[var(--space-4)]" dir="rtl" data-tour="idle-signout">
       <h2 className="sechead__title">خروج خودکار بی‌فعالیت</h2>
       <p className="m-0 text-[length:var(--text-sm)] text-[var(--muted)]">
-        اگر کسی این‌قدر ساعت از برنامه استفاده نکند، دفعهٔ بعد باید دوباره وارد شود. خالی یعنی هرگز. ویزیتورها و رانندگان همیشه وارد می‌مانند تا کار بدون اینترنت از دست نرود.
+        اگر کسی این‌قدر ساعت از برنامه استفاده نکند، دفعهٔ بعد باید دوباره وارد شود. خالی یعنی هرگز. نمایندگان و رانندگان همیشه وارد می‌مانند تا کار بدون اینترنت از دست نرود.
       </p>
       {IDLE_ROLES.map((r) => (
         <KeypadField key={r} label={LABEL[r]} value={v[r]} onChange={(x) => setV((s) => ({ ...s, [r]: x }))} unit="ساعت" />

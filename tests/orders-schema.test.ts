@@ -81,6 +81,9 @@ describe("orders", () => {
         "customer_id",
         "group_id",
         "salesperson_user_id",
+        "ship_address",
+        "ship_name",
+        "ship_phone",
         "status",
         // Phase 3: the 12-state order machine plus its classifiers.
         "order_type",

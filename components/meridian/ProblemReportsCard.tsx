@@ -32,8 +32,7 @@ export default function ProblemReportsCard({ rows }: { rows: ProblemReportRow[] 
           <p className="m-0 text-[length:var(--text-xs)] text-[var(--muted)]" dir="ltr">
             v{r.app_version ?? "?"} · {r.connection ?? "?"} · {(r.user_agent ?? "").slice(0, 80)}
           </p>
-          {/* eslint-disable-next-line @next/next/no-img-element -- the report's own screenshot, a data URL */}
-          {shots[r.id] ? <img src={shots[r.id]} alt="تصویر گزارش" className="max-h-80 w-auto self-start rounded-[var(--radius-md)]" /> : null}
+          {shots[r.id] ? <span role="img" aria-label="تصویر گزارش" className="h-80 w-full max-w-sm self-start rounded-[var(--radius-md)] bg-contain bg-left bg-no-repeat" style={{ backgroundImage: `url(${shots[r.id]})` }} /> : null}
           <div className="flex flex-wrap gap-[var(--space-2)]">
             {r.has_screenshot && !shots[r.id] ? (
               <button type="button" onClick={() => void show(r.id)} className="inline-flex min-h-[44px] items-center gap-[var(--space-2)] rounded-[var(--radius-md)] border border-[var(--border)] px-[var(--space-3)]">

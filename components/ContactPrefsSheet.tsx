@@ -49,7 +49,7 @@ export default function ContactPrefsSheet({ open, onClose, customerId, name, cur
         <ChipGroup wrap group={{ id: "off", label: "مشتری نخواسته", mode: "multi", value: off, onChange: (v) => setOff(v as string[]), options: CONTACT_CHANNELS.map((c) => ({ id: c.id, label: c.label })) }} />
         <FieldArea value={reason} onChange={(e) => setReason(e.target.value)} rows={2} className="w-full resize-none text-[length:var(--text-base)] text-text" placeholder="دلیل، مثلاً: گفت دیگر زنگ نزنید" />
         {error ? <p className="m-0 text-[length:var(--text-sm)]" style={{ color: "var(--danger)" }}>{error}</p> : null}
-        <GoButton isDisabled={busy || !changed || (off.length > 0 && reason.trim() === "")} onPress={() => void save()}>ذخیره</GoButton>
+        <GoButton icon="save" isDisabled={busy || !changed || (off.length > 0 && reason.trim() === "")} onPress={() => void save()}>ذخیره</GoButton>
       </div>
     </BottomSheet>
   );

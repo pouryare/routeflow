@@ -50,7 +50,7 @@ export default function LeftoverSheet({ open, onClose, customerId, name, owed, l
         {!owner ? <p className="m-0 text-[length:var(--text-xs)] text-[var(--muted)]">تا {faNum(limit)} تومان؛ بیشتر از آن را مالک می‌بندد.</p> : null}
         <ChipGroup wrap group={{ id: "reason", label: "دلیل", mode: "single", neutral: "", value: reason, onChange: (v) => setReason(v as string), options: LEFTOVER_REASONS.map((r) => ({ id: r.id, label: r.label })) }} />
         {error ? <p className="m-0 text-[length:var(--text-sm)]" style={{ color: "var(--danger)" }}>{error}</p> : null}
-        <GoButton isDisabled={busy || !ok} onPress={() => void save()}>بستن مانده</GoButton>
+        <GoButton icon="x" isDisabled={busy || !ok} onPress={() => void save()}>بستن مانده</GoButton>
       </div>
     </BottomSheet>
   );

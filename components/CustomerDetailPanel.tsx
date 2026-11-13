@@ -451,7 +451,7 @@ export default function CustomerDetailPanel({
       {leftover && customer.debt && mayCloseLeftover(leftover.owner, customer.debt.total, leftover.limit) ? (
         <>
           <button type="button" onClick={() => setLeftoverOpen(true)} data-tour="close-leftover" className="mt-3 flex min-h-[44px] w-full items-center justify-center gap-2 rounded-[var(--radius-md)] border border-border px-3 py-2 text-[length:var(--text-sm)] text-text-muted transition-colors hover:border-accent hover:text-accent">
-            <Icon name="check" size="sm" />
+            <Icon name="x" size="sm" />
             بستن مانده کوچک
           </button>
           <LeftoverSheet open={leftoverOpen} onClose={() => setLeftoverOpen(false)} customerId={customer.id} name={customer.business_name} owed={customer.debt.total} limit={leftover.limit} owner={leftover.owner} onDone={() => onUpdated?.()} />

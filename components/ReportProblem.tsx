@@ -67,8 +67,7 @@ export default function ReportProblem({ className, onOpen }: { className?: strin
           <input ref={file} type="file" accept="image/*" hidden onChange={(e) => void pick(e.target.files?.[0])} />
           {shot ? (
             <div className="flex items-center gap-[var(--space-3)]">
-              {/* eslint-disable-next-line @next/next/no-img-element -- a local preview of the picked file */}
-              <img src={shot} alt="تصویر پیوست" className="h-16 w-16 rounded-[var(--radius-md)] object-cover" />
+              <span role="img" aria-label="تصویر پیوست" className="h-16 w-16 rounded-[var(--radius-md)] bg-cover bg-center" style={{ backgroundImage: `url(${shot})` }} />
               <AnswerButton icon="x" onPress={() => setShot(null)}>برداشتن تصویر</AnswerButton>
             </div>
           ) : (

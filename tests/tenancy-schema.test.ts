@@ -201,6 +201,8 @@ describe("organization_id backfill", () => {
                              // polygons drift apart until منطقه 14 means two different places.
                              // It carries no organization_id; territory scoping is group_id, and
                              // a boundary an owner draws is visible to the whole install.
+      "rate_limits",       // sign-in guess counters keyed by name or address, before anyone is signed in:
+                            // there is no company yet to scope them to.
       "accounts",          // the chart of accounts, NOT tenant data. صندوق is صندوق in every
                              // organisation on this server. A per-tenant copy of the same chart
                              // drifts -- one tenant renames an account or deletes a code -- and
