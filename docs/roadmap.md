@@ -899,7 +899,7 @@ All 148 entries of `docs/future-features.md` (F1 to F148), grouped by area, with
 | F65 | Small-quantity price uplift | M | yes | F48, F56, F64 | Not built | — |
 | F71 | Customer credit holds by rep | M | yes | F48 | Not built | — |
 | F72 | Duplicate order warning | S | yes | — | Built (first slice) | — |
-| F73 | Order edit history | M | yes | F27, F48 | Not built | FB3 |
+| F73 | Order edit history | M | yes | F27, F48 | Built (first slice) | FB3 |
 | F76 | Order approval by value | M | yes | F48, F51 | Not built | — |
 | F89 | Customer price history | S | yes | F29, F56 | Built (first slice) | — |
 | F96 | Inter-group order transfers | L | yes | F48 | Not built | — |
@@ -1154,3 +1154,5 @@ Platform claims in [docs/decisions.md section 10](decisions.md#10-platform-facts
 
 
 **F48 built (batch B, first slice).** Table `change_requests`. One kind so far: raising or removing a customer's credit limit. «سقف اعتبار» on the customer page (`PUT /api/customers/[id]/credit-limit`): an owner, or any lowering, applies at once; a group manager's raise waits as a request with a reason. The owner decides on the discounts admin page («درخواست‌های سقف اعتبار», `POST /api/change-requests/[id]/decide`, authenticator code asked, cannot approve one's own request). Not yet: price edits, other kinds, expiry of old requests, a push to the owner, an audit line for the request itself.
+
+**F73 + FB3 built (batch B, first slice).** `lib/orderEditRules.ts` is the one rule for what may change at each stage (lines on a draft only; the priority flag until the order is finished), used by `addLine`, the priority repo and the order page. A priority change writes an `edit` event in `order_events` with «اولویت: عادی ← فوری» and the actor, which shows on the order timeline (journey page). Not yet: a required reason after confirmation, history for dates, address and notes (no screen edits them), and the offline-sync copy of the rule.

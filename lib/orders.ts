@@ -5,6 +5,7 @@
  *  six months as it did on the day it was taken. Commission is paid off these numbers.
  */
 
+import { editRule } from "./orderEditRules";
 import { MAX_LINES_PER_ORDER, MAX_NOTES_LENGTH, MAX_PACKS_PER_LINE, isValidPacks } from "./orderLimits";
 import { refreshOrderFigures } from "./repo/orderFigures";
 import type { Db } from "@/lib/database/client";
@@ -380,9 +381,8 @@ export async function addLine(db: Db, orderId: number, line: LineInput): Promise
     | undefined;
   if (!order) throw new OrderError("سفارش پیدا نشد");
   assertValidLine(line);
-  if (order.status !== "DRAFT") {
-    throw new OrderError("سفارش تأییدشده ویرایش نمی‌شود؛ برای اصلاح، قلم برگشتی ثبت کنید");
-  }
+  const rule = editRule("line", order.status);
+  if (!rule.ok) throw new OrderError(rule.why);
   await insertLine(db, orderId, order.order_date, line, new Date().toISOString());
   await touch(db, orderId);
 }
