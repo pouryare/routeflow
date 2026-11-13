@@ -119,6 +119,20 @@ export interface AppMeta {
   value: string | null;
 }
 
+export interface Assets {
+  condition: Generated<string>;
+  created_at: string;
+  created_by: number | null;
+  holder_since: string | null;
+  holder_user_id: number | null;
+  id: Generated<number>;
+  kind: string;
+  name: string;
+  organization_id: number;
+  retired_at: string | null;
+  serial: string | null;
+}
+
 export interface AuditLog {
   actor_user_id: number | null;
   changes_json: string;
@@ -1951,6 +1965,7 @@ export interface DB {
   activity_log: ActivityLog;
   alerts: Alerts;
   app_meta: AppMeta;
+  assets: Assets;
   audit_log: AuditLog;
   batches: Batches;
   capacity_factors: CapacityFactors;

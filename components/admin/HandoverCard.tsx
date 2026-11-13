@@ -93,7 +93,7 @@ export default function HandoverCard({ people }: { people: Person[] }) {
       {from && to && (
         <>
           <p className="mb-1 mt-3 text-sm">تا کی؟</p>
-          <ChipGroup wrap group={{ id: "span", label: "مدت", mode: "single", value: span, options: FOR, onChange: (v) => setSpan(v as string) }} />
+          <ChipGroup wrap group={{ id: "span", label: "مدت", mode: "single", value: span, options: FOR, onChange: (v) => setSpan((v as string) || span) }} />
         </>
       )}
       {nothing && <p className="mt-3 text-sm text-text-muted">{name(from)} مشتری یا کار بازی ندارد.</p>}

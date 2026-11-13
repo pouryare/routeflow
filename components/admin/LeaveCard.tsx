@@ -80,7 +80,7 @@ export default function LeaveCard({ people }: { people: Person[] }) {
       {who && (
         <>
           <p className="mb-1 mt-3 text-sm">تا چند روز؟</p>
-          <ChipGroup wrap group={{ id: "leave-days", label: "مدت", mode: "single", value: days, options: DAYS, onChange: (v) => setDays(v as string) }} />
+          <ChipGroup wrap group={{ id: "leave-days", label: "مدت", mode: "single", value: days, options: DAYS, onChange: (v) => setDays((v as string) || days) }} />
           <p className="mb-1 mt-3 text-sm">دلیل</p>
           <ChipGroup wrap group={{ id: "leave-reason", label: "دلیل", mode: "single", value: reason, options: REASONS.map((r) => ({ id: r, label: r })), onChange: (v) => setReason(v as string) }} />
           <button type="button" disabled={busy} onClick={() => void send(Number(who), Number(days))} className="btn solid mt-3 inline-flex min-h-[44px] items-center justify-center gap-[var(--space-2)]">

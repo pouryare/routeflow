@@ -137,4 +137,6 @@ export const TENANT_TABLES = [
   "content_images",
   /* Customers lent to a colleague for a number of days (T13, lib/repo/handover.ts). */
   "customer_loans",
+  /* The company's things and who holds them (F140, lib/repo/assets.ts). */
+  "assets",
 ] as const satisfies readonly string[];
