@@ -4,6 +4,8 @@ import { FieldArea } from "@/components/FieldInput";
 import { useState } from "react";
 import { friendlyError } from "@/lib/userMessage";
 import { DistrictFeature, CoverageStatus, STATUS_LABEL, STATUS_COLOR } from "@/lib/types";
+import { faNum } from "@/lib/format";
+import type { DistrictMoney } from "@/lib/districtMoney";
 import StatusPill from "./StatusPill";
 import HistoryTimeline from "./HistoryTimeline";
 import AddReminder from "./AddReminder";
@@ -15,11 +17,14 @@ import { ChipGroup } from "@/components/mobile/ChipGroup";
 
 export default function DistrictEditor({
   district,
+  money,
   onClose,
   onSaved,
   onReminderAdded,
 }: {
   district: DistrictFeature;
+  /** U2: what is owed in this district; left out when nothing is. */
+  money?: DistrictMoney;
   onClose: () => void;
   onSaved: () => void;
   onReminderAdded?: () => void;
@@ -52,6 +57,9 @@ export default function DistrictEditor({
   return (
     <BottomSheet open title={district.properties.name} subtitle={district.properties.parent_name ? `منطقه: ${district.properties.parent_name}` : undefined} onClose={onClose} closeLabel="بستن ویرایش" bodyClassName="district-sheet"
       dirty={status !== district.properties.coverage_status || notes !== (district.properties.notes ?? "")}>
+      <p className="mb-3 mt-0 text-[length:var(--text-sm)] text-text-muted" data-tour="district-money">
+        {money ? `${faNum(money.owed)} تومان بدهی، ${faNum(money.old)} تومان بیش از ۳۰ روز، ${faNum(money.shops)} مغازه` : "بدهی‌ای در این منطقه نیست"}
+      </p>
       <label className="mb-1.5 block text-[length:var(--text-sm)] font-medium text-text">وضعیت پوشش</label>
       <ChipGroup
         wrap

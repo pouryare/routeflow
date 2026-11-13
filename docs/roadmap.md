@@ -379,6 +379,7 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
   <details><summary>Full decision</summary>
 
   **Money map (U2).** Customer pins can already be coloured by debt (`debtColor` in `lib/types.ts`: over 30 days red, 8 to 30 orange) and the map has a debt heat switch (`CoverageMap.tsx`), but district colours only know «status» and «group» (`DistrictColorMode`). Add a «money» mode: each district shaded by what is owed there, and a tap shows «38M owed, 20M older than 30 days, 6 shops». Small build on layers and numbers that exist. A supporting feature for demos, easy for a rival to copy, so it is not the moat.
+  **Built (batch B):** third district colour mode «پول» (red when any debt is older than 30 days, green when only fresh, grey none); the district sheet says «X تومان بدهی، Y بیش از ۳۰ روز، N مغازه». `lib/districtMoney.ts`; map customers now carry `district_id`.
 
   </details>
 - **A2. Close a month.** Owner closes a month after a short checklist; reopening needs a reason; a closed month refuses entries.

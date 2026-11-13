@@ -38,6 +38,7 @@ export async function readCustomers(
     province: r.province,
     lat: r.lat,
     lng: r.lng,
+    district_id: r.district_id ?? null,
     lifecycle: r.lifecycle,
     customer_type: r.customer_type,
     parent_customer_id: r.parent_customer_id,

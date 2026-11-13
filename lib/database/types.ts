@@ -17,6 +17,7 @@ export interface Customer {
   province: string | null;
   lat: number | null;
   lng: number | null;
+  district_id?: number | null;
   lifecycle: CustomerLifecycle;
   customer_type: CustomerType | null;
   parent_customer_id: number | null;
