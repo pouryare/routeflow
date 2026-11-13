@@ -2646,7 +2646,9 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 3. Where they appear: customer page and filters first, tap flows later?
 4. How they travel: included in the customer export and in the offline sync pull, with validation on the server.
 
-**Suggested first slice:** owner-defined text and choice fields (up to ten), stored as values in a separate table keyed by customer and field, editable on the customer page and shown as columns in the customer list. No flow integration.
+**Built (first slice, 2026-11-13):** tables `custom_fields` and `custom_field_values` (values stored as text, one row per customer and field, RLS by company); owner adds a field on `/sales/admin/status` (text, number, choice, date, yes/no; up to ten active; rename; archive hides it and keeps values); a «ویژگی‌ها» card on the customer page for managers, phone sales and field reps (`PUT /api/customers/[id]/custom-fields`, all or nothing, validated on the server). Not yet: list columns, filters (T12), export, per-role hidden/read-only, ordered coloured choices, offline sync, conditional fields (E16).
+
+**Suggested first slice (done):** owner-defined text and choice fields (up to ten), stored as values in a separate table keyed by customer and field, editable on the customer page and shown as columns in the customer list. No flow integration.
 
 **Prerequisites:** none; F148 duplicates and F98 search could later include them.
 

@@ -37,7 +37,7 @@ const profile = {
   tags: ["ویژه", "بازدید"],
   products: [{ id: 1, name: "کره", price_toman: 1000 }, { id: 2, name: "پودر کاکائو", price_toman: null }],
   contacts: [], summary: null, reps: [],
-  canWrite: true, canManage: false,
+  canWrite: true, canManage: false, customFields: [],
 } as unknown as Parameters<typeof BusinessProfile>[0]["initial"];
 const timeline = { items: [], nextBefore: null };
 

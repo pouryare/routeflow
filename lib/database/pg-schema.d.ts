@@ -448,6 +448,25 @@ export interface CustomerTags {
   tag: string;
 }
 
+export interface CustomFields {
+  archived_at: string | null;
+  choices: string | null;
+  created_at: string;
+  id: Generated<number>;
+  kind: string;
+  name: string;
+  organization_id: number;
+  sort_order: Generated<number>;
+}
+
+export interface CustomFieldValues {
+  customer_id: number;
+  field_id: number;
+  organization_id: number;
+  updated_at: string;
+  value: string;
+}
+
 export interface DeletedRows {
   deleted_at: string;
   entity_id: number;
@@ -2141,6 +2160,8 @@ export interface DB {
   content_images: ContentImages;
   credit_approvals: CreditApprovals;
   crm_not_duplicates: CrmNotDuplicates;
+  custom_field_values: CustomFieldValues;
+  custom_fields: CustomFields;
   customer_loans: CustomerLoans;
   customer_tags: CustomerTags;
   customers: Customers;
