@@ -67,10 +67,19 @@ export default function PeriodsCard({ periods, currentKey }: { periods: Period[]
           <li key={p.periodKey} className="flex items-center justify-between gap-[var(--space-3)] border-b border-[var(--border)] pb-[var(--space-2)]">
             <span className="tnum">{faDigits(p.periodKey)} · {p.status === "closed" ? "بسته" : "باز"}</span>
             {p.status === "closed" || mayClose(p.periodKey, currentKey) === null ? (
+              <span className="flex items-center gap-[var(--space-2)]">
+              {p.status === "closed" ? (
+                /* D26: a plain anchor with download, because the answer is a file */
+                <a href={`/api/accounting/month-pack?period=${p.periodKey}`} download className="inline-flex min-h-[44px] items-center gap-[var(--space-2)] rounded-[var(--radius-md)] border border-[var(--border)] px-[var(--space-3)] text-[length:var(--text-sm)]">
+                  <Icon name="download" size="md" />
+                  بستهٔ حسابدار
+                </a>
+              ) : null}
               <button type="button" onClick={() => void open(p)} className="inline-flex min-h-[44px] items-center gap-[var(--space-2)] rounded-[var(--radius-md)] border border-[var(--border)] px-[var(--space-3)] text-[length:var(--text-sm)]">
                 <Icon name={p.status === "closed" ? "undo" : "archive"} size="md" />
                 {p.status === "closed" ? "بازکردن" : "بستن ماه"}
               </button>
+              </span>
             ) : (
               <span className="text-[length:var(--text-xs)] text-[var(--muted)]">ماه جاری</span>
             )}

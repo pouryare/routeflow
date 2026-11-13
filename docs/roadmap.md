@@ -746,7 +746,7 @@ Decided, but each needs something first. The "waits for" part is in the line. Th
 
 ### Accounting, reports and analytics
 
-- **D26. Month pack for the accountant.** One spreadsheet after a month is closed. Waits for closing a month (A2) and stock value on a date (D9).
+- **D26. Month pack for the accountant.** One spreadsheet after a month is closed. **Built (batch C):** a «بستهٔ حسابدار» button on each closed month in the «بستن ماه» card downloads one workbook: trial balance at month end, profit and loss, money in and out, stock at month end (value at today's average cost) and the month's journal. Owner only; refused for an open month.
 - **A1. Starting balances.** The setup wizard asks once for cash, bank, debts and stock value and makes one OPENING entry. A step in F126.
 - **Z6. Expenses by paste.** Waits for the F10 import to accept an expenses sheet.
 - **S11. F123 report questions and subtotals.** Run-time chips (period, rep, group), group by a column with subtotals, one chart. Waits for F123.

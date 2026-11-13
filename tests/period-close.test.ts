@@ -65,3 +65,13 @@ describe("A2 close a month", () => {
     expect(openRangeProblem(9, 3, 30)).not.toBeNull();
   });
 });
+
+describe("D26 month pack", () => {
+  it("is made only for a closed month, with the five sheets", async () => {
+    const { monthPack } = await import("@/lib/repo/monthPack");
+    await expect(monthPack(1, "1399-01")).rejects.toThrow(/بسته/);
+    await closePeriod(1, "1404-09", 1);
+    const book = await monthPack(1, "1404-09");
+    expect(book.worksheets.map((w) => w.name)).toEqual(["تراز آزمایشی", "سود و زیان", "ورودی و خروجی پول", "موجودی پایان ماه", "دفتر روزنامه"]);
+  });
+});
