@@ -1249,14 +1249,18 @@ export interface Products {
   active: Generated<number>;
   avg_cost_toman: Generated<number>;
   base_unit: Generated<string>;
+  category: string | null;
   created_at: string;
+  how_to_say: string | null;
   id: Generated<number>;
+  image_id: number | null;
   kg_per_base_unit: Generated<number>;
   name: string;
   notes: string | null;
   organization_id: number | null;
   reorder_point: number | null;
   sell_off: Generated<number>;
+  selling_points: string | null;
   shelf_life_days: number | null;
   sku: string | null;
   sync_xid: Generated<string | null>;

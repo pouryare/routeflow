@@ -7,10 +7,11 @@ import { catalogueFor } from "@/lib/repo/sessionReads";
 import { priceHistoryFor, ownerCostingFor } from "@/lib/repo/productsView";
 import { faToman } from "@/lib/format";
 import CatalogueEditor from "@/components/sales/CatalogueEditor";
+import ProductInfoEditor from "@/components/sales/ProductInfoEditor";
 import ProductsView from "@/components/meridian/ProductsView";
 import SplineChart from "@/components/charts/SplineChart";
 import PageHeader from "@/components/meridian/PageHeader";
-import { isVanRole, isOwner } from "@/lib/roles";
+import { isVanRole, isOwner, MANAGE_ROLES } from "@/lib/roles";
 import { recentProductChanges } from "@/lib/repo/productLog";
 import Link from "next/link";
 import { Icon } from "@/components/meridian/Icon";
@@ -130,6 +131,15 @@ export default async function ProductsPage() {
               })),
             };
           })}
+        />
+      )}
+
+      {MANAGE_ROLES.includes(session.role) && products.length > 0 && (
+        <ProductInfoEditor
+          products={products.map((p) => ({
+            id: p.id, name: p.name, category: p.category ?? null, selling_points: p.selling_points ?? null,
+            how_to_say: p.how_to_say ?? null, image_id: p.image_id === null || p.image_id === undefined ? null : Number(p.image_id),
+          }))}
         />
       )}
 

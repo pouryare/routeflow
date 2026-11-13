@@ -16,7 +16,7 @@ const VANS: Role[] = ["delivery_driver", "field_rep"];
 describe("links out of /driver", () => {
   it.each(VANS)("%s: the academy and the settings pages, never /driver itself", (role) => {
     const hrefs = driverLinks({ role }).map((l) => l.href);
-    expect(hrefs).toEqual(["/sales/academy", "/settings/notifications", "/settings/security", "/settings/sound", "/settings/tutorials"]);
+    expect(hrefs).toEqual(["/sales/catalogue", "/sales/academy", "/settings/notifications", "/settings/security", "/settings/sound", "/settings/tutorials"]);
   });
 
   it.each(VANS)("%s: every link gets past the gate", (role) => {
@@ -30,7 +30,7 @@ describe("links out of /driver", () => {
   it("renders each as a word with its icon, as a full-size target", () => {
     const h = renderToStaticMarkup(createElement(DriverLinks, { links: driverLinks({ role: "delivery_driver" }) }));
     for (const w of ["آموزش", "تنظیمات اعلان‌ها", "امنیت و ورود", "صدا", "آموزش برنامه"]) expect(h).toContain(w);
-    expect((h.match(/<svg/g) ?? []).length).toBe(5);
+    expect((h.match(/<svg/g) ?? []).length).toBe(6);
     expect(h).toContain("min-h-11");
   });
 });

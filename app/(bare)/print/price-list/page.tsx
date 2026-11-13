@@ -5,7 +5,7 @@ import { getSessionFromCookies } from "@/lib/session";
 import { catalogueFor } from "@/lib/repo/sessionReads";
 import { organizationName } from "@/lib/repo/organizations";
 import { priceList } from "@/lib/priceList";
-import { isVanRole } from "@/lib/roles";
+import { isShareholder } from "@/lib/roles";
 import { faJalaliDate, tehranTodayIso } from "@/lib/jalali";
 import { faNum } from "@/lib/format";
 import PrintButton from "@/components/PrintButton";
@@ -21,7 +21,7 @@ export const dynamic = "force-dynamic";
 export default async function PriceListPage() {
   const session = await getSessionFromCookies((await cookies()).get(COOKIE_NAME)?.value);
   if (!session) redirect("/login");
-  if (isVanRole(session.role)) redirect("/driver");
+  if (isShareholder(session.role)) redirect("/");
   const today = tehranTodayIso();
   const { sections, unpriced } = priceList(await catalogueFor(session, { onDate: today }));
 

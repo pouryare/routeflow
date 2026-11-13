@@ -258,6 +258,9 @@ export function proxy(req: NextRequest) {
     pathname.startsWith("/api/tasks") ||
     // Phase 8: the objection library is useful at the door.
     pathname.startsWith("/sales/academy") ||
+    // The van catalogue and the price sheet it prints (no cost on either).
+    pathname === "/sales/catalogue" ||
+    pathname === "/print/price-list" ||
     pathname.startsWith("/api/sales/academy") ||
     // Lesson and product pictures, read by every role.
     pathname.startsWith("/api/content-images") ||
