@@ -24,7 +24,8 @@ import {
   type DiscountStatus,
   type ShareInput,
 } from "@/lib/discounts";
-import { lineTotalToman } from "@/lib/orderMath";
+import { lineTotalToman, type LineSnapshot } from "@/lib/orderMath";
+import { discountReport, type DiscountReport } from "@/lib/discountReport";
 import { refreshOrderFigures } from "./orderFigures";
 import { linesByOrder } from "./orderLines";
 import { advanceOrder, OrderError } from "./orders";
@@ -375,4 +376,43 @@ export async function recentDiscounts(organizationId: number, limit = 20, db: Db
         ORDER BY d.id DESC LIMIT ?`
     )
     .all(organizationId, limit) as unknown as RecentDiscount[];
+}
+
+/** A11: approved discounts of the last `days` days, grouped by rep, customer and product (lib/discountReport.ts). */
+export async function discountsGiven(organizationId: number, days = 30, db: Db = getDb()): Promise<DiscountReport> {
+  const since = new Date(Date.now() - days * 86_400_000).toISOString();
+  const rows = (await db
+    .prepare(
+      `SELECT d.order_id, d.amount_toman, d.requested_by, d.decided_by, ru.display_name AS rep, c.business_name AS customer
+         FROM order_discounts d
+         JOIN orders o ON o.id = d.order_id
+         JOIN customers c ON c.id = o.customer_id
+         JOIN users ru ON ru.id = d.requested_by
+        WHERE d.organization_id = ? AND d.status = 'approved' AND d.requested_at >= ?`
+    )
+    .all(organizationId, since)) as unknown as { order_id: number; amount_toman: number; requested_by: number; decided_by: number | null; rep: string; customer: string }[];
+  if (rows.length === 0) return discountReport([]);
+  const ids = [...new Set(rows.map((r) => Number(r.order_id)))];
+  const lines = (await db
+    .prepare(
+      `SELECT l.order_id, p.name AS product, l.packs_ordered, l.packs_delivered, l.unit_price_toman, l.unit_cost_toman, l.qty_per_pack, l.kg_per_base_unit
+         FROM order_lines l JOIN products p ON p.id = l.product_id
+        WHERE l.order_id IN (${ids.map(() => "?").join(",")})`
+    )
+    .all(...ids)) as unknown as (LineSnapshot & { order_id: number; product: string })[];
+  const byOrder = new Map<number, { product: string; value: number }[]>();
+  for (const l of lines) {
+    const list = byOrder.get(Number(l.order_id)) ?? [];
+    list.push({ product: l.product, value: lineTotalToman(l) });
+    byOrder.set(Number(l.order_id), list);
+  }
+  return discountReport(
+    rows.map((r) => ({
+      amount: Number(r.amount_toman),
+      rep: r.rep,
+      customer: r.customer,
+      how: r.decided_by === null || Number(r.decided_by) === Number(r.requested_by) ? "auto" : "approved",
+      lines: byOrder.get(Number(r.order_id)) ?? [],
+    }))
+  );
 }

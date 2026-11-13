@@ -392,6 +392,7 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
   <details><summary>Full decision</summary>
 
   **Discounts given (A11).** A monthly report of toman given as discount by rep, customer and product, with approvals versus auto-passes. No page reads `order_discounts` for a report today.
+  **Built (batch B):** card «تخفیف‌های ۳۰ روز اخیر» on /sales/admin/discounts (owner): total, with or without approval, top five by rep, customer, product (an order's discount shared by line value). `lib/discountReport.ts`.
 
   </details>
 - **A6. Expense categories per company.** A small per-company category table pointing at the shared accounts. Decide before a second company.
