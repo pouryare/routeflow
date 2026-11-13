@@ -682,6 +682,22 @@ export interface EntryPlaces {
   ref_id: number;
 }
 
+export interface ExportJobs {
+  created_at: string;
+  error: string | null;
+  expires_at: string;
+  file: Buffer | null;
+  filename: string | null;
+  id: Generated<number>;
+  kind: string;
+  organization_id: number;
+  progress: Generated<number>;
+  scope_json: string;
+  status: Generated<string>;
+  total: Generated<number>;
+  user_id: number;
+}
+
 export interface Events {
   actor_user_id: number | null;
   attempts: Generated<number>;
@@ -2390,6 +2406,7 @@ export interface DB {
   manager_commission_payments: ManagerCommissionPayments;
   notification_channels: NotificationChannels;
   notification_attempts: NotificationAttempts;
+  export_jobs: ExportJobs;
   notification_deliveries: NotificationDeliveries;
   notification_prefs: NotificationPrefs;
   notification_types: NotificationTypes;

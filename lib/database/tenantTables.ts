@@ -53,6 +53,7 @@ export const TENANT_TABLES = [
   "expense_claims",
   "staff_loan_entries",
   "notification_attempts",
+  "export_jobs",
   "staff_advance_requests",
   "delivery_runs",
   /* "lead_runs" is GONE — folded into delivery_runs by foldLeadRunsIntoDeliveryRuns. Its
