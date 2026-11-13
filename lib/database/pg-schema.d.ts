@@ -208,6 +208,25 @@ export interface ChangeRequests {
   status: Generated<string>;
 }
 
+export interface ChatMessages {
+  author_id: number;
+  body: string;
+  client_key: string | null;
+  created_at: string;
+  id: Generated<number>;
+  organization_id: number;
+  record_id: number;
+  record_type: string;
+}
+
+export interface ChatReads {
+  last_read_id: number;
+  organization_id: number;
+  record_id: number;
+  record_type: string;
+  user_id: number;
+}
+
 export interface Cheques {
   amount_toman: number;
   bank_name: string | null;
@@ -2148,6 +2167,8 @@ export interface DB {
   capacity_factors: CapacityFactors;
   cash_handovers: CashHandovers;
   change_requests: ChangeRequests;
+  chat_messages: ChatMessages;
+  chat_reads: ChatReads;
   cheques: Cheques;
   churn_models: ChurnModels;
   churn_scores: ChurnScores;
