@@ -675,9 +675,11 @@ export interface Forecasts {
 
 export interface Groups {
   active: Generated<number>;
+  assign_mode: Generated<string>;
   color: string | null;
   created_at: string;
   id: Generated<number>;
+  last_assigned_user_id: number | null;
   name: string;
   organization_id: number | null;
   slug: string;

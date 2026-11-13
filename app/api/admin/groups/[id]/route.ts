@@ -4,6 +4,7 @@ import { deleteGroup, groupExists, groupMemberCount, updateGroup } from "@/lib/r
 import { orgScopeId, requireRole } from "@/lib/session";
 import { GROUP_PALETTE } from "../route";
 import { OWNER_ROLES } from "@/lib/roles";
+import { ASSIGN_MODES } from "@/lib/repo/assign";
 import { isUniqueViolation } from "@/lib/database/errors";
 
 export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/admin/groups/[id]">) {
@@ -23,7 +24,7 @@ export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/admin/grou
   }
 
   const body = (await req.json().catch(() => null)) as
-    | { name?: string; color?: string; active?: boolean }
+    | { name?: string; color?: string; active?: boolean; assign_mode?: string }
     | null;
 
   const sets: string[] = [];
@@ -40,6 +41,13 @@ export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/admin/grou
     }
     sets.push("color = ?");
     values.push(body.color!);
+  }
+  if (body?.assign_mode !== undefined) {
+    if (!(ASSIGN_MODES as readonly string[]).includes(body.assign_mode)) {
+      return NextResponse.json({ ok: false, error: "روش تقسیم نامعتبر است" }, { status: 400 });
+    }
+    sets.push("assign_mode = ?");
+    values.push(body.assign_mode);
   }
   if (body?.active !== undefined) {
     sets.push("active = ?");
