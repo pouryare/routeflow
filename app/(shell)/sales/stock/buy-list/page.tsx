@@ -8,6 +8,10 @@ import PageHeader from "@/components/meridian/PageHeader";
 import SectionHead from "@/components/meridian/SectionHead";
 import { stockPositionIn } from "@/lib/repo/routeAdapters";
 import { allSupplierPrices } from "@/lib/repo/supplierPrices";
+import { incomingByProduct } from "@/lib/repo/purchaseOrders";
+import BuyDraftButton from "@/components/sales/BuyDraftButton";
+import { addDaysIso } from "@/lib/flows/dates";
+import { tehranTodayIso } from "@/lib/jalali";
 import { buyList } from "@/lib/buyList";
 import { faNum, faToman } from "@/lib/format";
 import { pageMetadata } from "@/lib/pageMeta";
@@ -16,15 +20,16 @@ export const metadata = pageMetadata("/sales/stock/buy-list");
 
 export const dynamic = "force-dynamic";
 
-/** D17, first slice: what to buy, grouped by the cheapest supplier. No purchase drafts yet (they come with purchase orders, F66). */
+/** D17: what to buy, grouped by the cheapest supplier, less what is already on open purchase orders; each supplier's group can become a draft order. */
 export default async function BuyListPage() {
   const session = await getSessionFromCookies((await cookies()).get(COOKIE_NAME)?.value);
   if (!session) redirect("/login");
   if (!isOwner(session.role)) redirect("/sales/stock");
   const stock = await stockPositionIn(orgScopeId(session));
   const prices = await allSupplierPrices(session.organizationId);
+  const incoming = await incomingByProduct(session.organizationId);
   const groups = buyList(
-    stock.map((r) => ({ productId: r.product_id, name: r.name, unit: r.base_unit, onHand: r.on_hand, reorderPoint: r.reorder_point, target: r.target_stock, sellOff: r.sell_off })),
+    stock.map((r) => ({ productId: r.product_id, name: r.name, unit: r.base_unit, onHand: r.on_hand, onOrder: incoming.get(r.product_id)?.qty ?? 0, reorderPoint: r.reorder_point, target: r.target_stock, sellOff: r.sell_off })),
     prices.map((p) => ({ supplierId: p.supplier_id, supplier: p.supplier, productId: p.product_id, price: p.price_toman, minQty: p.min_qty, deliveryDays: p.delivery_days })),
   );
   return (
@@ -46,6 +51,13 @@ export default async function BuyListPage() {
               </li>
             ))}
           </ul>
+          {g.supplierId !== null ? (
+            <BuyDraftButton
+              supplierId={g.supplierId}
+              expectedDate={g.lines.some((l) => l.deliveryDays !== null) ? addDaysIso(tehranTodayIso(), Math.max(...g.lines.map((l) => l.deliveryDays ?? 0))) : null}
+              lines={g.lines.map((l) => ({ product_id: l.productId, base_qty: l.qty, unit_cost_toman: l.price ?? 0 }))}
+            />
+          ) : null}
         </section>
       ))}
     </>

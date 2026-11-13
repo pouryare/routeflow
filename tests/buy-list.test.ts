@@ -19,4 +19,10 @@ describe("D17 buy list", () => {
     expect(groups[0].lines[0].qty).toBe(90);
     expect(groups[0].totalToman).toBe(3600);
   });
+
+  it("counts what is already on open purchase orders as stock (F66)", () => {
+    expect(buyQty(p({ onHand: 20, onOrder: 80 }), null)).toBe(0); // target 100: 20 here and 80 coming
+    expect(buyQty(p({ onHand: 20, onOrder: 30 }), null)).toBe(50);
+    expect(buyList([p({ onOrder: 50 })], [])).toEqual([]); // 70 > reorder point 30
+  });
 });
