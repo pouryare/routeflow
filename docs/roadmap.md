@@ -348,7 +348,7 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
 
   </details>
 
-- **H5. Cleared cheque reaches the bank.** When a cheque is marked «وصول شد», one entry moves it from cheques receivable to the bank.
+- **H5. Cleared cheque reaches the bank.** When a cheque is marked «وصول شد», one entry moves it from cheques receivable to the bank. **Built 2026-11-13 (batch B).** Clearing a cheque posts Dr bank 1102 / Cr 1202 in the same save (`postChequeCleared`). No catch-up for cheques cleared before this (all data is dummy). The bank account is fixed to 1102 until D2 lets you pick one.
   <details><summary>Full decision</summary>
 
   **Cleared cheque reaches the bank (H5, Holoo comparison, fixes a wrong number).** Today `advanceCheque` (`lib/repo/cheques.ts`) only changes the status on «به بانک سپرده شد» and «وصول شد»; the money stays in `1202` چک‌های دریافتنی and the bank `1102` is too low by every cleared cheque. On «وصول شد» post Dr bank / Cr `1202`, with the account chosen the way D2 picks it. Cheques already cleared get one catch-up entry. A bounce already voids the payment and works. Built first of the Holoo fixes. Not checked: whether any report works around it.

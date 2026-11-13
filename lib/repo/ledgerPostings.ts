@@ -64,6 +64,35 @@ export async function postReceipt(
   });
 }
 
+/** A cheque clears: Dr bank / Cr cheques receivable (H5).
+ *
+ *  The receipt put the money in 1202 when the cheque came in; without this entry it stays
+ *  there for ever and the bank balance is short by every cleared cheque. */
+export async function postChequeCleared(
+  db: Db,
+  input: {
+    organizationId: number;
+    chequeId: number;
+    amountToman: number;
+    clearedAt: string;
+    clearedBy: number;
+    memo?: string | null;
+  }
+): Promise<number> {
+  return await postJournal(db, {
+    organizationId: input.organizationId,
+    postedAt: input.clearedAt,
+    sourceType: "CHEQUE",
+    sourceId: input.chequeId,
+    createdBy: input.clearedBy,
+    memo: input.memo ?? null,
+    legs: [
+      { accountId: await accountOrThrow("1102"), side: "D", amountToman: input.amountToman },
+      { accountId: await accountOrThrow("1202"), side: "C", amountToman: input.amountToman },
+    ],
+  });
+}
+
 /** Undo a receipt by posting the mirror image, referencing the original.
  *
  *  Nothing is edited or deleted. The reversal points back at the journal it cancels, so

@@ -157,6 +157,16 @@ describe("advanceCheque", () => {
     expect(c.status).toBe("cleared");
     expect(c.deposited_at).not.toBeNull();
     expect(c.cleared_at).not.toBeNull();
+    // H5: clearing moves the money from cheques receivable (1202) to the bank (1102).
+    const legs = await getDb().prepare(
+      `SELECT a.code, l.side, l.amount_toman FROM journals j
+         JOIN ledger_entries l ON l.journal_id = j.id JOIN accounts a ON a.id = l.account_id
+        WHERE j.source_type = 'CHEQUE' AND j.source_id = ? ORDER BY l.side`
+    ).all(cheque_id) as { code: string; side: string; amount_toman: number }[];
+    expect(legs).toEqual([
+      { code: "1202", side: "C", amount_toman: 1_000 },
+      { code: "1102", side: "D", amount_toman: 1_000 },
+    ]);
   });
 
   it("re-opens exactly the orders a bounced cheque had settled and raises a reminder", async () => {
