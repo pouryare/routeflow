@@ -301,6 +301,9 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 ## F12. Returns and quality management
 
+**Built (batch B, first slice).** A reason code on a credit note for returned goods (B1). Not yet: per batch, supplier claims, recall tracing, quarantine state.
+
+
 **What:** a return reason per line, per product and per batch; supplier claims; recall tracing from a batch to every customer who received it.
 
 **Why parked:** needs a consistent reason list agreed with the business; claims involve supplier paperwork outside the app; recall tracing depends on batch codes being captured at every delivery.
@@ -1034,6 +1037,9 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 ## F48. Change approvals (second-person sign-off)
 
+**Built (batch B, first slice).** Raising or removing a customer's credit limit by a group manager waits for the owner (`change_requests`, «سقف اعتبار» on the customer page; the owner decides on the discounts admin page). Not yet: price edits, other kinds, expiry, a push to the owner.
+
+
 **What:** price edits, discounts above a limit, credit-limit increases and similar sensitive changes need a second person's approval, with the reason recorded.
 
 **Already in the app:** only the credit-limit breach is approved this way (`credit_approvals`, with its own decision flow). There is no general approval request for price, discount or limit changes.
@@ -1553,6 +1559,9 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 ---
 
 ## F73. Order edit history
+
+**Built (batch B, first slice).** One edit rule per stage (`lib/orderEditRules.ts`); a priority change writes an `edit` event with old and new value on the order timeline. Not yet: a required reason after confirmation, history for dates, address and notes.
+
 
 **What:** every change to an order after confirmation (quantities, prices, dates, address, notes) shown as a timeline with who changed it, when, and why, including what the old value was.
 
@@ -2804,6 +2813,9 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 ---
 
 ## F130. Rule builder screen
+
+**Built (batch B, first slice).** The list screen `/sales/admin/rules`: state, waiting time and 14-day firings; switch and retune. Not yet: the builder, draft and publish, dry run, firing budget.
+
 
 **What:** the owner creates and edits automation rules in a form: pick an event or schedule, add conditions (for example "balance above X", "no order for 30 days"), choose the result (create a task, raise an alert, send a notification), set a cooldown and an escalation, and see recent firings.
 

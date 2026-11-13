@@ -585,31 +585,31 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
   </details>
 - **S24. «گزارش مشکل برنامه» button.** One line and an optional screenshot with page, role, version, phone and connection attached; a list for the owner. **Built 2026-11-13 (batch B).** «گزارش مشکل برنامه» in the account menu (desk), «حساب من» (phone) and the driver's links: a sheet with a line and an optional screenshot (shrunk, kept in the row); the page, role, app version, phone and connection go along. Table `problem_reports`; the owner's status page card lists open reports with «دیدن تصویر» and «انجام شد». Ten reports an hour per person.
 
-- **EV1. Rules timer on the server.** The rules sweep (callback and follow-up tasks, escalation, push and Telegram flush) runs every 5 minutes from a systemd timer, like the storage sweeps. Today it runs only when someone taps «به‌روزرسانی کارها».
+- **EV1. Rules timer on the server.** The rules sweep (callback and follow-up tasks, escalation, push and Telegram flush) runs every 5 minutes from a systemd timer, like the storage sweeps. Today it runs only when someone taps «به‌روزرسانی کارها». **Built (2026-11-12 to 13, ef35fca and earlier; EV1's timer was replaced by the worker).**
   <details><summary>Full decision</summary>
 
   **Rules timer (EV1, plan `docs/plans/event-architecture-2026-11-12.md` E1).** `deploy/routeflow` writes `routeflow-rules.service` and `.timer` (every 5 minutes, same shape as the storage timers) that run `scripts/run-sweeps.mjs rules`; nothing in the app changes. Check on the server first with `systemctl list-timers`. When the worker (EV3) has schedules, the timer is deleted in the same commit. Decided 2026-11-12 (owner: everything in the review's adopt list).
 
   </details>
-- **EV2. Events always inside the save.** An event is saved in the same transaction as the change it describes, then handled right after commit; a crash in between loses nothing.
+- **EV2. Events always inside the save.** An event is saved in the same transaction as the change it describes, then handled right after commit; a crash in between loses nothing. **Built (2026-11-12 to 13).**
   <details><summary>Full decision</summary>
 
   **Events inside the save (EV2, plan E2).** `events` gets `handled_at`, `attempts`, `next_try_at`, `last_error`. `emitEvent` only inserts; `drainEvents` runs the rule engine for unhandled rows with `SKIP LOCKED` and marks them, called right after commit so reactions are as fast as today. The CRM writes (`lib/repo/crm/write.ts`, which emit after the transaction) move inside; payments already are. The nightly archive moves only handled events. Money postings stay inside the same save as the order or payment: only notices, push, SMS, Telegram, analytics and exports may be late.
 
   </details>
-- **EV3. Background worker.** Reactions, schedules, retries and exports run in a worker started with the app; a card on «وضعیت سامانه» shows queue length and failures.
+- **EV3. Background worker.** Reactions, schedules, retries and exports run in a worker started with the app; a card on «وضعیت سامانه» shows queue length and failures. **Built (2026-11-12 to 13).**
   <details><summary>Full decision</summary>
 
   **Background worker (EV3, plan E3; decisions 10.22).** Starts inside the app process from `instrumentation.ts` (the release is a standalone bundle, so a separate script cannot import `lib/**`), claims jobs with `SKIP LOCKED`, runs handlers under the system scope. Jobs: event drain, rules sweep every 5 minutes (replaces EV1), notification flush; later exports (E7), SMS, Telegram, statements (F18), and, each with its own entry, route optimization, OCR (F1), photo processing and bank import (F10). **Split into its own process** when the first CPU-heavy job arrives. **Library: pg-boss** (owner, 2026-11-12; 12.38.2, MIT), not a queue of our own.
 
   </details>
-- **EV4. Audit record, first slice of F27.** One append-only record of old and new values for important fields, with who changed them; an owner-only history list on the record and on «وضعیت سامانه».
+- **EV4. Audit record, first slice of F27.** One append-only record of old and new values for important fields, with who changed them; an owner-only history list on the record and on «وضعیت سامانه». **Built (2026-11-12 to 13).**
   <details><summary>Full decision</summary>
 
   **Audit record (EV4, plan E4, answers F27).** `audit_log` filled by one generic trigger on a short list of tables (orders, order lines, payments, customers' owner and credit limit, users' role and active, product prices, company settings); changed columns only; actor from `rf.actor`, set beside `rf.scope`; refuses update and delete; cost, margin and credit changes visible only to roles that can see them (T6). Not in this slice: anomaly rules, the money hash chain (D6) and the permission log (E6), which sit on top of it. Does not replace `order_events`, `activities`, F99, F100 or F110.
 
   </details>
-- **EV5. Event list.** `docs/events.md`: each event name, who emits it, who reacts, fact or request; a test fails when an emitted name is missing.
+- **EV5. Event list.** `docs/events.md`: each event name, who emits it, who reacts, fact or request; a test fails when an emitted name is missing. **Built (2026-11-12 to 13).**
   <details><summary>Full decision</summary>
 
   **Event list (EV5, plan E5).** One row per event kind. A small Vitest guard reads every `kind:` passed to `emitEvent`. Requests named like facts (`reassign.requested`) are decided one by one.
