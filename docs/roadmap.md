@@ -353,6 +353,8 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
 - **B1. Credit note.** A manager makes a credit for goods returned after delivery; applied to open orders or paid back. Suppliers get the same document.
   <details><summary>Full decision</summary>
 
+  **Built (batch B):** credit note against the debt earlier (payment method CREDIT_NOTE, Dr 4102 / Cr 1201); 2026-11-13 added the cash refund: «نقد به مشتری پس داده شد» in the same sheet, for a customer who already paid. One entry Dr 4102 / Cr 1101 (cash box), a row in `cash_refunds`, a note on the customer timeline; a manager up to the owner's limit «سقف پرداخت نقدی برگشت» (default 200,000 toman, in «حدهای هشدار»), the owner any amount. Not built: voiding a refund, supplier credit notes, refund by bank transfer, stock.
+
   **Credit note (B1).** A manager makes a credit for goods returned after delivery, with a reason and an amount. It lowers what the customer owes and is applied to open orders or paid back in cash. Suppliers get the same document for goods sent back. Today the `RETURNED` status only ends the undelivered part (`lib/orderStateMachine.ts`); this is the money side of F12 and F80.
 
   </details>

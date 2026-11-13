@@ -8,7 +8,7 @@ process.env.ROUTEFLOW_DB_PATH = testDbPath;
 process.env.SESSION_SECRET = "test-secret";
 const { getDb } = await import("@/lib/db");
 const { customerDebt } = await import("@/lib/repo/payments");
-const { issueCreditNote } = await import("@/lib/repo/creditNote");
+const { issueCreditNote, refundInCash } = await import("@/lib/repo/creditNote");
 import type { Session } from "@/lib/session";
 afterAll(() => { for (const s of ["", "-wal", "-shm"]) fs.rmSync(`${testDbPath}${s}`, { force: true }); });
 
@@ -29,5 +29,23 @@ describe("B1 credit note", () => {
     expect((await customerDebt(1, cust)).total).toBe(70_000);
     const legs = (await db.prepare("SELECT a.code, l.side FROM journals j JOIN ledger_entries l ON l.journal_id = j.id JOIN accounts a ON a.id = l.account_id WHERE j.source_type = 'PAYMENT' AND j.source_id = ? ORDER BY l.side").all(id)) as { code: string; side: string }[];
     expect(legs).toEqual([{ code: "1201", side: "C" }, { code: "4102", side: "D" }]);
+  });
+});
+
+describe("B1 cash refund", () => {
+  it("pays back from the cash box under the manager limit, books Dr 4102 / Cr 1101, and leaves the owner free", async () => {
+    const db = getDb();
+    const now = new Date().toISOString();
+    const user = Number((await db.prepare("INSERT INTO users (username,password_hash,display_name,role,created_at,organization_id) VALUES ('cr','x','c','group_manager',?,1)").run(now)).lastInsertRowid);
+    const cust = Number((await db.prepare("INSERT INTO customers (customer_code,business_name,customer_type,lifecycle,synced_at,organization_id) VALUES ('CR1','ف','RESTAURANT','active','2026-01-01',1)").run()).lastInsertRowid);
+    const mgr = { organizationId: 1, role: "group_manager", user: { id: user } } as unknown as Session;
+    const owner = { organizationId: 1, role: "owner", user: { id: user } } as unknown as Session;
+    await expect(refundInCash(mgr, cust, 1000, "nope")).rejects.toThrow(/دلیل/);
+    await expect(refundInCash(mgr, cust, 200_001, "damaged")).rejects.toThrow(/مالک/);
+    const id = await refundInCash(mgr, cust, 150_000, "damaged");
+    const legs = (await db.prepare("SELECT a.code, l.side, l.amount_toman FROM journals j JOIN ledger_entries l ON l.journal_id = j.id JOIN accounts a ON a.id = l.account_id WHERE j.source_type = 'MANUAL' AND j.source_id = ? ORDER BY l.side").all(id)) as { code: string; side: string; amount_toman: number }[];
+    expect(legs.map((l) => [l.code, l.side, Number(l.amount_toman)])).toEqual([["1101", "C", 150000], ["4102", "D", 150000]]);
+    expect(Number(((await db.prepare("SELECT COUNT(*) AS n FROM activities WHERE customer_id = ? AND note LIKE 'پرداخت نقدی%'").get(cust)) as { n: number }).n)).toBe(1);
+    await expect(refundInCash(owner, cust, 500_000, "other")).resolves.toBeGreaterThan(0);
   });
 });

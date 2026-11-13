@@ -8,3 +8,6 @@ export const CREDIT_NOTE_REASONS = [
 ] as const;
 
 export const isCreditNoteReason = (v: unknown): v is (typeof CREDIT_NOTE_REASONS)[number]["id"] => CREDIT_NOTE_REASONS.some((r) => r.id === v);
+
+/** B1: whether this role may pay `amount` back in cash with the company's `limit`: an owner any amount, anyone else up to the limit. */
+export const mayRefundCash = (isOwnerRole: boolean, amount: number, limit: number): boolean => amount > 0 && (isOwnerRole || amount <= limit);

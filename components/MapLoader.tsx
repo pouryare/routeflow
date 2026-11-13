@@ -34,7 +34,7 @@ export default function MapLoader(props: {
   groups: MapGroup[];
   role: Role;
   geometryVersion: string;
-  limits?: { quietDays: number; ageingDays: number; staleDays: number; leftoverLimit?: number };
+  limits?: { quietDays: number; ageingDays: number; staleDays: number; leftoverLimit?: number; refundLimit?: number };
 }) {
   return (
     <WidgetBoundary label="نقشهٔ پوشش مشتریان">
