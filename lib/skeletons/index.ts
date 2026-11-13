@@ -9,6 +9,7 @@ import c_accounting_expenses from "./accounting-expenses.json";
 import c_accounting_income_statement from "./accounting-income-statement.json";
 import c_accounting_journal from "./accounting-journal.json";
 import c_accounting_ledger_accountId from "./accounting-ledger-accountId.json";
+import c_accounting_money from "./accounting-money.json";
 import c_accounting_payables from "./accounting-payables.json";
 import c_accounting_shareholders from "./accounting-shareholders.json";
 import c_accounting_suppliers_supplierId from "./accounting-suppliers-supplierId.json";
@@ -55,6 +56,8 @@ import c_sales_reasons from "./sales-reasons.json";
 import c_sales_reps from "./sales-reps.json";
 import c_sales_routing from "./sales-routing.json";
 import c_sales_schedule from "./sales-schedule.json";
+import c_sales_stock_buy_list from "./sales-stock-buy-list.json";
+import c_sales_stock_on_date from "./sales-stock-on-date.json";
 import c_sales_stock from "./sales-stock.json";
 import c_sales_tasks from "./sales-tasks.json";
 import c_sales_today from "./sales-today.json";
@@ -72,6 +75,7 @@ export const CAPTURES: Record<string, Capture> = {
   "/accounting/income-statement": c_accounting_income_statement as Capture,
   "/accounting/journal": c_accounting_journal as Capture,
   "/accounting/ledger/[accountId]": c_accounting_ledger_accountId as Capture,
+  "/accounting/money": c_accounting_money as Capture,
   "/accounting/payables": c_accounting_payables as Capture,
   "/accounting/shareholders": c_accounting_shareholders as Capture,
   "/accounting/suppliers/[supplierId]": c_accounting_suppliers_supplierId as Capture,
@@ -118,6 +122,8 @@ export const CAPTURES: Record<string, Capture> = {
   "/sales/reps": c_sales_reps as Capture,
   "/sales/routing": c_sales_routing as Capture,
   "/sales/schedule": c_sales_schedule as Capture,
+  "/sales/stock/buy-list": c_sales_stock_buy_list as Capture,
+  "/sales/stock/on-date": c_sales_stock_on_date as Capture,
   "/sales/stock": c_sales_stock as Capture,
   "/sales/tasks": c_sales_tasks as Capture,
   "/sales/today": c_sales_today as Capture,

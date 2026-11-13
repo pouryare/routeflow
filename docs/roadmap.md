@@ -61,7 +61,7 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
   **Orders list you can search and filter.** `/sales/orders` reads at most 100 orders and takes no filter inputs. Add `FilterChips` for status, payment, rep and day, a count, «load more» past 100, and one paste-many search (paste order numbers or phones, get just those).
 
   </details>
-- **FB4. Empty states name what is hidden.** Say what is hidden («۳ مورد به تعویق افتاده») and offer to clear the filter that causes it. Partly built 2026-11-05: payments and stock lists say how many are hidden and offer «پاک کردن فیلتر»; the action centre and the task board have no filters to name yet.
+- **FB4. Empty states name what is hidden.** Say what is hidden («۳ مورد به تعویق افتاده») and offer to clear the filter that causes it. Partly built 2026-11-05: payments and stock lists say how many are hidden and offer «پاک کردن فیلتر»; the action centre and the task board have no filters to name yet. **Batch C:** the orders list now says how many orders the search and filters hide, with «پاک کردن فیلتر».
   <details><summary>Full decision</summary>
 
   **Empty states name what is hidden.** Action centre, tasks and filtered lists say «۳ مورد به تعویق افتاده، فردا ۰۹:۰۰» and offer «پاک کردن فیلتر» when a filter is the cause.
@@ -71,6 +71,7 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
   <details><summary>Full decision</summary>
 
   **Saved views.** Per person, named filter sets on the orders and customers lists, stored on the server.
+  **Built (batch C, orders list only):** under the filter chips, a person's saved views as chips (table `saved_views`, personal, on the server); tap applies, «ذخیرهٔ این فیلتر» names a new one, «حذف نما» removes it. The customers list has no saved views yet (its filters are not in the address).
 
   </details>
 - **FB7. Keyboard triage on desk.** J/K, X, E, S keys on the action centre, tasks and orders list. Must match the physical key so it works with the Persian layout.
@@ -90,6 +91,7 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
 
   **Totals for the filtered list.** Orders, payments and cheques lists show a count and the toman sum for the current filter; the lead pool and task board show a count per column. Computed on the server with the same filter (T7).<br><br>**Total of the list (Z17).** A strip on the payments, expenses and orders lists that follows the filters and the selected rows. Not checked on every list.
 
+  **Built (batch C, first slice):** the orders list heading shows the toman sum of the orders left after the search and filters. Not yet: payments, cheques and expenses lists, ticked rows, counts per column on the lead pool and task board.
   </details>
 - **T21. Export follows what you see.** Export writes the current filter and sort, or only ticked rows, up to a row cap, and says how many rows. Customer export stays behind the authenticator code.
   <details><summary>Full decision</summary>
@@ -108,6 +110,7 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
 
   **Unsaved-changes bar.** Changing a saved view's filters shows Save, Save as new view and Reset. Views stay personal; no sharing to roles (T2).
 
+  **Built (batch C, orders list):** after a saved view's filter is changed the bar offers «ذخیره», «ذخیره به‌عنوان نمای تازه» and «بازنشانی». Views stay personal.
   </details>
 - **T11. New record pre-filled from the filter.** «مشتری جدید» from a filtered list opens with that group and rep set.
   <details><summary>Full decision</summary>
@@ -189,6 +192,7 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
   <details><summary>Full decision</summary>
 
   **Change summaries on edited orders.** When an order is edited after confirmation, the driver gets a one-line Persian push («اقلام تغییر کرد»، «موعد به … منتقل شد»، «مبلغ دریافتی تغییر کرد») and the warehouse sees a «تغییر کرده» badge. Extends the stage-based edit rules in 1c.
+  **Built (batch C, push only):** when the owner (or a manager's request the owner approves) changes a confirmed order's delivery day, due date, address or notes, each driver whose run is not finished and has a pending stop for it gets one push (type `order.changed`) with one line about what changed. Not built: the «تغییر کرده» badge for the warehouse, and line edits (none exist yet).
 
   </details>
 - **FB32. Merged order timeline.** One feed per order: status changes, notes, edits, payment adjustments and chat. Built with chat phase 1.
@@ -250,6 +254,7 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
   <details><summary>Full decision</summary>
 
   **Stock and value on a past date (D9).** A Jalali date chip on the stock page shows quantity and value per product and facility on that date, with a total and export.
+  **Built (batch C):** page `/sales/stock/on-date` (owner and managers; link on the stock page): date drums, quantity per product at the end of that day from the stock movements, value (owner only) at today's average cost because past costs are not stored. Not built: per-facility split, export (comes with the month pack D26).
 
   </details>
 - **D16. Supplier price rows.** Per product and supplier: price, minimum quantity, delivery days, supplier code.
@@ -264,6 +269,7 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
 
   **Buy list grouped by supplier (D17, the F11 first slice).** «لیست خرید»: products under their reorder point, minus what is on order, rounded up to the supplier minimum, grouped by the cheapest or fastest supplier. Tick to make a purchase draft per supplier; a person confirms.
 
+  **Built (batch C, first slice):** page `/sales/stock/buy-list` (owner; link on the stock page): products at or under their reorder point (not «تصفیه»), quantity = target less shelf (at least the supplier's minimum), grouped by the cheapest supplier price row (quicker on a tie), a group «بدون تأمین‌کننده» for the rest, with a toman total. Not built: «minus what is on order» and purchase drafts, because there are no purchase orders yet (F66). D27 and F31 wait for the same thing.
   </details>
 - **D19. Labels at goods receipt.** Print a label per batch or pallet (product, batch, expiry, QR) and an A4 PDF of barcodes.
   <details><summary>Full decision</summary>
@@ -290,6 +296,7 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
   <details><summary>Full decision</summary>
 
   **Calendar view of cheques by due date.** Phone: an agenda grouped by day (`DayChips`); desk: a Jalali month grid with daily sums. Payment promises (F50) and tasks reuse it later (T8).
+  **Built (batch C, phone agenda only):** on the cheques page a card «سررسید چک‌های در دست» lists the cheques in hand by due day, soonest first, with the day's sum; the customer name opens the customer. The desk month grid is not built; promises and tasks do not use it yet.
 
   </details>
 - **D1. Money in hand per driver and rep.** Cash and cheques go to the person's own box; the office counts at day end; a gap is saved with a reason.
@@ -349,6 +356,7 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
 
   **Money in and out (A5).** A monthly page «ورودی و خروجی پول»: money in (receipts, cheques cashed), money out (suppliers, expenses by category, commission, loans), opening and closing cash and bank, read from the ledger legs of the money accounts. No new tables.
 
+  **Built (batch C, first slice):** page `/accounting/money` (owner, tab «ورودی و خروجی پول» in the accounts group): per month, money in and out of the cash, bank and petty-cash accounts grouped by what posted it (expenses by category), opening and closing balance. Moves between own accounts net to zero and are left out. Z5 (calendar tab) and Z20 (month so far) are not built yet.
   </details>
 - **B1. Credit note.** A manager makes a credit for goods returned after delivery; applied to open orders or paid back. Suppliers get the same document.
   <details><summary>Full decision</summary>
@@ -419,6 +427,7 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
   <details><summary>Full decision</summary>
 
   **Open a date range in a closed month (B2, extends A2).** The owner opens one date range with a reason; it closes again by itself after a set time. Logged. A2 stays one lock for all areas.
+  **Built (batch C):** in the «بازکردن» sheet of a closed month, «فقط چند روز» takes a from-day and to-day and a reason (with the authenticator code); entries dated in those days are accepted for 24 hours, then the month is closed again by itself. Table `period_openings` keeps who, when and why. Z7 is built too: the close checklist counts expenses with no receipt or note.
 
   </details>
 - **Z7. Needs attention.** A filter chip for entries with no photo, note or supplier; the month-close checklist shows the count. Partly built 2026-11-05: the «نیاز به بررسی» chip on recent expenses; the month-close count waits for A2.
@@ -438,6 +447,7 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
   <details><summary>Full decision</summary>
 
   **Close the year (H2, Holoo comparison).** There is no year object and no closing entry, on purpose (no second set of books). The balance sheet derives one line «سود و زیان دوره» (`3900`) from all revenue and expense since the start, so old profit never resets, and the profit split debits `3103` which never received the profit, so `3103` goes negative. A «بستن سال» button posts one closing entry per Jalali year that moves the year's profit into `3103`; the `3900` line then covers only the open year; income statement and balance sheet get a year filter (today a single month or all time). Owner and the accountant role (H3) can run it; reopening needs a reason and is logged. Entry numbers keep running as today (restarting each year was not chosen). Works with A2 (close a month) and the yearly split. Not checked in the app: only the code was read.
+  **Built (batch C):** on the journal page the owner sees «بستن سال» per finished year: one `YEAR_CLOSE` entry clears the year's revenue and expense accounts into 3103 and closes the twelve months (the last month must still be open). Profit reports, the expense lists and the profit split leave that entry out (`NOT_YEAR_CLOSE`), the balance sheet keeps it, so «سود و زیان دوره» covers only open years. Reopening a year asks for a reason and the authenticator code, opens the last month and posts a mirror entry. The income statement gets year chips (`?period=1403`). Not built: restarting entry numbers each year (not chosen); the accountant role (H3) comes separately.
 
   </details>
 - **H6. Void an expense or a purchase.** A «باطل کردن» button with a reason posts the mirror entry and keeps the original visible.
@@ -732,16 +742,16 @@ Decided, but each needs something first. The "waits for" part is in the line. Th
 
 ### Money: credit, payments and cash
 
-- **T23. F50 payment promises wake-up row.** A follow-up closes itself when paid, otherwise wakes on the date; the same row can serve snooze and cooldowns. Waits for F50.
+- **T23. F50 payment promises wake-up row.** A follow-up closes itself when paid, otherwise wakes on the date; the same row can serve snooze and cooldowns. **Built (batch C):** the rules sweep makes one high-priority call task for the customer's rep (else group managers) on the day a promise falls due and is unpaid, and closes that task by itself once payments since the promise reach its amount. Snooze and cooldowns do not use it yet.
 - **D11. Pay by link through an Iranian gateway.** A link per order or balance on the company's own merchant account. Waits for a merchant account.
-- **A8. Reminder days around the due date.** Owner sets a day list (−3, 0, +3...); each day a task is made for the rep. First slice of F18; uses D5.
+- **A8. Reminder days around the due date.** Owner sets a day list (−3, 0, +3...); each day a task is made for the rep. First slice of F18; uses D5. **Built (batch C):** on the owner's status page a «یادآوری سررسید پرداخت» card picks days from -7 to +7; the rules sweep makes one call task per unpaid order and day for the order's rep (once each). No message to the customer (that waits for F18/F6/F79).
 - **B4. Bank line rules.** A short rule list pre-fills imported bank lines. Waits for the F10 bank import.
 - **Z5. Month calendar.** A tab on the money in/out page (A5): Jalali grid with collected, delivered and expenses per day.
-- **Z20. Month so far.** A bar for the month gone and a month-end guess, on the A7 tiles and the A5 page.
+- **Z20. Month so far.** A bar for the month gone and a month-end guess, on the A7 tiles and the A5 page. **Built (batch C, A5 page only):** a bar for the share of the running month gone and a month-end guess for money in at the same pace. The A7 tiles do not show it yet.
 
 ### Accounting, reports and analytics
 
-- **D26. Month pack for the accountant.** One spreadsheet after a month is closed. Waits for closing a month (A2) and stock value on a date (D9).
+- **D26. Month pack for the accountant.** One spreadsheet after a month is closed. **Built (batch C):** a «بستهٔ حسابدار» button on each closed month in the «بستن ماه» card downloads one workbook: trial balance at month end, profit and loss, money in and out, stock at month end (value at today's average cost) and the month's journal. Owner only; refused for an open month.
 - **A1. Starting balances.** The setup wizard asks once for cash, bank, debts and stock value and makes one OPENING entry. A step in F126.
 - **Z6. Expenses by paste.** Waits for the F10 import to accept an expenses sheet.
 - **S11. F123 report questions and subtotals.** Run-time chips (period, rep, group), group by a column with subtotals, one chart. Waits for F123.

@@ -1,6 +1,7 @@
 import { withRunningBalance } from "@/lib/runningBalance";
 import { getDb } from "@/lib/db";
 import type { RecentExpense } from "@/lib/flows/expense";
+import { NOT_YEAR_CLOSE } from "@/lib/yearClose";
 
 /**
  * The read layer for the accounting section. Every number a screen shows comes from here.
@@ -179,10 +180,16 @@ export async function incomeStatement(
 ): Promise<IncomeStatement> {
   const db = getDb();
   const args: unknown[] = [organizationId];
-  let where = "j.organization_id = ?";
+  let where = `j.organization_id = ? AND ${NOT_YEAR_CLOSE}`;
   if (filter?.periodKey) {
-    where += " AND j.period_key = ?";
-    args.push(filter.periodKey);
+    // H2: a four-digit key is a whole Jalali year
+    if (/^\d{4}$/.test(filter.periodKey)) {
+      where += " AND j.period_key LIKE ?";
+      args.push(`${filter.periodKey}-%`);
+    } else {
+      where += " AND j.period_key = ?";
+      args.push(filter.periodKey);
+    }
   }
 
   const sumFor = async (code: string) =>
@@ -445,7 +452,7 @@ export async function expensesByCategory(organizationId: number, filter?: { peri
          FROM ledger_entries e
          JOIN journals j ON j.id = e.journal_id
          JOIN accounts a ON a.id = e.account_id
-        WHERE e.organization_id = ? AND a.type = 'EXPENSE' AND a.code <> '5101'${extra}
+        WHERE e.organization_id = ? AND a.type = 'EXPENSE' AND a.code <> '5101' AND ${NOT_YEAR_CLOSE}${extra}
         GROUP BY a.id) t
         WHERE amountToman <> 0
         ORDER BY amountToman DESC`
@@ -489,7 +496,7 @@ export async function expensesByEnterer(organizationId: number, hideAccountIds: 
          JOIN journals j ON j.id = e.journal_id
          JOIN accounts a ON a.id = e.account_id
          LEFT JOIN users u ON u.id = j.created_by
-        WHERE e.organization_id = ? AND a.type = 'EXPENSE' AND a.code <> '5101'
+        WHERE e.organization_id = ? AND a.type = 'EXPENSE' AND a.code <> '5101' AND ${NOT_YEAR_CLOSE}
           AND j.reverses_journal_id IS NULL AND NOT EXISTS (SELECT 1 FROM journals r WHERE r.reverses_journal_id = j.id)
           ${hideAccountIds.length ? `AND a.id NOT IN (${hideAccountIds.map(() => "?").join(",")})` : ""}
         GROUP BY j.created_by, u.id ORDER BY amountToman DESC`

@@ -72,3 +72,32 @@ export async function brokenPromisesFor(session: Session): Promise<(PromiseRow &
     .all(session.organizationId, today, since, ...scope.params)) as unknown as (Raw & { customer_name: string })[];
   return rows.map((r) => ({ ...shape(r, today), customer_name: r.customer_name })).filter((r) => r.status === "broken");
 }
+
+const wakeTitle = (business: string, amount: number, date: string) => `وعدهٔ پرداخت ${business} (${Math.round(amount).toLocaleString("fa-IR")} تومان تا ${date}) سررسید شد`;
+
+/** T23: a promise whose day has come and is not paid makes one call task for the customer's rep; a promise that gets paid
+ *  closes its task by itself. Run by the rules sweep. Returns how many tasks were made. */
+export async function wakePromises(orgId: number, today = tehranTodayIso()): Promise<number> {
+  const db = getDb();
+  const rows = (await db
+    .prepare(`${SELECT.replace("FROM payment_promises p JOIN customers c ON c.id = p.customer_id", ", c.business_name AS business, c.owner_user_id AS owner, c.group_id AS gid FROM payment_promises p JOIN customers c ON c.id = p.customer_id")} WHERE p.organization_id = ? AND p.cancelled_at IS NULL AND p.promised_date <= ? ORDER BY p.id DESC LIMIT 500`)
+    .all(orgId, today)) as unknown as (Raw & { business: string; owner: number | null; gid: number | null })[];
+  let made = 0;
+  const at = new Date().toISOString();
+  for (const r of rows) {
+    const title = wakeTitle(r.business, Number(r.amount_toman), r.promised_date);
+    if (promiseStatus(r, today) === "kept") {
+      await db.prepare("UPDATE tasks SET status = 'done', done_at = ? WHERE organization_id = ? AND entity_type = 'customer' AND entity_id = ? AND title = ? AND status = 'open'").run(at, orgId, r.customer_id, title);
+      continue;
+    }
+    const res = await db
+      .prepare(
+        `INSERT INTO tasks (organization_id, assignee_user_id, role_hint, group_id, kind, title, entity_type, entity_id, due_at, priority, status, created_at, created_source)
+         SELECT ?, ?, ?, ?, 'call', ?, 'customer', ?, ?, 'HIGH', 'open', ?, 'system'
+          WHERE NOT EXISTS (SELECT 1 FROM tasks t WHERE t.organization_id = ? AND t.entity_type = 'customer' AND t.entity_id = ? AND t.title = ?)`
+      )
+      .run(orgId, r.owner, r.owner ? null : "group_manager", r.gid, title, r.customer_id, today, at, orgId, r.customer_id, title);
+    made += Number(res.changes);
+  }
+  return made;
+}

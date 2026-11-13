@@ -33,6 +33,7 @@ import LiveRefresh from "@/components/LiveRefresh";
 import Pager from "@/components/accounting/Pager";
 import { pagingFor, type Paging } from "@/lib/paging";
 import OrderFilters from "@/components/sales/OrderFilters";
+import { listViews, type SavedView } from "@/lib/repo/savedViews";
 import { filterOrders } from "@/lib/orderListFilter";
 import { tehranTodayIso } from "@/lib/jalali";
 
@@ -92,6 +93,16 @@ function barsFor(seed: number, total: number): [number, number, number, number] 
   return out as [number, number, number, number];
 }
 
+/** FB4: say how many orders the filters hide, and offer to clear them. */
+function HiddenNote({ hidden, clearHref }: { hidden: number; clearHref: string }) {
+  return (
+    <p className="m-0 mt-2 text-[length:var(--text-sm)] text-[var(--muted)]">
+      {faNum(hidden)} سفارش با این فیلتر دیده نمی‌شود.{" "}
+      <Link href={clearHref} className="text-[var(--accent-text)]">پاک کردن فیلتر</Link>
+    </p>
+  );
+}
+
 /** «فهرست» — the pocket list, which is what this route always showed. */
 function ListView({
   orders,
@@ -106,7 +117,12 @@ function ListView({
   reps,
   filtered,
   more,
+  views,
+  totalCount,
 }: {
+  /** FB4: how many orders the search and filters hide. */
+  totalCount: number;
+  views: SavedView[];
   orders: OrderSummary[];
   /** FB1: who sold the listed orders (for the rep chips), whether a search or chip is on, and the link that reads 100 more. */
   reps: string[];
@@ -135,7 +151,7 @@ function ListView({
           <div className="n">
             {orders.length === 0
               ? "سفارشی پیدا نشد"
-              : `${faNum(orders.length)} سفارش، از ${faNum(customerCount)} مشتری · روی هر کارت بزنید`}
+              : `${faNum(orders.length)} سفارش، از ${faNum(customerCount)} مشتری، جمعاً ${faToman(orders.reduce((s, o) => s + o.total_toman, 0))} · روی هر کارت بزنید`}
           </div>
         </div>
         <div className="acts">
@@ -162,7 +178,8 @@ function ListView({
       </div>
 
       <div className="kblock__body">
-        <OrderFilters reps={reps} />
+        <OrderFilters reps={reps} views={views} />
+        {(filtered || range) && totalCount > orders.length ? <HiddenNote hidden={totalCount - orders.length} clearHref={focused ? `/sales/orders?customer=${focused.id}` : "/sales/orders"} /> : null}
       </div>
       {bounds && <OrderAmountFilter key={range ? range.join("-") : "all"} bounds={bounds} active={range} amounts={amounts} />}
 
@@ -461,6 +478,8 @@ export default async function OrdersPage({
           reps={[...new Set(allOrders.map((o) => o.salesperson_name).filter((n): n is string => !!n))]}
           filtered={isFiltered}
           more={more}
+          views={await listViews(session.organizationId, session.user.id)}
+          totalCount={allOrders.length}
         />
       )}
     </>

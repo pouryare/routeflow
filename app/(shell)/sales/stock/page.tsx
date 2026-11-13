@@ -16,6 +16,7 @@ import PageHeader from "@/components/meridian/PageHeader";
 import { isVanRole, isOwner, MANAGE_ROLES } from "@/lib/roles";
 import { findDefaultFacilityId, onHandByProduct } from "@/lib/repo/stock";
 import Link from "next/link";
+import { Icon } from "@/components/meridian/Icon";
 import StockCountEntry from "@/components/flows/StockCountEntry";
 import ReceiveEntry from "@/components/flows/ReceiveEntry";
 import { pageMetadata } from "@/lib/pageMeta";
@@ -101,6 +102,18 @@ export default async function StockPage() {
   return (
     <>
     <PageHeader route="/sales/stock" />
+    {MANAGE_ROLES.includes(session.role) ? (
+      <Link href="/sales/stock/on-date" className="mb-3 inline-flex min-h-[44px] items-center gap-2 text-[length:var(--text-sm)] text-[var(--accent-text)]">
+        <Icon name="clock" size="md" />
+        موجودی در یک روز گذشته
+      </Link>
+    ) : null}
+    {isOwner(session.role) ? (
+      <Link href="/sales/stock/buy-list" className="mb-3 ms-4 inline-flex min-h-[44px] items-center gap-2 text-[length:var(--text-sm)] text-[var(--accent-text)]">
+        <Icon name="receipt" size="md" />
+        فهرست خرید
+      </Link>
+    ) : null}
     <div className="flex flex-col gap-[var(--space-5)]">
       <div className="statrow">
         <GradientStat tone="peach" label="ارزش کل انبار"

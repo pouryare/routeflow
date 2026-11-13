@@ -11,6 +11,8 @@ import { maintenanceFor } from "@/lib/repo/maintenance";
 import AccessReviewCard from "@/components/meridian/AccessReviewCard";
 import DocumentSettingsForm from "@/components/meridian/DocumentSettingsForm";
 import TaskPushForm from "@/components/meridian/TaskPushForm";
+import DueReminderForm from "@/components/meridian/DueReminderForm";
+import { dueReminderDays } from "@/lib/repo/dueReminders";
 import ProblemReportsCard from "@/components/meridian/ProblemReportsCard";
 import { openProblemReports } from "@/lib/repo/problemReports";
 import IdleSignoutForm from "@/components/meridian/IdleSignoutForm";
@@ -128,6 +130,7 @@ export default async function StatusPage() {
       </div>
       <div className="mt-[var(--space-4)]">
         <TaskPushForm minutes={pushMinutes} />
+        <DueReminderForm days={await dueReminderDays(session.organizationId)} />
       </div>
       <div className="mt-[var(--space-4)]">
         <ThresholdsForm values={limits} />

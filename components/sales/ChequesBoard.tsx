@@ -18,6 +18,9 @@ import JalaliDateInput from "@/components/meridian/JalaliDateInput";
 import { useRouter } from "next/navigation";
 import { useCallback, useMemo, useState } from "react";
 import { idemKeeper } from "@/lib/idemKey";
+import { chequeAgenda } from "@/lib/chequeAgenda";
+import CustomerName from "@/components/CustomerName";
+import SectionHead from "@/components/meridian/SectionHead";
 import { faNum, faToman } from "@/lib/format";
 import PaymentFlow from "@/components/flows/PaymentFlow";
 import { CHEQUE_STATUS_LABEL, CHEQUE_TRANSITIONS, type ChequeStatus } from "@/lib/chequeStates";
@@ -344,6 +347,29 @@ export default function ChequesBoard({ customers, canSeeBooks = false }: { custo
         </button>
         {error && <p className="col-span-full text-sm text-danger">{error}</p>}
       </form>
+
+      {/* T8: cheques in hand by the day they fall due, with the sum for each day */}
+      {chequeAgenda(cheques ?? []).length > 0 ? (
+        <section aria-label="سررسید چک‌ها" className="flex flex-col gap-2 rounded-lg border border-border bg-surface p-3" data-tour="cheque-agenda">
+          <SectionHead title="سررسید چک‌های در دست" as="h3" />
+          <ul className="m-0 flex list-none flex-col gap-2 p-0">
+            {chequeAgenda(cheques ?? []).map((d) => (
+              <li key={d.date} className="flex flex-col gap-1 border-b border-border pb-2 last:border-0 last:pb-0">
+                <div className="flex justify-between text-sm">
+                  <strong>{faJalaliDate(d.date)}{d.date < today ? " (گذشته)" : d.date === today ? " (امروز)" : ""}</strong>
+                  <span className="tnum">{faToman(d.totalToman)}</span>
+                </div>
+                {d.items.map((c) => (
+                  <div key={c.id} className="flex justify-between gap-2 text-xs text-text-muted">
+                    <CustomerName id={c.customer_id} name={customerName(c.customer_id)} />
+                    <span className="tnum">{faToman(c.amount_toman)}</span>
+                  </div>
+                ))}
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
 
       <div className="grid gap-4 md:grid-cols-3">
         {COLUMNS.map((col) => (

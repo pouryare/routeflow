@@ -201,6 +201,12 @@ export const PAGE_META: Record<string, PageMeta> = {
     overview:
       "درآمد منهای بهای تمام‌شده و هزینه‌ها، برای یک دوره. اگر بهای تمام‌شدهٔ بخشی از فروش‌ها معلوم نباشد، صفحه صریحاً اعلام می‌کند که سود نمایش‌داده‌شده بیش از واقع است.",
   },
+  "/accounting/money": {
+    title: "ورودی و خروجی پول",
+    titleEn: "Money in and out",
+    overview:
+      "پولی که در یک ماه به صندوق و بانک آمد و از آن‌ها رفت، با مانده اول و آخر ماه، مستقیماً از دفتر.",
+  },
   "/accounting/payables": {
     title: "بدهی تأمین‌کنندگان",
     titleEn: "Accounts payable",
@@ -267,6 +273,17 @@ export const PAGE_META: Record<string, PageMeta> = {
     help: "page.stock",
     overview:
       "موجودی جاری، نقطهٔ سفارش، و خریدهای در راه. اقلامی که زیر حد هشدار رفته‌اند بالای فهرست علامت خورده‌اند.",
+  },
+
+  "/sales/stock/buy-list": {
+    title: "فهرست خرید",
+    titleEn: "Buy list",
+    overview: "کالاهایی که به نقطهٔ سفارش رسیده‌اند، به تفکیک ارزان‌ترین تأمین‌کننده و با رعایت حداقل سفارش او.",
+  },
+  "/sales/stock/on-date": {
+    title: "موجودی در یک روز",
+    titleEn: "Stock on a date",
+    overview: "موجودی هر کالا در پایان یک روز گذشته، از حرکت‌های انبار.",
   },
 
   // مدیریت
