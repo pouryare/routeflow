@@ -1041,7 +1041,7 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 ## F48. Change approvals (second-person sign-off)
 
-**Built (batch B, first slice).** Raising or removing a customer's credit limit by a group manager waits for the owner (`change_requests`, «سقف اعتبار» on the customer page; the owner decides on the discounts admin page). Not yet: price edits, other kinds, expiry, a push to the owner.
+**Built (batch B, first slice).** Raising or removing a customer's credit limit by a group manager waits for the owner (`change_requests`, «سقف اعتبار» on the customer page; the owner decides on the discounts admin page). **Added 2026-11-13:** a second kind, «اصلاح جزئیات سفارش» (see F73): a group manager's edit of a confirmed order waits for the owner, the owner's applies at once; unanswered requests lapse after 3 days; the owner sees a line in «امروز». Discounts already had their own approval flow (every discount waits, `docs/decisions.md` batch A). Not yet: price edits on a price list, a push message to the owner.
 
 
 **What:** price edits, discounts above a limit, credit-limit increases and similar sensitive changes need a second person's approval, with the reason recorded.
@@ -1566,7 +1566,7 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 ## F73. Order edit history
 
-**Built (batch B, first slice).** One edit rule per stage (`lib/orderEditRules.ts`); a priority change writes an `edit` event with old and new value on the order timeline. Not yet: a required reason after confirmation, history for dates, address and notes.
+**Built (batch B, first slice).** One edit rule per stage (`lib/orderEditRules.ts`); a priority change writes an `edit` event with old and new value on the order timeline. **Finished 2026-11-13:** a confirmed order's delivery day, due date, address and notes can be changed with a required reason; each change writes an `edit` event with old value, new value and reason (and who asked, when the owner approved a manager's request). Lines stay locked after confirmation (return lines are the way to correct them).
 
 
 **What:** every change to an order after confirmation (quantities, prices, dates, address, notes) shown as a timeline with who changed it, when, and why, including what the old value was.

@@ -4,3 +4,6 @@ export function needsSignOff(oldLimit: number | null, newLimit: number | null): 
   if (newLimit === null) return oldLimit !== null;
   return oldLimit === null ? false : newLimit > oldLimit;
 }
+
+/** A refusal the owner or manager should read (shown as the message). */
+export class ChangeRequestError extends Error {}

@@ -2,13 +2,17 @@
  *  control, the API and the repo decide whether to accept the write; all three ask here, and a refusal
  *  carries its reason in one Persian line. */
 
-export type OrderEdit = "line" | "priority";
+export type OrderEdit = "line" | "priority" | "detail";
 
 const FINISHED = new Set(["DELIVERED", "PARTIALLY_DELIVERED", "CLOSED", "CANCELLED", "RETURNED"]);
 
 export function editRule(edit: OrderEdit, status: string): { ok: true } | { ok: false; why: string } {
   if (edit === "line") {
     return status === "DRAFT" ? { ok: true } : { ok: false, why: "سفارش تأییدشده ویرایش نمی‌شود؛ برای اصلاح، قلم برگشتی ثبت کنید" };
+  }
+  if (edit === "detail") {
+    if (status === "DRAFT") return { ok: false, why: "پیش‌نویس را از خود سفارش ویرایش کنید" };
+    return FINISHED.has(status) ? { ok: false, why: "جزئیات سفارشِ بسته‌شده تغییر نمی‌کند" } : { ok: true };
   }
   return FINISHED.has(status) ? { ok: false, why: "اولویت سفارشِ بسته‌شده تغییر نمی‌کند" } : { ok: true };
 }

@@ -17,6 +17,7 @@ export interface Candidate {
     | "stale_draft"
     | "broken_promise"
     | "cash_gap"
+    | "approval_waiting"
     | "at_risk_customer"
     | "stockout_risk"
     | "overdue_receivable"
