@@ -1,5 +1,5 @@
 -- Up Migration
--- rf: expand-only
+-- rf: contract
 -- squawk-ignore-file ban-drop-column, prefer-bigint-over-int, require-concurrent-index-creation, require-concurrent-index-deletion
 SET lock_timeout = '5s';
 SET statement_timeout = '30s';
