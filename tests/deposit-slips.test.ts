@@ -34,3 +34,30 @@ describe("D2 deposit slips", () => {
     expect(await slipView(2, first)).toBeNull();
   });
 });
+
+describe("D2 several bank accounts", () => {
+  it("asks for an account once the company has one, tags the slip, and books the cleared cheque to that account", async () => {
+    const { addBankAccount, bankAccountsFor } = await import("@/lib/repo/bankAccounts");
+    const { advanceCheque } = await import("@/lib/repo/cheques");
+    const db = getDb();
+    const now = new Date().toISOString();
+    const user = Number((await db.prepare("INSERT INTO users (username,password_hash,display_name,role,created_at,organization_id) VALUES ('bk','x','d','owner',?,1)").run(now)).lastInsertRowid);
+    const cust = Number((await db.prepare("INSERT INTO customers (customer_code,business_name,lifecycle,synced_at,organization_id) VALUES ('D2','ف',  'active',?,1)").run(now)).lastInsertRowid);
+    const mk = async (no: string, amount: number) =>
+      Number((await db.prepare("INSERT INTO cheques (organization_id,customer_id,amount_toman,cheque_no,due_date,status,received_at,received_by,created_at,updated_at) VALUES (1,?,?,?,'2026-09-01','in_hand',?,?,?,?)").run(cust, amount, no, now, user, now, now)).lastInsertRowid);
+    const mellat = await addBankAccount(1, "ملت", user);
+    await addBankAccount(1, "ملی", user);
+    await expect(addBankAccount(1, "ملت", user)).rejects.toThrow();
+    const a = await mk("201", 4000);
+    const b = await mk("202", 900);
+    await expect(depositCheques(1, [a], user)).rejects.toThrow("حساب بانکی");
+    await expect(depositCheques(1, [a], user, 999999)).rejects.toThrow();
+    const slip = await depositCheques(1, [a], user, mellat);
+    expect((await slipView(1, slip))?.bankName).toBe("ملت");
+    await advanceCheque(1, a, "cleared", user);
+    const accounts = await bankAccountsFor(1);
+    expect(accounts.find((x) => x.id === mellat)?.cleared).toBe(4000);
+    expect(accounts.find((x) => x.name === "ملی")?.cleared).toBe(0);
+    expect(b).toBeGreaterThan(0);
+  });
+});

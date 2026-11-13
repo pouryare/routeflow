@@ -13,6 +13,7 @@
  *  and a second copy of the answer is a second thing to keep in step. */
 export const TENANT_TABLES = [
   "cash_handovers",
+  "bank_accounts",
   "deposit_slips",
   "payment_promises",
   "van_positions",

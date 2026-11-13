@@ -22,6 +22,7 @@ import { faNum, faToman } from "@/lib/format";
 import PaymentFlow from "@/components/flows/PaymentFlow";
 import { CHEQUE_STATUS_LABEL, CHEQUE_TRANSITIONS, type ChequeStatus } from "@/lib/chequeStates";
 import SmartPicker from "@/components/mobile/SmartPicker";
+import DepositBankSheet from "@/components/sales/DepositBankSheet";
 
 interface Customer {
   id: number;
@@ -184,7 +185,8 @@ export default function ChequesBoard({ customers, canSeeBooks = false }: { custo
   const [picked, setPicked] = useState<Set<number> | null>(null);
   // Once picking, a finger can slide down the tick boxes to pick (or drop) many at once.
   const tick = useDragSelect(picked ?? new Set(), setPicked);
-  const bulk = (to: ChequeStatus) => {
+  const [bankSheet, setBankSheet] = useState(false);
+  const bulk = (to: ChequeStatus, bankAccountId: number | null = null) => {
     const { ids, skipped } = chequeBulk(cheques ?? [], picked ?? new Set(), to);
     if (ids.length === 0) {
       setError("هیچ‌کدام از چک‌های انتخاب‌شده به این وضعیت نمی‌روند");
@@ -196,7 +198,7 @@ export default function ChequesBoard({ customers, canSeeBooks = false }: { custo
       send: async () => {
         if (to === "deposited") {
           // D2: all together under one numbered slip.
-          const res = await fetch("/api/cheques/deposit", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ids }) });
+          const res = await fetch("/api/cheques/deposit", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ids, bankAccountId }) });
           const j = (await res.json().catch(() => null)) as { error?: string; slip?: number } | null;
           if (!res.ok) return { ok: false, error: j?.error };
           slip = j?.slip ?? null;
@@ -279,7 +281,7 @@ export default function ChequesBoard({ customers, canSeeBooks = false }: { custo
       ) : (
         <div className="sticky top-0 z-10 flex flex-wrap items-center gap-2 rounded border border-accent bg-surface p-2" role="status">
           <span className="text-sm">{faNum(picked.size)} چک انتخاب شد</span>
-          <button type="button" disabled={picked.size === 0} onClick={() => bulk("deposited")} className="touch rounded border border-border px-3 text-sm disabled:opacity-40">
+          <button type="button" disabled={picked.size === 0} onClick={() => setBankSheet(true)} className="touch rounded border border-border px-3 text-sm disabled:opacity-40">
             <Icon name="check" size="sm" />
             به بانک سپرده شد
           </button>
@@ -293,6 +295,17 @@ export default function ChequesBoard({ customers, canSeeBooks = false }: { custo
           </button>
         </div>
       )}
+
+      {bankSheet ? (
+        <DepositBankSheet
+          count={picked?.size ?? 0}
+          onClose={() => setBankSheet(false)}
+          onPick={(bank) => {
+            setBankSheet(false);
+            bulk("deposited", bank);
+          }}
+        />
+      ) : null}
 
       <form onSubmit={record} className="hidden gap-3 rounded-lg border border-border bg-surface p-4 md:grid md:grid-cols-3">
         <SmartPicker

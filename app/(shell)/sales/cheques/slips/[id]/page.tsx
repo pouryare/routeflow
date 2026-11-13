@@ -29,7 +29,7 @@ export default async function SlipPage({ params }: { params: Promise<{ id: strin
   return (
     <div dir="rtl" className="mx-auto flex max-w-3xl flex-col gap-[var(--space-4)] p-[var(--space-4)]">
       <PageHeader route="/sales/cheques" />
-      <SectionHead title={`برگهٔ واریز شمارهٔ ${faNum(slip.slipNo)}`} sub={`${faJalaliDate(slip.createdAt)} · ${faNum(slip.cheques.length)} چک · جمع ${faToman(slip.total)}`} />
+      <SectionHead title={`برگهٔ واریز شمارهٔ ${faNum(slip.slipNo)}`} sub={`${faJalaliDate(slip.createdAt)} · ${faNum(slip.cheques.length)} چک · جمع ${faToman(slip.total)}${slip.bankName ? ` · ${slip.bankName}` : ""}`} />
       <ul className="m-0 flex list-none flex-col gap-[var(--space-2)] p-0 text-[length:var(--text-sm)]">
         {slip.cheques.map((c) => (
           <li key={c.chequeNo} className="flex flex-wrap items-baseline justify-between gap-[var(--space-2)] border-b border-[var(--border)] pb-[var(--space-2)]">

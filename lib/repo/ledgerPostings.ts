@@ -89,11 +89,13 @@ export async function postChequeCleared(
     clearedAt: string;
     clearedBy: number;
     memo?: string | null;
+    bankAccountId?: number | null;
   }
 ): Promise<number> {
   return await postJournal(db, {
     organizationId: input.organizationId,
     postedAt: input.clearedAt,
+    bankAccountId: input.bankAccountId,
     sourceType: "CHEQUE",
     sourceId: input.chequeId,
     createdBy: input.clearedBy,

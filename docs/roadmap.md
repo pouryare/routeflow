@@ -301,6 +301,8 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
 - **D2. Cheque deposit slips, several bank accounts.** Tick cheques, pick a bank account, get a numbered slip. A bounce reopens the debt.
   <details><summary>Full decision</summary>
 
+  **Built (batch B):** slips 2026-11-13 (PR #84); bank accounts 2026-11-13 (new table `bank_accounts` per company; depositing opens a sheet to pick or add an account; the slip and the journal that books the cleared cheque carry the account tag, so each account's cleared balance is read from the single bank ledger account `1102`). A company with no account keeps the old single-bank behaviour. Not built: renaming or closing an account, the opening balance, cash deposits and transfers into a chosen account (they stay on `1102` untagged).
+
   **Cheque deposit slips and more than one bank account (D2).** Tick cheques on the board, pick the bank account, get a numbered slip with count, total and a printable list. A bounce takes the cheque out and reopens the debt. Works with D1 (driver box, office box, bank).
 
   </details>
