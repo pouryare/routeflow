@@ -17,6 +17,7 @@ import { accountIdByCode } from "./ledger";
 import { postJournal, LedgerError, type LedgerLeg } from "./ledgerCore";
 import { cashAccountFor } from "./ledgerPostings";
 import { legalFormOf, listShareholders, type LegalForm } from "./shareholders";
+import { NOT_YEAR_CLOSE } from "@/lib/yearClose";
 
 export type CostRule = "sales_share" | "company";
 
@@ -215,7 +216,7 @@ export async function previewSplit(db: Db, organizationId: number, year: number)
          FROM ledger_entries e
          JOIN journals j ON j.id = e.journal_id
          JOIN accounts a ON a.id = e.account_id
-        WHERE e.organization_id = ? AND a.type IN ('REVENUE','EXPENSE') AND j.posted_at >= ? AND j.posted_at <= ?
+        WHERE e.organization_id = ? AND a.type IN ('REVENUE','EXPENSE') AND ${NOT_YEAR_CLOSE} AND j.posted_at >= ? AND j.posted_at <= ?
         GROUP BY 1, 2, 3`
     )
     .all(organizationId, from, `${to}￿`) as unknown as { gid: number | null; account_id: number; type: string; net: number }[];

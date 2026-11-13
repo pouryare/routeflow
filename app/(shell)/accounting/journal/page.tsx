@@ -7,6 +7,8 @@ import { cookies } from "next/headers";
 import { COOKIE_NAME } from "@/lib/auth";
 import { getSessionFromCookies } from "@/lib/session";
 import PeriodsCard from "@/components/accounting/PeriodsCard";
+import YearCloseCard from "@/components/accounting/YearCloseCard";
+import { yearList } from "@/lib/repo/yearClose";
 import ReconcileCard from "@/components/accounting/ReconcileCard";
 import { todayJalali } from "@/lib/jalali";
 import { isOwner } from "@/lib/roles";
@@ -50,6 +52,7 @@ export default async function JournalPage({
     report = await journalReport(organizationId, { ...filter, limit: PAGE_SIZE, offset: paging.offset });
   }
   const periods = await listPeriods(organizationId);
+  const years = await yearList(organizationId);
   const withReceipt = await journalsWithReceipt(organizationId, report.rows.map((r) => r.journalId));
   const reversed = report.rows.filter((r) => r.reversedByJournalId !== null).length;
 
@@ -60,6 +63,7 @@ export default async function JournalPage({
     <>
       <PageHeader route="/accounting/journal" />
       {session && isOwner(session.role) ? <PeriodsCard periods={periods.map((p) => ({ periodKey: p.periodKey, status: p.status }))} currentKey={`${todayJalali().jy}-${String(todayJalali().jm).padStart(2, "0")}`} /> : null}
+      {session && isOwner(session.role) ? <YearCloseCard years={years} currentYear={todayJalali().jy} /> : null}
       {session && isOwner(session.role) ? <ReconcileCard /> : null}
       <SectionHead
         title="دفتر روزنامه"

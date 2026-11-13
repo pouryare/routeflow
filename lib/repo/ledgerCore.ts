@@ -30,7 +30,8 @@ export type LedgerSourceType =
   | "PARTNER_ADVANCE"
   | "DIVIDEND_PAYMENT"
   | "PROFIT_SPLIT"
-  | "HANDOVER";
+  | "HANDOVER"
+  | "YEAR_CLOSE";
 
 export interface LedgerLeg {
   accountId: number;
