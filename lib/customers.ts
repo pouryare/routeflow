@@ -47,6 +47,7 @@ export async function readCustomers(
     customer_type: r.customer_type,
     parent_customer_id: r.parent_customer_id,
     payment_terms_days: r.payment_terms_days,
+    payment_terms_kind: r.payment_terms_kind,
     hard_credit_block: r.hard_credit_block,
     credit_limit_toman: r.credit_limit_toman,
     qualified_at: r.qualified_at,

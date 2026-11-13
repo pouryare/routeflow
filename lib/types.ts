@@ -121,6 +121,7 @@ export interface CustomerRow {
   customer_type: CustomerType | null;
   parent_customer_id: number | null;
   payment_terms_days: number;
+  payment_terms_kind?: string;
   hard_credit_block: number;
   credit_limit_toman: number | null;
   qualified_at: string | null;

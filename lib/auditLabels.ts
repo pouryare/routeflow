@@ -45,6 +45,7 @@ const COLUMNS: Record<string, string> = {
   credit_limit_toman: "سقف اعتبار (تومان)",
   hard_credit_block: "مسدودی اعتبار",
   payment_terms_days: "مهلت پرداخت (روز)",
+  payment_terms_kind: "نوع پرداخت",
   price_tier: "ردهٔ قیمت",
   lifecycle: "مرحلهٔ مشتری",
   customer_type: "نوع مشتری",

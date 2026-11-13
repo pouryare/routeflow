@@ -12,6 +12,7 @@ interface CustomerRow {
   lifecycle: CustomerLifecycle;
   customer_type: CustomerType | null;
   payment_terms_days: number;
+  payment_terms_kind?: string;
   hard_credit_block: number;
   credit_limit_toman: number | null;
   qualified_at: string | null;
@@ -47,10 +48,11 @@ export async function setCustomerType(organizationId: number, id: number, type: 
 export async function setCreditTerms(
   organizationId: number,
   id: number,
-  terms: { payment_terms_days?: number; credit_limit_toman?: number | null; hard_credit_block?: boolean }
+  terms: { payment_terms_kind?: string; payment_terms_days?: number; credit_limit_toman?: number | null; hard_credit_block?: boolean }
 ): Promise<void> {
   if (!await customersRepo.get(organizationId, id)) throw new LifecycleError("مشتری پیدا نشد");
   const patch: Partial<CustomerRow> = {};
+  if (terms.payment_terms_kind !== undefined) patch.payment_terms_kind = terms.payment_terms_kind;
   if (terms.payment_terms_days !== undefined) patch.payment_terms_days = terms.payment_terms_days;
   if (terms.credit_limit_toman !== undefined) patch.credit_limit_toman = terms.credit_limit_toman;
   if (terms.hard_credit_block !== undefined) patch.hard_credit_block = terms.hard_credit_block ? 1 : 0;

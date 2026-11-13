@@ -104,6 +104,8 @@ export interface OrderDetail {
   /** A12: name, phone and address as they were when the order was confirmed; null before that. */
   ship_name?: string | null;
   ship_phone?: string | null;
+  /** D5: the day payment is due; set when the order is delivered. */
+  due_date?: string | null;
   ship_address?: string | null;
   group_id: number | null;
   salesperson_user_id: number | null;

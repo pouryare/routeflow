@@ -370,6 +370,7 @@ export interface Customers {
   owner_user_id: number | null;
   parent_customer_id: number | null;
   payment_terms_days: Generated<number>;
+  payment_terms_kind: Generated<string>;
   phone: string | null;
   phone_norm: string | null;
   price_tier: string | null;
@@ -1144,6 +1145,7 @@ export interface Orders {
   credit_override_by: number | null;
   customer_id: number;
   delivered_at: string | null;
+  due_date: string | null;
   discount_toman: Generated<number>;
   group_id: number | null;
   id: Generated<number>;

@@ -323,6 +323,7 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
 
   </details>
 - **D5. Payment term kinds.** Cash on delivery, N days after delivery, or end of month plus N. Due date saved on the order at delivery.
+  **Built (batch B):** customers get a term kind (`payment_terms_kind`: cash on delivery, N days after, end of month + N) beside the days; managers set it with «شرایط پرداخت» on the customer page (`PUT /api/customers/[id]/terms`, audited). `orders.due_date` is written once at delivery (`lib/paymentTerms.ts`) and shown as «سررسید» on the order page. Not yet: overdue lists using the due date (aging still counts from delivery).
   <details><summary>Full decision</summary>
 
   **Payment term kinds (D5, answers F83).** Cash on delivery, N days after delivery, or end of month plus N days. The due date is saved on the order at delivery, so later changes to the customer do not rewrite it.

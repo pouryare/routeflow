@@ -120,6 +120,7 @@ export default async function OrderDetailPage({
               {order.salesperson_name && ` · ${order.salesperson_name}`}
               {order.ship_phone && <> · <span dir="ltr">{order.ship_phone}</span></>}
               {order.ship_address && ` · ${order.ship_address}`}
+              {order.due_date && ` · سررسید ${faJalaliDate(order.due_date)}`}
             </>
           }
         >
