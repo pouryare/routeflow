@@ -58,6 +58,7 @@ import c_sales_routing from "./sales-routing.json";
 import c_sales_schedule from "./sales-schedule.json";
 import c_sales_stock_buy_list from "./sales-stock-buy-list.json";
 import c_sales_stock_on_date from "./sales-stock-on-date.json";
+import c_sales_stock_orders from "./sales-stock-orders.json";
 import c_sales_stock from "./sales-stock.json";
 import c_sales_tasks from "./sales-tasks.json";
 import c_sales_today from "./sales-today.json";
@@ -124,6 +125,7 @@ export const CAPTURES: Record<string, Capture> = {
   "/sales/schedule": c_sales_schedule as Capture,
   "/sales/stock/buy-list": c_sales_stock_buy_list as Capture,
   "/sales/stock/on-date": c_sales_stock_on_date as Capture,
+  "/sales/stock/orders": c_sales_stock_orders as Capture,
   "/sales/stock": c_sales_stock as Capture,
   "/sales/tasks": c_sales_tasks as Capture,
   "/sales/today": c_sales_today as Capture,
