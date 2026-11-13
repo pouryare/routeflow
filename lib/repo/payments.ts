@@ -12,6 +12,8 @@ import { tryEmitEvent } from "./events";
    engine. postJournal stays the only writer of journals; keeping the mapping in a
    separate file makes "one function writes a journal" structural rather than a comment
    a later editor can route around with a special case. */
+import { HOLDER_ROLES } from "@/lib/cashInHand";
+import { stillInHand } from "@/lib/repo/cashInHand";
 import { postReceipt, postReceiptReversal, receiptJournalIdFor } from "./ledgerPostings";
 
 import { round } from "@/lib/database/dialect";
@@ -291,14 +293,17 @@ export async function recordPaymentTxn(
 
   const allocs = await validateAllocations(db, organizationId, input);
   const now = new Date().toISOString();
+  // D1: cash taken by a rep, driver or phone-sales person goes into their box until the office counts it.
+  const taker = (await db.prepare("SELECT role FROM users WHERE id = ?").get(input.received_by)) as { role: string } | undefined;
+  const inHand = input.method === "CASH" && taker !== undefined && HOLDER_ROLES.includes(taker.role) ? 1 : 0;
 
   const paymentId = Number(
     (await db
       .prepare(
         `INSERT INTO payments
            (organization_id, customer_id, amount_toman, method, received_at, received_by,
-            reference, receipt_photo_stem, cheque_id, delivery_stop_id, client_uuid, note, created_at, created_source)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+            reference, receipt_photo_stem, cheque_id, delivery_stop_id, client_uuid, note, created_at, created_source, in_hand)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       )
       .run(
         organizationId,
@@ -314,7 +319,8 @@ export async function recordPaymentTxn(
         input.client_uuid ?? null,
         input.note ?? null,
         now,
-        input.source ?? "form"
+        input.source ?? "form",
+        inHand
       )).lastInsertRowid
   );
 
@@ -365,6 +371,7 @@ export async function recordPaymentTxn(
     receivedAt: input.received_at,
     receivedBy: input.received_by,
     memo: input.note ?? null,
+    intoHand: inHand === 1,
   });
 
   return paymentId;
@@ -874,6 +881,7 @@ export async function voidPaymentTxn(
       reversedAt: now,
       reversedBy: voidedBy,
       reason,
+      fromHand: await stillInHand(payment.id),
     });
   }
 

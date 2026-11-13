@@ -28,6 +28,9 @@ export async function cashAccountFor(method: string): Promise<number> {
   return await accountOrThrow(code);
 }
 
+/** D1: cash held by field people until the office counts it. */
+const HAND_CODE = "1104";
+
 /** Where a customer receipt's money side goes. A LEFTOVER (D3) is no money coming in: the balance is forgiven, so the
  *  other side is the write-off expense. Only receipts may use it; an expense, a supplier payment or a commission paid
  *  by "LEFTOVER" is refused by cashAccountFor. A CREDIT_NOTE (B1) is goods coming back: the other side is 4102 sales returns. */
@@ -50,6 +53,8 @@ export async function postReceipt(
     receivedAt: string;
     receivedBy: number;
     memo?: string | null;
+    /** D1: the cash went into a person's box (1104), not the office cash account. */
+    intoHand?: boolean;
   }
 ): Promise<number> {
   return await postJournal(db, {
@@ -60,7 +65,7 @@ export async function postReceipt(
     createdBy: input.receivedBy,
     memo: input.memo ?? null,
     legs: [
-      { accountId: await receiptAccountFor(input.method), side: "D", amountToman: input.amountToman },
+      { accountId: input.intoHand ? await accountOrThrow(HAND_CODE) : await receiptAccountFor(input.method), side: "D", amountToman: input.amountToman },
       {
         accountId: await accountOrThrow("1201"),
         side: "C",
@@ -116,6 +121,8 @@ export async function postReceiptReversal(
     reversedAt: string;
     reversedBy: number;
     reason: string;
+    /** D1: the original cash is still in a person's box (not counted yet), so it comes out of 1104. */
+    fromHand?: boolean;
   }
 ): Promise<number> {
   return await postJournal(db, {
@@ -128,7 +135,7 @@ export async function postReceiptReversal(
     memo: `ابطال: ${input.reason}`,
     legs: [
       // Sides flipped: the cash comes back out, the receivable goes back up.
-      { accountId: await receiptAccountFor(input.method), side: "C", amountToman: input.amountToman },
+      { accountId: input.fromHand ? await accountOrThrow(HAND_CODE) : await receiptAccountFor(input.method), side: "C", amountToman: input.amountToman },
       {
         accountId: await accountOrThrow("1201"),
         side: "D",
@@ -142,7 +149,7 @@ export async function postReceiptReversal(
 /** COGS is posted by delivery recognition, never by hand. */
 const COGS_CODE = "5101";
 /** Commission is posted by lib/repo/ledgerCommission.ts from the commission ledgers, never by hand. */
-const SYSTEM_EXPENSE_CODES = [COGS_CODE, "5107", "5108", "5109", "5110"];
+const SYSTEM_EXPENSE_CODES = [COGS_CODE, "5107", "5108", "5109", "5110", "5111"];
 
 export interface ExpenseCategory {
   id: number;
@@ -499,3 +506,25 @@ export async function postSupplierPayment(
   });
 }
 
+
+/** D1: the office counted a person's cash. Dr office cash (what was counted) and any shortage / Cr the person's box
+ *  (what was expected) and any overage. A shortage is an expense (5111), an overage reduces it. */
+export async function postHandover(
+  db: Db,
+  input: { organizationId: number; handoverId: number; expectedToman: number; countedToman: number; postedAt: string; createdBy: number; memo: string | null }
+): Promise<number> {
+  const legs: LedgerLeg[] = [];
+  if (input.countedToman > 0) legs.push({ accountId: await accountOrThrow("1101"), side: "D", amountToman: input.countedToman });
+  if (input.countedToman < input.expectedToman) legs.push({ accountId: await accountOrThrow("5111"), side: "D", amountToman: input.expectedToman - input.countedToman });
+  legs.push({ accountId: await accountOrThrow(HAND_CODE), side: "C", amountToman: input.expectedToman });
+  if (input.countedToman > input.expectedToman) legs.push({ accountId: await accountOrThrow("5111"), side: "C", amountToman: input.countedToman - input.expectedToman });
+  return await postJournal(db, {
+    organizationId: input.organizationId,
+    postedAt: input.postedAt,
+    sourceType: "HANDOVER",
+    sourceId: input.handoverId,
+    createdBy: input.createdBy,
+    memo: input.memo,
+    legs,
+  });
+}

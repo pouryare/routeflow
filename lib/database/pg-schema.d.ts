@@ -187,6 +187,7 @@ export interface CashHandovers {
   expected_toman: number;
   holder_id: number;
   id: Generated<number>;
+  journal_id: number | null;
   organization_id: number;
   reason: string | null;
   through_at: string;
@@ -1349,6 +1350,7 @@ export interface Payments {
   customer_id: number;
   delivery_stop_id: number | null;
   id: Generated<number>;
+  in_hand: Generated<number>;
   method: string;
   note: string | null;
   organization_id: number;
