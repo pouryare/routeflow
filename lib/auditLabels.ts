@@ -61,6 +61,7 @@ const COLUMNS: Record<string, string> = {
   step_up_required: "کد دومرحله‌ای برای کارهای حساس",
   task_push_minutes: "یادآوری کار (دقیقه پیش از موعد)",
   order_prefix: "پیشوند شمارهٔ سفارش",
+  idle_signout_json: "خروج خودکار بی‌فعالیت",
   stalled_order_days: "سفارش گیرکرده (روز)",
   quiet_customer_days: "مشتری ساکت (روز)",
   data_ageing_days: "داده در حال کهنه شدن (روز)",

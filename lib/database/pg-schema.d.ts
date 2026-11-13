@@ -1178,6 +1178,7 @@ export interface Organizations {
   duplicate_order_hours: Generated<number>;
   effects: Generated<string>;
   id: Generated<number>;
+  idle_signout_json: string | null;
   legal_form: Generated<string>;
   logo_data: string | null;
   logo_type: string | null;
@@ -1932,6 +1933,7 @@ export interface Users {
   display_name: string;
   group_id: number | null;
   id: Generated<number>;
+  last_active_at: string | null;
   leave_reason: string | null;
   leave_until: string | null;
   location_consent_at: string | null;

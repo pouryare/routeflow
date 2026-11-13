@@ -534,7 +534,7 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
   **Access and settings change log (E6, answers F27 question 1 for permissions).** A who/when/old/new line for role, group, active state and password resets of users, and for company settings (discount auto-pass percent, code for sensitive actions, the D30 thresholds), shown on the owner status page beside the access review card (D3-3). Today `setRoles`, user edits and these settings write no log line.
 
   </details>
-- **E17. Sign out after idle time.** Owner sets idle hours per role; drivers and reps stay signed in so offline work is not lost.
+- **E17. Sign out after idle time.** Owner sets idle hours per role; drivers and reps stay signed in so offline work is not lost. **Built 2026-11-13 (batch B).** Owner sets idle hours for owner, group manager, rep manager and shareholder on the status page («خروج خودکار بی‌فعالیت»); drivers and reps are never listed. `users.last_active_at` is touched at most every 5 minutes per process; `resolveSession` signs out when the later of that and the sign-in's start is older than the limit. A Login-As session is not timed. Rules are cached 60 s per company.
   <details><summary>Full decision</summary>
 
   **Sign out after idle time (E17).** The owner sets idle hours per role (for example 12 for owner, managers and accountant); drivers and reps stay signed in so offline work is not lost. Today a sign-in lives 30 days whether used or not.

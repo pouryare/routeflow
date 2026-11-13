@@ -193,6 +193,8 @@ export interface UserRow {
   must_change_password: number;
   /** 1 when the owner made this person a «مربی»: may write company lessons (AC3). */
   can_teach?: number;
+  /** Last time the app was used, noted every few minutes (E17 idle sign-out). */
+  last_active_at?: string | null;
 }
 
 export type LocationResolution = "direct" | "pluscode" | "browser" | "nominatim" | "manual" | "unresolved";
