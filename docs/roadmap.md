@@ -192,6 +192,7 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
   <details><summary>Full decision</summary>
 
   **Change summaries on edited orders.** When an order is edited after confirmation, the driver gets a one-line Persian push («اقلام تغییر کرد»، «موعد به … منتقل شد»، «مبلغ دریافتی تغییر کرد») and the warehouse sees a «تغییر کرده» badge. Extends the stage-based edit rules in 1c.
+  **Built (batch C, push only):** when the owner (or a manager's request the owner approves) changes a confirmed order's delivery day, due date, address or notes, each driver whose run is not finished and has a pending stop for it gets one push (type `order.changed`) with one line about what changed. Not built: the «تغییر کرده» badge for the warehouse, and line edits (none exist yet).
 
   </details>
 - **FB32. Merged order timeline.** One feed per order: status changes, notes, edits, payment adjustments and chat. Built with chat phase 1.

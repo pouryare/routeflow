@@ -6,6 +6,8 @@ import { isOwner, type Role } from "@/lib/roles";
 import { faJalaliDate } from "@/lib/jalali";
 import { appendOrderEvent } from "./orders";
 import { ChangeRequestError } from "@/lib/changeRequests";
+import { orderChangeLine } from "@/lib/orderChangeText";
+import { noticeOrderChange } from "./orderChangeNotice";
 
 const FIELD_COLUMN: Record<OrderDetailField, string> = { requested_day: "requested_day", due_date: "due_date", ship_address: "ship_address", notes: "notes" };
 
@@ -23,6 +25,8 @@ export async function applyOrderDetail(orgId: number, orderId: number, field: Or
     await db.prepare(`UPDATE orders SET ${FIELD_COLUMN[field]} = ?, updated_at = ? WHERE id = ? AND organization_id = ?`).run(value, new Date().toISOString(), orderId, orgId);
     const note = `${editNote(detailLabel(field), shown(field, row.old), shown(field, value))} · دلیل: ${reason}${askedBy ? ` · درخواست ${askedBy}` : ""}`;
     await appendOrderEvent(db, { organization_id: orgId, order_id: orderId, from_status: row.status, to_status: row.status, action: "edit", actor_user_id: actorId, note });
+    // FB24: a driver with this order still to deliver reads one line about what changed.
+    await noticeOrderChange(orgId, orderId, orderChangeLine(field, shown(field, value)));
   });
 }
 
