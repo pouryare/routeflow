@@ -59,11 +59,14 @@ export default function DriverRun({
   driverName,
   businessName,
   receiptFooter = null,
+  failReasons = [],
 }: {
   run: RunDetail;
   driverName: string;
   businessName: string;
   receiptFooter?: string | null;
+  /** The company's «تحویل ناموفق» reasons, shown as chips when nothing could be handed over. */
+  failReasons?: { id: number; label: string }[];
 }) {
   const router = useRouter();
   const [openStop, setOpenStop] = useState<number | null>(null);
@@ -155,6 +158,7 @@ export default function DriverRun({
             driverName={driverName}
             businessName={businessName}
             receiptFooter={receiptFooter}
+            failReasons={failReasons}
             lastStop={run.stops.every((s) => s.id === stop.id || s.status !== "pending")}
           />
         ))}
@@ -217,6 +221,7 @@ function StopCard({
   driverName,
   businessName,
   receiptFooter,
+  failReasons,
   lastStop,
 }: {
   stop: RunStop;
@@ -230,6 +235,7 @@ function StopCard({
   driverName: string;
   businessName: string;
   receiptFooter: string | null;
+  failReasons: { id: number; label: string }[];
   lastStop: boolean;
 }) {
   /* The flow remounts per opening (the `key`), which is what gives each visit a fresh set of
@@ -415,6 +421,7 @@ function StopCard({
           driverName={driverName}
           businessName={businessName}
           receiptFooter={receiptFooter}
+          failReasons={failReasons}
           onRecorded={onRecorded}
           onPrint={onPrint}
           onClose={() => setFlowOpen(false)}

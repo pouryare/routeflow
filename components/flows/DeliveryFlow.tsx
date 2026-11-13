@@ -26,10 +26,11 @@ const QUEUED =
   "تحویل هنوز ارسال نشد، اما روی گوشی ذخیره است و با وصل شدن اینترنت خودکار ارسال می‌شود.";
 const REFUSED = "تحویل ثبت نشد. اطلاعات را بررسی کنید و دوباره تلاش کنید.";
 
-function contextFor(stop: RunStop): FlowContext {
+function contextFor(stop: RunStop, failReasons: { id: number; label: string }[]): FlowContext {
   return {
     ...EMPTY_CONTEXT,
     entry: "delivery",
+    lists: { fail_reasons: failReasons },
     vars: { customer: stop.customer_name },
     items: stop.lines.map((l) => ({
       id: l.id,
@@ -57,6 +58,7 @@ export default function DeliveryFlow({
   driverName,
   businessName,
   receiptFooter = null,
+  failReasons = [],
   onRecorded,
   onPrint,
   onClose,
@@ -69,6 +71,7 @@ export default function DeliveryFlow({
   driverName: string;
   businessName: string;
   receiptFooter?: string | null;
+  failReasons?: { id: number; label: string }[];
   onRecorded: () => void;
   onPrint: (data: ReceiptData) => void;
   onClose: () => void;
@@ -76,7 +79,7 @@ export default function DeliveryFlow({
   /** Every other stop of the run is already done, so finishing this one finishes the run. */
   lastStop?: boolean;
 }) {
-  const ctx = useMemo(() => contextFor(stop), [stop]);
+  const ctx = useMemo(() => contextFor(stop, failReasons), [stop, failReasons]);
 
   const { state, setState, onSaved, flush } = useFlowHost(deliveryFlow, ctx, {
     send: async (st) => {
@@ -147,10 +150,19 @@ export default function DeliveryFlow({
           milestone={lastStop}
           chips={deliveryChips(ctx, state)}
           actions={
-            <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn solid" onClick={() => void print(state)}>
-              <Icon name="print" size="md" />
-              چاپ رسید
-            </button>
+            state.values.failed === "1" ? (
+              stop.phone ? (
+                <a className="inline-flex items-center justify-center gap-[var(--space-2)] btn solid" href={`tel:${stop.phone}`}>
+                  <Icon name="phone" size="md" />
+                  تماس با مشتری
+                </a>
+              ) : undefined
+            ) : (
+              <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn solid" onClick={() => void print(state)}>
+                <Icon name="print" size="md" />
+                چاپ رسید
+              </button>
+            )
           }
           onReturn={onClose}
         />

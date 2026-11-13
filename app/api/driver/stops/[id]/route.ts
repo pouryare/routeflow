@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isId } from "@/lib/inputChecks";
 import { requireRole } from "@/lib/session";
+import { listReasonCodes } from "@/lib/repo/reasonCodes";
 import { isToman } from "@/lib/money";
 import { customerDebt } from "@/lib/repo/payments";
 import { DeliveryError } from "@/lib/delivery";
@@ -31,6 +32,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     lines?: unknown;
     collected_toman?: unknown;
     notes?: unknown;
+    fail_reason_id?: unknown;
   } | null;
 
   const lines = Array.isArray(body?.lines)
@@ -72,12 +74,22 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     return NextResponse.json({ ok: false, error: "مبلغ دریافتی از بدهی مشتری و مبلغ این سفارش بیشتر است" }, { status: 400 });
   }
 
+  // «Couldn't deliver»: the reason must be one of this company's own (or the system's) failure reasons.
+  let failReasonId: number | null = null;
+  if (body?.fail_reason_id != null) {
+    const wanted = Number(body.fail_reason_id);
+    const known = (await listReasonCodes(guard.session.organizationId, "delivery_fail")).some((r) => r.id === wanted);
+    if (!known) return NextResponse.json({ ok: false, error: "دلیل تحویل‌نشدن نامعتبر است" }, { status: 400 });
+    failReasonId = wanted;
+  }
+
   try {
     await recordStopDelivery(stopId, {
       lines,
       collected_toman: collected,
       by: guard.session.user.id,
       notes: typeof body?.notes === "string" ? body.notes : null,
+      fail_reason_id: failReasonId,
     });
     return NextResponse.json({ ok: true });
   } catch (e) {

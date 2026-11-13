@@ -46,7 +46,7 @@ export async function invoiceTotal(orderId: number): Promise<number> {
 
 export async function recordStopDelivery(
   stopId: number,
-  input: { lines: { line_id: number; packs_delivered: number }[]; collected_toman: number; by: number; notes: string | null }
+  input: { lines: { line_id: number; packs_delivered: number }[]; collected_toman: number; by: number; notes: string | null; fail_reason_id?: number | null }
 ): Promise<void> {
   await recordDelivery(getDb(), stopId, input);
 }
