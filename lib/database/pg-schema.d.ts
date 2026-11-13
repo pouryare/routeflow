@@ -1291,6 +1291,17 @@ export interface PaymentAllocations {
   payment_id: number;
 }
 
+export interface PaymentPromises {
+  amount_toman: number;
+  cancelled_at: string | null;
+  created_at: string;
+  created_by: number;
+  customer_id: number;
+  id: Generated<number>;
+  organization_id: number;
+  promised_date: string;
+}
+
 export interface Payments {
   amount_toman: number;
   cheque_id: number | null;
@@ -2184,6 +2195,7 @@ export interface DB {
   packagings: Packagings;
   parties: Parties;
   payment_allocations: PaymentAllocations;
+  payment_promises: PaymentPromises;
   payments: Payments;
   photos: Photos;
   platform_access_log: PlatformAccessLog;

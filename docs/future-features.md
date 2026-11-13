@@ -994,7 +994,9 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 ---
 
-## F46. Credit-risk scoring from payment behaviour
+## F46. Credit-risk scoring from payment behaviour — built (first slice)
+
+**Built (2026-11-13):** `lib/creditRisk.ts` adds points for days overdue (10 to 40), bounced cheques in 180 days (15 each, max 30), balance near or over the limit (10 or 20) and broken promises (10 each, max 20); level low under 25, medium under 50, else high; the top three reasons are shown on the customer page (managers) and the credit-approval card. Advisory only, rules not a model. Not built: per-group thresholds, a lower-limit suggestion, using the score to hold an order.
 
 **What:** a score and the top reasons per customer, built from days-late trend, bounced cheques and credit exposure, shown at the credit-approval step and on the customer page. Finishes the half of F9 that is not built.
 
@@ -1078,7 +1080,9 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 ---
 
-## F50. Payment promise tracker
+## F50. Payment promise tracker — built (first slice)
+
+**Built (2026-11-13):** a promise (amount, day) is noted on the customer page by managers, phone sales and field reps. Kept = payments since it was noted reach the amount; broken = its day passed without that. Both are worked out when read (`lib/repo/promises.ts`). A broken promise of the last 30 days shows as an action-centre row linking to the customer. Not built: partial payments shown as progress, a task for the rep, the calendar view (T8), the kept-rate on the statement (F18).
 
 **What:** record "the customer promised to pay on the 15th", follow up automatically if it isn't received, and track each customer's promise-kept rate.
 
