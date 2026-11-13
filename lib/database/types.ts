@@ -18,6 +18,7 @@ export interface Customer {
   lat: number | null;
   lng: number | null;
   district_id?: number | null;
+  contact_off?: import("../contactPrefs").ContactOff[];
   lifecycle: CustomerLifecycle;
   customer_type: CustomerType | null;
   parent_customer_id: number | null;

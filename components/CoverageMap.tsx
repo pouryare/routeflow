@@ -1262,6 +1262,7 @@ export default function CoverageMap({
             onClose={() => setSelectedCustomer(null)}
             onReminderAdded={loadReminders}
             onUpdated={loadCustomers}
+            canEditContact={canSell(role)}
             leftover={limits?.leftoverLimit !== undefined && MANAGE_ROLES.includes(role) ? { limit: limits.leftoverLimit, owner: isOwner(role) } : undefined}
           />
         )}

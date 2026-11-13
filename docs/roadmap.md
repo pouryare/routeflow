@@ -166,6 +166,7 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
 - **S4. Complaint waiting states and duplicate-of.** Waiting on customer or supplier stops the SLA clock; close as a duplicate of another.
 - **S6. Fair lead assignment per group.** Per group: pool (default), round robin, or least open work; people on leave are skipped. **Built 2026-11-13 (PR #84).** A setting per group on the groups page (stays in the pool, round robin, fewest open leads). It applies when a manager adds a lead and leaves it in the pool; people on leave (S23), inactive people and other groups are skipped, and with nobody available the lead stays in the pool. Not built: applying it to imported or claimed customers.
 - **S15. Do-not-call and contact preferences.** Three switches per customer (calls, promo messages, service messages) with reason, date and who.
+  **Built (batch B):** table `contact_preferences` (a row = off, with reason, day, who). Button «ترجیح تماس» in the map customer panel (all selling roles) opens a sheet of three chips; the phone shows «تماس نشود» and the «تماس بگیر» cards on the today page fall back to «ساخت سفارش». No SMS sender exists yet, so promo and service switches are stored and shown only; the message sender (Farazsms, T16) must read them when built.
 - **S16. Revive lost leads.** After a wait that depends on the lost reason (price 60 days, already supplied 120, not interested 180), back to the pool with a call-again task.
 
 ### Orders, pricing and promotions

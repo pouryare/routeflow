@@ -1,4 +1,5 @@
 import { distanceKm, type LatLng } from "./geo";
+import type { ContactOff } from "./contactPrefs";
 export type CoverageStatus = "visited" | "needs_coverage" | "not_allowed" | "unknown";
 
 // Mirrors the --good/--warn/--crit/--neutral tokens in MASTER.md. Duplicated as literal
@@ -114,6 +115,8 @@ export interface CustomerRow {
   lng: number | null;
   /** The district the customer sits in (U2 money map); only the map page reads it. */
   district_id?: number | null;
+  /** S15: channels this customer asked us not to use; absent when none. */
+  contact_off?: ContactOff[];
   lifecycle: CustomerLifecycle;
   customer_type: CustomerType | null;
   parent_customer_id: number | null;

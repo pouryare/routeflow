@@ -1,6 +1,7 @@
 import type { Db } from "@/lib/database/client";
 import { Customer, getDb } from "./db";
 import { customerDebtsForOrgOnce } from "./repo/payments";
+import { contactOffByCustomer } from "./repo/contactPrefs";
 
 /** node:sqlite hands back rows with a null prototype. JSON.stringify doesn't care, so
  *  the API route never had to, but React refuses to pass one across the server/client
@@ -27,6 +28,8 @@ export async function readCustomers(
     ? await customerDebtsForOrgOnce(attachDebt.organizationId)
     : undefined;
 
+  const off = attachDebt ? await contactOffByCustomer(attachDebt.organizationId) : undefined;
+
   return rows.map((r) => ({
     id: r.id,
     customer_code: r.customer_code,
@@ -39,6 +42,7 @@ export async function readCustomers(
     lat: r.lat,
     lng: r.lng,
     district_id: r.district_id ?? null,
+    contact_off: off?.get(r.id),
     lifecycle: r.lifecycle,
     customer_type: r.customer_type,
     parent_customer_id: r.parent_customer_id,
