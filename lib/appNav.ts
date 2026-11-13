@@ -90,6 +90,7 @@ const SHAREHOLDER_TABS: AppTab[] = [{ href: "/my-share", label: "سهم من", g
 const DRIVER_TABS: AppTab[] = [
   { href: "/driver", label: "مسیر امروز", group: "day", ready: true },
   { href: "/sales/catalogue", label: "کالاها", group: "day", ready: true },
+  { href: "/my-expenses", label: "هزینه‌های من", group: "day", ready: true },
   { href: "/sales/academy", label: "آموزش", group: "day", ready: true },
 ];
 
@@ -111,6 +112,7 @@ export function appTabs(session: { role: Role }): AppTab[] {
     { href: "/sales/today", label: "امروز", group: "day", ready: true },
     { href: "/sales/pocket", label: "کارهای من", group: "day", ready: true },
     { href: "/sales/schedule", label: "برنامهٔ تحویل", group: "day", ready: true },
+    { href: "/my-expenses", label: "هزینه‌های من", group: "day", ready: true },
     { href: "/planner", label: "برنامه‌ریز مسیر", group: "day", ready: isManager(r) },
 
     // مشتریان
