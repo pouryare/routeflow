@@ -1839,6 +1839,16 @@ export interface SavedLocations {
   visit_outcome: string | null;
 }
 
+export interface SavedViews {
+  created_at: string;
+  id: Generated<number>;
+  name: string;
+  organization_id: number;
+  query: string;
+  scope: string;
+  user_id: number;
+}
+
 export interface SeasonalFactors {
   factor: Generated<number>;
   id: Generated<number>;
@@ -2341,6 +2351,7 @@ export interface DB {
   sales_daily_marks: SalesDailyMarks;
   sales_daily_products: SalesDailyProducts;
   saved_locations: SavedLocations;
+  saved_views: SavedViews;
   seasonal_factors: SeasonalFactors;
   shared_cost_rules: SharedCostRules;
   shareholdings: Shareholdings;
