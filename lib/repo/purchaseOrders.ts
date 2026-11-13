@@ -3,6 +3,7 @@ import type { Db } from "@/lib/database/client";
 import { tehranTodayIso } from "@/lib/jalali";
 import { PO_OPEN, isLate, poProblem, remaining, statusAfterAction, statusAfterReceipt, type PoStatus } from "@/lib/purchaseOrders";
 import { productInOrg } from "@/lib/repo/catalogueAdmin";
+import type { ScoredOrder } from "@/lib/supplierScore";
 
 export class PurchaseOrderError extends Error {}
 
@@ -117,4 +118,18 @@ export async function incomingByProduct(organizationId: number): Promise<Map<num
     )
     .all(organizationId)) as unknown as { product_id: number; qty: number; expected: string | null }[];
   return new Map(rows.filter((r) => Number(r.qty) > 0).map((r) => [Number(r.product_id), { qty: Number(r.qty), expected: r.expected }]));
+}
+
+/** The supplier an order is with, or null when the order is not this company's. */
+export async function supplierOfOrder(organizationId: number, orderId: number): Promise<{ id: number; name: string } | null> {
+  const r = (await getDb().prepare("SELECT s.id, s.name FROM purchase_orders po JOIN suppliers s ON s.id = po.supplier_id WHERE po.id = ? AND po.organization_id = ?").get(orderId, organizationId)) as { id: number; name: string } | undefined;
+  return r ? { id: Number(r.id), name: r.name } : null;
+}
+
+/** F31: the finished orders of one supplier, as the scorecard reads them (arrival as a Tehran day). */
+export async function supplierOrdersForScore(organizationId: number, supplierId: number): Promise<ScoredOrder[]> {
+  const rows = (await getDb()
+    .prepare("SELECT status, expected_date, received_at FROM purchase_orders WHERE organization_id = ? AND supplier_id = ? AND status IN ('received', 'closed')")
+    .all(organizationId, supplierId)) as unknown as { status: string; expected_date: string | null; received_at: string | null }[];
+  return rows.map((r) => ({ status: r.status, expected_date: r.expected_date, arrived_day: r.received_at ? tehranTodayIso(new Date(r.received_at)) : null }));
 }

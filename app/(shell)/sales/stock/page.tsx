@@ -114,6 +114,12 @@ export default async function StockPage() {
         فهرست خرید
       </Link>
     ) : null}
+    {isOwner(session.role) ? (
+      <Link href="/sales/stock/orders" className="mb-3 ms-4 inline-flex min-h-[44px] items-center gap-2 text-[length:var(--text-sm)] text-[var(--accent-text)]">
+        <Icon name="truck" size="md" />
+        سفارش‌های خرید
+      </Link>
+    ) : null}
     <div className="flex flex-col gap-[var(--space-5)]">
       <div className="statrow">
         <GradientStat tone="peach" label="ارزش کل انبار"

@@ -4,6 +4,7 @@ import { requireRole } from "@/lib/session";
 import { PurchaseError, type PurchaseLineInput } from "@/lib/purchases";
 import { recordPurchaseFor } from "@/lib/repo/salesWrites";
 import { OWNER_ROLES } from "@/lib/roles";
+import { supplierOfOrder } from "@/lib/repo/purchaseOrders";
 
 /** Owner only. Recording a purchase is recording that company money was spent, and it
  *  moves the average cost every future margin is measured against. */
@@ -16,6 +17,7 @@ async function post(req: NextRequest) {
     purchase_date?: unknown;
     invoice_no?: unknown;
     notes?: unknown;
+    purchase_order_id?: unknown;
     lines?: unknown;
   } | null;
 
@@ -30,8 +32,13 @@ async function post(req: NextRequest) {
   }
 
   try {
+    // F66: against a purchase order the supplier is the order's, not what the form says.
+    const order = Number.isInteger(body?.purchase_order_id) ? await supplierOfOrder(guard.session.organizationId, body!.purchase_order_id as number) : null;
+    if (Number.isInteger(body?.purchase_order_id) && !order) return NextResponse.json({ ok: false, error: "سفارش خرید پیدا نشد" }, { status: 404 });
     const id = await recordPurchaseFor({
-      supplier: typeof body?.supplier === "string" ? body.supplier : null,
+      supplier: order ? order.name : typeof body?.supplier === "string" ? body.supplier : null,
+      supplier_id: order?.id ?? null,
+      purchase_order_id: order ? (body!.purchase_order_id as number) : null,
       purchase_date: purchaseDate,
       invoice_no: typeof body?.invoice_no === "string" ? body.invoice_no : null,
       notes: typeof body?.notes === "string" ? body.notes : null,
