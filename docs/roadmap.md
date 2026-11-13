@@ -442,6 +442,7 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
 
   **Live commission preview (first slice of F19).** The commission editor shows the result for sample sales values as the rule changes, using the same calculation as payroll so the preview cannot drift from the real engine.
 
+  **Built (batch B):** under the rate form, a live list of what the typed rate pays on sample sales (100, 500, 2,000 kg; or two group sales for managers), by `accrualToman`. The tier plan already had its own preview.
   </details>
 - **D15. Money rules for expenses.** Owner sets limits per expense category and role; over the limit the expense waits for approval.
   <details><summary>Full decision</summary>

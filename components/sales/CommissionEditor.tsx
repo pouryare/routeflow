@@ -14,6 +14,7 @@ import { useDoneFlash } from "@/lib/useDoneFlash";
 import { useRouter } from "next/navigation";
 import JalaliDatePicker from "@/components/JalaliDatePicker";
 import { toNumber, toToman } from "@/lib/money";
+import { accrualToman } from "@/lib/commission";
 import { faToman } from "@/lib/format";
 import {
   commissionFor,
@@ -113,6 +114,14 @@ export default function CommissionEditor({
   const rateValid =
     rateKind === "manager" ? parsedRate !== null && parsedRate >= 0 && parsedRate <= 100 : parsedRate !== null;
   const parsedPay = toToman(payAmount);
+  /* FB27: what the typed rate would pay on sample sales, by the same functions payroll uses (accrualToman for
+     per-kilo rates, a share of the group's sales for managers). Example: 1,500 تومان/kg → 100 kg pays 150,000. */
+  const ratePreview =
+    rateValid && parsedRate !== null
+      ? rateKind === "manager"
+        ? [50_000_000, 200_000_000].map((sale) => ({ label: `فروش گروه ${faToman(sale)}`, amount: Math.round((sale * parsedRate) / 100) }))
+        : [100, 500, 2000].map((kg) => ({ label: `${kg.toLocaleString("fa-IR")} کیلو`, amount: accrualToman(kg, parsedRate) }))
+      : [];
 
   function switchRateKind(k: Kind) {
     setRateKind(k);
@@ -252,6 +261,16 @@ export default function CommissionEditor({
             )}
           </div>
           <JalaliDatePicker id="rate-from" label="از تاریخ" value={rateFrom} onChange={setRateFrom} />
+          {ratePreview.length > 0 && (
+            <ul className="m-0 flex list-none flex-col gap-1 p-0 text-[length:var(--text-xs)] md:col-span-4" data-tour="commission-preview" aria-label="پیش‌نمایش درآمد با این نرخ">
+              {ratePreview.map((p) => (
+                <li key={p.label} className="flex justify-between gap-[var(--space-3)]">
+                  <span className="text-[var(--muted)]">{p.label}</span>
+                  <span className="font-medium text-[var(--foreground)]">{faToman(p.amount)}</span>
+                </li>
+              ))}
+            </ul>
+          )}
           <div className="flex items-end">
             <button className={BUTTON} disabled={busy || !rateValid} type="submit">
               <Icon name="check" size="md" />
