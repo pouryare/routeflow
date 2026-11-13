@@ -694,6 +694,16 @@ export interface Holidays {
   title_fa: string;
 }
 
+export interface IdempotencyKeys {
+  created_at: string;
+  key: string;
+  organization_id: number;
+  path: string;
+  response_json: string | null;
+  status: number | null;
+  user_id: number;
+}
+
 export interface Journals {
   created_at: string;
   created_by: number;
@@ -2006,6 +2016,7 @@ export interface DB {
   forecasts: Forecasts;
   groups: Groups;
   holidays: Holidays;
+  idempotency_keys: IdempotencyKeys;
   journals: Journals;
   kpi_definitions: KpiDefinitions;
   kpi_snapshots: KpiSnapshots;

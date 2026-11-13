@@ -1,4 +1,5 @@
 import { compressedJson } from "@/lib/httpCache";
+import { once } from "@/lib/repo/idempotency";
 import { NextRequest, NextResponse } from "next/server";
 import { parsePlace } from "@/lib/entryPlace";
 import { entryPlacesFor, saveEntryPlace } from "@/lib/repo/entryPlaces";
@@ -94,7 +95,7 @@ export async function GET(req: NextRequest) {
   return compressedJson(req, { ok: true, payments: payments.map((p) => ({ ...p, place: places.get(p.id) ?? null })) });
 }
 
-export async function POST(req: NextRequest) {
+async function post(req: NextRequest) {
   const guard = await requireRole(req, [...MANAGE_ROLES, "phone_sales"]);
   if (!guard.ok) return guard.response;
 
@@ -146,3 +147,6 @@ export async function POST(req: NextRequest) {
     throw e;
   }
 }
+
+/** Z2: a repeat with the same Idempotency-Key returns the first answer and saves nothing. */
+export const POST = (req: NextRequest) => once(req, () => post(req));

@@ -546,7 +546,7 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
   **Background exports and bulk edits (E7).** Exports over about 1,000 rows (T21) and bulk edits over about 100 records (T4) run on the job runner with a progress count and a push when ready; the file is kept 24 hours.
 
   </details>
-- **Z2. No double save.** Every money form sends a one-time key; a repeat returns the first result.
+- **Z2. No double save.** Every money form sends a one-time key; a repeat returns the first result. **Built 2026-11-13 (batch B).** Money forms (receipt, cheque, expense, purchase, receiving) send an `Idempotency-Key` header (`lib/idemKey.ts`); `once()` in `lib/repo/idempotency.ts` wraps those four POST routes, stores the first answer in `idempotency_keys` and returns it for a repeat (409 while the first is running; a failed first try forgets the key). Offline payments keep their own `client_uuid`. No visible screen change, so no tutorial. Keys are purged by FB41.
   <details><summary>Full decision</summary>
 
   **No double save (Z2).** Every money form (payments, expenses, cheques, transfers, purchases) sends a one-time key; a repeat returns the first result and saves nothing new. One shared helper. Offline sync already does this with `client_uuid`; the online forms and the journal table do not.

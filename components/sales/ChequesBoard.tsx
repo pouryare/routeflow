@@ -16,6 +16,7 @@ import { friendlyError } from "@/lib/userMessage";
 import { Icon } from "@/components/meridian/Icon";
 import JalaliDateInput from "@/components/meridian/JalaliDateInput";
 import { useCallback, useMemo, useState } from "react";
+import { idemKeeper } from "@/lib/idemKey";
 import { faNum, faToman } from "@/lib/format";
 import PaymentFlow from "@/components/flows/PaymentFlow";
 import { CHEQUE_STATUS_LABEL, CHEQUE_TRANSITIONS, type ChequeStatus } from "@/lib/chequeStates";
@@ -40,6 +41,7 @@ interface Cheque {
 const COLUMNS: ChequeStatus[] = ["in_hand", "deposited", "bounced"];
 
 export default function ChequesBoard({ customers, canSeeBooks = false }: { customers: Customer[]; canSeeBooks?: boolean }) {
+  const [idem] = useState(idemKeeper);
   const [cheques, setCheques] = useState<Cheque[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   /* Phone entry is the tap flow, remounted per opening; the form below stays from md up. */
@@ -86,7 +88,7 @@ export default function ChequesBoard({ customers, canSeeBooks = false }: { custo
     }
     const res = await fetch("/api/cheques", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...idem.headers() },
       body: JSON.stringify({
         customer_id: Number(form.customer_id),
         amount_toman: amt,
@@ -101,6 +103,7 @@ export default function ChequesBoard({ customers, canSeeBooks = false }: { custo
       setError(friendlyError(body?.error, "چک ثبت نشد؛ دوباره تلاش کنید"));
       return;
     }
+    idem.renew();
     setForm((f) => ({ ...f, amount_toman: "", cheque_no: "", bank_name: "" }));
     void load();
   }

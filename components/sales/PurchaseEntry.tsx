@@ -5,6 +5,7 @@ import SmartPicker from "@/components/mobile/SmartPicker";
 import KeypadField from "@/components/mobile/KeypadField";
 import { tehranTodayIso } from "@/lib/jalali";
 import { useMemo, useState } from "react";
+import { idemKeeper } from "@/lib/idemKey";
 import { friendlyError } from "@/lib/userMessage";
 import { useRouter } from "next/navigation";
 import JalaliDatePicker from "@/components/JalaliDatePicker";
@@ -37,6 +38,7 @@ const LABEL = "mb-[var(--space-1)] block text-[length:var(--text-xs)] text-[var(
  *  holding the invoice, beats carrying two pack sizes through every stock query.
  */
 export default function PurchaseEntry({ products }: { products: Product[] }) {
+  const [idem] = useState(idemKeeper);
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
@@ -82,7 +84,7 @@ export default function PurchaseEntry({ products }: { products: Product[] }) {
     try {
       const res = await fetch("/api/sales/purchases", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...idem.headers() },
         body: JSON.stringify({
           supplier: supplier || null,
           purchase_date: purchaseDate,
@@ -99,6 +101,7 @@ export default function PurchaseEntry({ products }: { products: Product[] }) {
         setMessage({ kind: "error", text: friendlyError(json.error, "خرید ثبت نشد؛ دوباره تلاش کنید") });
         return;
       }
+      idem.renew();
       setMessage({ kind: "ok", text: "خرید ثبت شد و میانگین قیمت به‌روز شد" });
       setLines([]);
       setSupplier("");

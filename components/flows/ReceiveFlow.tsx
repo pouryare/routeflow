@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+import { idemKeeper } from "@/lib/idemKey";
 import { useRouter } from "next/navigation";
 import TapFlow, { type CustomStepApi } from "@/components/tapflow/TapFlow";
 import DateStep from "@/components/tapflow/DateStep";
@@ -39,6 +40,7 @@ export default function ReceiveFlow({
   onReopen?: () => void;
 }) {
   const router = useRouter();
+  const [idem] = useState(idemKeeper);
   const today = useMemo(() => tehranTodayIso(), []);
   const ctx = useMemo<FlowContext>(
     () => ({
@@ -55,10 +57,13 @@ export default function ReceiveFlow({
     send: async (st) => {
       const res = await fetch("/api/sales/purchases", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...idem.headers() },
         body: JSON.stringify(receiveRequest(viewCtx, st)),
       });
-      if (res.ok) return { ok: true };
+      if (res.ok) {
+        idem.renew();
+        return { ok: true };
+      }
       const json = (await res.json().catch(() => ({}))) as { error?: string };
       return { ok: false, error: json.error };
     },

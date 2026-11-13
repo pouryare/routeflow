@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { once } from "@/lib/repo/idempotency";
 import { requireRole } from "@/lib/session";
 import { PurchaseError, type PurchaseLineInput } from "@/lib/purchases";
 import { recordPurchaseFor } from "@/lib/repo/salesWrites";
@@ -6,7 +7,7 @@ import { OWNER_ROLES } from "@/lib/roles";
 
 /** Owner only. Recording a purchase is recording that company money was spent, and it
  *  moves the average cost every future margin is measured against. */
-export async function POST(req: NextRequest) {
+async function post(req: NextRequest) {
   const guard = await requireRole(req, OWNER_ROLES);
   if (!guard.ok) return guard.response;
 
@@ -52,3 +53,6 @@ export async function POST(req: NextRequest) {
     throw e;
   }
 }
+
+/** Z2: a repeat with the same Idempotency-Key returns the first answer and saves nothing. */
+export const POST = (req: NextRequest) => once(req, () => post(req));
