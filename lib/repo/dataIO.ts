@@ -14,7 +14,7 @@ import { COLUMNS, KIND_LABEL, planImport, priceKey, type Existing, type ImportKi
 import { ordersForExport } from "@/lib/repo/salesWrites";
 import { ORDER_STATUS_LABEL } from "@/lib/orderStateMachine";
 
-export const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
+const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
 const MAX_ROWS = 20000;
 
 export class DataIOError extends Error {
