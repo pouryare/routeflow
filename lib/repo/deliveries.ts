@@ -304,8 +304,8 @@ registerOrderEffectHandlers({
       (await conn
         .prepare(
           `INSERT INTO orders (order_no, customer_id, group_id, salesperson_user_id, status,
-                               order_type, order_date, notes, created_by, created_at, updated_at, organization_id)
-           VALUES (?, ?, ?, ?, 'DRAFT', 'SALE', ?, ?, ?, ?, ?, ?)`
+                               order_type, order_date, notes, created_by, created_at, updated_at, organization_id, created_source)
+           VALUES (?, ?, ?, ?, 'DRAFT', 'SALE', ?, ?, ?, ?, ?, ?, 'system')`
         )
         .run(
           orderNo,

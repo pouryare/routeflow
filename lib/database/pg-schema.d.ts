@@ -316,6 +316,7 @@ export interface Customers {
   consecutive_misses: Generated<number>;
   contact_person: string | null;
   contact_status: string | null;
+  created_source: string | null;
   credit_limit_toman: number | null;
   customer_code: string;
   customer_type: string | null;
@@ -1096,6 +1097,7 @@ export interface Orders {
   cost_toman: number | null;
   created_at: string;
   created_by: number;
+  created_source: string | null;
   credit_hold: Generated<number>;
   credit_override_by: number | null;
   customer_id: number;
@@ -1185,6 +1187,7 @@ export interface Payments {
   cheque_id: number | null;
   client_uuid: string | null;
   created_at: string;
+  created_source: string | null;
   customer_id: number;
   delivery_stop_id: number | null;
   id: Generated<number>;
@@ -1802,6 +1805,7 @@ export interface Tasks {
   assignee_user_id: number | null;
   created_at: string;
   created_by: number | null;
+  created_source: string | null;
   done_at: string | null;
   due_at: string | null;
   entity_id: number | null;

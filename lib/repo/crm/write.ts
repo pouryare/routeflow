@@ -447,8 +447,8 @@ export async function createLead(session: Session, input: { answers: FlowAnswer[
         (customer_code, business_name, phone, phone_norm, instagram, address, area_label, lat, lng, location_precision, district_id, maps_url,
          source_code, source_detail, source_url, referred_by_customer_id, parent_customer_id, business_type, customer_type, price_tier,
          working_hours_json, owner_user_id, group_id, lifecycle, verification, contact_status, sales_stage, temperature, client_uuid,
-         synced_at, organization_id)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'lead', ?, 'not_contacted', 'unknown', 'cold', ?, ?, ?)`)
+         synced_at, organization_id, created_source)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'lead', ?, 'not_contacted', 'unknown', 'cold', ?, ?, ?, 'form')`)
       .run(code, name, phone ? `0${phone}` : null, phone, instagram, pin.address ?? link?.address ?? null, area, pin.lat, pin.lng, pin.precision,
         districtId, link?.maps_url ?? null, acc.source ?? "OTHER", st.values.source_detail?.trim() || null, link?.maps_url ?? null,
         referred, basics?.branch_of ?? null, businessType, customerTypeFor(businessType), acc.price_tier ?? "unknown",

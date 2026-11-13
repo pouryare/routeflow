@@ -44,8 +44,8 @@ describe("F34 export and import", () => {
     expect(result).toMatchObject({ saved: 3, byKind: { customers: 1, products: 1, prices: 1 } });
 
     const db = getDb();
-    const c = (await db.prepare("SELECT lifecycle, phone, phone_norm, owner_user_id FROM customers WHERE organization_id = 1 AND business_name = ?").get(`قنادی ${tag}`)) as { lifecycle: string; phone: string; phone_norm: string; owner_user_id: number | null };
-    expect(c).toMatchObject({ lifecycle: "active", phone: "09121110000", phone_norm: "9121110000", owner_user_id: null });
+    const c = (await db.prepare("SELECT lifecycle, phone, phone_norm, owner_user_id, created_source FROM customers WHERE organization_id = 1 AND business_name = ?").get(`قنادی ${tag}`)) as { lifecycle: string; phone: string; phone_norm: string; owner_user_id: number | null; created_source: string };
+    expect(c).toMatchObject({ lifecycle: "active", phone: "09121110000", phone_norm: "9121110000", owner_user_id: null, created_source: "import" });
     const p = (await db.prepare("SELECT price_toman FROM product_prices pp JOIN products p ON p.id = pp.product_id WHERE p.sku = ?").get(`SK-${tag}`)) as { price_toman: number };
     expect(p.price_toman).toBe(30000);
     expect(Number(((await db.prepare("SELECT COUNT(*) AS n FROM events WHERE kind = 'data.imported'").get()) as { n: number }).n)).toBeGreaterThan(0);

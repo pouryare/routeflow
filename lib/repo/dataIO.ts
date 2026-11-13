@@ -133,8 +133,8 @@ async function insertCustomer(db: Db, org: number, d: { code: string | null; nam
   // shortcut: imported shops start as «active» customers with no owner; they are people who already buy, and the owner hands them out afterwards.
   await db
     .prepare(
-      `INSERT INTO customers (customer_code, business_name, contact_person, phone, phone_norm, address, city, notes, lifecycle, group_id, synced_at, organization_id)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?, ?)`
+      `INSERT INTO customers (customer_code, business_name, contact_person, phone, phone_norm, address, city, notes, lifecycle, group_id, synced_at, organization_id, created_source)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?, ?, 'import')`
     )
     .run(code, d.name, d.contact, d.phone, d.phoneNorm, d.address, d.city, d.notes, groupId, now, org);
 }
@@ -216,7 +216,7 @@ export async function exportWorkbook(organizationId: number, orders: Awaited<Ret
   }
 
   const oSheet = sheetOf(book, "سفارش‌ها (فقط خواندنی)", ["شماره سفارش", "تاریخ", "مشتری", "وضعیت", "مبلغ (تومان)"]);
-  for (const o of orders) oSheet.addRow([o.order_no, faJalaliDate(o.order_date), o.customer_name, (ORDER_STATUS_LABEL as Record<string, string>)[o.status] ?? o.status, o.total_toman ?? ""]);
+  for (const o of orders) oSheet.addRow([o.order_no, faJalaliDate(o.order_date), o.customer_name, (ORDER_STATUS_LABEL as Record<string, string>)[o.status] ?? "نامشخص", o.total_toman ?? ""]);
 
   const pays = (await db
     .prepare(

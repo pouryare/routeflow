@@ -20,6 +20,8 @@ export interface Profile {
     temperature_manual: number;
     size_band: string | null; supply_channel: string | null; visit_window: string | null; visit_note: string | null;
     uses_products_json: string | null;
+    /** T5: how this customer came to exist (lib/createdSource.ts). */
+    created_source: string | null;
   };
   tags: string[];
   products: { id: number; name: string; price_toman: number | null }[];
@@ -39,11 +41,11 @@ export async function profileFor(session: Session, id: number): Promise<Profile 
   if (!business) return null;
   const db = getDb();
   const org = business.organization_id;
-  const extra = await db.prepare(`SELECT secondary_phone, whatsapp, website, instagram, size_band, supply_channel, visit_window, visit_note, uses_products_json, COALESCE(temperature_manual, 0) AS temperature_manual
+  const extra = await db.prepare(`SELECT secondary_phone, whatsapp, website, instagram, size_band, supply_channel, visit_window, visit_note, uses_products_json, COALESCE(temperature_manual, 0) AS temperature_manual, created_source
     FROM customers WHERE id = ? AND organization_id = ?`).get(id, org) as {
       secondary_phone: string | null; whatsapp: string | null; website: string | null; instagram: string | null;
       size_band: string | null; supply_channel: string | null; visit_window: string | null; visit_note: string | null;
-      uses_products_json: string | null; temperature_manual: number;
+      uses_products_json: string | null; temperature_manual: number; created_source: string | null;
     };
   const tags = (plain(await db.prepare("SELECT tag FROM customer_tags WHERE customer_id = ? AND organization_id = ? ORDER BY tag").all(id, org)) as { tag: string }[]).map(t => t.tag);
   const contacts = plain(await db.prepare(`SELECT id, name, role, phone_norm, whatsapp, is_primary, is_decider, best_time, note

@@ -116,6 +116,8 @@ describe("orders", () => {
         "invoice_sent_via",
         "notes",
         "created_by",
+        // T5: how the order was made (form, quick, offline, import, ...).
+        "created_source",
         "created_at",
         "updated_at",
       ].sort()
