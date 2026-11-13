@@ -560,6 +560,7 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
 
   </details>
 - **Z11. Owner-only amounts.** The owner marks an expense category private; others see dots and totals still count it.
+  **Built (batch B):** table `private_categories`; the owner ticks categories in «دسته‌های خصوصی» on the expenses page. For a group manager the category row, the recent-expense lines and the repeat prefill show dots, the totals and the by-enterer table leave them out, and the journal page hides any journal that touches a private category. Owner-only pages (income statement, trial balance, exports) already hide everything from others.
   <details><summary>Full decision</summary>
 
   **Hide money (Z3).** An eye in the top bar turns every money number into dots until tapped again; for everyone, remembered per person on that phone. **Owner-only amounts (Z11):** the owner marks an expense category private; others see the line with dots and owner totals still count it. It must also hide the amount in totals and exports for others.

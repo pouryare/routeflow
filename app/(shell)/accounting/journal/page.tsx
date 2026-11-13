@@ -3,6 +3,10 @@ import PageHeader from "@/components/meridian/PageHeader";
 import SectionHead from "@/components/meridian/SectionHead";
 import AcctTable, { CELL, NUM } from "@/components/accounting/AcctTable";
 import { requireAccounting } from "@/lib/accountingGate";
+import { cookies } from "next/headers";
+import { COOKIE_NAME } from "@/lib/auth";
+import { getSessionFromCookies } from "@/lib/session";
+import { hiddenAccountIdsFor } from "@/lib/repo/privateCategories";
 import { journalReport, listPeriods } from "@/lib/repo/reports";
 import Pager from "@/components/accounting/Pager";
 import { faNum } from "@/lib/format";
@@ -33,7 +37,8 @@ export default async function JournalPage({
 }) {
   const { period, source, page: pageParam } = await searchParams;
   const organizationId = await requireAccounting("/accounting/journal");
-  const filter = { periodKey: period, sourceType: source };
+  const session = await getSessionFromCookies((await cookies()).get(COOKIE_NAME)?.value);
+  const filter = { periodKey: period, sourceType: source, hideAccountIds: session ? await hiddenAccountIdsFor(session.role, organizationId) : [] };
   let report = await journalReport(organizationId, { ...filter, limit: PAGE_SIZE, offset: (requestedPage(pageParam) - 1) * PAGE_SIZE });
   const paging = pagingFor(pageParam, report.total, PAGE_SIZE);
   // A page past the end is clamped to the last one, which needs one more read.

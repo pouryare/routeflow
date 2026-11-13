@@ -78,7 +78,7 @@ export default function ExpenseEntry({ categories, suppliers, recent = [], canSe
                   <div className="min-w-0 flex-1">
                     <p className="flex items-baseline justify-between gap-[var(--space-2)] text-[length:var(--text-sm)]">
                       <span className="truncate font-medium">{r.categoryFa}</span>
-                      <span className="tnum shrink-0">{faNum(r.amountToman)} تومان</span>
+                      <span className="tnum shrink-0">{r.hidden ? "••••••" : `${faNum(r.amountToman)} تومان`}</span>
                     </p>
                     <p className="truncate text-[length:var(--text-xs)] text-[var(--muted)]">
                       {[faJalaliDate(r.postedAt), supplier ?? (r.memo || null), r.enteredBy, show === "review" && !r.hasReceipt ? "بدون رسید" : null, show === "review" && !r.memo?.trim() ? "بدون توضیح" : null].filter(Boolean).join(" · ")}
@@ -107,7 +107,7 @@ export default function ExpenseEntry({ categories, suppliers, recent = [], canSe
                   ) : null}
                   <button
                     type="button"
-                    onClick={() => start({ accountId: r.accountId, amountToman: r.amountToman, supplier })}
+                    onClick={() => start({ accountId: r.accountId, amountToman: r.hidden ? 0 : r.amountToman, supplier })}
                     className={`${BTN} shrink-0`}
                   >
                     <Icon name="repeat" size="md" />
