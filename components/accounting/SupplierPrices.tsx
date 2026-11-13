@@ -68,7 +68,7 @@ export default function SupplierPrices({ supplierId, rows, products }: { supplie
           {rows.map((r) => (
             <li key={r.product_id}>
               <button type="button" onClick={() => edit(r)} className="flex min-h-[44px] w-full items-center justify-between gap-[var(--space-3)] border-b border-[var(--border)] pb-[var(--space-2)] text-start">
-                <span>{r.product_name}{r.supplier_code ? ` · کد ${r.supplier_code}` : ""}</span>
+                <span className="inline-flex items-center gap-[var(--space-2)]"><Icon name="edit" size="sm" />{r.product_name}{r.supplier_code ? ` · ${r.supplier_code}` : ""}</span>
                 <span className="tnum text-[var(--muted)]">
                   {faToman(r.price_toman)}{r.min_qty ? ` · حداقل ${faNum(r.min_qty)}` : ""}{r.delivery_days != null ? ` · ${faNum(r.delivery_days)} روز` : ""}
                 </span>

@@ -989,7 +989,7 @@ All 148 entries of `docs/future-features.md` (F1 to F148), grouped by area, with
 | F25 | Staff scheduling and attendance | L |  | — | Not built | — |
 | F26 | Field expenses and petty cash | M |  | — | Not built | D15 |
 | F27 | Audit trail and anomaly detection | M | yes | — | Planned: first slice is EV4 | T-skip, D6, E6, EV4 |
-| F48 | Change approvals (second-person sign-off) | M | yes | F27 | Not built | — |
+| F48 | Change approvals (second-person sign-off) | M | yes | F27 | Built (first slice) | — |
 | F51 | SLA and escalation rules | M | yes | — | Partly built | FB43, S5 |
 | F82 | Approval delegation while away | M | yes | F27, F48 | Not built | T13 |
 | F88 | Staff expense reimbursement | M | yes | F26, F48 | Not built | D15 |
@@ -1152,3 +1152,5 @@ Platform claims in [docs/decisions.md section 10](decisions.md#10-platform-facts
 - ~~Whether MapLibre needs the right-to-left text plugin~~: answered 2026-10-28, MapLibre 6 shapes Persian itself and labels render in Peyda (see 10.1, map tiles).
 - Whether Google Play and Cafe Bazaar or Myket rules allow updating web code inside the Android app.
 
+
+**F48 built (batch B, first slice).** Table `change_requests`. One kind so far: raising or removing a customer's credit limit. «سقف اعتبار» on the customer page (`PUT /api/customers/[id]/credit-limit`): an owner, or any lowering, applies at once; a group manager's raise waits as a request with a reason. The owner decides on the discounts admin page («درخواست‌های سقف اعتبار», `POST /api/change-requests/[id]/decide`, authenticator code asked, cannot approve one's own request). Not yet: price edits, other kinds, expiry of old requests, a push to the owner, an audit line for the request itself.

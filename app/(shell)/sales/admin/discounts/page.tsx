@@ -10,6 +10,8 @@ import { discountSettings, discountsGiven, recentDiscounts } from "@/lib/repo/di
 import { DISCOUNT_REASONS, DISCOUNT_STATUS_LABEL } from "@/lib/discounts";
 import { faNum, faToman } from "@/lib/format";
 import { faJalaliDate } from "@/lib/jalali";
+import PendingChanges from "@/components/sales/PendingChanges";
+import { pendingChanges } from "@/lib/repo/changeRequests";
 import { pageMetadata } from "@/lib/pageMeta";
 
 export const metadata = pageMetadata("/sales/admin/discounts");
@@ -24,11 +26,12 @@ export default async function DiscountsPage() {
   const jar = await cookies();
   const session = await getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
   if (!session) redirect("/login");
-  const [settings, recent, given] = await Promise.all([discountSettings(session.organizationId), recentDiscounts(session.organizationId), discountsGiven(session.organizationId)]);
+  const [settings, recent, given, waiting] = await Promise.all([discountSettings(session.organizationId), recentDiscounts(session.organizationId), discountsGiven(session.organizationId), pendingChanges(session.organizationId)]);
 
   return (
     <>
       <PageHeader route="/sales/admin/discounts" />
+      <PendingChanges items={waiting} />
       <DiscountSettingsForm initial={settings} />
       <section className="card mb-[var(--space-4)] p-[var(--space-4)]" dir="rtl" data-tour="discounts-given">
         <SectionHead title="تخفیف‌های ۳۰ روز اخیر" as="h3" className="mb-[var(--space-3)]" />

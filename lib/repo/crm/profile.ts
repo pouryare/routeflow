@@ -1,5 +1,5 @@
 import { getDb, plain } from "@/lib/db";
-import { MANAGE_ROLES } from "@/lib/roles";
+import { MANAGE_ROLES, isOwner } from "@/lib/roles";
 import { canWriteBusiness, isCrmManager, orderFilter, type Session } from "@/lib/session";
 import { readCustomerSummary, type CustomerSummary } from "@/lib/customerSummary";
 import { ORDER_STATUS_LABEL } from "@/lib/orderStateMachine";
@@ -25,6 +25,8 @@ export interface Profile {
     created_source: string | null;
     /** D5: how this customer pays (lib/paymentTerms.ts). */
     payment_terms_kind: string; payment_terms_days: number;
+    /** F48: the credit limit in toman, null = no limit. */
+    credit_limit_toman: number | null;
   };
   tags: string[];
   products: { id: number; name: string; price_toman: number | null }[];
@@ -32,6 +34,8 @@ export interface Profile {
   reps: { id: number; name: string }[]; canWrite: boolean; canManage: boolean;
   /** D5: the viewer may change how this customer pays (the terms API takes the managers). */
   canSetTerms: boolean;
+  /** F48: an owner's credit-limit change applies at once; a manager's raise waits for sign-off. */
+  isOwner: boolean;
   /** F40: the first-order checklist (location, price group, contact, credit). */
   onboarding: Onboarding | null;
   /** F47: open cheques (managers only, else null) and open complaints. */
@@ -46,12 +50,12 @@ export async function profileFor(session: Session, id: number): Promise<Profile 
   if (!business) return null;
   const db = getDb();
   const org = business.organization_id;
-  const extra = await db.prepare(`SELECT secondary_phone, whatsapp, website, instagram, size_band, supply_channel, visit_window, visit_note, uses_products_json, COALESCE(temperature_manual, 0) AS temperature_manual, created_source, payment_terms_kind, payment_terms_days
+  const extra = await db.prepare(`SELECT secondary_phone, whatsapp, website, instagram, size_band, supply_channel, visit_window, visit_note, uses_products_json, COALESCE(temperature_manual, 0) AS temperature_manual, created_source, payment_terms_kind, payment_terms_days, credit_limit_toman
     FROM customers WHERE id = ? AND organization_id = ?`).get(id, org) as {
       secondary_phone: string | null; whatsapp: string | null; website: string | null; instagram: string | null;
       size_band: string | null; supply_channel: string | null; visit_window: string | null; visit_note: string | null;
       uses_products_json: string | null; temperature_manual: number; created_source: string | null;
-      payment_terms_kind: string; payment_terms_days: number;
+      payment_terms_kind: string; payment_terms_days: number; credit_limit_toman: number | null;
     };
   const tags = (plain(await db.prepare("SELECT tag FROM customer_tags WHERE customer_id = ? AND organization_id = ? ORDER BY tag").all(id, org)) as { tag: string }[]).map(t => t.tag);
   const contacts = plain(await db.prepare(`SELECT id, name, role, phone_norm, whatsapp, is_primary, is_decider, best_time, note
@@ -67,7 +71,7 @@ export async function profileFor(session: Session, id: number): Promise<Profile 
     products: await productsWithPrice(business.organization_id),
     contacts, summary: await readCustomerSummary(db, orderFilter(session), id),
     reps: manager ? (await addLeadContext(session)).reps.map(r => ({ id: r.id, name: r.name })) : [],
-    canWrite: canWriteBusiness(session, business), canManage: manager, canSetTerms: (MANAGE_ROLES as readonly string[]).includes(session.role),
+    canWrite: canWriteBusiness(session, business), canManage: manager, canSetTerms: (MANAGE_ROLES as readonly string[]).includes(session.role), isOwner: isOwner(session.role),
     onboarding: await onboardingFor(org, id),
     open: await customer360(session, org, id),
     referrer: referrer ?? null,
