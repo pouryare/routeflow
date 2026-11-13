@@ -7,6 +7,7 @@ import { cookies } from "next/headers";
 import { COOKIE_NAME } from "@/lib/auth";
 import { getSessionFromCookies } from "@/lib/session";
 import PeriodsCard from "@/components/accounting/PeriodsCard";
+import ReconcileCard from "@/components/accounting/ReconcileCard";
 import { todayJalali } from "@/lib/jalali";
 import { isOwner } from "@/lib/roles";
 import { hiddenAccountIdsFor } from "@/lib/repo/privateCategories";
@@ -59,6 +60,7 @@ export default async function JournalPage({
     <>
       <PageHeader route="/accounting/journal" />
       {session && isOwner(session.role) ? <PeriodsCard periods={periods.map((p) => ({ periodKey: p.periodKey, status: p.status }))} currentKey={`${todayJalali().jy}-${String(todayJalali().jm).padStart(2, "0")}`} /> : null}
+      {session && isOwner(session.role) ? <ReconcileCard /> : null}
       <SectionHead
         title="دفتر روزنامه"
         sub={`${faNum(report.total)} سند${reversed ? ` — ${faNum(reversed)} سند ابطال‌شده${paging.pageCount > 1 ? " در این صفحه" : ""}` : ""}`}
