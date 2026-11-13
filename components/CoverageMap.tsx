@@ -130,7 +130,7 @@ export default function CoverageMap({
   role: Role;
   geometryVersion: string;
   /** The company's own numbers (D30); the defaults when left out. */
-  limits?: { quietDays: number; ageingDays: number; staleDays: number; leftoverLimit?: number };
+  limits?: { quietDays: number; ageingDays: number; staleDays: number; leftoverLimit?: number; refundLimit?: number };
 }) {
   // --- Deep links -------------------------------------------------------------------
   // Read once, on the first render, before the map exists: the opening view is a
@@ -1265,7 +1265,7 @@ export default function CoverageMap({
             onReminderAdded={loadReminders}
             onUpdated={loadCustomers}
             canEditContact={canSell(role)}
-            leftover={limits?.leftoverLimit !== undefined && MANAGE_ROLES.includes(role) ? { limit: limits.leftoverLimit, owner: isOwner(role) } : undefined}
+            leftover={limits?.leftoverLimit !== undefined && MANAGE_ROLES.includes(role) ? { limit: limits.leftoverLimit, owner: isOwner(role), refundLimit: limits.refundLimit ?? 0 } : undefined}
           />
         )}
       </div>

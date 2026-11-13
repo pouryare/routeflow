@@ -530,3 +530,23 @@ export async function postHandover(
     legs,
   });
 }
+
+/** B1: cash paid back to a customer for returned goods: Dr sales returns / Cr the office cash box. The customer had
+ *  already paid, so there is no receivable leg. */
+export async function postCashRefund(
+  db: Db,
+  input: { organizationId: number; refundId: number; customerId: number; amountToman: number; paidAt: string; paidBy: number; memo: string }
+): Promise<number> {
+  return await postJournal(db, {
+    organizationId: input.organizationId,
+    postedAt: input.paidAt,
+    sourceType: "MANUAL",
+    sourceId: input.refundId,
+    createdBy: input.paidBy,
+    memo: input.memo,
+    legs: [
+      { accountId: await accountOrThrow("4102"), side: "D", amountToman: input.amountToman, customerId: input.customerId },
+      { accountId: await accountOrThrow("1101"), side: "C", amountToman: input.amountToman, customerId: input.customerId },
+    ],
+  });
+}

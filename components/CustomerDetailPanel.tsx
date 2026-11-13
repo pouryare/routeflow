@@ -88,7 +88,7 @@ export default function CustomerDetailPanel({
    *  can refetch. The panel also updates its own pill optimistically. */
   onUpdated?: () => void;
   /** D3: given to a manager; the button shows when the balance is one they may close. */
-  leftover?: { limit: number; owner: boolean };
+  leftover?: { limit: number; owner: boolean; refundLimit: number };
   /** S15: shown to roles that may change what the customer asked us not to do. */
   canEditContact?: boolean;
 }) {
@@ -460,13 +460,13 @@ export default function CustomerDetailPanel({
         </>
       ) : null}
 
-      {leftover && customer.debt && customer.debt.total > 0 ? (
+      {leftover && customer.debt ? (
         <>
           <button type="button" onClick={() => setCreditNoteOpen(true)} data-tour="credit-note" className="mt-3 flex min-h-[44px] w-full items-center justify-center gap-2 rounded-[var(--radius-md)] border border-border px-3 py-2 text-[length:var(--text-sm)] text-text-muted transition-colors hover:border-accent hover:text-accent">
             <Icon name="undo" size="sm" />
             برگشت از فروش
           </button>
-          {creditNoteOpen ? <CreditNoteSheet open onClose={() => setCreditNoteOpen(false)} customerId={customer.id} name={customer.business_name} owed={customer.debt.total} onDone={() => onUpdated?.()} /> : null}
+          {creditNoteOpen ? <CreditNoteSheet open onClose={() => setCreditNoteOpen(false)} customerId={customer.id} name={customer.business_name} owed={customer.debt.total} refund={{ limit: leftover.refundLimit, owner: leftover.owner }} onDone={() => onUpdated?.()} /> : null}
         </>
       ) : null}
 

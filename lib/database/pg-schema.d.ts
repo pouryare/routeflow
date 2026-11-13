@@ -201,6 +201,17 @@ export interface CashHandovers {
   through_at: string;
 }
 
+export interface CashRefunds {
+  amount_toman: number;
+  created_at: string;
+  customer_id: number;
+  id: Generated<number>;
+  journal_id: number | null;
+  organization_id: number;
+  paid_by: number;
+  reason: string;
+}
+
 export interface ChangeRequests {
   customer_id: number;
   decided_at: string | null;
@@ -1306,6 +1317,7 @@ export interface Organizations {
   quiet_customer_days: Generated<number>;
   rating_tags_json: string | null;
   receipt_footer: string | null;
+  refund_limit_toman: Generated<number>;
   slug: string;
   sound_skin: Generated<string>;
   stalled_order_days: Generated<number>;
@@ -2183,6 +2195,7 @@ export interface DB {
   batches: Batches;
   capacity_factors: CapacityFactors;
   cash_handovers: CashHandovers;
+  cash_refunds: CashRefunds;
   change_requests: ChangeRequests;
   chat_messages: ChatMessages;
   chat_reads: ChatReads;
