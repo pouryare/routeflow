@@ -50,6 +50,7 @@ export const TENANT_TABLES = [
   "orders",
   "purchases",
   "purchase_orders",
+  "expense_claims",
   "delivery_runs",
   /* "lead_runs" is GONE — folded into delivery_runs by foldLeadRunsIntoDeliveryRuns. Its
      stops live on in `lead_run_stops`, which has no organization_id of its own and is reached
