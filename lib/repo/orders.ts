@@ -1,3 +1,4 @@
+import { numberInvoice } from "./invoice";
 import type { Db } from "@/lib/database/client";
 import { makeRepo } from "./base";
 import {
@@ -145,6 +146,9 @@ async function runEffect(
              FROM customers c WHERE c.id = orders.customer_id AND orders.id = ? AND orders.organization_id = ? AND orders.ship_name IS NULL`
         )
         .run(orderId, orgId);
+      return;
+    case "numberInvoice":
+      await numberInvoice(conn, orgId, orderId);
       return;
     case "reserveStock":
       await reserveForOrder(orgId, orderId, conn);

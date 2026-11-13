@@ -31,6 +31,8 @@ import { discountOfOrder } from "@/lib/repo/discounts";
 import { DISCOUNT_REASONS, DISCOUNT_STATUS_LABEL } from "@/lib/discounts";
 import LiveRefresh from "@/components/LiveRefresh";
 import ViewingChip from "@/components/ViewingChip";
+import OfficialInvoiceToggle from "@/components/sales/OfficialInvoiceToggle";
+import { invoiceNumberText } from "@/lib/invoice";
 
 export const dynamic = "force-dynamic";
 
@@ -125,6 +127,13 @@ export default async function OrderDetailPage({
           }
         >
           {order.status === "DRAFT" && <ConfirmOrderButton orderId={order.id} />}
+          {order.status === "DRAFT" && MANAGE_ROLES.includes(session.role) && <OfficialInvoiceToggle orderId={order.id} on={order.official === 1} />}
+          {order.invoice_no != null && order.invoice_year != null && (
+            <Link href={`/sales/orders/${order.id}/invoice`} className="btn ghost touch" data-tour="order-invoice">
+              <Icon name="receipt" size="md" />
+              فاکتور رسمی {invoiceNumberText(order.invoice_year, order.invoice_no)}
+            </Link>
+          )}
           {isOwner(session.role) && <BooksButton doc="order" id={order.id} />}
           {MANAGE_ROLES.includes(session.role) && canSetPriority(order.status) ? (
             <OrderPriorityToggle orderId={order.id} priority={order.priority} />

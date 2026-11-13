@@ -428,6 +428,7 @@ export interface Customers {
   supply_channel: string | null;
   sync_xid: Generated<string | null>;
   synced_at: string;
+  tax_id: string | null;
   temperature: string | null;
   temperature_manual: Generated<number>;
   uses_products_json: string | null;
@@ -1180,6 +1181,7 @@ export interface OrderLines {
   sync_xid: Generated<string | null>;
   unit_cost_toman: Generated<number>;
   unit_price_toman: number;
+  vat_pct: number | null;
 }
 
 export interface Orders {
@@ -1197,10 +1199,13 @@ export interface Orders {
   due_date: string | null;
   group_id: number | null;
   id: Generated<number>;
+  invoice_no: number | null;
   invoice_sent_at: string | null;
   invoice_sent_via: string | null;
+  invoice_year: number | null;
   kg_total: number | null;
   notes: string | null;
+  official: Generated<number>;
   offline: Generated<number>;
   order_date: string;
   order_no: string;
@@ -1253,6 +1258,8 @@ export interface Organizations {
   stalled_order_days: Generated<number>;
   step_up_required: Generated<boolean>;
   task_push_minutes: Generated<number>;
+  tax_id: string | null;
+  vat_default_pct: Generated<number>;
 }
 
 export interface Packagings {
@@ -1392,6 +1399,7 @@ export interface Products {
   sync_xid: Generated<string | null>;
   target_stock: number | null;
   updated_at: string;
+  vat_pct: number | null;
   volume_m3_per_base_unit: number | null;
 }
 

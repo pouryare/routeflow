@@ -369,6 +369,8 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
 
   **Official invoice, some customers only (D7, answers F147 numbering).** A per-order choice: tax IDs on company and customer, VAT per product, an invoice number given at confirmation per Jalali year (drafts use no number), a Moadian export later. Other orders stay as today.
 
+  **Built, first slice (2026-11-13, owner chose "numbers + VAT, no export").** Company tax code and default VAT rate on the status page; a product may carry its own rate (stock page); a customer carries a tax code (customer page); a manager turns «فاکتور رسمی» on for a draft, which needs both codes. Confirming numbers the order `YYYY/NNNNNN` per Jalali year (company-wide lock, unique index) and freezes each line's rate; the invoice page `/sales/orders/[id]/invoice` splits VAT out. **Prices already include VAT**, so totals, credit checks and the books are unchanged. Not built: Moadian file, a VAT-payable ledger account (the books do not show VAT yet), discount spread per line (spread over the VAT total), print layout and PDF, sellers and the accountant seeing the invoice link, tutorial.
+
   </details>
 - **D29. Logo and stamp on documents.** Upload once; PDF receipt, delivery note and statements print them; thermal printer prints the logo.
   <details><summary>Full decision</summary>

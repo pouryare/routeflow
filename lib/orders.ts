@@ -108,6 +108,10 @@ export interface OrderDetail {
   /** D5: the day payment is due; set when the order is delivered. */
   due_date?: string | null;
   ship_address?: string | null;
+  /** D7: 1 when the order is an official invoice; the number is given at confirmation. */
+  official?: number;
+  invoice_year?: number | null;
+  invoice_no?: number | null;
   group_id: number | null;
   salesperson_user_id: number | null;
   salesperson_name: string | null;

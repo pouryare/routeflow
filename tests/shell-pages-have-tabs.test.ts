@@ -24,6 +24,7 @@ const EXEMPT: Record<string, string> = {
     "A detail view of ONE order. The overview card prints the section's title and blurb, " +
     "which would be the wrong copy over a single record. Giving detail routes a header of " +
     "their own — titled by the record — is a design question, not a correctness fix.",
+  "app/(shell)/sales/orders/[id]/invoice/page.tsx": "The printed invoice of ONE order, titled by its number, with a back link to the order.",
   "app/(shell)/sales/reps/[id]/page.tsx": "Same as orders/[id]: a record, not a section.",
   "app/(shell)/sales/academy/lesson/[slug]/page.tsx": "One lesson being read: it has its own title and a back link to the Academy.",
 };
