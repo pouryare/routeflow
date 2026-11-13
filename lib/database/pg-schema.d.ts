@@ -1770,6 +1770,7 @@ export interface Rules {
   escalate_after_min: number | null;
   escalate_to_role: string | null;
   id: Generated<number>;
+  include_imported: Generated<number>;
   name: string;
   organization_id: number | null;
   trigger_kind: string;

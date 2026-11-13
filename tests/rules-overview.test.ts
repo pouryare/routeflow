@@ -46,3 +46,25 @@ describe("F130 daily budget and firing log", () => {
     expect(await fire(4)).toHaveLength(1);
   });
 });
+
+describe("S9 rules skip imported records", () => {
+  it("skips a customer an import made until the rule's switch is turned on; typed-in customers always fire", async () => {
+    const db = getDb();
+    const ts = new Date().toISOString();
+    const cust = async (code: string, source: string | null) =>
+      Number((await db.prepare("INSERT INTO customers (customer_code, business_name, customer_type, lifecycle, synced_at, organization_id, created_source) VALUES (?, 'x', 'RESTAURANT', 'active', '2026-01-01', 1, ?)").run(code, source)).lastInsertRowid);
+    const imported = await cust("S9I", "import");
+    const typed = await cust("S9T", "form");
+    await db.prepare(`INSERT INTO rules (organization_id, code, name, trigger_kind, condition_json, action_kind, action_json, cooldown_min, active, created_at, updated_at)
+      VALUES (NULL, 's9_test', 'آزمون واردشده', 's9.test', NULL, 'alert', NULL, 1, 1, ?, ?)`).run(ts, ts);
+    const fire = (id: number) => runEventRules(1, { id, kind: "s9.test", entity_type: "customer", entity_id: id, actor_user_id: null, metadata_json: null, occurred_at: ts } as never);
+    expect(await fire(imported)).toHaveLength(0);
+    expect(await fire(typed)).toHaveLength(1);
+    await setTenantRuleOverride(1, { code: "s9_test", include_imported: true });
+    expect((await rulesOverview(1)).find((r) => r.code === "s9_test")!.includeImported).toBe(true);
+    expect(await fire(imported)).toHaveLength(1);
+    await setTenantRuleOverride(1, { code: "s9_test", active: false });
+    await setTenantRuleOverride(1, { code: "s9_test", include_imported: false });
+    expect((await rulesOverview(1)).find((r) => r.code === "s9_test")!.active).toBe(false);
+  });
+});
