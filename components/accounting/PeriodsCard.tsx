@@ -19,7 +19,7 @@ interface Period { periodKey: string; status: "open" | "closed" }
 export default function PeriodsCard({ periods, currentKey }: { periods: Period[]; currentKey: string }) {
   const router = useRouter();
   const [target, setTarget] = useState<Period | null>(null);
-  const [list, setList] = useState<{ waitingOrders: number; onTheRoad: number } | null>(null);
+  const [list, setList] = useState<{ waitingOrders: number; onTheRoad: number; needsAttention: number } | null>(null);
   const [counted, setCounted] = useState<string[]>([]);
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
@@ -32,7 +32,7 @@ export default function PeriodsCard({ periods, currentKey }: { periods: Period[]
     setCounted([]);
     setList(null);
     if (p.status === "open") {
-      const j = (await (await fetch(`/api/accounting/periods?period=${p.periodKey}`)).json().catch(() => null)) as { checklist?: { waitingOrders: number; onTheRoad: number } } | null;
+      const j = (await (await fetch(`/api/accounting/periods?period=${p.periodKey}`)).json().catch(() => null)) as { checklist?: { waitingOrders: number; onTheRoad: number; needsAttention: number } } | null;
       setList(j?.checklist ?? null);
     }
   }
@@ -74,7 +74,7 @@ export default function PeriodsCard({ periods, currentKey }: { periods: Period[]
           {closing ? (
             <>
               <p className="m-0 text-[length:var(--text-sm)]">
-                {list ? `${faNum(list.waitingOrders)} سفارش هنوز پیش‌نویس یا منتظر بررسی است و ${faNum(list.onTheRoad)} سفارش هنوز در مسیر است.` : "در حال بررسی…"}
+                {list ? `${faNum(list.waitingOrders)} سفارش هنوز پیش‌نویس یا منتظر بررسی است و ${faNum(list.onTheRoad)} سفارش هنوز در مسیر است.${list.needsAttention > 0 ? ` ${faNum(list.needsAttention)} هزینه بدون عکس رسید یا یادداشت دارد.` : ""}` : "در حال بررسی…"}
               </p>
               <ChipGroup wrap group={{ id: "counted", label: "فهرست", mode: "multi", value: counted, onChange: (v) => setCounted(v as string[]), options: [{ id: "cash", label: "صندوق را شمرده‌ام" }] }} />
             </>

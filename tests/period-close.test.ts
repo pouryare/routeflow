@@ -8,7 +8,7 @@ const testDbPath = path.join(os.tmpdir(), `rf-pclose-${Date.now()}-${Math.random
 process.env.ROUTEFLOW_DB_PATH = testDbPath;
 process.env.SESSION_SECRET = "test-secret";
 const { getDb } = await import("@/lib/db");
-const { closePeriod, reopenPeriod } = await import("@/lib/repo/periodClose");
+const { closePeriod, reopenPeriod, closeChecklist } = await import("@/lib/repo/periodClose");
 const { postExpense, expenseCategories } = await import("@/lib/repo/ledgerPostings");
 
 afterAll(() => {
@@ -35,5 +35,14 @@ describe("A2 close a month", () => {
     await reopenPeriod(1, "1404-10", 1, "اشتباه در ثبت");
     await post();
     await expect(reopenPeriod(1, "1404-10", 1, "دوباره")).rejects.toThrow(/بسته نیست/);
+  });
+
+  it("Z7: the checklist counts the month's expenses with no receipt or note", async () => {
+    const db = getDb();
+    const rent = (await expenseCategories()).find((c) => c.code === "5102")!;
+    await postExpense(db, { organizationId: 1, accountId: rent.id, amountToman: 500, method: "CASH", incurredAt: "2026-02-10T10:00:00.000Z", incurredBy: 1 });
+    // 2026-02-10 falls in Bahman 1404
+    expect((await closeChecklist(1, "1404-11")).needsAttention).toBeGreaterThanOrEqual(1);
+    expect((await closeChecklist(1, "1404-05")).needsAttention).toBe(0);
   });
 });

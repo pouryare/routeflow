@@ -8,6 +8,8 @@ export interface CloseChecklist {
   waitingOrders: number;
   /** Orders of that month on a van that has not answered (out for delivery). */
   onTheRoad: number;
+  /** Z7: the month's expenses with no receipt photo or no note (not voided). */
+  needsAttention: number;
 }
 
 const currentKey = () => {
@@ -27,7 +29,16 @@ export async function closeChecklist(organizationId: number, periodKey: string):
          FROM orders WHERE organization_id = ? AND order_date >= ? AND order_date <= ?`
     )
     .get(organizationId, from, to)) as { waiting: number; road: number };
-  return { waitingOrders: Number(row.waiting), onTheRoad: Number(row.road) };
+  // shortcut: the month is cut by the UTC date of posted_at, not the Tehran day; fine for a count, tighten if it ever drives a refusal.
+  const att = (await getDb()
+    .prepare(
+      `SELECT COUNT(*) AS n FROM journals j
+        WHERE j.organization_id = ? AND j.source_type = 'EXPENSE' AND substr(j.posted_at, 1, 10) >= ? AND substr(j.posted_at, 1, 10) <= ?
+          AND NOT EXISTS (SELECT 1 FROM journals r WHERE r.reverses_journal_id = j.id)
+          AND (btrim(COALESCE(j.memo, '')) = '' OR NOT EXISTS (SELECT 1 FROM expense_receipts x WHERE x.journal_id = j.id AND x.organization_id = j.organization_id))`
+    )
+    .get(organizationId, from, to)) as { n: number };
+  return { waitingOrders: Number(row.waiting), onTheRoad: Number(row.road), needsAttention: Number(att.n) };
 }
 
 export async function closePeriod(organizationId: number, periodKey: string, by: number): Promise<void> {
