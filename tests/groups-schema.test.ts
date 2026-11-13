@@ -57,7 +57,7 @@ describe("users rebuild", () => {
       // must_change_password (F35) marks a password an owner chose, to be replaced at next sign-in.
       // leave_until / leave_reason: a person away (S23).
       // can_teach is the «مربی» permission an owner can give (Academy, AC3).
-      ["active", "avatar_stem", "avatar_url", "can_teach", "created_at", "display_name", "group_id", "id", "last_active_at", "leave_reason", "leave_until", "location_consent_at", "must_change_password", "organization_id", "password_hash", "phone", "prefs_json", "role", "staff_code", "telegram_chat_id", "telegram_link_nonce", "token_version", "totp_enabled_at", "totp_last_step", "totp_secret", "username"].sort()
+      ["active", "avatar_stem", "avatar_url", "can_teach", "created_at", "display_name", "group_id", "id", "last_active_at", "leave_delegate_id", "leave_reason", "leave_until", "location_consent_at", "must_change_password", "organization_id", "password_hash", "phone", "prefs_json", "role", "staff_code", "telegram_chat_id", "telegram_link_nonce", "token_version", "totp_enabled_at", "totp_last_step", "totp_secret", "username"].sort()
     );
   });
 
