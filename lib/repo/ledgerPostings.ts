@@ -1,6 +1,7 @@
 import type { Db } from "@/lib/database/client";
 import { getDb } from "@/lib/db";
 import { postJournal, accountIdByCode, LedgerError, type LedgerLeg } from "./ledger";
+import { TRANSFER_ACCOUNTS } from "@/lib/transferAccounts";
 
 /* Re-exported so a caller can tell a REFUSAL (show the user) from a bug, without also
    importing the engine module. postExpense and postSupplierPayment both throw it. */
@@ -313,6 +314,30 @@ export async function recordExpense(
   return await db.tx(async () => {
     const id = await postExpense(db, input);
     return id;
+  });
+}
+
+/** A4 «انتقال وجه»: money moves from one own account to another in one balanced entry; a bank fee, if any, leaves the
+ *  source account too (Dr other expenses). The bank tracking number goes in the memo. Example: 5,000,000 from the box to the bank,
+ *  fee 2,000, tracking 8891 → Dr bank 5,000,000, Dr fee 2,000 / Cr box 5,002,000. */
+export async function postTransfer(db: Db, input: { organizationId: number; from: string; to: string; amountToman: number; feeToman?: number; postedAt: string; tracking?: string | null; by: number }): Promise<number> {
+  const codes = TRANSFER_ACCOUNTS.map((a) => a.code) as string[];
+  if (!codes.includes(input.from) || !codes.includes(input.to) || input.from === input.to) throw new LedgerError("حساب مبدأ و مقصد باید دو حساب متفاوت از صندوق، بانک و تنخواه باشند");
+  const fee = input.feeToman ?? 0;
+  if (!Number.isInteger(input.amountToman) || input.amountToman <= 0 || !Number.isInteger(fee) || fee < 0) throw new LedgerError("مبلغ نامعتبر است");
+  const tracking = input.tracking?.trim();
+  const legs: LedgerLeg[] = [
+    { accountId: await accountOrThrow(input.to), side: "D", amountToman: input.amountToman },
+    ...(fee > 0 ? [{ accountId: await accountOrThrow("5106"), side: "D" as const, amountToman: fee }] : []),
+    { accountId: await accountOrThrow(input.from), side: "C", amountToman: input.amountToman + fee },
+  ];
+  return await postJournal(db, {
+    organizationId: input.organizationId,
+    postedAt: input.postedAt,
+    sourceType: "MANUAL",
+    createdBy: input.by,
+    memo: `انتقال وجه${tracking ? ` · پیگیری ${tracking}` : ""}${fee > 0 ? " · با کارمزد" : ""}`,
+    legs,
   });
 }
 

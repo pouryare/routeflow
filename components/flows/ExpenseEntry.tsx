@@ -13,6 +13,7 @@ import BooksButton from "@/components/accounting/BooksButton";
 import Link from "next/link";
 import { placeHref } from "@/lib/entryPlace";
 import VoidExpenseSheet from "./VoidExpenseSheet";
+import TransferSheet from "@/components/accounting/TransferSheet";
 
 const BTN =
   "inline-flex min-h-[44px] items-center justify-center gap-[var(--space-2)] rounded-[var(--radius-md)] border border-[var(--border)] px-[var(--space-4)] text-[length:var(--text-sm)] text-[var(--foreground)]";
@@ -38,6 +39,7 @@ export default function ExpenseEntry({ categories, suppliers, recent = [], canSe
           <Icon name="plus" size="md" />
           ثبت هزینه
         </button>
+        {canSeeBooks ? <span className="ms-[var(--space-2)]"><TransferSheet /></span> : null}
       </div>
       {flow.key > 0 && (
         <ExpenseFlow

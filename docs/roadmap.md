@@ -328,6 +328,7 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
 
   </details>
 - **A4. Transfer between own accounts.** One «انتقال وجه» form: from, to, amount, date, tracking number, optional fee.
+  **Built (batch B):** «انتقال وجه» button on the expenses page (owner) opens a sheet: from and to (cash box, bank, petty cash), amount, date, bank tracking number (kept in the memo), optional fee (leaves the source, posted to «سایر»). One balanced MANUAL journal, `POST /api/accounting/transfers`, safe against a double tap. No dedicated bank-fee account yet.
   <details><summary>Full decision</summary>
 
   **Transfer between own accounts (A4).** One «انتقال وجه» form: from, to, amount, date, bank tracking number, optional fee; one balanced entry. D1 (driver box to office), D2 (cash deposit to bank) and A3 reuse it. Petty cash `1103` is in the chart but unused today.
