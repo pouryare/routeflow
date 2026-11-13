@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useState } from "react";
+import { useRunAfterMount } from "@/lib/useRunAfterMount";
 import BottomSheet from "@/components/mobile/BottomSheet";
 import { ChipGroup } from "@/components/mobile/ChipGroup";
 import { FieldInput } from "@/components/FieldInput";
@@ -18,12 +19,12 @@ export default function DepositBankSheet({ count, onClose, onPick }: { count: nu
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     const r = await fetch("/api/bank-accounts").catch(() => null);
     const j = (await r?.json().catch(() => null)) as { accounts?: BankAccountView[] } | null;
     setBanks(j?.accounts ?? []);
-  };
-  useEffect(() => { void load(); }, []);
+  }, []);
+  useRunAfterMount(load);
 
   async function add() {
     setBusy(true);
