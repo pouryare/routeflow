@@ -108,7 +108,10 @@ function ListView({
   filtered,
   more,
   views,
+  totalCount,
 }: {
+  /** FB4: how many orders the search and filters hide. */
+  totalCount: number;
   views: SavedView[];
   orders: OrderSummary[];
   /** FB1: who sold the listed orders (for the rep chips), whether a search or chip is on, and the link that reads 100 more. */
@@ -166,6 +169,12 @@ function ListView({
 
       <div className="kblock__body">
         <OrderFilters reps={reps} views={views} />
+        {(filtered || range) && totalCount > orders.length ? (
+          <p className="m-0 mt-2 text-[length:var(--text-sm)] text-[var(--muted)]">
+            {faNum(totalCount - orders.length)} سفارش با این فیلتر دیده نمی‌شود.{" "}
+            <Link href={focused ? `/sales/orders?customer=${focused.id}` : "/sales/orders"} className="text-[var(--accent-text)]">پاک کردن فیلتر</Link>
+          </p>
+        ) : null}
       </div>
       {bounds && <OrderAmountFilter key={range ? range.join("-") : "all"} bounds={bounds} active={range} amounts={amounts} />}
 
@@ -465,6 +474,7 @@ export default async function OrdersPage({
           filtered={isFiltered}
           more={more}
           views={await listViews(session.organizationId, session.user.id)}
+          totalCount={allOrders.length}
         />
       )}
     </>

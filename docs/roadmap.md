@@ -61,7 +61,7 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
   **Orders list you can search and filter.** `/sales/orders` reads at most 100 orders and takes no filter inputs. Add `FilterChips` for status, payment, rep and day, a count, «load more» past 100, and one paste-many search (paste order numbers or phones, get just those).
 
   </details>
-- **FB4. Empty states name what is hidden.** Say what is hidden («۳ مورد به تعویق افتاده») and offer to clear the filter that causes it. Partly built 2026-11-05: payments and stock lists say how many are hidden and offer «پاک کردن فیلتر»; the action centre and the task board have no filters to name yet.
+- **FB4. Empty states name what is hidden.** Say what is hidden («۳ مورد به تعویق افتاده») and offer to clear the filter that causes it. Partly built 2026-11-05: payments and stock lists say how many are hidden and offer «پاک کردن فیلتر»; the action centre and the task board have no filters to name yet. **Batch C:** the orders list now says how many orders the search and filters hide, with «پاک کردن فیلتر».
   <details><summary>Full decision</summary>
 
   **Empty states name what is hidden.** Action centre, tasks and filtered lists say «۳ مورد به تعویق افتاده، فردا ۰۹:۰۰» and offer «پاک کردن فیلتر» when a filter is the cause.
