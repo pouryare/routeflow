@@ -79,3 +79,41 @@ describe("audit_log (E4)", () => {
     expect(await rows()).toHaveLength(1);
   });
 });
+
+describe("audit_log, access and settings (E6)", () => {
+  it("records a company setting under its own company, and a group rename, with who did it", async () => {
+    const db = getDb();
+    const before = Number(((await db.prepare("SELECT step_up_required::int AS v FROM organizations WHERE id = 1").get()) as { v: number }).v);
+    await withDbActor("7", () => db.prepare("UPDATE organizations SET step_up_required = ?, discount_auto_pass_pct = 4 WHERE id = 1").run(before ? false : true));
+    const gid = Number((await db.prepare("INSERT INTO groups (name, slug, created_at, organization_id) VALUES ('شمال', ?, '2026-01-01', 1)").run(`g-${Math.random().toString(36).slice(2, 7)}`)).lastInsertRowid);
+    await withDbActor("7", () => db.prepare("UPDATE groups SET name = 'شمال غرب' WHERE id = ?").run(gid));
+    const r = await rows();
+    const org = r.find((x) => x.table_name === "organizations")!;
+    expect(org).toMatchObject({ row_id: 1, op: "update", actor_user_id: 7 });
+    expect(Object.keys(JSON.parse(org.changes_json)).sort()).toEqual(["discount_auto_pass_pct", "step_up_required"]);
+    const g = r.filter((x) => x.table_name === "groups");
+    expect(g.map((x) => x.op)).toEqual(["insert", "update"]);
+    expect(JSON.parse(g[1].changes_json)).toEqual({ name: { old: "شمال", new: "شمال غرب" } });
+  });
+
+  it("records who was made a trainer, and turning two-step login on or off but never the secret", async () => {
+    const db = getDb();
+    const uid = Number((await db.prepare("INSERT INTO users (username,password_hash,display_name,role,active,created_at,organization_id) VALUES (?,'h','م','phone_sales',1,'2026-01-01',1)").run(`t-${Math.random().toString(36).slice(2, 7)}`)).lastInsertRowid);
+    const base = (await rows()).length;
+    await db.prepare("UPDATE users SET can_teach = TRUE, totp_enabled_at = '2026-01-02T00:00:00Z', totp_secret = 'SECRET' WHERE id = ?").run(uid);
+    const added = (await rows()).slice(base).filter((x) => x.table_name === "users");
+    expect(added).toHaveLength(1);
+    expect(Object.keys(JSON.parse(added[0].changes_json)).sort()).toEqual(["can_teach", "totp_enabled_at"]);
+    expect(added[0].changes_json).not.toContain("SECRET");
+  });
+
+  it("the history reads names, not numbers, and the name of the customer it is about", async () => {
+    const { auditHistory } = await import("@/lib/repo/auditLog");
+    const db = getDb();
+    const u = Number((await db.prepare("INSERT INTO users (username,password_hash,display_name,role,active,created_at,organization_id) VALUES (?,'h','سارا','phone_sales',1,'2026-01-01',1)").run(`n-${Math.random().toString(36).slice(2, 7)}`)).lastInsertRowid);
+    await db.prepare("UPDATE customers SET owner_user_id = ?, hard_credit_block = 1 WHERE id = ?").run(u, cust);
+    const [row] = await auditHistory(1, { table: "customers", rowId: cust });
+    expect(row.record).toBe("x");
+    expect(row.lines).toEqual(["مالک: — ← سارا", "مسدودی اعتبار: خیر ← بله"]);
+  });
+});
