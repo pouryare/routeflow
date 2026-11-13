@@ -97,6 +97,8 @@ export const isOwner = (r: Role) => OWNER_ROLES.includes(r);
  *  no one is offered a form whose save will be refused. */
 export const SELL_ROLES: Role[] = ["platform_owner", "owner", "group_manager", "phone_sales", "field_rep", "delivery_driver"];
 /** The read-only partner login: one page, no company data. */
+/** A group manager, who runs one group (the one role the Academy and handover rules name directly). */
+export const isGroupManager = (r: Role | string | null | undefined): boolean => r === "group_manager";
 export const isShareholder = (r: Role | string | null | undefined): boolean => r === "shareholder";
 export const canSell = (r: Role | string | null | undefined): boolean => SELL_ROLES.includes(r as Role);
 

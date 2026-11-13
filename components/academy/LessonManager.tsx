@@ -24,6 +24,30 @@ async function call(url: string, method: string, body?: unknown): Promise<{ ok: 
   return { ok: Boolean(res?.ok && j?.ok), error: j?.error ?? (res ? undefined : "ارتباط برقرار نشد"), id: j?.id };
 }
 
+/** The owner's «مربی» switches: a trainer may write and edit lessons. */
+function TrainerSection({ people }: { people: Person[] }) {
+  const [trainers, setTrainers] = useState(() => new Set(people.filter((p) => p.can_teach).map((p) => p.id)));
+  async function toggle(p: Person) {
+    const on = !trainers.has(p.id);
+    const r = await call("/api/sales/academy/trainers", "POST", { user_id: p.id, on });
+    if (r.ok) setTrainers((t) => { const n = new Set(t); if (on) n.add(p.id); else n.delete(p.id); return n; });
+  }
+  return (
+    <section aria-labelledby="trainer-title">
+      <h3 id="trainer-title" className="sechead__title sechead__title--minor">مربی‌ها</h3>
+      <p className="acad__muted">مربی می‌تواند درس بنویسد و ویرایش کند. مثلاً یک راننده باتجربه.</p>
+      <ul className="acad__steps">
+        {people.map((p) => (
+          <li key={p.id} className="acad__step">
+            <span className="acad__step-text"><b>{p.name}</b><span className="acad__chip acad__chip--quiet">{roleLabel(p.role)}</span></span>
+            <CheckField checked={trainers.has(p.id)} onChange={() => void toggle(p)} label={`مربی بودن ${p.name}`}>مربی</CheckField>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
 /** The editor for company lessons (AC3): a list, a sheet to write one, categories, and for the owner the
  *  «مربی» switches. Text is plain: «## » makes a heading, «- » a bullet, a picture is inserted as [[img:12]]. */
 export default function LessonManager({ lessons, categories, roles, people, isOwner }: {
@@ -35,7 +59,6 @@ export default function LessonManager({ lessons, categories, roles, people, isOw
   const [newCat, setNewCat] = useState("");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
-  const [trainers, setTrainers] = useState(() => new Set(people.filter((p) => p.can_teach).map((p) => p.id)));
   const fileRef = useRef<HTMLInputElement>(null);
   const catTitle = (id: number | null) => categories.find((c) => c.id === id)?.title ?? "بدون دسته";
 
@@ -85,12 +108,6 @@ export default function LessonManager({ lessons, categories, roles, people, isOw
     router.refresh();
   }
 
-  async function toggleTrainer(p: Person) {
-    const on = !trainers.has(p.id);
-    const r = await call("/api/sales/academy/trainers", "POST", { user_id: p.id, on });
-    if (r.ok) setTrainers((t) => { const n = new Set(t); if (on) n.add(p.id); else n.delete(p.id); return n; });
-  }
-
   return (
     <div className="acad" dir="rtl">
       <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn solid" data-tour="lesson-new" onClick={() => open(BLANK)}>
@@ -128,20 +145,7 @@ export default function LessonManager({ lessons, categories, roles, people, isOw
         </div>
       </section>
 
-      {isOwner && (
-        <section aria-labelledby="trainer-title">
-          <h3 id="trainer-title" className="sechead__title sechead__title--minor">مربی‌ها</h3>
-          <p className="acad__muted">مربی می‌تواند درس بنویسد و ویرایش کند. مثلاً یک راننده باتجربه.</p>
-          <ul className="acad__steps">
-            {people.map((p) => (
-              <li key={p.id} className="acad__step">
-                <span className="acad__step-text"><b>{p.name}</b><span className="acad__chip acad__chip--quiet">{roleLabel(p.role)}</span></span>
-                <CheckField checked={trainers.has(p.id)} onChange={() => void toggleTrainer(p)} label={`مربی بودن ${p.name}`}>مربی</CheckField>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
+      {isOwner && <TrainerSection people={people} />}
 
       <BottomSheet open={draft !== null} onClose={() => setDraft(null)} title={draft?.id ? "ویرایش درس" : "درس تازه"} closeLabel="بستن ویرایشگر درس" dirty expandable>
         {draft && (

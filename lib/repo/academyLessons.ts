@@ -6,7 +6,7 @@
  * the reader's address), so the two never clash. */
 import { getDb, plain } from "@/lib/db";
 import type { Session } from "@/lib/session";
-import { isOwner, ROLES, type Role } from "@/lib/roles";
+import { isGroupManager, isOwner, ROLES, type Role } from "@/lib/roles";
 
 export class LessonError extends Error {
   constructor(message: string, readonly status = 400) {
@@ -49,13 +49,13 @@ export interface LessonRow {
 
 /** Owner, group manager (their own group's lessons) and any person the owner made a «مربی». */
 export function canAuthorLessons(s: Session): boolean {
-  return isOwner(s.role) || s.role === "group_manager" || Boolean(s.user.can_teach);
+  return isOwner(s.role) || isGroupManager(s.role) || Boolean(s.user.can_teach);
 }
 
 /** Owner: every lesson. Group manager: lessons of their group. Trainer: lessons they wrote. */
 export function canEditLesson(s: Session, l: Pick<LessonRow, "group_id" | "created_by">): boolean {
   if (isOwner(s.role)) return true;
-  if (s.role === "group_manager" && s.groupId !== null && l.group_id === s.groupId) return true;
+  if (isGroupManager(s.role) && s.groupId !== null && l.group_id === s.groupId) return true;
   return Boolean(s.user.can_teach) && l.created_by === s.user.id;
 }
 
@@ -185,7 +185,7 @@ export async function saveLesson(s: Session, input: LessonInput): Promise<number
                                     created_by, updated_by, created_at, updated_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
-    .run(s.organizationId, category, s.role === "group_manager" ? s.groupId : null, title, body, roles.join(","), required, due, status, s.user.id, s.user.id, now, now);
+    .run(s.organizationId, category, isGroupManager(s.role) ? s.groupId : null, title, body, roles.join(","), required, due, status, s.user.id, s.user.id, now, now);
   return Number(r.lastInsertRowid);
 }
 
