@@ -164,7 +164,7 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
 - **S2. Head office and branches card.** HQ lists its branches with last order and balance; branch links up. Bill-to-HQ is not now.
 - **S3. Lead pipeline board.** A column per stage with counts, days in stage, a stuck chip, and a 90-day stage-to-stage report by rep.
 - **S4. Complaint waiting states and duplicate-of.** Waiting on customer or supplier stops the SLA clock; close as a duplicate of another.
-- **S6. Fair lead assignment per group.** Per group: pool (default), round robin, or least open work; people on leave are skipped.
+- **S6. Fair lead assignment per group.** Per group: pool (default), round robin, or least open work; people on leave are skipped. **Built 2026-11-13 (PR #84).** A setting per group on the groups page (stays in the pool, round robin, fewest open leads). It applies when a manager adds a lead and leaves it in the pool; people on leave (S23), inactive people and other groups are skipped, and with nobody available the lead stays in the pool. Not built: applying it to imported or claimed customers.
 - **S15. Do-not-call and contact preferences.** Three switches per customer (calls, promo messages, service messages) with reason, date and who.
 - **S16. Revive lost leads.** After a wait that depends on the lost reason (price 60 days, already supplied 120, not interested 180), back to the pool with a call-again task.
 
@@ -457,7 +457,7 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
   **Undo your own fresh mistake (E5).** Whoever entered a payment, note, task or photo can void it within N minutes (owner setting, default 15) with a reason; after that, manager only. Logged, and voided payments stay in the money log (D6). Today voiding a payment is for managers only.
 
   </details>
-- **S23. Staff on leave until a date.** Still can sign in; assignment skips them; planner warns; a cover card lists their open leads and tasks.
+- **S23. Staff on leave until a date.** Still can sign in; assignment skips them; planner warns; a cover card lists their open leads and tasks. **Built 2026-11-13 (PR #84).** A «مرخصی همکاران» card on the users page sends a person away for N days with a reason and brings them back; the «who gets this lead» list skips them; the card shows what each still holds and points to the handover card. Not built: the planner warning.
 
 - **H3. Accountant role.** A new login that reads all accounting and can post manual entries, reversals and the year close.
   <details><summary>Full decision</summary>
@@ -480,19 +480,19 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
   **Log retention with a preview.** Each growing log table (SMS ledger, sign-in log, outbox, notifications) gets a keep-for-N-days setting. The owner status page shows how many rows the next nightly purge would delete.
 
   </details>
-- **T5. Created by, and how.** Orders, customers, payments and tasks store a source (form, quick order, import, rule, system...) next to the creator.
+- **T5. Created by, and how.** Orders, customers, payments and tasks store a source (form, quick order, import, rule, system...) next to the creator. **Built 2026-11-13 (PR #84).** `created_source` on customers, orders, payments and tasks (form, offline, import, rule, conversion, system), shown on the customer page. Not built: showing or filtering it on orders, payments and tasks.
   <details><summary>Full decision</summary>
 
   **Created by, and how.** Orders, customers, payments and tasks store a source next to the creator (form, quick order, offline sync, import, rule, system, Telegram), shown as one line and usable in filters. F85 stays the sales channel (T5).
 
   </details>
-- **T6. Readable timelines.** Merge one person's edits within 10 minutes; hide cost, margin and credit changes from roles that cannot see them.
+- **T6. Readable timelines.** Merge one person's edits within 10 minutes; hide cost, margin and credit changes from roles that cannot see them. **First slice built 2026-11-13 (PR #84):** the change history reads names and Persian words instead of ids, and a customer shows its own changes. Not built: merging one person's edits within 10 minutes, hiding cost fields by role.
   <details><summary>Full decision</summary>
 
   **Readable timelines.** On the merged order timeline and the customer timeline: one person's edits within 10 minutes merge into one entry; cost, margin and credit changes are hidden from roles that cannot see them; position pings and counters are not logged (T6).
 
   </details>
-- **T3. Recycle bin (F111): JSON copy in a trash table (also T18).** First types: reminders, tasks, photos. A link to a deleted item shows who deleted it, with a restore button for managers.
+- **T3. Recycle bin (F111): JSON copy in a trash table (also T18).** First types: reminders, tasks, photos. A link to a deleted item shows who deleted it, with a restore button for managers. **Checked 2026-11-13:** photos already have a 30-day trash with a restore button (`/sales/admin/storage`, decision 12 in `docs/storage.md`) and tasks cannot be deleted (they are cancelled or done), so only reminders are left. Not built: a trash table for reminders; build it when someone loses a reminder.
   <details><summary>Full decision</summary>
 
   **Recycle bin (F111): a JSON copy in a trash table**, not a `deleted_at` column; first types reminders, tasks and photos, per-company keep-for-N-days in the log-retention setting. A link to a deleted item shows who deleted it and when, with a restore button for managers (T3, T18).
@@ -528,7 +528,7 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
   **Forget a person (D20).** Owner-only and manual: name, phones, address, pin and notes are cleared; orders and ledger stay under «مشتری حذف‌شده»; the person is also removed from the trash copy (T3) and campaign lists; logged without the old values. No automatic job.
 
   </details>
-- **E6. Access and settings change log.** A who/when/old/new line for role, group, active state, password resets and company settings.
+- **E6. Access and settings change log.** A who/when/old/new line for role, group, active state, password resets and company settings. **Built 2026-11-13 (PR #84):** company settings, groups, trainer permission, two-step login on or off, commission rates and storages join the history (never secrets or keys).
   <details><summary>Full decision</summary>
 
   **Access and settings change log (E6, answers F27 question 1 for permissions).** A who/when/old/new line for role, group, active state and password resets of users, and for company settings (discount auto-pass percent, code for sensitive actions, the D30 thresholds), shown on the owner status page beside the access review card (D3-3). Today `setRoles`, user edits and these settings write no log line.
@@ -645,7 +645,7 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
   **Catalogue now (owner, 2026-11-12).** Today `/sales/products` sends van roles to `/driver`, so they have no catalogue, and a product has no photo or description. **Both, in two steps:** step 1 takes orders for later with van stock shown as approximate (VC1 to VC3b); step 2 sells from van stock at the door once van loading (F30) exists, with samples (F52) (VC4). Cost and margin are never sent to van roles. The first version shows or saves the price list; sending it to the shop waits for the message channel (F6, F79). Needs a check that the van screens read the catalogue offline (F75).
 
   </details>
-- **OI1 to OI3. Operational independence. OI2 (a «هفتهٔ اول» lesson) and OI3 (`docs/runbook-index.md`) built 2026-11-13; OI1 not built (the manager table already shows required lessons per person; tutorials per person are not in it).** Manager view of each new hire's tutorials and required lessons (OI1), a first-week checklist per role as an Academy category (OI2), a one-page «if X breaks, read Y» runbook index (OI3). With F59 handover, T13 lend and S23 cover, which keep their own entries. Practice mode (F39) is later.
+- **OI1 to OI3. Operational independence. OI2 (a «هفتهٔ اول» lesson) and OI3 (`docs/runbook-index.md`) built 2026-11-13; OI1 built 2026-11-13 (PR #84): the manager table has a column with how many of each person's tutorials they finished.** Manager view of each new hire's tutorials and required lessons (OI1), a first-week checklist per role as an Academy category (OI2), a one-page «if X breaks, read Y» runbook index (OI3). With F59 handover, T13 lend and S23 cover, which keep their own entries. Practice mode (F39) is later.
   <details><summary>Full decision</summary>
 
   **Owner, 2026-11-12:** plan everything good from the shared «Systematize RouteFlow Operations» chat. Goal: a new person, or someone covering for an absent colleague, can work from the app alone. The pieces and their order are in the plan. F59 needs the audit record (EV4). F39: design not decided, later (a practice order must never message a real customer).
@@ -675,8 +675,8 @@ Decided, but each needs something first. The "waits for" part is in the line. Th
 
 - **FB36. Saved smart segments.** A customer filter saved by name, usable by promotions and reminders. Comes with F28 and F21.
 - **T12. F122 custom fields rules.** Text, number, choice, date, yes/no; up to ten; archive instead of delete. Waits for F122.
-- **T13. F82 / F59 lend (F59 handover built 2026-11-13, owner only, on the users page; T13 not built) a rep's customers.** A manager lends customers to a colleague for N days; access ends by itself. Waits for F82 / F59.
-- **E2. «به شما سپرده شد» notice.** One push when records are handed to you; many at once become one push. Built with S6, T4 and F59.
+- **T13. F82 / F59 lend a rep's customers. Built 2026-11-13 (PR #84), owner only, on the handover card.** A manager lends customers to a colleague for N days; access ends by itself. Waits for F82 / F59. The «تا کی؟» chips lend all of a person's customers for 3 days to a month; open tasks stay; the rules sweep gives them back the day after the last day, or «برگرداندن» does it early; a customer that changed hands meanwhile stays where it is. Not built: picking single customers, lending tasks.
+- **E2. «به شما سپرده شد» notice.** One push when records are handed to you; many at once become one push. Built with S6, T4 and F59. **Handover part built 2026-11-13 (PR #84):** the person who receives a handover or a lend gets one push. Not built: a push for a single customer reassigned by hand.
 - **E16. F122 conditional custom fields.** A custom field may show and require itself when another field matches. Waits for F122.
 - **S7. Merge with a choice per field.** Pick name, phone, pin, address, owner; the losing phone is kept as a second number. Part of F148.
 - **S21. Expected first-order month on a lead.** Optional Jalali month shown on the pipeline board. Comes after S3.
@@ -808,6 +808,8 @@ Not planned now. The reason is in the line; the full text is in the archive.
 
 **Built from the 2026-10-28 UI pattern batch A (PR #2):** discount approval on orders, and the authenticator code before 15 sensitive actions. What was left over is UIB-A1 to UIB-A4 above. Full text: archive 1b.
 
+**Built 2026-11-13, batch two (PR #84):** F34 (one Excel file out, edited file in with a «what would change» preview of new, changed and error rows), F140 (asset register card on the users page), F85 (order channel chips and a report on the lead-sources page), F138 (off-site backup line), S6, S23, T13, T5, T6, E2, E6 and OI1 above. Not built: the planner warning for a person on leave, the alert for a stale off-site copy, filtering by created source, the voice clips for the new tutorials (`data-import`, `staff-leave`, `lend-customers`, `assets`, `page-academy-1`, `manage-lessons`, `van-catalogue` need the ElevenLabs key).
+
 **Built from the small-items batch (2026-11-05):** A7 money tiles on the owner home, A10 repeat an expense, A13 receipt footer and order prefix, B3 books behind a document, D31 reopen a cancelled order, D32 sell-off «تصفیه», FB2 undo on the planner, FB5 detail sheets at the bottom, FB29 authenticator nudge, FB34 owner access review, FB38 invoice sent stamp, FB40 stale draft orders, S17 referrals, S19 push before a timed task, T15 weekly chart on calendar days, T17 maintenance banner, UIB-A3 credit approval scope, Z1 keypad sums, Z3 hide money (found already built), Z9 place on money entries, Z14 icon shortcuts, Z18 save and add next, Z19 safe refresh. Partly built, still listed above with what is left: UIB-A2, FB4, Z7, Z10. T11 was not started: no customer list has a group or rep filter yet. The count and plan are in `plans/small-roadmap-items-2026-11-05.md` in the project files.
 
 **Built: live updates (2026-11-09, issue #58, PR #59).** Our own server-sent events on Postgres (decisions 10.7): the notification bell, orders list, order page, schedule, driver page and coverage map update themselves; plus the ten ideas borrowed from other realtime tools, L1 to L10: live record changes checked per record, presence without flicker, droppable notices, latest value on open, newest-only delivery, «X also has this order open», send with a receipt (for chat), the owner's «چه کسی الان وصل است» card on «وضعیت سامانه», read-only display links (for the wallboard F125) and tag filters. Details: decisions 10.7.
@@ -826,7 +828,7 @@ Not planned now. The reason is in the line; the full text is in the archive.
 - **F61 Backorders and partial fulfilment:** partial delivery and an automatic backorder draft exist; promised dates, a list and auto-fulfilment are missing.
 - **F130 Rule builder screen:** the rule engine exists; owners can only toggle a rule and change its cooldown.
 - **F132 Order priority flag:** built in PR #57 (picker and tags).
-- **F138 Off-site backup copy:** the integrity check and status file are built (PR #57); the off-site copy and alert are missing.
+- **F138 Off-site backup copy:** the integrity check and status file are built (PR #57); the status page has a line for the off-site copy and its age (PR #84). The alert (a push when it goes stale) is missing.
 - **F143 Approve from Telegram:** push notifications already carry one-tap actions for cheques and reminders; Telegram messages have no buttons.
 - **F144 Failure, cancellation, return and delay reason reports:** built in PR #57 (/sales/reasons).
 
@@ -850,11 +852,11 @@ All 148 entries of `docs/future-features.md` (F1 to F148), grouped by area, with
 | F52 | Free samples tracking | M | yes | — | Not built | — |
 | F53 | New product launch tracker | M |  | F21, F52 | Not built | — |
 | F54 | Data quality dashboard | S | yes | F148 | Built (first slice) | A15 |
-| F59 | Salesperson handover | M | yes | F27 | Not built | T13, E2 |
+| F59 | Salesperson handover | M | yes | F27 | Built (first slice) | T13, E2 |
 | F70 | Segment campaigns | M | yes | F8, F9 | Not built | T16 |
 | F74 | Rep daily wrap-up | S | yes | F50 | Small, waits for a prerequisite | — |
 | F77 | Customer visit frequency targets | S | yes | F20, F28 | Small, waits for a prerequisite | — |
-| F85 | Order source tracking | S | yes | F3, F4, F44 | Small, waits for a prerequisite | T5 |
+| F85 | Order source tracking | S | yes | F3, F4, F44 | Built (first slice) | T5 |
 | F86 | Manager coaching notes | S | yes | F41, F59 | Small, waits for a prerequisite | — |
 | F91 | Call and visit quota tracking | S | yes | F41 | Small, waits for a prerequisite | — |
 | F98 | Customer note and visit search | S | yes | — | Built (first slice) | — |
@@ -955,7 +957,7 @@ All 148 entries of `docs/future-features.md` (F1 to F148), grouped by area, with
 | F14 | Natural-language reports ("ask your data") | L |  | — | Not built | FB31 |
 | F16 | Owner mobile dashboard with push alerts | S |  | — | Built (first slice) | — |
 | F32 | Margin analytics (customer, product, route) | M | yes | — | Not built | — |
-| F34 | Data export and backup self-service | S | yes | F27 | Small, waits for a prerequisite | — |
+| F34 | Data export and backup self-service | S | yes | F27 | Built (first slice) | — |
 | F67 | Friday weekly scorecard | S | yes | — | Built (first slice) | — |
 | F90 | Monthly staff pay summary for the accountant | M | yes | F25, F27, F88 | Not built | — |
 | F92 | Territory revenue map | M | yes | — | Not built | — |
@@ -994,13 +996,13 @@ All 148 entries of `docs/future-features.md` (F1 to F148), grouped by area, with
 | F108 | System status page for the owner | S | yes | F34 | Built (first slice) | — |
 | F109 | Self-service password reset | M | yes | F106, F110 | Not built | E12-E13-E15 |
 | F110 | Login activity log | S | yes | F27, F107 | Built (first slice) | — |
-| F111 | Recycle bin | M | yes | F27, F34 | Not built | T3 |
+| F111 | Recycle bin | M | yes | F27, F34 | Partly built (photos) | T3 |
 | F125 | Wallboard display | M | yes | F108 | Not built | — |
 | F126 | Organisation setup wizard | L | yes | F109, F127 | Not built | FB30, T10, D12, A1 |
 | F127 | Tenant usage and plan limits | M | yes | F108, F126 | Not built | FB30 |
 | F128 | Read-only auditor role | L | yes | F107, F110 | Not built | D26 |
 | F138 | Off-site backup copy | S | yes | F34, F108 | Partly built | — |
-| F140 | Company asset register | S | yes | F59, F107 | Small, waits for a prerequisite | D11, D10-D25-D28 |
+| F140 | Company asset register | S | yes | F59, F107 | Built (first slice) | D11, D10-D25-D28 |
 
 ### Mobile experience, input, offline and help
 

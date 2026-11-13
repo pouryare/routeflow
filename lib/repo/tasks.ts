@@ -36,6 +36,8 @@ export interface TaskRow {
   done_at: string | null;
   /** F142: how many times this task was put off (lib/taskSnooze.ts caps it). */
   snooze_count: number;
+  /** T5: how the task came to exist (lib/createdSource.ts); empty for tasks made before it was kept. */
+  created_source?: string | null;
 }
 
 export const tasksRepo = makeRepo<TaskRow>("tasks", { tenant: true });
@@ -77,6 +79,7 @@ export async function createTask(
     created_by: input.created_by ?? null,
     created_at: new Date().toISOString(),
     done_at: null,
+    created_source: "form",
   } as Omit<TaskRow, "id">);
 
   // Phase 1 notifications: a task handed to a person is a feed fact. Guarded on

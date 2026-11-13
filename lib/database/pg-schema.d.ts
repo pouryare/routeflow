@@ -119,6 +119,20 @@ export interface AppMeta {
   value: string | null;
 }
 
+export interface Assets {
+  condition: Generated<string>;
+  created_at: string;
+  created_by: number | null;
+  holder_since: string | null;
+  holder_user_id: number | null;
+  id: Generated<number>;
+  kind: string;
+  name: string;
+  organization_id: number;
+  retired_at: string | null;
+  serial: string | null;
+}
+
 export interface AuditLog {
   actor_user_id: number | null;
   changes_json: string;
@@ -304,6 +318,18 @@ export interface CrmNotDuplicates {
   organization_id: number;
 }
 
+export interface CustomerLoans {
+  created_at: string;
+  created_by: number | null;
+  customer_id: number;
+  from_user_id: number;
+  id: Generated<number>;
+  organization_id: number;
+  returned_at: string | null;
+  to_user_id: number;
+  until: string;
+}
+
 export interface Customers {
   address: string | null;
   area_label: string | null;
@@ -316,6 +342,7 @@ export interface Customers {
   consecutive_misses: Generated<number>;
   contact_person: string | null;
   contact_status: string | null;
+  created_source: string | null;
   credit_limit_toman: number | null;
   customer_code: string;
   customer_type: string | null;
@@ -648,9 +675,11 @@ export interface Forecasts {
 
 export interface Groups {
   active: Generated<number>;
+  assign_mode: Generated<string>;
   color: string | null;
   created_at: string;
   id: Generated<number>;
+  last_assigned_user_id: number | null;
   name: string;
   organization_id: number | null;
   slug: string;
@@ -1092,10 +1121,12 @@ export interface OrderLines {
 }
 
 export interface Orders {
+  channel: string | null;
   client_uuid: string | null;
   cost_toman: number | null;
   created_at: string;
   created_by: number;
+  created_source: string | null;
   credit_hold: Generated<number>;
   credit_override_by: number | null;
   customer_id: number;
@@ -1185,6 +1216,7 @@ export interface Payments {
   cheque_id: number | null;
   client_uuid: string | null;
   created_at: string;
+  created_source: string | null;
   customer_id: number;
   delivery_stop_id: number | null;
   id: Generated<number>;
@@ -1802,6 +1834,7 @@ export interface Tasks {
   assignee_user_id: number | null;
   created_at: string;
   created_by: number | null;
+  created_source: string | null;
   done_at: string | null;
   due_at: string | null;
   entity_id: number | null;
@@ -1862,6 +1895,8 @@ export interface Users {
   display_name: string;
   group_id: number | null;
   id: Generated<number>;
+  leave_reason: string | null;
+  leave_until: string | null;
   location_consent_at: string | null;
   must_change_password: Generated<number>;
   organization_id: number | null;
@@ -1933,6 +1968,7 @@ export interface DB {
   activity_log: ActivityLog;
   alerts: Alerts;
   app_meta: AppMeta;
+  assets: Assets;
   audit_log: AuditLog;
   batches: Batches;
   capacity_factors: CapacityFactors;
@@ -1947,6 +1983,7 @@ export interface DB {
   content_images: ContentImages;
   credit_approvals: CreditApprovals;
   crm_not_duplicates: CrmNotDuplicates;
+  customer_loans: CustomerLoans;
   customer_tags: CustomerTags;
   customers: Customers;
   deleted_rows: DeletedRows;

@@ -16,6 +16,8 @@ import { generatePassword } from "@/lib/credentials";
 import Avatar from "@/components/meridian/Avatar";
 import UserAddFlow from "@/components/flows/UserAddFlow";
 import HandoverCard from "@/components/admin/HandoverCard";
+import LeaveCard from "@/components/admin/LeaveCard";
+import AssetsCard from "@/components/admin/AssetsCard";
 import { ROLE_LABEL, ROLES, type Role } from "@/lib/roles";
 import { faJalaliDate } from "@/lib/jalali";
 import { AVATAR_PRESETS } from "@/lib/avatarPresets";
@@ -351,6 +353,8 @@ export default function AdminUsersPage() {
         </button>
       </form>
 
+      {users !== null && <LeaveCard people={users.filter((u) => u.active).map((u) => ({ id: u.id, display_name: u.display_name }))} />}
+      {users !== null && <AssetsCard people={users.filter((u) => u.active).map((u) => ({ id: u.id, display_name: u.display_name }))} />}
       {users !== null && <HandoverCard people={users.filter((u) => u.active).map((u) => ({ id: u.id, display_name: u.display_name }))} />}
 
       <section className="rounded-lg border border-border bg-surface p-4">

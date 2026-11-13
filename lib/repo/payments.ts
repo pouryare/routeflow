@@ -1,5 +1,6 @@
 import { cache } from "react";
 import { isToman } from "@/lib/money";
+import type { CreatedSource } from "@/lib/createdSource";
 import type { Db } from "@/lib/database/client";
 import { makeRepo } from "./base";
 import { linesByOrder } from "./orderLines";
@@ -64,6 +65,8 @@ export interface RecordPaymentInput {
   cheque_id?: number | null;
   delivery_stop_id?: number | null;
   note?: string | null;
+  /** T5: how the payment came to exist; the form by default. */
+  source?: CreatedSource;
   /** An explicit split. When omitted, FIFO over the customer's oldest unpaid
    *  delivered orders, remainder on account. */
   allocations?: AllocationInput[];
@@ -292,8 +295,8 @@ export async function recordPaymentTxn(
       .prepare(
         `INSERT INTO payments
            (organization_id, customer_id, amount_toman, method, received_at, received_by,
-            reference, receipt_photo_stem, cheque_id, delivery_stop_id, client_uuid, note, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+            reference, receipt_photo_stem, cheque_id, delivery_stop_id, client_uuid, note, created_at, created_source)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       )
       .run(
         organizationId,
@@ -308,7 +311,8 @@ export async function recordPaymentTxn(
         input.delivery_stop_id ?? null,
         input.client_uuid ?? null,
         input.note ?? null,
-        now
+        now,
+        input.source ?? "form"
       )).lastInsertRowid
   );
 

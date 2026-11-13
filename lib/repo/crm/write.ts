@@ -20,6 +20,7 @@ import { leadVisitContext, leadVisitFlow } from "@/lib/crm/flows/leadVisit";
 import { ratingTagsFor } from "@/lib/repo/ratingTags";
 import type { CustomerLifecycle } from "@/lib/types";
 import { addLeadContext, flowContextFor, getBusiness } from "./businesses";
+import { pickRep } from "@/lib/repo/assign";
 import { findDuplicates } from "./dedupe";
 import { isVanRole } from "../../roles";
 
@@ -430,6 +431,8 @@ export async function createLead(session: Session, input: { answers: FlowAnswer[
     }
   }
   const groupId = session.role === "phone_sales" ? session.groupId : await groupForPoint(db, pin.lat, pin.lng, session.organizationId) ?? session.groupId;
+  // S6: a lead left in the pool goes to a person when the group's assignment mode says so.
+  if (owner === null && groupId !== null && groupId !== undefined) owner = await pickRep(db, org, groupId);
   const districtId = await districtIdForPoint(db, pin.lat, pin.lng);
   const area = districtId ? (await db.prepare("SELECT name FROM districts WHERE id = ?").get(districtId) as { name: string } | undefined)?.name ?? null : null;
   const link = linkOf(st.values);
@@ -447,8 +450,8 @@ export async function createLead(session: Session, input: { answers: FlowAnswer[
         (customer_code, business_name, phone, phone_norm, instagram, address, area_label, lat, lng, location_precision, district_id, maps_url,
          source_code, source_detail, source_url, referred_by_customer_id, parent_customer_id, business_type, customer_type, price_tier,
          working_hours_json, owner_user_id, group_id, lifecycle, verification, contact_status, sales_stage, temperature, client_uuid,
-         synced_at, organization_id)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'lead', ?, 'not_contacted', 'unknown', 'cold', ?, ?, ?)`)
+         synced_at, organization_id, created_source)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'lead', ?, 'not_contacted', 'unknown', 'cold', ?, ?, ?, 'form')`)
       .run(code, name, phone ? `0${phone}` : null, phone, instagram, pin.address ?? link?.address ?? null, area, pin.lat, pin.lng, pin.precision,
         districtId, link?.maps_url ?? null, acc.source ?? "OTHER", st.values.source_detail?.trim() || null, link?.maps_url ?? null,
         referred, basics?.branch_of ?? null, businessType, customerTypeFor(businessType), acc.price_tier ?? "unknown",

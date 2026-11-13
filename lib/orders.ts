@@ -8,6 +8,8 @@
 import { MAX_LINES_PER_ORDER, MAX_NOTES_LENGTH, MAX_PACKS_PER_LINE, isValidPacks } from "./orderLimits";
 import { refreshOrderFigures } from "./repo/orderFigures";
 import type { Db } from "@/lib/database/client";
+import type { CreatedSource } from "@/lib/createdSource";
+import type { OrderChannel } from "@/lib/orderChannel";
 import { getDb } from "./db";
 import { resolvePrice, costBasisFor } from "./catalogue";
 import { toJalali } from "./jalali";
@@ -55,6 +57,10 @@ export interface CreateOrderInput {
   organization_id: number;
   salesperson_user_id?: number | null;
   credit_override_by?: number | null;
+  /** T5: how the order came to exist; the form by default. */
+  source?: CreatedSource;
+  /** F85: how the order reached the company; empty when nobody said. */
+  channel?: OrderChannel | null;
   notes?: string | null;
   /** Phase 4: the client-generated idempotency key when this order was drafted offline. */
   client_uuid?: string | null;
@@ -283,8 +289,8 @@ export async function createOrder(
         .prepare(
           `INSERT INTO orders (order_no, customer_id, group_id, salesperson_user_id, status,
                                order_date, requested_day, requested_kind, notes, credit_override_by,
-                               client_uuid, created_by, created_at, updated_at, organization_id)
-           VALUES (?, ?, ?, ?, 'DRAFT', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+                               client_uuid, created_by, created_at, updated_at, organization_id, created_source, channel)
+           VALUES (?, ?, ?, ?, 'DRAFT', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
         )
         .run(
           orderNo,
@@ -302,7 +308,9 @@ export async function createOrder(
           input.created_by,
           now,
           now,
-          input.organization_id
+          input.organization_id,
+          input.source ?? "form",
+          input.channel ?? null
         )).lastInsertRowid
     );
 

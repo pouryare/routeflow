@@ -729,6 +729,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 ## F34. Data export and backup self-service
 
+**Built (2026-11-13), first slice (PR #84):** `/sales/admin/data` (owner). «دریافت فایل اکسل» gives one workbook with a sheet each for customers, products, prices, and read-only orders and payments. An edited workbook (or CSV) can be uploaded for customers, products and prices: the page first shows every row as new, changed (old ← new), unchanged or error, and nothing is saved until «ثبت». Price changes keep their history and need the step-up code; imported customers are marked `import` (T5). Not built: restoring from a file, attachments, point-in-time restore (that stays pgBackRest).
+
 **What:** owners download their data (orders, customers, ledger) as files, see when the last backup ran, and restore a point in time without a developer.
 
 **Technology to consider (2026-10-23):** a backup fire drill (a scheduled restore into a scratch database); see `docs/decisions.md`, section 10.
@@ -1809,6 +1811,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 ## F85. Order source tracking
 
+**Built (2026-11-13), first slice (PR #84):** an optional row of chips on the order form (phone, visit, message, driver at the door, standing order, other), `orders.channel`; a van role's order is marked «driver» without asking; the lead-sources page lists delivered orders and their value per channel, the unsaid ones in their own row. Not built: prefilling from a standing-order draft or a call outcome, per-rep and per-group splits, lead source to first order by channel. This is separate from T5's `created_source`.
+
 **What:** record how each order arrived (phone call, visit, app, WhatsApp or Telegram message, driver on the spot, repeat from a standing order) to see which channels bring volume and where to invest rep time.
 
 **Already in the app:** orders have a type (`order_type`, default `SALE`, with sample orders) and a creator and salesperson, and leads have a source (`source_code`, chosen in the add-lead flow). I found no field recording the channel an order came through.
@@ -2372,6 +2376,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 ---
 
 ## F111. Recycle bin
+
+**Checked (2026-11-13):** photos already go to a 30-day trash with a restore button (`docs/storage.md`, decision 12) and tasks cannot be deleted, so only reminders remain. A trash table for reminders is not built.
 
 **What:** deleted customers, tasks, reminders, photos and similar records are kept for 30 days and can be restored by a manager, then removed for good.
 
@@ -2973,6 +2979,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 ## F138. Off-site backup copy
 
+**Built (2026-11-13), second slice (PR #84):** the nightly backup (`scripts/pg/backup.mjs`) records which pgBackRest repositories are not on this machine and when the newest backup in them finished, and whether photos are copied elsewhere; the status page shows a «نسخهٔ بیرونی پشتیبان» line (red with no copy or after two days, amber after a day and a quarter, «not known yet» for an older status file). The alert (a push when it goes stale) is not built.
+
 **What:** copy each nightly backup to storage away from the server, encrypted, check that the copy can be read, and alert the owner if a night's backup or copy fails.
 
 **Technology to consider (2026-10-23):** a backup fire drill (a scheduled restore into a scratch database) to prove the copy restores; see `docs/decisions.md`, section 10.
@@ -3016,6 +3024,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 ---
 
 ## F140. Company asset register
+
+**Built (2026-11-13), first slice (PR #84):** a «دارایی‌های شرکت» card on the users page (owner): type (van, phone, tablet, printer, scale, key, other), name, serial, who holds it since which day, condition (good, worn, broken); a retired thing leaves the list and is not deleted. Not built: history of past holders, a page of its own, depreciation (D25).
 
 **What:** a register of the company's own equipment (phones, tablets, Bluetooth printers, scales, scanners, laptops) with serial number, purchase date, condition and who holds it, plus a return check when a person leaves or changes role.
 

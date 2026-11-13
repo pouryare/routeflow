@@ -127,8 +127,8 @@ export async function promoteLeadToCustomer(
   const districtId = await districtIdForPoint(db, loc.lat, loc.lng);
   const result = await db.prepare(`
       INSERT INTO customers (customer_code, business_name, address, city, province, lat, lng, notes,
-                             group_id, lead_location_id, district_id, synced_at, organization_id)
-      VALUES (?, ?, ?, 'تهران', 'تهران', ?, ?, ?, ?, ?, ?, ?, ?)
+                             group_id, lead_location_id, district_id, synced_at, organization_id, created_source)
+      VALUES (?, ?, ?, 'تهران', 'تهران', ?, ?, ?, ?, ?, ?, ?, ?, 'conversion')
       ON CONFLICT(organization_id, customer_code) DO NOTHING
     `).run(
       code, loc.name, loc.address, loc.lat, loc.lng, notes,
@@ -196,7 +196,7 @@ async function thankReferrer(conn: Db, orgId: number, customerId: number, at: st
      WHERE c.id = ? AND c.organization_id = ?`).get(customerId, orgId) as
     { id: number; referrer: string; customer: string; owner_user_id: number | null; group_id: number | null } | undefined;
   if (!r) return;
-  await conn.prepare(`INSERT INTO tasks (organization_id, assignee_user_id, role_hint, group_id, kind, title, entity_type, entity_id, due_at, priority, status, created_at)
-      VALUES (?, ?, ?, ?, 'call', ?, 'customer', ?, ?, 'NORMAL', 'open', ?)`)
+  await conn.prepare(`INSERT INTO tasks (organization_id, assignee_user_id, role_hint, group_id, kind, title, entity_type, entity_id, due_at, priority, status, created_at, created_source)
+      VALUES (?, ?, ?, ?, 'call', ?, 'customer', ?, ?, 'NORMAL', 'open', ?, 'system')`)
     .run(orgId, r.owner_user_id, r.owner_user_id ? null : "group_manager", r.group_id, `تشکر از ${r.referrer} بابت معرفی ${r.customer}`, r.id, at, at);
 }

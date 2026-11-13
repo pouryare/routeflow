@@ -19,6 +19,8 @@ import { flyTo } from "@/lib/flyTo";
 import SmartPicker from "@/components/mobile/SmartPicker";
 import KeypadField from "@/components/mobile/KeypadField";
 import DayChips from "@/components/mobile/DayChips";
+import { ChipGroup } from "@/components/mobile/ChipGroup";
+import { ORDER_CHANNELS } from "@/lib/orderChannel";
 import {
   resolveRequestedDay,
   requestedDayLabel,
@@ -117,6 +119,7 @@ export default function OrderForm({
   const requestedWeeks = "1";
   const [sellerId, setSellerId] = useState("");
   const [notes, setNotes] = useState("");
+  const [channel, setChannel] = useState("");
   const [discount, setDiscount] = useState<DiscountDraft>(emptyDraft);
 
   const [lines, setLines] = useState<Draft[]>([]);
@@ -257,6 +260,7 @@ export default function OrderForm({
           requested_kind: requestedMode,
           salesperson_user_id: sellerId === "" ? null : Number(sellerId),
           notes: notes || null,
+          channel: channel || null,
           credit_override: overLimit,
           discount: toRequestBody(discount, payers),
           lines: lines.map((l) => ({
@@ -388,6 +392,10 @@ export default function OrderForm({
             />
           </div>
         )}
+        <div>
+          <p className={LABEL}>سفارش از چه راهی رسید؟</p>
+          <ChipGroup wrap group={{ id: "channel", label: "راه سفارش", mode: "single", value: channel, options: ORDER_CHANNELS.map((c) => ({ id: c.id, label: c.label })), onChange: (v) => setChannel(v as string) }} />
+        </div>
         <div>
           <label className={LABEL} htmlFor="notes">
             یادداشت

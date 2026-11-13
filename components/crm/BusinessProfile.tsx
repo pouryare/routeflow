@@ -28,6 +28,7 @@ import BusinessDetails from "./BusinessDetails";
 import CustomerOpenItems from "./CustomerOpenItems";
 import HoursPicker from "./HoursPicker";
 import type { FlowConfig } from "@/lib/crm/flows/types";
+import { createdSourceLabel } from "@/lib/createdSource";
 
 const hoursFlowConfig: FlowConfig = {
   id: "edit_hours", start: () => "hours", skipStep: "skip", budget: { common: 4, longest: 4 },
@@ -104,6 +105,7 @@ export default function BusinessProfile({ initial, initialTimeline, canOrder }: 
       {canOrder && <Link className="btn solid" style={TOUCH} href={`/sales/orders/new?customer=${profile.business.id}`}><Icon name="plus" size="md" />ثبت سفارش تازه</Link>}
     </div>
     <h1>{profile.business.business_name}</h1>
+    {createdSourceLabel(profile.business.created_source) && <p className="m-0 -mt-3 text-sm text-text-muted">ثبت‌شده از راه: {createdSourceLabel(profile.business.created_source)}</p>}
     {error && <div role="alert">{error} <button className="inline-flex items-center justify-center gap-[var(--space-2)] btn ghost" style={TOUCH} disabled={busy} onClick={() => { setError(null); void reload().catch(e => setError(e.message)); }}>
     <Icon name="refresh" size="md" />
     بارگذاری دوباره</button></div>}

@@ -8,7 +8,7 @@ process.env.ROUTEFLOW_DB_PATH = testDbPath;
 process.env.SESSION_SECRET = "test-secret";
 
 const { getDb } = await import("@/lib/db");
-const { handOver, previewHandover, HandoverError } = await import("@/lib/repo/handover");
+const { handOver, previewHandover, HandoverError, lend, openLoans, returnLoans } = await import("@/lib/repo/handover");
 import type { Session } from "@/lib/session";
 import type { Role } from "@/lib/roles";
 
@@ -59,6 +59,10 @@ describe("handover", () => {
     expect(notes[0].note).toContain("leaver-");
     expect(notes[0].note).toContain("heir-");
     expect(Number(((await db.prepare("SELECT COUNT(*) AS n FROM events WHERE kind = 'records.handed_over'").get()) as { n: number }).n)).toBe(1);
+    // E2: the person who received the work is told, the one who gave it up is not
+    const told = (await db.prepare("SELECT user_id, title_fa, body_fa FROM notifications WHERE type_code = 'records.handed_over' AND user_id IN (?, ?)").all(heir, leaver)) as { user_id: number; title_fa: string; body_fa: string }[];
+    expect(told.map((n) => Number(n.user_id))).toEqual([heir]);
+    expect(told[0].body_fa).toBe("2 مشتری و 1 کار");
   });
 
   it("refuses a non-owner, the same person, a missing person and an inactive or non-selling receiver", async () => {
@@ -73,3 +77,37 @@ describe("handover", () => {
     expect(Number(((await getDb().prepare("SELECT COUNT(*) AS n FROM customers WHERE owner_user_id = ?").get(leaver)) as { n: number }).n)).toBe(2);
   });
 });
+
+describe("lending (T13)", () => {
+  it("lends customers for N days, keeps tasks, and brings them back when the days pass", async () => {
+    const db = getDb();
+    const out = await lend(owner, leaver, heir, 3);
+    expect(out.customers).toBe(2);
+    const ownerOf = async () => (await db.prepare("SELECT DISTINCT owner_user_id AS o FROM customers WHERE id = ANY(?::bigint[])").all(`{${customerIds.join(",")}}`)) as { o: number }[];
+    expect((await ownerOf()).map((r) => Number(r.o))).toEqual([heir]);
+    // open tasks stay with the person who lent
+    expect(Number(((await db.prepare("SELECT COUNT(*) AS n FROM tasks WHERE assignee_user_id = ? AND status = 'open'").get(leaver)) as { n: number }).n)).toBe(1);
+    expect((await openLoans(owner)).filter((l) => customerIds.includes(Number(l.customer_id)))).toHaveLength(2);
+    // not due yet: the sweep leaves them
+    expect(await returnLoans(1)).toBe(0);
+    await db.prepare("UPDATE customer_loans SET until = '2000-01-01' WHERE customer_id = ANY(?::bigint[])").run(`{${customerIds.join(",")}}`);
+    // one customer changes hands again during the loan: it is not pulled back
+    await db.prepare("UPDATE customers SET owner_user_id = ? WHERE id = ?").run(owner.user.id, customerIds[1]);
+    expect(await returnLoans(1)).toBeGreaterThanOrEqual(2);
+    expect(Number(((await db.prepare("SELECT owner_user_id AS o FROM customers WHERE id = ?").get(customerIds[0])) as { o: number }).o)).toBe(leaver);
+    expect(Number(((await db.prepare("SELECT owner_user_id AS o FROM customers WHERE id = ?").get(customerIds[1])) as { o: number }).o)).toBe(owner.user.id);
+    const notes = (await db.prepare("SELECT note FROM activities WHERE type = 'owner_change' AND customer_id = ?").all(customerIds[0])) as { note: string }[];
+    expect(notes.map((n) => n.note).join("|")).toMatch(/قرض/);
+  });
+
+  it("can be given back early, and checks the length and who may lend", async () => {
+    await lend(owner, leaver, heir, 7);
+    const mine = (await openLoans(owner)).filter((l) => customerIds.includes(Number(l.customer_id))).map((l) => Number(l.id));
+    expect(await returnLoans(1, mine, owner.user.id)).toBe(2);
+    expect(Number(((await getDb().prepare("SELECT COUNT(*) AS n FROM customers WHERE owner_user_id = ?").get(leaver)) as { n: number }).n)).toBe(2);
+    await expect(lend(owner, leaver, heir, 0)).rejects.toThrow(/۹۰/);
+    await expect(lend(owner, leaver, heir, 91)).rejects.toThrow(HandoverError);
+    await expect(lend(as(heir, "phone_sales"), leaver, heir, 3)).rejects.toThrow(HandoverError);
+  });
+});
+

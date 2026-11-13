@@ -172,8 +172,8 @@ async function fire(
         .prepare(
           `INSERT INTO tasks
              (organization_id, assignee_user_id, role_hint, group_id, kind, title, entity_type, entity_id,
-              priority, status, created_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'open', ?)`
+              priority, status, created_at, created_source)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'open', ?, 'rule')`
         )
         .run(
           organizationId,

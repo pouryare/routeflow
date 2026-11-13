@@ -305,6 +305,7 @@ async function apply_order_draftCreate(c: MutationContext): Promise<MutationResu
     salesperson_user_id: (p.salesperson_user_id as number | null) ?? null,
     notes: (p.notes as string | null) ?? null,
     client_uuid: mut.client_uuid,
+    source: "offline",
     lines: (p.lines as never[]) ?? [],
   });
   return { status: "applied", server_id: res.id };
@@ -397,6 +398,7 @@ async function apply_payment_record(c: MutationContext): Promise<MutationResult>
     delivery_stop_id: (p.delivery_stop_id as number | null) ?? null,
     note: (p.note as string | null) ?? null,
     client_uuid: mut.client_uuid,
+    source: "offline",
     allocations,
     allow_overpay: p.allow_overpay === true,
   });
@@ -472,8 +474,8 @@ async function apply_customer_capture(c: MutationContext): Promise<MutationResul
     (await db
       .prepare(
         `INSERT INTO customers (customer_code, business_name, contact_person, phone, address,
-                                lat, lng, lifecycle, client_uuid, synced_at, group_id, organization_id)
-         VALUES (?, ?, ?, ?, ?, ?, ?, 'lead', ?, ?, ?, ?)`
+                                lat, lng, lifecycle, client_uuid, synced_at, group_id, organization_id, created_source)
+         VALUES (?, ?, ?, ?, ?, ?, ?, 'lead', ?, ?, ?, ?, 'offline')`
       )
       .run(
         `OFF-${mut.client_uuid.slice(0, 8)}`,

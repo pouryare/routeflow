@@ -96,6 +96,10 @@ describe("company lessons", () => {
     const id = await L.saveLesson(owner, { title: "قانون", roles: ["delivery_driver"], required: true, publish: true });
     const t = await trainingStatus(owner);
     expect(t?.lessons.map((l) => l.slug)).toContain(L.companySlug(id));
+    // OI1: each person also shows how many of their role's in-app tutorials they have finished
+    const driver = t?.people.find((p) => p.name === "d");
+    expect(driver?.tutorials.total).toBeGreaterThan(0);
+    expect(driver?.tutorials.done).toBe(0);
   });
 
   it("a category with lessons cannot be deleted, and only the owner renames", async () => {
@@ -127,6 +131,7 @@ describe("company lessons", () => {
 
 describe("lesson text", () => {
   it("reads headings, bullets, pictures and paragraphs, and skips the title line", () => {
+    expect(parseLesson("[[tutorial:order-new]]")).toEqual([{ kind: "tut", id: "order-new" }]);
     const blocks = parseLesson("# عنوان\n\n## بخش\nیک خط\nخط دو\n\n- الف\n- ب\n\n[[img:7]]\n");
     expect(blocks).toEqual([
       { kind: "h", text: "بخش" },

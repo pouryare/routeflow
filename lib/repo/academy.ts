@@ -2,7 +2,9 @@ import fs from "node:fs";
 import path from "node:path";
 import { getDb, plain } from "@/lib/db";
 import type { Session } from "@/lib/session";
-import { MANAGE_ROLES, isOwner } from "@/lib/roles";
+import { MANAGE_ROLES, isOwner, type Role } from "@/lib/roles";
+import { TUTORIALS } from "@/lib/tutorials/catalog";
+import { tutorialsFor } from "@/lib/tutorials/engine";
 import { makeRepo } from "./base";
 import { stringAgg } from "@/lib/database/dialect";
 import { companyLessonId, companySlug, listCategories, listCompanyLessons, stillDone, canEditLesson, type LessonRow } from "./academyLessons";
@@ -225,12 +227,27 @@ export async function academyOverview(session: Session): Promise<AcademyItem[]> 
   return out;
 }
 
+/** OI1: how many of the tutorials written for a role a person has finished (ticks live in prefs_json.tutorials.done). */
+function tutorialCount(role: Role, prefsJson: string | null): { done: number; total: number } {
+  let done: string[] = [];
+  try {
+    const d = (JSON.parse(prefsJson ?? "{}") as { tutorials?: { done?: unknown } }).tutorials?.done;
+    if (Array.isArray(d)) done = d.filter((x): x is string => typeof x === "string");
+  } catch {
+    // an unreadable preference blob counts as nothing finished
+  }
+  const mine = tutorialsFor(role, TUTORIALS).filter((t) => !t.autoStart);
+  return { done: mine.filter((t) => done.includes(t.id)).length, total: mine.length };
+}
+
 export interface TrainingPerson {
   id: number;
   name: string;
   role: string;
   /** Per required lesson slug: done, not done, or not required for this person's roles. */
   lessons: Record<string, "done" | "todo" | "na">;
+  /** OI1: the in-app tutorials written for this person's role, and how many they have finished. */
+  tutorials: { done: number; total: number };
 }
 
 /** F133: who has finished the lessons their roles require. The owner sees every active person
@@ -252,14 +269,14 @@ export async function trainingStatus(session: Session): Promise<{ lessons: Acade
   if (inGroup && session.groupId === null) return { lessons, people: [] };
   const rows = await db
     .prepare(
-      `SELECT u.id, u.display_name AS name, u.role,
+      `SELECT u.id, u.display_name AS name, u.role, u.prefs_json,
               (SELECT ${stringAgg("ur.role")} FROM user_roles ur WHERE ur.user_id = u.id) AS roles
          FROM users u
         WHERE u.organization_id = ? AND u.active = 1${inGroup ? " AND u.group_id = ?" : ""}
         ORDER BY u.display_name, u.id`
     )
     .all(...(inGroup ? [session.organizationId, session.groupId as number] : [session.organizationId])) as unknown as {
-    id: number; name: string; role: string; roles: string | null;
+    id: number; name: string; role: string; roles: string | null; prefs_json: string | null;
   }[];
   const done = new Set(
     (await db
@@ -277,7 +294,7 @@ export async function trainingStatus(session: Session): Promise<{ lessons: Acade
       const needed = (m.required_for ?? []).some((x) => held.has(x));
       cells[m.slug] = !needed ? "na" : done.has(`${r.id}:${m.slug}`) ? "done" : "todo";
     }
-    people.push({ id: r.id, name: r.name, role: r.role, lessons: cells });
+    people.push({ id: r.id, name: r.name, role: r.role, lessons: cells, tutorials: tutorialCount(r.role as Role, r.prefs_json) });
   }
   // Most to do first: that is who the manager talks to.
   const todo = (p: TrainingPerson) => Object.values(p.lessons).filter((v) => v === "todo").length;

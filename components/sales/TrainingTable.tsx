@@ -1,6 +1,7 @@
 import CardTable from "@/components/CardTable";
 import { Icon } from "@/components/meridian/Icon";
 import { roleLabel } from "@/lib/roles";
+import { faNum } from "@/lib/format";
 import type { AcademyModule, TrainingPerson } from "@/lib/repo/academy";
 
 /** F133: the manager's table of people against required lessons. A row per person, a column
@@ -14,6 +15,7 @@ export default function TrainingTable({ lessons, people }: { lessons: AcademyMod
         <thead>
           <tr className="border-b border-border text-right text-text-muted">
             <th className="py-1 font-normal">نام</th>
+            <th className="py-1 font-normal">آموزش برنامه</th>
             {lessons.map((m) => (
               <th key={m.slug} className="py-1 font-normal">{m.title_fa}</th>
             ))}
@@ -25,6 +27,9 @@ export default function TrainingTable({ lessons, people }: { lessons: AcademyMod
               <td className="py-1">
                 {p.name}
                 <span className="block text-[length:var(--text-xs)] text-text-muted">{roleLabel(p.role)}</span>
+              </td>
+              <td className={`py-1 tabular-nums ${p.tutorials.total > 0 && p.tutorials.done === 0 ? "text-warn" : "text-text-muted"}`}>
+                {p.tutorials.total === 0 ? "—" : `${faNum(p.tutorials.done)} از ${faNum(p.tutorials.total)}`}
               </td>
               {lessons.map((m) => {
                 const v = p.lessons[m.slug];

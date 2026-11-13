@@ -12,6 +12,11 @@ export interface BackupStatus {
   finishedAt: string;
   database: { file: string; bytes: number; check: string } | null;
   photos: { file: string; bytes: number; check: string } | null;
+  /** F138: repositories other than the one on this machine, and when the newest backup in them finished.
+   *  Missing in a status file written before this field existed. */
+  offsite?: { repos: number; newestAt: string | null };
+  /** Whether the photo tarball is copied to another machine (ROUTEFLOW_PHOTOS_OFFSITE is set). */
+  photosOffsite?: boolean;
   error: string | null;
 }
 
@@ -64,11 +69,19 @@ export function statusLines(f: StatusFacts, now: Date = new Date()): StatusLine[
     ? "پروندهٔ وضعیت پشتیبان پیدا نشد؛ پشتیبان‌گیری شبانه یا اجرا نشده یا هنوز به نسخهٔ تازه نرسیده است."
     : !f.backup.ok
       ? `آخرین پشتیبان ناموفق بود: ${f.backup.error ?? f.backup.database?.check ?? "بررسی رد شد"}`
-      : `سالم${f.backup.database ? ` · ${megabytes(f.backup.database.bytes)}` : ""} · فقط روی همین سرور، نسخهٔ بیرونی هنوز نیست`;
+      : `سالم${f.backup.database ? ` · ${megabytes(f.backup.database.bytes)}` : ""}`;
+  const off = f.backup?.offsite;
+  const offsiteTone: Tone = !f.backup || !f.backup.ok || !off ? "unknown" : off.repos === 0 ? "bad" : ageTone(off.newestAt, now, 30, 48);
+  const offsiteDetail = !off
+    ? "هنوز مشخص نیست؛ پس از پشتیبان‌گیری بعدی نشان داده می‌شود."
+    : off.repos === 0
+      ? "نسخهٔ بیرونی تنظیم نشده؛ اگر این سرور از بین برود، پشتیبان هم می‌رود. در راهنمای سرور بخش ماشین دوم را ببینید."
+      : `روی ماشین دوم${f.backup?.photosOffsite === false ? " · عکس‌ها هنوز فقط روی همین سرورند" : ""}`;
 
   const freshness = freshnessTier(f.customersSyncedAt, now);
   return [
     { key: "backup", label: "پشتیبان شبانه", tone: backupTone, at: f.backup?.finishedAt ?? null, detail: backupDetail },
+    { key: "backup_offsite", label: "نسخهٔ بیرونی پشتیبان", tone: offsiteTone, at: off?.newestAt ?? null, detail: offsiteDetail },
     {
       key: "analysis",
       label: "محاسبهٔ شاخص‌ها",
