@@ -1324,6 +1324,7 @@ export interface Organizations {
   due_reminder_days: string | null;
   duplicate_order_hours: Generated<number>;
   effects: Generated<string>;
+  undo_own_minutes: Generated<number>;
   expense_claim_limit_toman: Generated<number>;
   id: Generated<number>;
   idle_signout_json: string | null;

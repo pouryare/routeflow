@@ -17,6 +17,8 @@ import { stillInHand } from "@/lib/repo/cashInHand";
 import { postReceipt, postReceiptReversal, receiptJournalIdFor } from "./ledgerPostings";
 
 import { round } from "@/lib/database/dialect";
+import { SELF_UNDO_METHODS, withinUndoWindow } from "@/lib/undoWindow";
+import { thresholdsFor } from "@/lib/repo/thresholds";
 export type { CustomerDebt };
 
 /** A refusal the caller shows the user, not a bug. */
@@ -655,6 +657,18 @@ export async function voidPayment(
   await db.tx(async () => {
     await voidPaymentTxn(db, organizationId, id, voidedBy, reason);
   });
+}
+
+/** E5: the person who took a payment may void it themselves within the owner's window (default 15 minutes), cash-like
+ *  methods only. Returns null when allowed, or the reason in words. Managers do not need this check. */
+export async function selfVoidProblem(organizationId: number, id: number, userId: number): Promise<string | null> {
+  const p = (await paymentsRepo.db()
+    .prepare("SELECT received_by, method, created_at, voided_at FROM payments WHERE id = ? AND organization_id = ?")
+    .get(id, organizationId)) as { received_by: number; method: string; created_at: string; voided_at: string | null } | undefined;
+  const minutes = (await thresholdsFor(organizationId)).undo_own_minutes;
+  const refusal = "فقط مدیر یا ثبت‌کنندهٔ دریافت، در مهلت کوتاه پس از ثبت، می‌تواند آن را باطل کند";
+  if (!p || p.voided_at || Number(p.received_by) !== userId || !SELF_UNDO_METHODS.includes(p.method)) return refusal;
+  return withinUndoWindow(p.created_at, Date.now(), minutes) ? null : refusal;
 }
 
 const ZERO_DEBT = (): CustomerDebt => ({

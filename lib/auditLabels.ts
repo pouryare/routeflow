@@ -74,6 +74,7 @@ const COLUMNS: Record<string, string> = {
   order_approval_limit_toman: "سقف سفارش بدون تأیید (تومان)",
   expense_claim_limit_toman: "سقف تأیید هزینهٔ کارکنان (تومان)",
   duplicate_order_hours: "هشدار سفارش تکراری (ساعت)",
+  undo_own_minutes: "مهلت باطل کردن دریافت توسط خودِ ثبت‌کننده (دقیقه)",
   plan: "طرح",
   maintenance_from: "شروع تعمیر",
   maintenance_to: "پایان تعمیر",
