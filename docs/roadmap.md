@@ -251,6 +251,7 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
   <details><summary>Full decision</summary>
 
   **Stock and value on a past date (D9).** A Jalali date chip on the stock page shows quantity and value per product and facility on that date, with a total and export.
+  **Built (batch C):** page `/sales/stock/on-date` (owner and managers; link on the stock page): date drums, quantity per product at the end of that day from the stock movements, value (owner only) at today's average cost because past costs are not stored. Not built: per-facility split, export (comes with the month pack D26).
 
   </details>
 - **D16. Supplier price rows.** Per product and supplier: price, minimum quantity, delivery days, supplier code.
