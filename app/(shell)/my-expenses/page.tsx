@@ -55,7 +55,7 @@ export default async function MyExpensesPage() {
         {mine.map((c) => (
           <li key={c.id} className="card flex flex-col gap-[var(--space-1)] p-[var(--space-3)]">
             <div className="flex justify-between gap-2">
-              <span>{c.category}</span>
+              <span>{c.account_name}</span>
               <span className="tnum">{faToman(c.amount_toman)}</span>
             </div>
             <span className="text-[length:var(--text-sm)] text-[var(--muted)]">

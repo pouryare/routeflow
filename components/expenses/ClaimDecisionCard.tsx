@@ -32,7 +32,7 @@ export default function ClaimDecisionCard({ claim }: { claim: ClaimRow }) {
         <span className="font-medium">{claim.user_name}</span>
         <span className="tnum font-medium">{faToman(claim.amount_toman)}</span>
       </div>
-      <p className="m-0 text-[length:var(--text-sm)] text-[var(--muted)]">{claim.category} · {faJalaliDate(claim.incurred_at)}{claim.note ? ` · ${claim.note}` : ""}</p>
+      <p className="m-0 text-[length:var(--text-sm)] text-[var(--muted)]">{claim.account_name} · {faJalaliDate(claim.incurred_at)}{claim.note ? ` · ${claim.note}` : ""}</p>
       {rejecting ? <FieldInput value={reason} onChange={(e) => setReason(e.target.value)} placeholder="دلیل رد" aria-label="دلیل رد" maxLength={200} /> : null}
       {error ? <p className="m-0 text-[length:var(--text-sm)]" style={{ color: "var(--danger)" }} role="status">{error}</p> : null}
       <div className="flex flex-wrap gap-[var(--space-2)]">
@@ -43,10 +43,10 @@ export default function ClaimDecisionCard({ claim }: { claim: ClaimRow }) {
         ) : (
           <>
             <button type="button" disabled={busy} onClick={() => void decide("approve")} className="inline-flex min-h-[44px] items-center gap-[var(--space-2)] rounded-[var(--radius-md)] border border-[var(--accent)] px-[var(--space-3)] text-[length:var(--text-sm)]">
-              <Icon name="check" size="md" /> تأیید
+              <Icon name="check" size="md" /> تأیید هزینه
             </button>
             <button type="button" disabled={busy} onClick={() => setRejecting(true)} className="inline-flex min-h-[44px] items-center gap-[var(--space-2)] rounded-[var(--radius-md)] border border-[var(--border)] px-[var(--space-3)] text-[length:var(--text-sm)]">
-              <Icon name="x" size="md" /> رد
+              <Icon name="x" size="md" /> رد هزینه
             </button>
           </>
         )}

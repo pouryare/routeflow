@@ -27,6 +27,7 @@ export const TAB_ICON: Record<string, IconName> = {
   "/sales/today": "calendar",
   "/crm": "users",
   "/sales/pocket": "clipboard",
+  "/my-expenses": "wallet",
   "/sales/orders": "receipt",
   "/sales/tasks": "list",
   "/map": "map",

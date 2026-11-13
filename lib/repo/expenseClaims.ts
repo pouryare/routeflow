@@ -13,7 +13,7 @@ export interface ClaimRow {
   user_name: string;
   group_id: number | null;
   account_id: number;
-  category: string;
+  account_name: string;
   amount_toman: number;
   note: string | null;
   incurred_at: string;
@@ -22,7 +22,7 @@ export interface ClaimRow {
   created_at: string;
 }
 
-const SELECT = `SELECT c.id, c.user_id, u.display_name AS user_name, c.group_id, c.account_id, a.name_fa AS category, c.amount_toman, c.note,
+const SELECT = `SELECT c.id, c.user_id, u.display_name AS user_name, c.group_id, c.account_id, a.name_fa AS account_name, c.amount_toman, c.note,
                        c.incurred_at, c.status, c.reject_reason, c.created_at
                   FROM expense_claims c JOIN users u ON u.id = c.user_id JOIN accounts a ON a.id = c.account_id`;
 const plain = (r: ClaimRow): ClaimRow => ({ ...r, id: Number(r.id), user_id: Number(r.user_id), group_id: r.group_id === null ? null : Number(r.group_id), account_id: Number(r.account_id), amount_toman: Number(r.amount_toman) });

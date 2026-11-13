@@ -44,7 +44,7 @@ export default function ClaimForm({ categories }: { categories: { id: number; na
           <KeypadField label="مبلغ" unit="تومان" value={amount} onChange={setAmount} />
           <FieldInput value={note} onChange={(e) => setNote(e.target.value)} placeholder="توضیح، مثلاً تعویض لاستیک (اختیاری)" aria-label="توضیح هزینه" maxLength={200} />
           {error ? <p className="m-0 text-[length:var(--text-sm)]" style={{ color: "var(--danger)" }} role="status">{error}</p> : null}
-          <GoButton icon="check" isDisabled={busy || !category || !amount} onPress={() => void save()}>ارسال برای تأیید</GoButton>
+          <GoButton icon="send" isDisabled={busy || !category || !amount} onPress={() => void save()}>ارسال برای تأیید</GoButton>
         </div>
       </BottomSheet>
     </>
