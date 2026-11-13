@@ -1,10 +1,17 @@
 import { describe, it, expect } from "vitest";
-import { splitMoney } from "@/lib/moneyFlow";
+import { monthSoFar, splitMoney } from "@/lib/moneyFlow";
 
 process.env.SESSION_SECRET = "test-secret";
 const { getDb } = await import("@/lib/db");
 const { postJournal, accountIdByCode } = await import("@/lib/repo/ledger");
 const { moneyFlow } = await import("@/lib/repo/moneyFlow");
+
+describe("Z20 month so far", () => {
+  it("guesses the month end from the pace so far", () => {
+    expect(monthSoFar(10, 30, 6000)).toEqual({ share: 1 / 3, guess: 18000 });
+    expect(monthSoFar(40, 30, 100).share).toBe(1);
+  });
+});
 
 describe("A5 money in and out", () => {
   it("splits signed rows, drops a move between own accounts, closes at opening plus in minus out", () => {

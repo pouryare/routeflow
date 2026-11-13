@@ -32,3 +32,10 @@ export function splitMoney(opening: number, rows: MoneyRow[]): MoneyFlow {
   const totalOut = outRows.reduce((s, r) => s + r.net, 0);
   return { opening, closing: opening + totalIn - totalOut, totalIn, totalOut, inRows, outRows };
 }
+
+/** Z20: how far the month has gone and a plain month-end guess for a running total. Pure.
+ *  Example: 6,000 collected by day 10 of a 30-day month guesses 18,000 at month end (the same pace for the rest). */
+export function monthSoFar(dayOfMonth: number, monthLength: number, total: number): { share: number; guess: number } {
+  const day = Math.min(Math.max(dayOfMonth, 1), monthLength);
+  return { share: day / monthLength, guess: Math.round((total / day) * monthLength) };
+}

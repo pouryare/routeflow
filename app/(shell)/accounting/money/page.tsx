@@ -5,7 +5,8 @@ import AcctTable, { CELL, NUM } from "@/components/accounting/AcctTable";
 import { requireAccounting } from "@/lib/accountingGate";
 import { listPeriods } from "@/lib/repo/reports";
 import { moneyFlow } from "@/lib/repo/moneyFlow";
-import { todayJalali } from "@/lib/jalali";
+import { jalaliMonthLength, todayJalali } from "@/lib/jalali";
+import { monthSoFar } from "@/lib/moneyFlow";
 import { faDigits, faNum } from "@/lib/format";
 import { pageMetadata } from "@/lib/pageMeta";
 
@@ -22,6 +23,8 @@ export default async function MoneyPage({ searchParams }: { searchParams: Promis
   const current = `${t.jy}-${String(t.jm).padStart(2, "0")}`;
   const key = period && /^\d{4}-\d{2}$/.test(period) ? period : current;
   const flow = await moneyFlow(organizationId, key);
+  /* Z20: only the running month gets the pace line */
+  const sofar = key === current ? monthSoFar(t.jd, jalaliMonthLength(t.jy, t.jm), flow.totalIn) : null;
   const keys = [...new Set([current, ...periods.map((p) => p.periodKey)])].sort().reverse().slice(0, 12);
 
   return (
@@ -40,6 +43,12 @@ export default async function MoneyPage({ searchParams }: { searchParams: Promis
           </div>
         }
       />
+      {sofar ? (
+        <div className="mb-3" aria-label="پیشرفت ماه">
+          <div className="h-2 overflow-hidden rounded-full bg-[var(--border)]"><div className="h-full bg-[var(--accent)]" style={{ width: `${Math.round(sofar.share * 100)}%` }} /></div>
+          <p className="m-0 mt-1 text-[length:var(--text-xs)] text-[var(--muted)]">{faNum(Math.round(sofar.share * 100))}٪ از ماه گذشته؛ با همین روند ورودی تا آخر ماه حدود {faNum(sofar.guess)} تومان می‌شود.</p>
+        </div>
+      ) : null}
       <AcctTable head={["پول وارد‌شده", "مبلغ"]} foot={<tr className="bg-surface"><td className={CELL}>جمع ورودی</td><td className={NUM}>{faNum(flow.totalIn)}</td></tr>}>
         {flow.inRows.map((r) => (
           <tr key={r.label} className="border-t border-border"><td className={CELL}>{r.label}</td><td className={NUM}>{faNum(r.net)}</td></tr>
