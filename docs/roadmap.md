@@ -754,7 +754,7 @@ Decided, but each needs something first. The "waits for" part is in the line. Th
 
 - **UIB-A1. SMS backup for the sensitive-action code.** Send the code by SMS (Farazsms) when someone has no authenticator, with a resend countdown. Needs an account and an approved template.
 - **T22. Staff invitation by SMS link.** A 48-hour single-use link to set a password. Waits for Farazsms and the SMS guard.
-- **T9. F130 rule builder: draft, test, firing log and budget.** Edit a draft then publish; test on one customer; firing log; daily firing budget per rule. Waits for F130.
+- **T9. F130 rule builder: draft, test, firing log and budget.** Edit a draft then publish; test on one customer; firing log; daily firing budget per rule. **Built 2026-11-13 (batch B):** the firing log («سابقهٔ اجرا», last 30 firings with what each made) and the daily budget per rule (a «سقف در روز» field in the rule sheet; a rule at its cap makes nothing more that day; day = UTC date, not Tehran). **Not built:** draft and publish, and the test on one customer. Both need rules whose conditions an owner can edit; today the conditions live in code (sweeps) or in seeded rows, so there is nothing to draft or dry-run yet.
 - **T10. F126 import wizard steps.** Upload, pick sheet and header row, match columns, fix cells, import with dedupe by mobile. Waits for F126 / F10.
 - **D12. Switches per company.** Cheques, batches, leads, commission, van stock can be turned off per company. A step in the setup wizard (F126).
 - **S9. F130 rules skip imported records.** Imported records are skipped unless a rule switch says otherwise. Waits for F130.
