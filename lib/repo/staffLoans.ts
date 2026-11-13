@@ -4,6 +4,7 @@ import { advanceProblem, loanBalance, type LoanKind } from "@/lib/staffLoans";
 import { accountIdByCode, postJournal, LedgerError } from "./ledger";
 import { cashAccountFor } from "./ledgerPostings";
 import { thresholdsFor } from "./thresholds";
+import { OWNER_ROLES, type Role } from "@/lib/roles";
 
 export class LoanError extends Error {}
 
@@ -189,7 +190,7 @@ export async function loanRemindersCount(organizationId: number): Promise<number
 
 /** Who may be named in an advance form: the owner picks anyone on staff; a group manager, others in their own group. */
 export async function loanPickList(who: { organizationId: number; role: string; userId: number; groupId: number | null }): Promise<{ id: string; label: string }[]> {
-  const isOwnerRole = who.role === "owner" || who.role === "platform_owner";
+  const isOwnerRole = OWNER_ROLES.includes(who.role as Role);
   if (!isOwnerRole && who.groupId === null) return [];
   const rows = (await getDb()
     .prepare(

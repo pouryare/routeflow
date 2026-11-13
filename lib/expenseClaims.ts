@@ -21,7 +21,7 @@ export function canDecideClaim(
 }
 
 /** A cost may be claimed up to this many days after the day it happened. */
-export const CLAIM_MAX_AGE_DAYS = 60;
+const CLAIM_MAX_AGE_DAYS = 60;
 
 /** The days a claim form offers: today first, then back to a week ago. */
 export function claimDayChoices(today: string, addDays: (iso: string, n: number) => string): string[] {

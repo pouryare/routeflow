@@ -314,8 +314,7 @@ export async function runSweepRules(organizationId: number, asOfIso: string = ne
     const rule = rules.get(code);
     if (!rule || rule.trigger_kind !== "sweep") return;
     if (await liveRun(organizationId, rule.id, entityType, entityId, asOfIso)) return;
-    if (await overBudget(organizationId, rule, asOfIso)) return;
-    if (await skipsImported(organizationId, rule, entityType, entityId)) return;
+    if (await overBudget(organizationId, rule, asOfIso) || await skipsImported(organizationId, rule, entityType, entityId)) return;
     out.push({ rule_code: code, run_id: await fire(organizationId, rule, entityType, entityId, ctx, asOfIso) });
   };
 

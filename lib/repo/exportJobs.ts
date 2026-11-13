@@ -8,7 +8,7 @@ import { QUEUE_EXPORT } from "@/lib/queueNames";
  *  `scope_json` is the order filter the route already computed from the session (`orderFilter`), so the
  *  worker, which has no session, reads exactly what the person could read when they asked. Only the
  *  route writes it; the table is tenant-scoped like every other. */
-export const EXPORT_KEEP_HOURS = 24;
+const EXPORT_KEEP_HOURS = 24;
 
 type Scope = { sql: string; params: number[] };
 export type ExportJob = { id: number; user_id: number; status: "queued" | "running" | "done" | "failed"; progress: number; total: number; filename: string | null; error: string | null };
