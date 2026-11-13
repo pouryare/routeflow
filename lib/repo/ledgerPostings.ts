@@ -30,8 +30,9 @@ export async function cashAccountFor(method: string): Promise<number> {
 
 /** Where a customer receipt's money side goes. A LEFTOVER (D3) is no money coming in: the balance is forgiven, so the
  *  other side is the write-off expense. Only receipts may use it; an expense, a supplier payment or a commission paid
- *  by "LEFTOVER" is refused by cashAccountFor. */
-const receiptAccountFor = async (method: string): Promise<number> => (method === "LEFTOVER" ? await accountOrThrow("5110") : await cashAccountFor(method));
+ *  by "LEFTOVER" is refused by cashAccountFor. A CREDIT_NOTE (B1) is goods coming back: the other side is 4102 sales returns. */
+const receiptAccountFor = async (method: string): Promise<number> =>
+  method === "LEFTOVER" ? await accountOrThrow("5110") : method === "CREDIT_NOTE" ? await accountOrThrow("4102") : await cashAccountFor(method);
 
 /** A customer receipt: Dr cash (or cheques receivable) / Cr accounts receivable.
  *

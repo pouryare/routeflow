@@ -2,6 +2,7 @@
 
 import { DEFAULT_SHEET_ORIENT, readSheetOrient, saveSheetOrient, type SheetOrient } from "@/lib/sheetOrient";
 import LeftoverSheet from "@/components/LeftoverSheet";
+import CreditNoteSheet from "@/components/CreditNoteSheet";
 import ContactPrefsSheet from "@/components/ContactPrefsSheet";
 import { mayCloseLeftover } from "@/lib/leftover";
 import { useEscapeKey } from "@/lib/useEscapeKey";
@@ -92,6 +93,7 @@ export default function CustomerDetailPanel({
   canEditContact?: boolean;
 }) {
   const [leftoverOpen, setLeftoverOpen] = useState(false);
+  const [creditNoteOpen, setCreditNoteOpen] = useState(false);
   const [contactOpen, setContactOpen] = useState(false);
   const noCalls = customer.contact_off?.some((c) => c.channel === "calls") ?? false;
   const panelRef = useRef<HTMLDivElement>(null);
@@ -455,6 +457,16 @@ export default function CustomerDetailPanel({
             بستن مانده کوچک
           </button>
           <LeftoverSheet open={leftoverOpen} onClose={() => setLeftoverOpen(false)} customerId={customer.id} name={customer.business_name} owed={customer.debt.total} limit={leftover.limit} owner={leftover.owner} onDone={() => onUpdated?.()} />
+        </>
+      ) : null}
+
+      {leftover && customer.debt && customer.debt.total > 0 ? (
+        <>
+          <button type="button" onClick={() => setCreditNoteOpen(true)} data-tour="credit-note" className="mt-3 flex min-h-[44px] w-full items-center justify-center gap-2 rounded-[var(--radius-md)] border border-border px-3 py-2 text-[length:var(--text-sm)] text-text-muted transition-colors hover:border-accent hover:text-accent">
+            <Icon name="undo" size="sm" />
+            برگشت از فروش
+          </button>
+          {creditNoteOpen ? <CreditNoteSheet open onClose={() => setCreditNoteOpen(false)} customerId={customer.id} name={customer.business_name} owed={customer.debt.total} onDone={() => onUpdated?.()} /> : null}
         </>
       ) : null}
 

@@ -404,10 +404,10 @@ export async function computeMetric(
             .prepare(
               scope.scope_type === "org"
                 ? `SELECT COALESCE(SUM(amount_toman), 0) AS s FROM payments
-                     WHERE organization_id = ? AND voided_at IS NULL AND method <> 'LEFTOVER' AND received_at >= ? AND received_at < ?`
+                     WHERE organization_id = ? AND voided_at IS NULL AND method NOT IN ('LEFTOVER','CREDIT_NOTE') AND received_at >= ? AND received_at < ?`
                 : `SELECT COALESCE(SUM(p.amount_toman), 0) AS s FROM payments p
                      JOIN customers c ON c.id = p.customer_id
-                     WHERE p.organization_id = ? AND p.voided_at IS NULL AND p.method <> 'LEFTOVER'
+                     WHERE p.organization_id = ? AND p.voided_at IS NULL AND p.method NOT IN ('LEFTOVER','CREDIT_NOTE')
                        AND p.received_at >= ? AND p.received_at < ?
                        ${scope.scope_type === "group" ? "AND c.group_id = ?" : "AND p.customer_id IN (SELECT DISTINCT customer_id FROM orders WHERE organization_id = p.organization_id AND salesperson_user_id = ?)"}`
             )

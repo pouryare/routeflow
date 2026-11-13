@@ -6,7 +6,7 @@ export const METHOD_LABEL: Record<string, string> = {
   POS: "کارت‌خوان",
   CARD_TO_CARD: "کارت به کارت",
   CHEQUE: "چک",
-  CREDIT_NOTE: "بستانکاری",
+  CREDIT_NOTE: "برگشت از فروش",
   OTHER: "سایر",
   LEFTOVER: "تسویه مانده",
 };
@@ -70,7 +70,7 @@ export function filterPayments(payments: Payment[], f: PaymentFilters): Payment[
 
 /** Today / week / month, by method, from the same live list the table shows, so a card and a row cannot disagree. */
 export function paymentTotals(all: Payment[], todayISO: string, weekAgoISO: string) {
-  const live = all.filter((p) => p.method !== "LEFTOVER"); // a closed leftover is forgiven, not collected (D3)
+  const live = all.filter((p) => p.method !== "LEFTOVER" && p.method !== "CREDIT_NOTE"); // a closed leftover is forgiven and a credit note is goods back, neither is money collected (D3, B1)
   const monthStart = todayISO.slice(0, 8) + "01";
   const window = (from: string) => live.filter((p) => p.received_at.slice(0, 10) >= from);
   const today = live.filter((p) => p.received_at.slice(0, 10) === todayISO);
