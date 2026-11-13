@@ -878,7 +878,7 @@ All 148 entries of `docs/future-features.md` (F1 to F148), grouped by area, with
 | F98 | Customer note and visit search | S | yes | — | Built (first slice) | — |
 | F100 | Customer ownership change history | S | yes | F59 | Built (first slice) | T4 |
 | F104 | Customer snapshot on call pickup | S | yes | F8, F46, F47 | Small, waits for a prerequisite | — |
-| F122 | Custom fields on customers | M | yes | F98, F148 | Not built | T12, E16 |
+| F122 | Custom fields on customers | M | yes | F98, F148 | First slice built (2026-11-13): five types, up to ten, archive, customer-page card; no list columns, filter, export, per-role hiding or sync yet | T12, E16 |
 | F135 | Manager ride-along visits | M | yes | F86 | Not built | — |
 | F137 | Lead source return on spend | S | yes | F28, F85 | Built (first slice) | S17 |
 | F141 | Survey builder | M | yes | F45, F79 | Not built | — |

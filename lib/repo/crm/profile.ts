@@ -12,6 +12,7 @@ import type { Onboarding } from "@/lib/onboarding";
 import { customer360, type Customer360 } from "@/lib/repo/customer360";
 import { riskFor } from "@/lib/repo/creditRisk";
 import { promisesOf, type PromiseRow } from "@/lib/repo/promises";
+import { valuesFor, type FieldWithValue } from "@/lib/repo/customFields";
 import type { RiskResult } from "@/lib/creditRisk";
 
 export interface ContactRow {
@@ -46,6 +47,8 @@ export interface Profile {
   /** F50: promises to pay, newest first; empty for roles that do not follow them. */
   promises: PromiseRow[];
   canPromise: boolean;
+  /** F122: the company's extra fields with this customer's values. */
+  customFields: FieldWithValue[];
   /** F40: the first-order checklist (location, price group, contact, credit). */
   onboarding: Onboarding | null;
   /** F47: open cheques (managers only, else null) and open complaints. */
@@ -85,6 +88,7 @@ export async function profileFor(session: Session, id: number): Promise<Profile 
     risk: (MANAGE_ROLES as readonly string[]).includes(session.role) ? ((await riskFor(org, [id])).get(id) ?? null) : null,
     promises: [...MANAGE_ROLES, "phone_sales", "field_rep"].includes(session.role) ? await promisesOf(org, id) : [],
     canPromise: [...MANAGE_ROLES, "phone_sales", "field_rep"].includes(session.role),
+    customFields: await valuesFor(org, id),
     onboarding: await onboardingFor(org, id),
     open: await customer360(session, org, id),
     referrer: referrer ?? null,

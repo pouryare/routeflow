@@ -16,6 +16,8 @@ export const TENANT_TABLES = [
   "deposit_slips",
   "payment_promises",
   "van_positions",
+  "custom_fields",
+  "custom_field_values",
   "reconciled_entries",
   "reconciliations",
   "change_requests",
