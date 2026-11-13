@@ -24,6 +24,11 @@ export async function POST(req: NextRequest) {
       const stepUp = await guardStepUp(req, guard.session, "price_change");
       if (stepUp) return stepUp;
     }
+    // Overwriting what is already there (a changed customer or product) asks too (UIB-A2).
+    if (plan.items.some((i) => i.status === "changed" && i.op)) {
+      const stepUp = await guardStepUp(req, guard.session, "import_overwrite");
+      if (stepUp) return stepUp;
+    }
     const wanted = Number(form?.get("group_id"));
     let groupId: number | null = null;
     if (Number.isInteger(wanted) && wanted > 0) {

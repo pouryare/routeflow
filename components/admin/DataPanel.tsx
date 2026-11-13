@@ -50,6 +50,23 @@ export default function DataPanel({ groups }: { groups: { id: number; name: stri
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
 
+  async function download() {
+    setBusy(true); setMsg("");
+    const res = await fetch("/api/admin/data/export").catch(() => null);
+    setBusy(false);
+    if (!res?.ok) {
+      const j = (await res?.json().catch(() => null)) as { error?: string } | null;
+      setMsg(j?.error ?? "فایل دریافت نشد؛ دوباره تلاش کنید");
+      return;
+    }
+    const url = URL.createObjectURL(await res.blob());
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `routeflow-data-${new Date().toISOString().slice(0, 10)}.xlsx`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   async function pick(f: File | undefined) {
     if (!f) return;
     setFile(f); setPlan(null); setMsg(""); setShow(""); setBusy(true);
@@ -77,9 +94,10 @@ export default function DataPanel({ groups }: { groups: { id: number; name: stri
       <section className="rounded-lg border border-border bg-surface p-4" aria-labelledby="export-title" data-tour="data-export">
         <h2 id="export-title" className="sechead__title mb-1">دریافت همهٔ داده‌ها</h2>
         <p className="mb-3 text-sm text-text-muted">یک فایل اکسل با برگه‌های مشتریان، کالاها، قیمت‌ها، سفارش‌ها و پرداخت‌ها. سه برگهٔ اول را می‌شود ویرایش کرد و همین‌جا دوباره بارگذاری کرد.</p>
-        <a href="/api/admin/data/export" download className="btn solid inline-flex min-h-[44px] items-center justify-center gap-[var(--space-2)]">
+        {/* A fetch, not a plain link: the export asks for the authenticator code first (UIB-A2), and only a fetch can be repeated once the code is in. */}
+        <button type="button" disabled={busy} onClick={() => void download()} className="btn solid inline-flex min-h-[44px] items-center justify-center gap-[var(--space-2)]">
           <Icon name="download" size="md" /> دریافت فایل اکسل
-        </a>
+        </button>
       </section>
 
       <section className="rounded-lg border border-border bg-surface p-4" aria-labelledby="import-title" data-tour="data-import">

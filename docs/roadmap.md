@@ -468,7 +468,7 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
 
 ### Platform, security and administration
 
-- **UIB-A2. Code guard on the remaining sensitive actions.** The rule and the guard exist; each of these needs one line: creating an owner or manager, customer export, changing your own mobile, hard deletes, cancelling or editing a delivered order, authenticator reset, overwrite imports. Partly built 2026-11-05: the guard is now on creating an owner or manager, returning a delivered order, and the hard deletes of groups and districts; customer export, changing your own mobile and overwrite imports have no route yet.
+- **UIB-A2. Code guard on the remaining sensitive actions.** The rule and the guard exist; each of these needs one line: creating an owner or manager, customer export, changing your own mobile, hard deletes, cancelling or editing a delivered order, authenticator reset, overwrite imports. Partly built 2026-11-05: the guard is now on creating an owner or manager, returning a delivered order, and the hard deletes of groups and districts. **Batch B (2026-11-13):** the Excel export asks for the code too (it is a fetch now, so the code sheet can repeat it), and an upload that changes existing rows asks (`import_overwrite`). Not built: changing your own mobile (no route yet).
   <details><summary>Full decision</summary>
 
   The code guard on creating an owner or manager, customer export, changing your own mobile number, hard deletes, cancelling or editing a delivered order, authenticator reset and overwrite imports (the rules and the guard exist; each route needs one line).
