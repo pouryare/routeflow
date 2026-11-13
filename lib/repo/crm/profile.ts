@@ -10,6 +10,9 @@ import { addLeadContext, getBusiness, productsWithPrice, type BusinessRow } from
 import { onboardingFor } from "@/lib/repo/onboarding";
 import type { Onboarding } from "@/lib/onboarding";
 import { customer360, type Customer360 } from "@/lib/repo/customer360";
+import { riskFor } from "@/lib/repo/creditRisk";
+import { promisesOf, type PromiseRow } from "@/lib/repo/promises";
+import type { RiskResult } from "@/lib/creditRisk";
 
 export interface ContactRow {
   id: number; name: string | null; role: string; phone_norm: string | null; whatsapp: string | null;
@@ -38,6 +41,11 @@ export interface Profile {
   canSetTerms: boolean;
   /** F48: an owner's credit-limit change applies at once; a manager's raise waits for sign-off. */
   isOwner: boolean;
+  /** F46: advisory credit-risk score; managers only, else null. */
+  risk: RiskResult | null;
+  /** F50: promises to pay, newest first; empty for roles that do not follow them. */
+  promises: PromiseRow[];
+  canPromise: boolean;
   /** F40: the first-order checklist (location, price group, contact, credit). */
   onboarding: Onboarding | null;
   /** F47: open cheques (managers only, else null) and open complaints. */
@@ -74,6 +82,9 @@ export async function profileFor(session: Session, id: number): Promise<Profile 
     contacts, summary: await readCustomerSummary(db, orderFilter(session), id),
     reps: manager ? (await addLeadContext(session)).reps.map(r => ({ id: r.id, name: r.name })) : [],
     canWrite: canWriteBusiness(session, business), canManage: manager, canSetTerms: (MANAGE_ROLES as readonly string[]).includes(session.role), isOwner: isOwner(session.role),
+    risk: (MANAGE_ROLES as readonly string[]).includes(session.role) ? ((await riskFor(org, [id])).get(id) ?? null) : null,
+    promises: [...MANAGE_ROLES, "phone_sales", "field_rep"].includes(session.role) ? await promisesOf(org, id) : [],
+    canPromise: [...MANAGE_ROLES, "phone_sales", "field_rep"].includes(session.role),
     onboarding: await onboardingFor(org, id),
     open: await customer360(session, org, id),
     referrer: referrer ?? null,

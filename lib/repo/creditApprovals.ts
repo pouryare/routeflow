@@ -1,3 +1,5 @@
+import { riskFor } from "./creditRisk";
+import type { RiskResult } from "@/lib/creditRisk";
 import { getDb } from "@/lib/db";
 import { isOwner, type Role } from "@/lib/roles";
 import { makeRepo } from "./base";
@@ -155,6 +157,8 @@ export interface PendingApprovalCard {
   credit_limit_toman: number | null;
   overage_toman: number;
   requested_at: string;
+  /** F46: advisory score of the customer, with its top reasons. */
+  risk: RiskResult | null;
 }
 
 /** The pending requests with the words a decision card needs (customer, order number), oldest
@@ -162,9 +166,9 @@ export interface PendingApprovalCard {
 /** `scopeGroupId`: a group manager sees only their own group's requests (UIB-A3). */
 export async function pendingForDeck(organizationId: number, scopeGroupId?: number | null): Promise<PendingApprovalCard[]> {
   const scoped = scopeGroupId !== undefined;
-  return (await getDb()
+  const rows = (await getDb()
     .prepare(
-      `SELECT ca.id, o.order_no, c.business_name AS customer_name, ca.customer_balance_toman,
+      `SELECT ca.id, o.customer_id, o.order_no, c.business_name AS customer_name, ca.customer_balance_toman,
               ca.credit_limit_toman, ca.overage_toman, ca.requested_at
          FROM credit_approvals ca
          JOIN orders o ON o.id = ca.order_id
@@ -172,7 +176,8 @@ export async function pendingForDeck(organizationId: number, scopeGroupId?: numb
         WHERE ca.organization_id = ? AND ca.status = 'pending'${scoped ? " AND o.group_id IS NOT DISTINCT FROM ?" : ""}
         ORDER BY ca.requested_at`
     )
-    .all(...((scoped ? [organizationId, scopeGroupId] : [organizationId]) as never[])))
-    // Plain objects: a database row has a null prototype and cannot cross into a client component.
-    .map((r) => ({ ...r })) as unknown as PendingApprovalCard[];
+    .all(...((scoped ? [organizationId, scopeGroupId] : [organizationId]) as never[]))) as unknown as (Omit<PendingApprovalCard, "risk"> & { customer_id: number })[];
+  const risks = await riskFor(organizationId, [...new Set(rows.map((r) => Number(r.customer_id)))]);
+  // Plain objects: a database row has a null prototype and cannot cross into a client component.
+  return rows.map(({ customer_id, ...r }) => ({ ...r, risk: risks.get(Number(customer_id)) ?? null }));
 }

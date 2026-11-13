@@ -16,8 +16,10 @@ import { stockLevels } from "@/lib/repo/stock";
 import { customerHealthMany } from "@/lib/repo/health";
 import { snapshotRows } from "@/lib/repo/kpiSnapshots";
 import { rankActionCenter, type Bucket, type Candidate, type RankedItem } from "@/lib/analysis/actionCenter";
+import { faJalaliDate } from "@/lib/jalali";
 import { customerHref } from "@/lib/deepLink";
 import { isVanRole } from "../roles";
+import { brokenPromisesFor } from "@/lib/repo/promises";
 import { AUTO_CANCEL_DAYS, staleDraftsFor } from "@/lib/repo/staleDrafts";
 
 /** Alert categories, in Persian.
@@ -365,6 +367,21 @@ async function churnCandidates(session: Session): Promise<Candidate[]> {
     }));
 }
 
+/** F50: a promise to pay whose day passed without the money. Wakes the owner or rep the morning after. */
+async function brokenPromiseCandidates(session: Session): Promise<Candidate[]> {
+  return (await brokenPromisesFor(session)).map((p) => ({
+    key: `broken_promise:${p.id}`,
+    kind: "broken_promise" as const,
+    title_fa: `وعدهٔ پرداخت شکسته · ${p.customer_name}`,
+    sub_fa: `${p.amount_toman.toLocaleString("fa-IR")} تومان تا ${faJalaliDate(p.promised_date)} قول داده بود`,
+    bucket: "warning" as Bucket,
+    impact: 0.5,
+    probability: 1,
+    urgency: 0.8,
+    href: customerHref(p.customer_id),
+  }));
+}
+
 /** FB40: drafts nobody finished, each with how long until the sweep cancels it. */
 async function staleDraftCandidates(session: Session): Promise<Candidate[]> {
   return (await staleDraftsFor(session)).map((d) => ({
@@ -388,6 +405,7 @@ export async function actionCenterFor(session: Session): Promise<Record<Bucket, 
     ...await alertCandidates(session),
     ...await stalledOrderCandidates(session),
     ...await staleDraftCandidates(session),
+    ...await brokenPromiseCandidates(session),
     ...await overdueCandidates(session),
     ...await atRiskCandidates(session),
     ...await churnCandidates(session),

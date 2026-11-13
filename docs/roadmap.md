@@ -960,9 +960,9 @@ All 148 entries of `docs/future-features.md` (F1 to F148), grouped by area, with
 | F9 | Churn and credit-risk scoring | M | yes | — | Partly built | — |
 | F10 | Bank and payment reconciliation | L |  | F5 | Not built | T10, D21, A3, B4, Z6 |
 | F18 | Customer statements and dunning | M |  | F10 | Not built | FB28, A8 |
-| F46 | Credit-risk scoring from payment behaviour | M | yes | — | Not built | — |
+| F46 | Credit-risk scoring from payment behaviour | M | yes | — | Built (first slice) | — |
 | F49 | Cash-flow forecast | M | yes | F46, F50 | Not built | D23, D24 |
-| F50 | Payment promise tracker | M | yes | F18, F46 | Not built | T8, T23 |
+| F50 | Payment promise tracker | M | yes | F18, F46 | Built (first slice) | T8, T23 |
 | F63 | Deposits and prepayments | M | yes | F46 | Not built | — |
 | F83 | Payment terms and early-payment discounts | M | yes | F18, F46, F50 | Not built | D5 |
 
