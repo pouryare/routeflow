@@ -210,6 +210,7 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
   <details><summary>Full decision</summary>
 
   **Freeze customer details on the order (A12).** At confirm, copy name, phone and address (tax IDs once D7 exists) onto the order; `orders` keeps only `customer_id` today, so reprints show the customer's current data. Reprints use the copy. «Forget a person» (D20) clears these copies too.
+  **Built (batch B):** migration adds `orders.ship_name/ship_phone/ship_address`, filled by the `freezeCustomer` effect at the first confirm (also on credit approval and hold release, never overwritten). The order page shows the copy. No printed invoice exists yet, so reprints (and «forget a person», D20) are still to wire when D7 lands.
 
   </details>
 

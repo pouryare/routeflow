@@ -1137,6 +1137,9 @@ export interface Orders {
   created_at: string;
   created_by: number;
   created_source: string | null;
+  ship_address: string | null;
+  ship_name: string | null;
+  ship_phone: string | null;
   credit_hold: Generated<number>;
   credit_override_by: number | null;
   customer_id: number;

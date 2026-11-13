@@ -135,6 +135,15 @@ async function runEffect(
   actorId: number | null
 ): Promise<void> {
   switch (effect) {
+    case "freezeCustomer":
+      // A12: the first confirmation keeps the copy; a later re-confirm (credit or hold released) does not overwrite it.
+      await conn
+        .prepare(
+          `UPDATE orders SET ship_name = c.business_name, ship_phone = c.phone, ship_address = c.address
+             FROM customers c WHERE c.id = orders.customer_id AND orders.id = ? AND orders.organization_id = ? AND orders.ship_name IS NULL`
+        )
+        .run(orderId, orgId);
+      return;
     case "reserveStock":
       await reserveForOrder(orgId, orderId, conn);
       return;

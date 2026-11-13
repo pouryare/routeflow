@@ -101,6 +101,10 @@ export interface OrderDetail {
   priority: string;
   customer_id: number;
   customer_name: string;
+  /** A12: name, phone and address as they were when the order was confirmed; null before that. */
+  ship_name?: string | null;
+  ship_phone?: string | null;
+  ship_address?: string | null;
   group_id: number | null;
   salesperson_user_id: number | null;
   salesperson_name: string | null;
