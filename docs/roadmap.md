@@ -428,6 +428,7 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
   <details><summary>Full decision</summary>
 
   **Void an expense or a purchase (H6, Holoo comparison).** Payments can be voided and re-allocated, but expenses and purchases have no edit or void route (only the receipt photo), so a 2,000,000 fuel entry typed instead of 200,000 cannot be corrected from the app. Add a «باطل کردن» button with a reason on expenses and purchases: it posts the mirror entry (as `postReceiptReversal` does for payments), the original stays visible, and the log names who did it. Expenses first. Voiding a purchase must recompute the product's average cost and show the affected orders, so it waits with B6.
+  **Built (batch B, expenses only):** `voidExpense` posts the mirror journal (type REVERSAL, points at the original); `recentExpenses` hides the voided row, the books keep both; category and enterer reports net by side. Button «باطل کردن» on owner rows of the expense page, `POST /api/accounting/expenses/[id]/void`. Purchase void waits for B6. Account 5110 is now a system category.
 
   </details>
 

@@ -140,7 +140,7 @@ export async function postReceiptReversal(
 /** COGS is posted by delivery recognition, never by hand. */
 const COGS_CODE = "5101";
 /** Commission is posted by lib/repo/ledgerCommission.ts from the commission ledgers, never by hand. */
-const SYSTEM_EXPENSE_CODES = [COGS_CODE, "5107", "5108", "5109"];
+const SYSTEM_EXPENSE_CODES = [COGS_CODE, "5107", "5108", "5109", "5110"];
 
 export interface ExpenseCategory {
   id: number;
@@ -203,7 +203,7 @@ export async function postExpense(
     throw new LedgerError("این حساب، حساب هزینه نیست");
   }
   if (acct.code !== COGS_CODE && SYSTEM_EXPENSE_CODES.includes(acct.code)) {
-    throw new LedgerError("پورسانت از دفتر پورسانت ثبت می‌شود و دستی ثبت نمی‌شود");
+    throw new LedgerError("پورسانت و بخشودگی از جای خودشان ثبت می‌شوند و دستی ثبت نمی‌شوند");
   }
   if (acct.code === COGS_CODE) {
     throw new LedgerError("بهای تمام‌شده با تحویل کالا ثبت می‌شود و دستی ثبت نمی‌شود");
@@ -313,6 +313,35 @@ export async function recordExpense(
   return await db.tx(async () => {
     const id = await postExpense(db, input);
     return id;
+  });
+}
+
+/** Void an expense (H6): post the mirror entry and leave the original in the books. The «آخرین هزینه‌ها» list stops
+ *  showing it (a reversal points at it); the journal and the books still show both. One transaction.
+ *  Refused: a journal that is not an expense of this company, one already voided, a closed period (postJournal). */
+export async function voidExpense(organizationId: number, journalId: number, actor: number, reason: string): Promise<number> {
+  const why = reason.trim();
+  if (why.length === 0 || why.length > 200) throw new LedgerError("دلیل باطل کردن را بنویسید");
+  const db = getDb();
+  return await db.tx(async () => {
+    const j = (await db
+      .prepare("SELECT id, posted_at FROM journals WHERE id = ? AND organization_id = ? AND source_type = 'EXPENSE'")
+      .get(journalId, organizationId)) as { id: number; posted_at: string } | undefined;
+    if (!j) throw new LedgerError("هزینه پیدا نشد");
+    if (await db.prepare("SELECT 1 FROM journals WHERE reverses_journal_id = ?").get(journalId)) throw new LedgerError("این هزینه قبلاً باطل شده است");
+    const legs = (await db
+      .prepare("SELECT account_id, side, amount_toman, group_id FROM ledger_entries WHERE journal_id = ?")
+      .all(journalId)) as unknown as { account_id: number; side: "D" | "C"; amount_toman: number; group_id: number | null }[];
+    return await postJournal(db, {
+      organizationId,
+      postedAt: new Date().toISOString(),
+      sourceType: "REVERSAL",
+      sourceId: journalId,
+      reversesJournalId: journalId,
+      createdBy: actor,
+      memo: `ابطال هزینه: ${why}`,
+      legs: legs.map((l) => ({ accountId: Number(l.account_id), side: l.side === "D" ? "C" : "D", amountToman: Number(l.amount_toman), groupId: l.group_id === null ? null : Number(l.group_id) })),
+    });
   });
 }
 

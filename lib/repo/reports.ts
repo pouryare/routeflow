@@ -436,7 +436,7 @@ export async function expensesByCategory(organizationId: number, filter?: { peri
   return await getDb()
     .prepare(
       `SELECT * FROM (SELECT a.code, a.name_fa AS nameFa,
-              COALESCE(SUM(e.amount_toman), 0) AS amountToman
+              COALESCE(SUM(CASE WHEN e.side = 'D' THEN e.amount_toman ELSE -e.amount_toman END), 0) AS amountToman
          FROM ledger_entries e
          JOIN journals j ON j.id = e.journal_id
          JOIN accounts a ON a.id = e.account_id
@@ -485,6 +485,7 @@ export async function expensesByEnterer(organizationId: number) {
          JOIN accounts a ON a.id = e.account_id
          LEFT JOIN users u ON u.id = j.created_by
         WHERE e.organization_id = ? AND a.type = 'EXPENSE' AND a.code <> '5101'
+          AND j.reverses_journal_id IS NULL AND NOT EXISTS (SELECT 1 FROM journals r WHERE r.reverses_journal_id = j.id)
         GROUP BY j.created_by, u.id ORDER BY amountToman DESC`
     )
     .all(organizationId);
