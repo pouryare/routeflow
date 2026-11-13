@@ -1,6 +1,8 @@
 import { getDb } from "@/lib/db";
 import { escapeLike } from "@/lib/persian";
 import { isOwner } from "@/lib/roles";
+import { AT_WORK_SQL } from "@/lib/repo/leave";
+import { tehranTodayIso } from "@/lib/jalali";
 import { canSeeBusiness, crmFilter, isCrmManager, type Session } from "@/lib/session";
 import { resolveDue } from "@/lib/crm/due";
 import type { FlowContext } from "@/lib/crm/flows/types";
@@ -164,14 +166,14 @@ export async function addLeadContext(session: Session): Promise<FlowContext> {
   let reps: FlowContext["reps"] = [];
   if (manager) {
     const byGroup = isOwner(session.role) ? "" : " AND u.group_id = ?";
-    const params: number[] = [session.organizationId, ...(byGroup ? [session.groupId ?? -1] : [])];
+    const params: (number | string)[] = [session.organizationId, tehranTodayIso(), ...(byGroup ? [session.groupId ?? -1] : [])];
     reps = await db
       .prepare(`SELECT u.id, u.display_name AS name,
                   (SELECT COUNT(*) FROM customers c WHERE c.owner_user_id = u.id AND c.closed_at IS NULL
                      AND COALESCE(c.sales_stage, 'unknown') NOT IN ${CUSTOMER_STAGES_SQL}) AS open
                   FROM users u
                   JOIN user_roles _r ON _r.user_id = u.id AND _r.role = 'phone_sales'
-                 WHERE u.organization_id = ? AND u.active = 1${byGroup}
+                 WHERE u.organization_id = ? AND u.active = 1 AND ${AT_WORK_SQL()}${byGroup}
                  ORDER BY u.display_name`)
       .all(...params) as unknown as FlowContext["reps"];
   }

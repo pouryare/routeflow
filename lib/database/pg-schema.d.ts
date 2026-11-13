@@ -1866,6 +1866,8 @@ export interface Users {
   display_name: string;
   group_id: number | null;
   id: Generated<number>;
+  leave_reason: string | null;
+  leave_until: string | null;
   location_consent_at: string | null;
   must_change_password: Generated<number>;
   organization_id: number | null;
