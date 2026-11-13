@@ -50,6 +50,10 @@ describe("F66 receiving against an order", () => {
   const receive = (orderId: number, lines: { product_id: number; base_qty: number }[]) =>
     recordPurchase(getDb(), { supplier_id: supplier, purchase_date: "2026-11-13", created_by: user, organization_id: 1, purchase_order_id: orderId, lines: lines.map((l) => ({ ...l, unit_cost_toman: 1000 })) });
 
+  it("lists the company's active products for the hand-made form", async () => {
+    expect((await po.productPickList(1)).map((p) => p.label)).toEqual(expect.arrayContaining(["کره", "پنیر"]));
+  });
+
   it("a draft is not open for goods; sending it opens it; two receipts finish it", async () => {
     const id = await po.createPurchaseOrder(1, { supplier_id: supplier, expected_date: "2026-11-20", created_by: user, lines: [{ product_id: butter, base_qty: 100, unit_cost_toman: 1000 }, { product_id: cheese, base_qty: 50, unit_cost_toman: 2000 }] });
     await expect(receive(id, [{ product_id: butter, base_qty: 10 }])).rejects.toThrow(/منتظر کالا نیست/);
@@ -64,6 +68,23 @@ describe("F66 receiving against an order", () => {
     row = (await po.listPurchaseOrders(1)).find((r) => r.id === id)!;
     expect(row.status).toBe("received");
     expect(row.lines.find((l) => l.product_id === cheese)!.received_qty).toBe(50);
+  });
+
+  it("raises one alert when a receipt's price differs from the order's, and none when it matches", async () => {
+    const { priceGapPercent } = await import("@/lib/purchaseOrders");
+    expect(priceGapPercent(1000, 1100)).toBe(10);
+    expect(priceGapPercent(1000, 900)).toBe(-10);
+    expect(priceGapPercent(1000, 1000)).toBeNull();
+    expect(priceGapPercent(0, 500)).toBeNull();
+    expect(priceGapPercent(100000, 100001)).toBe(1);
+    const id = await po.createPurchaseOrder(1, { supplier_id: supplier, expected_date: null, created_by: user, send: true, lines: [{ product_id: butter, base_qty: 10, unit_cost_toman: 1000 }] });
+    const alerts = async () => Number(((await getDb().prepare("SELECT COUNT(*) AS n FROM alerts WHERE category = 'po_price_diff' AND entity_id = ?").get(id)) as { n: number }).n);
+    await recordPurchase(getDb(), { supplier_id: supplier, purchase_date: "2026-11-13", created_by: user, organization_id: 1, purchase_order_id: id, lines: [{ product_id: butter, base_qty: 4, unit_cost_toman: 1000 }] });
+    expect(await alerts()).toBe(0);
+    await recordPurchase(getDb(), { supplier_id: supplier, purchase_date: "2026-11-13", created_by: user, organization_id: 1, purchase_order_id: id, lines: [{ product_id: butter, base_qty: 6, unit_cost_toman: 1200 }] });
+    expect(await alerts()).toBe(1);
+    const a = (await getDb().prepare("SELECT title FROM alerts WHERE category = 'po_price_diff' AND entity_id = ?").get(id)) as { title: string };
+    expect(a.title).toContain("۲۰٪ بیشتر");
   });
 
   it("can be closed short, and an order of another company is not found", async () => {
