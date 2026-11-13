@@ -23,6 +23,7 @@ import c_map from "./map.json";
 import c_my_share from "./my-share.json";
 import c_planner from "./planner.json";
 import c_report from "./report.json";
+import c_sales_academy_manage from "./sales-academy-manage.json";
 import c_sales_academy from "./sales-academy.json";
 import c_sales_admin_companies from "./sales-admin-companies.json";
 import c_sales_admin_discounts from "./sales-admin-discounts.json";
@@ -34,6 +35,7 @@ import c_sales_admin_status from "./sales-admin-status.json";
 import c_sales_admin_storage from "./sales-admin-storage.json";
 import c_sales_admin_users from "./sales-admin-users.json";
 import c_sales_batches from "./sales-batches.json";
+import c_sales_catalogue from "./sales-catalogue.json";
 import c_sales_cheques from "./sales-cheques.json";
 import c_sales_commission from "./sales-commission.json";
 import c_sales_complaints from "./sales-complaints.json";
@@ -82,6 +84,7 @@ export const CAPTURES: Record<string, Capture> = {
   "/my-share": c_my_share as Capture,
   "/planner": c_planner as Capture,
   "/report": c_report as Capture,
+  "/sales/academy/manage": c_sales_academy_manage as Capture,
   "/sales/academy": c_sales_academy as Capture,
   "/sales/admin/companies": c_sales_admin_companies as Capture,
   "/sales/admin/discounts": c_sales_admin_discounts as Capture,
@@ -93,6 +96,7 @@ export const CAPTURES: Record<string, Capture> = {
   "/sales/admin/storage": c_sales_admin_storage as Capture,
   "/sales/admin/users": c_sales_admin_users as Capture,
   "/sales/batches": c_sales_batches as Capture,
+  "/sales/catalogue": c_sales_catalogue as Capture,
   "/sales/cheques": c_sales_cheques as Capture,
   "/sales/commission": c_sales_commission as Capture,
   "/sales/complaints": c_sales_complaints as Capture,
