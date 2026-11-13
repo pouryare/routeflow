@@ -808,14 +808,15 @@ function deliveredIds(json: string): number[] {
 /** Push the digest to every current subscription of `userId`; returns how many landed.
  *  A `404`/`410` means the browser threw the subscription away — delete it here, which is
  *  the only garbage collection push subscriptions get. */
-async function sendPushDigest(conn: Db, userId: number, text: string, act: PushAction | null = null): Promise<number> {
-  if (!configureWebPush()) return 0;
+async function sendPushDigest(conn: Db, userId: number, text: string, act: PushAction | null = null): Promise<{ landed: number; tried: number; error: string | null }> {
+  if (!configureWebPush()) return { landed: 0, tried: 0, error: null };
   const subs = await conn
     .prepare("SELECT id, endpoint, p256dh, auth FROM push_subscriptions WHERE user_id = ?")
     .all(userId) as { id: number; endpoint: string; p256dh: string; auth: string }[];
 
   const payload = JSON.stringify({ title: "کارگاه", body: text, url: "/notifications", tag: PUSH_TAG, ...(act ? { act } : {}) });
   let ok = 0;
+  let lastError: string | null = null;
   for (const s of subs) {
     try {
       await webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, payload);
@@ -825,11 +826,30 @@ async function sendPushDigest(conn: Db, userId: number, text: string, act: PushA
       if (code === 404 || code === 410) {
         await conn.prepare("DELETE FROM push_subscriptions WHERE id = ?").run(s.id);
       } else {
+        lastError = `${code ?? "خطا"}: ${(e as Error | null)?.message ?? ""}`.slice(0, 300);
         console.warn(`[notif-flush] push send failed for subscription ${s.id}`, e);
       }
     }
   }
-  return ok;
+  return { landed: ok, tried: subs.length, error: ok === 0 ? lastError ?? (subs.length > 0 ? "اشتراک دستگاه منقضی شد" : null) : null };
+}
+
+/** FB20: one row per try to reach a person's phone, so the owner can see what failed and why. */
+async function recordAttempt(conn: Db, organizationId: number, userId: number, channel: "push" | "telegram", ok: boolean, count: number, error: string | null, atIso: string): Promise<void> {
+  await conn.prepare("INSERT INTO notification_attempts (organization_id, user_id, channel, ok, message_count, error, tried_at) VALUES (?, ?, ?, ?, ?, ?, ?)").run(organizationId, userId, channel, ok, count, error, atIso);
+}
+
+export interface AttemptRow { id: number; userName: string; channel: "push" | "telegram"; ok: boolean; messageCount: number; error: string | null; triedAt: string }
+/** FB20: the newest tries of this company, newest first (the status page shows the last 40). */
+export async function recentAttempts(organizationId: number, limit = 40): Promise<AttemptRow[]> {
+  const rows = (await getDb()
+    .prepare(
+      `SELECT a.id, u.display_name AS user_name, a.channel, a.ok, a.message_count, a.error, a.tried_at
+         FROM notification_attempts a JOIN users u ON u.id = a.user_id
+        WHERE a.organization_id = ? ORDER BY a.id DESC LIMIT ?`,
+    )
+    .all(organizationId, limit)) as unknown as { id: number; user_name: string; channel: "push" | "telegram"; ok: boolean; message_count: number; error: string | null; tried_at: string }[];
+  return rows.map((r) => ({ id: Number(r.id), userName: r.user_name, channel: r.channel, ok: Boolean(r.ok), messageCount: Number(r.message_count), error: r.error, triedAt: r.tried_at }));
 }
 
 /** One user × one channel. Returns the counters this channel contributed; a hold, an
@@ -908,8 +928,10 @@ async function flushChannel(
       only?.entity_type === "cheque" && only.entity_id !== null
         ? ((await conn.prepare("SELECT status FROM cheques WHERE id = ? AND organization_id = ?").get(only.entity_id, organizationId) as { status: ChequeStatus } | undefined)?.status ?? null)
         : null;
-    const landed = await sendPushDigest(conn, userId, text, only ? pushActionFor(only, chequeStatus) : null);
-    if (landed === 0) return none; // nothing reached a device -> retry next tick
+    const res = await sendPushDigest(conn, userId, text, only ? pushActionFor(only, chequeStatus) : null);
+    // FB20: a person with no device is not a failure; one with devices where nothing landed is.
+    if (res.tried > 0) await recordAttempt(conn, organizationId, userId, "push", res.landed > 0, ids.length, res.error, asOfIso);
+    if (res.landed === 0) return none; // nothing reached a device -> retry next tick
     if (reusable && prev) {
       await updateDelivery(prev);
       edited = 1;
@@ -926,6 +948,7 @@ async function flushChannel(
     if (!chatId) return none; // effectiveRouting already required one; belt and braces
 
     if (reusable && prev?.provider_ref && (await editTelegram(chatId, Number(prev.provider_ref), text))) {
+      await recordAttempt(conn, organizationId, userId, "telegram", true, ids.length, null, asOfIso);
       await updateDelivery(prev);
       edited = 1;
     } else {
@@ -933,8 +956,10 @@ async function flushChannel(
       const r = await sendTelegram(chatId, text);
       if (!r) {
         console.warn(`[notif-flush] telegram send returned null for user ${userId}`);
+        await recordAttempt(conn, organizationId, userId, "telegram", false, ids.length, "تلگرام پیام را نپذیرفت", asOfIso);
         return none;
       }
+      await recordAttempt(conn, organizationId, userId, "telegram", true, ids.length, null, asOfIso);
       await insertDelivery(String(r.message_id), chatId);
       sent = 1;
     }

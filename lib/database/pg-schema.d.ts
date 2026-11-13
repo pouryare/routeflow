@@ -1099,6 +1099,17 @@ export interface NotificationChannels {
   user_id: number;
 }
 
+export interface NotificationAttempts {
+  channel: string;
+  error: string | null;
+  id: Generated<number>;
+  message_count: number;
+  ok: boolean;
+  organization_id: number;
+  tried_at: string;
+  user_id: number;
+}
+
 export interface NotificationDeliveries {
   channel: string;
   flushed_at: string;
@@ -2378,6 +2389,7 @@ export interface DB {
   manager_commission_overrides: ManagerCommissionOverrides;
   manager_commission_payments: ManagerCommissionPayments;
   notification_channels: NotificationChannels;
+  notification_attempts: NotificationAttempts;
   notification_deliveries: NotificationDeliveries;
   notification_prefs: NotificationPrefs;
   notification_types: NotificationTypes;
