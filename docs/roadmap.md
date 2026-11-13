@@ -915,7 +915,7 @@ All 148 entries of `docs/future-features.md` (F1 to F148), grouped by area, with
 
 | ID | Feature | Size | Existing code noted | Needs / relates to | Status | Also in |
 |---|---|---|---|---|---|---|
-| F6 | Live driver tracking and customer ETA | L |  | — | Not built | FB10, FB11, FB12, FB13, FB14, FB15, FB16, FB22, FB25, FB33, FB39 |
+| F6 | Live driver tracking and customer ETA | L |  | — | Built (first slice: live dots) | FB10, FB11, FB12, FB13, FB14, FB15, FB16, FB22, FB25, FB33, FB39 |
 | F7 | Dynamic re-routing during the day | L |  | F6 | Not built | FB31 |
 | F17 | Delivery proof and dispute handling | M | yes | — | Partly built | FB17, FB22 |
 | F24 | Driver pay and incentives | M |  | — | Not built | — |

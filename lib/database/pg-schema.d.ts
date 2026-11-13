@@ -2060,6 +2060,15 @@ export interface Users {
   username: string;
 }
 
+export interface VanPositions {
+  accuracy_m: number | null;
+  lat: number;
+  lng: number;
+  organization_id: number;
+  recorded_at: string;
+  user_id: number;
+}
+
 export interface Vehicles {
   active: Generated<number>;
   cost_per_km_toman: Generated<number>;
@@ -2255,6 +2264,7 @@ export interface DB {
   user_recovery_codes: UserRecoveryCodes;
   user_roles: UserRoles;
   users: Users;
+  van_positions: VanPositions;
   vehicles: Vehicles;
   visit_plans: VisitPlans;
   weather_snapshots: WeatherSnapshots;

@@ -24,6 +24,7 @@ import { isVanRole } from "@/lib/roles";
 import NotAVanNotice from "@/components/meridian/NotAVanNotice";
 import DriverLinks from "@/components/driver/DriverLinks";
 import WarmOffline from "@/components/driver/WarmOffline";
+import VanPositionSender from "@/components/driver/VanPositionSender";
 import FirstStepsCard from "@/components/tutorials/FirstStepsCard";
 import { driverLinks } from "@/lib/driverLinks";
 
@@ -128,6 +129,7 @@ export default async function DriverPage() {
         </form>
       </header>
       <WarmOffline urls={WARM} />
+      {run?.status === "in_progress" && <VanPositionSender />}
       <DriverLinks links={driverLinks(session)} />
       <FirstStepsCard />
 

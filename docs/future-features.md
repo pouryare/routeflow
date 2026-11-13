@@ -199,6 +199,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 **Prerequisites:** none in code; a messaging provider for the customer-facing half.
 
 
+**Built, first slice (2026-11-13, owner chose "positions + dot on map", decisions left to the agent):** the driver's phone sends its position every 30 s while one of their delivery runs is `in_progress` (`VanPositionSender`, `POST /api/driver/position`; the server refuses a position without such a run, so an off-duty driver is never tracked, and the driver's screen says it is on). One row per driver (`van_positions`), no trail. The owner and the group's managers get the dot through the live layer (`van.pos`, not stored) and see it on the coverage map with its age; a dot older than 5 minutes is grey. Choices: Q1 foreground phone GPS (Capacitor background later), Q2 and Q3 not built, Q4 last position only, Q5 nothing to partition. Not built: ETA, customer tracking page and messages, breadcrumb and replay, arrival after a stay, off-route and late alerts, a position setting per company, background location.
+
 **Groundwork built (2026-11-09, L4 and L5, decisions 10.7):** `publishLatest()` keeps each van's newest position so a dispatcher map that opens shows it at once, and a phone gets at most one position every 250 ms, newest only. GPS capture, the map and ETAs are not built.
 ---
 

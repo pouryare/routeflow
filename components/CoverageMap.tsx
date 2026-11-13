@@ -42,6 +42,7 @@ import PinnedCustomersSection from "@/components/coverage/PinnedCustomersSection
 import RecentCustomersSection from "@/components/coverage/RecentCustomersSection";
 import FacilityMarkers from "@/components/coverage/FacilityMarkers";
 import LeadMarkers from "@/components/coverage/LeadMarkers";
+import VanMarkers from "@/components/coverage/VanMarkers";
 import FoundLocationMarker from "@/components/coverage/FoundLocationMarker";
 import { useMapShortcuts } from "@/components/coverage/useMapShortcuts";
 import CustomerColourSection from "@/components/coverage/CustomerColourSection";
@@ -1238,6 +1239,7 @@ export default function CoverageMap({
           {layers.facilities && <FacilityMarkers placedFacilities={placedFacilities} navAppId={navAppId} />}
 
           <LeadMarkers initialLeads={initialLeads} navAppId={navAppId} />
+          {MANAGE_ROLES.includes(role) && <VanMarkers />}
 
           {foundLocation && <FoundLocationMarker foundLocation={foundLocation} onClear={() => setFoundLocation(null)} />}
 
