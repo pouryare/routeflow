@@ -741,7 +741,7 @@ Decided, but each needs something first. The "waits for" part is in the line. Th
 
 ### Money: credit, payments and cash
 
-- **T23. F50 payment promises wake-up row.** A follow-up closes itself when paid, otherwise wakes on the date; the same row can serve snooze and cooldowns. Waits for F50.
+- **T23. F50 payment promises wake-up row.** A follow-up closes itself when paid, otherwise wakes on the date; the same row can serve snooze and cooldowns. **Built (batch C):** the rules sweep makes one high-priority call task for the customer's rep (else group managers) on the day a promise falls due and is unpaid, and closes that task by itself once payments since the promise reach its amount. Snooze and cooldowns do not use it yet.
 - **D11. Pay by link through an Iranian gateway.** A link per order or balance on the company's own merchant account. Waits for a merchant account.
 - **A8. Reminder days around the due date.** Owner sets a day list (−3, 0, +3...); each day a task is made for the rep. First slice of F18; uses D5. **Built (batch C):** on the owner's status page a «یادآوری سررسید پرداخت» card picks days from -7 to +7; the rules sweep makes one call task per unpaid order and day for the order's rep (once each). No message to the customer (that waits for F18/F6/F79).
 - **B4. Bank line rules.** A short rule list pre-fills imported bank lines. Waits for the F10 bank import.

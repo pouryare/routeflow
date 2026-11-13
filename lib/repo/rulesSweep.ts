@@ -5,6 +5,7 @@ import { cancelStaleDrafts } from "@/lib/repo/staleDrafts";
 import { retireSoldOut } from "@/lib/repo/sellOff";
 import { returnLoans } from "@/lib/repo/handover";
 import { queueDueReminders } from "@/lib/repo/dueReminders";
+import { wakePromises } from "@/lib/repo/promises";
 import { queueOverdueLessonNudges } from "@/lib/repo/academyOverdue";
 
 /** One company's periodic sweep: the body of `/api/rules/run` (a manager's «به‌روزرسانی» click or the
@@ -24,6 +25,8 @@ export async function sweepCompanyRules(organizationId: number) {
   await queueOverdueLessonNudges(organizationId);
   // A8: reminder tasks on the days the owner chose around each order's due date.
   await queueDueReminders(organizationId);
+  // T23: a promise to pay that fell due and is unpaid wakes the rep; a paid one closes its task.
+  await wakePromises(organizationId);
   // D32: a «تصفیه» product with nothing left is switched off.
   const soldOut = await retireSoldOut(organizationId);
   // F16: the owner's morning digest rides the same flush, once a day from 07:00 Tehran.
