@@ -47,7 +47,7 @@ export default function DeliveryAttemptsCard({ rows }: { rows: AttemptRow[] }) {
       )}
       {note ? <p className="m-0 text-[length:var(--text-sm)]" role="status">{note}</p> : null}
       <button type="button" disabled={busy} onClick={() => void retry()} className="inline-flex min-h-[44px] items-center gap-[var(--space-2)] self-start rounded-[var(--radius-md)] border border-[var(--border)] px-[var(--space-3)] text-[length:var(--text-sm)]">
-        <Icon name="repeat" size="md" />
+        <Icon name="refresh" size="md" />
         تلاش دوباره همین حالا
       </button>
     </section>

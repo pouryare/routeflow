@@ -70,7 +70,7 @@ export default function PurchaseOrderForm({ suppliers, products }: { suppliers: 
               {lines.map((l, i) => (
                 <li key={i} className="flex items-center justify-between gap-2 border-b border-[var(--border)] pb-[var(--space-1)]">
                   <span>{l.name} · {faNum(l.base_qty)} × {faToman(l.unit_cost_toman)}</span>
-                  <button type="button" aria-label={`حذف ${l.name}`} onClick={() => setLines((cur) => cur.filter((_, k) => k !== i))} className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center"><Icon name="x" size="md" /></button>
+                  <button type="button" aria-label={`حذف ${l.name}`} onClick={() => setLines((cur) => cur.filter((_, k) => k !== i))} className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center"><Icon name="trash" size="md" /></button>
                 </li>
               ))}
             </ul>

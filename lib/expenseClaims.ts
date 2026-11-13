@@ -20,9 +20,19 @@ export function canDecideClaim(
   return who.role === "group_manager" && claim.groupId === who.groupId && claim.amountToman <= managerLimitToman;
 }
 
+/** A cost may be claimed up to this many days after the day it happened. */
+export const CLAIM_MAX_AGE_DAYS = 60;
+
+/** The days a claim form offers: today first, then back to a week ago. */
+export function claimDayChoices(today: string, addDays: (iso: string, n: number) => string): string[] {
+  return Array.from({ length: 8 }, (_, i) => addDays(today, -i));
+}
+
 export function claimProblem(i: { amountToman: number; incurredAt: string; today: string; note: string | null }): string | null {
   if (!Number.isInteger(i.amountToman) || i.amountToman <= 0) return "مبلغ را به تومان و بدون اعشار وارد کنید";
   if (!/^\d{4}-\d{2}-\d{2}$/.test(i.incurredAt) || i.incurredAt > i.today) return "تاریخ هزینه معتبر نیست";
+  const ageDays = Math.round((Date.parse(`${i.today}T00:00:00Z`) - Date.parse(`${i.incurredAt}T00:00:00Z`)) / 86_400_000);
+  if (ageDays > CLAIM_MAX_AGE_DAYS) return `هزینه‌ای که بیش از ${CLAIM_MAX_AGE_DAYS} روز پیش بوده ثبت نمی‌شود؛ به مدیر بگویید دستی ثبت کند`;
   if ((i.note?.length ?? 0) > 200) return "توضیح از ۲۰۰ نویسه بیشتر است";
   return null;
 }
