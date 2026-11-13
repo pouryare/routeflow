@@ -15,6 +15,7 @@ import { useRunAfterMount } from "@/lib/useRunAfterMount";
 import { friendlyError } from "@/lib/userMessage";
 import { Icon } from "@/components/meridian/Icon";
 import JalaliDateInput from "@/components/meridian/JalaliDateInput";
+import { useRouter } from "next/navigation";
 import { useCallback, useMemo, useState } from "react";
 import { idemKeeper } from "@/lib/idemKey";
 import { faNum, faToman } from "@/lib/format";
@@ -41,6 +42,7 @@ interface Cheque {
 const COLUMNS: ChequeStatus[] = ["in_hand", "deposited", "bounced"];
 
 export default function ChequesBoard({ customers, canSeeBooks = false }: { customers: Customer[]; canSeeBooks?: boolean }) {
+  const router = useRouter();
   const [idem] = useState(idemKeeper);
   const [cheques, setCheques] = useState<Cheque[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -188,9 +190,18 @@ export default function ChequesBoard({ customers, canSeeBooks = false }: { custo
       setError("هیچ‌کدام از چک‌های انتخاب‌شده به این وضعیت نمی‌روند");
       return;
     }
+    let slip: number | null = null;
     undoable.run({
       message: `${faNum(ids.length)} چک «${CHEQUE_STATUS_LABEL[to]}» شد${skipped ? ` · ${faNum(skipped)} مورد انجام نشد` : ""}`,
       send: async () => {
+        if (to === "deposited") {
+          // D2: all together under one numbered slip.
+          const res = await fetch("/api/cheques/deposit", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ids }) });
+          const j = (await res.json().catch(() => null)) as { error?: string; slip?: number } | null;
+          if (!res.ok) return { ok: false, error: j?.error };
+          slip = j?.slip ?? null;
+          return { ok: true };
+        }
         for (const id of ids) {
           const res = await fetch(`/api/cheques/${id}`, {
             method: "PATCH",
@@ -205,6 +216,7 @@ export default function ChequesBoard({ customers, canSeeBooks = false }: { custo
       onDone: () => {
         setPicked(null);
         void load();
+        if (slip) router.push(`/sales/cheques/slips/${slip}`);
       },
     });
   };
