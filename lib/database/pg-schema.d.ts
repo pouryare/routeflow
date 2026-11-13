@@ -1300,6 +1300,7 @@ export interface Organizations {
   delivery_note_footer: string | null;
   discount_auto_pass_pct: Generated<number>;
   discount_commission_pct: Generated<number>;
+  due_reminder_days: string | null;
   duplicate_order_hours: Generated<number>;
   effects: Generated<string>;
   id: Generated<number>;
@@ -1387,6 +1388,18 @@ export interface Payments {
   void_reason: string | null;
   voided_at: string | null;
   voided_by: number | null;
+}
+
+export interface PeriodOpenings {
+  expires_at: string;
+  from_date: string;
+  id: Generated<number>;
+  opened_at: string;
+  opened_by: number;
+  organization_id: number;
+  period_key: string;
+  reason: string;
+  to_date: string;
 }
 
 export interface Photos {
@@ -2182,6 +2195,18 @@ export interface WeatherSnapshots {
   wind_kmh: number | null;
 }
 
+export interface YearCloses {
+  closed_at: string;
+  closed_by: number;
+  id: Generated<number>;
+  jalali_year: number;
+  journal_id: number;
+  organization_id: number;
+  reopen_reason: string | null;
+  reopened_at: string | null;
+  reopened_by: number | null;
+}
+
 export interface DB {
   academy_categories: AcademyCategories;
   academy_lessons: AcademyLessons;
@@ -2279,6 +2304,7 @@ export interface DB {
   payment_allocations: PaymentAllocations;
   payment_promises: PaymentPromises;
   payments: Payments;
+  period_openings: PeriodOpenings;
   photos: Photos;
   platform_access_log: PlatformAccessLog;
   platform_settings: PlatformSettings;
@@ -2341,4 +2367,5 @@ export interface DB {
   vehicles: Vehicles;
   visit_plans: VisitPlans;
   weather_snapshots: WeatherSnapshots;
+  year_closes: YearCloses;
 }

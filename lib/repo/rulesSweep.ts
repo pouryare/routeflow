@@ -4,6 +4,7 @@ import { queueMorningDigests } from "@/lib/repo/morningDigest";
 import { cancelStaleDrafts } from "@/lib/repo/staleDrafts";
 import { retireSoldOut } from "@/lib/repo/sellOff";
 import { returnLoans } from "@/lib/repo/handover";
+import { queueDueReminders } from "@/lib/repo/dueReminders";
 import { queueOverdueLessonNudges } from "@/lib/repo/academyOverdue";
 
 /** One company's periodic sweep: the body of `/api/rules/run` (a manager's «به‌روزرسانی» click or the
@@ -21,6 +22,8 @@ export async function sweepCompanyRules(organizationId: number) {
   await returnLoans(organizationId);
   // Academy: a required lesson past its deadline sends its person one push.
   await queueOverdueLessonNudges(organizationId);
+  // A8: reminder tasks on the days the owner chose around each order's due date.
+  await queueDueReminders(organizationId);
   // D32: a «تصفیه» product with nothing left is switched off.
   const soldOut = await retireSoldOut(organizationId);
   // F16: the owner's morning digest rides the same flush, once a day from 07:00 Tehran.

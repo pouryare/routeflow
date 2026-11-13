@@ -739,7 +739,7 @@ Decided, but each needs something first. The "waits for" part is in the line. Th
 
 - **T23. F50 payment promises wake-up row.** A follow-up closes itself when paid, otherwise wakes on the date; the same row can serve snooze and cooldowns. Waits for F50.
 - **D11. Pay by link through an Iranian gateway.** A link per order or balance on the company's own merchant account. Waits for a merchant account.
-- **A8. Reminder days around the due date.** Owner sets a day list (−3, 0, +3...); each day a task is made for the rep. First slice of F18; uses D5.
+- **A8. Reminder days around the due date.** Owner sets a day list (−3, 0, +3...); each day a task is made for the rep. First slice of F18; uses D5. **Built (batch C):** on the owner's status page a «یادآوری سررسید پرداخت» card picks days from -7 to +7; the rules sweep makes one call task per unpaid order and day for the order's rep (once each). No message to the customer (that waits for F18/F6/F79).
 - **B4. Bank line rules.** A short rule list pre-fills imported bank lines. Waits for the F10 bank import.
 - **Z5. Month calendar.** A tab on the money in/out page (A5): Jalali grid with collected, delivered and expenses per day.
 - **Z20. Month so far.** A bar for the month gone and a month-end guess, on the A7 tiles and the A5 page.
