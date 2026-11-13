@@ -1007,7 +1007,7 @@ All 148 entries of `docs/future-features.md` (F1 to F148), grouped by area, with
 | F27 | Audit trail and anomaly detection | M | yes | — | Planned: first slice is EV4 | T-skip, D6, E6, EV4 |
 | F48 | Change approvals (second-person sign-off) | M | yes | F27 | Built (credit limit, order edits, expiry; no price-list kind yet) | — |
 | F51 | SLA and escalation rules | M | yes | — | Partly built | FB43, S5 |
-| F82 | Approval delegation while away | M | yes | F27, F48 | Not built | T13 |
+| F82 | Approval delegation while away | M | yes | F27, F48 | Built (first slice, 2026-11-13): when a manager is sent on leave, the leave card can name a colleague who then decides that manager's group credit and order-size approvals until the leave ends. Other approval kinds follow when they exist | T13 |
 | F88 | Staff expense reimbursement | M | yes | F26, F48 | Not built | D15 |
 | F95 | Staff birthdays and work anniversaries | S | yes | F86, F90 | Small, waits for a prerequisite | — |
 | F102 | Manager approval inbox | M | yes | F48, F76, F82, F88 | Not built | — |

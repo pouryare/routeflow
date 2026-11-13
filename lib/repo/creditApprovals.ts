@@ -2,6 +2,7 @@ import { riskFor } from "./creditRisk";
 import type { RiskResult } from "@/lib/creditRisk";
 import { getDb } from "@/lib/db";
 import { isOwner, type Role } from "@/lib/roles";
+import { tehranTodayIso } from "@/lib/jalali";
 import { makeRepo } from "./base";
 import { advanceOrder, registerOrderEffectHandlers } from "./orders";
 
@@ -76,6 +77,24 @@ export async function requestApproval(
 export const creditScopeOf = (s: { role: Role; groupId: number | null }): number | null | undefined =>
   isOwner(s.role) ? undefined : s.groupId;
 
+/** Whose approvals a request is in: undefined = all (owner), one group, or several groups. */
+export type ApprovalScope = number | null | undefined | readonly (number | null)[];
+
+const allows = (scope: ApprovalScope, groupId: number | null): boolean =>
+  scope === undefined ? true : Array.isArray(scope) ? (scope as readonly (number | null)[]).includes(groupId) : scope === groupId;
+
+/** F82: the scope for a signed-in person. A group manager also decides for the group of a colleague who is on
+ *  leave and named them to cover (users.leave_delegate_id), for as long as that leave lasts. */
+export async function approvalScopeFor(s: { role: Role; groupId: number | null; organizationId: number; user: { id: number } }): Promise<ApprovalScope> {
+  if (isOwner(s.role)) return undefined;
+  const rows = (await getDb()
+    .prepare("SELECT DISTINCT group_id FROM users WHERE organization_id = ? AND leave_delegate_id = ? AND leave_until >= ? AND active = 1")
+    .all(s.organizationId, s.user.id, tehranTodayIso())) as unknown as { group_id: number | null }[];
+  const covered = rows.map((r) => (r.group_id === null ? null : Number(r.group_id)));
+  if (covered.length === 0) return s.groupId;
+  return [...new Set<number | null>([s.groupId, ...covered])];
+}
+
 export async function decide(
   organizationId: number,
   id: number,
@@ -83,11 +102,11 @@ export async function decide(
   decidedBy: number,
   reason?: string,
   /** A group manager's own group: they decide only their group's orders (UIB-A3). Left out for an owner. */
-  scopeGroupId?: number | null
+  scopeGroupId?: ApprovalScope
 ): Promise<void> {
   const row = await creditApprovalsRepo.get(organizationId, id);
   if (!row) throw new CreditApprovalError("درخواست پیدا نشد");
-  if (scopeGroupId !== undefined && (await orderGroupOf(organizationId, row.order_id)) !== scopeGroupId) {
+  if (!allows(scopeGroupId, await orderGroupOf(organizationId, row.order_id))) {
     throw new CreditApprovalError("درخواست پیدا نشد");
   }
   if (row.status !== "pending") {
@@ -148,14 +167,14 @@ async function orderGroupOf(organizationId: number, orderId: number): Promise<nu
 export async function listApprovals(
   organizationId: number,
   status?: CreditApprovalRow["status"],
-  scopeGroupId?: number | null
+  scopeGroupId?: ApprovalScope
 ): Promise<CreditApprovalRow[]> {
   const rows = status
     ? await creditApprovalsRepo.list(organizationId, { status } as Partial<CreditApprovalRow>)
     : await creditApprovalsRepo.list(organizationId);
   if (scopeGroupId === undefined) return rows;
   const out: CreditApprovalRow[] = [];
-  for (const r of rows) if ((await orderGroupOf(organizationId, r.order_id)) === scopeGroupId) out.push(r);
+  for (const r of rows) if (allows(scopeGroupId, await orderGroupOf(organizationId, r.order_id))) out.push(r);
   return out;
 }
 
@@ -175,8 +194,11 @@ export interface PendingApprovalCard {
 /** The pending requests with the words a decision card needs (customer, order number), oldest
  *  first. Tenant-scoped through the approval row; the joins only add names. */
 /** `scopeGroupId`: a group manager sees only their own group's requests (UIB-A3). */
-export async function pendingForDeck(organizationId: number, scopeGroupId?: number | null): Promise<PendingApprovalCard[]> {
+export async function pendingForDeck(organizationId: number, scopeGroupId?: ApprovalScope): Promise<PendingApprovalCard[]> {
   const scoped = scopeGroupId !== undefined;
+  const groups = Array.isArray(scopeGroupId) ? (scopeGroupId as readonly (number | null)[]) : scoped ? [scopeGroupId as number | null] : [];
+  const ids = groups.filter((g): g is number => g !== null);
+  const withNone = groups.includes(null);
   const rows = (await getDb()
     .prepare(
       `SELECT ca.id, o.customer_id, o.order_no, c.business_name AS customer_name, ca.customer_balance_toman,
@@ -184,10 +206,10 @@ export async function pendingForDeck(organizationId: number, scopeGroupId?: numb
          FROM credit_approvals ca
          JOIN orders o ON o.id = ca.order_id
          JOIN customers c ON c.id = o.customer_id
-        WHERE ca.organization_id = ? AND ca.status = 'pending'${scoped ? " AND o.group_id IS NOT DISTINCT FROM ?" : ""}
+        WHERE ca.organization_id = ? AND ca.status = 'pending'${scoped ? ` AND (o.group_id = ANY(?::bigint[])${withNone ? " OR o.group_id IS NULL" : ""})` : ""}
         ORDER BY ca.requested_at`
     )
-    .all(...((scoped ? [organizationId, scopeGroupId] : [organizationId]) as never[]))) as unknown as (Omit<PendingApprovalCard, "risk"> & { customer_id: number })[];
+    .all(...((scoped ? [organizationId, ids] : [organizationId]) as never[]))) as unknown as (Omit<PendingApprovalCard, "risk"> & { customer_id: number })[];
   const risks = await riskFor(organizationId, [...new Set(rows.map((r) => Number(r.customer_id)))]);
   // Plain objects: a database row has a null prototype and cannot cross into a client component.
   return rows.map(({ customer_id, ...r }) => ({ ...r, risk: risks.get(Number(customer_id)) ?? null }));

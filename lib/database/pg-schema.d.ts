@@ -2133,6 +2133,7 @@ export interface Users {
   group_id: number | null;
   id: Generated<number>;
   last_active_at: string | null;
+  leave_delegate_id: number | null;
   leave_reason: string | null;
   leave_until: string | null;
   location_consent_at: string | null;
