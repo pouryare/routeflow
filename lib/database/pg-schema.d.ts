@@ -1326,6 +1326,8 @@ export interface Organizations {
   effects: Generated<string>;
   undo_own_minutes: Generated<number>;
   expense_claim_limit_toman: Generated<number>;
+  loan_reminder_days: Generated<number>;
+  staff_loan_limit_toman: Generated<number>;
   id: Generated<number>;
   idle_signout_json: string | null;
   leftover_limit_toman: Generated<number>;
@@ -2042,6 +2044,36 @@ export interface StoredFiles {
   variants: string;
 }
 
+export interface StaffAdvanceRequests {
+  amount_toman: number;
+  created_at: string;
+  decided_at: string | null;
+  decided_by: number | null;
+  entry_id: number | null;
+  group_id: number | null;
+  id: Generated<number>;
+  monthly_hint_toman: number | null;
+  note: string | null;
+  organization_id: number;
+  reject_reason: string | null;
+  requested_by: number;
+  status: Generated<string>;
+  user_id: number;
+}
+
+export interface StaffLoanEntries {
+  amount_toman: number;
+  created_at: string;
+  created_by: number;
+  id: Generated<number>;
+  journal_id: number | null;
+  kind: string;
+  monthly_hint_toman: number | null;
+  note: string | null;
+  organization_id: number;
+  user_id: number;
+}
+
 export interface SupplierPrices {
   delivery_days: number | null;
   min_qty: number | null;
@@ -2406,6 +2438,8 @@ export interface DB {
   seasonal_factors: SeasonalFactors;
   shared_cost_rules: SharedCostRules;
   shareholdings: Shareholdings;
+  staff_advance_requests: StaffAdvanceRequests;
+  staff_loan_entries: StaffLoanEntries;
   stock_movements: StockMovements;
   stock_reservations: StockReservations;
   storage_events: StorageEvents;

@@ -7,6 +7,8 @@ import { ROLES, type Role, type UserRow } from "@/lib/db";
 import { hashPassword } from "@/lib/auth";
 import { groupExists } from "@/lib/repo/groupsAdmin";
 import { otherActiveOwners, usernameTakenInOrg } from "@/lib/repo/usersAdmin";
+import { loanBalanceOf } from "@/lib/repo/staffLoans";
+import { faToman } from "@/lib/format";
 
 export const MIN_PASSWORD = 8;
 
@@ -161,6 +163,11 @@ export async function planUserPatch(
     const active = body.active ? 1 : 0;
     if (!active && await wouldStrandTheApp(target, true)) {
       return fail("این تنها مالک فعال است. اول یک مالک دیگر بسازید.", 409);
+    }
+    // Staff loans: someone who still owes the company is not switched off by accident; settle or forgive the loan first.
+    if (!active) {
+      const owes = await loanBalanceOf(organizationId, target.id);
+      if (owes > 0) return fail(`این نفر ${faToman(owes)} به شرکت بدهکار است؛ اول وام را از صفحهٔ «هزینه‌های من» تسویه یا ببخشید`, 409);
     }
     sets.push("active = ?");
     values.push(active);

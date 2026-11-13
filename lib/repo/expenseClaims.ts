@@ -4,6 +4,8 @@ import { canDecideClaim, claimProblem, type ClaimStatus } from "@/lib/expenseCla
 import { postJournal, accountIdByCode, LedgerError } from "./ledger";
 import { cashAccountFor, expenseCategories } from "./ledgerPostings";
 import { thresholdsFor } from "./thresholds";
+import { balanceInTx, recordDeductionIn } from "./staffLoans";
+import { deductionProblem } from "@/lib/staffLoans";
 
 export class ClaimError extends Error {}
 
@@ -116,7 +118,7 @@ export async function owedToStaff(organizationId: number): Promise<OwedRow[]> {
 }
 
 /** Pays back everything approved for one person in one entry (Dr 2107 / Cr the cash box or the bank). Owner only: the caller checks. */
-export async function repayStaff(organizationId: number, userId: number, method: "CASH" | "TRANSFER", paidBy: number): Promise<number> {
+export async function repayStaff(organizationId: number, userId: number, method: "CASH" | "TRANSFER", paidBy: number, deductToman = 0): Promise<number> {
   const db = getDb();
   const rows = (await db.prepare("SELECT id, amount_toman FROM expense_claims WHERE organization_id = ? AND user_id = ? AND status = 'approved' ORDER BY id").all(organizationId, userId)) as unknown as { id: number; amount_toman: number }[];
   if (rows.length === 0) throw new ClaimError("چیزی برای پرداخت به این نفر نیست");
@@ -126,17 +128,25 @@ export async function repayStaff(organizationId: number, userId: number, method:
     return await db.tx(async () => {
       const owed = await accountIdByCode("2107");
       if (!owed) throw new LedgerError("حساب ۲۱۰۷ یافت نشد");
+      /* A person who owes the company a loan: the payer chooses how much of it to take off now (0 = none, all, or part). */
+      const problem = deductionProblem({ deductToman, owedToman: total, balanceToman: await balanceInTx(db, organizationId, userId) });
+      if (problem) throw new ClaimError(problem);
+      const loanAcct = deductToman > 0 ? await accountIdByCode("1105") : undefined;
+      if (deductToman > 0 && !loanAcct) throw new LedgerError("حساب ۱۱۰۵ یافت نشد");
+      const legs = [
+        { accountId: owed, side: "D" as const, amountToman: total },
+        ...(deductToman > 0 ? [{ accountId: loanAcct!, side: "C" as const, amountToman: deductToman }] : []),
+        ...(total - deductToman > 0 ? [{ accountId: await cashAccountFor(method === "CASH" ? "CASH" : "TRANSFER"), side: "C" as const, amountToman: total - deductToman }] : []),
+      ];
       const journalId = await postJournal(db, {
         organizationId,
         postedAt: today,
         sourceType: "MANUAL",
         createdBy: paidBy,
-        memo: "بازپرداخت هزینهٔ کارمند",
-        legs: [
-          { accountId: owed, side: "D", amountToman: total },
-          { accountId: await cashAccountFor(method === "CASH" ? "CASH" : "TRANSFER"), side: "C", amountToman: total },
-        ],
+        memo: deductToman > 0 ? "بازپرداخت هزینهٔ کارمند با کسر از وام" : "بازپرداخت هزینهٔ کارمند",
+        legs,
       });
+      if (deductToman > 0) await recordDeductionIn(db, organizationId, userId, deductToman, paidBy, journalId);
       await db.prepare("UPDATE expense_claims SET status = 'paid', paid_by = ?, paid_at = ?, repay_journal_id = ? WHERE organization_id = ? AND user_id = ? AND status = 'approved'").run(paidBy, new Date().toISOString(), journalId, organizationId, userId);
       return total;
     });
