@@ -17,6 +17,7 @@ import { stopAtDoor } from "@/lib/arrival";
 import ReceiptPrinter from "@/components/sales/ReceiptPrinter";
 import type { InvoiceVia } from "@/lib/invoiceSent";
 import type { ReceiptData } from "@/lib/receiptLayout";
+import DriverHelp from "@/components/driver/DriverHelp";
 import PriorityTag from "@/components/sales/PriorityTag";
 
 /** Online status as an external store rather than effect state.
@@ -109,6 +110,8 @@ export default function DriverRun({
         <Tile label="دریافتی امروز" value={faToman(run.collected_toman)} />
         <Tile label="مانده وصول" value={faToman(run.to_collect_toman)} />
       </div>
+
+      {run.status !== "done" && <DriverHelp />}
 
       {pill && <RunPill pill={pill} onOpen={(id) => setLaunch((l) => ({ id, n: (l?.n ?? 0) + 1 }))} />}
 
