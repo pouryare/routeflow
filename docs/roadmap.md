@@ -168,6 +168,7 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
 - **S15. Do-not-call and contact preferences.** Three switches per customer (calls, promo messages, service messages) with reason, date and who.
   **Built (batch B):** table `contact_preferences` (a row = off, with reason, day, who). Button «ترجیح تماس» in the map customer panel (all selling roles) opens a sheet of three chips; the phone shows «تماس نشود» and the «تماس بگیر» cards on the today page fall back to «ساخت سفارش». No SMS sender exists yet, so promo and service switches are stored and shown only; the message sender (Farazsms, T16) must read them when built.
 - **S16. Revive lost leads.** After a wait that depends on the lost reason (price 60 days, already supplied 120, not interested 180), back to the pool with a call-again task.
+  **Built (batch B):** daily worker job `leads.revive` (03:00) returns a lost or not-interested lead to the pool after its rest (price 60, supplier 120, no need 180, others in `lib/leadRevive.ts`; wrong contact and closed never), with a call task naming the lost reason; leads with calls switched off (S15) stay lost. The owner's own days are read from `app_meta` key `revive_days:<company>` (JSON by reason); no settings form yet.
 
 ### Orders, pricing and promotions
 
