@@ -266,6 +266,7 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
 
   **Buy list grouped by supplier (D17, the F11 first slice).** «لیست خرید»: products under their reorder point, minus what is on order, rounded up to the supplier minimum, grouped by the cheapest or fastest supplier. Tick to make a purchase draft per supplier; a person confirms.
 
+  **Built (batch C, first slice):** page `/sales/stock/buy-list` (owner; link on the stock page): products at or under their reorder point (not «تصفیه»), quantity = target less shelf (at least the supplier's minimum), grouped by the cheapest supplier price row (quicker on a tie), a group «بدون تأمین‌کننده» for the rest, with a toman total. Not built: «minus what is on order» and purchase drafts, because there are no purchase orders yet (F66). D27 and F31 wait for the same thing.
   </details>
 - **D19. Labels at goods receipt.** Print a label per batch or pallet (product, batch, expiry, QR) and an A4 PDF of barcodes.
   <details><summary>Full decision</summary>

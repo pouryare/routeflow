@@ -276,6 +276,12 @@ export const PAGE_META: Record<string, PageMeta> = {
       "موجودی جاری، نقطهٔ سفارش، و خریدهای در راه. اقلامی که زیر حد هشدار رفته‌اند بالای فهرست علامت خورده‌اند.",
   },
 
+  "/sales/stock/buy-list": {
+    title: "لیست خرید",
+    titleEn: "Buy list",
+    help: "page.stock",
+    overview: "کالاهایی که به نقطهٔ سفارش رسیده‌اند، به تفکیک ارزان‌ترین تأمین‌کننده و با رعایت حداقل سفارش او.",
+  },
   "/sales/stock/on-date": {
     title: "موجودی در یک روز",
     titleEn: "Stock on a date",
