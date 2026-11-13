@@ -26,6 +26,7 @@ import c_report from "./report.json";
 import c_sales_academy_manage from "./sales-academy-manage.json";
 import c_sales_academy from "./sales-academy.json";
 import c_sales_admin_companies from "./sales-admin-companies.json";
+import c_sales_admin_data from "./sales-admin-data.json";
 import c_sales_admin_discounts from "./sales-admin-discounts.json";
 import c_sales_admin_groups from "./sales-admin-groups.json";
 import c_sales_admin_holidays from "./sales-admin-holidays.json";
@@ -87,6 +88,7 @@ export const CAPTURES: Record<string, Capture> = {
   "/sales/academy/manage": c_sales_academy_manage as Capture,
   "/sales/academy": c_sales_academy as Capture,
   "/sales/admin/companies": c_sales_admin_companies as Capture,
+  "/sales/admin/data": c_sales_admin_data as Capture,
   "/sales/admin/discounts": c_sales_admin_discounts as Capture,
   "/sales/admin/groups": c_sales_admin_groups as Capture,
   "/sales/admin/holidays": c_sales_admin_holidays as Capture,
