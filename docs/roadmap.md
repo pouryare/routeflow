@@ -611,6 +611,7 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
   </details>
 - **EV-L1. Funnel and speed reports from history.** Leads, attempts, conversations, samples, purchases; days from lead to first order; who calls new leads fastest, from `activities` and `events`. Needs a sample event first. Starts after EV2, with the reporting group.
 - **EV-L2. Who may write which table.** A ratchet in `scripts/check-architecture.mjs`: journals and ledger lines only from the ledger files, stock moves only from the stock files, `audit_log` and `events` only from their own modules. Starts at today's count; after EV2.
+  **Built (batch B):** metric `foreignTableWrites` in `scripts/check-architecture.mjs` (journals and ledger lines: `lib/repo/ledgerCore.ts`; stock moves: `stock.ts`; `audit_log`: `auditLog.ts`; `events`: `events.ts`). Baseline 2: the delivery undo in `lib/delivery.ts` deletes stock moves, and `leadImportNotify.ts` inserts an event. To fix when those two are moved.
 - **EV-L3. Read tables only when slow.** A new summary table only when a screen is measurably slow, refreshed by the worker, like `sales_daily`.
 
 ### Mobile, input, offline and help

@@ -6,5 +6,6 @@
   "rawRoleChecks": 57,
   "longFunctions": 63,
   "unusedExports": 210,
+  "foreignTableWrites": 2,
   "agentLitterFiles": 0
 }
