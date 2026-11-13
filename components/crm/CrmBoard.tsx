@@ -39,7 +39,6 @@ export default function CrmBoard({ initialRows, initialCounts, initialView, canP
   canPlan: boolean;
   role: Role;
 }) {
-  const mapAction = actionsFor(role, "customer-selection").find((a) => a.id === "customers-on-map");
   const [view, setView] = useState<CrmView>(initialView);
   const [q, setQ] = useState("");
   const [rows, setRows] = useState(initialRows);
@@ -72,6 +71,7 @@ export default function CrmBoard({ initialRows, initialCounts, initialView, canP
   }
   // While a CRM tutorial runs the list shows its «نمونه» rows; the real ones come back after.
   const listed = useTutorialData("crm-rows", rows);
+  const mapAction = actionsFor(role, "customer-selection").find((a) => a.id === "customers-on-map");
   const shown = onlyFavs ? listed.filter((r) => favs.includes(r.id)) : listed;
 
   const load = useCallback(async (v: CrmView, query: string) => {
