@@ -29,7 +29,8 @@ export type LedgerSourceType =
   | "COMMISSION_PAYMENT"
   | "PARTNER_ADVANCE"
   | "DIVIDEND_PAYMENT"
-  | "PROFIT_SPLIT";
+  | "PROFIT_SPLIT"
+  | "HANDOVER";
 
 export interface LedgerLeg {
   accountId: number;

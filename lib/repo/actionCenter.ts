@@ -18,8 +18,9 @@ import { snapshotRows } from "@/lib/repo/kpiSnapshots";
 import { rankActionCenter, type Bucket, type Candidate, type RankedItem } from "@/lib/analysis/actionCenter";
 import { faJalaliDate } from "@/lib/jalali";
 import { customerHref } from "@/lib/deepLink";
-import { isVanRole } from "../roles";
+import { isOwner, isVanRole } from "../roles";
 import { brokenPromisesFor } from "@/lib/repo/promises";
+import { recentGaps } from "@/lib/repo/cashInHand";
 import { AUTO_CANCEL_DAYS, staleDraftsFor } from "@/lib/repo/staleDrafts";
 
 /** Alert categories, in Persian.
@@ -382,6 +383,22 @@ async function brokenPromiseCandidates(session: Session): Promise<Candidate[]> {
   }));
 }
 
+/** D1: a day-end count that came out short, for the owner, for a week. */
+async function cashGapCandidates(session: Session): Promise<Candidate[]> {
+  if (!isOwner(session.role)) return [];
+  return (await recentGaps(session.organizationId)).map((g) => ({
+    key: `cash_gap:${g.id}`,
+    kind: "cash_gap" as const,
+    title_fa: `کسری شمارش پول · ${g.name}`,
+    sub_fa: `${g.short.toLocaleString("fa-IR")} تومان کمتر از انتظار${g.reason ? ` · ${g.reason}` : ""}`,
+    bucket: "warning" as Bucket,
+    impact: 0.4,
+    probability: 1,
+    urgency: 0.6,
+    href: "/sales/payments",
+  }));
+}
+
 /** FB40: drafts nobody finished, each with how long until the sweep cancels it. */
 async function staleDraftCandidates(session: Session): Promise<Candidate[]> {
   return (await staleDraftsFor(session)).map((d) => ({
@@ -406,6 +423,7 @@ export async function actionCenterFor(session: Session): Promise<Record<Bucket, 
     ...await stalledOrderCandidates(session),
     ...await staleDraftCandidates(session),
     ...await brokenPromiseCandidates(session),
+    ...await cashGapCandidates(session),
     ...await overdueCandidates(session),
     ...await atRiskCandidates(session),
     ...await churnCandidates(session),
