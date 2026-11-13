@@ -1,7 +1,7 @@
 /** F85: how an order reached the company. One tap at order entry; a driver's order is «سر در» without asking. */
 export const ORDER_CHANNELS = [
   { id: "phone", label: "تماس تلفنی" },
-  { id: "visit", label: "ویزیت حضوری" },
+  { id: "visit", label: "بازدید حضوری" },
   { id: "message", label: "پیام (واتساپ، تلگرام)" },
   { id: "driver", label: "راننده، سر در" },
   { id: "standing", label: "سفارش ثابت" },

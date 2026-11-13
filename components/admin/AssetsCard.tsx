@@ -60,7 +60,7 @@ export default function AssetsCard({ people }: { people: Person[] }) {
       <p className="mb-3 text-sm text-text-muted">ون، موبایل، تبلت، پرینتر، ترازو و کلید: چه چیزی دست چه کسی است و در چه وضعیتی.</p>
 
       {assets.length === 0 ? (
-        <p className="mb-3 text-sm text-text-muted">هنوز چیزی ثبت نشده است. «افزودن» را بزنید.</p>
+        <p className="mb-3 text-sm text-text-muted">هنوز چیزی ثبت نشده است. «افزودن دارایی» را بزنید.</p>
       ) : (
         <ul className="mb-3 flex flex-col gap-2">
           {assets.map((a) => (
@@ -69,7 +69,7 @@ export default function AssetsCard({ people }: { people: Person[] }) {
                 <span>
                   <span className="font-medium">{a.name}</span>
                   <span className="block text-sm text-text-muted">
-                    {KIND_LABEL[a.kind] ?? a.kind}{a.serial ? ` · ${a.serial}` : ""} · {COND_LABEL[a.condition] ?? "نامشخص"}
+                    {KIND_LABEL[a.kind] ?? "سایر"}{a.serial ? ` · ${a.serial}` : ""} · {COND_LABEL[a.condition] ?? "نامشخص"}
                   </span>
                   <span className="block text-sm">{a.holder_name ? `دست ${a.holder_name}${a.holder_since ? ` از ${faJalaliDate(a.holder_since)}` : ""}` : "در انبار"}</span>
                 </span>
@@ -103,7 +103,7 @@ export default function AssetsCard({ people }: { people: Person[] }) {
         </div>
       ) : (
         <button type="button" onClick={() => setAdding(true)} className="btn inline-flex min-h-[44px] items-center gap-[var(--space-2)]">
-          <Icon name="plus" size="md" /> افزودن
+          <Icon name="plus" size="md" /> افزودن دارایی
         </button>
       )}
       {assets.length > 0 && <p className="mt-3 text-sm text-text-muted">{faNum(assets.length)} مورد در فهرست</p>}
