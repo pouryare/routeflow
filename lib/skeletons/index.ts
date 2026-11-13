@@ -21,6 +21,7 @@ import c_facilities from "./facilities.json";
 import c_gallery from "./gallery.json";
 import c_leads from "./leads.json";
 import c_map from "./map.json";
+import c_my_expenses from "./my-expenses.json";
 import c_my_share from "./my-share.json";
 import c_planner from "./planner.json";
 import c_report from "./report.json";
@@ -88,6 +89,7 @@ export const CAPTURES: Record<string, Capture> = {
   "/gallery": c_gallery as Capture,
   "/leads": c_leads as Capture,
   "/map": c_map as Capture,
+  "/my-expenses": c_my_expenses as Capture,
   "/my-share": c_my_share as Capture,
   "/planner": c_planner as Capture,
   "/report": c_report as Capture,

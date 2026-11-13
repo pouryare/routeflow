@@ -716,6 +716,26 @@ export interface EventsArchive {
   pending: Generated<boolean>;
 }
 
+export interface ExpenseClaims {
+  account_id: number;
+  amount_toman: number;
+  created_at: string;
+  decided_at: string | null;
+  decided_by: number | null;
+  expense_journal_id: number | null;
+  group_id: number | null;
+  id: Generated<number>;
+  incurred_at: string;
+  note: string | null;
+  organization_id: number;
+  paid_at: string | null;
+  paid_by: number | null;
+  reject_reason: string | null;
+  repay_journal_id: number | null;
+  status: Generated<string>;
+  user_id: number;
+}
+
 export interface ExpenseReceipts {
   created_at: string;
   created_by: number;
@@ -1304,6 +1324,7 @@ export interface Organizations {
   due_reminder_days: string | null;
   duplicate_order_hours: Generated<number>;
   effects: Generated<string>;
+  expense_claim_limit_toman: Generated<number>;
   id: Generated<number>;
   idle_signout_json: string | null;
   leftover_limit_toman: Generated<number>;
@@ -2292,6 +2313,7 @@ export interface DB {
   entry_places: EntryPlaces;
   events: Events;
   events_archive: EventsArchive;
+  expense_claims: ExpenseClaims;
   expense_receipts: ExpenseReceipts;
   facilities: Facilities;
   fiscal_periods: FiscalPeriods;
