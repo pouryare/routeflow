@@ -198,10 +198,14 @@ export interface ChangeRequests {
   decided_at: string | null;
   decided_by: number | null;
   decision_note: string | null;
+  field: string | null;
   id: Generated<number>;
   kind: string;
+  new_text: string | null;
   new_value: number | null;
+  old_text: string | null;
   old_value: number | null;
+  order_id: number | null;
   organization_id: number;
   reason: string;
   requested_at: string;

@@ -901,7 +901,7 @@ All 148 entries of `docs/future-features.md` (F1 to F148), grouped by area, with
 | F65 | Small-quantity price uplift | M | yes | F48, F56, F64 | Not built | — |
 | F71 | Customer credit holds by rep | M | yes | F48 | Not built | — |
 | F72 | Duplicate order warning | S | yes | — | Built (first slice) | — |
-| F73 | Order edit history | M | yes | F27, F48 | Built (first slice) | FB3 |
+| F73 | Order edit history | M | yes | F27, F48 | Built (delivery day, due date, address, notes with a reason) | FB3 |
 | F76 | Order approval by value | M | yes | F48, F51 | Not built | — |
 | F89 | Customer price history | S | yes | F29, F56 | Built (first slice) | — |
 | F96 | Inter-group order transfers | L | yes | F48 | Not built | — |
@@ -991,7 +991,7 @@ All 148 entries of `docs/future-features.md` (F1 to F148), grouped by area, with
 | F25 | Staff scheduling and attendance | L |  | — | Not built | — |
 | F26 | Field expenses and petty cash | M |  | — | Not built | D15 |
 | F27 | Audit trail and anomaly detection | M | yes | — | Planned: first slice is EV4 | T-skip, D6, E6, EV4 |
-| F48 | Change approvals (second-person sign-off) | M | yes | F27 | Built (first slice) | — |
+| F48 | Change approvals (second-person sign-off) | M | yes | F27 | Built (credit limit, order edits, expiry; no price-list kind yet) | — |
 | F51 | SLA and escalation rules | M | yes | — | Partly built | FB43, S5 |
 | F82 | Approval delegation while away | M | yes | F27, F48 | Not built | T13 |
 | F88 | Staff expense reimbursement | M | yes | F26, F48 | Not built | D15 |

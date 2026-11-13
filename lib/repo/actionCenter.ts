@@ -19,6 +19,7 @@ import { rankActionCenter, type Bucket, type Candidate, type RankedItem } from "
 import { faJalaliDate } from "@/lib/jalali";
 import { customerHref } from "@/lib/deepLink";
 import { isOwner, isVanRole } from "../roles";
+import { pendingChangeCount } from "@/lib/repo/changeRequests";
 import { brokenPromisesFor } from "@/lib/repo/promises";
 import { recentGaps } from "@/lib/repo/cashInHand";
 import { AUTO_CANCEL_DAYS, staleDraftsFor } from "@/lib/repo/staleDrafts";
@@ -399,6 +400,24 @@ async function cashGapCandidates(session: Session): Promise<Candidate[]> {
   }));
 }
 
+/** F48: requests a manager sent that wait for the owner's yes; they lapse after 3 days. */
+async function approvalWaitingCandidates(session: Session): Promise<Candidate[]> {
+  if (!isOwner(session.role)) return [];
+  const n = await pendingChangeCount(session.organizationId);
+  if (n === 0) return [];
+  return [{
+    key: "approval_waiting",
+    kind: "approval_waiting" as const,
+    title_fa: `${n.toLocaleString("fa-IR")} درخواست منتظر تأیید شماست`,
+    sub_fa: "سقف اعتبار یا اصلاح سفارش؛ بعد از ۳ روز بی‌پاسخ منقضی می‌شود",
+    bucket: "warning" as Bucket,
+    impact: 0.4,
+    probability: 1,
+    urgency: 0.7,
+    href: "/sales/admin/discounts",
+  }];
+}
+
 /** FB40: drafts nobody finished, each with how long until the sweep cancels it. */
 async function staleDraftCandidates(session: Session): Promise<Candidate[]> {
   return (await staleDraftsFor(session)).map((d) => ({
@@ -424,6 +443,7 @@ export async function actionCenterFor(session: Session): Promise<Record<Bucket, 
     ...await staleDraftCandidates(session),
     ...await brokenPromiseCandidates(session),
     ...await cashGapCandidates(session),
+    ...await approvalWaitingCandidates(session),
     ...await overdueCandidates(session),
     ...await atRiskCandidates(session),
     ...await churnCandidates(session),

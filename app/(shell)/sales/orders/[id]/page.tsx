@@ -31,6 +31,8 @@ import { discountOfOrder } from "@/lib/repo/discounts";
 import { DISCOUNT_REASONS, DISCOUNT_STATUS_LABEL } from "@/lib/discounts";
 import LiveRefresh from "@/components/LiveRefresh";
 import ViewingChip from "@/components/ViewingChip";
+import OrderDetailEdit from "@/components/sales/OrderDetailEdit";
+import { editRule } from "@/lib/orderEditRules";
 import RecordChat from "@/components/RecordChat";
 import { canChat } from "@/lib/chat";
 import OfficialInvoiceToggle from "@/components/sales/OfficialInvoiceToggle";
@@ -129,6 +131,7 @@ export default async function OrderDetailPage({
           }
         >
           {canChat(session.role) && <RecordChat type="order" id={order.id} name={order.order_no} />}
+          {MANAGE_ROLES.includes(session.role) && editRule("detail", order.status).ok && <OrderDetailEdit orderId={order.id} orderNo={order.order_no} isOwner={isOwner(session.role)} />}
           {order.status === "DRAFT" && <ConfirmOrderButton orderId={order.id} />}
           {order.status === "DRAFT" && MANAGE_ROLES.includes(session.role) && <OfficialInvoiceToggle orderId={order.id} on={order.official === 1} />}
           {order.invoice_no != null && order.invoice_year != null && (
