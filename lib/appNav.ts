@@ -89,6 +89,7 @@ const SHAREHOLDER_TABS: AppTab[] = [{ href: "/my-share", label: "سهم من", g
 
 const DRIVER_TABS: AppTab[] = [
   { href: "/driver", label: "مسیر امروز", group: "day", ready: true },
+  { href: "/sales/door-sale", label: "فروش در محل", group: "day", ready: true },
   { href: "/sales/catalogue", label: "کالاها", group: "day", ready: true },
   { href: "/my-expenses", label: "هزینه‌های من", group: "day", ready: true },
   { href: "/sales/academy", label: "آموزش", group: "day", ready: true },

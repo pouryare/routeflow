@@ -268,6 +268,8 @@ export function proxy(req: NextRequest) {
     pathname.startsWith("/sales/academy") ||
     // The van catalogue and the price sheet it prints (no cost on either).
     pathname === "/sales/catalogue" ||
+    // VC4: the sale and sample a van role records at the door (the routes scope every read to the caller).
+    pathname === "/sales/door-sale" ||
     // F26/F88: a van role files the costs they paid; the API scopes every read to the caller.
     pathname === "/my-expenses" ||
     pathname.startsWith("/api/expense-claims") ||
