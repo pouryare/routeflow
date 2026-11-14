@@ -64,7 +64,7 @@ export default function NotificationTemplates({ rows }: { rows: Row[] }) {
               {preview ? <><b>{preview.title_fa}</b>{preview.body_fa ? <span className="block text-[var(--muted)]">{preview.body_fa}</span> : null}</> : <span style={{ color: "var(--danger)" }}>این متن درست نیست</span>}
             </p>
             {error ? <p className="m-0 text-[length:var(--text-sm)]" style={{ color: "var(--danger)" }}>{error}</p> : null}
-            <GoButton icon="check" isDisabled={busy || !preview} onPress={() => void save(title)}>ذخیره</GoButton>
+            <GoButton icon="save" isDisabled={busy || !preview} onPress={() => void save(title)}>ذخیره</GoButton>
             {edit.custom ? <button type="button" className={BTN} disabled={busy} onClick={() => void save(null)}><Icon name="undo" size="md" />برگرداندن متن آماده</button> : null}
           </div>
         </BottomSheet>
