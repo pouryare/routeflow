@@ -20,6 +20,7 @@ import StickyAction from "@/components/mobile/StickyAction";
 import { useToast } from "@/components/ToastProvider";
 import { tehranTodayIso } from "@/lib/jalali";
 import Link from "next/link";
+import SegmentBar from "./SegmentBar";
 import BulkEditSheet from "./BulkEditSheet";
 import { actionsFor } from "@/lib/actionList";
 import type { Role } from "@/lib/roles";
@@ -34,7 +35,9 @@ const NEXT_MODE: ReadonlySet<CrmView> = new Set<CrmView>(["today", "hot"]);
 type CallFlow = { kind: "call"; customerId: number; entry: "call" | "talked_now"; open: boolean };
 type LeadFlow = { kind: "lead"; open: boolean; prefillPhone: string | null };
 
-export default function CrmBoard({ initialRows, initialCounts, initialView, canPlan, role, bulk }: {
+export default function CrmBoard({ initialRows, initialCounts, initialView, canPlan, role, bulk, segments = [] }: {
+  /** FB36: the company's saved customer segments. */
+  segments?: { id: number; name: string }[];
   initialRows: BusinessRow[]; initialCounts: Record<CrmView, number>; initialView: CrmView;
   /** The roles whose API lets them add stops to the day plan (MANAGE_ROLES): only they get «انتخاب». */
   canPlan: boolean;
@@ -45,6 +48,7 @@ export default function CrmBoard({ initialRows, initialCounts, initialView, canP
   const [bulkOpen, setBulkOpen] = useState(false);
   const [view, setView] = useState<CrmView>(initialView);
   const [q, setQ] = useState("");
+  const [segmentId, setSegmentId] = useState<number | null>(null);
   const [rows, setRows] = useState(initialRows);
   const [counts, setCounts] = useState(initialCounts);
   const [highlight, setHighlight] = useState<number | null>(null);
@@ -78,8 +82,8 @@ export default function CrmBoard({ initialRows, initialCounts, initialView, canP
   const mapAction = actionsFor(role, "customer-selection").find((a) => a.id === "customers-on-map");
   const shown = onlyFavs ? listed.filter((r) => favs.includes(r.id)) : listed;
 
-  const load = useCallback(async (v: CrmView, query: string) => {
-    const j = (await fetch(`/api/crm/businesses?view=${v}&q=${encodeURIComponent(query)}`).then((r) => r.json()).catch(() => null)) as
+  const load = useCallback(async (v: CrmView, query: string, segment: number | null) => {
+    const j = (await fetch(`/api/crm/businesses?view=${v}&q=${encodeURIComponent(query)}${segment ? `&segment=${segment}` : ""}`).then((r) => r.json()).catch(() => null)) as
       { ok?: boolean; rows?: BusinessRow[]; counts?: Record<CrmView, number> } | null;
     if (j?.ok) { setRows(j.rows ?? []); setCounts(j.counts ?? initialCounts); }
   }, [initialCounts]);
@@ -92,17 +96,17 @@ export default function CrmBoard({ initialRows, initialCounts, initialView, canP
       showingInitial.current = false;
       return;
     }
-    const t = window.setTimeout(() => void load(view, q), q ? 300 : 0);
+    const t = window.setTimeout(() => void load(view, q, segmentId), q ? 300 : 0);
     return () => window.clearTimeout(t);
-  }, [view, q, load]);
+  }, [view, q, segmentId, load]);
 
   const startCall = useCallReturn((customerId) => setCall({ kind: "call", customerId, entry: "call", open: true }));
   const finished = useCallback((id: number) => {
     setCall(null);
     setLead(null);
     setHighlight(id);
-    void load(view, q);
-  }, [load, view, q]);
+    void load(view, q, segmentId);
+  }, [load, view, q, segmentId]);
 
   const onCall = (row: BusinessRow) => {
     if (call && call.customerId === row.id && !call.open) { setCall({ ...call, open: true }); return; } // resume a draft
@@ -144,7 +148,7 @@ export default function CrmBoard({ initialRows, initialCounts, initialView, canP
             }}
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="جستجو نام، تلفن، محله…"
+            placeholder="جستجو نام، تلفن، محله… یا شهر:تهران"
             aria-label="جستجو"
             data-tour="crm:search"
           />
@@ -184,6 +188,7 @@ export default function CrmBoard({ initialRows, initialCounts, initialView, canP
           </button>
         ) : null}
       </ScrollFade>
+      <SegmentBar q={q} segments={segments} segmentId={segmentId} onSegment={setSegmentId} canSave={canPlan} />
       <div className="crm-list" data-tour="crm:list">
         {shown.length === 0 ? <p className="tf-sub" style={{ textAlign: "center", padding: 24 }}>در این نما موردی نیست. نما یا عبارت جستجو را تغییر دهید.</p> : null}
         {shown.map((row) => (
@@ -230,7 +235,7 @@ export default function CrmBoard({ initialRows, initialCounts, initialView, canP
         />
         </div>
       ) : null}
-      <BulkEditSheet open={bulkOpen} ids={picked} reps={bulk.reps} groups={bulk.groups} onClose={() => setBulkOpen(false)} onDone={() => { setBulkOpen(false); stopSelecting(); void load(view, q); }} />
+      <BulkEditSheet open={bulkOpen} ids={picked} reps={bulk.reps} groups={bulk.groups} onClose={() => setBulkOpen(false)} onDone={() => { setBulkOpen(false); stopSelecting(); void load(view, q, segmentId); }} />
       <CustomerSheet customerId={sheet?.id ?? null} fallbackName={sheet?.name} onClose={() => setSheet(null)} />
     </div>
   );

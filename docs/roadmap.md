@@ -99,7 +99,7 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
   **Export follows what you see.** `/api/sales/orders/export` takes no filter today. It writes the current filter and sort, or only ticked rows, up to a row cap, and says how many rows it wrote; customers and payments follow. Customer export stays behind the authenticator code (T21).
 
   </details>
-- **T1. One filter format.** Saved views, segments, rules and the report builder share one filter shape: field, operator, value, AND/OR, «من» and relative Jalali dates.
+- **T1. One filter format.** Saved views, segments, rules and the report builder share one filter shape: field, operator, value, AND/OR, «من» and relative Jalali dates. **Built (first slice, batch D):** `lib/filterSpec.ts` (the shape, a menu per list, a parameterised-SQL compiler, a typed-text parser), used by the customers list. Saved views, rules and the report builder do not use it yet.
   <details><summary>Full decision</summary>
 
   **One filter format.** Saved views, saved smart segments (D3-5), rule conditions (F130) and the report builder (F123) share one filter shape: field, operator, value, nested AND/OR, with «من» and relative Jalali dates («۳۰ روز گذشته»). Each list offers a fixed menu of fields and operators, turned into parameterised SQL through the scoped reads (T1).
@@ -701,11 +701,11 @@ Decided, but each needs something first. The "waits for" part is in the line. Th
 
 - **UIB-E. Desk layouts and dashboards.** Denser desk screens and dashboard patterns. Comes after the phone patterns are done.
 - **FB19. Setup checklist details.** Minutes per step, a % bar, steps that tick from real data. Waits for UI batch D (UIB-D).
-- **A17. Typed filters on desk screens.** Text such as `بدهی>۱۰۰۰۰۰۰ منطقه:۳` turns into filter chips. Comes with T1.
+- **A17. Typed filters on desk screens.** Text such as `بدهی>۱۰۰۰۰۰۰ منطقه:۳` turns into filter chips. Comes with T1. **Built (first slice, batch D)** on the customers list: «شهر:تهران روز_از_خرید>30 مسئول:من» in the search box; debt is not a field yet.
 
 ### Customers and sales (CRM)
 
-- **FB36. Saved smart segments.** A customer filter saved by name, usable by promotions and reminders. Comes with F28 and F21.
+- **FB36. Saved smart segments.** A customer filter saved by name, usable by promotions and reminders. Comes with F28 and F21. **Built (first slice, batch D):** managers save a typed filter as a company segment; everyone with the customers list can tap it. Promotions and reminders do not use segments yet (they are not built).
 - **T12. F122 custom fields rules.** Text, number, choice, date, yes/no; up to ten; archive instead of delete. Waits for F122.
 - **T13. F82 / F59 lend a rep's customers. Built 2026-11-13 (PR #84), owner only, on the handover card.** A manager lends customers to a colleague for N days; access ends by itself. Waits for F82 / F59. The «تا کی؟» chips lend all of a person's customers for 3 days to a month; open tasks stay; the rules sweep gives them back the day after the last day, or «برگرداندن» does it early; a customer that changed hands meanwhile stays where it is. Not built: picking single customers, lending tasks.
 - **E2. «به شما سپرده شد» notice.** One push when records are handed to you; many at once become one push. Built with S6, T4 and F59. **Handover part built 2026-11-13 (PR #84):** the person who receives a handover or a lend gets one push. Not built: a push for a single customer reassigned by hand.

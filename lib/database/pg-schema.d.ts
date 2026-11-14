@@ -502,6 +502,15 @@ export interface Customers {
   working_hours_json: string | null;
 }
 
+export interface CustomerSegments {
+  created_at: string;
+  created_by: number;
+  id: Generated<number>;
+  name: string;
+  organization_id: number;
+  spec: string;
+}
+
 export interface CustomerTags {
   created_at: string;
   customer_id: number;
@@ -2459,6 +2468,7 @@ export interface DB {
   custom_fields: CustomFields;
   customer_holds: CustomerHolds;
   customer_loans: CustomerLoans;
+  customer_segments: CustomerSegments;
   customer_tags: CustomerTags;
   customers: Customers;
   day_wrapups: DayWrapups;

@@ -1,4 +1,6 @@
 import { getDb } from "@/lib/db";
+import { compileFilter, parseTyped, type FilterNode } from "@/lib/filterSpec";
+import { CUSTOMER_FILTER_MENU } from "@/lib/customerFilterMenu";
 import { escapeLike } from "@/lib/persian";
 import { isOwner } from "@/lib/roles";
 import { AT_WORK_SQL } from "@/lib/repo/leave";
@@ -69,20 +71,24 @@ function viewSql(view: CrmView, session: Session, nowIso: string): { sql: string
 
 export async function listBusinesses(
   session: Session,
-  opts: { view: CrmView; q?: string; offset?: number; limit?: number; nowIso?: string }
+  opts: { view: CrmView; q?: string; segment?: FilterNode | null; offset?: number; limit?: number; nowIso?: string }
 ): Promise<{ rows: BusinessRow[]; nextOffset: number | null }> {
   const now = opts.nowIso ?? new Date().toISOString();
   const limit = Math.min(Math.max(opts.limit ?? 50, 1), 200);
   const offset = Math.max(opts.offset ?? 0, 0);
   const f = crmFilter(session, "c");
   const v = viewSql(opts.view, session, now);
-  const s = searchSql(opts.q);
+  // A17 + T1: «شهر:تهران روز_از_خرید>30» typed in the search box, and a saved segment, are one filter on top of the view.
+  const typed = parseTyped(opts.q ?? "", CUSTOMER_FILTER_MENU);
+  const nodes: FilterNode[] = [...(opts.segment ? [opts.segment] : []), ...typed.conds];
+  const filter = compileFilter(nodes.length ? { op: "and", items: nodes } : null, CUSTOMER_FILTER_MENU, { today: tehranTodayIso(), userId: session.user.id });
+  const s = searchSql(typed.rest);
   const order = opts.view === "today"
     ? "t.due_at ASC, c.id"
     : "CASE WHEN t.due_at IS NULL THEN 1 ELSE 0 END, t.due_at ASC, c.last_activity_at DESC, c.id";
   const rows = await getDb()
-    .prepare(`${SELECT} WHERE c.merged_into_id IS NULL${f.sql}${v.sql}${s.sql} ORDER BY ${order} LIMIT ? OFFSET ?`)
-    .all(...(f.params as never[]), ...(v.params as never[]), ...(s.params as never[]), limit + 1, offset) as unknown as BusinessRow[];
+    .prepare(`${SELECT} WHERE c.merged_into_id IS NULL${f.sql}${v.sql}${filter.sql}${s.sql} ORDER BY ${order} LIMIT ? OFFSET ?`)
+    .all(...(f.params as never[]), ...(v.params as never[]), ...(filter.params as never[]), ...(s.params as never[]), limit + 1, offset) as unknown as BusinessRow[];
   return { rows: rows.slice(0, limit), nextOffset: rows.length > limit ? offset + limit : null };
 }
 
