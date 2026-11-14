@@ -24,6 +24,8 @@ export const TENANT_TABLES = [
   "notification_templates",
   "staff_absences",
   "day_wrapups",
+  "order_transfers",
+  "customer_segments",
   "delivery_ratings",
   "price_bases",
   "price_base_links",

@@ -63,6 +63,8 @@ export interface RunStop {
   order_notes: string | null;
   /** F57: the customer's opening hours on the run's day, or null when none are known. */
   window_label: string | null;
+  /** F120: the customer asks for a delivery code, so the driver's flow has a code step. */
+  needs_code?: boolean;
   lines: RunStopLine[];
   total_toman: number;
 }
@@ -90,7 +92,7 @@ export interface RunDetail {
 export interface RunFacilityStop {
   id: number;
   facility_id: number;
-  role: "load" | "unload";
+  role: "load" | "unload" | "pickup";
   status: "pending" | "done";
   done_at: string | null;
   notes: string | null;
@@ -346,7 +348,7 @@ export async function readRun(db: Db, runId: number): Promise<RunDetail | null> 
          FROM run_facility_stops rfs
          JOIN facilities f ON f.id = rfs.facility_id
         WHERE rfs.run_id = ?
-        ORDER BY CASE rfs.role WHEN 'load' THEN 0 ELSE 1 END`
+        ORDER BY CASE rfs.role WHEN 'load' THEN 0 WHEN 'pickup' THEN 1 ELSE 2 END, rfs.id`
     )
     .all(runId) as unknown as RunFacilityStop[];
 
@@ -354,7 +356,7 @@ export async function readRun(db: Db, runId: number): Promise<RunDetail | null> 
     .prepare(
       `SELECT ds.id, ds.order_id, ds.status, ds.collected_toman, ds.sort_order, ds.notes,
               o.order_no, o.priority, o.customer_id, o.discount_toman, o.notes AS order_notes,
-              c.business_name AS customer_name, c.address, c.phone, c.lat, c.lng, c.delivery_instructions, c.working_hours_json
+              c.business_name AS customer_name, c.address, c.phone, c.lat, c.lng, c.delivery_instructions, c.delivery_code_required AS needs_code, c.working_hours_json
          FROM delivery_stops ds
          JOIN orders o ON o.id = ds.order_id
          JOIN customers c ON c.id = o.customer_id
