@@ -94,3 +94,31 @@ describe("delivery failure copy", () => {
     expect(friendlyError(m, "x")).toBe(m);
   });
 });
+
+describe("delivery flow: couldn't deliver", () => {
+  const withReasons: FlowContext = { ...ctx, lists: { fail_reasons: [{ id: 4, label: "مغازه تعطیل بود" }, { id: 2, label: "مشتری تحویل نگرفت" }] } };
+
+  it("«نه، تحویل نشد» then a reason chip saves all zeros with the reason id", () => {
+    let st = startFlow(deliveryFlow, withReasons);
+    st = answerStep(deliveryFlow, withReasons, st, "failed");
+    expect(viewStep(deliveryFlow, withReasons, st).options.map((o) => o.label)).toEqual(["مغازه تعطیل بود", "مشتری تحویل نگرفت"]);
+    st = answerStep(deliveryFlow, withReasons, st, "r4");
+    expect(st.saved).toBe(true);
+    expect(st.answers).toHaveLength(2);
+    expect(deliveryPayload(withReasons, st)).toEqual({
+      lines: [{ line_id: 11, packs_delivered: 0 }, { line_id: 12, packs_delivered: 0 }],
+      collected_toman: 0,
+      notes: null,
+      fail_reason_id: 4,
+    });
+    expect(deliveryChips(withReasons, st)).toEqual(["تحویل نشد", "دلیل: مغازه تعطیل بود"]);
+  });
+
+  it("a company with no reasons still gets one chip and records no reason id", () => {
+    let st = startFlow(deliveryFlow, ctx);
+    st = answerStep(deliveryFlow, ctx, st, "failed");
+    st = answerStep(deliveryFlow, ctx, st, "r0");
+    expect(deliveryPayload(ctx, st)).not.toHaveProperty("fail_reason_id");
+    expect(deliveredTotal(ctx, st)).toBe(0);
+  });
+});

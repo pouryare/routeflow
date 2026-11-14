@@ -86,6 +86,7 @@ export type OverlayId =
   | "customers"
   | "facilities"
   | "heatmap"
+  | "hex"
   | "corridor";
 
 export type OverlayGroup = "restrictions" | "data";
@@ -147,6 +148,13 @@ export const OVERLAYS: OverlayDef[] = [
     group: "data",
   },
   {
+    id: "hex",
+    label: "شبکهٔ شش‌ضلعی",
+    icon: "grid",
+    hint: "شهر به خانه‌های شش‌ضلعی تقسیم می‌شود؛ هر خانه فروش، مشتری یا سرنخ همان محدوده را نشان می‌دهد. فقط مدیران.",
+    group: "data",
+  },
+  {
     id: "corridor",
     label: "کریدور بین انبارها",
     icon: "route",
@@ -167,6 +175,7 @@ export const DEFAULT_LAYERS: LayerPrefs = {
   districts: true,
   facilities: true,
   heatmap: false,
+  hex: false,
   corridor: false,
 };
 

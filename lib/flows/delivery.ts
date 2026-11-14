@@ -14,6 +14,8 @@ import { roundToman } from "@/lib/money";
  *    reason    why it was short (becomes the stop's note)
  *    collected "total" | "0" from the cash question
  *    collected_amount  the typed amount (an `amount` step stores under its input field)
+ *    failed    "1" when nothing was handed over; with fail_reason (a reason_codes id, 0 when the
+ *              company has none) and fail_label from the «چرا تحویل نشد؟» chips
  *
  *  The host passes `withTotals(ctx, state)` as the ctx it renders with, so «کل مبلغ» always
  *  shows the DELIVERED total, not the ordered one. */
@@ -37,7 +39,25 @@ export const deliveryFlow: FlowConfig = {
       options: [
         { id: "yes", label: "بله، همه", sub: "تعداد همان سفارش است", tone: "rec", next: "cash", put: { counts: "ordered" } },
         { id: "no", label: "نه، کم شد", sub: "تعداد هر قلم را اصلاح می‌کنید", next: "short" },
+        { id: "failed", label: "نه، تحویل نشد", sub: "چیزی تحویل داده نشد", tone: "bad", next: "failwhy" },
       ],
+    },
+    failwhy: {
+      id: "failwhy",
+      kind: "choice",
+      q: "چرا تحویل نشد؟",
+      // The company's own «تحویل ناموفق» reasons (/sales/reasons), carried on the phone with the run.
+      options: (ctx) => {
+        const reasons = ctx.lists?.fail_reasons ?? [];
+        const rows = reasons.length > 0 ? reasons : [{ id: 0, label: "دلیل دیگر" }];
+        return rows.map((r) => ({
+          id: `r${r.id}`,
+          label: r.label,
+          save: true,
+          slide: true as const,
+          put: { failed: "1", fail_reason: String(r.id), fail_label: r.label },
+        }));
+      },
     },
     short: {
       id: "short",
@@ -75,6 +95,7 @@ export const deliveryFlow: FlowConfig = {
 /** Packs delivered per line: what was ordered, or what the stepper said. */
 export function deliveredCounts(ctx: FlowContext, st: FlowState): Record<number, number> {
   const items = ctx.items ?? [];
+  if (st.values.failed === "1") return Object.fromEntries(items.map((i) => [i.id, 0]));
   if (st.values.short) {
     const said = JSON.parse(st.values.short) as Record<string, number>;
     return Object.fromEntries(items.map((i) => [i.id, Number(said[i.id] ?? 0)]));
@@ -99,7 +120,9 @@ export function withTotals(ctx: FlowContext, st: FlowState): FlowContext {
 export function deliveryPayload(ctx: FlowContext, st: FlowState) {
   const counts = deliveredCounts(ctx, st);
   const total = deliveredTotal(ctx, st);
+  const failReason = st.values.failed === "1" ? Number(st.values.fail_reason) : 0;
   const collected =
+    st.values.failed === "1" ? 0 :
     st.values.collected_amount !== undefined ? Number(st.values.collected_amount)
     : st.values.collected === "total" ? total
     : Number(st.values.collected ?? 0);
@@ -107,6 +130,8 @@ export function deliveryPayload(ctx: FlowContext, st: FlowState) {
     lines: (ctx.items ?? []).map((i) => ({ line_id: i.id, packs_delivered: counts[i.id] ?? 0 })),
     collected_toman: collected,
     notes: st.values.reason ?? null,
+    // Only a failed stop carries a reason; the key is absent otherwise so the body stays what it was.
+    ...(failReason > 0 ? { fail_reason_id: failReason } : {}),
   };
 }
 
@@ -115,6 +140,7 @@ export function deliveryChips(ctx: FlowContext, st: FlowState): string[] {
   const counts = deliveredCounts(ctx, st);
   const full = (ctx.items ?? []).every((i) => (counts[i.id] ?? 0) === (i.qty ?? 0));
   const { collected_toman } = deliveryPayload(ctx, st);
+  if (st.values.failed === "1") return ["تحویل نشد", `دلیل: ${st.values.fail_label}`];
   return [
     full ? "تحویل کامل" : "تحویل ناقص",
     ...(st.values.reason ? [`دلیل: ${st.values.reason}`] : []),

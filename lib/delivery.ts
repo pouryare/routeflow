@@ -52,6 +52,8 @@ export interface RunStop {
   phone: string | null;
   lat: number | null;
   lng: number | null;
+  /** The shop's opening hours (JSON), for the «closed right now» warning on the next stop. */
+  working_hours_json?: string | null;
   status: string;
   collected_toman: number;
   sort_order: number;

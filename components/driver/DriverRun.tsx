@@ -17,6 +17,12 @@ import { stopAtDoor } from "@/lib/arrival";
 import ReceiptPrinter from "@/components/sales/ReceiptPrinter";
 import type { InvoiceVia } from "@/lib/invoiceSent";
 import type { ReceiptData } from "@/lib/receiptLayout";
+import { useHydrated } from "@/lib/useHydrated";
+import { tehranParts } from "@/lib/crm/due";
+import { tehranTodayIso } from "@/lib/jalali";
+import { openingWarningFromJson, warningText } from "@/lib/openingWarning";
+import LateButton from "@/components/driver/LateButton";
+import DriverHelp from "@/components/driver/DriverHelp";
 import PriorityTag from "@/components/sales/PriorityTag";
 
 /** Online status as an external store rather than effect state.
@@ -59,11 +65,15 @@ export default function DriverRun({
   driverName,
   businessName,
   receiptFooter = null,
+  failReasons = [],
+  lateReasons = [],
 }: {
   run: RunDetail;
   driverName: string;
   businessName: string;
   receiptFooter?: string | null;
+  failReasons?: { id: number; label: string }[];
+  lateReasons?: { id: number; label: string }[];
 }) {
   const router = useRouter();
   const [openStop, setOpenStop] = useState<number | null>(null);
@@ -106,6 +116,8 @@ export default function DriverRun({
         <Tile label="دریافتی امروز" value={faToman(run.collected_toman)} />
         <Tile label="مانده وصول" value={faToman(run.to_collect_toman)} />
       </div>
+
+      {run.status !== "done" && <DriverHelp />}
 
       {pill && <RunPill pill={pill} onOpen={(id) => setLaunch((l) => ({ id, n: (l?.n ?? 0) + 1 }))} />}
 
@@ -155,6 +167,9 @@ export default function DriverRun({
             driverName={driverName}
             businessName={businessName}
             receiptFooter={receiptFooter}
+            failReasons={failReasons}
+            lateReasons={lateReasons}
+            next={stop.id === run.stops.find((x) => x.status === "pending")?.id}
             lastStop={run.stops.every((s) => s.id === stop.id || s.status !== "pending")}
           />
         ))}
@@ -217,6 +232,9 @@ function StopCard({
   driverName,
   businessName,
   receiptFooter,
+  failReasons,
+  lateReasons,
+  next,
   lastStop,
 }: {
   stop: RunStop;
@@ -230,8 +248,19 @@ function StopCard({
   driverName: string;
   businessName: string;
   receiptFooter: string | null;
+  failReasons: { id: number; label: string }[];
+  lateReasons: { id: number; label: string }[];
+  /** The stop the driver is heading to: its shop's opening hours are checked against the time now. */
+  next: boolean;
   lastStop: boolean;
 }) {
+  const hydrated = useHydrated();
+  const closedNow = (() => {
+    if (!hydrated || !next || stop.status !== "pending") return null;
+    const p = tehranParts(new Date().toISOString());
+    const w = openingWarningFromJson(stop.working_hours_json, tehranTodayIso(), p.h * 60 + p.min);
+    return w ? warningText(w) : null;
+  })();
   /* The flow remounts per opening (the `key`), which is what gives each visit a fresh set of
    * questions; `flowOpen` only slides the sheet in and out. */
   const [flowOpen, setFlowOpen] = useState(false);
@@ -289,6 +318,12 @@ function StopCard({
           <span className="mt-[var(--space-1)] block text-[length:var(--text-xs)] text-[var(--muted)]">
             {stop.address ?? "بدون آدرس"}
           </span>
+          {closedNow && (
+            <span role="status" className="mt-[var(--space-1)] flex items-center gap-[var(--space-1)] text-[length:var(--text-xs)] text-[var(--warning)]">
+              <Icon name="warn" size="sm" />
+              {closedNow}
+            </span>
+          )}
         </span>
         <span className="shrink-0 text-left">
           <span className="block tabular-nums text-[length:var(--text-sm)] text-[var(--foreground)]">
@@ -324,6 +359,7 @@ function StopCard({
               {stop.order_notes ? <span><b>یادداشت این سفارش:</b> {stop.order_notes}</span> : null}
             </div>
           ) : null}
+          {!done && lateReasons.length > 0 && <LateButton stopId={stop.id} reasons={lateReasons} />}
           {stop.phone && (
             <a
               href={`tel:${stop.phone}`}
@@ -422,6 +458,7 @@ function StopCard({
           driverName={driverName}
           businessName={businessName}
           receiptFooter={receiptFooter}
+          failReasons={failReasons}
           onRecorded={onRecorded}
           onPrint={onPrint}
           onClose={() => setFlowOpen(false)}
