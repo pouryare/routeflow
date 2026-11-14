@@ -31,6 +31,9 @@ import { discountOfOrder } from "@/lib/repo/discounts";
 import { DISCOUNT_REASONS, DISCOUNT_STATUS_LABEL } from "@/lib/discounts";
 import LiveRefresh from "@/components/LiveRefresh";
 import ViewingChip from "@/components/ViewingChip";
+import OnAccountCreditCard from "@/components/sales/OnAccountCreditCard";
+import { onAccountCredit } from "@/lib/repo/onAccount";
+import { FULFILLED_ORDER_STATUSES } from "@/lib/orderStateMachine";
 import OrderDetailEdit from "@/components/sales/OrderDetailEdit";
 import { editRule } from "@/lib/orderEditRules";
 import RecordChat from "@/components/RecordChat";
@@ -79,6 +82,9 @@ export default async function OrderDetailPage({
   if (!page) notFound();
   const { order, attempts } = page;
   const discount = await discountOfOrder(session.organizationId, order.id);
+  // F63: credit the customer already paid ahead, offered on an unpaid delivered order to the people who record payments.
+  const owes = Math.max(0, order.total_toman - order.paid_toman);
+  const credit = (MANAGE_ROLES.includes(session.role) || session.role === "phone_sales") && owes > 0 && (FULFILLED_ORDER_STATUSES as readonly string[]).includes(order.status) ? await onAccountCredit(session.organizationId, order.customer_id) : 0;
 
   return (
     <div className="flex flex-col gap-[var(--space-4)]">
@@ -169,6 +175,8 @@ export default async function OrderDetailPage({
           }
         />
       </BentoStrip>
+
+      {credit > 0 && <OnAccountCreditCard orderId={order.id} credit={credit} owes={owes} />}
 
       {discount && (
         <section className="card flex flex-col gap-[var(--space-2)] p-[var(--space-4)]" dir="rtl" aria-label="تخفیف">
