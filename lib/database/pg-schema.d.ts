@@ -1611,6 +1611,7 @@ export interface PurchaseOrders {
   created_at: string;
   created_by: number;
   expected_date: string | null;
+  expected_slot: string | null;
   id: Generated<number>;
   notes: string | null;
   ordered_at: string | null;

@@ -1,7 +1,7 @@
 import { getDb } from "@/lib/db";
 import type { Db } from "@/lib/database/client";
 import { tehranTodayIso } from "@/lib/jalali";
-import { PO_OPEN, isLate, poProblem, remaining, statusAfterAction, statusAfterReceipt, type PoStatus } from "@/lib/purchaseOrders";
+import { PO_OPEN, isLate, poProblem, remaining, statusAfterAction, statusAfterReceipt, arrivalsDue, type ArrivalSlot, type PoStatus } from "@/lib/purchaseOrders";
 import { productInOrg } from "@/lib/repo/catalogueAdmin";
 import type { ScoredOrder } from "@/lib/supplierScore";
 
@@ -13,6 +13,7 @@ export interface PoRow {
   supplier_name: string;
   status: PoStatus;
   expected_date: string | null;
+  expected_slot: ArrivalSlot | null;
   notes: string | null;
   created_at: string;
   late: boolean;
@@ -49,7 +50,7 @@ export async function listPurchaseOrders(organizationId: number, opts: { open?: 
   const db = getDb();
   const rows = (await db
     .prepare(
-      `SELECT po.id, po.supplier_id, s.name AS supplier_name, po.status, po.expected_date, po.notes, po.created_at
+      `SELECT po.id, po.supplier_id, s.name AS supplier_name, po.status, po.expected_date, po.expected_slot, po.notes, po.created_at
          FROM purchase_orders po JOIN suppliers s ON s.id = po.supplier_id
         WHERE po.organization_id = ? ${opts.open ? `AND po.status IN ('ordered', 'partly_received')` : ""}
         ORDER BY po.id DESC`
@@ -132,4 +133,21 @@ export async function supplierOrdersForScore(organizationId: number, supplierId:
     .prepare("SELECT status, expected_date, received_at FROM purchase_orders WHERE organization_id = ? AND supplier_id = ? AND status IN ('received', 'closed')")
     .all(organizationId, supplierId)) as unknown as { status: string; expected_date: string | null; received_at: string | null }[];
   return rows.map((r) => ({ status: r.status, expected_date: r.expected_date, arrived_day: r.received_at ? tehranTodayIso(new Date(r.received_at)) : null }));
+}
+
+/** F87: says which day, and which half of it, an open order is expected. Returns the problem in words, or null once saved. */
+export async function scheduleArrival(organizationId: number, id: number, expectedDate: string, slot: ArrivalSlot | null): Promise<string | null> {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(expectedDate) || expectedDate < tehranTodayIso()) return "روز رسیدن باید امروز یا بعد از آن باشد";
+  const db = getDb();
+  const po = (await db.prepare("SELECT status FROM purchase_orders WHERE id = ? AND organization_id = ?").get(id, organizationId)) as { status: PoStatus } | undefined;
+  if (!po) return "سفارش خرید پیدا نشد";
+  if (po.status !== "draft" && !PO_OPEN.includes(po.status)) return "این سفارش دیگر منتظر کالا نیست";
+  await db.prepare("UPDATE purchase_orders SET expected_date = ?, expected_slot = ? WHERE id = ? AND organization_id = ?").run(expectedDate, slot, id, organizationId);
+  return null;
+}
+
+/** The expected-arrivals list for the warehouse: open orders due within a week, late ones included. */
+export async function expectedArrivals(organizationId: number, today = tehranTodayIso()): Promise<PoRow[]> {
+  const until = new Date(Date.parse(`${today}T00:00:00Z`) + 7 * 86_400_000).toISOString().slice(0, 10);
+  return arrivalsDue(await listPurchaseOrders(organizationId, { open: true }), until);
 }

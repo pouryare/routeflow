@@ -52,3 +52,17 @@ export function poProblem(i: { expected_date: string | null; lines: { base_qty: 
   }
   return null;
 }
+
+/** F87: which half of the expected day a delivery comes. */
+export type ArrivalSlot = "morning" | "afternoon";
+export const SLOT_LABEL: Record<ArrivalSlot, string> = { morning: "صبح", afternoon: "بعدازظهر" };
+export const isSlot = (v: unknown): v is ArrivalSlot => v === "morning" || v === "afternoon";
+
+/** The open orders due by `untilIso`, late ones first, then by day and slot (morning before afternoon, no slot last).
+ *  Example: today Monday, orders expected Sunday (late), Monday morning, Monday (no slot), next Monday → the first three. */
+export function arrivalsDue<T extends { expected_date: string | null; expected_slot: ArrivalSlot | null }>(orders: T[], untilIso: string): T[] {
+  const slotRank = (s: ArrivalSlot | null) => (s === "morning" ? 0 : s === "afternoon" ? 1 : 2);
+  return orders
+    .filter((o) => o.expected_date !== null && o.expected_date <= untilIso)
+    .sort((a, b) => a.expected_date!.localeCompare(b.expected_date!) || slotRank(a.expected_slot) - slotRank(b.expected_slot));
+}
