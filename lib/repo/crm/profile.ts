@@ -12,6 +12,7 @@ import type { Onboarding } from "@/lib/onboarding";
 import { customer360, type Customer360 } from "@/lib/repo/customer360";
 import { riskFor } from "@/lib/repo/creditRisk";
 import { promisesOf, type PromiseRow } from "@/lib/repo/promises";
+import { activeHold, type HoldRow } from "@/lib/repo/customerHolds";
 import { canChat } from "@/lib/chat";
 import { valuesFor, type FieldWithValue } from "@/lib/repo/customFields";
 import type { RiskResult } from "@/lib/creditRisk";
@@ -48,6 +49,12 @@ export interface Profile {
   /** F50: promises to pay, newest first; empty for roles that do not follow them. */
   promises: PromiseRow[];
   canPromise: boolean;
+  /** F71: the hold in force on this customer's new orders, if any. */
+  hold: HoldRow | null;
+  holdCanRelease: boolean;
+  /** F69: the driver's standing note, for the people who may write it. */
+  deliveryInstructions: string | null;
+  canInstruct: boolean;
   /** FB9: may write in the customer's chat thread. */
   canChat: boolean;
   /** F122: the company's extra fields with this customer's values. */
@@ -66,12 +73,12 @@ export async function profileFor(session: Session, id: number): Promise<Profile 
   if (!business) return null;
   const db = getDb();
   const org = business.organization_id;
-  const extra = await db.prepare(`SELECT secondary_phone, whatsapp, website, instagram, size_band, supply_channel, visit_window, visit_note, uses_products_json, COALESCE(temperature_manual, 0) AS temperature_manual, created_source, payment_terms_kind, payment_terms_days, credit_limit_toman, tax_id
+  const extra = await db.prepare(`SELECT secondary_phone, whatsapp, website, instagram, size_band, supply_channel, visit_window, visit_note, uses_products_json, COALESCE(temperature_manual, 0) AS temperature_manual, created_source, payment_terms_kind, payment_terms_days, credit_limit_toman, tax_id, delivery_instructions
     FROM customers WHERE id = ? AND organization_id = ?`).get(id, org) as {
       secondary_phone: string | null; whatsapp: string | null; website: string | null; instagram: string | null;
       size_band: string | null; supply_channel: string | null; visit_window: string | null; visit_note: string | null;
       uses_products_json: string | null; temperature_manual: number; created_source: string | null;
-      payment_terms_kind: string; payment_terms_days: number; credit_limit_toman: number | null; tax_id: string | null;
+      payment_terms_kind: string; payment_terms_days: number; credit_limit_toman: number | null; tax_id: string | null; delivery_instructions: string | null;
     };
   const tags = (plain(await db.prepare("SELECT tag FROM customer_tags WHERE customer_id = ? AND organization_id = ? ORDER BY tag").all(id, org)) as { tag: string }[]).map(t => t.tag);
   const contacts = plain(await db.prepare(`SELECT id, name, role, phone_norm, whatsapp, is_primary, is_decider, best_time, note
@@ -81,6 +88,7 @@ export async function profileFor(session: Session, id: number): Promise<Profile 
     WHERE c.id = ? AND c.organization_id = ?`).get(id, org)) as { id: number; name: string } | undefined;
   const referred = plain(await db.prepare(`SELECT id, business_name AS name FROM customers WHERE referred_by_customer_id = ? AND organization_id = ? AND merged_into_id IS NULL ORDER BY id DESC LIMIT 20`)
     .all(id, org)) as { id: number; name: string }[];
+  const hold = [...MANAGE_ROLES, "phone_sales", "field_rep"].includes(session.role) ? await activeHold(org, id) : null;
   return structuredClone({
     business: { ...business, ...extra },
     tags,
@@ -91,6 +99,10 @@ export async function profileFor(session: Session, id: number): Promise<Profile 
     risk: (MANAGE_ROLES as readonly string[]).includes(session.role) ? ((await riskFor(org, [id])).get(id) ?? null) : null,
     promises: [...MANAGE_ROLES, "phone_sales", "field_rep"].includes(session.role) ? await promisesOf(org, id) : [],
     canPromise: [...MANAGE_ROLES, "phone_sales", "field_rep"].includes(session.role),
+    hold,
+    deliveryInstructions: extra.delivery_instructions,
+    canInstruct: [...MANAGE_ROLES, "phone_sales", "field_rep"].includes(session.role),
+    holdCanRelease: hold !== null && ((MANAGE_ROLES as readonly string[]).includes(session.role) || hold.placed_by === session.user.id),
     canChat: canChat(session.role),
     customFields: await valuesFor(org, id),
     onboarding: await onboardingFor(org, id),

@@ -17,6 +17,8 @@ export type Generated<T> = T extends ColumnType<infer S, infer I, infer U>
   ? ColumnType<S, I | undefined, U>
   : ColumnType<T, T | undefined, T>;
 
+export type Numeric = ColumnType<number, number | string, number | string>;
+
 export type Timestamp = ColumnType<Date, Date | string, Date | string>;
 
 export interface AcademyCategories {
@@ -383,6 +385,8 @@ export interface CreditApprovals {
   decided_by: number | null;
   id: Generated<number>;
   kind: Generated<string>;
+  manager_ok_at: string | null;
+  manager_ok_by: number | null;
   order_id: number;
   organization_id: number;
   overage_toman: number;
@@ -398,6 +402,18 @@ export interface CrmNotDuplicates {
   high_id: number;
   low_id: number;
   organization_id: number;
+}
+
+export interface CustomerHolds {
+  customer_id: number;
+  expires_on: string;
+  id: Generated<number>;
+  organization_id: number;
+  placed_at: string;
+  placed_by: number;
+  reason: string;
+  released_at: string | null;
+  released_by: number | null;
 }
 
 export interface CustomerLoans {
@@ -428,6 +444,7 @@ export interface Customers {
   credit_limit_toman: number | null;
   customer_code: string;
   customer_type: string | null;
+  delivery_instructions: string | null;
   district_id: number | null;
   first_order_at: string | null;
   group_id: number | null;
@@ -511,6 +528,13 @@ export interface CustomFieldValues {
   value: string;
 }
 
+export interface DayWrapups {
+  closed_at: string;
+  day: string;
+  organization_id: number;
+  user_id: number;
+}
+
 export interface DeletedRows {
   deleted_at: string;
   entity_id: number;
@@ -565,6 +589,17 @@ export interface DeliveryLines {
   qty_delivered: Generated<number>;
   qty_planned: Generated<number>;
   qty_returned: Generated<number>;
+}
+
+export interface DeliveryRatings {
+  customer_id: number;
+  id: Generated<number>;
+  order_id: number;
+  organization_id: number;
+  rated_at: string;
+  rated_by: number;
+  reason: string | null;
+  stars: number;
 }
 
 export interface DeliveryRuns {
@@ -1186,6 +1221,15 @@ export interface NotificationsArchive {
   user_id: number;
 }
 
+export interface NotificationTemplates {
+  body_fa: string | null;
+  organization_id: number;
+  title_fa: string;
+  type_code: string;
+  updated_at: string;
+  updated_by: number;
+}
+
 export interface NotificationTypes {
   active: Generated<number>;
   category: string;
@@ -1293,10 +1337,12 @@ export interface OrderLines {
   sync_xid: Generated<string | null>;
   unit_cost_toman: Generated<number>;
   unit_price_toman: number;
+  uplift_percent: Generated<number>;
   vat_pct: number | null;
 }
 
 export interface Orders {
+  below_min_reason: string | null;
   channel: string | null;
   client_uuid: string | null;
   cost_toman: number | null;
@@ -1336,10 +1382,14 @@ export interface Orders {
   sync_xid: Generated<string | null>;
   total_toman: number | null;
   updated_at: string;
+  uplift_waive_reason: string | null;
+  uplift_waived_by: number | null;
 }
 
 export interface Organizations {
   active: Generated<number>;
+  approval_owner_limit_toman: Generated<number>;
+  carton_nudge_percent: Generated<number>;
   contact_name: string | null;
   contact_phone: string | null;
   created_at: string;
@@ -1362,6 +1412,7 @@ export interface Organizations {
   maintenance_from: string | null;
   maintenance_note: string | null;
   maintenance_to: string | null;
+  min_order_toman: Generated<number>;
   name: string;
   order_approval_limit_toman: Generated<number>;
   order_prefix: string | null;
@@ -1389,6 +1440,8 @@ export interface Packagings {
   name: string;
   product_id: number;
   qty_per_pack: number;
+  small_packs: number | null;
+  small_uplift_percent: number | null;
   sync_xid: Generated<string | null>;
 }
 
@@ -1476,6 +1529,23 @@ export interface PlatformAccessLog {
 export interface PlatformSettings {
   key: string;
   value: string;
+}
+
+export interface PriceBaseLinks {
+  base_id: number;
+  factor: Numeric;
+  id: Generated<number>;
+  organization_id: number;
+  packaging_id: number | null;
+  product_id: number;
+}
+
+export interface PriceBases {
+  id: Generated<number>;
+  name: string;
+  organization_id: number;
+  updated_at: string;
+  value_toman: number;
 }
 
 export interface PrivateCategories {
@@ -1601,6 +1671,7 @@ export interface PurchaseOrders {
   created_at: string;
   created_by: number;
   expected_date: string | null;
+  expected_slot: string | null;
   id: Generated<number>;
   notes: string | null;
   ordered_at: string | null;
@@ -1968,6 +2039,17 @@ export interface Shareholdings {
   party_id: number;
   percent_bp: number;
   valid_from: string;
+}
+
+export interface StaffAbsences {
+  created_at: string;
+  created_by: number;
+  day: string;
+  id: Generated<number>;
+  kind: string;
+  note: string | null;
+  organization_id: number;
+  user_id: number;
 }
 
 export interface StaffAdvanceRequests {
@@ -2374,13 +2456,16 @@ export interface DB {
   crm_not_duplicates: CrmNotDuplicates;
   custom_field_values: CustomFieldValues;
   custom_fields: CustomFields;
+  customer_holds: CustomerHolds;
   customer_loans: CustomerLoans;
   customer_tags: CustomerTags;
   customers: Customers;
+  day_wrapups: DayWrapups;
   deleted_rows: DeletedRows;
   deliveries: Deliveries;
   delivery_line_batches: DeliveryLineBatches;
   delivery_lines: DeliveryLines;
+  delivery_ratings: DeliveryRatings;
   delivery_runs: DeliveryRuns;
   delivery_stops: DeliveryStops;
   deposit_slips: DepositSlips;
@@ -2426,6 +2511,7 @@ export interface DB {
   notification_channels: NotificationChannels;
   notification_deliveries: NotificationDeliveries;
   notification_prefs: NotificationPrefs;
+  notification_templates: NotificationTemplates;
   notification_types: NotificationTypes;
   notifications: Notifications;
   notifications_archive: NotificationsArchive;
@@ -2446,6 +2532,8 @@ export interface DB {
   photos: Photos;
   platform_access_log: PlatformAccessLog;
   platform_settings: PlatformSettings;
+  price_base_links: PriceBaseLinks;
+  price_bases: PriceBases;
   private_categories: PrivateCategories;
   problem_reports: ProblemReports;
   product_costs: ProductCosts;
@@ -2486,6 +2574,7 @@ export interface DB {
   seasonal_factors: SeasonalFactors;
   shared_cost_rules: SharedCostRules;
   shareholdings: Shareholdings;
+  staff_absences: StaffAbsences;
   staff_advance_requests: StaffAdvanceRequests;
   staff_loan_entries: StaffLoanEntries;
   stock_movements: StockMovements;

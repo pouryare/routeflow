@@ -24,7 +24,7 @@ export interface BriefingItem {
   sub?: string;
   href?: string;
   tone?: "good" | "warn" | "crit" | "info";
-  action?: { kind: "task_outcome"; task_id: number; customer_id?: number; snoozable?: boolean } | { kind: "link"; href: string };
+  action?: { kind: "task_outcome"; task_id: number; customer_id?: number; snoozable?: boolean } | { kind: "link"; href: string } | { kind: "snapshot"; customer_id: number };
 }
 export interface BriefingPanel {
   key: string;
@@ -148,6 +148,7 @@ export async function todayFor(session: Session): Promise<Briefing> {
           label: c.business_name,
           sub: `آخرین خرید ${c.last}`,
           href: customerHref(c.id),
+          action: { kind: "snapshot", customer_id: c.id },
         }))
       )
     );

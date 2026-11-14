@@ -51,6 +51,7 @@ export default function OrderQuickFlow({
   customers,
   products,
   customerId,
+  minOrderToman = 0,
   onFull,
   onClose,
   onReopen,
@@ -60,6 +61,8 @@ export default function OrderQuickFlow({
   products: CatalogueProduct[];
   customerId?: number | null;
   /** Leave for the full form. Defaults to navigating there with the customer selected. */
+  /** F64: the company minimum for an order (0 = off). */
+  minOrderToman?: number;
   onFull?: (customerId: number | null) => void;
   onClose: () => void;
   onReopen?: () => void;
@@ -138,6 +141,7 @@ export default function OrderQuickFlow({
       items: mine?.items ?? [],
       vars: {
         today,
+        ...(minOrderToman > 0 ? { min_order: String(minOrderToman) } : {}),
         last: who === null ? "loading" : mine ? mine.status : "loading",
         last_summary: mine?.summary ?? "",
         ...(mine?.usual ? { usual: mine.usual, usual_summary: mine.usualSummary ?? "" } : {}),
@@ -146,7 +150,7 @@ export default function OrderQuickFlow({
         ...(c?.credit_limit_toman != null ? { credit_limit: String(c.credit_limit_toman) } : {}),
       },
     };
-  }, [customers, who, last, today]);
+  }, [customers, who, last, today, minOrderToman]);
 
   const { state, setState, onSaved, flush } = useFlowHost(orderQuickFlow, ctx, {
     send: async (st) => {

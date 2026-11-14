@@ -9,6 +9,8 @@ export interface FlowItem {
   max?: number;
   unit?: string;
   price?: number;
+  /** F65: below `packs` packs the unit price is `percent` percent higher. */
+  small?: { packs: number; percent: number };
   /** The thing this item belongs to -- a packaging's product id -- when the request needs both. */
   parent?: number;
 }

@@ -8,10 +8,11 @@ import type { CatalogueProduct } from "@/lib/flows/orderQuick";
 
 /** On a phone, the top of the new-order page offers «سفارش سریع» (repeat an order in a few taps)
  *  above the full form. The full form is untouched and one scroll away. */
-export default function OrderQuickEntry({ customers, products, initialCustomerId }: {
+export default function OrderQuickEntry({ customers, products, initialCustomerId, minOrderToman = 0 }: {
   customers: QuickCustomer[];
   products: CatalogueProduct[];
   initialCustomerId: number | null;
+  minOrderToman?: number;
 }) {
   const [flow, setFlow] = useState(() => autoOpenFlow("quick", currentSearch()));
   return (
@@ -31,6 +32,7 @@ export default function OrderQuickEntry({ customers, products, initialCustomerId
           customers={customers}
           products={products}
           customerId={initialCustomerId}
+          minOrderToman={minOrderToman}
           onFull={() => setFlow((f) => ({ ...f, open: false }))}
           onClose={() => setFlow((f) => ({ ...f, open: false }))}
           onReopen={() => setFlow((f) => ({ ...f, open: true }))}

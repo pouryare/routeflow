@@ -5,6 +5,8 @@
  *  six months as it did on the day it was taken. Commission is paid off these numbers.
  */
 
+import { upliftPercentFor, upliftedPrice } from "@/lib/smallUplift";
+import { belowMin, cleanReason } from "@/lib/minOrder";
 import { editRule } from "./orderEditRules";
 import { MAX_LINES_PER_ORDER, MAX_NOTES_LENGTH, MAX_PACKS_PER_LINE, isValidPacks } from "./orderLimits";
 import { refreshOrderFigures } from "./repo/orderFigures";
@@ -17,6 +19,7 @@ import { toJalali } from "./jalali";
 import type { RequestedKind } from "./requestedDay";
 import { customerDebt } from "./repo/payments";
 import { requestApproval } from "./repo/creditApprovals";
+import { activeHold } from "./repo/customerHolds";
 import { requestDiscount, type DiscountRequest } from "./repo/discounts";
 import type { Asker } from "./discounts";
 import { PRICED_ORDER_STATUSES, sqlStatusList } from "./orderStateMachine";
@@ -49,6 +52,8 @@ export interface LineInput {
   packs: number;
   is_reversal?: boolean;
   reverses_line_id?: number | null;
+  /** F65: the small-quantity uplift is not applied (a manager waived it for this order). */
+  skip_uplift?: boolean;
 }
 
 export interface CreateOrderInput {
@@ -58,6 +63,11 @@ export interface CreateOrderInput {
   organization_id: number;
   salesperson_user_id?: number | null;
   credit_override_by?: number | null;
+  /** F64: the company minimum (0 or missing = not checked). Below it the order needs `below_min_reason`. */
+  min_order_toman?: number;
+  /** F65: a manager waives the small-quantity uplift for this whole order, with a reason and their id. */
+  waive_uplift?: { reason: string; by: number } | null;
+  below_min_reason?: string | null;
   /** T5: how the order came to exist; the form by default. */
   source?: CreatedSource;
   /** F85: how the order reached the company; empty when nobody said. */
@@ -91,6 +101,8 @@ export interface OrderLine extends LineSnapshot {
   product_name: string;
   packaging_name: string;
   is_reversal: number;
+  /** F65: the small-quantity percent already inside unit_price_toman (0 = none). */
+  uplift_percent?: number;
   total_toman: number;
   kg: number;
 }
@@ -121,6 +133,8 @@ export interface OrderDetail {
   payment_status: string;
   paid_toman: number;
   credit_override_by: number | null;
+  below_min_reason: string | null;
+  uplift_waive_reason: string | null;
   /** The approved discount in force, already taken off `total_toman`. */
   discount_toman: number;
   notes: string | null;
@@ -163,13 +177,15 @@ async function nextOrderNo(db: Db, orderDate: string, organizationId: number): P
 async function snapshotLine(db: Db, orderDate: string, input: LineInput) {
   const packaging = await db
     .prepare(
-      `SELECT pk.id, pk.qty_per_pack, pk.product_id, p.kg_per_base_unit, p.avg_cost_toman, p.name AS product_name
+      `SELECT pk.id, pk.qty_per_pack, pk.product_id, pk.small_packs, pk.small_uplift_percent, p.kg_per_base_unit, p.avg_cost_toman, p.name AS product_name
          FROM packagings pk JOIN products p ON p.id = pk.product_id
         WHERE pk.id = ? AND pk.product_id = ?`
     )
     .get(input.packaging_id, input.product_id) as
     | {
         qty_per_pack: number;
+        small_packs: number | null;
+        small_uplift_percent: number | null;
         kg_per_base_unit: number;
         avg_cost_toman: number;
         product_name: string;
@@ -207,8 +223,10 @@ async function snapshotLine(db: Db, orderDate: string, input: LineInput) {
      gap belongs, and it says so. */
   const basis = await costBasisFor(db, input.product_id, input.packaging_id, orderDate);
 
+  const uplift = input.is_reversal || input.skip_uplift ? 0 : upliftPercentFor(input.packs, { smallPacks: packaging.small_packs, percent: packaging.small_uplift_percent });
   return {
-    unit_price_toman: price.price_toman,
+    uplift_percent: uplift,
+    unit_price_toman: upliftedPrice(price.price_toman, uplift),
     unit_cost_toman: basis?.cost_toman ?? packaging.avg_cost_toman,
     qty_per_pack: packaging.qty_per_pack,
     kg_per_base_unit: packaging.kg_per_base_unit,
@@ -300,8 +318,8 @@ export async function createOrder(
         .prepare(
           `INSERT INTO orders (order_no, customer_id, group_id, salesperson_user_id, status,
                                order_date, requested_day, requested_kind, notes, credit_override_by,
-                               client_uuid, created_by, created_at, updated_at, organization_id, created_source, channel)
-           VALUES (?, ?, ?, ?, 'DRAFT', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+                               client_uuid, created_by, created_at, updated_at, organization_id, created_source, channel, below_min_reason)
+           VALUES (?, ?, ?, ?, 'DRAFT', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
         )
         .run(
           orderNo,
@@ -321,12 +339,19 @@ export async function createOrder(
           now,
           input.organization_id,
           input.source ?? "form",
-          input.channel ?? null
+          input.channel ?? null,
+          cleanReason(input.below_min_reason)
         )).lastInsertRowid
     );
 
+    if (input.waive_uplift) {
+      await db.prepare("UPDATE orders SET uplift_waive_reason = ?, uplift_waived_by = ? WHERE id = ?").run(cleanReason(input.waive_uplift.reason), input.waive_uplift.by, orderId);
+    }
     for (const line of input.lines) {
-      await insertLine(db, orderId, input.order_date, line, now);
+      await insertLine(db, orderId, input.order_date, input.waive_uplift ? { ...line, skip_uplift: true } : line, now);
+    }
+    if (belowMin(orderTotalToman(await linesOf(db, orderId)), input.min_order_toman ?? 0) && !cleanReason(input.below_min_reason)) {
+      throw new OrderError(`جمع سفارش از حداقل ${(input.min_order_toman ?? 0).toLocaleString("fa-IR")} تومان کمتر است؛ دلیل را انتخاب کنید`);
     }
     if (input.discount) {
       await requestDiscount(input.organization_id, orderId, input.discount.asker, input.discount.request, db);
@@ -358,8 +383,8 @@ async function insertLine(
   await db.prepare(
     `INSERT INTO order_lines (order_id, product_id, packaging_id, packs_ordered,
                               unit_price_toman, unit_cost_toman, qty_per_pack,
-                              kg_per_base_unit, price_id, is_reversal, reverses_line_id, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+                              kg_per_base_unit, price_id, is_reversal, reverses_line_id, created_at, uplift_percent)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   ).run(
     orderId,
     line.product_id,
@@ -372,7 +397,8 @@ async function insertLine(
     snap.price_id,
     line.is_reversal ? 1 : 0,
     line.reverses_line_id ?? null,
-    now
+    now,
+    snap.uplift_percent
   );
   await refreshOrderFigures(db, orderId);
 }
@@ -387,7 +413,8 @@ export async function addLine(db: Db, orderId: number, line: LineInput): Promise
   assertValidLine(line);
   const rule = editRule("line", order.status);
   if (!rule.ok) throw new OrderError(rule.why);
-  await insertLine(db, orderId, order.order_date, line, new Date().toISOString());
+  const waived = !!(await db.prepare("SELECT 1 FROM orders WHERE id = ? AND uplift_waived_by IS NOT NULL").get(orderId));
+  await insertLine(db, orderId, order.order_date, waived ? { ...line, skip_uplift: true } : line, new Date().toISOString());
   await touch(db, orderId);
 }
 
@@ -441,6 +468,24 @@ export async function submitOrder(
         customer_balance_toman: orderTotal,
         credit_limit_toman: limit,
         kind: "value",
+      });
+      return await advanceOrder(organizationId, orderId, "flagCredit", { id: actor.id, role: "system" });
+    }
+  }
+
+  /* F71: a customer on hold sends the new order to the manager's inbox, the same way F76 does; confirmed orders carry on. A sample
+     carries no value, and a signed-in owner is the one who would approve it. */
+  if (order.order_type !== "SAMPLE" && !(actor.role === "owner" && actor.id != null)) {
+    const hold = await activeHold(organizationId, order.customer_id);
+    if (hold) {
+      await db.prepare("UPDATE orders SET credit_hold = 1 WHERE id = ? AND organization_id = ?").run(orderId, organizationId);
+      await requestApproval(organizationId, {
+        order_id: orderId,
+        requested_by: actor.id ?? order.created_by,
+        customer_id: order.customer_id,
+        customer_balance_toman: orderTotalToman(await linesOf(db, orderId)),
+        credit_limit_toman: null,
+        kind: "hold",
       });
       return await advanceOrder(organizationId, orderId, "flagCredit", { id: actor.id, role: "system" });
     }

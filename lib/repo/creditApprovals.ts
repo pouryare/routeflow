@@ -1,4 +1,6 @@
 import { riskFor } from "./creditRisk";
+import { needsOwnerStep } from "@/lib/approvalChain";
+import { thresholdsFor } from "./thresholds";
 import type { RiskResult } from "@/lib/creditRisk";
 import { getDb } from "@/lib/db";
 import { isOwner, type Role } from "@/lib/roles";
@@ -18,8 +20,11 @@ export interface CreditApprovalRow {
   credit_limit_toman: number | null;
   overage_toman: number;
   /** "credit": over the customer's limit; "value": over the company's order-value limit (F76). */
-  kind: "credit" | "value";
+  kind: "credit" | "value" | "hold";
   status: "pending" | "approved" | "rejected" | "expired";
+  /** F129: the group manager who passed it on to the owner, when the amount needs two steps. */
+  manager_ok_by: number | null;
+  manager_ok_at: string | null;
   decided_by: number | null;
   decided_at: string | null;
   reason: string | null;
@@ -38,7 +43,7 @@ export async function requestApproval(
     customer_balance_toman: number;
     credit_limit_toman: number | null;
     /** Left out: a credit request. "value" is an order held for its size; it applies to representatives too. */
-    kind?: "credit" | "value";
+    kind?: "credit" | "value" | "hold";
   }
 ): Promise<number> {
   const db = creditApprovalsRepo.db();
@@ -102,8 +107,10 @@ export async function decide(
   decidedBy: number,
   reason?: string,
   /** A group manager's own group: they decide only their group's orders (UIB-A3). Left out for an owner. */
-  scopeGroupId?: ApprovalScope
-): Promise<void> {
+  scopeGroupId?: ApprovalScope,
+  /** F129: false for a group manager. Left out = the owner, who always decides in one step. */
+  deciderIsOwner = true
+): Promise<"decided" | "forwarded"> {
   const row = await creditApprovalsRepo.get(organizationId, id);
   if (!row) throw new CreditApprovalError("درخواست پیدا نشد");
   if (!allows(scopeGroupId, await orderGroupOf(organizationId, row.order_id))) {
@@ -111,6 +118,12 @@ export async function decide(
   }
   if (row.status !== "pending") {
     throw new CreditApprovalError("این درخواست قبلاً تعیین‌تکلیف شده است");
+  }
+  /* F129: a bigger one needs the owner after the manager. The manager's «تأیید» only records their step and leaves it pending. */
+  if (verdict === "approved" && !deciderIsOwner && needsOwnerStep(row, (await thresholdsFor(organizationId)).approval_owner_limit_toman)) {
+    if (row.manager_ok_by !== null) throw new CreditApprovalError("این درخواست منتظر تأیید مالک است");
+    await creditApprovalsRepo.patch(organizationId, id, { manager_ok_by: decidedBy, manager_ok_at: new Date().toISOString() });
+    return "forwarded";
   }
   await creditApprovalsRepo.patch(organizationId, id, {
     status: verdict,
@@ -128,6 +141,7 @@ export async function decide(
     verdict === "approved" ? "approveCredit" : "rejectCredit",
     { id: decidedBy, role: "group_manager" }
   );
+  return "decided";
 }
 
 /** The `createCreditApprovalTask` effect: submitOrder has already filed the
@@ -151,7 +165,7 @@ registerOrderEffectHandlers({
       .run(
         order.customer_id,
         now.slice(0, 10),
-        held?.kind === "value" ? "سفارش از سقف مبلغ بدون تأیید بزرگ‌تر است — نیازمند تأیید مدیر" : "سفارش از سقف اعتبار مشتری عبور کرد — نیازمند تأیید مدیر",
+        held?.kind === "value" ? "سفارش از سقف مبلغ بدون تأیید بزرگ‌تر است — نیازمند تأیید مدیر" : held?.kind === "hold" ? "این مشتری نگه داشته شده است — سفارش نیازمند تأیید مدیر" : "سفارش از سقف اعتبار مشتری عبور کرد — نیازمند تأیید مدیر",
         now
       );
   },
@@ -182,13 +196,16 @@ export interface PendingApprovalCard {
   id: number;
   order_no: string;
   customer_name: string;
-  kind: "credit" | "value";
+  kind: "credit" | "value" | "hold";
   customer_balance_toman: number;
   credit_limit_toman: number | null;
   overage_toman: number;
   requested_at: string;
   /** F46: advisory score of the customer, with its top reasons. */
   risk: RiskResult | null;
+  /** F129: this one needs the owner after the manager; `manager_ok` says the manager's step is done. */
+  two_step: boolean;
+  manager_ok: boolean;
 }
 
 /** The pending requests with the words a decision card needs (customer, order number), oldest
@@ -202,15 +219,16 @@ export async function pendingForDeck(organizationId: number, scopeGroupId?: Appr
   const rows = (await getDb()
     .prepare(
       `SELECT ca.id, o.customer_id, o.order_no, c.business_name AS customer_name, ca.customer_balance_toman,
-              ca.credit_limit_toman, ca.overage_toman, ca.requested_at, ca.kind
+              ca.credit_limit_toman, ca.overage_toman, ca.requested_at, ca.kind, ca.manager_ok_by
          FROM credit_approvals ca
          JOIN orders o ON o.id = ca.order_id
          JOIN customers c ON c.id = o.customer_id
-        WHERE ca.organization_id = ? AND ca.status = 'pending'${scoped ? ` AND (o.group_id = ANY(?::bigint[])${withNone ? " OR o.group_id IS NULL" : ""})` : ""}
+        WHERE ca.organization_id = ? AND ca.status = 'pending'${scoped ? " AND ca.manager_ok_by IS NULL" : ""}${scoped ? ` AND (o.group_id = ANY(?::bigint[])${withNone ? " OR o.group_id IS NULL" : ""})` : ""}
         ORDER BY ca.requested_at`
     )
-    .all(...((scoped ? [organizationId, ids] : [organizationId]) as never[]))) as unknown as (Omit<PendingApprovalCard, "risk"> & { customer_id: number })[];
+    .all(...((scoped ? [organizationId, ids] : [organizationId]) as never[]))) as unknown as (Omit<PendingApprovalCard, "risk" | "two_step" | "manager_ok"> & { customer_id: number; manager_ok_by: number | null })[];
+  const ownerLimit = (await thresholdsFor(organizationId)).approval_owner_limit_toman;
   const risks = await riskFor(organizationId, [...new Set(rows.map((r) => Number(r.customer_id)))]);
   // Plain objects: a database row has a null prototype and cannot cross into a client component.
-  return rows.map(({ customer_id, ...r }) => ({ ...r, risk: risks.get(Number(customer_id)) ?? null }));
+  return rows.map(({ customer_id, manager_ok_by, ...r }) => ({ ...r, risk: risks.get(Number(customer_id)) ?? null, two_step: needsOwnerStep(r, ownerLimit), manager_ok: manager_ok_by !== null }));
 }
