@@ -20,7 +20,7 @@ import BentoStrip, {
   BentoTile,
   BentoGauge,
 } from "@/components/BentoStrip";
-import { isVanRole, isOwner, MANAGE_ROLES } from "@/lib/roles";
+import { isVanRole, isOwner, isPhoneSales, MANAGE_ROLES } from "@/lib/roles";
 import ComplaintFromOrder from "@/components/flows/ComplaintFromOrder";
 import OrderPriorityToggle from "@/components/sales/OrderPriorityToggle";
 import PriorityTag from "@/components/sales/PriorityTag";
@@ -31,6 +31,11 @@ import { discountOfOrder } from "@/lib/repo/discounts";
 import { DISCOUNT_REASONS, DISCOUNT_STATUS_LABEL } from "@/lib/discounts";
 import LiveRefresh from "@/components/LiveRefresh";
 import ViewingChip from "@/components/ViewingChip";
+import DeliveryRatingCard from "@/components/sales/DeliveryRatingCard";
+import { ratingOf } from "@/lib/repo/deliveryRatings";
+import OnAccountCreditCard from "@/components/sales/OnAccountCreditCard";
+import { onAccountCredit } from "@/lib/repo/onAccount";
+import { FULFILLED_ORDER_STATUSES } from "@/lib/orderStateMachine";
 import OrderDetailEdit from "@/components/sales/OrderDetailEdit";
 import { editRule } from "@/lib/orderEditRules";
 import RecordChat from "@/components/RecordChat";
@@ -79,6 +84,10 @@ export default async function OrderDetailPage({
   if (!page) notFound();
   const { order, attempts } = page;
   const discount = await discountOfOrder(session.organizationId, order.id);
+  // F63: credit the customer already paid ahead, offered on an unpaid delivered order to the people who record payments.
+  const canRate = (MANAGE_ROLES.includes(session.role) || isPhoneSales(session.role)) && (FULFILLED_ORDER_STATUSES as readonly string[]).includes(order.status);
+  const owes = Math.max(0, order.total_toman - order.paid_toman);
+  const credit = (MANAGE_ROLES.includes(session.role) || isPhoneSales(session.role)) && owes > 0 && (FULFILLED_ORDER_STATUSES as readonly string[]).includes(order.status) ? await onAccountCredit(session.organizationId, order.customer_id) : 0;
 
   return (
     <div className="flex flex-col gap-[var(--space-4)]">
@@ -170,6 +179,10 @@ export default async function OrderDetailPage({
         />
       </BentoStrip>
 
+      {canRate && <DeliveryRatingCard orderId={order.id} rating={await ratingOf(session.organizationId, order.id)} />}
+
+      {credit > 0 && <OnAccountCreditCard orderId={order.id} credit={credit} owes={owes} />}
+
       {discount && (
         <section className="card flex flex-col gap-[var(--space-2)] p-[var(--space-4)]" dir="rtl" aria-label="تخفیف">
           <div className="flex flex-wrap items-baseline justify-between gap-[var(--space-2)]">
@@ -248,6 +261,7 @@ export default async function OrderDetailPage({
               </td>
               <td className="border-b border-[var(--border)] py-[var(--space-2)] text-left tabular-nums text-[var(--muted)]">
                 {faToman(line.unit_price_toman)}
+                {line.uplift_percent ? <span className="block text-[length:var(--text-xs)] text-[var(--warning)]">سفارش کم، {faNum(Number(line.uplift_percent))}٪ بیشتر</span> : null}
               </td>
               <td className="border-b border-[var(--border)] py-[var(--space-2)] text-left tabular-nums text-[var(--foreground)]">
                 {faToman(line.total_toman)}
@@ -311,6 +325,18 @@ export default async function OrderDetailPage({
         <p className="m-0 text-[length:var(--text-xs)] leading-6 text-[var(--muted)]">
           این سفارش تأیید شده و عددهایش ثابت است. قیمت‌ها همان‌هایی هستند که روز ثبت
           سفارش اعمال شده‌اند، حتی اگر قیمت کالا بعداً تغییر کرده باشد.
+        </p>
+      )}
+
+      {order.uplift_waive_reason && (
+        <p className="m-0 rounded-[var(--radius-md)] border border-[var(--border)] p-[var(--space-3)] text-[length:var(--text-xs)] text-[var(--muted)]">
+          افزایش قیمت سفارش کم برای این سفارش بخشیده شد. دلیل: {order.uplift_waive_reason}
+        </p>
+      )}
+
+      {order.below_min_reason && (
+        <p className="m-0 rounded-[var(--radius-md)] border border-[var(--warning)] p-[var(--space-3)] text-[length:var(--text-xs)] text-[var(--warning)]">
+          جمع این سفارش از حداقل سفارش کمتر بود. دلیل: {order.below_min_reason}
         </p>
       )}
 

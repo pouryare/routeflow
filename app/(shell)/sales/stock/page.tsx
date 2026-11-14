@@ -5,7 +5,7 @@ import { getSessionFromCookies, orgScopeId } from "@/lib/session";
 import { activeProducts, facilityName } from "@/lib/repo/stockPageView";
 import { monthPurchasesIn, purchasesIn, stockPositionIn } from "@/lib/repo/routeAdapters";
 import { faToman, faNum } from "@/lib/format";
-import { faJalaliDate, toJalali, jalaliToIsoDate } from "@/lib/jalali";
+import { faJalaliDate, toJalali, jalaliToIsoDate, tehranTodayIso } from "@/lib/jalali";
 import { allSupplierPrices } from "@/lib/repo/supplierPrices";
 import VanLoadCard from "@/components/sales/VanLoadCard";
 import { vansToLoad } from "@/lib/repo/vanStock";
@@ -16,6 +16,8 @@ import GradientStat from "@/components/meridian/GradientStat";
 import { expiringBatches, listBatchesWithProduct } from "@/lib/repo/batches";
 import BatchList from "@/components/sales/BatchList";
 import PageHeader from "@/components/meridian/PageHeader";
+import ExpectedArrivals from "@/components/sales/ExpectedArrivals";
+import { expectedArrivals } from "@/lib/repo/purchaseOrders";
 import { isVanRole, isOwner, MANAGE_ROLES } from "@/lib/roles";
 import { findDefaultFacilityId, onHandByProduct } from "@/lib/repo/stock";
 import Link from "next/link";
@@ -125,6 +127,7 @@ export default async function StockPage() {
       </Link>
     ) : null}
     <div className="flex flex-col gap-[var(--space-5)]">
+      {MANAGE_ROLES.includes(session.role) ? <ExpectedArrivals rows={await expectedArrivals(session.organizationId)} today={tehranTodayIso()} canOpen={isOwner(session.role)} /> : null}
       <div className="statrow">
         <GradientStat tone="peach" label="ارزش کل انبار"
           help="fig.stock-value" value={faNum(totalValue)} unit="تومان" chip={`از ${faNum(stock.length)} کالای فعال`} />

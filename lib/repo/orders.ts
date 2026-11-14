@@ -48,6 +48,7 @@ export interface OrderRow {
   payment_status: string;
   paid_toman: number;
   credit_override_by: number | null;
+  below_min_reason: string | null;
   credit_hold: number;
   notes: string | null;
   created_by: number;

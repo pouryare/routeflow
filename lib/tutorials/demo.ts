@@ -35,6 +35,9 @@ const stop = (id: number, name: string, address: string, lines: ReturnType<typeo
   collected_toman: 0,
   sort_order: sort,
   notes: null,
+  delivery_instructions: "زنگ دوم؛ تحویل به آقای نمونه",
+  order_notes: null,
+  window_label: "۰۸:۰۰ تا ۱۴:۰۰",
   lines,
   total_toman: lines.reduce((s, l) => s + l.total_toman, 0),
 });

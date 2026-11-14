@@ -1,4 +1,5 @@
 import { compressedJson } from "@/lib/httpCache";
+import { cleanReason } from "@/lib/minOrder";
 import { NextRequest, NextResponse } from "next/server";
 import { isId } from "@/lib/inputChecks";
 import { requireRole, orderFilter, canReachGroup, orgScopeId } from "@/lib/session";
@@ -12,7 +13,7 @@ import { isOrderChannel } from "@/lib/orderChannel";
 import { parseDiscountBody } from "@/lib/discounts";
 import { DiscountError } from "@/lib/repo/discounts";
 import { customerPriceHistory } from "@/lib/repo/customerPrices";
-import { SELL_ROLES, isVanRole } from "@/lib/roles";
+import { SELL_ROLES, MANAGE_ROLES, isVanRole } from "@/lib/roles";
 import { customerUsualBasket } from "@/lib/repo/usualBasket";
 import { recentOpenOrders } from "@/lib/repo/recentOpenOrders";
 import { onboardingFor } from "@/lib/repo/onboarding";
@@ -96,6 +97,8 @@ export async function POST(req: NextRequest) {
     notes?: unknown;
     channel?: unknown;
     credit_override?: unknown;
+    below_min_reason?: unknown;
+    waive_uplift_reason?: unknown;
     discount?: unknown;
     lines?: unknown;
   } | null;
@@ -181,6 +184,10 @@ export async function POST(req: NextRequest) {
       organization_id: session.user.organization_id,
       salesperson_user_id: salespersonId,
       credit_override_by: body?.credit_override ? session.user.id : null,
+      min_order_toman: (await thresholdsFor(session.organizationId)).min_order_toman,
+      below_min_reason: cleanReason(body?.below_min_reason),
+      // F65: only a manager or owner may waive the small-quantity uplift, and the reason is kept on the order.
+      waive_uplift: MANAGE_ROLES.includes(session.role) && cleanReason(body?.waive_uplift_reason) ? { reason: cleanReason(body?.waive_uplift_reason)!, by: session.user.id } : null,
       notes: typeof body?.notes === "string" ? body.notes : null,
       channel,
       // Asked for with the order; it waits for the manager or owner unless the rules let it through.

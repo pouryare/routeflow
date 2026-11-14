@@ -10,6 +10,7 @@
 import { refreshOrderFigures } from "./repo/orderFigures";
 import type { Db } from "@/lib/database/client";
 import { getDb } from "./db";
+import { windowLabel } from "./deliveryWindow";
 import {
   orderTotalToman,
   netOfDiscount,
@@ -57,6 +58,11 @@ export interface RunStop {
   collected_toman: number;
   sort_order: number;
   notes: string | null;
+  /** F69: the customer's standing instructions for the driver, and the order's own note. */
+  delivery_instructions: string | null;
+  order_notes: string | null;
+  /** F57: the customer's opening hours on the run's day, or null when none are known. */
+  window_label: string | null;
   lines: RunStopLine[];
   total_toman: number;
 }
@@ -347,22 +353,22 @@ export async function readRun(db: Db, runId: number): Promise<RunDetail | null> 
   const stopRows = await db
     .prepare(
       `SELECT ds.id, ds.order_id, ds.status, ds.collected_toman, ds.sort_order, ds.notes,
-              o.order_no, o.priority, o.customer_id, o.discount_toman,
-              c.business_name AS customer_name, c.address, c.phone, c.lat, c.lng, c.working_hours_json
+              o.order_no, o.priority, o.customer_id, o.discount_toman, o.notes AS order_notes,
+              c.business_name AS customer_name, c.address, c.phone, c.lat, c.lng, c.delivery_instructions, c.working_hours_json
          FROM delivery_stops ds
          JOIN orders o ON o.id = ds.order_id
          JOIN customers c ON c.id = o.customer_id
         WHERE ds.run_id = ?
         ORDER BY ds.sort_order, ds.id`
     )
-    .all(runId) as unknown as (Omit<RunStop, "lines" | "total_toman"> & { discount_toman: number })[];
+    .all(runId) as unknown as (Omit<RunStop, "lines" | "total_toman" | "window_label"> & { discount_toman: number; working_hours_json: string | null })[];
 
   const linesByOrder = await stopLinesMany(db, stopRows.map((s) => s.order_id));
   const stops: RunStop[] = stopRows.map((stop) => {
     const lines = linesByOrder.get(stop.order_id) ?? [];
     // The driver collects what the customer owes, so the approved discount is already off.
-    const { discount_toman, ...rest } = stop;
-    return { ...rest, lines, total_toman: netOfDiscount(orderTotalToman(lines), Number(discount_toman ?? 0)) };
+    const { discount_toman, working_hours_json, ...rest } = stop;
+    return { ...rest, window_label: windowLabel(working_hours_json, run.run_date), lines, total_toman: netOfDiscount(orderTotalToman(lines), Number(discount_toman ?? 0)) };
   });
 
   return {
