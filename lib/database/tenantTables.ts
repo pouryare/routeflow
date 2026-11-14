@@ -21,6 +21,7 @@ export const TENANT_TABLES = [
   "deposit_slips",
   "payment_promises",
   "customer_holds",
+  "staff_absences",
   "day_wrapups",
   "delivery_ratings",
   "price_bases",

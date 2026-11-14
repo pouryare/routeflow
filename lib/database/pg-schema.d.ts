@@ -2015,6 +2015,17 @@ export interface Shareholdings {
   valid_from: string;
 }
 
+export interface StaffAbsences {
+  created_at: string;
+  created_by: number;
+  day: string;
+  id: Generated<number>;
+  kind: string;
+  note: string | null;
+  organization_id: number;
+  user_id: number;
+}
+
 export interface StaffAdvanceRequests {
   amount_toman: number;
   created_at: string;
@@ -2535,6 +2546,7 @@ export interface DB {
   seasonal_factors: SeasonalFactors;
   shared_cost_rules: SharedCostRules;
   shareholdings: Shareholdings;
+  staff_absences: StaffAbsences;
   staff_advance_requests: StaffAdvanceRequests;
   staff_loan_entries: StaffLoanEntries;
   stock_movements: StockMovements;

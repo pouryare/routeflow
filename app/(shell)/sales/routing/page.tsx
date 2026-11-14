@@ -5,6 +5,9 @@ import { COOKIE_NAME } from "@/lib/auth";
 import { getSessionFromCookies } from "@/lib/session";
 
 import { listVehicles } from "@/lib/repo/routing";
+import CapacityAhead from "@/components/sales/CapacityAhead";
+import { capacityAhead } from "@/lib/repo/capacityAhead";
+import { absencesBetween, activeDrivers } from "@/lib/repo/absences";
 import RoutingPlanner from "@/components/sales/RoutingPlanner";
 import PageHeader from "@/components/meridian/PageHeader";
 
@@ -21,12 +24,14 @@ export default async function RoutingPage() {
   if (!MANAGE_ROLES.includes(session.role)) redirect("/sales");
 
   const vehicles = await listVehicles(session.organizationId, false);
+  const loads = await capacityAhead(session.organizationId);
   const names: Record<number, string> = {};
   for (const v of vehicles) names[v.id] = v.plate ? `${v.name} (${v.plate})` : v.name;
 
   return (
     <>
     <PageHeader route="/sales/routing" />
+    <CapacityAhead loads={loads} drivers={await activeDrivers(session.organizationId)} away={await absencesBetween(session.organizationId, loads[0].day, loads[loads.length - 1].day)} />
     <div className="kblock">
       <div className="bhead">
         <div>
