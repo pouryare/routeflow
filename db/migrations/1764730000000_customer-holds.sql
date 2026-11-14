@@ -1,6 +1,6 @@
 -- squawk-ignore-file ban-drop-constraint, constraint-missing-not-valid
 -- Up Migration
--- rf: expand-only
+-- rf: contract
 -- F71: a rep or manager puts a temporary hold on a customer's NEW orders (a dispute, a returned cheque under discussion), with a
 -- reason and an expiry. A new order from a held customer waits in the credit inbox for a manager (the override); orders already
 -- confirmed carry on. Released with one tap by the person who placed it or any manager, or it lapses on its date.
