@@ -33,6 +33,8 @@ import FirstStepsCard from "@/components/tutorials/FirstStepsCard";
 import MoneyTiles from "@/components/today/MoneyTiles";
 import { moneyTilesFor } from "@/lib/repo/moneyTiles";
 import { pageMetadata } from "@/lib/pageMeta";
+import WrapUpCard from "@/components/today/WrapUpCard";
+import { wrapUpFor, wrapUpEmpty } from "@/lib/repo/wrapUp";
 
 export const metadata = pageMetadata("/sales/today");
 
@@ -51,6 +53,8 @@ export default async function SalesTodayPage() {
   const data = await todayFor(session);
   const earnings = await earningsSoFar(session);
   const week = await weekVsLast(session, tehranTodayIso());
+  // F74: a salesperson sees the close-the-day card; a manager only when something of theirs is loose.
+  const wrapUp = ["phone_sales", "owner", "group_manager", "platform_owner"].includes(session.role) ? await wrapUpFor(session.organizationId, session.user.id) : null;
   // Not while acting as someone else: dismissing it would mark THEIR notes as read.
   const whatsNew = session.actorId === undefined ? unseenFor(session.role, (await getPrefs(session.user.id)).whats_new_seen) : null;
 
@@ -105,6 +109,8 @@ export default async function SalesTodayPage() {
           <DuplicatesDeckEntry pairs={(await duplicatePairs(session)).map((p) => ({ ...p, keep: { ...p.keep }, drop: { ...p.drop } }))} />
         </div>
       )}
+
+      {wrapUp && (session.role === "phone_sales" || !wrapUpEmpty(wrapUp)) && <WrapUpCard w={wrapUp} />}
 
       {whatsNew && <WhatsNewCard entry={whatsNew} />}
       <FirstStepsCard />

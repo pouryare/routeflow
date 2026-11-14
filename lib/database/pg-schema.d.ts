@@ -523,6 +523,13 @@ export interface CustomFieldValues {
   value: string;
 }
 
+export interface DayWrapups {
+  closed_at: string;
+  day: string;
+  organization_id: number;
+  user_id: number;
+}
+
 export interface DeletedRows {
   deleted_at: string;
   entity_id: number;
@@ -2312,6 +2319,7 @@ export interface DB {
   customer_loans: CustomerLoans;
   customer_tags: CustomerTags;
   customers: Customers;
+  day_wrapups: DayWrapups;
   deleted_rows: DeletedRows;
   deliveries: Deliveries;
   delivery_line_batches: DeliveryLineBatches;
