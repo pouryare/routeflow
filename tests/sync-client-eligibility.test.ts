@@ -15,10 +15,11 @@ import { hasSyncClient, ROLES } from "@/lib/roles";
  * third hand-written `role === "platform_owner"` that the next role change silently misses.
  */
 describe("hasSyncClient", () => {
-  it("is false for the vendor and the shareholder, true for every other role", () => {
+  it("is false for the vendor, the shareholder and the accountant, true for every other role", () => {
     expect(hasSyncClient("platform_owner")).toBe(false);
     expect(hasSyncClient("shareholder")).toBe(false);
-    for (const role of ROLES.filter((r) => r !== "platform_owner" && r !== "shareholder")) {
+    expect(hasSyncClient("accountant")).toBe(false);
+    for (const role of ROLES.filter((r) => r !== "platform_owner" && r !== "shareholder" && r !== "accountant")) {
       expect(hasSyncClient(role), role).toBe(true);
     }
   });

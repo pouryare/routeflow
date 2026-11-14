@@ -124,7 +124,7 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
   **Bulk edit on the shared selection bar.** Customers: rep, group, district, price tier, tags. Tasks: assignee, due date. An empty field is left alone; a count preview («۴۲ مشتری تغییر می‌کند»); one activity line per record; credit limit is not bulk-editable; owner changes also go to the F100 history (T4).
 
   </details>
-- **T14. One action list.** Each action is declared once (label, icon, roles, place) and feeds record buttons, the selection bar and Ctrl-K.
+- **T14. One action list.** Each action is declared once (label, icon, roles, place) and feeds record buttons, the selection bar and Ctrl-K. **Built 2026-11-13 (PR #102):** `lib/actionList.ts`; who sees an action comes from the role's ready tabs. Feeds Ctrl-K («کارها») and the customer map action; the record buttons are not moved onto it yet.
   <details><summary>Full decision</summary>
 
   **One action list.** Each action is declared once (label, icon, role set, where it applies, pinned or under «بیشتر», hotkey) and feeds the record buttons, the selection bar and Ctrl-K, so the three never disagree on role gates (T14).
@@ -137,7 +137,7 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
 
   </details>
 - **S12. Edit conflict warning.** If a field changed since you opened it, show both values and who/when; keep mine or theirs.
-- **S14. Show a list or selection on the map.** The selection bar and filtered customer lists open the map with only those customers (UI batch D).
+- **S14. Show a list or selection on the map.** The selection bar and filtered customer lists open the map with only those customers (UI batch D). **Built 2026-11-13 (PR #102).**
 
 ### Customers and sales (CRM)
 
@@ -479,7 +479,7 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
   **Team week grid (D18).** Managers get people down the side and days across, each box counting visits, tasks and deliveries; tapping opens that person's day. Phone: one card per person with a week strip.
 
   </details>
-- **E5. Undo your own fresh mistake.** Whoever entered a payment, note, task or photo can void it within N minutes (default 15) with a reason.
+- **E5. Undo your own fresh mistake.** Whoever entered a payment, note, task or photo can void it within N minutes (default 15) with a reason. **Built 2026-11-13 (PR #102) for payments:** the entering person may void their own within the window (a company setting); notes, tasks and photos are not covered yet.
   <details><summary>Full decision</summary>
 
   **Undo your own fresh mistake (E5).** Whoever entered a payment, note, task or photo can void it within N minutes (owner setting, default 15) with a reason; after that, manager only. Logged, and voided payments stay in the money log (D6). Today voiding a payment is for managers only.
@@ -487,7 +487,7 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
   </details>
 - **S23. Staff on leave until a date.** Still can sign in; assignment skips them; planner warns; a cover card lists their open leads and tasks. **Built 2026-11-13 (PR #84).** A «مرخصی همکاران» card on the users page sends a person away for N days with a reason and brings them back; the «who gets this lead» list skips them; the card shows what each still holds and points to the handover card. Not built: the planner warning.
 
-- **H3. Accountant role.** A new login that reads all accounting and can post manual entries, reversals and the year close.
+- **H3. Accountant role.** A new login that reads all accounting and can post manual entries, reversals and the year close. **Built 2026-11-13 (PR #102):** role `accountant`, manual journal with reversal, confined to `/accounting`.
   <details><summary>Full decision</summary>
 
   **Accountant role (H3, Holoo comparison).** Today only owners read all accounting and a group manager reads the journal and expenses (`lib/accountingGate.ts`); the roadmap speaks of «the accountant» only as someone who receives a file (D21, D26). A new role reads every accounting page and export, and can post a manual سند (a bank fee, a loan, a correction between accounts; it must balance and be tagged MANUAL), reverse an entry (H6), and close a month (A2) or the year (H2). Every action is logged by name. No user admin, prices or commission. Adding a role means checking every role list in the gates (`MANAGE_ROLES`, `OWNER_ROLES` and the proxy), so it is a real piece of work; per-screen ticks like Holoo's were not chosen. F128 (auditor) was not found in `docs/roadmap.md`; check before reusing the number.
@@ -568,7 +568,7 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
   **Sign out after idle time (E17).** The owner sets idle hours per role (for example 12 for owner, managers and accountant); drivers and reps stay signed in so offline work is not lost. Today a sign-in lives 30 days whether used or not.
 
   </details>
-- **E7. Background exports and bulk edits.** Exports over ~1,000 rows and bulk edits over ~100 run as jobs with progress and a push when ready.
+- **E7. Background exports and bulk edits.** Exports over ~1,000 rows and bulk edits over ~100 run as jobs with progress and a push when ready. **Built 2026-11-13 (PR #102) for the orders export only:** over 1,000 rows it runs on the worker, shows progress, notifies when ready, file kept 24 hours (`export_jobs`). Bulk edits are not moved because the bulk edit itself (T4) is not built.
   <details><summary>Full decision</summary>
 
   **Background exports and bulk edits (E7).** Exports over about 1,000 rows (T21) and bulk edits over about 100 records (T4) run on the job runner with a progress count and a push when ready; the file is kept 24 hours.
@@ -669,7 +669,7 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
   **Academy now (owner, 2026-11-12; plan `docs/plans/academy-catalogue-independence-2026-11-12.md`).** Two layers on one screen: «RouteFlow» lessons shipped as files (about 10 in Persian, drafted by the agent, reviewed by the owner: AC5) and «شرکت» lessons stored per company in categories the company creates (AC1, AC2). Editor `/sales/academy/manage` (AC3) for the owner, managers (own group) and any «مربی» (trainer), a permission the owner can give to anyone. Required per role with days after hire, the F133 table includes company lessons, «به‌روز شد» when a lesson changes (AC4). Links with tutorials, objection cards and product pages (AC6). **No new library:** plain text with headings and photos, photos in the company's storage. **Quizzes are the next slice** (AC-L1); the first slice ends a lesson with «خواندم».
 
   </details>
-- **VC1 to VC4. Catalogue for van roles. VC1, VC2, VC3 (show and print) and VC3b built 2026-11-13 (PR #82).** Not in this slice: this shop's price and visibility at a stop (F62, F89; the customer prices are not in the phone's synced data), add to order (a van role has no order screen yet), save as a picture, VC4. The page is `/sales/catalogue` (under the shell so it keeps the bottom bar), cached by the service worker after a visit, not read from the phone's local database. A page for `field_rep` and `delivery_driver`: search, category chips, photo, packings, this shop's price, stock on the van (approximate), add to order, show to the customer, save as picture or PDF. Product information (photos, category, three selling points, a «how to say it» line) is edited by owner and managers.
+- **VC1 to VC4. Catalogue for van roles. VC1, VC2, VC3 (show and print) and VC3b built 2026-11-13 (PR #82).** Not in this slice: this shop's price and visibility at a stop (F62, F89; the customer prices are not in the phone's synced data), add to order (a van role has no order screen yet), save as a picture, VC4. The page is `/sales/catalogue` (under the shell so it keeps the bottom bar), cached by the service worker after a visit, not read from the phone's local database. A page for `field_rep` and `delivery_driver`: search, category chips, photo, packings, this shop's price, stock on the van (approximate), add to order, show to the customer, save as picture or PDF. Product information (photos, category, three selling points, a «how to say it» line) is edited by owner and managers. **VC4 first slice built 2026-11-13 (PR #102):** a manager loads goods from the warehouse onto a van («بارگیری وانت» on `/sales/stock`), so the van stock the catalogue shows is real. The sale at the door and samples (F52) are not built; van roles still have no order screen.
   <details><summary>Full decision</summary>
 
   **Catalogue now (owner, 2026-11-12).** Today `/sales/products` sends van roles to `/driver`, so they have no catalogue, and a product has no photo or description. **Both, in two steps:** step 1 takes orders for later with van stock shown as approximate (VC1 to VC3b); step 2 sells from van stock at the door once van loading (F30) exists, with samples (F52) (VC4). Cost and margin are never sent to van roles. The first version shows or saves the price list; sending it to the shop waits for the message channel (F6, F79). Needs a check that the van screens read the catalogue offline (F75).
@@ -767,7 +767,7 @@ Decided, but each needs something first. The "waits for" part is in the line. Th
 - **T9. F130 rule builder: draft, test, firing log and budget.** Edit a draft then publish; test on one customer; firing log; daily firing budget per rule. **Built 2026-11-13 (batch B):** the firing log («سابقهٔ اجرا», last 30 firings with what each made) and the daily budget per rule (a «سقف در روز» field in the rule sheet; a rule at its cap makes nothing more that day; day = UTC date, not Tehran). **Not built:** draft and publish, and the test on one customer. Both need rules whose conditions an owner can edit; today the conditions live in code (sweeps) or in seeded rows, so there is nothing to draft or dry-run yet.
 - **T10. F126 import wizard steps.** Upload, pick sheet and header row, match columns, fix cells, import with dedupe by mobile. Waits for F126 / F10.
 - **D12. Switches per company.** Cheques, batches, leads, commission, van stock can be turned off per company. A step in the setup wizard (F126).
-- **S9. F130 rules skip imported records.** Imported records are skipped unless a rule switch says otherwise. Waits for F130.
+- **S9. F130 rules skip imported records.** Imported records are skipped unless a rule switch says otherwise. Waits for F130. **Built 2026-11-13 (PR #102).**
 - **S13. Who-can-do-what page.** Owner, view only, made from the real gates. Comes after T14.
 - **S20. Replaced document keeps the old version.** Kept 30 days as «نسخهٔ قبلی». Waits for the documents feature.
 - **S25. Document valid-until date.** A task 30 days before and an expired chip. Waits for the documents feature.
@@ -780,7 +780,7 @@ Decided, but each needs something first. The "waits for" part is in the line. Th
 
 - **M1. Send motions for chat and SMS (owner, 2026-11-05).** When a message really leaves the phone: the send button flies off like a paper plane and its label flips to «ارسال شد»; «…» typing dots while the other person writes; the sent text rises out of the box into a bubble; read ticks (sending, sent ✓, delivered ✓✓, read in colour); the mic turns into a send arrow as you type; hold the mic to record a voice note, release to send; drag a message sideways to reply with a quote; «بازگردانی» pulls a just-sent message back into the box. Waits for chat phase 1 (FB9) or the SMS receipt (A16). Clips and choices: `docs/decisions.md` 10.17 and 10.18.
 - **FB21. Internal chat phases 2 and 3.** 1:1 and group chats on the same tables, then photos, search and read receipts. Waits for phase 1.
-- **FB20. Attempts list with retry on the status page.** Per message: tries, outcome, time and a retry button. Waits for the batch A delivery log.
+- **FB20. Attempts list with retry on the status page.** Per message: tries, outcome, time and a retry button. Waits for the batch A delivery log. **Built 2026-11-13 (PR #102).**
 - **FB23. SMS guard.** Iranian numbers only, a cooldown per number, a daily budget, a spike alert and one ledger row per attempt; monitor first, then enforce; owner pause switch. Built together with Farazsms.
 - **FB28. Message templates (F136).** Placeholders such as `{customer.name}` with a picker. Waits for F18, F79 and F120.
 - **T16. F70 / F21 SMS campaigns rules.** Opt-out list with reason and source, two topics (promotions, service), test send, scheduling, counts. Waits for Farazsms and F70.

@@ -1,3 +1,4 @@
+import ExportButton from "@/components/sales/ExportButton";
 import ScrollFade from "@/components/mobile/ScrollFade";
 import { Icon } from "@/components/meridian/Icon";
 import { CardHelp } from "@/components/meridian/CardHelp";
@@ -156,13 +157,7 @@ function ListView({
         </div>
         <div className="acts">
           {orders.length > 0 && (
-            /* A plain anchor with `download`, on purpose: this is a file, not a
-               navigation, and next/link would attempt a client-side transition to a
-               route that answers with an .xlsx. */
-            <a className="btn ghost" href="/api/sales/orders/export" download>
-              <Icon name="download" size="md" />
-              خروجی اکسل
-            </a>
+            <ExportButton url="/api/sales/orders/export" />
           )}
           {mayOrder && (
             <Link

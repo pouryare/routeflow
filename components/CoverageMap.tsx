@@ -141,6 +141,8 @@ export default function CoverageMap({
   // someone sent is the most specific statement of intent available; the remembered view
   // is the next; fitting is what is left when nobody has said anything.
   const [incoming] = useState(() => (typeof window === "undefined" ? {} : parseMapLink(window.location.search)));
+  // S14: a list or selection opened on the map; null shows every customer.
+  const [listIds, setListIds] = useState<Set<number> | null>(() => (incoming.customerIds ? new Set(incoming.customerIds) : null));
   const [startView] = useState<MapView | null>(
     () => incoming.view ?? linkTargetView(incoming, initialCustomers, initialDistricts) ?? readStoredView()
   );
@@ -489,10 +491,11 @@ export default function CoverageMap({
 
   const filteredCustomers = useMemo(() => {
     return customers.filter((c) => {
+      if (listIds && !listIds.has(c.id)) return false;
       if (salespersonFilter.size > 0 && !salespersonFilter.has(c.salesperson ?? "")) return false;
       return true;
     });
-  }, [customers, salespersonFilter]);
+  }, [customers, salespersonFilter, listIds]);
 
   const nearbyCustomers = useMemo(() => {
     if (!myPosition) return [];
@@ -1051,6 +1054,15 @@ export default function CoverageMap({
 
         <RecentCustomersSection recentCustomers={recentCustomers} flyToCustomer={flyToCustomer} togglePinned={togglePinned} />
 
+        {listIds ? (
+          <section className="card flex flex-col gap-[var(--space-2)] p-[var(--space-3)]" data-tour="map:list-filter">
+            <p className="m-0 text-[length:var(--text-sm)]">فقط {faNum(filteredCustomers.length)} مشتریِ فهرست انتخاب‌شده روی نقشه است.</p>
+            <button type="button" onClick={() => setListIds(null)} className="inline-flex min-h-[44px] items-center gap-[var(--space-2)] self-start rounded-[var(--radius-md)] border border-[var(--border)] px-[var(--space-3)] text-[length:var(--text-sm)]">
+              <Icon name="x" size="md" />
+              نمایش همهٔ مشتری‌ها
+            </button>
+          </section>
+        ) : null}
         <CustomerFilters
           salespeople={salespeople}
           salespersonFilter={salespersonFilter}

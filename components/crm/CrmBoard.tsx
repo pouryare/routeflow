@@ -19,6 +19,9 @@ import { toggleFavourite as toggleId } from "@/lib/favourites";
 import StickyAction from "@/components/mobile/StickyAction";
 import { useToast } from "@/components/ToastProvider";
 import { tehranTodayIso } from "@/lib/jalali";
+import Link from "next/link";
+import { actionsFor } from "@/lib/actionList";
+import type { Role } from "@/lib/roles";
 
 const VIEW_LABEL: Record<CrmView, string> = {
   today: "پیگیری امروز", hot: "داغ", my_leads: "سرنخ‌های من", my_customers: "مشتریان من",
@@ -30,10 +33,11 @@ const NEXT_MODE: ReadonlySet<CrmView> = new Set<CrmView>(["today", "hot"]);
 type CallFlow = { kind: "call"; customerId: number; entry: "call" | "talked_now"; open: boolean };
 type LeadFlow = { kind: "lead"; open: boolean; prefillPhone: string | null };
 
-export default function CrmBoard({ initialRows, initialCounts, initialView, canPlan }: {
+export default function CrmBoard({ initialRows, initialCounts, initialView, canPlan, role }: {
   initialRows: BusinessRow[]; initialCounts: Record<CrmView, number>; initialView: CrmView;
   /** The roles whose API lets them add stops to the day plan (MANAGE_ROLES): only they get «انتخاب». */
   canPlan: boolean;
+  role: Role;
 }) {
   const [view, setView] = useState<CrmView>(initialView);
   const [q, setQ] = useState("");
@@ -67,6 +71,7 @@ export default function CrmBoard({ initialRows, initialCounts, initialView, canP
   }
   // While a CRM tutorial runs the list shows its «نمونه» rows; the real ones come back after.
   const listed = useTutorialData("crm-rows", rows);
+  const mapAction = actionsFor(role, "customer-selection").find((a) => a.id === "customers-on-map");
   const shown = onlyFavs ? listed.filter((r) => favs.includes(r.id)) : listed;
 
   const load = useCallback(async (v: CrmView, query: string) => {
@@ -155,6 +160,13 @@ export default function CrmBoard({ initialRows, initialCounts, initialView, canP
           <Icon name="heart" size="md" filled={onlyFavs} />
           دلخواه‌ها<i>{faDigits(String(favs.length))}</i>
         </button>
+        {shown.length > 0 && mapAction ? (
+          // S14 + T14: the picked customers, or else the list as filtered, opened on the map; the action list says who may.
+          <Link href={mapAction.href!(selecting && picked.length > 0 ? picked : shown.map((r) => r.id))} prefetch={false} className="inline-flex items-center gap-[var(--space-2)]" data-tour="crm:on-map">
+            <Icon name={mapAction.icon} size="md" />
+            {selecting && picked.length > 0 ? `${faDigits(String(picked.length))} انتخاب‌شده روی نقشه` : "فهرست روی نقشه"}
+          </Link>
+        ) : null}
         {canPlan ? (
           <button type="button" aria-pressed={selecting} onClick={() => (selecting ? stopSelecting() : setSelecting(true))}>
             <Icon name={selecting ? "x" : "check"} size="md" />

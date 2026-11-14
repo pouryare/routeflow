@@ -1,7 +1,8 @@
 import { getDb } from "@/lib/db";
 import type { Db } from "@/lib/database/client";
+import { faNum } from "@/lib/format";
 import { tehranTodayIso } from "@/lib/jalali";
-import { PO_OPEN, isLate, poProblem, remaining, statusAfterAction, statusAfterReceipt, arrivalsDue, type ArrivalSlot, type PoStatus } from "@/lib/purchaseOrders";
+import { PO_OPEN, isLate, poProblem, priceGapPercent, remaining, statusAfterAction, statusAfterReceipt, arrivalsDue, type ArrivalSlot, type PoStatus } from "@/lib/purchaseOrders";
 import { productInOrg } from "@/lib/repo/catalogueAdmin";
 import type { ScoredOrder } from "@/lib/supplierScore";
 
@@ -85,11 +86,21 @@ export async function actOnPurchaseOrder(organizationId: number, id: number, act
 
 /** Counts a receipt against its order, inside the receipt's own transaction. Goods that are not on the order are
  *  still received (the receipt has them) but do not change the order. Refuses an order that is not open. */
-export async function applyReceipt(db: Db, organizationId: number, orderId: number, got: { product_id: number; base_qty: number }[]): Promise<PoStatus> {
+export async function applyReceipt(db: Db, organizationId: number, orderId: number, got: { product_id: number; base_qty: number; unit_cost_toman?: number }[]): Promise<PoStatus> {
   const po = (await db.prepare("SELECT status FROM purchase_orders WHERE id = ? AND organization_id = ?").get(orderId, organizationId)) as { status: PoStatus } | undefined;
   if (!po) throw new PurchaseOrderError("سفارش خرید پیدا نشد");
   if (!PO_OPEN.includes(po.status)) throw new PurchaseOrderError("این سفارش خرید دیگر منتظر کالا نیست");
+  const now0 = new Date().toISOString();
   for (const g of got) {
+    // F66 price flag: a receipt dearer or cheaper than the order raises one alert for the owner, naming the product and the gap.
+    if (g.unit_cost_toman !== undefined) {
+      const ordered = (await db.prepare("SELECT l.unit_cost_toman, p.name FROM purchase_order_lines l JOIN products p ON p.id = l.product_id WHERE l.purchase_order_id = ? AND l.product_id = ? AND l.unit_cost_toman > 0 ORDER BY l.id LIMIT 1").get(orderId, g.product_id)) as { unit_cost_toman: number; name: string } | undefined;
+      const gap = ordered ? priceGapPercent(Number(ordered.unit_cost_toman), g.unit_cost_toman) : null;
+      if (ordered && gap !== null) {
+        await db.prepare("INSERT INTO alerts (organization_id, severity, category, title, entity_type, entity_id, created_at) VALUES (?, 'warning', 'po_price_diff', ?, 'purchase_order', ?, ?)").run(
+          organizationId, `قیمت «${ordered.name}» در رسید ${faNum(Math.abs(gap))}٪ ${gap > 0 ? "بیشتر" : "کمتر"} از سفارش است`, orderId, now0);
+      }
+    }
     // two lines of one product fill in turn; whatever is more than the order asked for stays on the receipt only
     const lines = (await db.prepare("SELECT id, base_qty, received_qty FROM purchase_order_lines WHERE purchase_order_id = ? AND product_id = ? ORDER BY id").all(orderId, g.product_id)) as unknown as { id: number; base_qty: number; received_qty: number }[];
     let left = g.base_qty;
@@ -150,4 +161,10 @@ export async function scheduleArrival(organizationId: number, id: number, expect
 export async function expectedArrivals(organizationId: number, today = tehranTodayIso()): Promise<PoRow[]> {
   const until = new Date(Date.parse(`${today}T00:00:00Z`) + 7 * 86_400_000).toISOString().slice(0, 10);
   return arrivalsDue(await listPurchaseOrders(organizationId, { open: true }), until);
+}
+
+/** The products a hand-made purchase order can list (active ones of this company), for the form's picker. */
+export async function productPickList(organizationId: number): Promise<{ id: string; label: string }[]> {
+  const rows = (await getDb().prepare("SELECT id, name FROM products WHERE organization_id = ? AND active = 1 ORDER BY name").all(organizationId)) as unknown as { id: number; name: string }[];
+  return rows.map((r) => ({ id: String(r.id), label: r.name }));
 }

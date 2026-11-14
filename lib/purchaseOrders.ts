@@ -66,3 +66,12 @@ export function arrivalsDue<T extends { expected_date: string | null; expected_s
     .filter((o) => o.expected_date !== null && o.expected_date <= untilIso)
     .sort((a, b) => a.expected_date!.localeCompare(b.expected_date!) || slotRank(a.expected_slot) - slotRank(b.expected_slot));
 }
+
+/** The gap between the price on the order and the price on the receipt, in whole percent; null when there is no order
+ *  price (0 or missing) or the two are the same. Positive = the receipt is dearer.
+ *  Example: ordered at 1,000, received at 1,100 → 10; at 900 → -10. */
+export function priceGapPercent(orderedToman: number, receivedToman: number): number | null {
+  if (!(orderedToman > 0) || !Number.isFinite(receivedToman) || receivedToman === orderedToman) return null;
+  const pct = Math.round(((receivedToman - orderedToman) / orderedToman) * 100);
+  return pct === 0 ? (receivedToman > orderedToman ? 1 : -1) : pct;
+}

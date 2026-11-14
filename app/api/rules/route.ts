@@ -19,6 +19,7 @@ export async function PATCH(req: NextRequest) {
     active?: boolean;
     cooldown_min?: number;
     daily_budget?: number | null;
+    include_imported?: boolean;
   } | null;
   const c = b?.cooldown_min;
   if (c !== undefined && !(Number.isInteger(c) && c >= 1 && c <= 43200)) return NextResponse.json({ ok: false, error: "زمان انتظار نامعتبر است" }, { status: 400 });
@@ -31,6 +32,7 @@ export async function PATCH(req: NextRequest) {
       active: b.active,
       cooldown_min: b.cooldown_min,
       daily_budget: b.daily_budget,
+      include_imported: typeof b.include_imported === "boolean" ? b.include_imported : undefined,
     });
     return NextResponse.json({ ok: true });
   } catch (e) {

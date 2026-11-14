@@ -5,6 +5,7 @@ import { planUserPatch } from "@/lib/userPatchPlan";
 import { requireRole } from "@/lib/session";
 import { OWNER_ROLES } from "@/lib/roles";
 import { guardStepUp } from "@/lib/repo/stepUp";
+import { loanBalanceOf } from "@/lib/repo/staffLoans";
 
 /** Would this change leave this organisation with no active owner? (Another company's owners do not count.)
  *
@@ -71,6 +72,10 @@ export async function DELETE(req: NextRequest, ctx: RouteContext<"/api/admin/use
   }
 
   // Deactivate, never delete; the token bump is what actually ends their session.
+  {
+    const owes = await loanBalanceOf(guard.session.organizationId, userId);
+    if (owes > 0) return NextResponse.json({ ok: false, error: "این نفر به شرکت بدهکار است؛ اول وام را تسویه یا ببخشید" }, { status: 409 });
+  }
   await deactivateUser(userId, guard.session.organizationId);
   return NextResponse.json({ ok: true, deactivated: true });
 }

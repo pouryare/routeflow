@@ -32,6 +32,8 @@ export interface RuleRow {
   active: number;
   /** F130: most firings per day for this company; null = no cap. */
   daily_budget?: number | null;
+  /** S9: 1 = this rule also fires for records made by an Excel import; 0 (default) skips them. */
+  include_imported?: number;
 }
 
 interface ActionSpec {
@@ -231,6 +233,17 @@ async function fire(
   );
 }
 
+const IMPORT_TABLE: Record<string, string> = { customer: "customers", order: "orders", payment: "payments", task: "tasks" };
+
+/** S9: true when the rule must leave this record alone because an import made it (customer, order, payment, task). */
+async function skipsImported(organizationId: number, rule: RuleRow, entityType: string | null, entityId: number | null, db?: Db): Promise<boolean> {
+  if (rule.include_imported || !entityType || entityId === null) return false;
+  const table = IMPORT_TABLE[entityType];
+  if (!table) return false;
+  const r = await (db ?? getDb()).prepare(`SELECT 1 AS yes FROM ${table} WHERE id = ? AND organization_id = ? AND created_source = 'import'`).get(entityId, organizationId);
+  return !!r;
+}
+
 /** F130: has this rule already fired its daily budget for the company today? shortcut: the day is the UTC date of the
  *  timestamp, not the Tehran day; switch to Tehran midnight if the budget ever has to match the owner's morning. */
 async function overBudget(organizationId: number, rule: RuleRow, nowIso: string, db?: Db): Promise<boolean> {
@@ -260,6 +273,7 @@ export async function runEventRules(
     if (rule.trigger_kind !== event.kind) continue;
     if (await liveRun(organizationId, rule.id, event.entity_type, event.entity_id, now, db)) continue;
     if (await overBudget(organizationId, rule, now, db)) continue;
+    if (await skipsImported(organizationId, rule, event.entity_type, event.entity_id, db)) continue;
     const conds: RuleCondition[] = rule.condition_json ? JSON.parse(rule.condition_json) : [];
     if (!evaluateConditions(conds, meta)) continue;
     // A malformed action_json would throw out of fire() and abort every *later* rule for
@@ -300,7 +314,7 @@ export async function runSweepRules(organizationId: number, asOfIso: string = ne
     const rule = rules.get(code);
     if (!rule || rule.trigger_kind !== "sweep") return;
     if (await liveRun(organizationId, rule.id, entityType, entityId, asOfIso)) return;
-    if (await overBudget(organizationId, rule, asOfIso)) return;
+    if (await overBudget(organizationId, rule, asOfIso) || await skipsImported(organizationId, rule, entityType, entityId)) return;
     out.push({ rule_code: code, run_id: await fire(organizationId, rule, entityType, entityId, ctx, asOfIso) });
   };
 
@@ -562,7 +576,7 @@ export class RuleError extends Error {}
  *  copying the rest of the shape from the base (tenant or default) rule. */
 export async function setTenantRuleOverride(
   organizationId: number,
-  input: { code: string; active?: boolean; cooldown_min?: number; daily_budget?: number | null }
+  input: { code: string; active?: boolean; cooldown_min?: number; daily_budget?: number | null; include_imported?: boolean }
 ): Promise<void> {
   const db = getDb();
   const base = await db
@@ -576,10 +590,10 @@ export async function setTenantRuleOverride(
   await db.prepare(
     `INSERT INTO rules
        (organization_id, code, name, trigger_kind, condition_json, action_kind, action_json,
-        cooldown_min, escalate_after_min, escalate_to_role, active, created_at, updated_at, daily_budget)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        cooldown_min, escalate_after_min, escalate_to_role, active, created_at, updated_at, daily_budget, include_imported)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT (organization_id, code) DO UPDATE SET
-       active = excluded.active, cooldown_min = excluded.cooldown_min, updated_at = excluded.updated_at, daily_budget = excluded.daily_budget`
+       active = excluded.active, cooldown_min = excluded.cooldown_min, updated_at = excluded.updated_at, daily_budget = excluded.daily_budget, include_imported = excluded.include_imported`
   ).run(
     organizationId,
     base.code,
@@ -591,11 +605,12 @@ export async function setTenantRuleOverride(
     input.cooldown_min ?? base.cooldown_min,
     base.escalate_after_min,
     base.escalate_to_role,
-    input.active === false ? 0 : 1,
+    input.active === undefined ? base.active : input.active ? 1 : 0,
     now,
     now,
     // undefined keeps the base rule's budget; null clears it
-    input.daily_budget === undefined ? base.daily_budget ?? null : input.daily_budget
+    input.daily_budget === undefined ? base.daily_budget ?? null : input.daily_budget,
+    input.include_imported === undefined ? base.include_imported ?? 0 : input.include_imported ? 1 : 0
   );
 }
 
@@ -622,6 +637,7 @@ export interface RuleOverview {
   active: boolean;
   fired14: number;
   dailyBudget: number | null;
+  includeImported: boolean;
 }
 
 /** F130: every rule of a company, the switched-off ones too, with how often it fired in the last 14 days. */
@@ -641,7 +657,7 @@ export async function rulesOverview(organizationId: number, nowIso: string = new
     .all(organizationId, since)) as unknown as { code: string; n: number }[];
   const count = new Map(fired.map((f) => [f.code, Number(f.n)]));
   return [...byCode.values()]
-    .map((r) => ({ code: r.code, name: r.name, trigger: (r.trigger_kind === "sweep" ? "sweep" : "event") as "event" | "sweep", action: r.action_kind, cooldownMin: Number(r.cooldown_min), active: r.active === 1, fired14: count.get(r.code) ?? 0, dailyBudget: r.daily_budget == null ? null : Number(r.daily_budget) }))
+    .map((r) => ({ code: r.code, name: r.name, trigger: (r.trigger_kind === "sweep" ? "sweep" : "event") as "event" | "sweep", action: r.action_kind, cooldownMin: Number(r.cooldown_min), active: r.active === 1, fired14: count.get(r.code) ?? 0, dailyBudget: r.daily_budget == null ? null : Number(r.daily_budget), includeImported: Number(r.include_imported ?? 0) === 1 }))
     .sort((a, b) => a.name.localeCompare(b.name, "fa"));
 }
 

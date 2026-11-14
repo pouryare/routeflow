@@ -33,6 +33,8 @@ import { connectionsOf } from "@/lib/repo/liveConnections";
 import SlowQueriesCard from "@/components/meridian/SlowQueriesCard";
 import { slowQueries } from "@/lib/repo/slowQueries";
 import AuditHistoryCard from "@/components/meridian/AuditHistoryCard";
+import DeliveryAttemptsCard from "@/components/meridian/DeliveryAttemptsCard";
+import { recentAttempts } from "@/lib/repo/notifications";
 import { auditHistory } from "@/lib/repo/auditLog";
 import ArchiveMonthsForm from "@/components/meridian/ArchiveMonthsForm";
 import LogRetentionForm from "@/components/meridian/LogRetentionForm";
@@ -101,6 +103,9 @@ export default async function StatusPage() {
       </div>
       <div className="mt-[var(--space-4)]">
         <AuditHistoryCard rows={changes} />
+      </div>
+      <div className="mt-[var(--space-4)]">
+        <DeliveryAttemptsCard rows={await recentAttempts(session.organizationId)} />
       </div>
       {slow !== undefined ? (
         <div className="mt-[var(--space-4)]">
