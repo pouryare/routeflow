@@ -82,7 +82,7 @@ describe("products", () => {
 describe("packagings", () => {
   it("has the columns the sales module needs", async () => {
     expect((await cols("packagings")).sort()).toEqual(
-      ["id", "product_id", "name", "qty_per_pack", "barcode", "active", "created_at"].sort()
+      ["id", "product_id", "name", "qty_per_pack", "barcode", "active", "created_at", "small_packs", "small_uplift_percent"].sort()
     );
   });
 
