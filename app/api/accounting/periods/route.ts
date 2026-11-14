@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireRole } from "@/lib/session";
-import { OWNER_ROLES } from "@/lib/roles";
+import { ACCOUNTING_ROLES } from "@/lib/roles";
 import { guardStepUp } from "@/lib/repo/stepUp";
 import { LedgerError } from "@/lib/repo/ledgerCore";
 import { closeYear, reopenYear } from "@/lib/repo/yearClose";
@@ -10,7 +10,7 @@ const KEY = /^\d{4}-\d{2}$/;
 
 /** A2: what is unfinished in a month, before closing it: ?period=1405-07. */
 export async function GET(req: NextRequest) {
-  const guard = await requireRole(req, OWNER_ROLES);
+  const guard = await requireRole(req, ACCOUNTING_ROLES);
   if (!guard.ok) return guard.response;
   const period = req.nextUrl.searchParams.get("period") ?? "";
   if (!KEY.test(period)) return NextResponse.json({ ok: false, error: "ماه نامعتبر است" }, { status: 400 });
@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
 
 /** A2: { period, action: "close" | "reopen" | "open_range", reason?, fromDay?, toDay? }. Reopening asks for the authenticator code and a reason. */
 export async function POST(req: NextRequest) {
-  const guard = await requireRole(req, OWNER_ROLES);
+  const guard = await requireRole(req, ACCOUNTING_ROLES);
   if (!guard.ok) return guard.response;
   const raw = (await req.json().catch(() => null)) as { year?: unknown; action?: unknown; reason?: unknown } | null;
   if (raw?.action === "close_year" || raw?.action === "reopen_year") {

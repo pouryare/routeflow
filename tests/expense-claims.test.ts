@@ -73,3 +73,13 @@ describe("F26 + F88 claim, approve, repay", () => {
     await expect(c.submitClaim({ organizationId: 1, userId: driver, groupId: null }, { account_id: 1, amount_toman: 5, incurred_at: tehranTodayIso() })).rejects.toThrow(/هزینه نیست/);
   });
 });
+
+describe("back-dated claims", () => {
+  it("offers today and the week before, and refuses a cost older than 60 days", async () => {
+    const { claimDayChoices, claimProblem: problem } = await import("@/lib/expenseClaims");
+    const { addDaysIso } = await import("@/lib/flows/dates");
+    expect(claimDayChoices("2026-11-13", addDaysIso)).toEqual(["2026-11-13", "2026-11-12", "2026-11-11", "2026-11-10", "2026-11-09", "2026-11-08", "2026-11-07", "2026-11-06"]);
+    expect(problem({ amountToman: 1000, incurredAt: "2026-09-14", today: "2026-11-13", note: null })).toBeNull();
+    expect(problem({ amountToman: 1000, incurredAt: "2026-09-12", today: "2026-11-13", note: null })).toMatch(/۶۰|60/);
+  });
+});

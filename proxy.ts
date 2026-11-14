@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { namesDemoRecord } from "@/lib/tutorials/pretend";
 import { COOKIE_NAME, parseSessionToken } from "./lib/auth";
-import { isShareholderPath, isVanRole, MANAGE_ROLES, OWNER_ROLES } from "@/lib/roles";
+import { isAccountantPath, isShareholderPath, isVanRole, MANAGE_ROLES, OWNER_ROLES } from "@/lib/roles";
 
 // /sw.js, the manifest, and the offline fallback stay unauthenticated on purpose:
 // a service worker script must return the same bytes regardless of session state, or
@@ -99,6 +99,13 @@ export function proxy(req: NextRequest) {
     return isApi
       ? NextResponse.json({ ok: false, error: "این بخش برای شما باز نیست" }, { status: 403 })
       : NextResponse.redirect(new URL("/my-share", req.url));
+  }
+
+  /* H3: the accountant reaches the books, their settings and signing out; the same allowlist shape. */
+  if (claims.role === "accountant" && !isAccountantPath(pathname)) {
+    return isApi
+      ? NextResponse.json({ ok: false, error: "این بخش برای شما باز نیست" }, { status: 403 })
+      : NextResponse.redirect(new URL("/accounting/journal", req.url));
   }
 
   /* F35: a password an owner chose is a one-time key. Until it is replaced, the only places open
@@ -363,7 +370,7 @@ export function proxy(req: NextRequest) {
      sheet, the income statement, or what the org owes. */
   const isAccounting =
     pathname === "/accounting" || pathname.startsWith("/accounting/");
-  if (isAccounting && !OWNER_ROLES.includes(claims.role) && claims.role !== "group_manager") {
+  if (isAccounting && !OWNER_ROLES.includes(claims.role) && claims.role !== "accountant" && claims.role !== "group_manager") {
     return deny("/sales");
   }
 
@@ -376,7 +383,9 @@ export function proxy(req: NextRequest) {
     pathname.startsWith("/api/accounting/legal-form") ||
     pathname.startsWith("/api/accounting/profit-split") ||
     pathname.startsWith("/api/accounting/cost-rules");
-  if (isAccountingWrite && !OWNER_ROLES.includes(claims.role)) {
+  // H3: the accountant posts, reverses and closes, so the periods and journals routes admit them too.
+  const accountantMayWrite = claims.role === "accountant" && (pathname.startsWith("/api/accounting/periods") || pathname.startsWith("/api/accounting/journals"));
+  if (isAccountingWrite && !OWNER_ROLES.includes(claims.role) && !accountantMayWrite) {
     return deny("/sales");
   }
 

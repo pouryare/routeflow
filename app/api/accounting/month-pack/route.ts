@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireRole } from "@/lib/session";
-import { OWNER_ROLES } from "@/lib/roles";
+import { ACCOUNTING_ROLES } from "@/lib/roles";
 import { LedgerError } from "@/lib/repo/ledgerCore";
 import { monthPack } from "@/lib/repo/monthPack";
 
 /** D26: ?period=1405-07 → the accountant's workbook for that closed month. */
 export async function GET(req: NextRequest) {
-  const guard = await requireRole(req, OWNER_ROLES);
+  const guard = await requireRole(req, ACCOUNTING_ROLES);
   if (!guard.ok) return guard.response;
   const period = req.nextUrl.searchParams.get("period") ?? "";
   if (!/^\d{4}-\d{2}$/.test(period)) return NextResponse.json({ ok: false, error: "ماه نامعتبر است" }, { status: 400 });

@@ -4,7 +4,7 @@ import { parsePlace } from "@/lib/entryPlace";
 import { saveEntryPlace } from "@/lib/repo/entryPlaces";
 import { requireRole } from "@/lib/session";
 import { recordExpense, expenseCategories, LedgerError } from "@/lib/repo/ledgerPostings";
-import { OWNER_ROLES, type Role } from "@/lib/roles";
+import { ACCOUNTING_ROLES, type Role } from "@/lib/roles";
 
 /* Owners plus group_manager. The user approved this on 2026-10-02: rent and fuel are real
    daily costs, and an owner should not have to type every line. The risk is a manager
@@ -16,7 +16,7 @@ import { OWNER_ROLES, type Role } from "@/lib/roles";
 
    phone_sales is deliberately absent: they record what customers pay, not what the business
    spends. */
-const ROLES: Role[] = [...OWNER_ROLES, "group_manager"];
+const ROLES: Role[] = [...ACCOUNTING_ROLES, "group_manager"];
 
 export async function GET(req: NextRequest) {
   const guard = await requireRole(req, ROLES);

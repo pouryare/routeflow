@@ -31,7 +31,7 @@ export default async function CrmPage() {
     <>
       <PageHeader route="/crm" />
       {/* node:sqlite rows have a null prototype, which a client component cannot receive. */}
-      <CrmBoard initialRows={plain(rows)} initialCounts={counts} initialView={view} canPlan={MANAGE_ROLES.includes(session.role)} />
+      <CrmBoard initialRows={plain(rows)} initialCounts={counts} initialView={view} canPlan={MANAGE_ROLES.includes(session.role)} role={session.role} />
     </>
   );
 }

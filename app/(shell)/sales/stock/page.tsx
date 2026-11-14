@@ -7,6 +7,9 @@ import { monthPurchasesIn, purchasesIn, stockPositionIn } from "@/lib/repo/route
 import { faToman, faNum } from "@/lib/format";
 import { faJalaliDate, toJalali, jalaliToIsoDate } from "@/lib/jalali";
 import { allSupplierPrices } from "@/lib/repo/supplierPrices";
+import VanLoadCard from "@/components/sales/VanLoadCard";
+import { vansToLoad } from "@/lib/repo/vanStock";
+import { productPickList } from "@/lib/repo/purchaseOrders";
 import PurchaseEntry from "@/components/sales/PurchaseEntry";
 import InventoryBoard from "@/components/meridian/InventoryBoard";
 import GradientStat from "@/components/meridian/GradientStat";
@@ -40,6 +43,7 @@ export default async function StockPage() {
   const products = isOwner(session.role) ? await activeProducts(session.organizationId) : [];
   const prices = isOwner(session.role) ? (await allSupplierPrices(session.organizationId)).map(({ supplier, product_id, price_toman, min_qty, delivery_days, supplier_code }) => ({ supplier, product_id, price_toman, min_qty, delivery_days, supplier_code })) : [];
 
+  const vans = MANAGE_ROLES.includes(session.role) ? await vansToLoad(session.organizationId) : [];
   const totalValue = stock.reduce((sum, row) => sum + row.value_toman, 0);
   const critCount = stock.filter((r) => r.status === "crit").length;
   const lowCount = stock.filter((r) => r.status === "low").length;
@@ -222,6 +226,7 @@ export default async function StockPage() {
 
       <BatchList rows={batches} canManage={canManageBatches} />
 
+      {vans.length > 0 && <VanLoadCard vans={vans} products={await productPickList(session.organizationId)} />}
       {isOwner(session.role) && <PurchaseEntry products={products} prices={prices} />}
 
       {purchases.length > 0 && (

@@ -106,6 +106,8 @@ export function appTabs(session: { role: Role }): AppTab[] {
   // Copied, not returned by reference: a caller that sorts or edits the result must not
   // be rearranging the shared constant for the next caller.
   if (r === "shareholder") return SHAREHOLDER_TABS.map((t) => ({ ...t }));
+  // H3: the accountant sees the books and nothing else (proxy.ts confines the paths too).
+  if (r === "accountant") return appTabs({ role: "owner" }).filter((t) => t.group === "accounts" && t.href !== "/accounting/shareholders").map((t) => ({ ...t }));
   if (isVanRole(r)) return DRIVER_TABS.map((t) => ({ ...t }));
   return [
     // روز من

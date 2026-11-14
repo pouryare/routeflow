@@ -7,8 +7,18 @@ import { ROLES, type Role, type UserRow } from "@/lib/db";
 import { hashPassword } from "@/lib/auth";
 import { groupExists } from "@/lib/repo/groupsAdmin";
 import { otherActiveOwners, usernameTakenInOrg } from "@/lib/repo/usersAdmin";
+import { loanBalanceOf } from "@/lib/repo/staffLoans";
+import { faToman } from "@/lib/format";
 
 export const MIN_PASSWORD = 8;
+
+/** Why this person may not be switched off, or null. The last owner would strand the app; someone who still owes the
+ *  company a loan is settled or forgiven first (staff loans), not switched off by accident. */
+async function deactivationRefusal(target: UserRow, organizationId: number): Promise<string | null> {
+  if (await wouldStrandTheApp(target, true)) return "این تنها مالک فعال است. اول یک مالک دیگر بسازید.";
+  const owes = await loanBalanceOf(organizationId, target.id);
+  return owes > 0 ? `این نفر ${faToman(owes)} به شرکت بدهکار است؛ اول وام را از صفحهٔ «هزینه‌های من» تسویه یا ببخشید` : null;
+}
 
 export type UserPatchPlan =
   | { ok: true; sets: string[]; values: (string | number | null)[] }
@@ -159,9 +169,8 @@ export async function planUserPatch(
 
   if (body?.active !== undefined) {
     const active = body.active ? 1 : 0;
-    if (!active && await wouldStrandTheApp(target, true)) {
-      return fail("این تنها مالک فعال است. اول یک مالک دیگر بسازید.", 409);
-    }
+    const refusal = active ? null : await deactivationRefusal(target, organizationId);
+    if (refusal) return fail(refusal, 409);
     sets.push("active = ?");
     values.push(active);
     bumpVersion = true;

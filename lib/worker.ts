@@ -16,6 +16,8 @@ import { drainEvents } from "@/lib/repo/events";
 import { sweepCompanyRules } from "@/lib/repo/rulesSweep";
 import { purgeLogs } from "@/lib/repo/logRetention";
 import { reviveLostLeads } from "@/lib/repo/leadRevive";
+import { purgeExpiredExports, runExportJob } from "@/lib/repo/exportJobs";
+import { QUEUE_EXPORT } from "@/lib/queueNames";
 
 export const QUEUES = {
   /** Re-run reactions that failed or were cut off, every minute. */
@@ -25,6 +27,8 @@ export const QUEUES = {
   /** Old rows of the machine logs (lib/logRetention.ts), every night (FB41). */
   logsPurge: "logs.purge",
   leadsRevive: "leads.revive",
+  /** E7: one big export, sent by the route that asked for it. */
+  exportsRun: QUEUE_EXPORT,
 } as const;
 
 /** Failed jobs are kept 14 days so the status card can show them. */
@@ -61,6 +65,10 @@ export async function startWorker(connectionString = process.env.DATABASE_URL): 
   await b.createQueue(QUEUES.rulesSweep, queue);
   await b.createQueue(QUEUES.logsPurge, queue);
   await b.createQueue(QUEUES.leadsRevive, queue);
+  await b.createQueue(QUEUES.exportsRun, { retryLimit: 0, deleteAfterSeconds: 86400 });
+  await b.work(QUEUES.exportsRun, async (jobs) => {
+    for (const j of jobs) await withDbScope("system", () => runExportJob((j.data as { id: number }).id));
+  });
   await b.work(QUEUES.eventsDrain, async () => {
     await eachCompany((id) => drainEvents(id));
   });
@@ -68,7 +76,7 @@ export async function startWorker(connectionString = process.env.DATABASE_URL): 
     await eachCompany((id) => sweepCompanyRules(id));
   });
   await b.work(QUEUES.logsPurge, async () => {
-    await withDbScope("system", () => purgeLogs());
+    await withDbScope("system", async () => { await purgeLogs(); await purgeExpiredExports(); });
   });
   await b.work(QUEUES.leadsRevive, async () => {
     await eachCompany((id) => reviveLostLeads(id));
@@ -85,6 +93,12 @@ export async function stopWorker(): Promise<void> {
   const b = boss;
   boss = null;
   await b?.stop({ graceful: true, timeout: 10_000 });
+}
+
+/** Sends one job to a queue. False when the worker is off, so the caller can run it itself. */
+export async function enqueueJob(queue: string, data: object): Promise<boolean> {
+  if (!boss) return false;
+  return (await boss.send(queue, data)) !== null;
 }
 
 export function workerRunning(): boolean {
