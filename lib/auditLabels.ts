@@ -74,6 +74,7 @@ const COLUMNS: Record<string, string> = {
   order_approval_limit_toman: "سقف سفارش بدون تأیید (تومان)",
   carton_nudge_percent: "یادآوری تکمیل کارتن (درصد)",
   min_order_toman: "حداقل مبلغ سفارش (تومان)",
+  day_order_limit: "سقف سفارش هر روز تحویل",
   approval_owner_limit_toman: "سقف تأیید مدیر گروه بدون مالک (تومان)",
   expense_claim_limit_toman: "سقف تأیید هزینهٔ کارکنان (تومان)",
   duplicate_order_hours: "هشدار سفارش تکراری (ساعت)",

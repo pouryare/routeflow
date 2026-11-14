@@ -735,7 +735,7 @@ Decided, but each needs something first. The "waits for" part is in the line. Th
 - **FB16. Run replay map.** Scrub a driver's day with time and speed per point, for disputes and mileage. Waits for F6.
 - **FB17. QR scan proof and a required-proof setting.** QR on the delivery note scanned at the door; per-company required proof. Waits for the F17 design.
 - **FB25. ETA stage rules.** No driver means no ETA; started means a live ETA per stop; every ETA has a confidence. Recorded for F6 and F79.
-- **FB35. Delivery window capacity.** Owner sets a maximum orders per window; order entry shows places left. Waits for F57.
+- **FB35. Delivery window capacity.** Owner sets a maximum orders per window; order entry shows places left. Waits for F57. **Built (first slice, batch D):** a company limit of orders per delivery day (settings), places left shown under the chosen day on the order form, a seller refused for a full day, a manager may go past it. Windows within a day are not built.
 - **FB39. Sort position pings by their own time.** Note for F6: a late ping must not move the dot backwards.
 
 ### Stock, warehouse and suppliers

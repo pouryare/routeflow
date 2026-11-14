@@ -44,6 +44,7 @@ import {
 } from "./orderMath";
 
 import { unpromisedIncoming } from "@/lib/repo/preorders";
+import { ordersOnDay } from "@/lib/repo/dayCapacity";
 import { greatest } from "@/lib/database/dialect";
 export { OrderError, OrderTransitionError, OrderRoleError };
 
@@ -71,6 +72,9 @@ export interface CreateOrderInput {
   /** F65: a manager waives the small-quantity uplift for this whole order, with a reason and their id. */
   waive_uplift?: { reason: string; by: number } | null;
   below_min_reason?: string | null;
+  /** FB35: the most orders one delivery day takes (0 or missing = no limit). `over_day_limit_ok` is a manager booking past it. */
+  day_order_limit?: number;
+  over_day_limit_ok?: boolean;
   /** T5: how the order came to exist; the form by default. */
   source?: CreatedSource;
   /** F85: how the order reached the company; empty when nobody said. */
@@ -352,6 +356,9 @@ export async function createOrder(
     }
     for (const line of input.lines) {
       await insertLine(db, orderId, input.order_date, input.waive_uplift ? { ...line, skip_uplift: true } : line, now);
+    }
+    if ((input.day_order_limit ?? 0) > 0 && input.requested_day && !input.over_day_limit_ok && (await ordersOnDay(db, input.organization_id, input.requested_day, orderId)) >= (input.day_order_limit ?? 0)) {
+      throw new OrderError("برای این روز دیگر جا نیست؛ روز دیگری انتخاب کنید یا از مدیر بخواهید");
     }
     if (belowMin(orderTotalToman(await linesOf(db, orderId)), input.min_order_toman ?? 0) && !cleanReason(input.below_min_reason)) {
       throw new OrderError(`جمع سفارش از حداقل ${(input.min_order_toman ?? 0).toLocaleString("fa-IR")} تومان کمتر است؛ دلیل را انتخاب کنید`);

@@ -1411,6 +1411,7 @@ export interface Organizations {
   created_at: string;
   data_ageing_days: Generated<number>;
   data_stale_days: Generated<number>;
+  day_order_limit: Generated<number>;
   delivery_note_footer: string | null;
   discount_auto_pass_pct: Generated<number>;
   discount_commission_pct: Generated<number>;

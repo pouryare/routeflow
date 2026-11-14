@@ -259,6 +259,19 @@ export default function OrderForm({
     }
   }, [requestedMode, requestedDate, requestedWeeks]);
 
+  // FB35: places left on the chosen day (nothing is shown when the company has no limit).
+  const [loadOf, setLoadOf] = useState<{ day: string; limit: number; taken: number } | null>(null);
+  useEffect(() => {
+    if (!resolvedRequestedDay) return;
+    let live = true;
+    fetch(`/api/sales/orders/day-load?day=${resolvedRequestedDay}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j: { limit: number; taken: number } | null) => { if (live && j) setLoadOf({ day: resolvedRequestedDay, limit: j.limit, taken: j.taken }); })
+      .catch(() => undefined);
+    return () => { live = false; };
+  }, [resolvedRequestedDay]);
+  const dayLoad = loadOf && loadOf.day === resolvedRequestedDay ? loadOf : null;
+
   async function submit(allowDuplicate = false) {
     if (!customer || lines.length === 0) return;
     if (belowMin(total, minOrderToman) && !belowReason) {
@@ -405,8 +418,9 @@ export default function OrderForm({
             />
           </div>
           {resolvedRequestedDay !== null && (
-            <p className="m-0 mt-[var(--space-1)] text-[length:var(--text-xs)] text-[var(--muted)]">
+            <p className="m-0 mt-[var(--space-1)] text-[length:var(--text-xs)] text-[var(--muted)]" data-tour="day-places">
               {requestedDayLabel(resolvedRequestedDay)}
+              {dayLoad && dayLoad.limit > 0 ? (dayLoad.taken >= dayLoad.limit ? " · این روز پر است" : ` · ${faNum(dayLoad.limit - dayLoad.taken)} جا مانده`) : ""}
             </p>
           )}
         </div>
