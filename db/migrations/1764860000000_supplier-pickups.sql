@@ -2,7 +2,7 @@
 -- rf: contract
 -- F118 first slice: a driver's run can include a pickup at a supplier or factory (a facility), optionally tied to a purchase order.
 -- A run may have several pickups, so the one-per-role rule becomes one-per-role-and-place.
--- squawk-ignore-file adding-foreign-key-constraint, ban-drop-column, constraint-missing-not-valid, prefer-robust-stmts, require-concurrent-index-creation
+-- squawk-ignore-file adding-foreign-key-constraint, ban-drop-column, ban-drop-constraint, disallowed-unique-constraint, constraint-missing-not-valid, prefer-robust-stmts, require-concurrent-index-creation
 SET lock_timeout = '5s';
 SET statement_timeout = '30s';
 
