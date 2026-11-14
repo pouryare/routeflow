@@ -13,8 +13,10 @@ import { expenseCategories } from "@/lib/repo/ledgerPostings";
 import { CLAIM_LABEL } from "@/lib/expenseClaims";
 import { CLAIM_ROLES } from "@/lib/expenseRoles";
 import { faToman } from "@/lib/format";
-import { faJalaliDate } from "@/lib/jalali";
+import { faJalaliDate, toJalali, jalaliToIsoDate, tehranTodayIso } from "@/lib/jalali";
 import { pageMetadata } from "@/lib/pageMeta";
+import MileageCard from "@/components/expenses/MileageCard";
+import { myMileage, teamMileage } from "@/lib/repo/mileage";
 
 export const metadata = pageMetadata("/my-expenses");
 
@@ -34,6 +36,13 @@ export default async function MyExpensesPage() {
     manager ? claimsToDecide(who) : Promise.resolve([]),
     isOwner(session.role) ? owedToStaff(session.organizationId) : Promise.resolve([]),
   ]);
+  const today = tehranTodayIso();
+  const j = toJalali(today)!;
+  const monthStart = jalaliToIsoDate(j.jy, j.jm, 1);
+  const [mile, team] = await Promise.all([
+    myMileage(session.organizationId, session.user.id, monthStart, today),
+    manager ? teamMileage(session.organizationId, monthStart, today, isOwner(session.role) ? null : session.groupId) : Promise.resolve([]),
+  ]);
   return (
     <>
       <PageHeader route="/my-expenses" />
@@ -50,6 +59,7 @@ export default async function MyExpensesPage() {
           {owed.map((r) => <RepayCard key={r.user_id} row={r} />)}
         </>
       ) : null}
+      <MileageCard mine={mile} team={team.filter((p) => p.user_id !== session.user.id)} />
       <SectionHead title="هزینه‌های من" sub={mine.length ? undefined : "هنوز هزینه‌ای ثبت نکرده‌اید."} />
       <ul className="m-0 flex list-none flex-col gap-[var(--space-2)] p-0">
         {mine.map((c) => (
