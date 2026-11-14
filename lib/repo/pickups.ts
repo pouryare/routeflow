@@ -1,6 +1,8 @@
 import { getDb } from "@/lib/db";
 import { tehranTodayIso } from "@/lib/jalali";
 
+const PICKUP = "pickup"; // a run_facility_stops role, not a user role
+
 export interface PickupChoices {
   runs: { id: number; run_date: string; driver: string }[];
   places: { id: number; name: string }[];
@@ -24,9 +26,9 @@ export async function addPickup(orgId: number, runId: number, facilityId: number
   if (run.status === "done") return "این مسیر تمام شده است";
   if (!(await db.prepare("SELECT 1 FROM facilities WHERE id = ? AND organization_id = ?").get(facilityId, orgId))) return "مکان پیدا نشد";
   if (purchaseOrderId !== null && !(await db.prepare("SELECT 1 FROM purchase_orders WHERE id = ? AND organization_id = ?").get(purchaseOrderId, orgId))) return "سفارش خرید پیدا نشد";
-  if (await db.prepare("SELECT 1 FROM run_facility_stops WHERE run_id = ? AND role = 'pickup' AND facility_id = ?").get(runId, facilityId)) return "این مکان روی همین مسیر هست";
+  if (await db.prepare("SELECT 1 FROM run_facility_stops WHERE run_id = ? AND role = ? AND facility_id = ?").get(runId, PICKUP, facilityId)) return "این مکان روی همین مسیر هست";
   const now = new Date().toISOString();
-  await db.prepare("INSERT INTO run_facility_stops (run_id, facility_id, role, status, purchase_order_id, created_at, updated_at) VALUES (?, ?, 'pickup', 'pending', ?, ?, ?)").run(runId, facilityId, purchaseOrderId, now, now);
+  await db.prepare("INSERT INTO run_facility_stops (run_id, facility_id, role, status, purchase_order_id, created_at, updated_at) VALUES (?, ?, ?, 'pending', ?, ?, ?)").run(runId, facilityId, PICKUP, purchaseOrderId, now, now);
   return null;
 }
 
@@ -36,8 +38,8 @@ export async function markCollected(orgId: number, driverId: number, stopId: num
   const now = new Date().toISOString();
   const r = await db.prepare(
     `UPDATE run_facility_stops SET status = 'done', done_at = ?, done_by = ?, updated_at = ?
-      WHERE id = ? AND role = 'pickup' AND status = 'pending'
+      WHERE id = ? AND role = ? AND status = 'pending'
         AND run_id IN (SELECT id FROM delivery_runs WHERE driver_user_id = ? AND organization_id = ?)`
-  ).run(now, driverId, now, stopId, driverId, orgId);
+  ).run(now, driverId, now, stopId, PICKUP, driverId, orgId);
   return Number(r.changes ?? 0) > 0 ? null : "توقف پیدا نشد";
 }
