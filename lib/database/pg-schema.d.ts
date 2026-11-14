@@ -682,6 +682,22 @@ export interface EntryPlaces {
   ref_id: number;
 }
 
+export interface ExportJobs {
+  created_at: string;
+  error: string | null;
+  expires_at: string;
+  file: Buffer | null;
+  filename: string | null;
+  id: Generated<number>;
+  kind: string;
+  organization_id: number;
+  progress: Generated<number>;
+  scope_json: string;
+  status: Generated<string>;
+  total: Generated<number>;
+  user_id: number;
+}
+
 export interface Events {
   actor_user_id: number | null;
   attempts: Generated<number>;
@@ -1099,6 +1115,17 @@ export interface NotificationChannels {
   user_id: number;
 }
 
+export interface NotificationAttempts {
+  channel: string;
+  error: string | null;
+  id: Generated<number>;
+  message_count: number;
+  ok: boolean;
+  organization_id: number;
+  tried_at: string;
+  user_id: number;
+}
+
 export interface NotificationDeliveries {
   channel: string;
   flushed_at: string;
@@ -1324,7 +1351,10 @@ export interface Organizations {
   due_reminder_days: string | null;
   duplicate_order_hours: Generated<number>;
   effects: Generated<string>;
+  undo_own_minutes: Generated<number>;
   expense_claim_limit_toman: Generated<number>;
+  loan_reminder_days: Generated<number>;
+  staff_loan_limit_toman: Generated<number>;
   id: Generated<number>;
   idle_signout_json: string | null;
   leftover_limit_toman: Generated<number>;
@@ -1767,6 +1797,7 @@ export interface Rules {
   escalate_after_min: number | null;
   escalate_to_role: string | null;
   id: Generated<number>;
+  include_imported: Generated<number>;
   name: string;
   organization_id: number | null;
   trigger_kind: string;
@@ -2039,6 +2070,36 @@ export interface StoredFiles {
   trash_ref: string | null;
   upload_state: Generated<string>;
   variants: string;
+}
+
+export interface StaffAdvanceRequests {
+  amount_toman: number;
+  created_at: string;
+  decided_at: string | null;
+  decided_by: number | null;
+  entry_id: number | null;
+  group_id: number | null;
+  id: Generated<number>;
+  monthly_hint_toman: number | null;
+  note: string | null;
+  organization_id: number;
+  reject_reason: string | null;
+  requested_by: number;
+  status: Generated<string>;
+  user_id: number;
+}
+
+export interface StaffLoanEntries {
+  amount_toman: number;
+  created_at: string;
+  created_by: number;
+  id: Generated<number>;
+  journal_id: number | null;
+  kind: string;
+  monthly_hint_toman: number | null;
+  note: string | null;
+  organization_id: number;
+  user_id: number;
 }
 
 export interface SupplierPrices {
@@ -2344,6 +2405,8 @@ export interface DB {
   manager_commission_overrides: ManagerCommissionOverrides;
   manager_commission_payments: ManagerCommissionPayments;
   notification_channels: NotificationChannels;
+  notification_attempts: NotificationAttempts;
+  export_jobs: ExportJobs;
   notification_deliveries: NotificationDeliveries;
   notification_prefs: NotificationPrefs;
   notification_types: NotificationTypes;
@@ -2405,6 +2468,8 @@ export interface DB {
   seasonal_factors: SeasonalFactors;
   shared_cost_rules: SharedCostRules;
   shareholdings: Shareholdings;
+  staff_advance_requests: StaffAdvanceRequests;
+  staff_loan_entries: StaffLoanEntries;
   stock_movements: StockMovements;
   stock_reservations: StockReservations;
   storage_events: StorageEvents;

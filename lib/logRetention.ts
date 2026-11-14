@@ -15,6 +15,7 @@ export interface PurgeableLog {
 export const PURGEABLE_LOGS: readonly PurgeableLog[] = [
   { id: "login_events", label: "ورودهای ناموفق و موفق", table: "login_events", time: "created_at", also: "", defaultDays: 90 },
   { id: "notification_deliveries", label: "ارسال اعلان به پیامرسان‌ها", table: "notification_deliveries", time: "flushed_at", also: "", defaultDays: 90 },
+  { id: "notification_attempts", label: "تلاش‌های ارسال اعلان (موفق و ناموفق)", table: "notification_attempts", time: "tried_at", also: "", defaultDays: 30 },
   { id: "sync_mutations", label: "همگام‌سازی گوشی‌ها (کارهای انجام‌شده)", table: "sync_mutations", time: "received_at", also: "AND status IN ('applied', 'duplicate')", defaultDays: 90 },
   { id: "idempotency_keys", label: "کلید جلوگیری از ثبت دوباره", table: "idempotency_keys", time: "created_at", also: "", defaultDays: 7 },
 ];

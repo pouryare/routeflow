@@ -98,7 +98,7 @@ describe("platform_owner", () => {
       await db
         .prepare(
           `INSERT INTO users (username, password_hash, display_name, role, organization_id, created_at)
-           VALUES ('t-bogus', 'x:y', 'T Bogus', 'accountant', 1, '2026-01-01')`
+           VALUES ('t-bogus', 'x:y', 'T Bogus', 'astronaut', 1, '2026-01-01')`
         )
         .run())()).rejects.toThrow();
   });

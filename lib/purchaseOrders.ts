@@ -52,3 +52,12 @@ export function poProblem(i: { expected_date: string | null; lines: { base_qty: 
   }
   return null;
 }
+
+/** The gap between the price on the order and the price on the receipt, in whole percent; null when there is no order
+ *  price (0 or missing) or the two are the same. Positive = the receipt is dearer.
+ *  Example: ordered at 1,000, received at 1,100 → 10; at 900 → -10. */
+export function priceGapPercent(orderedToman: number, receivedToman: number): number | null {
+  if (!(orderedToman > 0) || !Number.isFinite(receivedToman) || receivedToman === orderedToman) return null;
+  const pct = Math.round(((receivedToman - orderedToman) / orderedToman) * 100);
+  return pct === 0 ? (receivedToman > orderedToman ? 1 : -1) : pct;
+}

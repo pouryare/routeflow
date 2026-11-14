@@ -6,6 +6,7 @@ import {
   allocationsOfPayment,
   replaceAllocations,
   voidPayment,
+  selfVoidProblem,
   PaymentError,
 } from "@/lib/repo/payments";
 import { MANAGE_ROLES } from "@/lib/roles";
@@ -72,10 +73,15 @@ export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/payments/[
 }
 
 export async function POST(req: NextRequest, ctx: RouteContext<"/api/payments/[id]">) {
-  const guard = await requireRole(req, MANAGE_ROLES);
+  /* E5: a salesperson may void the payment they took themselves, inside the owner's window, with a reason; a manager
+     may void any (and is asked for the authenticator code as before). */
+  const guard = await requireRole(req, [...MANAGE_ROLES, "phone_sales"]);
   if (!guard.ok) return guard.response;
-  const stepUp = await guardStepUp(req, guard.session, "payment_edit");
-  if (stepUp) return stepUp;
+  const isManager = MANAGE_ROLES.includes(guard.session.role);
+  if (isManager) {
+    const stepUp = await guardStepUp(req, guard.session, "payment_edit");
+    if (stepUp) return stepUp;
+  }
 
   const { id } = await ctx.params;
   if (!isId(id)) return NextResponse.json({ ok: false, error: "شناسه نامعتبر است" }, { status: 400 });
@@ -92,6 +98,11 @@ export async function POST(req: NextRequest, ctx: RouteContext<"/api/payments/[i
   // existence first so a genuine 404 is not reported as 409.
   if (!await getPayment(guard.session.organizationId, Number(id))) {
     return NextResponse.json({ ok: false, error: "یافت نشد" }, { status: 404 });
+  }
+
+  if (!isManager) {
+    const problem = await selfVoidProblem(guard.session.organizationId, Number(id), guard.session.user.id);
+    if (problem) return NextResponse.json({ ok: false, error: problem }, { status: 403 });
   }
 
   try {

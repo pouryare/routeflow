@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { COOKIE_NAME } from "@/lib/auth";
 import { getSessionFromCookies } from "@/lib/session";
-import { isVanRole, OWNER_ROLES } from "@/lib/roles";
+import { ACCOUNTING_ROLES, isVanRole } from "@/lib/roles";
 import type { Role } from "@/lib/roles";
 
 /**
@@ -37,6 +37,8 @@ export async function requireAccounting(route: string): Promise<number> {
 
 /** Exported separately so the rule is testable without a cookie jar. */
 export function canReadAccounting(role: Role, route: string): boolean {
-  if (OWNER_ROLES.includes(role)) return true;
+  // H3: the accountant reads every accounting page (shareholders are owner-only: it is the partners' own money).
+  if (role === "accountant") return route !== "/accounting/shareholders";
+  if (ACCOUNTING_ROLES.includes(role)) return true;
   return role === "group_manager" && MANAGER_READABLE.has(route);
 }

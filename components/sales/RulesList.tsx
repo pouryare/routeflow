@@ -26,7 +26,7 @@ export default function RulesList({ rules }: { rules: RuleOverview[] }) {
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  async function patch(code: string, body: { active?: boolean; cooldown_min?: number; daily_budget?: number | null }): Promise<boolean> {
+  async function patch(code: string, body: { active?: boolean; cooldown_min?: number; daily_budget?: number | null; include_imported?: boolean }): Promise<boolean> {
     setBusy(code);
     setError(null);
     const res = await fetch("/api/rules", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code, ...body }) }).catch(() => null);
@@ -68,6 +68,10 @@ export default function RulesList({ rules }: { rules: RuleOverview[] }) {
             <button type="button" onClick={() => { setEdit(r); setMinutes(String(r.cooldownMin)); setBudget(r.dailyBudget ? String(r.dailyBudget) : ""); setError(null); }} className="inline-flex min-h-[44px] items-center gap-[var(--space-2)] self-start rounded-[var(--radius-md)] border border-[var(--border)] px-[var(--space-3)] text-[length:var(--text-sm)]">
               <Icon name="clock" size="md" />
               تنظیم: انتظار {faNum(r.cooldownMin)} دقیقه · {r.dailyBudget ? `سقف ${faNum(r.dailyBudget)} در روز` : "بدون سقف روزانه"}
+            </button>
+            <button type="button" role="switch" aria-checked={r.includeImported} disabled={busy === r.code} onClick={() => void patch(r.code, { include_imported: !r.includeImported })} className="inline-flex min-h-[44px] items-center gap-[var(--space-2)] self-start rounded-[var(--radius-md)] border border-[var(--border)] px-[var(--space-3)] text-[length:var(--text-sm)]">
+              <Icon name={r.includeImported ? "check" : "x"} size="md" />
+              {r.includeImported ? "موارد واردشده از اکسل هم شامل است" : "موارد واردشده از اکسل نادیده گرفته می‌شود"}
             </button>
             <button type="button" onClick={() => void openLog(r)} className="inline-flex min-h-[44px] items-center gap-[var(--space-2)] self-start rounded-[var(--radius-md)] border border-[var(--border)] px-[var(--space-3)] text-[length:var(--text-sm)]">
               <Icon name="list" size="md" />
