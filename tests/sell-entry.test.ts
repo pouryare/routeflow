@@ -34,7 +34,7 @@ describe("who is offered a new order", () => {
     "components/pocket/Pocket.tsx",
   ])("%s asks before offering it", (file) => {
     const src = fs.readFileSync(file, "utf8");
-    expect(src).toMatch(/canSell\(|mayOrder &&|canOrder &&/);
+    expect(src).toMatch(/canSell\(|mayOrder &&|canOrder &&|actionsFor\(/);
   });
 
   it("the form itself explains, instead of failing on save", () => {

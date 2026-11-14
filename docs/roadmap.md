@@ -118,13 +118,13 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
   **New record pre-filled from the filter.** «مشتری جدید» from a list filtered to a group and rep opens with both set (T11).
 
   </details>
-- **T4. Bulk edit on the selection bar.** Customers: rep, group, district, price tier, tags. Tasks: assignee, due date. Count preview, one log line per record.
+- **T4. Bulk edit on the selection bar.** Customers: rep, group, district, price tier, tags. Tasks: assignee, due date. Count preview, one log line per record. **First slice built 2026-11-14 (PR #105):** customers' salesperson and group on the CRM selection bar, with a count preview and one timeline line each. Price tier, tags, district and tasks are not done.
   <details><summary>Full decision</summary>
 
   **Bulk edit on the shared selection bar.** Customers: rep, group, district, price tier, tags. Tasks: assignee, due date. An empty field is left alone; a count preview («۴۲ مشتری تغییر می‌کند»); one activity line per record; credit limit is not bulk-editable; owner changes also go to the F100 history (T4).
 
   </details>
-- **T14. One action list.** Each action is declared once (label, icon, roles, place) and feeds record buttons, the selection bar and Ctrl-K. **Built 2026-11-13 (PR #102):** `lib/actionList.ts`; who sees an action comes from the role's ready tabs. Feeds Ctrl-K («کارها») and the customer map action; the record buttons are not moved onto it yet.
+- **T14. One action list.** Each action is declared once (label, icon, roles, place) and feeds record buttons, the selection bar and Ctrl-K. **Built 2026-11-13 (PR #102):** `lib/actionList.ts`; who sees an action comes from the role's ready tabs. Feeds Ctrl-K («کارها») and the customer map action; the record buttons are not moved onto it yet. **2026-11-14 (PR #105):** the customer sheet's buttons come from the list too.
   <details><summary>Full decision</summary>
 
   **One action list.** Each action is declared once (label, icon, role set, where it applies, pinned or under «بیشتر», hotkey) and feeds the record buttons, the selection bar and Ctrl-K, so the three never disagree on role gates (T14).
@@ -479,7 +479,7 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
   **Team week grid (D18).** Managers get people down the side and days across, each box counting visits, tasks and deliveries; tapping opens that person's day. Phone: one card per person with a week strip.
 
   </details>
-- **E5. Undo your own fresh mistake.** Whoever entered a payment, note, task or photo can void it within N minutes (default 15) with a reason. **Built 2026-11-13 (PR #102) for payments:** the entering person may void their own within the window (a company setting); notes, tasks and photos are not covered yet.
+- **E5. Undo your own fresh mistake.** Whoever entered a payment, note, task or photo can void it within N minutes (default 15) with a reason. **Built 2026-11-13 (PR #102) for payments:** the entering person may void their own within the window (a company setting); notes, tasks and photos are not covered yet. **2026-11-14 checked, nothing more to build:** photos can only be added by managers, who can already delete them; a task can already be dismissed by whoever got it; call and visit notes are an append-only log with its own corrections.
   <details><summary>Full decision</summary>
 
   **Undo your own fresh mistake (E5).** Whoever entered a payment, note, task or photo can void it within N minutes (owner setting, default 15) with a reason; after that, manager only. Logged, and voided payments stay in the money log (D6). Today voiding a payment is for managers only.
@@ -568,7 +568,7 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
   **Sign out after idle time (E17).** The owner sets idle hours per role (for example 12 for owner, managers and accountant); drivers and reps stay signed in so offline work is not lost. Today a sign-in lives 30 days whether used or not.
 
   </details>
-- **E7. Background exports and bulk edits.** Exports over ~1,000 rows and bulk edits over ~100 run as jobs with progress and a push when ready. **Built 2026-11-13 (PR #102) for the orders export only:** over 1,000 rows it runs on the worker, shows progress, notifies when ready, file kept 24 hours (`export_jobs`). Bulk edits are not moved because the bulk edit itself (T4) is not built.
+- **E7. Background exports and bulk edits.** Exports over ~1,000 rows and bulk edits over ~100 run as jobs with progress and a push when ready. **Built 2026-11-13 (PR #102) for the orders export only:** over 1,000 rows it runs on the worker, shows progress, notifies when ready, file kept 24 hours (`export_jobs`). Bulk edits are not moved because the bulk edit itself (T4) is not built. **2026-11-14 (PR #105):** a bulk edit of more than 100 customers runs on the same worker job.
   <details><summary>Full decision</summary>
 
   **Background exports and bulk edits (E7).** Exports over about 1,000 rows (T21) and bulk edits over about 100 records (T4) run on the job runner with a progress count and a push when ready; the file is kept 24 hours.
@@ -681,6 +681,8 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
   **Owner, 2026-11-12:** plan everything good from the shared «Systematize RouteFlow Operations» chat. Goal: a new person, or someone covering for an absent colleague, can work from the app alone. The pieces and their order are in the plan. F59 needs the audit record (EV4). F39: design not decided, later (a practice order must never message a real customer).
 
   </details>
+
+- **OI4 to OI11. Operational independence, batch J (owner, 2026-11-14; plan `docs/plans/operational-independence-batch-j-2026-11-14.md`; decisions 10.24). Not built.** OI4 a named backup per person or duty, pre-filling leave and handover. OI5 a coverage view for the owner: five counts side by side (people with no backup, duties only one person has done, approvals only one manager can give, overdue required lessons, skills nobody holds at level 3), no combined score. OI6 skills with four levels, set by a manager; a finished lesson alone never goes above «learning». OI7 routine checklists with an owner and a backup, made from recurring tasks, missed ones shown on OI5. OI8 playbooks for group manager, rep manager, accountant and owner as Academy lessons. OI9 an offboarding checklist joining F59, F140, F107 and F82. OI10 when a company lesson is edited the editor says whether people must re-read. OI11 a sales starter pack the platform owner applies to a company (routines, playbooks, objection cards), editable copy, switchable per company; enforcement is soft (flags, never blocks). **F39 practice mode: one practice company per learner**, no outgoing messages, a visible practice bar, deleted after 30 unused days. Order: OI8 and OI9, then OI4, OI7, OI6, OI5, then OI10 and F39, OI11 after OI7 and OI8. Not building: positions and job-profile tables, RACI, a weighted index, a process engine, an SOP approval workflow.
 
 ### Messaging, chat and telephony
 
@@ -1042,7 +1044,7 @@ All 148 entries of `docs/future-features.md` (F1 to F148), grouped by area, with
 | F2 | Voice input (speak instead of typing a note) | S |  | — | Small, waits for a prerequisite | — |
 | F5 | Persian text proofing (help users type clean Persian) | S | yes | F1, F3 | Small, waits for a prerequisite | — |
 | F13 | Offline-first everywhere | L | yes | — | Partly built | — |
-| F39 | Training and onboarding mode | M | yes | — | Not built | — |
+| F39 | Training and onboarding mode | M | yes | OI6 | Planned in batch J: one practice company per learner (decisions 10.24) | — |
 | F75 | Offline product catalogue for reps | M | yes | F13 | Not built | — |
 | F84 | In-app help and tooltips | S | yes | — | Built (first slice) | — |
 | F105 | Offline tasks and notes | M | yes | F13 | Not built | — |
@@ -1132,6 +1134,8 @@ A suggestion in waves. Within a wave the order is flexible; across waves it foll
 **Wave 2 — money and orders.** F83 (payment terms) → F50 (promises) → F18 (statements) → F46 (risk) → F49 (cash-flow forecast); F58 → F60/F62/F131 (order shortcuts); F44 (standing orders); F56/F64/F65 (pricing) together; F61 (backorders) and F71/F76 (holds and approval by value).
 
 **Wave 3 — delivery and stock.** F57 (time windows), F69 (instructions), F17 → F120 (proof and codes), F80 → F119 (returns), F30 → F94 and F93 (loading and bins), F66 → F87/F118/F121, F81 (capacity warning).
+
+**Batch J (2026-11-14):** OI8 and OI9 → OI4 → OI7 → OI6 → OI5 → OI10, F39, OI11 (see the OI4 to OI11 entry).
 
 **Wave 2b — people and content (2026-11-12).** S23 and OI3 (no prerequisite); AC1 → AC2 → AC5 → AC3 → AC4 (Academy); VC1 → VC2 → VC3 (van catalogue); after EV4: F59 → T13; OI1 and OI2 after AC4; later AC-L1, VC4 (with F30) and F39.
 

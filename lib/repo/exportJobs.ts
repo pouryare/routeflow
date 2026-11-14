@@ -2,6 +2,8 @@ import { getDb } from "@/lib/db";
 import { readOrders } from "@/lib/orders";
 import { ordersToWorkbook } from "@/lib/ordersExport";
 import { QUEUE_EXPORT } from "@/lib/queueNames";
+import { applyBulkEdit } from "@/lib/repo/bulkEdit";
+import type { BulkActor, BulkPlan } from "@/lib/bulkEdit";
 
 /** E7: a big export is built off the request. The row holds its progress and, for 24 hours, the file.
  *
@@ -13,7 +15,11 @@ const EXPORT_KEEP_HOURS = 24;
 type Scope = { sql: string; params: number[] };
 export type ExportJob = { id: number; user_id: number; status: "queued" | "running" | "done" | "failed"; progress: number; total: number; filename: string | null; error: string | null };
 
-export async function createExportJob(a: { organizationId: number; userId: number; kind: "orders"; scope: Scope; total: number }): Promise<number> {
+export async function createExportJob(a: { organizationId: number; userId: number; scope: Scope; total: number }): Promise<number> {
+  return await createJob({ ...a, kind: "orders" });
+}
+
+async function createJob(a: { organizationId: number; userId: number; kind: "orders" | "bulk_edit"; scope: unknown; total: number }): Promise<number> {
   const now = new Date();
   const id = Number(
     (await getDb()
@@ -24,6 +30,11 @@ export async function createExportJob(a: { organizationId: number; userId: numbe
   const { enqueueJob } = await import("@/lib/worker");
   if (!(await enqueueJob(QUEUE_EXPORT, { id }))) void runExportJob(id).catch(() => {});
   return id;
+}
+
+/** T4 + E7: a bulk edit of many customers, run by the worker. The row keeps who asked and what to change. */
+export async function createBulkJob(actor: BulkActor, plan: BulkPlan): Promise<number> {
+  return await createJob({ organizationId: actor.organizationId, userId: actor.userId, kind: "bulk_edit", scope: { actor, plan }, total: plan.ids.length });
 }
 
 export async function getExportJob(organizationId: number, id: number): Promise<ExportJob | undefined> {
@@ -39,24 +50,31 @@ export async function exportFile(organizationId: number, id: number): Promise<{ 
   return r?.file ? r : undefined;
 }
 
-/** Builds the file. Safe to run twice: a job already done or running is left alone. */
+/** Does the job's work. Safe to run twice: a job already done or running is left alone. */
 export async function runExportJob(id: number): Promise<void> {
   const db = getDb();
   const claimed = await db.prepare("UPDATE export_jobs SET status = 'running' WHERE id = ? AND status = 'queued'").run(id);
   if (!Number(claimed.changes)) return;
-  const job = (await db.prepare("SELECT organization_id, user_id, scope_json FROM export_jobs WHERE id = ?").get(id)) as { organization_id: number; user_id: number; scope_json: string };
+  const job = (await db.prepare("SELECT organization_id, user_id, kind, scope_json FROM export_jobs WHERE id = ?").get(id)) as { organization_id: number; user_id: number; kind: string; scope_json: string };
+  const progress = async (done: number) => { await db.prepare("UPDATE export_jobs SET progress = ? WHERE id = ?").run(done, id); };
+  const bulk = job.kind === "bulk_edit";
   try {
-    const orders = await readOrders(db, JSON.parse(job.scope_json) as Scope, { limit: 5000 });
-    const file = await ordersToWorkbook(orders, async (done) => {
-      await db.prepare("UPDATE export_jobs SET progress = ? WHERE id = ?").run(done, id);
-    });
-    const filename = `orders-${new Date().toISOString().slice(0, 10)}.xlsx`;
-    await db.prepare("UPDATE export_jobs SET status = 'done', progress = ?, total = ?, file = ?, filename = ? WHERE id = ?").run(orders.length, orders.length, file, filename, id);
-    await tell(job.organization_id, job.user_id, id, "خروجی اکسل آماده است", `${orders.length} سفارش؛ تا ۲۴ ساعت می‌توانید دانلود کنید.`);
+    if (bulk) {
+      const { actor, plan } = JSON.parse(job.scope_json) as { actor: BulkActor; plan: BulkPlan };
+      const changed = await applyBulkEdit(actor, plan, progress);
+      await db.prepare("UPDATE export_jobs SET status = 'done', progress = ? WHERE id = ?").run(changed, id);
+      await tell(job.organization_id, job.user_id, id, "ویرایش گروهی تمام شد", `${changed} مشتری تغییر کرد.`);
+    } else {
+      const orders = await readOrders(db, JSON.parse(job.scope_json) as Scope, { limit: 5000 });
+      const file = await ordersToWorkbook(orders, progress);
+      const filename = `orders-${new Date().toISOString().slice(0, 10)}.xlsx`;
+      await db.prepare("UPDATE export_jobs SET status = 'done', progress = ?, total = ?, file = ?, filename = ? WHERE id = ?").run(orders.length, orders.length, file, filename, id);
+      await tell(job.organization_id, job.user_id, id, "خروجی اکسل آماده است", `${orders.length} سفارش؛ تا ۲۴ ساعت می‌توانید دانلود کنید.`);
+    }
   } catch (e) {
     const msg = (e instanceof Error ? e.message : "خطا").slice(0, 300);
     await db.prepare("UPDATE export_jobs SET status = 'failed', error = ? WHERE id = ?").run(msg, id);
-    await tell(job.organization_id, job.user_id, id, "خروجی اکسل ساخته نشد", "دوباره امتحان کنید.");
+    await tell(job.organization_id, job.user_id, id, bulk ? "ویرایش گروهی کامل نشد" : "خروجی اکسل ساخته نشد", "دوباره امتحان کنید.");
   }
 }
 

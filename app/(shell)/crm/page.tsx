@@ -5,6 +5,7 @@ import { getSessionFromCookies } from "@/lib/session";
 import { plain } from "@/lib/db";
 import PageHeader from "@/components/meridian/PageHeader";
 import CrmBoard from "@/components/crm/CrmBoard";
+import { bulkTargets } from "@/lib/repo/bulkEdit";
 import { listBusinesses, viewCounts } from "@/lib/repo/crm/businesses";
 import { pageMetaFor } from "@/lib/pageMeta";
 import type { Metadata } from "next";
@@ -31,7 +32,7 @@ export default async function CrmPage() {
     <>
       <PageHeader route="/crm" />
       {/* node:sqlite rows have a null prototype, which a client component cannot receive. */}
-      <CrmBoard initialRows={plain(rows)} initialCounts={counts} initialView={view} canPlan={MANAGE_ROLES.includes(session.role)} role={session.role} />
+      <CrmBoard initialRows={plain(rows)} initialCounts={counts} initialView={view} canPlan={MANAGE_ROLES.includes(session.role)} role={session.role} bulk={await bulkTargets({ organizationId: session.organizationId, userId: session.user.id, role: session.role, groupId: session.groupId })} />
     </>
   );
 }
