@@ -1,6 +1,6 @@
 import { appTabs } from "@/lib/appNav";
 import { buildMapLink } from "@/lib/deepLink";
-import type { Role } from "@/lib/roles";
+import { SELL_ROLES, type Role } from "@/lib/roles";
 import type { IconName } from "@/components/meridian/Icon";
 
 /** T14: one action list. An action is declared once here and the places that show it (Ctrl-K, the
@@ -9,7 +9,7 @@ import type { IconName } from "@/components/meridian/Icon";
  *  Who may see an action is not repeated: it is whoever has the action's page as a ready tab
  *  (`appTabs`), so a button can never lead a role to a page that refuses them (rule 3 of the UI
  *  checklist). `only` narrows it further for the few actions that need more than the page. */
-export type Place = "ctrlk" | "customer-selection";
+export type Place = "ctrlk" | "customer-selection" | "customer-record";
 
 export interface ActionDef {
   id: string;
@@ -20,6 +20,8 @@ export interface ActionDef {
   /** Where to go; defaults to `tab`. A selection action gets the picked ids to build it. */
   href?: (ids: number[]) => string;
   places: Place[];
+  /** The filled button on a record sheet; the rest are plain. */
+  primary?: boolean;
   only?: Role[];
   /** Extra words Ctrl-K matches besides the label. */
   words?: string;
@@ -32,6 +34,10 @@ export const ACTIONS: ActionDef[] = [
   { id: "new-lead", label: "سرنخ تازه", icon: "plus", tab: "/crm", places: ["ctrlk"], words: "مشتری جدید" },
   { id: "go-cheques", label: "چک‌ها", icon: "receipt", tab: "/sales/cheques", places: ["ctrlk"], words: "وصول سررسید" },
   { id: "stock-buy", label: "انبار و خرید", icon: "package", tab: "/sales/stock", places: ["ctrlk"], words: "سفارش خرید تامین‌کننده" },
+  { id: "customer-info", label: "اطلاعات و مخاطبان", icon: "user", tab: "/crm", href: ([id]) => `/crm/${id}`, places: ["customer-record"] },
+  { id: "customer-new-order", label: "ثبت سفارش تازه", icon: "plus", tab: "/sales/orders", href: ([id]) => `/sales/orders/new?customer=${id}`, places: ["customer-record"], primary: true, only: SELL_ROLES },
+  { id: "customer-on-map", label: "روی نقشه", icon: "map", tab: "/map", href: ([id]) => `/map?c=${id}`, places: ["customer-record"] },
+  { id: "customer-orders", label: "همهٔ سفارش‌ها", icon: "receipt", tab: "/sales/orders", href: ([id]) => `/sales/orders?customer=${id}`, places: ["customer-record"], primary: true },
   { id: "customers-on-map", label: "روی نقشه", icon: "map", tab: "/map", places: ["customer-selection"], href: (ids) => `/map${buildMapLink({ customerIds: ids })}` },
 ];
 
