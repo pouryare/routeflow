@@ -2,6 +2,7 @@
 
 import { useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
+import SectionHead from "@/components/meridian/SectionHead";
 import { Icon } from "@/components/meridian/Icon";
 import StickyAction from "@/components/mobile/StickyAction";
 import DoorSaleFlow, { type DoorCustomer } from "@/components/flows/DoorSaleFlow";
@@ -55,7 +56,7 @@ export default function DoorSaleScreen({ customers, items, today, presetCustomer
       </section>
 
       <section aria-labelledby="on-van">
-        <h2 id="on-van" className="m-0 mb-[var(--space-2)] text-[length:var(--text-base)] font-medium">روی ماشین شما</h2>
+        <SectionHead id="on-van" title="روی ماشین شما" />
         {items.length === 0 ? (
           <p className="m-0 text-[length:var(--text-sm)] text-[var(--muted)]">ماشین خالی است. مدیر باید کالا را از انبار بارگیری کند؛ بعد از آن اینجا می‌آید.</p>
         ) : (

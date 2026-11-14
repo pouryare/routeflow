@@ -189,7 +189,8 @@ export async function sellAtDoor(
         return { order_id: made.id, order_no: made.order_no, total_toman: total, collected_toman: 0, held: HELD_REASON[current] ?? "سفارش منتظر تأیید است. کالا را تحویل ندهید." };
       }
 
-      const owed = (await customerDebt(organizationId, input.customer_id)).total;
+      // A shop that has paid ahead owes nothing: a negative balance must not shrink what may be taken.
+      const owed = Math.max(0, (await customerDebt(organizationId, input.customer_id)).total);
       if (input.collected_toman > total + owed) throw new DoorSaleError("مبلغ دریافتی از بدهی مشتری و مبلغ این فروش بیشتر است");
 
       const day = tehranTodayIso();

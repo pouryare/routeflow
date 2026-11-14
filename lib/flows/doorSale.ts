@@ -43,12 +43,12 @@ export const doorSaleFlow: FlowConfig = {
       q: "چه چیزی تحویل می‌دهید؟",
       sub: "از کالای روی ماشین. کالایی که روی ماشین نیست در این فهرست نمی‌آید.",
       options: [
-        { id: "sale", label: "فروش", sub: "پول را همین‌جا می‌گیرید یا نسیه", tone: "rec", next: "items", put: { kind: "sale" } },
-        { id: "sample", label: "نمونهٔ رایگان", sub: "قیمتی ندارد و بدهی نمی‌سازد", next: "items", put: { kind: "sample" } },
+        { id: "sale", label: "فروش", sub: "پول را همین‌جا می‌گیرید یا نسیه", tone: "rec", next: "adjust", put: { kind: "sale" } },
+        { id: "sample", label: "نمونهٔ رایگان", sub: "قیمتی ندارد و بدهی نمی‌سازد", next: "adjust", put: { kind: "sample" } },
       ],
     },
-    items: {
-      id: "items",
+    adjust: {
+      id: "adjust",
       kind: "stepper",
       q: "از هر قلم چند بسته؟",
       options: [
@@ -68,14 +68,14 @@ export const doorSaleFlow: FlowConfig = {
       kind: "choice",
       q: "هیچ قلمی انتخاب نشده",
       sub: "بدون قلم چیزی ثبت نمی‌شود.",
-      options: [{ id: "back", label: "برگشت و اصلاح", next: "items" }],
+      options: [{ id: "back", label: "برگشت و اصلاح", next: "adjust" }],
     },
     unpriced: {
       id: "unpriced",
       kind: "choice",
       q: "یکی از کالاها قیمت ندارد",
       sub: (ctx, s) => `${unpriced(ctx, s).join("، ")} قیمت امروز ندارد و فروخته نمی‌شود. تعدادش را صفر کنید یا آن را نمونه بدهید.`,
-      options: [{ id: "back", label: "برگشت و اصلاح", next: "items" }],
+      options: [{ id: "back", label: "برگشت و اصلاح", next: "adjust" }],
     },
     pay: {
       id: "pay",

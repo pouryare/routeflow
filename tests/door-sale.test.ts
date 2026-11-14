@@ -77,6 +77,16 @@ describe("VC4 door sale and samples", () => {
     expect(await vs.vanOnHand(1, van, product)).toBe(loaded - 30);
   });
 
+  it("a shop that paid ahead can still buy and pay cash", async () => {
+    const db = getDb();
+    const { recordPaymentTxn } = await import("@/lib/repo/payments");
+    const c2 = Number((await db.prepare("INSERT INTO customers (customer_code,business_name,customer_type,lifecycle,synced_at,organization_id) VALUES ('DS2','فروشگاه پیش‌پرداخت','RESTAURANT','active','2026-01-01',1)").run()).lastInsertRowid);
+    await recordPaymentTxn(db, 1, { customer_id: c2, amount_toman: 50_000, method: "CASH", received_at: new Date().toISOString(), received_by: driver, allocations: [{ order_id: null, amount_toman: 50_000 }], allow_overpay: true });
+    const r = await ds.sellAtDoor(1, { id: driver, canDrive: true }, { customer_id: c2, lines: [line(1)], collected_toman: 5_000 });
+    expect(r).toMatchObject({ total_toman: 5_000, collected_toman: 5_000, held: null });
+    await vs.loadVanChecked(1, { facilityId: van, productId: product, qty: 10, actorId: driver });
+  });
+
   it("a person who cannot drive is told to take the order for later", async () => {
     await expect(ds.sellAtDoor(1, { id: driver, canDrive: false }, { customer_id: customer, lines: [line(1)], collected_toman: 0 })).rejects.toThrow(/برای بعد/);
   });
@@ -94,7 +104,7 @@ describe("VC4 door sale and samples", () => {
     expect(again.duplicate).toBe(true);
     expect(await vs.vanOnHand(1, van, product)).toBe(loaded - 40);
     await expect(ds.giveSamples(1, { id: driver }, { customer_id: customer, lines: [line(99)] })).rejects.toThrow(/نیست/);
-    expect((await ds.doorSaleEntry(1, driver)).today).toMatchObject({ sales: 2, samples: 1 });
+    expect((await ds.doorSaleEntry(1, driver)).today).toMatchObject({ sales: 3, samples: 1 });
   });
 
   it("the sample report counts a shop that buys after the sample", async () => {
