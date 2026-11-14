@@ -1,4 +1,4 @@
-import { cellToBoundary, cellToLatLng, getResolution, latLngToCell } from "h3-js";
+import { cellToBoundary, cellToLatLng, latLngToCell } from "h3-js";
 
 /** The hexagon grid (h3-js, Apache-2.0): the city cut into honeycomb cells, so "per area" has one stable answer.
  *  Cell level 8 is about 0.7 km², roughly a thousand cells over Tehran; level 7 is about five times larger. */
@@ -37,8 +37,6 @@ export function hexCenter(h3: string): { lat: number; lng: number } {
   const [lat, lng] = cellToLatLng(h3);
   return { lat, lng };
 }
-
-export { getResolution };
 
 /** Five colour steps, light to dark by quantile of the cells' values: a map with one very busy cell
  *  would otherwise paint every other cell the palest step. Returns the step 0..4 for each value. */

@@ -3,7 +3,7 @@ import { groupFilter, type Session } from "@/lib/session";
 import { hexBins, type HexCell, type HexPoint } from "@/lib/h3";
 
 export type HexMetric = "revenue" | "customers" | "leads";
-export const HEX_METRICS: HexMetric[] = ["revenue", "customers", "leads"];
+const HEX_METRICS: HexMetric[] = ["revenue", "customers", "leads"];
 export function isHexMetric(v: unknown): v is HexMetric {
   return typeof v === "string" && (HEX_METRICS as string[]).includes(v);
 }

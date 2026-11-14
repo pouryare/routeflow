@@ -13,7 +13,7 @@ export function isHelpKind(v: unknown): v is HelpKind {
 }
 
 /** «۵ دقیقه پیش» for the age of the last GPS point; the manager must see how stale it is. */
-export function ageLabel(ms: number): string {
+function ageLabel(ms: number): string {
   const min = Math.max(0, Math.floor(ms / 60000));
   if (min < 1) return "همین الان";
   if (min < 60) return `${min.toLocaleString("fa-IR")} دقیقه پیش`;

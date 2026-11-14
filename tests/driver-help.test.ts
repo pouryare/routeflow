@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { helpBody, isHelpKind, ageLabel } from "@/lib/driverHelp";
+import { helpBody, isHelpKind } from "@/lib/driverHelp";
 
 describe("driver help text", () => {
   it("only the four known problems are accepted", () => {
@@ -16,7 +16,7 @@ describe("driver help text", () => {
   });
   it("says so when no position was ever reported", () => {
     expect(helpBody({ driver: "علی", phone: null, kind: "other", pending: 0, positionAgeMs: null })).toContain("موقعیت ثبت نشده");
-    expect(ageLabel(30_000)).toBe("همین الان");
+    expect(helpBody({ driver: "علی", phone: null, kind: "other", pending: 0, positionAgeMs: 30_000 })).toContain("همین الان");
   });
 });
 

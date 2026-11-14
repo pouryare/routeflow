@@ -11,7 +11,7 @@ import { faNum, faToman } from "@/lib/format";
 export const HEX_RAMP = ["#CFEFF0", "#8FD3D6", "#4DB5BA", "#1B8A8F", "#0F5558"];
 const LAYER = "hex-fill";
 
-export function hexValueText(metric: HexMetric, c: HexCell): string {
+function hexValueText(metric: HexMetric, c: HexCell): string {
   return metric === "revenue" ? `${faToman(c.value)} · ${faNum(c.count)} مشتری` : `${faNum(c.count)} ${metric === "leads" ? "سرنخ" : "مشتری"}`;
 }
 
