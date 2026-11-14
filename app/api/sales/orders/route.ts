@@ -198,6 +198,7 @@ export async function POST(req: NextRequest) {
         product_id: Number(line.product_id),
         packaging_id: Number(line.packaging_id),
         packs: Number(line.packs),
+        preorder: (line as { preorder?: unknown }).preorder === true,
       })),
     });
     return NextResponse.json({

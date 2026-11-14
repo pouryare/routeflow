@@ -123,12 +123,13 @@ export async function applyReceipt(db: Db, organizationId: number, orderId: numb
 export async function incomingByProduct(organizationId: number): Promise<Map<number, { qty: number; expected: string | null }>> {
   const rows = (await getDb()
     .prepare(
-      `SELECT l.product_id, SUM(l.base_qty - LEAST(l.received_qty, l.base_qty)) AS qty, MIN(po.expected_date) AS expected
+      `SELECT l.product_id, SUM(l.base_qty - LEAST(l.received_qty, l.base_qty))
+                - COALESCE((SELECT SUM(ol.packs_ordered * ol.qty_per_pack) FROM order_lines ol JOIN orders o ON o.id = ol.order_id WHERE o.organization_id = ? AND ol.product_id = l.product_id AND ol.is_preorder = 1 AND o.status NOT IN ('CANCELLED', 'CLOSED', 'RETURNED', 'DELIVERED', 'PARTIALLY_DELIVERED', 'DELIVERY_FAILED')), 0) AS qty, MIN(po.expected_date) AS expected
          FROM purchase_order_lines l JOIN purchase_orders po ON po.id = l.purchase_order_id
         WHERE po.organization_id = ? AND po.status IN ('ordered', 'partly_received')
         GROUP BY l.product_id`
     )
-    .all(organizationId)) as unknown as { product_id: number; qty: number; expected: string | null }[];
+    .all(organizationId, organizationId)) as unknown as { product_id: number; qty: number; expected: string | null }[];
   return new Map(rows.filter((r) => Number(r.qty) > 0).map((r) => [Number(r.product_id), { qty: Number(r.qty), expected: r.expected }]));
 }
 

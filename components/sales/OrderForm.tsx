@@ -73,6 +73,8 @@ interface Draft {
   product_id: number;
   packaging_id: number;
   packs: number;
+  /** F121: promised against goods on a purchase order that has not arrived. */
+  preorder?: boolean;
 }
 
 const FIELD =
@@ -297,6 +299,7 @@ export default function OrderForm({
             product_id: l.product_id,
             packaging_id: l.packaging_id,
             packs: l.packs,
+            preorder: l.preorder || undefined,
           })),
         }),
       });
@@ -480,6 +483,11 @@ export default function OrderForm({
                     <Icon name="trash" size="sm" />
                   </button>
                 </div>
+                {line.product.incoming ? (
+                  <button type="button" data-tour="preorder" aria-pressed={!!line.preorder} className="min-h-[44px] basis-full rounded-[var(--radius-md)] border border-[var(--border)] px-[var(--space-3)] text-start text-[length:var(--text-xs)] text-[var(--muted)]" onClick={() => setLines((ls) => ls.map((l) => (l.key === line.key ? { ...l, preorder: !l.preorder } : l)))}>
+                    <Icon name={line.preorder ? "check" : "calendar"} size="sm" />{line.preorder ? "پیش‌سفارش است: از کالای در راه نگه داشته می‌شود" : "پیش‌سفارش از کالای در راه"}
+                  </button>
+                ) : null}
                 {(() => {
                   const n = cartonNudge({ packs: line.packs, qtyPerPack: line.packaging.qty_per_pack }, line.product.packagings.filter((k) => k.id !== line.packaging_id).map((k) => ({ name: k.name, qtyPerPack: k.qty_per_pack })), cartonNudgePercent);
                   return n ? (

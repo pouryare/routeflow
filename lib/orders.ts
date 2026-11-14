@@ -43,6 +43,7 @@ import {
   type LineSnapshot,
 } from "./orderMath";
 
+import { unpromisedIncoming } from "@/lib/repo/preorders";
 import { greatest } from "@/lib/database/dialect";
 export { OrderError, OrderTransitionError, OrderRoleError };
 
@@ -54,6 +55,8 @@ export interface LineInput {
   reverses_line_id?: number | null;
   /** F65: the small-quantity uplift is not applied (a manager waived it for this order). */
   skip_uplift?: boolean;
+  /** F121: promised against goods on a purchase order that has not arrived. */
+  preorder?: boolean;
 }
 
 export interface CreateOrderInput {
@@ -380,11 +383,17 @@ async function insertLine(
   now: string
 ) {
   const snap = await snapshotLine(db, orderDate, line);
+  if (line.preorder) {
+    const org = (await db.prepare("SELECT organization_id FROM orders WHERE id = ?").get(orderId)) as { organization_id: number };
+    if (line.packs * snap.qty_per_pack > (await unpromisedIncoming(db, Number(org.organization_id), line.product_id))) {
+      throw new OrderError("از کالای در راه این‌قدر باقی نیست؛ تعداد را کم کنید");
+    }
+  }
   await db.prepare(
     `INSERT INTO order_lines (order_id, product_id, packaging_id, packs_ordered,
                               unit_price_toman, unit_cost_toman, qty_per_pack,
-                              kg_per_base_unit, price_id, is_reversal, reverses_line_id, created_at, uplift_percent)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+                              kg_per_base_unit, price_id, is_reversal, reverses_line_id, created_at, uplift_percent, is_preorder)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   ).run(
     orderId,
     line.product_id,
@@ -398,7 +407,8 @@ async function insertLine(
     line.is_reversal ? 1 : 0,
     line.reverses_line_id ?? null,
     now,
-    snap.uplift_percent
+    snap.uplift_percent,
+    line.preorder ? 1 : 0
   );
   await refreshOrderFigures(db, orderId);
 }

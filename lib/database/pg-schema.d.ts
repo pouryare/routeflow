@@ -1326,6 +1326,7 @@ export interface OrderEventsArchive {
 export interface OrderLines {
   created_at: string;
   id: Generated<number>;
+  is_preorder: Generated<number>;
   is_reversal: Generated<number>;
   kg_per_base_unit: number;
   order_id: number;

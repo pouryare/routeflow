@@ -211,6 +211,8 @@ describe("order_lines", () => {
         "reverses_line_id",
         // F65: the small-quantity percent already inside unit_price_toman.
         "uplift_percent",
+        // F121: promised against goods on a purchase order that has not arrived.
+        "is_preorder",
         "created_at",
       ].sort()
     );
