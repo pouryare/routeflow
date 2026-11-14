@@ -4,6 +4,8 @@ import Link from "next/link";
 import { cookies } from "next/headers";
 import { redirect, notFound } from "next/navigation";
 import { COOKIE_NAME } from "@/lib/auth";
+import { TransferRequest } from "@/components/sales/OrderTransfers";
+import { groupsOf } from "@/lib/repo/dataIO";
 import { codeForOrder } from "@/lib/repo/deliveryCode";
 import { getSessionFromCookies } from "@/lib/session";
 import { orderPageFor } from "@/lib/repo/ordersView";
@@ -90,12 +92,16 @@ export default async function OrderDetailPage({
   const owes = Math.max(0, order.total_toman - order.paid_toman);
   const credit = (MANAGE_ROLES.includes(session.role) || isPhoneSales(session.role)) && owes > 0 && (FULFILLED_ORDER_STATUSES as readonly string[]).includes(order.status) ? await onAccountCredit(session.organizationId, order.customer_id) : 0;
 
+  // F96: a manager can hand a confirmed order to another group.
+  const canTransfer = MANAGE_ROLES.includes(session.role) && order.status === "CONFIRMED";
+  const groups = canTransfer ? (await groupsOf(session.organizationId)).filter((g) => g.id !== order.group_id) : [];
   // F120: the dispatcher reads this code to a customer who asked for one.
   const code = MANAGE_ROLES.includes(session.role) || isPhoneSales(session.role) ? await codeForOrder(session.organizationId, order.id) : null;
 
   return (
     <div className="flex flex-col gap-[var(--space-4)]">
       <LiveRefresh topics={["orders"]} id={order.id} />
+      {canTransfer && groups.length > 0 && <div><TransferRequest orderId={order.id} groups={groups} /></div>}
       {code && (
         <p className="m-0 rounded-[var(--radius-md)] border border-[var(--border)] p-[var(--space-3)] text-[length:var(--text-sm)]" data-tour="delivery-code-shown">
           کد تحویل این سفارش: <b className="tabular-nums" dir="ltr">{code}</b> — به مشتری بگویید؛ راننده هنگام تحویل از او می‌پرسد.

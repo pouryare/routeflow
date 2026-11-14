@@ -920,7 +920,7 @@ All 148 entries of `docs/future-features.md` (F1 to F148), grouped by area, with
 | F73 | Order edit history | M | yes | F27, F48 | Built (delivery day, due date, address, notes with a reason) | FB3 |
 | F76 | Order approval by value | M | yes | F48, F51 | Built (first slice, 2026-11-13): company limit «سقف سفارش بدون تأیید» in the thresholds page (0 = off); a bigger order waits in the credit approvals deck as a «value» request; a signed-in owner's own order passes. No per-role or per-customer limit yet | — |
 | F89 | Customer price history | S | yes | F29, F56 | Built (first slice) | — |
-| F96 | Inter-group order transfers | L | yes | F48 | Not built | — |
+| F96 | Inter-group order transfers | L | yes | F48 | Built (first slice, batch D): a manager asks another group to fulfil a confirmed order; that group's manager accepts or refuses; accepting moves the order's group only (seller and commission stay). Not built: stock crossing groups, approval by the owner | — |
 | F114 | Carton completion nudges | S | yes | F58, F65 | Small, waits for a prerequisite | — |
 | F121 | Pre-orders against incoming stock | L | yes | F61, F66 | Not built | D27 |
 | F131 | Keyboard-first desk order entry | M | yes | F58 | Not built | — |

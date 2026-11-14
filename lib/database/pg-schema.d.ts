@@ -1388,6 +1388,19 @@ export interface Orders {
   uplift_waived_by: number | null;
 }
 
+export interface OrderTransfers {
+  decided_at: string | null;
+  decided_by: number | null;
+  from_group_id: number;
+  id: Generated<number>;
+  order_id: number;
+  organization_id: number;
+  requested_at: string;
+  requested_by: number;
+  status: Generated<string>;
+  to_group_id: number;
+}
+
 export interface Organizations {
   active: Generated<number>;
   approval_owner_limit_toman: Generated<number>;
@@ -2506,6 +2519,7 @@ export interface DB {
   order_events_all: OrderEventsAll;
   order_events_archive: OrderEventsArchive;
   order_lines: OrderLines;
+  order_transfers: OrderTransfers;
   orders: Orders;
   organizations: Organizations;
   packagings: Packagings;
