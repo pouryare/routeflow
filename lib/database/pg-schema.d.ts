@@ -1917,6 +1917,7 @@ export interface RunFacilityStops {
   facility_id: number;
   id: Generated<number>;
   notes: string | null;
+  purchase_order_id: number | null;
   role: string;
   run_id: number;
   status: Generated<string>;

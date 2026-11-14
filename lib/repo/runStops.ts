@@ -23,7 +23,7 @@ export interface RunStop {
   status: StopStatus;
   entity: "delivery" | "facility";
   facility_id: number | null;
-  role: "load" | "unload" | null;
+  role: "load" | "unload" | "pickup" | null;
 }
 
 /** Every stop on the given runs, deliveries and facility visits together.

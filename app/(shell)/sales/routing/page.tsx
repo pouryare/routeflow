@@ -11,6 +11,8 @@ import { absencesBetween, activeDrivers } from "@/lib/repo/absences";
 import OrderTransfers from "@/components/sales/OrderTransfers";
 import { listTransfers } from "@/lib/repo/orderTransfers";
 import { scopeGroupIds } from "@/lib/session";
+import PickupPlanner from "@/components/sales/PickupPlanner";
+import { pickupChoices } from "@/lib/repo/pickups";
 import RoutingPlanner from "@/components/sales/RoutingPlanner";
 import PageHeader from "@/components/meridian/PageHeader";
 
@@ -35,6 +37,7 @@ export default async function RoutingPage() {
     <>
     <PageHeader route="/sales/routing" />
     <CapacityAhead loads={loads} drivers={await activeDrivers(session.organizationId)} away={await absencesBetween(session.organizationId, loads[0].day, loads[loads.length - 1].day)} />
+    <PickupPlanner choices={await pickupChoices(session.organizationId)} />
     <OrderTransfers transfers={await listTransfers(session)} myGroupIds={await scopeGroupIds(session)} />
     <div className="kblock">
       <div className="bhead">

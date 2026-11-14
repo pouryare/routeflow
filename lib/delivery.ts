@@ -92,7 +92,7 @@ export interface RunDetail {
 export interface RunFacilityStop {
   id: number;
   facility_id: number;
-  role: "load" | "unload";
+  role: "load" | "unload" | "pickup";
   status: "pending" | "done";
   done_at: string | null;
   notes: string | null;
@@ -348,7 +348,7 @@ export async function readRun(db: Db, runId: number): Promise<RunDetail | null> 
          FROM run_facility_stops rfs
          JOIN facilities f ON f.id = rfs.facility_id
         WHERE rfs.run_id = ?
-        ORDER BY CASE rfs.role WHEN 'load' THEN 0 ELSE 1 END`
+        ORDER BY CASE rfs.role WHEN 'load' THEN 0 WHEN 'pickup' THEN 1 ELSE 2 END, rfs.id`
     )
     .all(runId) as unknown as RunFacilityStop[];
 
