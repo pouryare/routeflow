@@ -22,6 +22,8 @@ export const TENANT_TABLES = [
   "payment_promises",
   "customer_holds",
   "day_wrapups",
+  "price_bases",
+  "price_base_links",
   "van_positions",
   "custom_fields",
   "custom_field_values",

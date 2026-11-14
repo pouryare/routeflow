@@ -1510,6 +1510,23 @@ export interface ProductPrices {
   valid_from: string;
 }
 
+export interface PriceBaseLinks {
+  base_id: number;
+  factor: string;
+  id: Generated<number>;
+  organization_id: number;
+  packaging_id: number | null;
+  product_id: number;
+}
+
+export interface PriceBases {
+  id: Generated<number>;
+  name: string;
+  organization_id: number;
+  updated_at: string;
+  value_toman: number;
+}
+
 export interface Products {
   active: Generated<number>;
   avg_cost_toman: Generated<number>;
@@ -2387,6 +2404,8 @@ export interface DB {
   photos: Photos;
   platform_access_log: PlatformAccessLog;
   platform_settings: PlatformSettings;
+  price_base_links: PriceBaseLinks;
+  price_bases: PriceBases;
   private_categories: PrivateCategories;
   problem_reports: ProblemReports;
   product_costs: ProductCosts;
