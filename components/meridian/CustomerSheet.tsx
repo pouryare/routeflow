@@ -6,7 +6,8 @@ import CustomerBento, { useCustomerSummary } from "./CustomerBento";
 import BottomSheet from "@/components/mobile/BottomSheet";
 import { faDigits } from "@/lib/format";
 import { useSession } from "@/lib/useSession";
-import { canSell } from "@/lib/roles";
+import { actionsFor } from "@/lib/actionList";
+import type { Role } from "@/lib/roles";
 
 /** پنجرهٔ مشتری — the artifact's bottom bento sheet.
  *
@@ -32,6 +33,11 @@ export default function CustomerSheet({
   const data = useCustomerSummary(customerId);
   const { role } = useSession();
   const failed = false;
+  // T14: the buttons come from the shared action list, so a role never sees one that leads to a page it cannot open.
+  const actions = role ? actionsFor(role as Role, "customer-record") : [];
+  const button = (a: (typeof actions)[number], id: number) => (
+    <Link key={a.id} className={`btn ${a.primary ? "solid" : "ghost"}`} style={{ minHeight: 44 }} href={a.href!([id])}><Icon name={a.icon} size="md" />{a.label}</Link>
+  );
 
   const open = customerId !== null;
 
@@ -62,22 +68,8 @@ export default function CustomerSheet({
     >
       <CustomerBento data={data} />
       {customerId !== null && <div style={{ padding: "16px 24px", display: "flex", flexWrap: "wrap", gap: 9 }}>
-        <Link className="btn ghost" style={{ minHeight: 44 }} href={`/crm/${customerId}`}><Icon name="user" size="md" />اطلاعات و مخاطبان</Link>
-        {canSell(role) && <Link className="btn solid" style={{ minHeight: 44 }} href={`/sales/orders/new?customer=${customerId}`}><Icon name="plus" size="md" />ثبت سفارش تازه</Link>}
+        {actions.map((a) => button(a, customerId))}
       </div>}
-
-      {data && (
-        <div style={{ padding: "0 24px 26px", display: "flex", gap: 9, justifyContent: "flex-end" }}>
-          <Link className="btn ghost" style={{ minHeight: 44 }} href={`/map?c=${data.customer_id}`}>
-            <Icon name="map" size="md" />
-            روی نقشه
-          </Link>
-          <Link className="btn solid" style={{ minHeight: 44 }} href={`/sales/orders?customer=${data.customer_id}`}>
-            <Icon name="receipt" size="md" />
-            همهٔ سفارش‌ها
-          </Link>
-        </div>
-      )}
     </BottomSheet>
   );
 }

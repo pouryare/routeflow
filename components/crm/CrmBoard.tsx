@@ -20,6 +20,7 @@ import StickyAction from "@/components/mobile/StickyAction";
 import { useToast } from "@/components/ToastProvider";
 import { tehranTodayIso } from "@/lib/jalali";
 import Link from "next/link";
+import BulkEditSheet from "./BulkEditSheet";
 import { actionsFor } from "@/lib/actionList";
 import type { Role } from "@/lib/roles";
 
@@ -33,12 +34,15 @@ const NEXT_MODE: ReadonlySet<CrmView> = new Set<CrmView>(["today", "hot"]);
 type CallFlow = { kind: "call"; customerId: number; entry: "call" | "talked_now"; open: boolean };
 type LeadFlow = { kind: "lead"; open: boolean; prefillPhone: string | null };
 
-export default function CrmBoard({ initialRows, initialCounts, initialView, canPlan, role }: {
+export default function CrmBoard({ initialRows, initialCounts, initialView, canPlan, role, bulk }: {
   initialRows: BusinessRow[]; initialCounts: Record<CrmView, number>; initialView: CrmView;
   /** The roles whose API lets them add stops to the day plan (MANAGE_ROLES): only they get «انتخاب». */
   canPlan: boolean;
   role: Role;
+  /** T4: who and which groups the bulk-edit sheet may offer; empty for roles that may not bulk-edit. */
+  bulk: { reps: { id: string; label: string }[]; groups: { id: string; label: string }[] };
 }) {
+  const [bulkOpen, setBulkOpen] = useState(false);
   const [view, setView] = useState<CrmView>(initialView);
   const [q, setQ] = useState("");
   const [rows, setRows] = useState(initialRows);
@@ -167,6 +171,12 @@ export default function CrmBoard({ initialRows, initialCounts, initialView, canP
             {selecting && picked.length > 0 ? `${faDigits(String(picked.length))} انتخاب‌شده روی نقشه` : "فهرست روی نقشه"}
           </Link>
         ) : null}
+        {selecting && picked.length > 0 && bulk.reps.length > 0 ? (
+          <button type="button" onClick={() => setBulkOpen(true)} data-tour="crm:bulk">
+            <Icon name="user" size="md" />
+            تغییر گروهی
+          </button>
+        ) : null}
         {canPlan ? (
           <button type="button" aria-pressed={selecting} onClick={() => (selecting ? stopSelecting() : setSelecting(true))}>
             <Icon name={selecting ? "x" : "check"} size="md" />
@@ -220,6 +230,7 @@ export default function CrmBoard({ initialRows, initialCounts, initialView, canP
         />
         </div>
       ) : null}
+      <BulkEditSheet open={bulkOpen} ids={picked} reps={bulk.reps} groups={bulk.groups} onClose={() => setBulkOpen(false)} onDone={() => { setBulkOpen(false); stopSelecting(); void load(view, q); }} />
       <CustomerSheet customerId={sheet?.id ?? null} fallbackName={sheet?.name} onClose={() => setSheet(null)} />
     </div>
   );

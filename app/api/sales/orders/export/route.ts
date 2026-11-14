@@ -27,7 +27,7 @@ export async function GET(req: NextRequest) {
 
   /* E7: past about 1,000 rows the file is built on the worker; the person is told when it is ready. */
   if (orders.length > EXPORT_BACKGROUND_ROWS) {
-    const id = await createExportJob({ organizationId: guard.session.organizationId, userId: guard.session.user.id, kind: "orders", scope, total: orders.length });
+    const id = await createExportJob({ organizationId: guard.session.organizationId, userId: guard.session.user.id, scope, total: orders.length });
     return Response.json({ ok: true, queued: true, job_id: id, total: orders.length }, { status: 202 });
   }
 

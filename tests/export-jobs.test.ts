@@ -19,7 +19,7 @@ describe("E7 background export", () => {
     const now = new Date().toISOString();
     const user = Number((await db.prepare("INSERT INTO users (username,password_hash,display_name,role,active,created_at,organization_id) VALUES ('ex-o','x:y','م','owner',1,?,1)").run(now)).lastInsertRowid);
     const other = Number((await db.prepare("INSERT INTO organizations (name, slug, created_at) VALUES ('دیگر','ex-other','2026-01-01')").run()).lastInsertRowid);
-    const id = await ex.createExportJob({ organizationId: 1, userId: user, kind: "orders", scope: { sql: " AND o.organization_id = ?", params: [1] }, total: 0 });
+    const id = await ex.createExportJob({ organizationId: 1, userId: user, scope: { sql: " AND o.organization_id = ?", params: [1] }, total: 0 });
     for (let i = 0; i < 50 && (await ex.getExportJob(1, id))?.status !== "done"; i++) await new Promise((r) => setTimeout(r, 100));
     expect((await ex.getExportJob(1, id))?.status).toBe("done");
     const f = await ex.exportFile(1, id);
