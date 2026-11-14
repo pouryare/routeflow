@@ -377,6 +377,8 @@ export interface ContentImages {
 }
 
 export interface CreditApprovals {
+  manager_ok_at: string | null;
+  manager_ok_by: number | null;
   credit_limit_toman: number | null;
   customer_balance_toman: number;
   decided_at: string | null;
@@ -1355,6 +1357,7 @@ export interface Organizations {
   maintenance_to: string | null;
   name: string;
   order_approval_limit_toman: Generated<number>;
+  approval_owner_limit_toman: Generated<number>;
   order_prefix: string | null;
   plan: Generated<string>;
   quiet_customer_days: Generated<number>;

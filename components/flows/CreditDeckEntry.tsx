@@ -20,7 +20,7 @@ export default function CreditDeckEntry({ approvals }: { approvals: PendingAppro
 
   const decide = (a: PendingApprovalCard, verdict: string) =>
     undoable.run({
-      message: `سفارش ${a.order_no} · ${verdict === "approved" ? "اعتبار تأیید شد" : "درخواست رد شد"}`,
+      message: `سفارش ${a.order_no} · ${verdict === "approved" ? (a.two_step && !a.manager_ok ? "تأیید شما ثبت شد؛ اگر لازم باشد مالک ادامه می‌دهد" : "اعتبار تأیید شد") : "درخواست رد شد"}`,
       send: async () => {
         const res = await fetch(`/api/sales/credit-approvals/${a.id}/decide`, {
           method: "POST",
@@ -57,6 +57,7 @@ export default function CreditDeckEntry({ approvals }: { approvals: PendingAppro
             <>
               <strong>{a.customer_name}</strong>
               <span>سفارش {a.order_no}</span>
+              {a.two_step ? <span style={{ color: "var(--warning)" }}>{a.manager_ok ? "مدیر گروه تأیید کرده؛ نوبت مالک" : "مبلغ بزرگ است: پس از تأیید شما مالک هم باید تأیید کند"}</span> : null}
               {a.kind === "hold" ? (
                 <span>مشتری نگه داشته شده است · جمع سفارش {faToman(a.customer_balance_toman)} · دلیل را در صفحهٔ مشتری ببینید</span>
               ) : a.kind === "value" ? (
