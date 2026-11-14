@@ -41,6 +41,7 @@ import c_sales_admin_users from "./sales-admin-users.json";
 import c_sales_batches from "./sales-batches.json";
 import c_sales_catalogue from "./sales-catalogue.json";
 import c_sales_cheques from "./sales-cheques.json";
+import c_sales_commission_month from "./sales-commission-month.json";
 import c_sales_commission from "./sales-commission.json";
 import c_sales_complaints from "./sales-complaints.json";
 import c_sales_dashboard from "./sales-dashboard.json";
@@ -110,6 +111,7 @@ export const CAPTURES: Record<string, Capture> = {
   "/sales/batches": c_sales_batches as Capture,
   "/sales/catalogue": c_sales_catalogue as Capture,
   "/sales/cheques": c_sales_cheques as Capture,
+  "/sales/commission/month": c_sales_commission_month as Capture,
   "/sales/commission": c_sales_commission as Capture,
   "/sales/complaints": c_sales_complaints as Capture,
   "/sales/dashboard": c_sales_dashboard as Capture,

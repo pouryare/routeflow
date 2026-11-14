@@ -1,5 +1,6 @@
 import Link from "next/link";
 import TaskRow from "./TaskRow";
+import CallSnapshotRow from "./CallSnapshotRow";
 import BriefingCardTile from "./BriefingCardTile";
 import { cardFor, type BriefingCard } from "@/lib/repo/briefingCards";
 import type { Briefing as BriefingData, BriefingItem } from "@/lib/repo/briefing";
@@ -33,6 +34,7 @@ function Item({ item, variant }: { item: BriefingItem; variant: Variant }) {
   if (item.action?.kind === "task_outcome") {
     return <TaskRow taskId={item.action.task_id} customerId={item.action.customer_id} label={item.label} sub={item.sub} snoozable={item.action.snoozable} />;
   }
+  if (item.action?.kind === "snapshot") return <CallSnapshotRow customerId={item.action.customer_id} label={item.label} sub={item.sub} />;
   const tone = variant === "meridian" ? TONE_KARGAH : TONE_PLAIN;
   const inner = (
     <span className="flex items-baseline justify-between gap-[var(--space-2)]">

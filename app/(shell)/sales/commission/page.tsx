@@ -13,6 +13,8 @@ import EarnerCard from "@/components/meridian/EarnerCard";
 import PageHeader from "@/components/meridian/PageHeader";
 import { isVanRole, isOwner } from "@/lib/roles";
 import { pageMetadata } from "@/lib/pageMeta";
+import Link from "next/link";
+import { Icon } from "@/components/meridian/Icon";
 
 export const metadata = pageMetadata("/sales/commission");
 
@@ -55,6 +57,12 @@ export default async function CommissionPage() {
         دوره {faJalaliDate(period.from)} تا {faJalaliDate(period.to)} · پورسانت فروشنده و
         راننده روی وزن تحویل‌شده حساب می‌شود، نه سفارش‌شده.
       </p>
+      {isOwner(session.role) && (
+        <Link href="/sales/commission/month" className="inline-flex min-h-[44px] items-center gap-[var(--space-2)] self-start rounded-[var(--radius-md)] border border-[var(--border)] px-[var(--space-4)] text-[length:var(--text-sm)] no-underline">
+          <Icon name="receipt" size="md" />
+          برگهٔ پرداخت ماه برای حسابدار
+        </Link>
+      )}
 
       {/* ---- فروشنده‌ها ---------------------------------------------------- */}
       {statements.length === 0 ? (

@@ -2,7 +2,11 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { COOKIE_NAME } from "@/lib/auth";
 import { getSessionFromCookies } from "@/lib/session";
-import { getPrefsMatrix } from "@/lib/repo/notifications";
+import { getPrefsMatrix, renderNotification } from "@/lib/repo/notifications";
+import { templatesOf } from "@/lib/repo/notificationTemplates";
+import { TEMPLATE_PLACEHOLDERS } from "@/lib/messageTemplate";
+import NotificationTemplates from "@/components/settings/NotificationTemplates";
+import { isOwner } from "@/lib/roles";
 import NotificationSettings from "@/components/settings/NotificationSettings";
 import PageHeader from "@/components/meridian/PageHeader";
 import { pageMetadata } from "@/lib/pageMeta";
@@ -27,10 +31,22 @@ export default async function NotificationSettingsPage() {
   // the signed session, never the request.
   const initial = await getPrefsMatrix(session.user.id, session.organizationId);
 
+  // F136: the owner can also word each notification their own way.
+  const mine = isOwner(session.role) ? new Map((await templatesOf(session.organizationId)).map((t) => [t.type_code, t])) : null;
+  const names = new Map(initial.types.map((t) => [t.code, t.name_fa]));
+  const rows = mine
+    ? Object.keys(TEMPLATE_PLACEHOLDERS).map((code) => {
+        const shipped = renderNotification(code, { kind: code, entity_type: null, entity_id: null, occurred_at: "", meta: {} } as never);
+        const c = mine.get(code);
+        return { code, name: names.get(code) ?? code, shipped: { title: shipped.title_fa, body: shipped.body_fa }, custom: c ? { title: c.title_fa, body: c.body_fa } : null };
+      })
+    : [];
+
   return (
     <>
       <PageHeader route="/settings/notifications" />
       <NotificationSettings initial={initial} />
+      {rows.length > 0 ? <NotificationTemplates rows={rows} /> : null}
     </>
   );
 }

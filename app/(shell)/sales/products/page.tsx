@@ -16,6 +16,11 @@ import { recentProductChanges } from "@/lib/repo/productLog";
 import Link from "next/link";
 import { Icon } from "@/components/meridian/Icon";
 import { pageMetadata } from "@/lib/pageMeta";
+import SmallUpliftRules from "@/components/sales/SmallUpliftRules";
+import { listUpliftRules } from "@/lib/repo/smallUplift";
+import PriceBases from "@/components/sales/PriceBases";
+import ScheduledPrices from "@/components/sales/ScheduledPrices";
+import { listBases, scheduledPrices } from "@/lib/repo/priceBases";
 
 export const metadata = pageMetadata("/sales/products");
 
@@ -132,6 +137,14 @@ export default async function ProductsPage() {
             };
           })}
         />
+      )}
+
+      {isOwner(session.role) && products.length > 0 && (
+        <>
+          <ScheduledPrices rows={await scheduledPrices(session.organizationId, today)} />
+          <SmallUpliftRules rules={await listUpliftRules(session.organizationId)} products={products.map((p) => ({ id: p.id, name: p.name, packagings: p.packagings.map((k) => ({ id: k.id, name: k.name })) }))} />
+          <PriceBases bases={await listBases(session.organizationId)} products={products.map((p) => ({ id: p.id, name: p.name, packagings: p.packagings.map((k) => ({ id: k.id, name: k.name })) }))} />
+        </>
       )}
 
       {MANAGE_ROLES.includes(session.role) && products.length > 0 && (

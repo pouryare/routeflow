@@ -352,6 +352,13 @@ function StopCard({
 
       {open && (
         <div className="border-t border-[var(--border)] p-[var(--space-4)]">
+          {stop.window_label || stop.delivery_instructions || stop.order_notes ? (
+            <div className="mb-[var(--space-3)] flex flex-col gap-[var(--space-1)] rounded-[var(--radius-md)] border border-[var(--border)] p-[var(--space-3)] text-[length:var(--text-sm)]" data-tour="stop-instructions">
+              {stop.window_label ? <span><b>ساعت کار مشتری:</b> {stop.window_label}</span> : null}
+              {stop.delivery_instructions ? <span><b>نکتهٔ ثابت:</b> {stop.delivery_instructions}</span> : null}
+              {stop.order_notes ? <span><b>یادداشت این سفارش:</b> {stop.order_notes}</span> : null}
+            </div>
+          ) : null}
           {!done && lateReasons.length > 0 && <LateButton stopId={stop.id} reasons={lateReasons} />}
           {stop.phone && (
             <a

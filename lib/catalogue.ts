@@ -49,6 +49,8 @@ export interface PackagingRow {
   qty_per_pack: number;
   barcode: string | null;
   active: number;
+  small_packs?: number | null;
+  small_uplift_percent?: number | null;
   created_at: string;
 }
 

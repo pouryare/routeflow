@@ -1,4 +1,6 @@
 import type { Db } from "@/lib/database/client";
+import { templateFor } from "@/lib/repo/notificationTemplates";
+import { fillTemplate } from "@/lib/messageTemplate";
 import { randomBytes } from "node:crypto";
 import { getDb } from "@/lib/db";
 import { faNum } from "@/lib/format";
@@ -122,6 +124,17 @@ function labelOrder(m: Record<string, unknown>): string | null {
   const cust = metaStr(m, "customer_name");
   const parts = [no ? `سفارش ${no}` : null, cust].filter(Boolean);
   return parts.length ? parts.join(" — ") : null;
+}
+
+/** F136: the company's own wording for this type, when it has one and it is valid; otherwise the shipped text (an invalid one is logged). */
+async function withOverride(organizationId: number, typeCode: string, meta: Record<string, unknown>, shipped: { title_fa: string; body_fa: string | null }) {
+  const o = await templateFor(organizationId, typeCode);
+  if (!o) return shipped;
+  const due = metaStr(meta, "due_date");
+  const values: Record<string, string | null> = { title: metaStr(meta, "title"), order_no: metaStr(meta, "order_no"), customer_name: metaStr(meta, "customer_name"), amount_toman: metaStr(meta, "amount_toman"), cheque_no: metaStr(meta, "cheque_no"), message: metaStr(meta, "message"), due_date: due ? faJalaliDate(due) : null };
+  const filled = fillTemplate(typeCode, o.title_fa, o.body_fa, values);
+  if (!filled) console.warn(`notification template for ${typeCode} (company ${organizationId}) is invalid; using the shipped text`);
+  return filled ?? shipped;
 }
 
 export function renderNotification(
@@ -349,7 +362,8 @@ export async function fanOutNotifications(
   if (recipients.length === 0) return 0;
 
   const groupKey = groupKeyFor(type.group_scope, ctx, typeCode);
-  const rendered = renderNotification(typeCode, ctx);
+  const shipped = renderNotification(typeCode, ctx);
+  const rendered = await withOverride(organizationId, typeCode, ctx.meta, shipped);
   const title = rendered.title_fa || type.name_fa;
   const now = new Date().toISOString();
 
