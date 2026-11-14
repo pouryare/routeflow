@@ -533,6 +533,17 @@ export interface DayWrapups {
   user_id: number;
 }
 
+export interface DeliveryRatings {
+  customer_id: number;
+  id: Generated<number>;
+  order_id: number;
+  organization_id: number;
+  rated_at: string;
+  rated_by: number;
+  reason: string | null;
+  stars: number;
+}
+
 export interface DeletedRows {
   deleted_at: string;
   entity_id: number;
@@ -2343,6 +2354,7 @@ export interface DB {
   customers: Customers;
   day_wrapups: DayWrapups;
   deleted_rows: DeletedRows;
+  delivery_ratings: DeliveryRatings;
   deliveries: Deliveries;
   delivery_line_batches: DeliveryLineBatches;
   delivery_lines: DeliveryLines;

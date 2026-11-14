@@ -31,6 +31,8 @@ import { discountOfOrder } from "@/lib/repo/discounts";
 import { DISCOUNT_REASONS, DISCOUNT_STATUS_LABEL } from "@/lib/discounts";
 import LiveRefresh from "@/components/LiveRefresh";
 import ViewingChip from "@/components/ViewingChip";
+import DeliveryRatingCard from "@/components/sales/DeliveryRatingCard";
+import { ratingOf } from "@/lib/repo/deliveryRatings";
 import OnAccountCreditCard from "@/components/sales/OnAccountCreditCard";
 import { onAccountCredit } from "@/lib/repo/onAccount";
 import { FULFILLED_ORDER_STATUSES } from "@/lib/orderStateMachine";
@@ -83,6 +85,7 @@ export default async function OrderDetailPage({
   const { order, attempts } = page;
   const discount = await discountOfOrder(session.organizationId, order.id);
   // F63: credit the customer already paid ahead, offered on an unpaid delivered order to the people who record payments.
+  const canRate = (MANAGE_ROLES.includes(session.role) || session.role === "phone_sales") && (FULFILLED_ORDER_STATUSES as readonly string[]).includes(order.status);
   const owes = Math.max(0, order.total_toman - order.paid_toman);
   const credit = (MANAGE_ROLES.includes(session.role) || session.role === "phone_sales") && owes > 0 && (FULFILLED_ORDER_STATUSES as readonly string[]).includes(order.status) ? await onAccountCredit(session.organizationId, order.customer_id) : 0;
 
@@ -175,6 +178,8 @@ export default async function OrderDetailPage({
           }
         />
       </BentoStrip>
+
+      {canRate && <DeliveryRatingCard orderId={order.id} rating={await ratingOf(session.organizationId, order.id)} />}
 
       {credit > 0 && <OnAccountCreditCard orderId={order.id} credit={credit} owes={owes} />}
 
