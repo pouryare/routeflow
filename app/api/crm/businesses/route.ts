@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireRole } from "@/lib/session";
 import { CRM_VIEWS, listBusinesses, viewCounts, type CrmView } from "@/lib/repo/crm/businesses";
+import { segmentSpec } from "@/lib/repo/customerSegments";
 import { createLead } from "@/lib/repo/crm/write";
 import { CRM_ROLES, crmErrorResponse } from "@/lib/repo/crm/http";
 import { isOneOf } from "@/lib/crm/vocab";
@@ -10,7 +11,9 @@ export async function GET(req: NextRequest) {
   if (!guard.ok) return guard.response;
   const sp = req.nextUrl.searchParams;
   const view: CrmView = isOneOf(CRM_VIEWS, sp.get("view")) ? (sp.get("view") as CrmView) : "today";
-  const { rows, nextOffset } = await listBusinesses(guard.session, { view, q: sp.get("q") ?? undefined, offset: Number(sp.get("offset") ?? 0) || 0 });
+  const segmentId = Number(sp.get("segment") ?? 0);
+  const segment = segmentId > 0 ? await segmentSpec(guard.session.organizationId, segmentId) : null;
+  const { rows, nextOffset } = await listBusinesses(guard.session, { view, q: sp.get("q") ?? undefined, segment, offset: Number(sp.get("offset") ?? 0) || 0 });
   return NextResponse.json({ ok: true, rows, counts: await viewCounts(guard.session), next_offset: nextOffset });
 }
 

@@ -34,6 +34,8 @@ import FirstStepsCard from "@/components/tutorials/FirstStepsCard";
 import MoneyTiles from "@/components/today/MoneyTiles";
 import { moneyTilesFor } from "@/lib/repo/moneyTiles";
 import { pageMetadata } from "@/lib/pageMeta";
+import SetupChecklistCard from "@/components/today/SetupChecklistCard";
+import { setupFor } from "@/lib/repo/setupChecklist";
 import WrapUpCard from "@/components/today/WrapUpCard";
 import { wrapUpFor, wrapUpEmpty } from "@/lib/repo/wrapUp";
 
@@ -51,6 +53,8 @@ export default async function SalesTodayPage() {
   if (!session) redirect("/login");
   if (isVanRole(session.role)) redirect("/driver");
 
+  // FB19: the owner of a company still being set up sees what is left.
+  const setup = isOwner(session.role) ? await setupFor(session.organizationId) : null;
   const data = await todayFor(session);
   const earnings = await earningsSoFar(session);
   const week = await weekVsLast(session, tehranTodayIso());
@@ -118,6 +122,7 @@ export default async function SalesTodayPage() {
       {wrapUp && (isPhoneSales(session.role) || !wrapUpEmpty(wrapUp)) && <WrapUpCard w={wrapUp} />}
 
       {whatsNew && <WhatsNewCard entry={whatsNew} />}
+      {setup && setup.percent < 100 && <SetupChecklistCard steps={setup.steps} percent={setup.percent} minutesLeft={setup.minutesLeft} />}
       <FirstStepsCard />
 
       <ActionCards cards={await suggestionsFor(session)} />

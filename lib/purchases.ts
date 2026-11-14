@@ -24,6 +24,7 @@ import { roundToman, sumToman } from "./money";
 import { postPurchase } from "./repo/ledgerPostings";
 import { daysBetween } from "@/lib/database/dialect";
 import { tehranTodayIso } from "@/lib/jalali";
+import { fillPreorders } from "./repo/preorders";
 import { applyReceipt, PurchaseOrderError } from "./repo/purchaseOrders";
 
 export class PurchaseError extends Error {}
@@ -173,6 +174,9 @@ export async function recordPurchase(db: Db, input: PurchaseInput): Promise<numb
         line.product_id
       );
     }
+
+    // F121: pre-orders waiting on these goods take their share now, oldest order first.
+    await fillPreorders(db, orgId, input.lines.map((l) => l.product_id));
 
     /* The money side of the purchase, in the SAME transaction. A purchase whose stock
        landed but whose payable did not is the exact failure accounts payable was added to

@@ -1,4 +1,4 @@
-import type { FlowConfig, FlowContext, FlowState } from "@/lib/crm/flows/types";
+import type { FlowConfig, FlowContext, FlowState, NextFn } from "@/lib/crm/flows/types";
 import { faToman } from "@/lib/format";
 import { roundToman } from "@/lib/money";
 
@@ -26,6 +26,9 @@ const REASONS: Record<string, string> = {
   other: "سایر",
 };
 
+/** F120: a customer who asks for a code gets the code step before the cash question. */
+const toCash: NextFn = (ctx) => (ctx.vars?.needs_code === "1" ? "code" : "cash");
+
 export const deliveryFlow: FlowConfig = {
   id: "delivery",
   start: () => "all",
@@ -37,7 +40,7 @@ export const deliveryFlow: FlowConfig = {
       q: "همهٔ اقلام تحویل شد؟",
       sub: "{customer} · جمع {total_label}",
       options: [
-        { id: "yes", label: "بله، همه", sub: "تعداد همان سفارش است", tone: "rec", next: "cash", put: { counts: "ordered" } },
+        { id: "yes", label: "بله، همه", sub: "تعداد همان سفارش است", tone: "rec", next: toCash, put: { counts: "ordered" } },
         { id: "no", label: "نه، کم شد", sub: "تعداد هر قلم را اصلاح می‌کنید", next: "short" },
         { id: "failed", label: "نه، تحویل نشد", sub: "چیزی تحویل داده نشد", tone: "bad", next: "failwhy" },
       ],
@@ -69,7 +72,18 @@ export const deliveryFlow: FlowConfig = {
       id: "why",
       kind: "choice",
       q: "چرا کم شد؟",
-      options: Object.entries(REASONS).map(([id, label]) => ({ id, label, next: "cash", put: { reason: label } })),
+      options: Object.entries(REASONS).map(([id, label]) => ({ id, label, next: toCash, put: { reason: label } })),
+    },
+    code: {
+      id: "code",
+      kind: "input",
+      q: "کد تحویل مشتری چیست؟",
+      sub: "مشتری باید کد را بگوید؛ اگر نگفت، ادامه دهید",
+      input: { field: "code", placeholder: "کد ۶ رقمی", ltr: true, optional: true },
+      options: [
+        { id: "ok", label: "ثبت کد", tone: "rec", next: "cash" },
+        { id: "none", label: "مشتری کد نداشت", next: "cash", put: { code: "" } },
+      ],
     },
     cash: {
       id: "cash",
@@ -130,6 +144,7 @@ export function deliveryPayload(ctx: FlowContext, st: FlowState) {
     lines: (ctx.items ?? []).map((i) => ({ line_id: i.id, packs_delivered: counts[i.id] ?? 0 })),
     collected_toman: collected,
     notes: st.values.reason ?? null,
+    ...(st.values.code ? { code: st.values.code } : {}),
     // Only a failed stop carries a reason; the key is absent otherwise so the body stays what it was.
     ...(failReason > 0 ? { fail_reason_id: failReason } : {}),
   };

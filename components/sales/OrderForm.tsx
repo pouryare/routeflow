@@ -73,6 +73,8 @@ interface Draft {
   product_id: number;
   packaging_id: number;
   packs: number;
+  /** F121: promised against goods on a purchase order that has not arrived. */
+  preorder?: boolean;
 }
 
 const FIELD =
@@ -257,6 +259,19 @@ export default function OrderForm({
     }
   }, [requestedMode, requestedDate, requestedWeeks]);
 
+  // FB35: places left on the chosen day (nothing is shown when the company has no limit).
+  const [loadOf, setLoadOf] = useState<{ day: string; limit: number; taken: number } | null>(null);
+  useEffect(() => {
+    if (!resolvedRequestedDay) return;
+    let live = true;
+    fetch(`/api/sales/orders/day-load?day=${resolvedRequestedDay}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j: { limit: number; taken: number } | null) => { if (live && j) setLoadOf({ day: resolvedRequestedDay, limit: j.limit, taken: j.taken }); })
+      .catch(() => undefined);
+    return () => { live = false; };
+  }, [resolvedRequestedDay]);
+  const dayLoad = loadOf && loadOf.day === resolvedRequestedDay ? loadOf : null;
+
   async function submit(allowDuplicate = false) {
     if (!customer || lines.length === 0) return;
     if (belowMin(total, minOrderToman) && !belowReason) {
@@ -297,6 +312,7 @@ export default function OrderForm({
             product_id: l.product_id,
             packaging_id: l.packaging_id,
             packs: l.packs,
+            preorder: l.preorder || undefined,
           })),
         }),
       });
@@ -402,8 +418,9 @@ export default function OrderForm({
             />
           </div>
           {resolvedRequestedDay !== null && (
-            <p className="m-0 mt-[var(--space-1)] text-[length:var(--text-xs)] text-[var(--muted)]">
+            <p className="m-0 mt-[var(--space-1)] text-[length:var(--text-xs)] text-[var(--muted)]" data-tour="day-places">
               {requestedDayLabel(resolvedRequestedDay)}
+              {dayLoad && dayLoad.limit > 0 ? (dayLoad.taken >= dayLoad.limit ? " · این روز پر است" : ` · ${faNum(dayLoad.limit - dayLoad.taken)} جا مانده`) : ""}
             </p>
           )}
         </div>
@@ -480,6 +497,11 @@ export default function OrderForm({
                     <Icon name="trash" size="sm" />
                   </button>
                 </div>
+                {line.product.incoming ? (
+                  <button type="button" data-tour="preorder" aria-pressed={!!line.preorder} className="min-h-[44px] basis-full rounded-[var(--radius-md)] border border-[var(--border)] px-[var(--space-3)] text-start text-[length:var(--text-xs)] text-[var(--muted)]" onClick={() => setLines((ls) => ls.map((l) => (l.key === line.key ? { ...l, preorder: !l.preorder } : l)))}>
+                    <Icon name={line.preorder ? "check" : "calendar"} size="sm" />{line.preorder ? "پیش‌سفارش است: از کالای در راه نگه داشته می‌شود" : "پیش‌سفارش از کالای در راه"}
+                  </button>
+                ) : null}
                 {(() => {
                   const n = cartonNudge({ packs: line.packs, qtyPerPack: line.packaging.qty_per_pack }, line.product.packagings.filter((k) => k.id !== line.packaging_id).map((k) => ({ name: k.name, qtyPerPack: k.qty_per_pack })), cartonNudgePercent);
                   return n ? (

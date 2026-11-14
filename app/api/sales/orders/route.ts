@@ -185,6 +185,8 @@ export async function POST(req: NextRequest) {
       salesperson_user_id: salespersonId,
       credit_override_by: body?.credit_override ? session.user.id : null,
       min_order_toman: (await thresholdsFor(session.organizationId)).min_order_toman,
+      day_order_limit: (await thresholdsFor(session.organizationId)).day_order_limit,
+      over_day_limit_ok: MANAGE_ROLES.includes(session.role),
       below_min_reason: cleanReason(body?.below_min_reason),
       // F65: only a manager or owner may waive the small-quantity uplift, and the reason is kept on the order.
       waive_uplift: MANAGE_ROLES.includes(session.role) && cleanReason(body?.waive_uplift_reason) ? { reason: cleanReason(body?.waive_uplift_reason)!, by: session.user.id } : null,
@@ -198,6 +200,7 @@ export async function POST(req: NextRequest) {
         product_id: Number(line.product_id),
         packaging_id: Number(line.packaging_id),
         packs: Number(line.packs),
+        preorder: (line as { preorder?: unknown }).preorder === true,
       })),
     });
     return NextResponse.json({

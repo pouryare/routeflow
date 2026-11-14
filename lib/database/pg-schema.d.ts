@@ -444,6 +444,7 @@ export interface Customers {
   credit_limit_toman: number | null;
   customer_code: string;
   customer_type: string | null;
+  delivery_code_required: Generated<boolean>;
   delivery_instructions: string | null;
   district_id: number | null;
   first_order_at: string | null;
@@ -501,6 +502,15 @@ export interface Customers {
   working_hours_json: string | null;
 }
 
+export interface CustomerSegments {
+  created_at: string;
+  created_by: number;
+  id: Generated<number>;
+  name: string;
+  organization_id: number;
+  spec: string;
+}
+
 export interface CustomerTags {
   created_at: string;
   customer_id: number;
@@ -547,6 +557,7 @@ export interface DeletedRows {
 export interface Deliveries {
   actual_arrival: string | null;
   client_uuid: string | null;
+  code_ok: boolean | null;
   collected_toman: Generated<number>;
   completed_at: string | null;
   created_at: string;
@@ -1324,6 +1335,7 @@ export interface OrderEventsArchive {
 export interface OrderLines {
   created_at: string;
   id: Generated<number>;
+  is_preorder: Generated<number>;
   is_reversal: Generated<number>;
   kg_per_base_unit: number;
   order_id: number;
@@ -1386,6 +1398,19 @@ export interface Orders {
   uplift_waived_by: number | null;
 }
 
+export interface OrderTransfers {
+  decided_at: string | null;
+  decided_by: number | null;
+  from_group_id: number;
+  id: Generated<number>;
+  order_id: number;
+  organization_id: number;
+  requested_at: string;
+  requested_by: number;
+  status: Generated<string>;
+  to_group_id: number;
+}
+
 export interface Organizations {
   active: Generated<number>;
   approval_owner_limit_toman: Generated<number>;
@@ -1395,6 +1420,7 @@ export interface Organizations {
   created_at: string;
   data_ageing_days: Generated<number>;
   data_stale_days: Generated<number>;
+  day_order_limit: Generated<number>;
   delivery_note_footer: string | null;
   discount_auto_pass_pct: Generated<number>;
   discount_commission_pct: Generated<number>;
@@ -1902,6 +1928,7 @@ export interface RunFacilityStops {
   facility_id: number;
   id: Generated<number>;
   notes: string | null;
+  purchase_order_id: number | null;
   role: string;
   run_id: number;
   status: Generated<string>;
@@ -1964,6 +1991,23 @@ export interface SalesDailyProducts {
   product_id: number;
   revenue: number | null;
   salesperson_user_id: number | null;
+}
+
+export interface Samples {
+  base_qty: number;
+  client_uuid: string | null;
+  created_at: string;
+  customer_id: number;
+  given_at: string;
+  given_by: number;
+  id: Generated<number>;
+  note: string | null;
+  organization_id: number;
+  packaging_id: number;
+  packs: number;
+  product_id: number;
+  unit_cost_toman: Generated<number>;
+  van_facility_id: number | null;
 }
 
 export interface SavedLocations {
@@ -2441,6 +2485,7 @@ export interface DB {
   custom_fields: CustomFields;
   customer_holds: CustomerHolds;
   customer_loans: CustomerLoans;
+  customer_segments: CustomerSegments;
   customer_tags: CustomerTags;
   customers: Customers;
   day_wrapups: DayWrapups;
@@ -2504,6 +2549,7 @@ export interface DB {
   order_events_all: OrderEventsAll;
   order_events_archive: OrderEventsArchive;
   order_lines: OrderLines;
+  order_transfers: OrderTransfers;
   orders: Orders;
   organizations: Organizations;
   packagings: Packagings;
@@ -2551,6 +2597,7 @@ export interface DB {
   sales_daily: SalesDaily;
   sales_daily_marks: SalesDailyMarks;
   sales_daily_products: SalesDailyProducts;
+  samples: Samples;
   saved_locations: SavedLocations;
   saved_views: SavedViews;
   seasonal_factors: SeasonalFactors;

@@ -99,7 +99,7 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
   **Export follows what you see.** `/api/sales/orders/export` takes no filter today. It writes the current filter and sort, or only ticked rows, up to a row cap, and says how many rows it wrote; customers and payments follow. Customer export stays behind the authenticator code (T21).
 
   </details>
-- **T1. One filter format.** Saved views, segments, rules and the report builder share one filter shape: field, operator, value, AND/OR, «من» and relative Jalali dates.
+- **T1. One filter format.** Saved views, segments, rules and the report builder share one filter shape: field, operator, value, AND/OR, «من» and relative Jalali dates. **Built (first slice, batch D):** `lib/filterSpec.ts` (the shape, a menu per list, a parameterised-SQL compiler, a typed-text parser), used by the customers list. Saved views, rules and the report builder do not use it yet.
   <details><summary>Full decision</summary>
 
   **One filter format.** Saved views, saved smart segments (D3-5), rule conditions (F130) and the report builder (F123) share one filter shape: field, operator, value, nested AND/OR, with «من» and relative Jalali dates («۳۰ روز گذشته»). Each list offers a fixed menu of fields and operators, turned into parameterised SQL through the scoped reads (T1).
@@ -669,7 +669,7 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
   **Academy now (owner, 2026-11-12; plan `docs/plans/academy-catalogue-independence-2026-11-12.md`).** Two layers on one screen: «RouteFlow» lessons shipped as files (about 10 in Persian, drafted by the agent, reviewed by the owner: AC5) and «شرکت» lessons stored per company in categories the company creates (AC1, AC2). Editor `/sales/academy/manage` (AC3) for the owner, managers (own group) and any «مربی» (trainer), a permission the owner can give to anyone. Required per role with days after hire, the F133 table includes company lessons, «به‌روز شد» when a lesson changes (AC4). Links with tutorials, objection cards and product pages (AC6). **No new library:** plain text with headings and photos, photos in the company's storage. **Quizzes are the next slice** (AC-L1); the first slice ends a lesson with «خواندم».
 
   </details>
-- **VC1 to VC4. Catalogue for van roles. VC1, VC2, VC3 (show and print) and VC3b built 2026-11-13 (PR #82).** Not in this slice: this shop's price and visibility at a stop (F62, F89; the customer prices are not in the phone's synced data), add to order (a van role has no order screen yet), save as a picture, VC4. The page is `/sales/catalogue` (under the shell so it keeps the bottom bar), cached by the service worker after a visit, not read from the phone's local database. A page for `field_rep` and `delivery_driver`: search, category chips, photo, packings, this shop's price, stock on the van (approximate), add to order, show to the customer, save as picture or PDF. Product information (photos, category, three selling points, a «how to say it» line) is edited by owner and managers. **VC4 first slice built 2026-11-13 (PR #102):** a manager loads goods from the warehouse onto a van («بارگیری وانت» on `/sales/stock`), so the van stock the catalogue shows is real. The sale at the door and samples (F52) are not built; van roles still have no order screen.
+- **VC1 to VC4. Catalogue for van roles. VC1, VC2, VC3 (show and print) and VC3b built 2026-11-13 (PR #82).** Not in this slice: this shop's price and visibility at a stop (F62, F89; the customer prices are not in the phone's synced data), add to order (a van role has no order screen yet), save as a picture, VC4. The page is `/sales/catalogue` (under the shell so it keeps the bottom bar), cached by the service worker after a visit, not read from the phone's local database. A page for `field_rep` and `delivery_driver`: search, category chips, photo, packings, this shop's price, stock on the van (approximate), add to order, show to the customer, save as picture or PDF. Product information (photos, category, three selling points, a «how to say it» line) is edited by owner and managers. **VC4 first slice built 2026-11-13 (PR #102):** a manager loads goods from the warehouse onto a van («بارگیری وانت» on `/sales/stock`), so the van stock the catalogue shows is real. **Door sale and samples built 2026-11-14:** a van role opens «فروش در محل» (`/sales/door-sale`, a tab on the van bar), picks the shop, and either sells from the van (the ordinary order is created, confirmed, put on today's run, delivered and paid in one transaction; cash, on account, or another amount) or gives a free sample (own `samples` table plus a `SAMPLE_OUT` movement off the van, event `sample.given`). Managers see a sample report (shops sampled, who bought within 30 days, cost) on the stock page. A van delivery no longer debits the warehouse a second time. Not built: selling with no signal (it needs the server's stock check), an order for later from a van role, samples of an unpriced product, FEFO batches on van stock.
   <details><summary>Full decision</summary>
 
   **Catalogue now (owner, 2026-11-12).** Today `/sales/products` sends van roles to `/driver`, so they have no catalogue, and a product has no photo or description. **Both, in two steps:** step 1 takes orders for later with van stock shown as approximate (VC1 to VC3b); step 2 sells from van stock at the door once van loading (F30) exists, with samples (F52) (VC4). Cost and margin are never sent to van roles. The first version shows or saves the price list; sending it to the shop waits for the message channel (F6, F79). Needs a check that the van screens read the catalogue offline (F75).
@@ -700,12 +700,12 @@ Decided, but each needs something first. The "waits for" part is in the line. Th
 ### Screens, lists and desk speed
 
 - **UIB-E. Desk layouts and dashboards.** Denser desk screens and dashboard patterns. Comes after the phone patterns are done.
-- **FB19. Setup checklist details.** Minutes per step, a % bar, steps that tick from real data. Waits for UI batch D (UIB-D).
-- **A17. Typed filters on desk screens.** Text such as `بدهی>۱۰۰۰۰۰۰ منطقه:۳` turns into filter chips. Comes with T1.
+- **FB19. Setup checklist details.** Minutes per step, a % bar, steps that tick from real data. Waits for UI batch D (UIB-D). **Built (first slice, batch D):** a card on the owner's «امروز» (five steps, minutes each, a % bar, ticked from real data). Ctrl-K actions, pinned pages, the shared selection bar and the first-use tour (the rest of UIB-D) are not built.
+- **A17. Typed filters on desk screens.** Text such as `بدهی>۱۰۰۰۰۰۰ منطقه:۳` turns into filter chips. Comes with T1. **Built (first slice, batch D)** on the customers list: «شهر:تهران روز_از_خرید>30 مسئول:من» in the search box; debt is not a field yet.
 
 ### Customers and sales (CRM)
 
-- **FB36. Saved smart segments.** A customer filter saved by name, usable by promotions and reminders. Comes with F28 and F21.
+- **FB36. Saved smart segments.** A customer filter saved by name, usable by promotions and reminders. Comes with F28 and F21. **Built (first slice, batch D):** managers save a typed filter as a company segment; everyone with the customers list can tap it. Promotions and reminders do not use segments yet (they are not built).
 - **T12. F122 custom fields rules.** Text, number, choice, date, yes/no; up to ten; archive instead of delete. Waits for F122.
 - **T13. F82 / F59 lend a rep's customers. Built 2026-11-13 (PR #84), owner only, on the handover card.** A manager lends customers to a colleague for N days; access ends by itself. Waits for F82 / F59. The «تا کی؟» chips lend all of a person's customers for 3 days to a month; open tasks stay; the rules sweep gives them back the day after the last day, or «برگرداندن» does it early; a customer that changed hands meanwhile stays where it is. Not built: picking single customers, lending tasks.
 - **E2. «به شما سپرده شد» notice.** One push when records are handed to you; many at once become one push. Built with S6, T4 and F59. **Handover part built 2026-11-13 (PR #84):** the person who receives a handover or a lend gets one push. Not built: a push for a single customer reassigned by hand.
@@ -735,7 +735,7 @@ Decided, but each needs something first. The "waits for" part is in the line. Th
 - **FB16. Run replay map.** Scrub a driver's day with time and speed per point, for disputes and mileage. Waits for F6.
 - **FB17. QR scan proof and a required-proof setting.** QR on the delivery note scanned at the door; per-company required proof. Waits for the F17 design.
 - **FB25. ETA stage rules.** No driver means no ETA; started means a live ETA per stop; every ETA has a confidence. Recorded for F6 and F79.
-- **FB35. Delivery window capacity.** Owner sets a maximum orders per window; order entry shows places left. Waits for F57.
+- **FB35. Delivery window capacity.** Owner sets a maximum orders per window; order entry shows places left. Waits for F57. **Built (first slice, batch D):** a company limit of orders per delivery day (settings), places left shown under the chosen day on the order form, a seller refused for a full day, a manager may go past it. Windows within a day are not built.
 - **FB39. Sort position pings by their own time.** Note for F6: a late ping must not move the dot backwards.
 
 ### Stock, warehouse and suppliers
@@ -920,9 +920,9 @@ All 148 entries of `docs/future-features.md` (F1 to F148), grouped by area, with
 | F73 | Order edit history | M | yes | F27, F48 | Built (delivery day, due date, address, notes with a reason) | FB3 |
 | F76 | Order approval by value | M | yes | F48, F51 | Built (first slice, 2026-11-13): company limit «سقف سفارش بدون تأیید» in the thresholds page (0 = off); a bigger order waits in the credit approvals deck as a «value» request; a signed-in owner's own order passes. No per-role or per-customer limit yet | — |
 | F89 | Customer price history | S | yes | F29, F56 | Built (first slice) | — |
-| F96 | Inter-group order transfers | L | yes | F48 | Not built | — |
+| F96 | Inter-group order transfers | L | yes | F48 | Built (first slice, batch D): a manager asks another group to fulfil a confirmed order; that group's manager accepts or refuses; accepting moves the order's group only (seller and commission stay). Not built: stock crossing groups, approval by the owner | — |
 | F114 | Carton completion nudges | S | yes | F58, F65 | Small, waits for a prerequisite | — |
-| F121 | Pre-orders against incoming stock | L | yes | F61, F66 | Not built | D27 |
+| F121 | Pre-orders against incoming stock | L | yes | F61, F66 | Built (first slice, batch D): an order line can be marked pre-order when its product is on an open purchase order; it may promise only what other pre-orders have not claimed (first come first served, all of it); when the goods are received the oldest orders take their share and the line becomes ordinary. Not built: a safety percentage, tiers, the promised date in a customer message, a notice when a shipment is cancelled | D27 |
 | F131 | Keyboard-first desk order entry | M | yes | F58 | Not built | — |
 | F132 | Order priority flag | S | yes | F28, F64 | Built (first slice) | — |
 | F145 | Counter sales and customer pickup | L | yes | F63 | Not built | — |
@@ -947,9 +947,9 @@ All 148 entries of `docs/future-features.md` (F1 to F148), grouped by area, with
 | F101 | Bulk delivery notes per run | S | yes | F147 | Built (first slice) | — |
 | F103 | Rep mileage log | M | yes | F68, F88 | Built (batch D) | — |
 | F115 | Voice read-out for drivers | M | yes | F69, F117 | Not built | — |
-| F118 | Supplier pickup runs | L | yes | F31, F66 | Not built | — |
+| F118 | Supplier pickup runs | L | yes | F31, F66 | Built (first slice, batch D): a pickup stop on a run (any factory, warehouse or shop place, optional purchase order), shown to the driver with navigation and a «کالا را گرفتم» tick. Not built: cash paid at the supplier, filling the receipt from the pickup | — |
 | F119 | Return pickup scheduling | M | yes | F12, F80 | Not built | — |
-| F120 | Delivery confirmation code | M | yes | F6, F17, F79 | Not built | FB28 |
+| F120 | Delivery confirmation code | M | yes | F6, F17, F79 | Built (first slice, batch D): per-customer switch, 6-digit code worked out from the order and shown to the dispatcher, a code step in the driver's flow, the result kept and never blocking. Not built: sending the code by message (needs F6/F79) | FB28 |
 | F139 | Third-party carrier shipments | L | yes | F17 | Not built | — |
 
 ### Stock, warehouse and suppliers

@@ -1,3 +1,4 @@
+import { recordCodeResult } from "@/lib/repo/deliveryCode";
 import { NextRequest, NextResponse } from "next/server";
 import { isId } from "@/lib/inputChecks";
 import { requireRole } from "@/lib/session";
@@ -33,6 +34,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     collected_toman?: unknown;
     notes?: unknown;
     fail_reason_id?: unknown;
+    code?: unknown;
   } | null;
 
   const lines = Array.isArray(body?.lines)
@@ -91,6 +93,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       notes: typeof body?.notes === "string" ? body.notes : null,
       fail_reason_id: failReasonId,
     });
+    await recordCodeResult(guard.session.organizationId, stopId, typeof body?.code === "string" ? body.code : null);
     return NextResponse.json({ ok: true });
   } catch (e) {
     if (e instanceof DeliveryError) {

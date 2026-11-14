@@ -15,6 +15,7 @@
 // 1..n. The divider between them is doing real work — it says "these are not stops in an
 // order", not just "there is a section here".
 
+import { useRouter } from "next/navigation";
 import { navigateUrl, type NavAppId } from "@/lib/navApps";
 import { facilityMarkerHtml } from "@/components/facilityArt";
 import { Icon } from "@/components/meridian/Icon";
@@ -25,6 +26,7 @@ const ROLE_LABEL: Record<RunFacilityStop["role"], string> = {
   load: "اولِ روز",
   // The driver's call, and the wording says so.
   unload: "هر وقت خواستی",
+  pickup: "رفتن برای گرفتن کالا",
 };
 
 export default function FacilityStopCards({
@@ -63,7 +65,12 @@ function FacilityCard({
   navAppId: NavAppId;
   onOpenUnload?: (stop: RunFacilityStop) => void;
 }) {
+  const router = useRouter();
   const done = stop.status === "done";
+  const collected = async (id: number) => {
+    const res = await fetch(`/api/driver/pickups/${id}`, { method: "POST" }).catch(() => null);
+    if (res?.ok) router.refresh();
+  };
   const placed = stop.lat !== null && stop.lng !== null;
 
   return (
@@ -81,7 +88,7 @@ function FacilityCard({
         <div className="min-w-0 flex-1">
           <div className="flex items-baseline gap-2">
             <span className="truncate text-[length:var(--text-sm)] text-text">
-              {stop.role === "load" ? "بارگیری" : "تخلیه"} · {stop.name}
+              {stop.role === "load" ? "بارگیری" : stop.role === "pickup" ? "گرفتن کالا" : "تخلیه"} · {stop.name}
             </span>
           </div>
           <div className="mt-0.5 text-[length:var(--text-xs)] text-text-muted">
@@ -115,6 +122,15 @@ function FacilityCard({
         </p>
       )}
 
+      {!done && stop.role === "pickup" && (
+        <button
+          type="button"
+          data-tour="pickup-collected"
+          onClick={() => void collected(stop.id)}
+          className="mt-2 w-full rounded-[var(--radius-md)] border border-accent px-3 py-1.5 text-[length:var(--text-xs)] text-accent transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:bg-accent hover:text-accent-ink"
+        >
+          <Icon name="check" size="sm" /> کالا را گرفتم</button>
+      )}
       {!done && stop.role === "unload" && (
         <button
           type="button"
