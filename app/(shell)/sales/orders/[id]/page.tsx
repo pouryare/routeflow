@@ -20,7 +20,7 @@ import BentoStrip, {
   BentoTile,
   BentoGauge,
 } from "@/components/BentoStrip";
-import { isVanRole, isOwner, MANAGE_ROLES } from "@/lib/roles";
+import { isVanRole, isOwner, isPhoneSales, MANAGE_ROLES } from "@/lib/roles";
 import ComplaintFromOrder from "@/components/flows/ComplaintFromOrder";
 import OrderPriorityToggle from "@/components/sales/OrderPriorityToggle";
 import PriorityTag from "@/components/sales/PriorityTag";
@@ -85,9 +85,9 @@ export default async function OrderDetailPage({
   const { order, attempts } = page;
   const discount = await discountOfOrder(session.organizationId, order.id);
   // F63: credit the customer already paid ahead, offered on an unpaid delivered order to the people who record payments.
-  const canRate = (MANAGE_ROLES.includes(session.role) || session.role === "phone_sales") && (FULFILLED_ORDER_STATUSES as readonly string[]).includes(order.status);
+  const canRate = (MANAGE_ROLES.includes(session.role) || isPhoneSales(session.role)) && (FULFILLED_ORDER_STATUSES as readonly string[]).includes(order.status);
   const owes = Math.max(0, order.total_toman - order.paid_toman);
-  const credit = (MANAGE_ROLES.includes(session.role) || session.role === "phone_sales") && owes > 0 && (FULFILLED_ORDER_STATUSES as readonly string[]).includes(order.status) ? await onAccountCredit(session.organizationId, order.customer_id) : 0;
+  const credit = (MANAGE_ROLES.includes(session.role) || isPhoneSales(session.role)) && owes > 0 && (FULFILLED_ORDER_STATUSES as readonly string[]).includes(order.status) ? await onAccountCredit(session.organizationId, order.customer_id) : 0;
 
   return (
     <div className="flex flex-col gap-[var(--space-4)]">

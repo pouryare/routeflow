@@ -3,7 +3,7 @@ import { tehranTodayIso } from "@/lib/jalali";
 import { resolvePrice, setPrice } from "@/lib/catalogue";
 import { baseProblem, factorProblem, priceFromBase } from "@/lib/priceBases";
 
-export interface BaseLink {
+interface BaseLink {
   id: number;
   product_id: number;
   packaging_id: number | null;

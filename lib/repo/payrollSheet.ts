@@ -54,7 +54,7 @@ export async function payrollSheet(session: Session, jy: number, jm: number): Pr
   return [...by.values()].sort((a, b) => a.name.localeCompare(b.name, "fa"));
 }
 
-export const PAYROLL_HEAD = ["نام", "نقش", "پورسانت ماه", "کسر تخفیف", "خالص پورسانت", "پرداخت‌شده", "مانده پورسانت", "هزینهٔ تأییدشده", "هزینهٔ هنوز پرداخت‌نشده"];
+const PAYROLL_HEAD = ["نام", "نقش", "پورسانت ماه", "کسر تخفیف", "خالص پورسانت", "پرداخت‌شده", "مانده پورسانت", "هزینهٔ تأییدشده", "هزینهٔ هنوز پرداخت‌نشده"];
 export const payrollCsvRows = (rows: PayrollRow[]): (string | number)[][] => [
   PAYROLL_HEAD,
   ...rows.map((r) => [r.name, r.kinds.join("، "), r.accrued_toman, r.deduction_toman, r.net_toman, r.paid_toman, r.owed_toman, r.claims_approved_toman, r.claims_unpaid_toman]),

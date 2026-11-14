@@ -1,6 +1,6 @@
 /** F45: rating a delivery. Pure rules.
  *  Example: a shop owner tells the rep «۲ ستاره، کالا دیر رسید»; the rep enters 2 with the reason «دیر رسید» and a follow-up call task appears. */
-export const LOW_STARS = 2;
+const LOW_STARS = 2;
 export const RATING_REASONS = ["دیر رسید", "کالا ناقص بود", "کالا آسیب دیده بود", "برخورد راننده", "قیمت یا فاکتور"] as const;
 
 export const isLowRating = (stars: number): boolean => stars <= LOW_STARS;

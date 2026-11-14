@@ -21,7 +21,7 @@ import { cardFor } from "@/lib/repo/briefingCards";
 import RolePicker from "@/components/today/RolePicker";
 import SweepButton from "@/components/SweepButton";
 import PageHeader from "@/components/meridian/PageHeader";
-import { isVanRole, isOwner, roleLabel, MANAGE_ROLES } from "@/lib/roles";
+import { isVanRole, isOwner, isPhoneSales, roleLabel, MANAGE_ROLES } from "@/lib/roles";
 import { earningsSoFar } from "@/lib/repo/earningsSoFar";
 import EarningsCard from "@/components/today/EarningsCard";
 import { weekVsLast } from "@/lib/repo/weekCompare";
@@ -115,7 +115,7 @@ export default async function SalesTodayPage() {
         </div>
       )}
 
-      {wrapUp && (session.role === "phone_sales" || !wrapUpEmpty(wrapUp)) && <WrapUpCard w={wrapUp} />}
+      {wrapUp && (isPhoneSales(session.role) || !wrapUpEmpty(wrapUp)) && <WrapUpCard w={wrapUp} />}
 
       {whatsNew && <WhatsNewCard entry={whatsNew} />}
       <FirstStepsCard />

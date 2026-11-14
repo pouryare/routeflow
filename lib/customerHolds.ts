@@ -1,7 +1,7 @@
 /** F71: a temporary hold on a customer's new orders. Pure rules.
  *  Example: a rep places a hold on «نانوایی سحر» for 7 days because a cheque bounced; a new order from them waits for a manager. */
 export const HOLD_DEFAULT_DAYS = 7;
-export const HOLD_MAX_DAYS = 30;
+const HOLD_MAX_DAYS = 30;
 
 export function holdProblem(i: { reason: string; expiresOn: string; today: string }): string | null {
   if (i.reason.trim().length === 0) return "دلیل نگه‌داشتن را بنویسید";
