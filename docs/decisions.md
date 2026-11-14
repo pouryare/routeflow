@@ -443,6 +443,7 @@ Six follow-ups after the index audit (`notes/db-index-audit-2026-11-09.md`, PR #
 | Dashboard totals | **Own saved daily totals with changed-day marks** (`lib/repo/salesDaily.ts`). Any change to an order, a line or a payment marks the order's day, and marked days are recounted just before the next read and again by the nightly 04:00 run, so a total is right even when the past is edited and the morning dashboard does not wait. pg_ivm was rejected (an extension to install and keep in step with every Postgres upgrade). The dashboard opens on **this Jalali season**, with «امسال» and «همهٔ زمان‌ها» beside it. |
 | Seed speed | Delegated. Demo seed runs with `synchronous_commit=off`; it stays sequential because order numbers and credit holds depend on order. |
 | Slow queries | A card on «وضعیت سامانه» for the platform owner, from `pg_stat_statements`: the ten slowest app queries on average, with how often each ran. |
+| Two-step login QR code | **`uqr`** (MIT, no dependencies, owner choice 2026-11-12) draws the `otpauth://` link as SVG in the browser (`components/meridian/QrCode.tsx`). The secret is never sent to a QR service; the typed key stays as fallback. `qrcode` and a hand-written encoder were rejected (bigger, or hundreds of lines to own). |
 
 ### 10.22 Events, outbox, worker and audit (2026-11-12, owner decision)
 
