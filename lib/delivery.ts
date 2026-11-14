@@ -63,6 +63,8 @@ export interface RunStop {
   order_notes: string | null;
   /** F57: the customer's opening hours on the run's day, or null when none are known. */
   window_label: string | null;
+  /** F120: the customer asks for a delivery code, so the driver's flow has a code step. */
+  needs_code?: boolean;
   lines: RunStopLine[];
   total_toman: number;
 }
@@ -354,7 +356,7 @@ export async function readRun(db: Db, runId: number): Promise<RunDetail | null> 
     .prepare(
       `SELECT ds.id, ds.order_id, ds.status, ds.collected_toman, ds.sort_order, ds.notes,
               o.order_no, o.priority, o.customer_id, o.discount_toman, o.notes AS order_notes,
-              c.business_name AS customer_name, c.address, c.phone, c.lat, c.lng, c.delivery_instructions, c.working_hours_json
+              c.business_name AS customer_name, c.address, c.phone, c.lat, c.lng, c.delivery_instructions, c.delivery_code_required AS needs_code, c.working_hours_json
          FROM delivery_stops ds
          JOIN orders o ON o.id = ds.order_id
          JOIN customers c ON c.id = o.customer_id

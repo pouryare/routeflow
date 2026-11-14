@@ -949,7 +949,7 @@ All 148 entries of `docs/future-features.md` (F1 to F148), grouped by area, with
 | F115 | Voice read-out for drivers | M | yes | F69, F117 | Not built | — |
 | F118 | Supplier pickup runs | L | yes | F31, F66 | Not built | — |
 | F119 | Return pickup scheduling | M | yes | F12, F80 | Not built | — |
-| F120 | Delivery confirmation code | M | yes | F6, F17, F79 | Not built | FB28 |
+| F120 | Delivery confirmation code | M | yes | F6, F17, F79 | Built (first slice, batch D): per-customer switch, 6-digit code worked out from the order and shown to the dispatcher, a code step in the driver's flow, the result kept and never blocking. Not built: sending the code by message (needs F6/F79) | FB28 |
 | F139 | Third-party carrier shipments | L | yes | F17 | Not built | — |
 
 ### Stock, warehouse and suppliers

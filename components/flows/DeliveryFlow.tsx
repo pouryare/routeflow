@@ -31,7 +31,7 @@ function contextFor(stop: RunStop, failReasons: { id: number; label: string }[])
     ...EMPTY_CONTEXT,
     entry: "delivery",
     lists: { fail_reasons: failReasons },
-    vars: { customer: stop.customer_name },
+    vars: { customer: stop.customer_name, needs_code: stop.needs_code ? "1" : "0" },
     items: stop.lines.map((l) => ({
       id: l.id,
       label: `${l.product_name} · ${l.packaging_name}`,

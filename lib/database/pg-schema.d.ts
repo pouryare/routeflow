@@ -444,6 +444,7 @@ export interface Customers {
   credit_limit_toman: number | null;
   customer_code: string;
   customer_type: string | null;
+  delivery_code_required: Generated<boolean>;
   delivery_instructions: string | null;
   district_id: number | null;
   first_order_at: string | null;
@@ -547,6 +548,7 @@ export interface DeletedRows {
 export interface Deliveries {
   actual_arrival: string | null;
   client_uuid: string | null;
+  code_ok: boolean | null;
   collected_toman: Generated<number>;
   completed_at: string | null;
   created_at: string;

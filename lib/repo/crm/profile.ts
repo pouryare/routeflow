@@ -54,6 +54,7 @@ export interface Profile {
   holdCanRelease: boolean;
   /** F69: the driver's standing note, for the people who may write it. */
   deliveryInstructions: string | null;
+  deliveryCodeRequired: boolean;
   canInstruct: boolean;
   /** FB9: may write in the customer's chat thread. */
   canChat: boolean;
@@ -73,12 +74,12 @@ export async function profileFor(session: Session, id: number): Promise<Profile 
   if (!business) return null;
   const db = getDb();
   const org = business.organization_id;
-  const extra = await db.prepare(`SELECT secondary_phone, whatsapp, website, instagram, size_band, supply_channel, visit_window, visit_note, uses_products_json, COALESCE(temperature_manual, 0) AS temperature_manual, created_source, payment_terms_kind, payment_terms_days, credit_limit_toman, tax_id, delivery_instructions
+  const extra = await db.prepare(`SELECT secondary_phone, whatsapp, website, instagram, size_band, supply_channel, visit_window, visit_note, uses_products_json, COALESCE(temperature_manual, 0) AS temperature_manual, created_source, payment_terms_kind, payment_terms_days, credit_limit_toman, tax_id, delivery_instructions, delivery_code_required
     FROM customers WHERE id = ? AND organization_id = ?`).get(id, org) as {
       secondary_phone: string | null; whatsapp: string | null; website: string | null; instagram: string | null;
       size_band: string | null; supply_channel: string | null; visit_window: string | null; visit_note: string | null;
       uses_products_json: string | null; temperature_manual: number; created_source: string | null;
-      payment_terms_kind: string; payment_terms_days: number; credit_limit_toman: number | null; tax_id: string | null; delivery_instructions: string | null;
+      payment_terms_kind: string; payment_terms_days: number; credit_limit_toman: number | null; tax_id: string | null; delivery_instructions: string | null; delivery_code_required: boolean;
     };
   const tags = (plain(await db.prepare("SELECT tag FROM customer_tags WHERE customer_id = ? AND organization_id = ? ORDER BY tag").all(id, org)) as { tag: string }[]).map(t => t.tag);
   const contacts = plain(await db.prepare(`SELECT id, name, role, phone_norm, whatsapp, is_primary, is_decider, best_time, note
@@ -101,6 +102,7 @@ export async function profileFor(session: Session, id: number): Promise<Profile 
     canPromise: [...MANAGE_ROLES, "phone_sales", "field_rep"].includes(session.role),
     hold,
     deliveryInstructions: extra.delivery_instructions,
+    deliveryCodeRequired: extra.delivery_code_required,
     canInstruct: [...MANAGE_ROLES, "phone_sales", "field_rep"].includes(session.role),
     holdCanRelease: hold !== null && ((MANAGE_ROLES as readonly string[]).includes(session.role) || hold.placed_by === session.user.id),
     canChat: canChat(session.role),

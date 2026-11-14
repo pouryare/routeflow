@@ -29,6 +29,8 @@ export interface OrderDeliveryAttempt {
   /** Why it was late, in words. Independent of `fail_reason`. */
   delay_reason: string | null;
   receiver_name: string | null;
+  /** F120: true = the customer said the right code, false = a wrong one, null = none was asked or typed. */
+  code_ok: boolean | null;
   /** Whether there is a photo, without carrying its path to a table that does not show
    *  it. `number`, not `boolean`: SQLite hands back 0/1 here. */
   has_photo: number;
@@ -43,7 +45,7 @@ export async function readOrderDeliveryHistory(
     .prepare(
       `SELECT d.id, d.seq, d.status, d.planned_arrival, d.actual_arrival, d.completed_at,
               fr.label_fa AS fail_reason, dr.label_fa AS delay_reason,
-              d.receiver_name,
+              d.receiver_name, d.code_ok,
               (d.photo_path IS NOT NULL AND d.photo_path != '') AS has_photo
          FROM deliveries d
          LEFT JOIN reason_codes fr ON fr.id = d.fail_reason_id

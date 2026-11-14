@@ -4,6 +4,7 @@ import Link from "next/link";
 import { cookies } from "next/headers";
 import { redirect, notFound } from "next/navigation";
 import { COOKIE_NAME } from "@/lib/auth";
+import { codeForOrder } from "@/lib/repo/deliveryCode";
 import { getSessionFromCookies } from "@/lib/session";
 import { orderPageFor } from "@/lib/repo/ordersView";
 import { pageMetadata } from "@/lib/pageMeta";
@@ -89,9 +90,17 @@ export default async function OrderDetailPage({
   const owes = Math.max(0, order.total_toman - order.paid_toman);
   const credit = (MANAGE_ROLES.includes(session.role) || isPhoneSales(session.role)) && owes > 0 && (FULFILLED_ORDER_STATUSES as readonly string[]).includes(order.status) ? await onAccountCredit(session.organizationId, order.customer_id) : 0;
 
+  // F120: the dispatcher reads this code to a customer who asked for one.
+  const code = MANAGE_ROLES.includes(session.role) || isPhoneSales(session.role) ? await codeForOrder(session.organizationId, order.id) : null;
+
   return (
     <div className="flex flex-col gap-[var(--space-4)]">
       <LiveRefresh topics={["orders"]} id={order.id} />
+      {code && (
+        <p className="m-0 rounded-[var(--radius-md)] border border-[var(--border)] p-[var(--space-3)] text-[length:var(--text-sm)]" data-tour="delivery-code-shown">
+          کد تحویل این سفارش: <b className="tabular-nums" dir="ltr">{code}</b> — به مشتری بگویید؛ راننده هنگام تحویل از او می‌پرسد.
+        </p>
+      )}
       <div className="flex flex-wrap items-baseline justify-between gap-[var(--space-2)]">
         <div>
           <h2 className="sechead__title tabular-nums">
@@ -303,6 +312,11 @@ export default async function OrderDetailPage({
                     {a.fail_reason ? `دلیل ناموفقی: ${a.fail_reason}` : null}
                     {a.fail_reason && a.delay_reason ? " · " : null}
                     {a.delay_reason ? `دلیل تأخیر: ${a.delay_reason}` : null}
+                  </p>
+                )}
+                {a.code_ok !== null && (
+                  <p className="m-0 mt-[var(--space-1)] text-[length:var(--text-xs)] text-[var(--muted)]">
+                    {a.code_ok ? "کد تحویل درست گفته شد" : "کد تحویل با کد سفارش نمی‌خواند"}
                   </p>
                 )}
                 {a.receiver_name && (
