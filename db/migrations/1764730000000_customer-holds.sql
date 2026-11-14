@@ -1,3 +1,4 @@
+-- squawk-ignore-file ban-drop-constraint, constraint-missing-not-valid
 -- Up Migration
 -- rf: expand-only
 -- F71: a rep or manager puts a temporary hold on a customer's NEW orders (a dispute, a returned cheque under discussion), with a

@@ -11,7 +11,7 @@ CREATE TABLE delivery_ratings (
   organization_id bigint NOT NULL REFERENCES organizations(id),
   order_id bigint NOT NULL REFERENCES orders(id),
   customer_id bigint NOT NULL REFERENCES customers(id),
-  stars smallint NOT NULL CHECK (stars BETWEEN 1 AND 5),
+  stars bigint NOT NULL CHECK (stars BETWEEN 1 AND 5),
   reason text CHECK (reason IS NULL OR char_length(reason) <= 100),
   rated_by bigint NOT NULL REFERENCES users(id),
   rated_at text NOT NULL,
