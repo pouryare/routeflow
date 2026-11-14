@@ -906,14 +906,14 @@ All 148 entries of `docs/future-features.md` (F1 to F148), grouped by area, with
 | F21 | Promotion and campaign manager | L |  | — | Not built | FB36, T16 |
 | F23 | Digital catalogue and price list | S |  | — | Built (first slice) | — |
 | F44 | Standing orders and contracts | L | yes | — | Not built | S10 |
-| F56 | Price list versioning and scheduled price changes | M | yes | F21, F48 | Not built | D14 |
+| F56 | Price list versioning and scheduled price changes | M | yes | F21, F48 | Built (batch D) | D14 |
 | F58 | Order templates and favourites | S | yes | — | Built (first slice) | — |
 | F60 | Call-to-order shortcut | M | yes | F4, F58 | Not built | — |
 | F61 | Backorders and partial fulfilment | M | yes | F44, F64 | Partly built | — |
 | F62 | Customer-specific product visibility | S | yes | F58 | Built (first slice) | — |
 | F64 | Minimum order and delivery fee rules | M | yes | — | Not built | — |
 | F65 | Small-quantity price uplift | M | yes | F48, F56, F64 | Not built | — |
-| F71 | Customer credit holds by rep | M | yes | F48 | Not built | — |
+| F71 | Customer credit holds by rep | M | yes | F48 | Built (batch D) | — |
 | F72 | Duplicate order warning | S | yes | — | Built (first slice) | — |
 | F73 | Order edit history | M | yes | F27, F48 | Built (delivery day, due date, address, notes with a reason) | FB3 |
 | F76 | Order approval by value | M | yes | F48, F51 | Built (first slice, 2026-11-13): company limit «سقف سفارش بدون تأیید» in the thresholds page (0 = off); a bigger order waits in the credit approvals deck as a «value» request; a signed-in owner's own order passes. No per-role or per-customer limit yet | — |
@@ -934,8 +934,8 @@ All 148 entries of `docs/future-features.md` (F1 to F148), grouped by area, with
 | F17 | Delivery proof and dispute handling | M | yes | — | Partly built | FB17, FB22 |
 | F24 | Driver pay and incentives | M |  | — | Not built | — |
 | F38 | Automatic arrival and departure (geofencing) | S | yes | F6 | Small, waits for a prerequisite | FB15 |
-| F45 | Customer feedback loop (delivery rating) | M | yes | F6, F18 | Not built | — |
-| F57 | Delivery time windows | M | yes | F38 | Not built | FB35 |
+| F45 | Customer feedback loop (delivery rating) | M | yes | F6, F18 | Built (batch D, rep-entered) | — |
+| F57 | Delivery time windows | M | yes | F38 | Built, display only (batch D) | FB35 |
 | F68 | Rep activity map | M | yes | F6, F38 | Not built | — |
 | F69 | Delivery instructions (per customer and per order) | S | yes | F57 | Small, waits for a prerequisite | — |
 | F78 | Driver map pin correction | M | yes | F27 | Not built | E3 |
@@ -943,7 +943,7 @@ All 148 entries of `docs/future-features.md` (F1 to F148), grouped by area, with
 | F81 | Peak-day capacity warning | M | yes | F25, F57 | Not built | — |
 | F97 | Vehicle assignment history | M | yes | — | Not built | — |
 | F101 | Bulk delivery notes per run | S | yes | F147 | Built (first slice) | — |
-| F103 | Rep mileage log | M | yes | F68, F88 | Not built | — |
+| F103 | Rep mileage log | M | yes | F68, F88 | Built (batch D) | — |
 | F115 | Voice read-out for drivers | M | yes | F69, F117 | Not built | — |
 | F118 | Supplier pickup runs | L | yes | F31, F66 | Not built | — |
 | F119 | Return pickup scheduling | M | yes | F12, F80 | Not built | — |
@@ -963,7 +963,7 @@ All 148 entries of `docs/future-features.md` (F1 to F148), grouped by area, with
 | F42 | Complaint root-cause analytics | S | yes | F12, F31 | Small, waits for a prerequisite | — |
 | F66 | Supplier order tracking (purchase orders) | L | yes | F11, F31 | Built (first slice, 2026-11-13): orders with status, expected day and lines; made as drafts from the buy list; receive against an order (partial keeps the rest open, «بستن با کسری» closes it); late ones on top; feeds D17, D27 and F31. Not built: a hand-made order form, price difference flag at receipt | F87, F118, F121 |
 | F80 | Warehouse returns handling | M | yes | F12 | Not built | B1 |
-| F87 | Warehouse receiving appointments | M | yes | F31, F66 | Not built | — |
+| F87 | Warehouse receiving appointments | M | yes | F31, F66 | Built (batch D) | — |
 | F93 | Warehouse bin locations and stock transfers | M | yes | F1, F30 | Not built | FB31 |
 | F94 | Warehouse picking accuracy log | M | yes | F30 | Not built | — |
 
@@ -977,7 +977,7 @@ All 148 entries of `docs/future-features.md` (F1 to F148), grouped by area, with
 | F46 | Credit-risk scoring from payment behaviour | M | yes | — | Built (first slice) | — |
 | F49 | Cash-flow forecast | M | yes | F46, F50 | Not built | D23, D24 |
 | F50 | Payment promise tracker | M | yes | F18, F46 | Built (first slice) | T8, T23 |
-| F63 | Deposits and prepayments | M | yes | F46 | Not built | — |
+| F63 | Deposits and prepayments | M | yes | F46 | Built, first slice (batch D) | — |
 | F83 | Payment terms and early-payment discounts | M | yes | F18, F46, F50 | Not built | D5 |
 
 ### Accounting, analytics and reporting
@@ -989,7 +989,7 @@ All 148 entries of `docs/future-features.md` (F1 to F148), grouped by area, with
 | F32 | Margin analytics (customer, product, route) | M | yes | — | Not built | — |
 | F34 | Data export and backup self-service | S | yes | F27 | Built (first slice) | — |
 | F67 | Friday weekly scorecard | S | yes | — | Built (first slice) | — |
-| F90 | Monthly staff pay summary for the accountant | M | yes | F25, F27, F88 | Not built | — |
+| F90 | Monthly staff pay summary for the accountant | M | yes | F25, F27, F88 | Built (batch D) | — |
 | F92 | Territory revenue map | M | yes | — | Not built | — |
 | F116 | Amount in words | S | yes | F18, F147 | Built (first slice) | — |
 | F123 | Report builder with saved reports | L | yes | F14 | Not built | T1, S11 |
@@ -1011,7 +1011,7 @@ All 148 entries of `docs/future-features.md` (F1 to F148), grouped by area, with
 | F88 | Staff expense reimbursement | M | yes | F26, F48 | Built (2026-11-13): approved claim books Dr expense (with the group) / Cr 2107 «بدهی به کارکنان»; the owner pays a person back in one entry from the cash box or bank. Nobody approves their own claim except the owner. | D15 |
 | F95 | Staff birthdays and work anniversaries | S | yes | F86, F90 | Small, waits for a prerequisite | — |
 | F102 | Manager approval inbox | M | yes | F48, F76, F82, F88 | Built (first slice, 2026-11-13): a fourth button on «امروز» next to credit, discount and duplicates: staff costs waiting for this manager. Orders awaiting review are not in a deck yet. | — |
-| F129 | Approval chains | L | yes | F48, F76, F82, F102 | Not built | — |
+| F129 | Approval chains | L | yes | F48, F76, F82, F102 | Built, first slice (batch D) | — |
 | F130 | Rule builder screen | L | yes | F51 | Partly built | T1, T9, S9 |
 | F133 | Required training and completion tracking | S | yes | F84, F112 | Built (first slice) | — |
 

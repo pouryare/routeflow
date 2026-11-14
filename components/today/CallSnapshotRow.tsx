@@ -30,7 +30,7 @@ export default function CallSnapshotRow({ customerId, label, sub }: { customerId
 
   return (
     <li className="border-b border-[var(--border)] py-[10px] last:border-b-0">
-      <button type="button" onClick={() => void show()} className="flex min-h-11 w-full items-baseline justify-between gap-[var(--space-2)] bg-transparent p-0 text-start">
+      <button type="button" onClick={() => void show()} className="flex min-h-11 w-full items-baseline justify-between gap-[var(--space-2)] bg-transparent p-0 text-start"><Icon name="phone" size="sm" />
         <span className="text-[var(--foreground)]">{label}</span>
         {sub ? <span className="text-[length:12px] text-[var(--muted)]">{sub}</span> : null}
       </button>
@@ -43,7 +43,7 @@ export default function CallSnapshotRow({ customerId, label, sub }: { customerId
               <>
                 {s.holdReason ? <p className="m-0" role="status" style={{ color: "var(--warning)" }}>سفارش‌های تازه نگه داشته شده: {s.holdReason}</p> : null}
                 <p className="m-0"><b>بدهی:</b> {s.debtToman > 0 ? `${faToman(s.debtToman)}${s.overdueToman > 0 ? ` (${faToman(s.overdueToman)} بیش از ۳۰ روز)` : ""}` : "بدهی ندارد"}</p>
-                <p className="m-0"><b>آخرین سفارش:</b> {s.lastOrder ? `${s.lastOrder.order_no} · ${faJalaliDate(s.lastOrder.order_date)} · ${ORDER_STATUS_LABEL[s.lastOrder.status as OrderStatus] ?? s.lastOrder.status}` : "سفارشی نداشته"}</p>
+                <p className="m-0"><b>آخرین سفارش:</b> {s.lastOrder ? `${s.lastOrder.order_no} · ${faJalaliDate(s.lastOrder.order_date)} · ${ORDER_STATUS_LABEL[s.lastOrder.status as OrderStatus] ?? "نامشخص"}` : "سفارشی نداشته"}</p>
                 <p className="m-0"><b>آخرین یادداشت:</b> {s.lastNote ? s.lastNote.note : "یادداشتی نیست"}</p>
                 {s.openTasks.length > 0 ? <p className="m-0"><b>کارهای باز:</b> {s.openTasks.map((t) => t.title).join(" · ")}</p> : null}
                 <div className="flex flex-wrap gap-[var(--space-2)]">

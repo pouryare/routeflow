@@ -46,3 +46,8 @@ export async function applyCreditToOrder(orgId: number, orderId: number): Promis
   });
   return applied;
 }
+
+/** The customer an order belongs to, or undefined when the order is not in this company. */
+export async function orderCustomer(orgId: number, orderId: number): Promise<{ customer_id: number } | undefined> {
+  return (await getDb().prepare("SELECT customer_id FROM orders WHERE id = ? AND organization_id = ?").get(orderId, orgId)) as { customer_id: number } | undefined;
+}

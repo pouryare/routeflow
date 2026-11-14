@@ -64,8 +64,8 @@ export default function PriceBases({ bases, products }: { bases: PriceBase[]; pr
             <div className="flex flex-wrap items-center justify-between gap-[var(--space-2)]">
               <b>{b.name} · {faToman(b.value_toman)}</b>
               <span className="flex gap-[var(--space-2)]">
-                <button type="button" className={BTN} onClick={() => { setValue(String(b.value_toman)); setSheet({ kind: "move", base: b }); }}>تغییر عدد</button>
-                <button type="button" className={BTN} onClick={() => setSheet({ kind: "link", base: b })}>وصل کردن کالا</button>
+                <button type="button" className={BTN} onClick={() => { setValue(String(b.value_toman)); setSheet({ kind: "move", base: b }); }}><Icon name="edit" size="md" />تغییر عدد</button>
+                <button type="button" className={BTN} onClick={() => setSheet({ kind: "link", base: b })}><Icon name="link" size="md" />وصل کردن کالا</button>
               </span>
             </div>
             <ul className="m-0 flex list-none flex-col gap-[var(--space-1)] p-0 text-[length:var(--text-xs)] text-[var(--muted)]">

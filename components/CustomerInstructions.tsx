@@ -26,7 +26,7 @@ export default function CustomerInstructions({ customerId, name, text, onChanged
   return (
     <section className="card flex flex-wrap items-center justify-between gap-[var(--space-2)] p-[var(--space-4)]" dir="rtl" data-tour="delivery-instructions" aria-label="نکتهٔ تحویل">
       <span className="text-[length:var(--text-sm)]"><b>نکتهٔ تحویل:</b> {text ?? <span className="text-[var(--muted)]">ندارد (کد در، پارکینگ، تحویل‌گیرنده…)</span>}</span>
-      <button type="button" className={BTN} onClick={() => { setDraft(text ?? ""); setOpen(true); }}><Icon name="edit" size="md" />ویرایش</button>
+      <button type="button" className={BTN} onClick={() => { setDraft(text ?? ""); setOpen(true); }}><Icon name="edit" size="md" />ویرایش نکتهٔ تحویل</button>
       {open ? (
         <BottomSheet open title="نکتهٔ تحویل" subtitle={name} onClose={() => setOpen(false)} closeLabel="بستن">
           <div className="flex flex-col gap-[var(--space-3)]" dir="rtl">

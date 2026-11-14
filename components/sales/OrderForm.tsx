@@ -412,7 +412,7 @@ export default function OrderForm({
           />
           <div className="mt-[var(--space-2)] flex flex-wrap gap-[var(--space-2)]">
             {NOTE_PICKS.map((p) => (
-              <button key={p} type="button" className="min-h-[44px] rounded-[var(--radius-md)] border border-[var(--border)] px-[var(--space-3)] text-[length:var(--text-xs)]" onClick={() => setNotes((n) => (n.includes(p) ? n : n ? `${n}؛ ${p}` : p))}>{p}</button>
+              <button key={p} type="button" className="min-h-[44px] rounded-[var(--radius-md)] border border-[var(--border)] px-[var(--space-3)] text-[length:var(--text-xs)]" onClick={() => setNotes((n) => (n.includes(p) ? n : n ? `${n}؛ ${p}` : p))}><Icon name="plus" size="sm" />{p}</button>
             ))}
           </div>
         </div>
