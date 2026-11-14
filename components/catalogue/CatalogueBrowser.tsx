@@ -45,6 +45,11 @@ export default function CatalogueBrowser({ items, asOf, hasVan }: { items: Item[
           options: categories.map((c) => ({ id: c, label: c })), onChange: (v) => setCat(v as string),
         }} />
       )}
+      {hasVan && (
+        <Link href="/sales/door-sale" className="btn solid inline-flex min-h-[44px] items-center gap-[var(--space-2)] self-start">
+          <Icon name="handshake" size="md" /> فروش در محل
+        </Link>
+      )}
       <Link href="/print/price-list" className="btn ghost inline-flex min-h-[44px] items-center gap-[var(--space-2)] self-start">
         <Icon name="print" size="md" /> برگهٔ قیمت (چاپ یا ذخیره)
       </Link>

@@ -422,7 +422,8 @@ interface DoorContext {
   statusNow: () => Promise<OrderStatus>;
 }
 
-async function debitVan(c: DoorContext): Promise<void> {
+/** Returns true when the goods came off a van (so the warehouse must not be debited a second time). */
+async function debitVan(c: DoorContext): Promise<boolean> {
   const { stop, input, byId } = c;
   /* The van's balance leaves the van HERE, and only here.
    *
@@ -457,6 +458,7 @@ async function debitVan(c: DoorContext): Promise<void> {
       }
     }
   }
+  return vanFacility !== null;
 }
 
 async function advanceDoorOrder(c: DoorContext): Promise<void> {
@@ -787,7 +789,7 @@ export async function recordDelivery(db: Db, stopId: number, input: DeliveryInpu
       (await db.prepare("SELECT status FROM orders WHERE id = ?").get(stop.order_id) as { status: OrderStatus }).status;
     const ctx: DoorContext = { db, stopId, stop, input, byId, now, orgId, stockOrgId, nothingTaken, someShort, total, statusNow };
 
-    await debitVan(ctx);
+    const fromVan = await debitVan(ctx);
 
     const stopStatus = nothingTaken ? "refused" : "delivered";
     await db.prepare(
@@ -805,7 +807,9 @@ export async function recordDelivery(db: Db, stopId: number, input: DeliveryInpu
 
     await settleDoorPayment(ctx);
 
-    await drawDeliveredStock(ctx);
+    /* Goods that left a van were already taken off the warehouse when the van was loaded; drawing
+       them from the warehouse again (FEFO) made the warehouse's on-hand fall twice for one sale. */
+    if (!fromVan) await drawDeliveredStock(ctx);
 
     await recogniseRevenue(ctx);
 
