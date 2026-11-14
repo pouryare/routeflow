@@ -682,6 +682,8 @@ Decided, and nothing else has to be built first. Open the arrow on an item for t
 
   </details>
 
+- **OI4 to OI11. Operational independence, batch J (owner, 2026-11-14; plan `docs/plans/operational-independence-batch-j-2026-11-14.md`; decisions 10.24). Not built.** OI4 a named backup per person or duty, pre-filling leave and handover. OI5 a coverage view for the owner: five counts side by side (people with no backup, duties only one person has done, approvals only one manager can give, overdue required lessons, skills nobody holds at level 3), no combined score. OI6 skills with four levels, set by a manager; a finished lesson alone never goes above «learning». OI7 routine checklists with an owner and a backup, made from recurring tasks, missed ones shown on OI5. OI8 playbooks for group manager, rep manager, accountant and owner as Academy lessons. OI9 an offboarding checklist joining F59, F140, F107 and F82. OI10 when a company lesson is edited the editor says whether people must re-read. OI11 a sales starter pack the platform owner applies to a company (routines, playbooks, objection cards), editable copy, switchable per company; enforcement is soft (flags, never blocks). **F39 practice mode: one practice company per learner**, no outgoing messages, a visible practice bar, deleted after 30 unused days. Order: OI8 and OI9, then OI4, OI7, OI6, OI5, then OI10 and F39, OI11 after OI7 and OI8. Not building: positions and job-profile tables, RACI, a weighted index, a process engine, an SOP approval workflow.
+
 ### Messaging, chat and telephony
 
 - **FB9. Internal chat, phase 1: threads on orders and customers.** *(Built 2026-11-13: a «گفتگو» button on the order page and the customer page, plain text up to 1000 characters, live delivery to everyone who may see the record, unread count; no edit, delete, attachments, mentions, reply or typing dots yet.)* A native chat, no outside server. Phase 1 is a thread on every order and customer. The owner may read any 1:1 or group chat and members see a notice.
@@ -1042,7 +1044,7 @@ All 148 entries of `docs/future-features.md` (F1 to F148), grouped by area, with
 | F2 | Voice input (speak instead of typing a note) | S |  | — | Small, waits for a prerequisite | — |
 | F5 | Persian text proofing (help users type clean Persian) | S | yes | F1, F3 | Small, waits for a prerequisite | — |
 | F13 | Offline-first everywhere | L | yes | — | Partly built | — |
-| F39 | Training and onboarding mode | M | yes | — | Not built | — |
+| F39 | Training and onboarding mode | M | yes | OI6 | Planned in batch J: one practice company per learner (decisions 10.24) | — |
 | F75 | Offline product catalogue for reps | M | yes | F13 | Not built | — |
 | F84 | In-app help and tooltips | S | yes | — | Built (first slice) | — |
 | F105 | Offline tasks and notes | M | yes | F13 | Not built | — |
@@ -1132,6 +1134,8 @@ A suggestion in waves. Within a wave the order is flexible; across waves it foll
 **Wave 2 — money and orders.** F83 (payment terms) → F50 (promises) → F18 (statements) → F46 (risk) → F49 (cash-flow forecast); F58 → F60/F62/F131 (order shortcuts); F44 (standing orders); F56/F64/F65 (pricing) together; F61 (backorders) and F71/F76 (holds and approval by value).
 
 **Wave 3 — delivery and stock.** F57 (time windows), F69 (instructions), F17 → F120 (proof and codes), F80 → F119 (returns), F30 → F94 and F93 (loading and bins), F66 → F87/F118/F121, F81 (capacity warning).
+
+**Batch J (2026-11-14):** OI8 and OI9 → OI4 → OI7 → OI6 → OI5 → OI10, F39, OI11 (see the OI4 to OI11 entry).
 
 **Wave 2b — people and content (2026-11-12).** S23 and OI3 (no prerequisite); AC1 → AC2 → AC5 → AC3 → AC4 (Academy); VC1 → VC2 → VC3 (van catalogue); after EV4: F59 → T13; OI1 and OI2 after AC4; later AC-L1, VC4 (with F30) and F39.
 

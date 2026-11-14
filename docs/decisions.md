@@ -481,3 +481,18 @@ Plan: [`docs/plans/academy-catalogue-independence-2026-11-12.md`](plans/academy-
 | Handover, lend, cover | Planned (F59, T13, S23); F59 waits for the audit record EV4 |
 
 **Existing-solutions search (CLAUDE.md rule).** Done in the plan, section 6. The owner chose to build with what the repo has.
+### 10.24 Operational independence, batch J (2026-11-14, owner decision)
+
+Plan: [`docs/plans/operational-independence-batch-j-2026-11-14.md`](plans/operational-independence-batch-j-2026-11-14.md). Roadmap: OI4 to OI11 and F39. Built on 10.23; a ChatGPT blueprint «Systematize RouteFlow Operations» was checked against the repo and trimmed.
+
+| Choice | Decision |
+|---|---|
+| Size | Lean set plus skills and practice mode, plus shrunk versions of the ideas first skipped |
+| Positions, job profiles, org units | Not built. A named backup (OI4) and a skill list (OI6) cover companies under about 30 people |
+| Process charters, RACI, SOP engine | Shrunk to routine checklists with an owner and a backup (OI7); no step engine, no RACI matrix |
+| SOP versions | A lesson edit asks «must people re-read?» (OI10); no draft, review or approve stages |
+| Measures | Five counts side by side (OI5); no weighted index until there is a baseline |
+| Practice mode (F39) | One practice company per learner; no SMS, Telegram, push or email; visible practice bar; deleted after 30 unused days |
+| Sales system for companies | A starter pack the platform owner applies (OI11); soft enforcement only (flags, never blocks); hard gates not built |
+| Libraries | None. Existing-solutions search is in the plan |
+
