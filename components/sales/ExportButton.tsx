@@ -50,7 +50,7 @@ export default function ExportButton({ url }: { url: string }) {
   }
 
   return (
-    <button type="button" className="btn ghost" disabled={busy} onClick={() => void run()}>
+    <button type="button" className="btn ghost" data-tour="orders-export" disabled={busy} onClick={() => void run()}>
       <Icon name="download" size="md" />
       {busy ? "در حال ساخت…" : "خروجی اکسل"}
     </button>
