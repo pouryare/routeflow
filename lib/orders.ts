@@ -5,6 +5,7 @@
  *  six months as it did on the day it was taken. Commission is paid off these numbers.
  */
 
+import { belowMin, cleanReason } from "@/lib/minOrder";
 import { editRule } from "./orderEditRules";
 import { MAX_LINES_PER_ORDER, MAX_NOTES_LENGTH, MAX_PACKS_PER_LINE, isValidPacks } from "./orderLimits";
 import { refreshOrderFigures } from "./repo/orderFigures";
@@ -59,6 +60,9 @@ export interface CreateOrderInput {
   organization_id: number;
   salesperson_user_id?: number | null;
   credit_override_by?: number | null;
+  /** F64: the company minimum (0 or missing = not checked). Below it the order needs `below_min_reason`. */
+  min_order_toman?: number;
+  below_min_reason?: string | null;
   /** T5: how the order came to exist; the form by default. */
   source?: CreatedSource;
   /** F85: how the order reached the company; empty when nobody said. */
@@ -122,6 +126,7 @@ export interface OrderDetail {
   payment_status: string;
   paid_toman: number;
   credit_override_by: number | null;
+  below_min_reason: string | null;
   /** The approved discount in force, already taken off `total_toman`. */
   discount_toman: number;
   notes: string | null;
@@ -301,8 +306,8 @@ export async function createOrder(
         .prepare(
           `INSERT INTO orders (order_no, customer_id, group_id, salesperson_user_id, status,
                                order_date, requested_day, requested_kind, notes, credit_override_by,
-                               client_uuid, created_by, created_at, updated_at, organization_id, created_source, channel)
-           VALUES (?, ?, ?, ?, 'DRAFT', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+                               client_uuid, created_by, created_at, updated_at, organization_id, created_source, channel, below_min_reason)
+           VALUES (?, ?, ?, ?, 'DRAFT', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
         )
         .run(
           orderNo,
@@ -322,12 +327,16 @@ export async function createOrder(
           now,
           input.organization_id,
           input.source ?? "form",
-          input.channel ?? null
+          input.channel ?? null,
+          cleanReason(input.below_min_reason)
         )).lastInsertRowid
     );
 
     for (const line of input.lines) {
       await insertLine(db, orderId, input.order_date, line, now);
+    }
+    if (belowMin(orderTotalToman(await linesOf(db, orderId)), input.min_order_toman ?? 0) && !cleanReason(input.below_min_reason)) {
+      throw new OrderError(`جمع سفارش از حداقل ${(input.min_order_toman ?? 0).toLocaleString("fa-IR")} تومان کمتر است؛ دلیل را انتخاب کنید`);
     }
     if (input.discount) {
       await requestDiscount(input.organization_id, orderId, input.discount.asker, input.discount.request, db);

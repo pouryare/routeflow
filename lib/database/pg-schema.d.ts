@@ -1338,6 +1338,7 @@ export interface Orders {
   created_source: string | null;
   credit_hold: Generated<number>;
   credit_override_by: number | null;
+  below_min_reason: string | null;
   customer_id: number;
   delivered_at: string | null;
   discount_toman: Generated<number>;
@@ -1400,6 +1401,7 @@ export interface Organizations {
   name: string;
   order_approval_limit_toman: Generated<number>;
   approval_owner_limit_toman: Generated<number>;
+  min_order_toman: Generated<number>;
   order_prefix: string | null;
   plan: Generated<string>;
   quiet_customer_days: Generated<number>;

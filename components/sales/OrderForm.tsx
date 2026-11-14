@@ -13,6 +13,7 @@ import { faJalaliDate } from "@/lib/jalali";
 import { roundToman, toNumber } from "@/lib/money";
 import { MAX_PACKS_PER_LINE, parsePacks } from "@/lib/orderLimits";
 import { Icon } from "@/components/meridian/Icon";
+import { BELOW_MIN_REASONS, belowMin } from "@/lib/minOrder";
 import BusyIcon from "@/components/meridian/BusyIcon";
 import { useDoneFlash } from "@/lib/useDoneFlash";
 import { celebrate } from "@/lib/celebrate";
@@ -91,6 +92,7 @@ export default function OrderForm({
   payers = [],
   canDiscountFreely = false,
   initialCustomerId = null,
+  minOrderToman = 0,
 }: {
   customers: Customer[];
   products: Product[];
@@ -102,6 +104,8 @@ export default function OrderForm({
   /** Arrives from the map's customer panel. Already validated against this caller's
    *  own customer list by the page, so it is safe to select without re-checking. */
   initialCustomerId?: number | null;
+  /** F64: the company minimum for an order (0 = off). */
+  minOrderToman?: number;
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
@@ -109,6 +113,7 @@ export default function OrderForm({
   const [error, setError] = useState<string | null>(null);
 
   const [customerId, setCustomerId] = useState<number | null>(initialCustomerId);
+  const [belowReason, setBelowReason] = useState("");
   const [orderDate, setOrderDate] = useState(() => tehranTodayIso());
   /* Phase 1 (mixed-route planning): the day the customer ASKED for, which is a different
    * question from the day the slip was typed. Defaults to «soonest» — uncommitted — because
@@ -239,6 +244,10 @@ export default function OrderForm({
 
   async function submit(allowDuplicate = false) {
     if (!customer || lines.length === 0) return;
+    if (belowMin(total, minOrderToman) && !belowReason) {
+      setError("جمع سفارش از حداقل کمتر است؛ دلیل را انتخاب کنید");
+      return;
+    }
     if (discount.open && summarize(discount, total, payers).problem) {
       setError(summarize(discount, total, payers).problem);
       return;
@@ -266,6 +275,7 @@ export default function OrderForm({
           notes: notes || null,
           channel: channel || null,
           credit_override: overLimit,
+          below_min_reason: belowMin(total, minOrderToman) ? belowReason : undefined,
           discount: toRequestBody(discount, payers),
           lines: lines.map((l) => ({
             product_id: l.product_id,
@@ -529,6 +539,15 @@ export default function OrderForm({
             </button>
           </div>
         </div>
+      )}
+
+      {belowMin(total, minOrderToman) && (
+        <section className="card flex flex-col gap-[var(--space-3)] p-[var(--space-4)]" data-tour="below-min">
+          <p className="m-0 text-[length:var(--text-sm)] leading-6 text-[var(--warning)]">
+            حداقل سفارش {faToman(minOrderToman)} است و جمع این سفارش {faToman(total)}. ثبت آن آزاد است، اما دلیلش را انتخاب کنید.
+          </p>
+          <ChipGroup wrap group={{ id: "below-min", label: "دلیل سفارش کم", mode: "single", value: belowReason, onChange: (v) => setBelowReason(v as string), options: BELOW_MIN_REASONS.map((r) => ({ id: r, label: r })) }} />
+        </section>
       )}
 
       {overLimit && customer?.credit_limit_toman != null && (

@@ -1,4 +1,5 @@
 import { compressedJson } from "@/lib/httpCache";
+import { cleanReason } from "@/lib/minOrder";
 import { NextRequest, NextResponse } from "next/server";
 import { isId } from "@/lib/inputChecks";
 import { requireRole, orderFilter, canReachGroup, orgScopeId } from "@/lib/session";
@@ -96,6 +97,7 @@ export async function POST(req: NextRequest) {
     notes?: unknown;
     channel?: unknown;
     credit_override?: unknown;
+    below_min_reason?: unknown;
     discount?: unknown;
     lines?: unknown;
   } | null;
@@ -181,6 +183,8 @@ export async function POST(req: NextRequest) {
       organization_id: session.user.organization_id,
       salesperson_user_id: salespersonId,
       credit_override_by: body?.credit_override ? session.user.id : null,
+      min_order_toman: (await thresholdsFor(session.organizationId)).min_order_toman,
+      below_min_reason: cleanReason(body?.below_min_reason),
       notes: typeof body?.notes === "string" ? body.notes : null,
       channel,
       // Asked for with the order; it waits for the manager or owner unless the rules let it through.

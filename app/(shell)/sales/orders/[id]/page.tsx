@@ -327,6 +327,12 @@ export default async function OrderDetailPage({
         </p>
       )}
 
+      {order.below_min_reason && (
+        <p className="m-0 rounded-[var(--radius-md)] border border-[var(--warning)] p-[var(--space-3)] text-[length:var(--text-xs)] text-[var(--warning)]">
+          جمع این سفارش از حداقل سفارش کمتر بود. دلیل: {order.below_min_reason}
+        </p>
+      )}
+
       {order.credit_override_by !== null && (
         <p className="m-0 rounded-[var(--radius-md)] border border-[var(--warning)] p-[var(--space-3)] text-[length:var(--text-xs)] text-[var(--warning)]">
           این سفارش با عبور از سقف اعتبار مشتری ثبت شده است.

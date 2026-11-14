@@ -1,4 +1,5 @@
 import type { FlowConfig, FlowContext, FlowOption } from "@/lib/crm/flows/types";
+import { BELOW_MIN_REASONS, belowMin } from "@/lib/minOrder";
 import { faNum, faToman } from "@/lib/format";
 import { faJalaliDate } from "@/lib/jalali";
 import { roundToman } from "@/lib/money";
@@ -171,11 +172,16 @@ export const orderQuickFlow: FlowConfig = {
         if (overCreditLimit(ctx, s)) {
           parts.push(`سقف اعتبار ${faToman(Number(ctx.vars.credit_limit))} رد می‌شود؛ با ثبت، به‌عنوان استثنا ثبت می‌شود.`);
         }
+        if (belowMin(orderTotal(ctx, s), Number(ctx.vars.min_order ?? 0))) parts.push(`از حداقل سفارش ${faToman(Number(ctx.vars.min_order))} کمتر است؛ دلیلش را انتخاب کنید.`);
         parts.push("سفارش به‌صورت پیش‌نویس ثبت می‌شود و در صفحهٔ سفارش تأیید می‌شود.");
         return parts.join(" · ");
       },
       options: (ctx, s): FlowOption[] => {
         const twin = orderTwin(ctx, s);
+        const min = Number(ctx.vars.min_order ?? 0);
+        if (belowMin(orderTotal(ctx, s), min)) {
+          return BELOW_MIN_REASONS.map((r, i): FlowOption => ({ id: `min${i}`, label: r, sub: i === 0 ? "ثبت سفارش با این دلیل" : undefined, tone: i === 0 ? "rec" : undefined, save: true, put: { below_reason: r } }));
+        }
         if (!twin) return [{ id: "ok", label: "ثبت سفارش", tone: "rec", save: true }];
         return [
           { id: "open_dup", label: "باز کردن همان سفارش", sub: twin.order_no, save: true, put: { exit: "dup", dup_id: String(twin.id) } },
@@ -204,6 +210,7 @@ export function orderRequest(ctx: FlowContext, st: Vals) {
     salesperson_user_id: null,
     notes: null,
     credit_override: overCreditLimit(ctx, st),
+    below_min_reason: st.values.below_reason || undefined,
     lines: orderLines(ctx, st),
   };
 }

@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { COOKIE_NAME } from "@/lib/auth";
 import { getSessionFromCookies } from "@/lib/session";
 import { orderEntryFor } from "@/lib/repo/ordersView";
+import { thresholdsFor } from "@/lib/repo/thresholds";
 import OrderForm from "@/components/sales/OrderForm";
 import OrderQuickEntry from "@/components/flows/OrderQuickEntry";
 import PageHeader from "@/components/meridian/PageHeader";
@@ -56,6 +57,7 @@ export default async function NewOrderPage({
   }
 
   const { customers, products, sellers, payers } = await orderEntryFor(session);
+  const minOrderToman = (await thresholdsFor(session.organizationId)).min_order_toman;
 
   // Validated against the customers this caller can already see, rather than passed
   // through. A link is user input: an id from another group must not preselect anything,
@@ -73,6 +75,7 @@ export default async function NewOrderPage({
       customers={customers}
       products={products}
       initialCustomerId={initialCustomerId}
+      minOrderToman={minOrderToman}
     />
     <OrderForm
       customers={customers}
@@ -81,6 +84,7 @@ export default async function NewOrderPage({
       payers={payers}
       canDiscountFreely={isOwner(session.role)}
       initialCustomerId={initialCustomerId}
+      minOrderToman={minOrderToman}
     />    </>
   );
 }
