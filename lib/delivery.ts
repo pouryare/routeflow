@@ -51,6 +51,8 @@ export interface RunStop {
   phone: string | null;
   lat: number | null;
   lng: number | null;
+  /** The shop's opening hours (JSON), for the «closed right now» warning on the next stop. */
+  working_hours_json?: string | null;
   status: string;
   collected_toman: number;
   sort_order: number;
@@ -346,7 +348,7 @@ export async function readRun(db: Db, runId: number): Promise<RunDetail | null> 
     .prepare(
       `SELECT ds.id, ds.order_id, ds.status, ds.collected_toman, ds.sort_order, ds.notes,
               o.order_no, o.priority, o.customer_id, o.discount_toman,
-              c.business_name AS customer_name, c.address, c.phone, c.lat, c.lng
+              c.business_name AS customer_name, c.address, c.phone, c.lat, c.lng, c.working_hours_json
          FROM delivery_stops ds
          JOIN orders o ON o.id = ds.order_id
          JOIN customers c ON c.id = o.customer_id

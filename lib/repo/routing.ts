@@ -20,6 +20,8 @@ import type { LatLng } from "@/lib/geo";
 import { effectiveCapacity } from "@/lib/routing/capacity";
 import { runWeatherAdjustment } from "./weather";
 import type { WeatherAdjustment } from "@/lib/weather/capacityAdjust";
+import { parseHours } from "@/lib/crm/hours";
+import { dayWindow, openingWarning } from "@/lib/openingWarning";
 import { isUniqueViolation } from "@/lib/database/errors";
 
 export class RoutingError extends Error {}
@@ -189,7 +191,7 @@ export async function routableDeliveriesFor(
   }
   const rows = await getDb()
     .prepare(
-      `SELECT d.id AS delivery_id, c.lat, c.lng, o.priority,
+      `SELECT d.id AS delivery_id, c.lat, c.lng, c.working_hours_json, o.priority,
               COALESCE(SUM(ol.packs_ordered * ol.qty_per_pack * ol.kg_per_base_unit), 0) AS kg,
               COALESCE(SUM(ol.packs_ordered * ol.qty_per_pack * COALESCE(p.volume_m3_per_base_unit, 0)), 0) AS m3
          FROM deliveries d
@@ -206,21 +208,47 @@ export async function routableDeliveriesFor(
     delivery_id: number;
     lat: number;
     lng: number;
+    working_hours_json: string | null;
     priority: string | null;
     kg: number;
     m3: number;
   }[];
 
   const PRIORITY: Record<string, number> = { URGENT: 100, KEY_ACCOUNT: 60, NORMAL: 10, FLEXIBLE: 1 };
-  return rows.map((r) => ({
-    delivery_id: r.delivery_id,
-    lat: r.lat,
-    lng: r.lng,
-    weight_kg: r.kg,
-    volume_m3: r.m3,
-    service_min: opts.service_min ?? 8,
-    priority: PRIORITY[r.priority ?? "NORMAL"] ?? 10,
-  }));
+  return rows.map((r) => {
+    const hours = parseHours(r.working_hours_json);
+    return {
+      delivery_id: r.delivery_id,
+      lat: r.lat,
+      lng: r.lng,
+      weight_kg: r.kg,
+      volume_m3: r.m3,
+      service_min: opts.service_min ?? 8,
+      priority: PRIORITY[r.priority ?? "NORMAL"] ?? 10,
+      opening_hours: hours.length > 0 ? hours : undefined,
+      time_window: dayWindow(hours, opts.date) ?? undefined,
+    };
+  });
+}
+
+/** The day starts at 08:00 for the «arrives before opening» warning.
+ *  shortcut: a fixed start, upgrade to the route template's schedule start_time (templateScheduleFor) when a company asks. */
+const DAY_START_S = 8 * 3600;
+
+/** Adds the opening-hours warning to every stop whose customer has hours and would be reached while closed. */
+function withOpeningWarnings(r: SolveResult, deliveries: RoutableDelivery[], date: string, startMin: number): SolveResult {
+  const by = new Map(deliveries.map((d) => [d.delivery_id, d]));
+  return {
+    ...r,
+    assignments: r.assignments.map((a) => ({
+      ...a,
+      stops: a.stops.map((s) => {
+        const hours = by.get(s.delivery_id)?.opening_hours;
+        const warn = hours ? openingWarning(hours, date, startMin + s.eta_min) : null;
+        return warn ? { ...s, opening: warn } : s;
+      }),
+    })),
+  };
 }
 
 export interface RoutingPlan extends SolveResult {
@@ -310,12 +338,18 @@ export async function buildPlan(
   const durations = osrm?.durations_s ?? durationMatrixFromKm(haversineMatrix(points));
   const distances = osrm?.distances_km;
 
-  const vroom = await solveVroom(
-    buildVroomJob(deliveries, vehicles, { durations, distances })
-  ).catch(() => null);
-
-  if (vroom) return { ...vroom, source: "vroom", date: opts.date, weather };
-  return { ...greedyAssign(deliveries, vehicles), source: "greedy", date: opts.date, weather };
+  /* Opening hours are a soft preference: VROOM treats a window as a hard rule and would drop a stop it cannot fit,
+     so the windowed answer is used only when it places every stop the plain one does. Otherwise the plain order
+     stands and the cards carry a warning instead. */
+  const matrix = { durations, distances };
+  const plain = await solveVroom(buildVroomJob(deliveries.map((d) => ({ ...d, time_window: undefined })), vehicles, matrix)).catch(() => null);
+  let vroom = plain;
+  if (plain && deliveries.some((d) => d.time_window)) {
+    const timed = await solveVroom(buildVroomJob(deliveries, vehicles, matrix, DAY_START_S), undefined, DAY_START_S).catch(() => null);
+    if (timed && timed.unassigned.length <= plain.unassigned.length) vroom = timed;
+  }
+  const result = vroom ?? greedyAssign(deliveries, vehicles);
+  return { ...withOpeningWarnings(result, deliveries, opts.date, DAY_START_S / 60), source: vroom ? "vroom" : "greedy", date: opts.date, weather };
 }
 
 /** Write a proposal: one delivery_runs row per assigned vehicle+driver, its stops in

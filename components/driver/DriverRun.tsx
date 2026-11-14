@@ -17,6 +17,10 @@ import { stopAtDoor } from "@/lib/arrival";
 import ReceiptPrinter from "@/components/sales/ReceiptPrinter";
 import type { InvoiceVia } from "@/lib/invoiceSent";
 import type { ReceiptData } from "@/lib/receiptLayout";
+import { useHydrated } from "@/lib/useHydrated";
+import { tehranParts } from "@/lib/crm/due";
+import { tehranTodayIso } from "@/lib/jalali";
+import { openingWarningFromJson, warningText } from "@/lib/openingWarning";
 import DriverHelp from "@/components/driver/DriverHelp";
 import PriorityTag from "@/components/sales/PriorityTag";
 
@@ -162,6 +166,7 @@ export default function DriverRun({
             businessName={businessName}
             receiptFooter={receiptFooter}
             failReasons={failReasons}
+            next={stop.id === run.stops.find((x) => x.status === "pending")?.id}
             lastStop={run.stops.every((s) => s.id === stop.id || s.status !== "pending")}
           />
         ))}
@@ -225,6 +230,7 @@ function StopCard({
   businessName,
   receiptFooter,
   failReasons,
+  next,
   lastStop,
 }: {
   stop: RunStop;
@@ -239,8 +245,17 @@ function StopCard({
   businessName: string;
   receiptFooter: string | null;
   failReasons: { id: number; label: string }[];
+  /** The stop the driver is heading to: its shop's opening hours are checked against the time now. */
+  next: boolean;
   lastStop: boolean;
 }) {
+  const hydrated = useHydrated();
+  const closedNow = (() => {
+    if (!hydrated || !next || stop.status !== "pending") return null;
+    const p = tehranParts(new Date().toISOString());
+    const w = openingWarningFromJson(stop.working_hours_json, tehranTodayIso(), p.h * 60 + p.min);
+    return w ? warningText(w) : null;
+  })();
   /* The flow remounts per opening (the `key`), which is what gives each visit a fresh set of
    * questions; `flowOpen` only slides the sheet in and out. */
   const [flowOpen, setFlowOpen] = useState(false);
@@ -298,6 +313,12 @@ function StopCard({
           <span className="mt-[var(--space-1)] block text-[length:var(--text-xs)] text-[var(--muted)]">
             {stop.address ?? "بدون آدرس"}
           </span>
+          {closedNow && (
+            <span role="status" className="mt-[var(--space-1)] flex items-center gap-[var(--space-1)] text-[length:var(--text-xs)] text-[var(--warning)]">
+              <Icon name="warn" size="sm" />
+              {closedNow}
+            </span>
+          )}
         </span>
         <span className="shrink-0 text-left">
           <span className="block tabular-nums text-[length:var(--text-sm)] text-[var(--foreground)]">
