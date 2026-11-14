@@ -134,6 +134,12 @@ export default function NotificationCenter({ onUnread }: { onUnread: (n: number)
               </span>
             </Button>
             </SwipeRow>
+            {g.title_fa === "راننده کمک می‌خواهد" && /09\d{9}/.test(g.body_fa ?? "") && (
+              <a href={`tel:${(g.body_fa ?? "").match(/09\d{9}/)![0]}`} className="touch mx-[var(--space-5)] mb-[var(--space-2)] inline-flex min-h-11 items-center gap-[var(--space-2)] text-[length:var(--text-sm)] text-[var(--accent)] no-underline">
+                <Icon name="phone" size="sm" />
+                تماس با راننده
+              </a>
+            )}
             {open === g.group_key && g.count > 1 && (
               <ul className="m-0 list-none bg-[var(--surface-raised)] p-0">
                 {g.items.map((it) => (

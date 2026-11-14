@@ -92,9 +92,15 @@ import { readStoredView, linkTargetView, writeStoredView } from "@/components/co
 import { MAP_INK_FALLBACK, MapInk, readMapInk } from "@/components/coverage/mapInk";
 import { MapWatcher, FitToCustomers } from "@/components/coverage/mapParts";
 import CheckField from "@/components/CheckField";
+import HexSection from "@/components/coverage/HexSection";
+import { useHexCells } from "@/components/coverage/useHexCells";
+import { HEX_RES_DEFAULT } from "@/lib/h3";
+import type { HexMetric } from "@/lib/repo/hexMap";
 import { onLive } from "@/lib/live/client";
 
 const HeatmapLayer = dynamic(() => import("./HeatmapLayer"), { ssr: false });
+// The hexagon grid brings h3-js with it, so it loads only when someone switches the layer on.
+const HexLayer = dynamic(() => import("./coverage/HexLayer"), { ssr: false });
 const FullscreenControl = dynamic(() => import("./FullscreenControl"), { ssr: false });
 const CustomerDetailPanel = dynamic(() => import("./CustomerDetailPanel"), { ssr: false });
 const DistrictEditor = dynamic(() => import("./DistrictEditor"), { ssr: false });
@@ -184,6 +190,12 @@ export default function CoverageMap({
   /* What is on screen, for the worklist. Null until the map has reported once. */
   const [viewBounds, setViewBounds] = useState<Bounds | null>(null);
   const [heatmapByDebt, setHeatmapByDebt] = useState(false);
+  const canHex = MANAGE_ROLES.includes(role);
+  const hexOn = layers.hex && canHex;
+  const [hexMetric, setHexMetric] = useState<HexMetric>("revenue");
+  const [hexRes, setHexRes] = useState<number>(HEX_RES_DEFAULT);
+  const [hexDays, setHexDays] = useState(90);
+  const hex = useHexCells(hexOn, hexMetric, hexRes, hexDays);
   /* One basemap per skin (lib/mapLayers.ts, BasemapBySkin): the map follows the
      light/dark switch like every other surface. */
   const [skin] = useTheme();
@@ -1151,6 +1163,14 @@ export default function CoverageMap({
             )}
         </CollapsibleSection>
 
+        {canHex && (
+          <HexSection
+            on={hexOn} onOpenLayers={() => setLayersOpen(true)}
+            metric={hexMetric} setMetric={setHexMetric} res={hexRes} setRes={setHexRes} days={hexDays} setDays={setHexDays}
+            loading={hex.loading} error={hex.error} cellCount={hex.cells.length}
+          />
+        )}
+
         <MapSettingsSection
           geofenceOn={geofenceOn} setGeofenceOn={setGeofenceOn}
           facilityGeofenceOn={facilityGeofenceOn} setFacilityGeofenceOn={setFacilityGeofenceOn}
@@ -1224,6 +1244,8 @@ export default function CoverageMap({
               read as a route rather than an arbitrary rectangle. */}
           <CorridorBandLayer corridorOn={corridorOn} corridorEnds={corridorEnds} corridorBand={corridorBand} corridorPath={corridorPath} lightGround={activeBasemap.ground === "light"} beforeId={BASEMAP_LABELS} />
 
+          {hexOn && <HexLayer cells={hex.cells} metric={hexMetric} beforeId={BASEMAP_LABELS} />}
+
           {heatmapOn && <HeatmapLayer customers={filteredCustomers} weightByDebt={heatmapByDebt} beforeId={BASEMAP_LABELS} />}
 
           <CustomerLayer customers={mapCustomers} colorOf={markerColor} shaped={shapedMarkers} ink={ink} onOpen={openCustomer} canOrder={canSell(role)} navAppId={navAppId} />
@@ -1291,6 +1313,7 @@ export default function CoverageMap({
         onLayer={setLayer}
         zoneStatus={zoneStatus}
         hasCorridor={corridorEnds !== null}
+        hidden={canHex ? [] : ["hex"]}
       />
 
       {selectedDistrict && (

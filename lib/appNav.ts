@@ -139,6 +139,7 @@ export function appTabs(session: { role: Role }): AppTab[] {
     { href: "/sales/routing", label: "مسیریابی", group: "ops", ready: isManager(r) },
     { href: "/sales/stock", label: "انبار و خرید", group: "ops", ready: true },
     { href: "/sales/batches", label: "سری‌های ساخت", group: "ops", ready: isManager(r) },
+    { href: "/sales/hours", label: "ساعت کار رانندگان", group: "ops", ready: isManager(r) },
 
     // گزارش‌ها
     { href: "/sales", label: "خلاصهٔ فروش", group: "reports", ready: true },

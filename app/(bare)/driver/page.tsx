@@ -26,6 +26,7 @@ import DriverLinks from "@/components/driver/DriverLinks";
 import WarmOffline from "@/components/driver/WarmOffline";
 import VanPositionSender from "@/components/driver/VanPositionSender";
 import FirstStepsCard from "@/components/tutorials/FirstStepsCard";
+import { listReasonCodes } from "@/lib/repo/reasonCodes";
 import { driverLinks } from "@/lib/driverLinks";
 
 import type { Metadata } from "next";
@@ -150,6 +151,8 @@ export default async function DriverPage() {
             driverName={session.user.display_name}
             businessName={businessName}
             receiptFooter={docs.receiptFooter}
+            lateReasons={(await listReasonCodes(session.organizationId, "delivery_delay")).map((r) => ({ id: r.id, label: r.label_fa }))}
+            failReasons={(await listReasonCodes(session.organizationId, "delivery_fail")).map((r) => ({ id: r.id, label: r.label_fa }))}
           />
 
           {commission.kg > 0 && (
