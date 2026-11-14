@@ -102,6 +102,7 @@ export default function LayersPanel({
   onLayer,
   zoneStatus,
   hasCorridor,
+  hidden = [],
 }: {
   open: boolean;
   onClose: () => void;
@@ -114,6 +115,8 @@ export default function LayersPanel({
   /** False when there are fewer than two of our own sites, so there is no corridor to
    *  draw and the row would be a switch that does nothing. */
   hasCorridor: boolean;
+  /** Layers this viewer may not use at all (the hexagon grid is a manager's tool). */
+  hidden?: OverlayId[];
 }) {
   if (!open) return null;
 
@@ -187,7 +190,7 @@ export default function LayersPanel({
         </section>
 
         {OVERLAY_GROUPS.map((group) => {
-          const rows = OVERLAYS.filter((o) => o.group === group.id);
+          const rows = OVERLAYS.filter((o) => o.group === group.id && !hidden.includes(o.id));
           if (rows.length === 0) return null;
           return (
             <section key={group.id}>

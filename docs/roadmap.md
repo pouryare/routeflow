@@ -990,7 +990,7 @@ All 148 entries of `docs/future-features.md` (F1 to F148), grouped by area, with
 | F34 | Data export and backup self-service | S | yes | F27 | Built (first slice) | — |
 | F67 | Friday weekly scorecard | S | yes | — | Built (first slice) | — |
 | F90 | Monthly staff pay summary for the accountant | M | yes | F25, F27, F88 | Not built | — |
-| F92 | Territory revenue map | M | yes | — | Not built | — |
+| F92 | Territory revenue map | M | yes | — | Built in batch H as a hexagon layer (h3-js) | — |
 | F116 | Amount in words | S | yes | F18, F147 | Built (first slice) | — |
 | F123 | Report builder with saved reports | L | yes | F14 | Not built | T1, S11 |
 | F134 | Profit and loss by group | M | yes | F32 | Not built | — |

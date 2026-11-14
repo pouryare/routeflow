@@ -19,6 +19,8 @@ export interface RoutableDelivery {
   volume_m3: number;
   service_min: number;
   time_window?: [number, number]; // seconds from midnight
+  /** The shop's opening hours that day; read for the «arrives before opening» warning, never sent to the solver. */
+  opening_hours?: import("@/lib/crm/hours").WorkingHours;
   priority?: number; // 0..100
   needs_refrigeration?: boolean;
 }
@@ -35,7 +37,7 @@ export interface RoutableVehicle {
 
 export interface Assignment {
   vehicle_key: number;
-  stops: { delivery_id: number; sort_order: number; eta_min: number }[];
+  stops: { delivery_id: number; sort_order: number; eta_min: number; opening?: import("@/lib/openingWarning").OpeningWarning }[];
   distance_km: number;
   duration_min: number;
 }
@@ -60,6 +62,7 @@ interface VroomVehicle {
   capacity: [number, number, number];
   skills?: number[];
   max_travel_time?: number;
+  time_window?: [number, number];
 }
 export interface VroomRequest {
   jobs: VroomJob[];
@@ -75,7 +78,10 @@ const REFRIGERATED_SKILL = 1;
 export function buildVroomJob(
   deliveries: RoutableDelivery[],
   vehicles: RoutableVehicle[],
-  matrix: { durations: number[][]; distances?: number[][] }
+  matrix: { durations: number[][]; distances?: number[][] },
+  /** When any delivery has an opening window, the vehicles leave no earlier than this (seconds after midnight),
+   *  so the solver's arrival times are clock times and not "time since the van left". */
+  dayStartS?: number
 ): VroomRequest {
   const jobs: VroomJob[] = deliveries.map((d, i) => ({
     id: d.delivery_id,
@@ -94,6 +100,7 @@ export function buildVroomJob(
     capacity: v.capacity,
     skills: v.has_refrigeration ? [REFRIGERATED_SKILL] : undefined,
     max_travel_time: v.max_duration_s,
+    time_window: dayStartS !== undefined && deliveries.some((d) => d.time_window) ? [dayStartS, dayStartS + 16 * 3600] : undefined,
   }));
 
   return {
@@ -114,7 +121,7 @@ interface VroomResponse {
   unassigned?: { id: number }[];
 }
 
-export function applyVroomSolution(response: VroomResponse): SolveResult {
+export function applyVroomSolution(response: VroomResponse, offsetS = 0): SolveResult {
   const assignments: Assignment[] = (response.routes ?? []).map((r) => {
     let order = 0;
     const stops = (r.steps ?? [])
@@ -122,7 +129,7 @@ export function applyVroomSolution(response: VroomResponse): SolveResult {
       .map((s) => ({
         delivery_id: s.job as number,
         sort_order: order++,
-        eta_min: Math.round((s.arrival ?? 0) / 60),
+        eta_min: Math.max(0, Math.round(((s.arrival ?? 0) - offsetS) / 60)),
       }));
     return {
       vehicle_key: r.vehicle,
@@ -201,7 +208,7 @@ export function greedyAssign(
 }
 
 /** VROOM solve. Glue -- env `VROOM_URL`, null on failure. Not unit-tested. */
-export async function solveVroom(job: VroomRequest, signal?: AbortSignal): Promise<SolveResult | null> {
+export async function solveVroom(job: VroomRequest, signal?: AbortSignal, offsetS = 0): Promise<SolveResult | null> {
   const url = process.env.VROOM_URL;
   if (!url) return null;
   const timeout = AbortSignal.timeout(15_000);
@@ -214,7 +221,7 @@ export async function solveVroom(job: VroomRequest, signal?: AbortSignal): Promi
       signal: combined,
     });
     if (!res.ok) return null;
-    return applyVroomSolution((await res.json()) as VroomResponse);
+    return applyVroomSolution((await res.json()) as VroomResponse, offsetS);
   } catch {
     return null;
   }

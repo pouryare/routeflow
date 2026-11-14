@@ -46,6 +46,7 @@ import c_sales_complaints from "./sales-complaints.json";
 import c_sales_dashboard from "./sales-dashboard.json";
 import c_sales_data_quality from "./sales-data-quality.json";
 import c_sales_forecast from "./sales-forecast.json";
+import c_sales_hours from "./sales-hours.json";
 import c_sales_lead_sources from "./sales-lead-sources.json";
 import c_sales_orders_id from "./sales-orders-id.json";
 import c_sales_orders_new from "./sales-orders-new.json";
@@ -114,6 +115,7 @@ export const CAPTURES: Record<string, Capture> = {
   "/sales/dashboard": c_sales_dashboard as Capture,
   "/sales/data-quality": c_sales_data_quality as Capture,
   "/sales/forecast": c_sales_forecast as Capture,
+  "/sales/hours": c_sales_hours as Capture,
   "/sales/lead-sources": c_sales_lead_sources as Capture,
   "/sales/orders/[id]": c_sales_orders_id as Capture,
   "/sales/orders/new": c_sales_orders_new as Capture,

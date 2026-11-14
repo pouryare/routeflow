@@ -145,7 +145,7 @@ describe("where each destination lives", () => {
   it("delivery and stock share one operations group", () => {
     // /sales/runs and /sales/deliveries are a view and a redirect now; the planner moved
     // to /sales/schedule, which sits in the day group beside the month it plans against.
-    expect(hrefsIn("ops")).toEqual(["/sales/batches", "/sales/routing", "/sales/stock"].sort());
+    expect(hrefsIn("ops")).toEqual(["/sales/batches", "/sales/hours", "/sales/routing", "/sales/stock"].sort());
   });
 
   it("every read-only overview is a report, the forecast included", () => {

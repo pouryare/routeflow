@@ -214,6 +214,7 @@ export function proxy(req: NextRequest) {
     pathname.startsWith("/api/sales/deliveries") ||
     // Phase 5: routing is a desk job.
     pathname.startsWith("/sales/routing") ||
+    pathname.startsWith("/sales/hours") ||
     pathname.startsWith("/api/sales/routing") ||
     pathname.startsWith("/api/sales/vehicles") ||
     pathname.startsWith("/api/sales/route-templates") ||

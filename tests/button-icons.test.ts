@@ -78,6 +78,7 @@ const EXEMPT: { file: string; match: string; reason: string }[] = [
   { file: "app/(shell)/accounting/journal/page.tsx", match: "\"period\")", reason: "a period filter chip; the period is the content" },
   { file: "app/(shell)/report/page.tsx", match: "href=\"/report", reason: "a sort-order chip; the order is the content" },
   { file: "app/(shell)/sales/reasons/page.tsx", match: "/sales/reasons?days=", reason: "a date-range chip; the range is the content" },
+  { file: "app/(shell)/sales/hours/page.tsx", match: "/sales/hours?days=", reason: "a date-range chip; the range is the content" },
   { file: "app/(shell)/sales/data-quality/page.tsx", match: "/crm/${r.id}", reason: "a customer row; the whole card is the tap target" },
   { file: "components/LeadsMap.tsx", match: "lead-marker", reason: "the button is the map pin itself, a dot or its stop number" },
   { file: "components/PlannerPickMap.tsx", match: "lead-marker", reason: "the button is the map pin itself, a dot or its stop number" },

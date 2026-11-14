@@ -1,5 +1,7 @@
 "use client";
 
+import { warningText, type OpeningWarning } from "@/lib/openingWarning";
+
 import { tehranTodayIso } from "@/lib/jalali";
 import JalaliDateInput from "@/components/meridian/JalaliDateInput";
 import { friendlyError } from "@/lib/userMessage";
@@ -10,7 +12,7 @@ import { useUndoableAction } from "@/components/tapflow/useUndoableAction";
 
 interface Assignment {
   vehicle_key: number;
-  stops: { delivery_id: number; sort_order: number; eta_min: number }[];
+  stops: { delivery_id: number; sort_order: number; eta_min: number; opening?: OpeningWarning }[];
   distance_km: number;
   duration_min: number;
 }
@@ -155,6 +157,7 @@ export default function RoutingPlanner({ vehicleNames }: { vehicleNames: Record<
                 {a.stops.map((s) => (
                   <li key={s.delivery_id}>
                     تحویل {faNum(s.delivery_id)} · حدود {faNum(s.eta_min)} دقیقه
+                    {s.opening && <span className="text-[var(--warning)]"> · {warningText(s.opening)}</span>}
                   </li>
                 ))}
               </ol>

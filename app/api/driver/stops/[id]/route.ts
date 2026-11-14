@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isId } from "@/lib/inputChecks";
 import { requireRole } from "@/lib/session";
+import { listReasonCodes } from "@/lib/repo/reasonCodes";
 import { isToman } from "@/lib/money";
 import { customerDebt } from "@/lib/repo/payments";
 import { DeliveryError } from "@/lib/delivery";
-import { deferOwnedStop, findOwnedStop, invoiceTotal, recordStopDelivery, storedDeliveries } from "@/lib/repo/driverStops";
+import { markStopLate, deferOwnedStop, findOwnedStop, invoiceTotal, recordStopDelivery, storedDeliveries } from "@/lib/repo/driverStops";
 
 /** Records what happened at one door.
  *
@@ -31,6 +32,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     lines?: unknown;
     collected_toman?: unknown;
     notes?: unknown;
+    fail_reason_id?: unknown;
   } | null;
 
   const lines = Array.isArray(body?.lines)
@@ -72,12 +74,22 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     return NextResponse.json({ ok: false, error: "مبلغ دریافتی از بدهی مشتری و مبلغ این سفارش بیشتر است" }, { status: 400 });
   }
 
+  // «Couldn't deliver»: the reason must be one of this company's own (or the system's) failure reasons.
+  let failReasonId: number | null = null;
+  if (body?.fail_reason_id != null) {
+    const wanted = Number(body.fail_reason_id);
+    const known = (await listReasonCodes(guard.session.organizationId, "delivery_fail")).some((r) => r.id === wanted);
+    if (!known) return NextResponse.json({ ok: false, error: "دلیل تحویل‌نشدن نامعتبر است" }, { status: 400 });
+    failReasonId = wanted;
+  }
+
   try {
     await recordStopDelivery(stopId, {
       lines,
       collected_toman: collected,
       by: guard.session.user.id,
       notes: typeof body?.notes === "string" ? body.notes : null,
+      fail_reason_id: failReasonId,
     });
     return NextResponse.json({ ok: true });
   } catch (e) {
@@ -99,7 +111,15 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
   // Same ownership rule as recording: another driver's stop answers 404.
   const owned = await findOwnedStop(stopId, guard.session.user.id, guard.session.organizationId);
   if (!owned) return NextResponse.json({ ok: false, error: "توقف پیدا نشد" }, { status: 404 });
-  const body = (await req.json().catch(() => null)) as { action?: string } | null;
+  const body = (await req.json().catch(() => null)) as { action?: string; delay_reason_id?: unknown } | null;
+  if (body?.action === "late") {
+    const wanted = Number(body.delay_reason_id);
+    const known = (await listReasonCodes(guard.session.organizationId, "delivery_delay")).some((r) => r.id === wanted);
+    if (!known) return NextResponse.json({ ok: false, error: "دلیل تأخیر نامعتبر است" }, { status: 400 });
+    if (owned.status !== "pending") return NextResponse.json({ ok: false, error: "این توقف قبلاً ثبت شده است" }, { status: 409 });
+    await markStopLate(guard.session.organizationId, stopId, owned.order_id, wanted);
+    return NextResponse.json({ ok: true });
+  }
   if (body?.action !== "defer") return NextResponse.json({ ok: false, error: "درخواست نامعتبر است" }, { status: 400 });
   try {
     return NextResponse.json({ ok: true, ...await deferOwnedStop(stopId) });
