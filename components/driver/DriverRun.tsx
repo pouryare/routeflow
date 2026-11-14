@@ -21,6 +21,7 @@ import { useHydrated } from "@/lib/useHydrated";
 import { tehranParts } from "@/lib/crm/due";
 import { tehranTodayIso } from "@/lib/jalali";
 import { openingWarningFromJson, warningText } from "@/lib/openingWarning";
+import LateButton from "@/components/driver/LateButton";
 import DriverHelp from "@/components/driver/DriverHelp";
 import PriorityTag from "@/components/sales/PriorityTag";
 
@@ -65,13 +66,14 @@ export default function DriverRun({
   businessName,
   receiptFooter = null,
   failReasons = [],
+  lateReasons = [],
 }: {
   run: RunDetail;
   driverName: string;
   businessName: string;
   receiptFooter?: string | null;
-  /** The company's «تحویل ناموفق» reasons, shown as chips when nothing could be handed over. */
   failReasons?: { id: number; label: string }[];
+  lateReasons?: { id: number; label: string }[];
 }) {
   const router = useRouter();
   const [openStop, setOpenStop] = useState<number | null>(null);
@@ -166,6 +168,7 @@ export default function DriverRun({
             businessName={businessName}
             receiptFooter={receiptFooter}
             failReasons={failReasons}
+            lateReasons={lateReasons}
             next={stop.id === run.stops.find((x) => x.status === "pending")?.id}
             lastStop={run.stops.every((s) => s.id === stop.id || s.status !== "pending")}
           />
@@ -230,6 +233,7 @@ function StopCard({
   businessName,
   receiptFooter,
   failReasons,
+  lateReasons,
   next,
   lastStop,
 }: {
@@ -245,6 +249,7 @@ function StopCard({
   businessName: string;
   receiptFooter: string | null;
   failReasons: { id: number; label: string }[];
+  lateReasons: { id: number; label: string }[];
   /** The stop the driver is heading to: its shop's opening hours are checked against the time now. */
   next: boolean;
   lastStop: boolean;
@@ -347,6 +352,7 @@ function StopCard({
 
       {open && (
         <div className="border-t border-[var(--border)] p-[var(--space-4)]">
+          {!done && lateReasons.length > 0 && <LateButton stopId={stop.id} reasons={lateReasons} />}
           {stop.phone && (
             <a
               href={`tel:${stop.phone}`}

@@ -49,3 +49,22 @@ describe("raiseDriverHelp", () => {
     expect(rows.some((r) => Number(r.user_id) === m2)).toBe(false);
   });
 });
+
+describe("markStopLate", () => {
+  it("writes the delay reason on the stop's delivery, creating the delivery when there is none", async () => {
+    const { getDb } = await import("@/lib/db");
+    const { markStopLate } = await import("@/lib/repo/driverStops");
+    const db = getDb();
+    const now = new Date().toISOString();
+    const owner = Number((await db.prepare("INSERT INTO users (username,password_hash,display_name,role,created_at,organization_id) VALUES ('ml-o','x','o','owner',?,1)").run(now)).lastInsertRowid);
+    const drv = Number((await db.prepare("INSERT INTO users (username,password_hash,display_name,role,created_at,organization_id) VALUES ('ml-d','x','d','delivery_driver',?,1)").run(now)).lastInsertRowid);
+    const cust = Number((await db.prepare("INSERT INTO customers (customer_code,business_name,lifecycle,synced_at,organization_id) VALUES ('ML1','ف','active',?,1)").run(now)).lastInsertRowid);
+    const order = Number((await db.prepare("INSERT INTO orders (order_no,customer_id,order_date,status,created_by,created_at,updated_at,organization_id) VALUES ('ML-1',?,'2026-09-10','READY',?,?,?,1)").run(cust, owner, now, now)).lastInsertRowid);
+    const run = Number((await db.prepare("INSERT INTO delivery_runs (driver_user_id, run_date, status, created_by, created_at, updated_at, organization_id) VALUES (?, '2026-09-11', 'in_progress', ?, ?, ?, 1)").run(drv, owner, now, now)).lastInsertRowid);
+    const stop = Number((await db.prepare("INSERT INTO delivery_stops (run_id, order_id, status, created_at) VALUES (?,?,'pending',?)").run(run, order, now)).lastInsertRowid);
+    const reason = Number(((await db.prepare("SELECT id FROM reason_codes WHERE domain = 'delivery_delay' LIMIT 1").get()) as { id: number }).id);
+    await markStopLate(1, stop, order, reason);
+    const row = (await db.prepare("SELECT delay_reason_id FROM deliveries WHERE route_stop_id = ?").get(stop)) as { delay_reason_id: number };
+    expect(Number(row.delay_reason_id)).toBe(reason);
+  });
+});

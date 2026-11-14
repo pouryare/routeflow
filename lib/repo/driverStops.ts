@@ -96,3 +96,13 @@ export async function stampInvoiceSent(orderId: number, organizationId: number, 
     )
     .run(new Date().toISOString(), via, orderId, organizationId);
 }
+
+/** «دیر می‌رسم»: the stop's delivery records why it will be late (a `delivery_delay` reason). Creates the delivery
+ *  row first when the stop has none yet, so a tap on a stop nobody has recorded still lands. */
+export async function markStopLate(organizationId: number, stopId: number, orderId: number, reasonId: number): Promise<void> {
+  const { deliveryForStop, planDelivery } = await import("@/lib/repo/deliveries");
+  if (!(await deliveryForStop(organizationId, stopId))) await planDelivery(organizationId, orderId, { route_stop_id: stopId });
+  await getDb()
+    .prepare("UPDATE deliveries SET delay_reason_id = ? WHERE route_stop_id = ? AND organization_id = ?")
+    .run(reasonId, stopId, organizationId);
+}
