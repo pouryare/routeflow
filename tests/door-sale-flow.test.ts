@@ -43,7 +43,7 @@ describe("the door sale flow", () => {
   });
 
   it("nothing chosen is refused, and an unpriced product cannot be sold", () => {
-    let st = answerStep(doorSaleFlow, ctx, startFlow(doorSaleFlow, ctx), "sale");
+    const st = answerStep(doorSaleFlow, ctx, startFlow(doorSaleFlow, ctx), "sale");
     expect(answerStep(doorSaleFlow, ctx, st, "ok", JSON.stringify({ 11: 0 })).stack.at(-1)).toBe("empty");
     expect(answerStep(doorSaleFlow, ctx, st, "ok", JSON.stringify({ 12: 1 })).stack.at(-1)).toBe("unpriced");
   });
