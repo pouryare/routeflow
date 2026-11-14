@@ -72,6 +72,7 @@ const COLUMNS: Record<string, string> = {
   leftover_limit_toman: "سقف بستن مانده کوچک (تومان)",
   refund_limit_toman: "سقف پرداخت نقدی برگشت (تومان)",
   order_approval_limit_toman: "سقف سفارش بدون تأیید (تومان)",
+  carton_nudge_percent: "یادآوری تکمیل کارتن (درصد)",
   min_order_toman: "حداقل مبلغ سفارش (تومان)",
   approval_owner_limit_toman: "سقف تأیید مدیر گروه بدون مالک (تومان)",
   expense_claim_limit_toman: "سقف تأیید هزینهٔ کارکنان (تومان)",

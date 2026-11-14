@@ -1402,6 +1402,7 @@ export interface Organizations {
   order_approval_limit_toman: Generated<number>;
   approval_owner_limit_toman: Generated<number>;
   min_order_toman: Generated<number>;
+  carton_nudge_percent: Generated<number>;
   order_prefix: string | null;
   plan: Generated<string>;
   quiet_customer_days: Generated<number>;

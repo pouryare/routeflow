@@ -57,7 +57,7 @@ export default async function NewOrderPage({
   }
 
   const { customers, products, sellers, payers } = await orderEntryFor(session);
-  const minOrderToman = (await thresholdsFor(session.organizationId)).min_order_toman;
+  const { min_order_toman: minOrderToman, carton_nudge_percent: cartonNudgePercent } = await thresholdsFor(session.organizationId);
 
   // Validated against the customers this caller can already see, rather than passed
   // through. A link is user input: an id from another group must not preselect anything,
@@ -85,6 +85,7 @@ export default async function NewOrderPage({
       canDiscountFreely={isOwner(session.role)}
       initialCustomerId={initialCustomerId}
       minOrderToman={minOrderToman}
+      cartonNudgePercent={cartonNudgePercent}
     />    </>
   );
 }

@@ -13,6 +13,7 @@ import { faJalaliDate } from "@/lib/jalali";
 import { roundToman, toNumber } from "@/lib/money";
 import { MAX_PACKS_PER_LINE, parsePacks } from "@/lib/orderLimits";
 import { Icon } from "@/components/meridian/Icon";
+import { cartonNudge } from "@/lib/cartonNudge";
 import { BELOW_MIN_REASONS, belowMin } from "@/lib/minOrder";
 import BusyIcon from "@/components/meridian/BusyIcon";
 import { useDoneFlash } from "@/lib/useDoneFlash";
@@ -93,6 +94,7 @@ export default function OrderForm({
   canDiscountFreely = false,
   initialCustomerId = null,
   minOrderToman = 0,
+  cartonNudgePercent = 0,
 }: {
   customers: Customer[];
   products: Product[];
@@ -106,6 +108,8 @@ export default function OrderForm({
   initialCustomerId?: number | null;
   /** F64: the company minimum for an order (0 = off). */
   minOrderToman?: number;
+  /** F114: how close below a bigger pack the form says what completes it (0 = off). */
+  cartonNudgePercent?: number;
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
@@ -441,7 +445,7 @@ export default function OrderForm({
                 key={line.key}
                 layout
                 exit={{ opacity: 0, scale: 0.35, rotate: -14, y: 18, filter: "blur(3px)", transition: { duration: 0.32 } }}
-                className="flex items-center justify-between gap-[var(--space-2)] border-b border-[var(--border)] pb-[var(--space-2)]"
+                className="flex flex-wrap items-center justify-between gap-[var(--space-2)] border-b border-[var(--border)] pb-[var(--space-2)]"
               >
                 <div className="min-w-0">
                   <span className="block truncate text-[length:var(--text-sm)] text-[var(--foreground)]">
@@ -464,6 +468,14 @@ export default function OrderForm({
                     <Icon name="trash" size="sm" />
                   </button>
                 </div>
+                {(() => {
+                  const n = cartonNudge({ packs: line.packs, qtyPerPack: line.packaging.qty_per_pack }, line.product.packagings.filter((k) => k.id !== line.packaging_id).map((k) => ({ name: k.name, qtyPerPack: k.qty_per_pack })), cartonNudgePercent);
+                  return n ? (
+                    <button type="button" data-tour="carton-nudge" className="min-h-[44px] basis-full rounded-[var(--radius-md)] border border-[var(--border)] px-[var(--space-3)] text-start text-[length:var(--text-xs)] text-[var(--muted)]" onClick={() => setLines((ls) => ls.map((l) => (l.key === line.key ? { ...l, packs: l.packs + n.addPacks } : l)))}>
+                      <Icon name="plus" size="sm" />{faNum(n.missingUnits)} عدد دیگر {n.pack} را کامل می‌کند؛ {faNum(n.addPacks)} {line.packaging.name} اضافه شود
+                    </button>
+                  ) : null;
+                })()}
               </motion.li>
             ))}
             </AnimatePresence>
