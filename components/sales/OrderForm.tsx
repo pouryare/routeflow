@@ -70,6 +70,8 @@ interface Draft {
 
 const FIELD =
   "w-full rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] px-[var(--space-3)] py-[var(--space-2)] text-[length:var(--text-base)] text-[var(--foreground)] outline-none transition-colors duration-[var(--dur-base)] focus:border-[var(--accent)]";
+/** F69: the notes drivers are asked for most; a tap adds the phrase to the note. */
+const NOTE_PICKS = ["قبل از ظهر تحویل شود", "هنگام رسیدن تماس بگیرید", "پول نقد دم در"];
 const LABEL = "mb-[var(--space-1)] block text-[length:var(--text-xs)] text-[var(--muted)]";
 
 /** Recording an order, phone first.
@@ -408,6 +410,11 @@ export default function OrderForm({
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
           />
+          <div className="mt-[var(--space-2)] flex flex-wrap gap-[var(--space-2)]">
+            {NOTE_PICKS.map((p) => (
+              <button key={p} type="button" className="min-h-[44px] rounded-[var(--radius-md)] border border-[var(--border)] px-[var(--space-3)] text-[length:var(--text-xs)]" onClick={() => setNotes((n) => (n.includes(p) ? n : n ? `${n}؛ ${p}` : p))}>{p}</button>
+            ))}
+          </div>
         </div>
       </section>
 

@@ -442,6 +442,7 @@ export interface Customers {
   credit_limit_toman: number | null;
   customer_code: string;
   customer_type: string | null;
+  delivery_instructions: string | null;
   district_id: number | null;
   first_order_at: string | null;
   group_id: number | null;

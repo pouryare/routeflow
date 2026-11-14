@@ -20,7 +20,7 @@ const line = (id: number, packs: number, price: number) => ({
 });
 const stop = (id: number, status: string, lines: ReturnType<typeof line>[]): RunStop => ({
   id, order_id: id, order_no: `S-${id}`, priority: "NORMAL", customer_id: id, customer_name: `مشتری ${id}`, address: "تهران",
-  phone: "0912", lat: null, lng: null, status, collected_toman: 0, sort_order: id, notes: null, lines: lines as never,
+  phone: "0912", lat: null, lng: null, status, collected_toman: 0, sort_order: id, notes: null, delivery_instructions: null, order_notes: null, window_label: null, lines: lines as never,
   total_toman: lines.reduce((s, l) => s + l.total_toman, 0),
 });
 
