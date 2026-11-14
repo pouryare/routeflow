@@ -1,3 +1,4 @@
+import ExportButton from "@/components/sales/ExportButton";
 import ScrollFade from "@/components/mobile/ScrollFade";
 import { Icon } from "@/components/meridian/Icon";
 import { CardHelp } from "@/components/meridian/CardHelp";
@@ -32,6 +33,10 @@ import { pageMetadata } from "@/lib/pageMeta";
 import LiveRefresh from "@/components/LiveRefresh";
 import Pager from "@/components/accounting/Pager";
 import { pagingFor, type Paging } from "@/lib/paging";
+import OrderFilters from "@/components/sales/OrderFilters";
+import { listViews, type SavedView } from "@/lib/repo/savedViews";
+import { filterOrders } from "@/lib/orderListFilter";
+import { tehranTodayIso } from "@/lib/jalali";
 
 export const metadata = pageMetadata("/sales/orders");
 
@@ -89,6 +94,16 @@ function barsFor(seed: number, total: number): [number, number, number, number] 
   return out as [number, number, number, number];
 }
 
+/** FB4: say how many orders the filters hide, and offer to clear them. */
+function HiddenNote({ hidden, clearHref }: { hidden: number; clearHref: string }) {
+  return (
+    <p className="m-0 mt-2 text-[length:var(--text-sm)] text-[var(--muted)]">
+      {faNum(hidden)} سفارش با این فیلتر دیده نمی‌شود.{" "}
+      <Link href={clearHref} className="text-[var(--accent-text)]">پاک کردن فیلتر</Link>
+    </p>
+  );
+}
+
 /** «فهرست» — the pocket list, which is what this route always showed. */
 function ListView({
   orders,
@@ -100,8 +115,20 @@ function ListView({
   amounts,
   paging,
   pageParams,
+  reps,
+  filtered,
+  more,
+  views,
+  totalCount,
 }: {
+  /** FB4: how many orders the search and filters hide. */
+  totalCount: number;
+  views: SavedView[];
   orders: OrderSummary[];
+  /** FB1: who sold the listed orders (for the rep chips), whether a search or chip is on, and the link that reads 100 more. */
+  reps: string[];
+  filtered: boolean;
+  more: string | null;
   /** Which slice of `orders` is drawn; the heading still counts them all. */
   paging: Paging;
   /** The list's other filters, kept by the pager's links. */
@@ -125,18 +152,12 @@ function ListView({
           <div className="n">
             {orders.length === 0
               ? "سفارشی پیدا نشد"
-              : `${faNum(orders.length)} سفارش، از ${faNum(customerCount)} مشتری · روی هر کارت بزنید`}
+              : `${faNum(orders.length)} سفارش، از ${faNum(customerCount)} مشتری، جمعاً ${faToman(orders.reduce((s, o) => s + o.total_toman, 0))} · روی هر کارت بزنید`}
           </div>
         </div>
         <div className="acts">
           {orders.length > 0 && (
-            /* A plain anchor with `download`, on purpose: this is a file, not a
-               navigation, and next/link would attempt a client-side transition to a
-               route that answers with an .xlsx. */
-            <a className="btn ghost" href="/api/sales/orders/export" download>
-              <Icon name="download" size="md" />
-              خروجی اکسل
-            </a>
+            <ExportButton url="/api/sales/orders/export" />
           )}
           {mayOrder && (
             <Link
@@ -151,11 +172,17 @@ function ListView({
         <CardHelp id="card.orders-recent" />
       </div>
 
+      <div className="kblock__body">
+        <OrderFilters reps={reps} views={views} />
+        {(filtered || range) && totalCount > orders.length ? <HiddenNote hidden={totalCount - orders.length} clearHref={focused ? `/sales/orders?customer=${focused.id}` : "/sales/orders"} /> : null}
+      </div>
       {bounds && <OrderAmountFilter key={range ? range.join("-") : "all"} bounds={bounds} active={range} amounts={amounts} />}
 
       {orders.length === 0 ? (
         <p style={{ padding: "0 24px 28px", color: "var(--muted)", fontSize: 13.5 }}>
-          {range
+          {filtered
+            ? "سفارشی با این جستجو یا فیلتر پیدا نشد."
+            : range
             ? "سفارشی در این بازهٔ مبلغ نیست."
             : focused
             ? `برای ${focused.business_name} هنوز سفارشی ثبت نشده است.`
@@ -209,6 +236,14 @@ function ListView({
       {paging.pageCount > 1 && (
         <div className="kblock__body">
           <Pager base="/sales/orders" params={pageParams} paging={paging} />
+        </div>
+      )}
+      {more && (
+        <div className="kblock__body">
+          <Link className="btn ghost" href={more}>
+            <Icon name="plus" size="md" />
+            نمایش ۱۰۰ سفارش قدیمی‌تر
+          </Link>
         </div>
       )}
     </div>
@@ -396,12 +431,21 @@ export default async function OrdersPage({
   const orderParam = one(params, "order");
   const customerId = customerParam !== undefined && /^\d+$/.test(customerParam) ? Number(customerParam) : undefined;
 
-  const { focused, orders: allOrders, onARun } = await ordersListFor(session, { customerId });
+  const limitParam = Number(one(params, "limit"));
+  const limit = Number.isInteger(limitParam) && limitParam >= 100 ? Math.min(limitParam, 1000) : 100;
+  const { focused, orders: allOrders, onARun } = await ordersListFor(session, { customerId, limit });
   /* The amount filter belongs to the list view only; the board and journey read every order. */
   const amounts = allOrders.map((o) => o.total_toman);
   const bounds = boundsOf(amounts);
   const range = bounds ? parseRange(one(params, "min"), one(params, "max"), bounds) : null;
-  const orders = view === "" ? allOrders.filter((o) => inRange(o.total_toman, range)) : allOrders;
+  const query = { q: one(params, "q"), status: one(params, "status"), payment: one(params, "payment"), rep: one(params, "rep"), day: one(params, "day") };
+  const isFiltered = Object.values(query).some(Boolean);
+  const orders =
+    view === ""
+      ? filterOrders(allOrders, query, tehranTodayIso()).filter((o) => inRange(o.total_toman, range))
+      : allOrders;
+  // shortcut: filters read the newest `limit` orders; «older» raises it by 100 up to 1,000, then a server-side search is needed.
+  const more = view === "" && allOrders.length >= limit && limit < 1000 ? `/sales/orders?${new URLSearchParams({ ...Object.fromEntries(Object.entries({ customer: customerParam, min: one(params, "min"), max: one(params, "max"), ...query }).filter(([, v]) => v)), limit: String(limit + 100) } as Record<string, string>)}` : null;
 
   const mode = one(params, "mode") === "all" ? "all" : "one";
   const askedOrderId = orderParam !== undefined && /^\d+$/.test(orderParam) ? Number(orderParam) : undefined;
@@ -425,7 +469,12 @@ export default async function OrdersPage({
           range={range}
           amounts={amounts}
           paging={pagingFor(one(params, "page"), orders.length, ORDERS_PER_PAGE)}
-          pageParams={{ customer: customerParam, min: one(params, "min"), max: one(params, "max") }}
+          pageParams={{ customer: customerParam, min: one(params, "min"), max: one(params, "max"), limit: one(params, "limit"), ...query }}
+          reps={[...new Set(allOrders.map((o) => o.salesperson_name).filter((n): n is string => !!n))]}
+          filtered={isFiltered}
+          more={more}
+          views={await listViews(session.organizationId, session.user.id)}
+          totalCount={allOrders.length}
         />
       )}
     </>

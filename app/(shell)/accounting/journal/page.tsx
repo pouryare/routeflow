@@ -3,6 +3,18 @@ import PageHeader from "@/components/meridian/PageHeader";
 import SectionHead from "@/components/meridian/SectionHead";
 import AcctTable, { CELL, NUM } from "@/components/accounting/AcctTable";
 import { requireAccounting } from "@/lib/accountingGate";
+import { cookies } from "next/headers";
+import { COOKIE_NAME } from "@/lib/auth";
+import { getSessionFromCookies } from "@/lib/session";
+import PeriodsCard from "@/components/accounting/PeriodsCard";
+import YearCloseCard from "@/components/accounting/YearCloseCard";
+import { yearList } from "@/lib/repo/yearClose";
+import ReconcileCard from "@/components/accounting/ReconcileCard";
+import { todayJalali } from "@/lib/jalali";
+import { ACCOUNTING_ROLES } from "@/lib/roles";
+import ManualJournalCard, { ReverseManualButton } from "@/components/accounting/ManualJournalCard";
+import { postableAccounts } from "@/lib/repo/manualJournal";
+import { hiddenAccountIdsFor } from "@/lib/repo/privateCategories";
 import { journalReport, listPeriods } from "@/lib/repo/reports";
 import Pager from "@/components/accounting/Pager";
 import { faNum } from "@/lib/format";
@@ -33,7 +45,8 @@ export default async function JournalPage({
 }) {
   const { period, source, page: pageParam } = await searchParams;
   const organizationId = await requireAccounting("/accounting/journal");
-  const filter = { periodKey: period, sourceType: source };
+  const session = await getSessionFromCookies((await cookies()).get(COOKIE_NAME)?.value);
+  const filter = { periodKey: period, sourceType: source, hideAccountIds: session ? await hiddenAccountIdsFor(session.role, organizationId) : [] };
   let report = await journalReport(organizationId, { ...filter, limit: PAGE_SIZE, offset: (requestedPage(pageParam) - 1) * PAGE_SIZE });
   const paging = pagingFor(pageParam, report.total, PAGE_SIZE);
   // A page past the end is clamped to the last one, which needs one more read.
@@ -41,6 +54,8 @@ export default async function JournalPage({
     report = await journalReport(organizationId, { ...filter, limit: PAGE_SIZE, offset: paging.offset });
   }
   const periods = await listPeriods(organizationId);
+  const years = await yearList(organizationId);
+  const manualAccounts = (await postableAccounts()).map((a) => ({ id: String(a.id), label: `${a.code} ${a.nameFa}` }));
   const withReceipt = await journalsWithReceipt(organizationId, report.rows.map((r) => r.journalId));
   const reversed = report.rows.filter((r) => r.reversedByJournalId !== null).length;
 
@@ -50,6 +65,10 @@ export default async function JournalPage({
   return (
     <>
       <PageHeader route="/accounting/journal" />
+      {session && ACCOUNTING_ROLES.includes(session.role) ? <PeriodsCard periods={periods.map((p) => ({ periodKey: p.periodKey, status: p.status }))} currentKey={`${todayJalali().jy}-${String(todayJalali().jm).padStart(2, "0")}`} /> : null}
+      {session && ACCOUNTING_ROLES.includes(session.role) ? <YearCloseCard years={years} currentYear={todayJalali().jy} /> : null}
+      {session && ACCOUNTING_ROLES.includes(session.role) ? <ReconcileCard /> : null}
+      {session && ACCOUNTING_ROLES.includes(session.role) ? <ManualJournalCard accounts={manualAccounts} /> : null}
       <SectionHead
         title="دفتر روزنامه"
         sub={`${faNum(report.total)} سند${reversed ? ` — ${faNum(reversed)} سند ابطال‌شده${paging.pageCount > 1 ? " در این صفحه" : ""}` : ""}`}
@@ -112,6 +131,7 @@ export default async function JournalPage({
                     معکوسِ #{r.reversesJournalId}
                   </span>
                 ) : null}
+                {r.sourceType === "MANUAL" && !struck && session && ACCOUNTING_ROLES.includes(session.role) ? <ReverseManualButton journalId={r.journalId} /> : null}
                 {r.sourceType === "EXPENSE" && !struck ? <ReceiptButton journalId={r.journalId} has={withReceipt.has(r.journalId)} /> : null}
                 {r.createdByName ? (
                   <span className="mr-2 text-[length:var(--text-xs)] text-text-muted">

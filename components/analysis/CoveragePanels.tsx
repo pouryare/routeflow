@@ -22,15 +22,20 @@ import { newestSync } from "@/lib/freshness";
 export default function CoveragePanels({
   data,
   now,
+  ageingDays,
+  staleDays,
 }: {
   data: CoverageAnalytics;
   now: Date;
+  /** The company's own limits (D30); the defaults when left out. */
+  ageingDays?: number;
+  staleDays?: number;
 }) {
   const statuses = Object.keys(STATUS_LABEL) as CoverageStatus[];
 
   return (
     <div className="flex flex-col gap-[var(--space-4)]">
-      <DataFreshness syncedAt={newestSync(data.customers)} now={now} />
+      <DataFreshness syncedAt={newestSync(data.customers)} now={now} ageingDays={ageingDays} staleDays={staleDays} />
 
       <section>
         <h3 className="sechead__title sechead__title--minor mb-[var(--space-2)]">

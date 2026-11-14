@@ -12,6 +12,8 @@ import ExpenseFlow, { type ExpenseCategory, type ExpenseRepeat } from "./Expense
 import BooksButton from "@/components/accounting/BooksButton";
 import Link from "next/link";
 import { placeHref } from "@/lib/entryPlace";
+import VoidExpenseSheet from "./VoidExpenseSheet";
+import TransferSheet from "@/components/accounting/TransferSheet";
 
 const BTN =
   "inline-flex min-h-[44px] items-center justify-center gap-[var(--space-2)] rounded-[var(--radius-md)] border border-[var(--border)] px-[var(--space-4)] text-[length:var(--text-sm)] text-[var(--foreground)]";
@@ -26,6 +28,7 @@ export default function ExpenseEntry({ categories, suppliers, recent = [], canSe
 }) {
   const [flow, setFlow] = useState<{ key: number; open: boolean; repeat?: ExpenseRepeat }>(() => autoOpenFlow("new", currentSearch()));
   const start = (repeat?: ExpenseRepeat) => setFlow((f) => ({ key: f.key + 1, open: true, repeat }));
+  const [voiding, setVoiding] = useState<RecentExpense | null>(null);
   const [show, setShow] = useState<"all" | "review">("all");
   const toReview = recent.filter(needsReview).length;
   const listed = show === "review" ? recent.filter(needsReview) : recent;
@@ -36,6 +39,7 @@ export default function ExpenseEntry({ categories, suppliers, recent = [], canSe
           <Icon name="plus" size="md" />
           ثبت هزینه
         </button>
+        {canSeeBooks ? <span className="ms-[var(--space-2)]"><TransferSheet /></span> : null}
       </div>
       {flow.key > 0 && (
         <ExpenseFlow
@@ -48,6 +52,7 @@ export default function ExpenseEntry({ categories, suppliers, recent = [], canSe
           onReopen={() => setFlow((f) => ({ ...f, open: true }))}
         />
       )}
+      <VoidExpenseSheet journalId={voiding?.journalId ?? null} label={voiding?.categoryFa ?? ""} amount={voiding?.amountToman ?? 0} onClose={() => setVoiding(null)} />
       {recent.length > 0 && (
         <section className="mb-6">
           <SectionHead title="آخرین هزینه‌ها" as="h3" />
@@ -75,7 +80,7 @@ export default function ExpenseEntry({ categories, suppliers, recent = [], canSe
                   <div className="min-w-0 flex-1">
                     <p className="flex items-baseline justify-between gap-[var(--space-2)] text-[length:var(--text-sm)]">
                       <span className="truncate font-medium">{r.categoryFa}</span>
-                      <span className="tnum shrink-0">{faNum(r.amountToman)} تومان</span>
+                      <span className="tnum shrink-0">{r.hidden ? "••••••" : `${faNum(r.amountToman)} تومان`}</span>
                     </p>
                     <p className="truncate text-[length:var(--text-xs)] text-[var(--muted)]">
                       {[faJalaliDate(r.postedAt), supplier ?? (r.memo || null), r.enteredBy, show === "review" && !r.hasReceipt ? "بدون رسید" : null, show === "review" && !r.memo?.trim() ? "بدون توضیح" : null].filter(Boolean).join(" · ")}
@@ -96,9 +101,15 @@ export default function ExpenseEntry({ categories, suppliers, recent = [], canSe
                       {canSeeBooks ? <BooksButton doc="expense" id={r.journalId} /> : null}
                     </span>
                   </div>
+                  {canSeeBooks ? (
+                    <button type="button" onClick={() => setVoiding(r)} className={`${BTN} shrink-0`}>
+                      <Icon name="x" size="md" />
+                      باطل کردن
+                    </button>
+                  ) : null}
                   <button
                     type="button"
-                    onClick={() => start({ accountId: r.accountId, amountToman: r.amountToman, supplier })}
+                    onClick={() => start({ accountId: r.accountId, amountToman: r.hidden ? 0 : r.amountToman, supplier })}
                     className={`${BTN} shrink-0`}
                   >
                     <Icon name="repeat" size="md" />

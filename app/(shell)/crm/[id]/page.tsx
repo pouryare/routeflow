@@ -6,7 +6,9 @@ import { profileFor, timelineFor } from "@/lib/repo/crm/profile";
 import { idParam } from "@/lib/repo/crm/http";
 import BusinessProfile from "@/components/crm/BusinessProfile";
 import PageHeader from "@/components/meridian/PageHeader";
-import { canSell } from "@/lib/roles";
+import { canSell, isOwner } from "@/lib/roles";
+import AuditHistoryCard from "@/components/meridian/AuditHistoryCard";
+import { auditHistory } from "@/lib/repo/auditLog";
 import { getBusiness } from "@/lib/repo/crm/businesses";
 import { pageMetadata } from "@/lib/pageMeta";
 import type { Metadata } from "next";
@@ -25,8 +27,11 @@ export default async function ProfilePage({ params }: { params: Promise<{ id: st
   const id = idParam((await params).id);
   const profile = id === null ? null : await profileFor(session, id);
   if (!profile || id === null) notFound();
+  // T6: the owner also reads what changed on this customer (credit limit, group, owner, phone), by whom, old ← new.
+  const changes = isOwner(session.role) ? await auditHistory(session.organizationId, { table: "customers", rowId: id, limit: 50 }) : null;
   return <>
     <PageHeader route="/crm" />
     <BusinessProfile initial={profile} initialTimeline={(await timelineFor(session, id))!} canOrder={canSell(session.role)} />
+    {changes && changes.length > 0 && <AuditHistoryCard rows={changes} title="تغییرات این مشتری" oneRecord />}
   </>;
 }

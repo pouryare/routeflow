@@ -1,4 +1,5 @@
 import { boundedText, isDayWithin, isQuantity, isTimestampWithin } from "@/lib/inputChecks";
+import { once } from "@/lib/repo/idempotency";
 import { parsePlace } from "@/lib/entryPlace";
 import { saveEntryPlace } from "@/lib/repo/entryPlaces";
 import { isToman } from "@/lib/money";
@@ -27,7 +28,7 @@ export async function GET(req: NextRequest) {
   });
 }
 
-export async function POST(req: NextRequest) {
+async function post(req: NextRequest) {
   const guard = await requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
 
@@ -85,3 +86,6 @@ export async function POST(req: NextRequest) {
     throw e;
   }
 }
+
+/** Z2: a repeat with the same Idempotency-Key returns the first answer and saves nothing. */
+export const POST = (req: NextRequest) => once(req, () => post(req));

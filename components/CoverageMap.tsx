@@ -14,6 +14,7 @@ import AppMap from "@/components/map/AppMap";
 import { BASEMAP_LABELS } from "@/lib/mapStyle";
 import CustomerLayer, { CLUSTER_LAYER, CUSTOMER_LAYER } from "@/components/coverage/CustomerLayer";
 import DistrictLayer, { type DistrictPaint } from "@/components/coverage/DistrictLayer";
+import { districtMoney, moneyFill } from "@/lib/districtMoney";
 import { DistrictCollection, DistrictFeature, DistrictGeometryMap, DistrictProperties, DistrictPropertiesResponse, MapCustomer, CoverageStatus, STATUS_COLOR, STATUS_LABEL, CustomerColorMode, customerLifecycleColor, debtColor, salespersonColor, inactivityColor, daysSinceLastPurchase, distanceColor, isCustomerColorMode, shapeForColor, type DistrictColorMode, districtGroupColor, isDistrictColorMode } from "@/lib/types";
 import {
   PrecisionMode,
@@ -28,7 +29,7 @@ import CollapsibleSection, { SectionFilterContext } from "./CollapsibleSection";
 import CustomerFilters from "./CustomerFilters";
 import SearchBox from "./SearchBox";
 import LocateControl from "./LocateControl";
-import { canSell } from "@/lib/roles";
+import { canSell, isOwner, MANAGE_ROLES } from "@/lib/roles";
 import MyLocationMarker from "./MyLocationMarker";
 import { useMyPosition } from "./MyPositionProvider";
 import GeofenceWatcher from "./GeofenceWatcher";
@@ -41,6 +42,7 @@ import PinnedCustomersSection from "@/components/coverage/PinnedCustomersSection
 import RecentCustomersSection from "@/components/coverage/RecentCustomersSection";
 import FacilityMarkers from "@/components/coverage/FacilityMarkers";
 import LeadMarkers from "@/components/coverage/LeadMarkers";
+import VanMarkers from "@/components/coverage/VanMarkers";
 import FoundLocationMarker from "@/components/coverage/FoundLocationMarker";
 import { useMapShortcuts } from "@/components/coverage/useMapShortcuts";
 import CustomerColourSection from "@/components/coverage/CustomerColourSection";
@@ -90,9 +92,15 @@ import { readStoredView, linkTargetView, writeStoredView } from "@/components/co
 import { MAP_INK_FALLBACK, MapInk, readMapInk } from "@/components/coverage/mapInk";
 import { MapWatcher, FitToCustomers } from "@/components/coverage/mapParts";
 import CheckField from "@/components/CheckField";
+import HexSection from "@/components/coverage/HexSection";
+import { useHexCells } from "@/components/coverage/useHexCells";
+import { HEX_RES_DEFAULT } from "@/lib/h3";
+import type { HexMetric } from "@/lib/repo/hexMap";
 import { onLive } from "@/lib/live/client";
 
 const HeatmapLayer = dynamic(() => import("./HeatmapLayer"), { ssr: false });
+// The hexagon grid brings h3-js with it, so it loads only when someone switches the layer on.
+const HexLayer = dynamic(() => import("./coverage/HexLayer"), { ssr: false });
 const FullscreenControl = dynamic(() => import("./FullscreenControl"), { ssr: false });
 const CustomerDetailPanel = dynamic(() => import("./CustomerDetailPanel"), { ssr: false });
 const DistrictEditor = dynamic(() => import("./DistrictEditor"), { ssr: false });
@@ -118,6 +126,7 @@ export default function CoverageMap({
   groups,
   role,
   geometryVersion,
+  limits,
 }: {
   initialDistricts: DistrictProperties[];
   initialCustomers: MapCustomer[];
@@ -126,6 +135,8 @@ export default function CoverageMap({
   groups: MapGroup[];
   role: Role;
   geometryVersion: string;
+  /** The company's own numbers (D30); the defaults when left out. */
+  limits?: { quietDays: number; ageingDays: number; staleDays: number; leftoverLimit?: number; refundLimit?: number };
 }) {
   // --- Deep links -------------------------------------------------------------------
   // Read once, on the first render, before the map exists: the opening view is a
@@ -136,6 +147,8 @@ export default function CoverageMap({
   // someone sent is the most specific statement of intent available; the remembered view
   // is the next; fitting is what is left when nobody has said anything.
   const [incoming] = useState(() => (typeof window === "undefined" ? {} : parseMapLink(window.location.search)));
+  // S14: a list or selection opened on the map; null shows every customer.
+  const [listIds, setListIds] = useState<Set<number> | null>(() => (incoming.customerIds ? new Set(incoming.customerIds) : null));
   const [startView] = useState<MapView | null>(
     () => incoming.view ?? linkTargetView(incoming, initialCustomers, initialDistricts) ?? readStoredView()
   );
@@ -177,6 +190,12 @@ export default function CoverageMap({
   /* What is on screen, for the worklist. Null until the map has reported once. */
   const [viewBounds, setViewBounds] = useState<Bounds | null>(null);
   const [heatmapByDebt, setHeatmapByDebt] = useState(false);
+  const canHex = MANAGE_ROLES.includes(role);
+  const hexOn = layers.hex && canHex;
+  const [hexMetric, setHexMetric] = useState<HexMetric>("revenue");
+  const [hexRes, setHexRes] = useState<number>(HEX_RES_DEFAULT);
+  const [hexDays, setHexDays] = useState(90);
+  const hex = useHexCells(hexOn, hexMetric, hexRes, hexDays);
   /* One basemap per skin (lib/mapLayers.ts, BasemapBySkin): the map follows the
      light/dark switch like every other surface. */
   const [skin] = useTheme();
@@ -484,10 +503,11 @@ export default function CoverageMap({
 
   const filteredCustomers = useMemo(() => {
     return customers.filter((c) => {
+      if (listIds && !listIds.has(c.id)) return false;
       if (salespersonFilter.size > 0 && !salespersonFilter.has(c.salesperson ?? "")) return false;
       return true;
     });
-  }, [customers, salespersonFilter]);
+  }, [customers, salespersonFilter, listIds]);
 
   const nearbyCustomers = useMemo(() => {
     if (!myPosition) return [];
@@ -553,6 +573,7 @@ export default function CoverageMap({
     return m;
   }, [salespeople]);
 
+  const moneyByDistrict = useMemo(() => districtMoney(customers), [customers]);
   const groupColors = useMemo(() => new Map(groups.map((g) => [g.id, g.color])), [groups]);
 
   const activeBasemap = basemapDef(basemap);
@@ -731,9 +752,9 @@ export default function CoverageMap({
   const worklist = useMemo(
     () =>
       viewBounds
-        ? buildWorklist(customers, dueReminders, districtProps, viewBounds, tehranTodayIso())
+        ? buildWorklist(customers, dueReminders, districtProps, viewBounds, tehranTodayIso(), undefined, limits?.quietDays)
         : null,
-    [customers, dueReminders, districtProps, viewBounds],
+    [customers, dueReminders, districtProps, viewBounds, limits?.quietDays],
   );
 
   /* The header's search overlay sends a picked customer here when the map is already open,
@@ -812,7 +833,9 @@ export default function CoverageMap({
       const fill =
         districtColorMode === "group"
           ? districtGroupColor(feature.properties.group_id ?? null, groupColors)
-          : status === "unknown"
+          : districtColorMode === "money"
+            ? moneyFill(moneyByDistrict.get(feature.properties.id), ink.unknown)
+            : status === "unknown"
             ? ink.unknown
             : STATUS_COLOR[status];
       const level = feature.properties.level === "mantaghe" ? "mantaghe" : "mahalle";
@@ -829,12 +852,12 @@ export default function CoverageMap({
         fill,
         // Territory reads as a filled area rather than a tint: in group mode the fill is the
         // whole point, where in status mode it sits under markers that have to stay legible.
-        fillOpacity: (selected ? 0.55 : districtColorMode === "group" ? 0.45 : level === "mantaghe" ? 0.08 : 0.35) * dim,
+        fillOpacity: (selected ? 0.55 : districtColorMode === "group" || districtColorMode === "money" ? 0.45 : level === "mantaghe" ? 0.08 : 0.35) * dim,
         lineOpacity: (selected ? 1 : level === "mantaghe" ? 0.5 : 0.8) * dim,
         selected,
       };
     },
-    [districtColorMode, groupColors, ink, bulkSelectedIds, corridorDistrictIds],
+    [districtColorMode, groupColors, moneyByDistrict, ink, bulkSelectedIds, corridorDistrictIds],
   );
 
   /** A customer's marker colour under the active mode. Extracted because the selected
@@ -969,7 +992,7 @@ export default function CoverageMap({
           {/* Silent while the data is current. Every figure on this map -- debts,
               statuses, last-purchase dates -- comes from a spreadsheet somebody has to
               remember to import, and nothing goes visibly wrong when they forget. */}
-          <DataFreshness syncedAt={newestSync(customers)} className="mt-2" />
+          <DataFreshness syncedAt={newestSync(customers)} className="mt-2" ageingDays={limits?.ageingDays} staleDays={limits?.staleDays} />
 
           {positionStatus === "denied" && (
             <p className="mt-2 flex flex-wrap items-center gap-1.5 text-[length:var(--text-xs)] leading-5 text-crit">
@@ -1043,6 +1066,15 @@ export default function CoverageMap({
 
         <RecentCustomersSection recentCustomers={recentCustomers} flyToCustomer={flyToCustomer} togglePinned={togglePinned} />
 
+        {listIds ? (
+          <section className="card flex flex-col gap-[var(--space-2)] p-[var(--space-3)]" data-tour="map:list-filter">
+            <p className="m-0 text-[length:var(--text-sm)]">فقط {faNum(filteredCustomers.length)} مشتریِ فهرست انتخاب‌شده روی نقشه است.</p>
+            <button type="button" onClick={() => setListIds(null)} className="inline-flex min-h-[44px] items-center gap-[var(--space-2)] self-start rounded-[var(--radius-md)] border border-[var(--border)] px-[var(--space-3)] text-[length:var(--text-sm)]">
+              <Icon name="x" size="md" />
+              نمایش همهٔ مشتری‌ها
+            </button>
+          </section>
+        ) : null}
         <CustomerFilters
           salespeople={salespeople}
           salespersonFilter={salespersonFilter}
@@ -1131,6 +1163,14 @@ export default function CoverageMap({
             )}
         </CollapsibleSection>
 
+        {canHex && (
+          <HexSection
+            on={hexOn} onOpenLayers={() => setLayersOpen(true)}
+            metric={hexMetric} setMetric={setHexMetric} res={hexRes} setRes={setHexRes} days={hexDays} setDays={setHexDays}
+            loading={hex.loading} error={hex.error} cellCount={hex.cells.length}
+          />
+        )}
+
         <MapSettingsSection
           geofenceOn={geofenceOn} setGeofenceOn={setGeofenceOn}
           facilityGeofenceOn={facilityGeofenceOn} setFacilityGeofenceOn={setFacilityGeofenceOn}
@@ -1204,6 +1244,8 @@ export default function CoverageMap({
               read as a route rather than an arbitrary rectangle. */}
           <CorridorBandLayer corridorOn={corridorOn} corridorEnds={corridorEnds} corridorBand={corridorBand} corridorPath={corridorPath} lightGround={activeBasemap.ground === "light"} beforeId={BASEMAP_LABELS} />
 
+          {hexOn && <HexLayer cells={hex.cells} metric={hexMetric} beforeId={BASEMAP_LABELS} />}
+
           {heatmapOn && <HeatmapLayer customers={filteredCustomers} weightByDebt={heatmapByDebt} beforeId={BASEMAP_LABELS} />}
 
           <CustomerLayer customers={mapCustomers} colorOf={markerColor} shaped={shapedMarkers} ink={ink} onOpen={openCustomer} canOrder={canSell(role)} navAppId={navAppId} />
@@ -1231,6 +1273,7 @@ export default function CoverageMap({
           {layers.facilities && <FacilityMarkers placedFacilities={placedFacilities} navAppId={navAppId} />}
 
           <LeadMarkers initialLeads={initialLeads} navAppId={navAppId} />
+          {MANAGE_ROLES.includes(role) && <VanMarkers />}
 
           {foundLocation && <FoundLocationMarker foundLocation={foundLocation} onClear={() => setFoundLocation(null)} />}
 
@@ -1255,6 +1298,8 @@ export default function CoverageMap({
             onClose={() => setSelectedCustomer(null)}
             onReminderAdded={loadReminders}
             onUpdated={loadCustomers}
+            canEditContact={canSell(role)}
+            leftover={limits?.leftoverLimit !== undefined && MANAGE_ROLES.includes(role) ? { limit: limits.leftoverLimit, owner: isOwner(role), refundLimit: limits.refundLimit ?? 0 } : undefined}
           />
         )}
       </div>
@@ -1268,11 +1313,13 @@ export default function CoverageMap({
         onLayer={setLayer}
         zoneStatus={zoneStatus}
         hasCorridor={corridorEnds !== null}
+        hidden={canHex ? [] : ["hex"]}
       />
 
       {selectedDistrict && (
         <DistrictEditor
           district={selectedDistrict}
+          money={moneyByDistrict.get(selectedDistrict.properties.id)}
           onClose={() => setSelectedDistrict(null)}
           onReminderAdded={loadReminders}
           onSaved={() => {

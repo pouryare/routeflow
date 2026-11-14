@@ -8,6 +8,7 @@ import { useCallback, useState } from "react";
 import GroupTerritoryEditor from "@/components/GroupTerritoryEditor";
 import type { DistrictProperties } from "@/lib/types";
 import { faNum } from "@/lib/format";
+import { ChipGroup } from "@/components/mobile/ChipGroup";
 
 interface GroupRow {
   id: number;
@@ -17,7 +18,14 @@ interface GroupRow {
   active: number;
   district_count: number;
   user_count: number;
+  assign_mode: string;
 }
+
+const ASSIGN_OPTIONS = [
+  { id: "pool", label: "در استخر بماند" },
+  { id: "round_robin", label: "نوبتی" },
+  { id: "least_open", label: "کم‌کارترین" },
+];
 
 export default function AdminGroupsPage() {
   const [groups, setGroups] = useState<GroupRow[] | null>(null);
@@ -87,6 +95,16 @@ export default function AdminGroupsPage() {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ color: next }),
+    });
+    if (res.ok) await load();
+  }
+
+  async function setAssign(g: GroupRow, mode: string) {
+    if (!mode || mode === g.assign_mode) return;
+    const res = await fetch(`/api/admin/groups/${g.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ assign_mode: mode }),
     });
     if (res.ok) await load();
   }
@@ -175,6 +193,10 @@ export default function AdminGroupsPage() {
                 <span className="font-mono text-xs text-text-muted">
                   {faNum(g.district_count)} محدوده · {faNum(g.user_count)} کاربر
                 </span>
+                <div className="w-full">
+                  <p className="mb-1 text-xs text-text-muted">سرنخ تازهٔ بدون صاحب</p>
+                  <ChipGroup wrap group={{ id: `assign-${g.id}`, label: `تقسیم سرنخ ${g.name}`, mode: "single", value: g.assign_mode, options: ASSIGN_OPTIONS, onChange: (v) => void setAssign(g, v as string) }} />
+                </div>
                 <div className="flex gap-1">
                   {palette.map((c) => (
                     <button

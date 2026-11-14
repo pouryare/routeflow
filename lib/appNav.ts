@@ -89,6 +89,8 @@ const SHAREHOLDER_TABS: AppTab[] = [{ href: "/my-share", label: "سهم من", g
 
 const DRIVER_TABS: AppTab[] = [
   { href: "/driver", label: "مسیر امروز", group: "day", ready: true },
+  { href: "/sales/catalogue", label: "کالاها", group: "day", ready: true },
+  { href: "/my-expenses", label: "هزینه‌های من", group: "day", ready: true },
   { href: "/sales/academy", label: "آموزش", group: "day", ready: true },
 ];
 
@@ -104,12 +106,15 @@ export function appTabs(session: { role: Role }): AppTab[] {
   // Copied, not returned by reference: a caller that sorts or edits the result must not
   // be rearranging the shared constant for the next caller.
   if (r === "shareholder") return SHAREHOLDER_TABS.map((t) => ({ ...t }));
+  // H3: the accountant sees the books and nothing else (proxy.ts confines the paths too).
+  if (r === "accountant") return appTabs({ role: "owner" }).filter((t) => t.group === "accounts" && t.href !== "/accounting/shareholders").map((t) => ({ ...t }));
   if (isVanRole(r)) return DRIVER_TABS.map((t) => ({ ...t }));
   return [
     // روز من
     { href: "/sales/today", label: "امروز", group: "day", ready: true },
     { href: "/sales/pocket", label: "کارهای من", group: "day", ready: true },
     { href: "/sales/schedule", label: "برنامهٔ تحویل", group: "day", ready: true },
+    { href: "/my-expenses", label: "هزینه‌های من", group: "day", ready: true },
     { href: "/planner", label: "برنامه‌ریز مسیر", group: "day", ready: isManager(r) },
 
     // مشتریان
@@ -134,6 +139,7 @@ export function appTabs(session: { role: Role }): AppTab[] {
     { href: "/sales/routing", label: "مسیریابی", group: "ops", ready: isManager(r) },
     { href: "/sales/stock", label: "انبار و خرید", group: "ops", ready: true },
     { href: "/sales/batches", label: "سری‌های ساخت", group: "ops", ready: isManager(r) },
+    { href: "/sales/hours", label: "ساعت کار رانندگان", group: "ops", ready: isManager(r) },
 
     // گزارش‌ها
     { href: "/sales", label: "خلاصهٔ فروش", group: "reports", ready: true },
@@ -153,6 +159,7 @@ export function appTabs(session: { role: Role }): AppTab[] {
     { href: "/accounting/journal", label: "دفتر روزنامه", group: "accounts", ready: isOwner(r) || r === "group_manager" },
     { href: "/accounting/balance-sheet", label: "ترازنامه", group: "accounts", ready: isOwner(r) },
     { href: "/accounting/income-statement", label: "سود و زیان", group: "accounts", ready: isOwner(r) },
+    { href: "/accounting/money", label: "ورودی و خروجی پول", group: "accounts", ready: isOwner(r) },
     { href: "/accounting/payables", label: "بدهی تأمین‌کنندگان", group: "accounts", ready: isOwner(r) },
     { href: "/accounting/expenses", label: "هزینه‌ها", group: "accounts", ready: isOwner(r) || r === "group_manager" },
     { href: "/accounting/suppliers", label: "تأمین‌کنندگان", group: "accounts", ready: isOwner(r) },
@@ -167,12 +174,14 @@ export function appTabs(session: { role: Role }): AppTab[] {
     { href: "/sales/admin/users", label: "کاربران", group: "org", ready: isOwner(r) },
     { href: "/sales/admin/groups", label: "گروه‌ها", group: "org", ready: isOwner(r) },
     { href: "/sales/admin/discounts", label: "تخفیف‌ها", group: "org", ready: isOwner(r) },
+    { href: "/sales/admin/rules", label: "قانون‌ها", group: "org", ready: isOwner(r) },
     // The tags a driver taps after a lead visit's stars (lib/ratingTags.ts).
     { href: "/sales/admin/rating-tags", label: "برچسب‌های ارزیابی", group: "org", ready: isOwner(r) },
     { href: "/sales/admin/logins", label: "گزارش ورودها", group: "org", ready: isOwner(r) },
     { href: "/sales/admin/status", label: "وضعیت سامانه", group: "org", ready: isOwner(r) },
     // Company storages (docs/storage.md): where the company's photos and receipts are kept.
     { href: "/sales/admin/storage", label: "فضای ذخیره‌سازی", group: "org", ready: isOwner(r) },
+    { href: "/sales/admin/data", label: "داده‌ها", group: "org", ready: isOwner(r) },
     // Companies and their web addresses: the founder only (the page and the API both check platform_owner).
     { href: "/sales/admin/companies", label: "شرکت‌ها", group: "org", ready: r === "platform_owner" },
     // The lunar holidays nothing offline can compute (Eid, Tasua, Ashura). The page existed

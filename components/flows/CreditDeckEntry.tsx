@@ -7,6 +7,7 @@ import DecisionDeck from "@/components/mobile/DecisionDeck";
 import { useUndoableAction } from "@/components/tapflow/useUndoableAction";
 import { CREDIT_CHOICES, CREDIT_CONSEQUENCE, creditRequest } from "@/lib/decisions";
 import { faNum, faToman } from "@/lib/format";
+import { RISK_LEVEL_LABEL } from "@/lib/creditRisk";
 import type { PendingApprovalCard } from "@/lib/repo/creditApprovals";
 
 /** «تأیید اعتبار» for a manager: every order parked over a customer's limit as one card, approve or
@@ -56,8 +57,15 @@ export default function CreditDeckEntry({ approvals }: { approvals: PendingAppro
             <>
               <strong>{a.customer_name}</strong>
               <span>سفارش {a.order_no}</span>
-              <span>بدهی فعلی {faToman(a.customer_balance_toman)}</span>
-              <span>{a.credit_limit_toman === null ? "سقف اعتبار ندارد" : `سقف ${faToman(a.credit_limit_toman)}`} · {faToman(a.overage_toman)} بیش از سقف</span>
+              {a.kind === "value" ? (
+                <span>جمع سفارش {faToman(a.customer_balance_toman)} · سقف سفارش بدون تأیید {faToman(a.credit_limit_toman ?? 0)}</span>
+              ) : (
+                <>
+                  <span>بدهی فعلی {faToman(a.customer_balance_toman)}</span>
+                  <span>{a.credit_limit_toman === null ? "سقف اعتبار ندارد" : `سقف ${faToman(a.credit_limit_toman)}`} · {faToman(a.overage_toman)} بیش از سقف</span>
+                </>
+              )}
+              {a.risk ? <span>ریسک اعتبار: {RISK_LEVEL_LABEL[a.risk.level]}{a.risk.reasons.length ? ` · ${a.risk.reasons.join("، ")}` : ""}</span> : null}
               <span className="text-text-muted">تأیید: {CREDIT_CONSEQUENCE.approved} رد: {CREDIT_CONSEQUENCE.rejected}</span>
             </>
           )}

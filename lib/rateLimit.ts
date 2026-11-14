@@ -1,8 +1,6 @@
-// Single-process, in-memory fixed-window rate limiter. Sufficient here because the
-// app runs as one systemd-managed Node process (no multi-instance/serverless
-// deployment where an in-memory store would miss requests handled by other
-// instances) -- reaching for Redis or similar for a single shared-password login
-// form would be solving a scale problem this app doesn't have.
+// Single-process, in-memory fixed-window rate limiter, for the busy and harmless limits (live updates). The ones
+// that guard guessing (sign-in, second step, own password) live in Postgres: lib/repo/rateLimitDb.ts (T24), so a
+// restart does not give a guesser a fresh start.
 
 interface Bucket {
   count: number;

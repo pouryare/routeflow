@@ -3,11 +3,12 @@ import { getSession } from "@/lib/session";
 import { COOKIE_NAME, MAX_AGE_SECONDS, createSessionToken, hashPassword, parseSessionToken, verifyPassword } from "@/lib/auth";
 import { setOwnPassword } from "@/lib/repo/usersAdmin";
 import { findUserById } from "@/lib/users";
-import { rateLimit, rateLimitReset } from "@/lib/rateLimit";
+import { rateLimitDb, rateLimitDbReset, type LimitRule } from "@/lib/repo/rateLimitDb";
 import { MIN_PASSWORD } from "@/lib/userPatchPlan";
 
 const CURRENT_MAX_ATTEMPTS = 5;
 const CURRENT_WINDOW_MS = 15 * 60 * 1000;
+const CURRENT_RULES: LimitRule[] = [{ max: CURRENT_MAX_ATTEMPTS, windowMs: CURRENT_WINDOW_MS }];
 
 /** Replace a password an owner chose (F35), or one's own at any time.
  *
@@ -37,7 +38,7 @@ export async function POST(req: NextRequest) {
   const claims = parseSessionToken(req.cookies.get(COOKIE_NAME)?.value);
   if (claims?.pw !== 1) {
     const key = `own-password:${session.user.id}`;
-    const limit = rateLimit(key, CURRENT_MAX_ATTEMPTS, CURRENT_WINDOW_MS);
+    const limit = await rateLimitDb(key, CURRENT_RULES);
     if (!limit.allowed) {
       return NextResponse.json(
         { ok: false, error: `تلاش‌های ناموفق زیاد بود. ${Math.ceil(limit.retryAfterSeconds / 60)} دقیقه دیگر دوباره امتحان کنید.` },
@@ -52,7 +53,7 @@ export async function POST(req: NextRequest) {
     if (current === password) {
       return NextResponse.json({ ok: false, error: "رمز تازه با رمز فعلی یکی است" }, { status: 400 });
     }
-    rateLimitReset(key);
+    await rateLimitDbReset(key, CURRENT_RULES);
   }
 
   const tv = await setOwnPassword(session.user.id, hashPassword(password));

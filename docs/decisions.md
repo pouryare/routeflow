@@ -49,6 +49,7 @@ How to read it: **10.1 is fact and decision** (the owner's words). **10.2 to 10.
 | Row-level security is enforced before the cut-over, not after. | Decided 2026-10-23. |
 | Off-site backup goes to a second machine the owner controls, over SSH; self-hosted S3 can come later. | Decided 2026-10-23. |
 | Map tiles come from our own server, never a foreign host; every map is on MapLibre. | Decided 2026-10-28 (owner: "No it does not worth the risk. Also no to foreign host."; then "Full MapLibre rewrite", "Tehran province only", "Use @vis.gl/react-maplibre"). One Protomaps PMTiles extract of Tehran province (`pmtiles` 4.5.0) is read on the server and served one tile at a time at `/api/map/tiles/{z}/{x}/{y}`, public and cookie-free so Arvan's CDN caches each small tile (Arvan caches whole files only up to 100 MB, so the archive itself is never fetched by byte range through it). Style from `@protomaps/basemaps` 5.7.2 with Persian names (`name:fa`) in the app's own Peyda font through MapLibre 6's `font-faces`, so there is no glyph server and no RTL plugin; sprites in `public/map/sprites`. Leaflet and its 8 plugins are gone; React bindings are `@vis.gl/react-maplibre` 8.1.3. Satellite and topographic looks were dropped (no self-hostable source). Building and replacing the file: `docs/map-tiles.md`. Routing (OSRM) and address search (Nominatim) still call foreign public servers until they are self-hosted. |
+| Data export is one Excel file with a sheet per table; the upload imports customers, products and prices only, with a preview before saving. | Decided 2026-11-13 (owner, on cards). Uses `exceljs`, already installed; no zip library. No restore from a file and no attachments. |
 | The UI moves to HeroUI v3 with the full HeroUI look. | Decided 2026-10-23 (owner chose "full HeroUI look" over keeping the Meridian look on HeroUI parts). `@heroui/react` and `@heroui/styles` 3.2.6, MIT, built on React Aria Components; no HeroUI Pro (paid, foreign). HeroUI's theme becomes the visual system and MASTER.md's colour, radius and base-component rules are retired as screens move. Our component names (`BottomSheet`, `useToast`, `FilterChips` …) stay during the move so callers change once. Persian calendar and digits through `I18nProvider locale="fa-IR-u-ca-persian"`; `lib/jalali.ts` stays for storage. Styles are imported part by part, because the full sheet restyles `.card`, `.chip`, `.badge`, `.modal` and `.skeleton`. Phase 0 and the payment-flow pilot are done (TapFlow sheet, date step, buttons, toasts), and phase 2 (every sheet on one Drawer; card help, profile menu and bell in Popovers, each with a written reason in `check:mobile`; banners as Alerts), and phase 3 (Shamsi date fields on HeroUI's Persian Calendar in a sheet, switches and checkboxes, no `<select>` left, password and login fields on HeroUI's TextField, colour and font pickers in Popovers), and phase 4 (section and view tabs on HeroUI Tabs at 44 px, Chip, Avatar, Skeleton, EmptyState, collapsible sections on Disclosure, accounting tables and pager in HeroUI's table and pagination look on their own server markup), and phase 5 (every flow, picker and deck answer on HeroUI Button / ToggleButton through `components/tapflow/Answer.tsx`, SearchField for list search, day chips as ToggleButtons; Keypad, SwipeRow, the bottom bar and the signature cards restyled with HeroUI tokens), and phase 6 (HeroUI token names hold the palette inside `.meridian`, the older names are aliases, dead CSS removed, MASTER.md rewritten around HeroUI); the per-component map and order are in the plan page linked from `TODO-REPORT.md`. |
 
 ### 10.2 Proposed platform choices
@@ -60,7 +61,7 @@ The PostgreSQL rows here are now decided (10.1). The plan is phased: P1 an async
 | PostgreSQL, self-hosted, with `wal_level = logical`, PostGIS, `pg_trgm`, `btree_gist` and `pg_stat_statements` | everything; geofencing (F38), rep map (F68), mileage (F103), search (F98, F148, F10, F3) | with the move |
 | Row-level security keyed on a per-transaction organisation setting; the same setting feeds one audit trigger | tenant safety now and when a second company arrives; F27, F73, F99, F100, F111 | with the move (`organization_id` already exists on the tenant tables) |
 | `pg` with Kysely (types generated from the database) and plain SQL migration files; not Prisma | everything | with the move |
-| A pg-boss worker process: retries, schedules, jobs enqueued in the same transaction as the write | sweeps, F16, F18, F67, F79, F127, F138 | with the move |
+| A pg-boss worker process: retries, schedules, jobs enqueued in the same transaction as the write (chosen again by the owner 2026-11-12; planned as EV3, started inside the app process, see 10.22) | sweeps, F16, F18, F67, F79, F127, F138 | Wave 1 |
 | Real Postgres in tests, one template database per test file | the database tests | with the move |
 | Backups with point-in-time restore (pgBackRest or WAL-G) and an encrypted off-site copy; self-hosted error tracking and uptime check | F34, F108, F138 | with the move, early |
 | S3-compatible object storage, self-hosted | F1, F17, F26, F34, F147 | first wave that stores files |
@@ -278,7 +279,7 @@ Ideas that are interesting for this app but not chosen. None is decided; the own
 | DuckDB (browser build `@duckdb/duckdb-wasm`, whose npm latest tag is a dev build; Node client `@duckdb/node-api`; or the `pg_duckdb` Postgres extension, unverified) | A fast calculator next to the database that counts large piles quickly | Margin by customer, product and route (F32), profit and loss by group (F134), saved reports (F123) | Try a read replica and materialised views first; add DuckDB if reports are still slow |
 | deck.gl (9.4.0) on top of MapLibre | Paints very large numbers of points and areas on a map smoothly | Rep activity map (F68), territory revenue map (F92), GPS ping heat maps (F6) | Needs the MapLibre map stack decision first |
 | Offline vector maps for drivers: PMTiles (4.5.0) with MapLibre, stored by the Capacitor shell | Download the city onto the phone like a paper map | Drivers in dead zones still see the map and next stop (F6, F13, F20) | Size of a Tehran basemap not checked; depends on the MapLibre and Capacitor decisions |
-| H3 hexagon grid (`h3-js` 4.5.0) | Cover the city in honeycomb cells and count things per cell | Orders, customers or GPS pings per area (F92, F11, F81); fairer territory splits | PostGIS can also bin points; compare before adding |
+| H3 hexagon grid (`h3-js` 4.5.0) | Cover the city in honeycomb cells and count things per cell | Orders, customers or GPS pings per area (F92, F11, F81); fairer territory splits | **Decided 2026-11-13 (owner): use h3-js, not PostGIS bins. Built in batch H as the «شبکهٔ شش‌ضلعی» map layer (managers only; sales, customers or leads per cell, level 7 or 8).** Counted on request from stored lat/lng; add an indexed `h3_cell` column when F6 pings arrive |
 | Valhalla routing | Answers "where can a van get to in 30 minutes" and draws that area | Real delivery zones around the depot (F57, F81); snapping messy GPS pings to roads for mileage (F103) | OSRM can also match pings to roads, so this is an alternative, not a requirement; not tested |
 | Database tests: pgTAP and `squawk` | A referee for the database | pgTAP checks that company A cannot read company B under row-level security; `squawk` warns before a migration locks a big table | Goes with the row-level security plan; nothing to ship to users |
 | Mutation testing: Stryker (10.0.0) | Breaks the code on purpose to see whether the tests notice | Money code only: commission, ledger, margin, pricing | Slow, so run it on a few folders, not the whole repo |
@@ -442,3 +443,42 @@ Six follow-ups after the index audit (`notes/db-index-audit-2026-11-09.md`, PR #
 | Seed speed | Delegated. Demo seed runs with `synchronous_commit=off`; it stays sequential because order numbers and credit holds depend on order. |
 | Slow queries | A card on «وضعیت سامانه» for the platform owner, from `pg_stat_statements`: the ten slowest app queries on average, with how often each ran. |
 | Two-step login QR code | **`uqr`** (MIT, no dependencies, owner choice 2026-11-12) draws the `otpauth://` link as SVG in the browser (`components/meridian/QrCode.tsx`). The secret is never sent to a QR service; the typed key stays as fallback. `qrcode` and a hand-written encoder were rejected (bigger, or hundreds of lines to own). |
+
+### 10.22 Events, outbox, worker and audit (2026-11-12, owner decision)
+
+The owner reviewed a long discussion on audit logs, event-driven design, event sourcing, the transactional outbox, pragmatic DDD and CQRS, and chose **everything in the adopt and later lists, none of the skip list**. Plan: [`docs/plans/event-architecture-2026-11-12.md`](plans/event-architecture-2026-11-12.md). Review note: `notes/event-architecture-review-2026-11-12.md` in the project files. Nothing is built yet.
+
+**Where RouteFlow stands.** Already built: the `events` table and rule engine, `order_events`, append-only `activities`, ledger and stock moves that cannot be edited (event sourcing exactly where it pays), the order state machine (commands), the phone outbox with `sync_mutations`, the live layer (10.7) as an outbox, and the decision against Kafka, Kubernetes and microservices (10.3). Missing: a rules timer on the server, events written inside the save everywhere, a worker, the shared audit record (F27).
+
+| Choice | Decision | Roadmap |
+|---|---|---|
+| Rules timer every 5 minutes (systemd) | Adopt now; replaced by a worker schedule later | EV1 |
+| An event is saved in the same transaction as its change, handled right after commit, and picked up again if the process died in between | Adopt | EV2 |
+| Background worker for reactions that may be late (notices, push, SMS, Telegram, analytics, exports) | Adopt; starts inside the app process, because the release is a standalone bundle. **Library: pg-boss** (owner, 2026-11-12; 12.38.2, MIT, Node 22.12 or newer), chosen over a small queue of our own on `events` | EV3 |
+| One audit record (`audit_log`) by a generic trigger, first slice of F27 | Adopt | EV4 |
+| An event list document with a test | Adopt | EV5 |
+| Funnel reports from history; table-write ownership checks; read tables only when slow | Later | EV-L1 to EV-L3 |
+| Full event sourcing for customers, orders and leads | **Skip** (money and stock already work that way) | |
+| Kafka, RabbitMQ, microservices, a separate read database, DDD ceremony (repositories and factories for every table), blockchain | **Skip** (see 10.3; the hash chain D6 covers tamper evidence for money) | |
+
+**Rule kept.** Ledger postings, stock reservations and commission stay inside the same save as the order or payment. The discussion suggested accounting could react to a delivery later in the background; that would allow half-saved money, so it is not adopted. Only things that can be a few seconds late go to the worker.
+
+**Second review, same day** (a shared conversation «Kafka RabbitMQ Or None»): same conclusion, no Kafka or RabbitMQ, PostgreSQL with pg-boss. Kept our difference: the worker starts inside the app process and moves to its own process when the first CPU-heavy job (OCR, large export, 80-stop route optimization) arrives. Not adopted: `pg_cron` (pg-boss schedules), `pgmq` (pg-boss chosen), `pg_uuidv7` (PostgreSQL 18 has `uuidv7()`). Already installed: PostGIS, `pg_trgm`, `btree_gist`, `pg_stat_statements`, `pg_duckdb`. End-to-end encryption for the planned chat would break the decision that the owner may read any chat (FB9) and rule out server-side search and `pgvector` on that text; reopen FB9 first if E2EE is wanted.
+
+**Existing-solutions search (CLAUDE.md rule).** Worker: pg-boss (chosen in 10.2 on 2026-10-23), Graphile Worker, BullMQ (needs Redis, rejected in 10.6), `node-cron` (schedules only), or our own small queue (`storage_jobs` and the lead-import runner are already two hand-rolled ones). Audit: no library; a generic trigger is a few dozen lines of SQL. Event list: no library.
+
+### 10.23 Academy, van catalogue and operational independence (2026-11-12, owner decision)
+
+Plan: [`docs/plans/academy-catalogue-independence-2026-11-12.md`](plans/academy-catalogue-independence-2026-11-12.md). Roadmap: AC1 to AC6, AC-L1, VC1 to VC4, OI1 to OI3, with F59, T13, S23 and F39.
+
+| Choice | Decision |
+|---|---|
+| Academy content | Two layers: lessons shipped with the app (general and app related, the same for every company) and lessons each company writes in categories of its own, stored per company |
+| Who writes company lessons | Owner; managers for their own group; any «مربی» (trainer), a permission the owner gives to anyone |
+| Quizzes | Next slice; the first slice ends a lesson with «خواندم» |
+| Van catalogue | A page for `field_rep` and `delivery_driver`. Step 1 takes orders for later (van stock shown as approximate); step 2 sells from van stock once van loading (F30) exists |
+| Libraries | None added: plain text editor with headings and photos, photos in the company's own storage and the existing photo viewer, price list saved with the browser print already in use. A rich-text library (for example TipTap) was left out on purpose |
+| Practice mode (F39) | Later; design not decided |
+| Handover, lend, cover | Planned (F59, T13, S23); F59 waits for the audit record EV4 |
+
+**Existing-solutions search (CLAUDE.md rule).** Done in the plan, section 6. The owner chose to build with what the repo has.

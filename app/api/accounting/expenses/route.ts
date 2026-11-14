@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
+import { once } from "@/lib/repo/idempotency";
 import { parsePlace } from "@/lib/entryPlace";
 import { saveEntryPlace } from "@/lib/repo/entryPlaces";
 import { requireRole } from "@/lib/session";
 import { recordExpense, expenseCategories, LedgerError } from "@/lib/repo/ledgerPostings";
-import { OWNER_ROLES, type Role } from "@/lib/roles";
+import { ACCOUNTING_ROLES, type Role } from "@/lib/roles";
 
 /* Owners plus group_manager. The user approved this on 2026-10-02: rent and fuel are real
    daily costs, and an owner should not have to type every line. The risk is a manager
@@ -15,7 +16,7 @@ import { OWNER_ROLES, type Role } from "@/lib/roles";
 
    phone_sales is deliberately absent: they record what customers pay, not what the business
    spends. */
-const ROLES: Role[] = [...OWNER_ROLES, "group_manager"];
+const ROLES: Role[] = [...ACCOUNTING_ROLES, "group_manager"];
 
 export async function GET(req: NextRequest) {
   const guard = await requireRole(req, ROLES);
@@ -23,7 +24,7 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({ ok: true, categories: await expenseCategories() });
 }
 
-export async function POST(req: NextRequest) {
+async function post(req: NextRequest) {
   const guard = await requireRole(req, ROLES);
   if (!guard.ok) return guard.response;
 
@@ -70,3 +71,6 @@ export async function POST(req: NextRequest) {
     throw e;
   }
 }
+
+/** Z2: a repeat with the same Idempotency-Key returns the first answer and saves nothing. */
+export const POST = (req: NextRequest) => once(req, () => post(req));

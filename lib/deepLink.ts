@@ -21,6 +21,8 @@ export const MAP_PARAM = {
   view: "at",
   color: "color",
   districtColor: "dcolor",
+  /** S14: show only these customers (a selection or a filtered list), comma separated ids. */
+  ids: "ids",
 } as const;
 
 export interface MapView {
@@ -32,6 +34,8 @@ export interface MapView {
 export interface MapLinkState {
   customerId?: number;
   districtId?: number;
+  /** S14: only these customers are drawn. */
+  customerIds?: number[];
   view?: MapView;
   /** Left as a string here rather than the CustomerColorMode union: this module has no
    *  business knowing the list of modes, and the caller validates against its own. */
@@ -68,9 +72,19 @@ export function formatView(v: MapView): string {
   return `${v.lat.toFixed(COORD_DECIMALS)},${v.lng.toFixed(COORD_DECIMALS)},${Math.round(v.zoom)}`;
 }
 
+/** S14: "5,9,12" -> [5, 9, 12]. Drops anything that is not a whole positive number; at most 500, so a pasted link stays sane. */
+export function parseIds(raw: string | null): number[] | undefined {
+  if (!raw) return undefined;
+  const ids = raw.split(",").map(Number).filter((n) => Number.isInteger(n) && n > 0).slice(0, 500);
+  return ids.length > 0 ? ids : undefined;
+}
+
 export function parseMapLink(search: string): MapLinkState {
   const p = new URLSearchParams(search);
   const state: MapLinkState = {};
+
+  const customerIds = parseIds(p.get(MAP_PARAM.ids));
+  if (customerIds) state.customerIds = customerIds;
 
   const customerId = parseIntParam(p.get(MAP_PARAM.customer));
   if (customerId !== undefined) state.customerId = customerId;
@@ -97,6 +111,7 @@ export function buildMapLink(state: MapLinkState): string {
   const p = new URLSearchParams();
   if (state.customerId !== undefined) p.set(MAP_PARAM.customer, String(state.customerId));
   if (state.districtId !== undefined) p.set(MAP_PARAM.district, String(state.districtId));
+  if (state.customerIds?.length) p.set(MAP_PARAM.ids, state.customerIds.slice(0, 500).join(","));
   if (state.view) p.set(MAP_PARAM.view, formatView(state.view));
   if (state.colorMode) p.set(MAP_PARAM.color, state.colorMode);
   if (state.districtColorMode) p.set(MAP_PARAM.districtColor, state.districtColorMode);

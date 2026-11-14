@@ -98,7 +98,7 @@ describe("platform_owner", () => {
       await db
         .prepare(
           `INSERT INTO users (username, password_hash, display_name, role, organization_id, created_at)
-           VALUES ('t-bogus', 'x:y', 'T Bogus', 'accountant', 1, '2026-01-01')`
+           VALUES ('t-bogus', 'x:y', 'T Bogus', 'astronaut', 1, '2026-01-01')`
         )
         .run())()).rejects.toThrow();
   });
@@ -154,6 +154,7 @@ describe("organization_id backfill", () => {
       "order_events",       // through orders (carries organization_id for cheap filtering)
       "order_events_archive", // the same, for order_events rows older than the hot months
       "purchase_lines",     // through purchases
+      "purchase_order_lines", // through purchase_orders
       "delivery_stops",     // through delivery_runs
       "run_facility_stops", // through delivery_runs — a facility visit is not a delivery,
                             // but it still belongs to exactly one run
@@ -201,6 +202,8 @@ describe("organization_id backfill", () => {
                              // polygons drift apart until منطقه 14 means two different places.
                              // It carries no organization_id; territory scoping is group_id, and
                              // a boundary an owner draws is visible to the whole install.
+      "rate_limits",       // sign-in guess counters keyed by name or address, before anyone is signed in:
+                            // there is no company yet to scope them to.
       "accounts",          // the chart of accounts, NOT tenant data. صندوق is صندوق in every
                              // organisation on this server. A per-tenant copy of the same chart
                              // drifts -- one tenant renames an account or deletes a code -- and

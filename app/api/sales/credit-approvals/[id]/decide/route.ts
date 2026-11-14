@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isId } from "@/lib/inputChecks";
 import { requireRole } from "@/lib/session";
-import { creditScopeOf, decide, CreditApprovalError } from "@/lib/repo/creditApprovals";
+import { approvalScopeFor, decide, CreditApprovalError } from "@/lib/repo/creditApprovals";
 import { MANAGE_ROLES } from "@/lib/roles";
 import { guardStepUp } from "@/lib/repo/stepUp";
 
@@ -25,7 +25,7 @@ export async function POST(
   }
 
   try {
-    await decide(guard.session.organizationId, Number(id), body.verdict, guard.session.user.id, body.reason, creditScopeOf(guard.session));
+    await decide(guard.session.organizationId, Number(id), body.verdict, guard.session.user.id, body.reason, await approvalScopeFor(guard.session));
     return NextResponse.json({ ok: true });
   } catch (e) {
     if (e instanceof CreditApprovalError) {

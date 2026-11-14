@@ -6,10 +6,12 @@ import { getSessionFromCookies } from "@/lib/session";
 import SectionHead from "@/components/meridian/SectionHead";
 import PageHeader from "@/components/meridian/PageHeader";
 import DiscountSettingsForm from "@/components/sales/DiscountSettingsForm";
-import { discountSettings, recentDiscounts } from "@/lib/repo/discounts";
+import { discountSettings, discountsGiven, recentDiscounts } from "@/lib/repo/discounts";
 import { DISCOUNT_REASONS, DISCOUNT_STATUS_LABEL } from "@/lib/discounts";
 import { faNum, faToman } from "@/lib/format";
 import { faJalaliDate } from "@/lib/jalali";
+import PendingChanges from "@/components/sales/PendingChanges";
+import { pendingChanges } from "@/lib/repo/changeRequests";
 import { pageMetadata } from "@/lib/pageMeta";
 
 export const metadata = pageMetadata("/sales/admin/discounts");
@@ -24,12 +26,38 @@ export default async function DiscountsPage() {
   const jar = await cookies();
   const session = await getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
   if (!session) redirect("/login");
-  const [settings, recent] = await Promise.all([discountSettings(session.organizationId), recentDiscounts(session.organizationId)]);
+  const [settings, recent, given, waiting] = await Promise.all([discountSettings(session.organizationId), recentDiscounts(session.organizationId), discountsGiven(session.organizationId), pendingChanges(session.organizationId)]);
 
   return (
     <>
       <PageHeader route="/sales/admin/discounts" />
+      <PendingChanges items={waiting} />
       <DiscountSettingsForm initial={settings} />
+      <section className="card mb-[var(--space-4)] p-[var(--space-4)]" dir="rtl" data-tour="discounts-given">
+        <SectionHead title="تخفیف‌های ۳۰ روز اخیر" as="h3" className="mb-[var(--space-3)]" />
+        {given.total === 0 ? (
+          <p className="m-0 text-[length:var(--text-sm)] text-[var(--muted)]">در ۳۰ روز اخیر تخفیفی داده نشده است.</p>
+        ) : (
+          <>
+            <p className="m-0 mb-[var(--space-3)] text-[length:var(--text-sm)]">
+              جمع {faToman(given.total)} · {faNum(given.autoCount)} مورد بدون تأیید، {faNum(given.approvedCount)} مورد با تأیید
+            </p>
+            {([["به تفکیک فروشنده", given.byRep], ["به تفکیک مشتری", given.byCustomer], ["به تفکیک کالا", given.byProduct]] as const).map(([title, rows]) => (
+              <div key={title} className="mb-[var(--space-3)]">
+                <h4 className="m-0 mb-[var(--space-1)] text-[length:var(--text-xs)] font-medium text-[var(--muted)]">{title}</h4>
+                <ul className="m-0 flex list-none flex-col gap-[var(--space-1)] p-0 text-[length:var(--text-sm)]">
+                  {rows.slice(0, 5).map((r) => (
+                    <li key={r.name} className="flex justify-between gap-[var(--space-2)]">
+                      <span>{r.name}</span>
+                      <span className="tabular-nums">{faToman(r.amount)}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </>
+        )}
+      </section>
       <section className="card p-[var(--space-4)]" dir="rtl">
         <SectionHead title="آخرین تخفیف‌ها" as="h3" className="mb-[var(--space-3)]" />
         {recent.length === 0 ? (

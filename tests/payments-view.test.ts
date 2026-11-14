@@ -7,6 +7,11 @@ const p = (id: number, over: Partial<Payment> = {}): Payment => ({
 });
 
 describe("payments view", () => {
+  it("does not count a closed leftover as money collected (D3)", () => {
+    const t = paymentTotals([p(1), p(2, { method: "LEFTOVER", amount_toman: 5_000 })], "2026-02-10", "2026-02-03");
+    expect(t.today.total).toBe(100);
+  });
+
   it("hides voided receipts by default and sorts newest first", () => {
     const rows = [p(1), p(2, { received_at: "2026-02-12T08:00:00.000Z" }), p(3, { voided_at: "x" })];
     const out = filterPayments(rows, { method: "", from: "", to: "", voided: "hide" });

@@ -1,4 +1,5 @@
 import MapLoader from "@/components/MapLoader";
+import { thresholdsFor } from "@/lib/repo/thresholds";
 import { geometryVersion } from "@/lib/districtGeometry";
 import { geometryUrl } from "@/lib/precision";
 import { cookies } from "next/headers";
@@ -30,6 +31,7 @@ export default async function Home() {
   if (isVanRole(session.role)) redirect("/driver");
   const { districts, customers, facilities, initialLeads, visibleGroups } = await mapPageData(session);
   const version = await geometryVersion();
+  const limits = await thresholdsFor(session.organizationId);
 
   return (
     <>
@@ -50,6 +52,7 @@ export default async function Home() {
         groups={visibleGroups}
         role={session.role}
         geometryVersion={version}
+        limits={{ quietDays: limits.quiet_customer_days, ageingDays: limits.data_ageing_days, staleDays: limits.data_stale_days, leftoverLimit: limits.leftover_limit_toman, refundLimit: limits.refund_limit_toman }}
       />
     </>
   );

@@ -9,6 +9,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import JalaliDatePicker from "@/components/JalaliDatePicker";
 import { faToman, faNum } from "@/lib/format";
+import { faJalaliDate } from "@/lib/jalali";
 import { roundToman, toNumber } from "@/lib/money";
 import { MAX_PACKS_PER_LINE, parsePacks } from "@/lib/orderLimits";
 import { Icon } from "@/components/meridian/Icon";
@@ -19,6 +20,8 @@ import { flyTo } from "@/lib/flyTo";
 import SmartPicker from "@/components/mobile/SmartPicker";
 import KeypadField from "@/components/mobile/KeypadField";
 import DayChips from "@/components/mobile/DayChips";
+import { ChipGroup } from "@/components/mobile/ChipGroup";
+import { ORDER_CHANNELS } from "@/lib/orderChannel";
 import {
   resolveRequestedDay,
   requestedDayLabel,
@@ -54,6 +57,7 @@ interface Product {
   base_unit: string;
   kg_per_base_unit: number;
   sell_off?: number;
+  incoming?: { qty: number; expected: string | null } | null;
   packagings: Packaging[];
 }
 
@@ -117,6 +121,7 @@ export default function OrderForm({
   const requestedWeeks = "1";
   const [sellerId, setSellerId] = useState("");
   const [notes, setNotes] = useState("");
+  const [channel, setChannel] = useState("");
   const [discount, setDiscount] = useState<DiscountDraft>(emptyDraft);
 
   const [lines, setLines] = useState<Draft[]>([]);
@@ -257,6 +262,7 @@ export default function OrderForm({
           requested_kind: requestedMode,
           salesperson_user_id: sellerId === "" ? null : Number(sellerId),
           notes: notes || null,
+          channel: channel || null,
           credit_override: overLimit,
           discount: toRequestBody(discount, payers),
           lines: lines.map((l) => ({
@@ -389,6 +395,10 @@ export default function OrderForm({
           </div>
         )}
         <div>
+          <p className={LABEL}>سفارش از چه راهی رسید؟</p>
+          <ChipGroup wrap group={{ id: "channel", label: "راه سفارش", mode: "single", value: channel, options: ORDER_CHANNELS.map((c) => ({ id: c.id, label: c.label })), onChange: (v) => setChannel(v as string) }} />
+        </div>
+        <div>
           <label className={LABEL} htmlFor="notes">
             یادداشت
           </label>
@@ -478,6 +488,11 @@ export default function OrderForm({
             افزودن قلم
           </button>
         </div>
+        {product?.incoming ? (
+          <p className="m-0 mt-[var(--space-2)] text-[length:var(--text-xs)] text-[var(--muted)]">
+            {faNum(product.incoming.qty)} {product.base_unit} {product.incoming.expected ? `تا ${faJalaliDate(product.incoming.expected)} می‌رسد` : "در راه است"}
+          </p>
+        ) : null}
       </section>
 
       {lines.length > 0 && (

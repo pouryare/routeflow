@@ -1,3 +1,5 @@
+import { editRule } from "./orderEditRules";
+
 /** F132: the order priority flag. `orders.priority` already existed and the route solver already
  *  weighs it (lib/repo/routing.ts: URGENT 100, KEY_ACCOUNT 60, NORMAL 10, FLEXIBLE 1), but nothing
  *  set it. A manager can now flip an order between NORMAL and URGENT; the other two values stay
@@ -31,7 +33,6 @@ export function isSettablePriority(v: unknown): v is SettablePriority {
 }
 
 /** No flag on an order that is finished: it would change nothing and read as a mistake. */
-const CLOSED = new Set(["DELIVERED", "PARTIALLY_DELIVERED", "CLOSED", "CANCELLED", "RETURNED"]);
 export function canSetPriority(status: string): boolean {
-  return !CLOSED.has(status);
+  return editRule("priority", status).ok;
 }

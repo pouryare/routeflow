@@ -43,6 +43,7 @@ describe("products", () => {
       [
         // organization_id joined every tenant table once RouteFlow became multi-tenant.
         "organization_id",
+        "vat_pct",
         "id",
         "name",
         "sku",
@@ -55,6 +56,11 @@ describe("products", () => {
         "updated_at",
         "reorder_point",
         "target_stock",
+        // Van catalogue (plan VC1): what a rep says at the door, and the picture (content_images.id).
+        "category",
+        "selling_points",
+        "how_to_say",
+        "image_id",
         // Phase 2 (Stock & Batches): shelf life in days, for batch expiry defaulting.
         "shelf_life_days",
         // Phase 5 (Routing): m³ per base unit, for vehicle volume capacity.

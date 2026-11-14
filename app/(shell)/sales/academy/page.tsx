@@ -3,7 +3,10 @@ import { redirect } from "next/navigation";
 import { COOKIE_NAME } from "@/lib/auth";
 import { getSessionFromCookies } from "@/lib/session";
 
-import { listObjectionCards, academyManifest, lessonProgress, trainingStatus } from "@/lib/repo/academy";
+import Link from "next/link";
+import { listObjectionCards, academyOverview, trainingStatus } from "@/lib/repo/academy";
+import { canAuthorLessons } from "@/lib/repo/academyLessons";
+import { Icon } from "@/components/meridian/Icon";
 import AcademyPath from "@/components/sales/AcademyPath";
 import TrainingTable from "@/components/sales/TrainingTable";
 import PageHeader from "@/components/meridian/PageHeader";
@@ -21,8 +24,7 @@ export default async function AcademyPage() {
   const cards = (await listObjectionCards(session.organizationId)).sort((a, b) =>
     a.outcome_code.localeCompare(b.outcome_code)
   );
-  const modules = academyManifest();
-  const done = (await lessonProgress(session.organizationId, session.user.id)).map((p) => p.lesson_slug);
+  const items = await academyOverview(session);
   // F133: managers and the owner also see who has finished the lessons their roles require.
   const training = await trainingStatus(session);
 
@@ -35,9 +37,14 @@ export default async function AcademyPage() {
           <h2>آموزش</h2>
           <div className="n">مسیر درس‌ها، و پاسخ آماده به مخالفت‌های رایج مشتری</div>
         </div>
+        {canAuthorLessons(session) && (
+          <Link href="/sales/academy/manage" className="inline-flex items-center justify-center gap-[var(--space-2)] btn ghost" data-tour="academy-manage">
+            <Icon name="edit" size="md" /> مدیریت درس‌ها
+          </Link>
+        )}
       </div>
       <div className="kblock__body">
-        <AcademyPath cards={cards} modules={modules} done={done} />
+        <AcademyPath cards={cards} items={items} />
       </div>
     </div>
     {training && (

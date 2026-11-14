@@ -5,7 +5,7 @@ const NOW = new Date("2026-10-23T12:00:00Z");
 const hoursAgo = (h: number) => new Date(NOW.getTime() - h * 3_600_000).toISOString();
 
 const facts = (over: Partial<StatusFacts> = {}): StatusFacts => ({
-  backup: { ok: true, finishedAt: hoursAgo(5), database: { file: "x.db", bytes: 2_097_152, check: "ok" }, photos: null, error: null },
+  backup: { ok: true, finishedAt: hoursAgo(5), database: { file: "x.db", bytes: 2_097_152, check: "ok" }, photos: null, offsite: { repos: 1, newestAt: hoursAgo(5) }, photosOffsite: true, error: null },
   analysisAt: hoursAgo(5),
   forecastAt: hoursAgo(5),
   lastSyncAt: hoursAgo(1),
@@ -14,6 +14,9 @@ const facts = (over: Partial<StatusFacts> = {}): StatusFacts => ({
   lastDigestAt: hoursAgo(5),
   failedSignIns24h: 0,
   dbBytes: 1_048_576,
+  pendingEvents: 0,
+  failedEvents: 0,
+  oldestPendingEventAt: null,
   ...over,
 });
 
@@ -24,11 +27,29 @@ describe("statusLines", () => {
     expect(statusLines(facts(), NOW).every((l) => l.tone === "good")).toBe(true);
   });
 
+  it("tells the off-site copy apart from the one on this machine (F138)", () => {
+    const b = facts().backup!;
+    expect(tone(facts({ backup: { ...b, offsite: { repos: 0, newestAt: null } } }), "backup_offsite")).toBe("bad");
+    expect(tone(facts({ backup: { ...b, offsite: { repos: 1, newestAt: hoursAgo(40) } } }), "backup_offsite")).toBe("warn");
+    expect(tone(facts({ backup: { ...b, offsite: { repos: 1, newestAt: hoursAgo(60) } } }), "backup_offsite")).toBe("bad");
+    // an older status file without the field is "not known yet", never "fine"
+    expect(tone(facts({ backup: { ...b, offsite: undefined } }), "backup_offsite")).toBe("unknown");
+    const line = statusLines(facts({ backup: { ...b, photosOffsite: false } }), NOW).find((l) => l.key === "backup_offsite")!;
+    expect(line.detail).toContain("عکس‌ها");
+  });
+
   it("flags a missing, failed or old backup", () => {
     expect(tone(facts({ backup: null }), "backup")).toBe("unknown");
     expect(tone(facts({ backup: { ...facts().backup!, ok: false, error: "disk full" } }), "backup")).toBe("bad");
     expect(tone(facts({ backup: { ...facts().backup!, finishedAt: hoursAgo(36) } }), "backup")).toBe("warn");
     expect(tone(facts({ backup: { ...facts().backup!, finishedAt: hoursAgo(50) } }), "backup")).toBe("bad");
+  });
+
+  it("flags reactions that are stuck or have given up", () => {
+    expect(tone(facts({ pendingEvents: 2, oldestPendingEventAt: hoursAgo(0.05) }), "reactions")).toBe("good");
+    expect(tone(facts({ pendingEvents: 2, oldestPendingEventAt: hoursAgo(0.5) }), "reactions")).toBe("warn");
+    expect(tone(facts({ pendingEvents: 2, oldestPendingEventAt: hoursAgo(3) }), "reactions")).toBe("bad");
+    expect(tone(facts({ pendingEvents: 1, failedEvents: 1, oldestPendingEventAt: hoursAgo(0.01) }), "reactions")).toBe("bad");
   });
 
   it("flags stale nightly jobs and many failed sign-ins", () => {

@@ -20,6 +20,7 @@ const ROUTES = [
   "/accounting/balance-sheet",
   "/accounting/income-statement",
   "/accounting/payables",
+  "/accounting/money",
   "/accounting/expenses",
   "/accounting/suppliers",
   "/accounting/shareholders",

@@ -29,11 +29,11 @@ export function daysSince(iso: string | null, now: Date = new Date()): number | 
   return Math.max(0, Math.floor(ms / 86_400_000));
 }
 
-export function freshnessTier(iso: string | null, now: Date = new Date()): FreshnessTier {
+export function freshnessTier(iso: string | null, now: Date = new Date(), ageingDays = AGEING_DAYS, staleDays = STALE_DAYS): FreshnessTier {
   const days = daysSince(iso, now);
   if (days === null) return "unknown";
-  if (days >= STALE_DAYS) return "stale";
-  if (days >= AGEING_DAYS) return "ageing";
+  if (days >= staleDays) return "stale";
+  if (days >= ageingDays) return "ageing";
   return "fresh";
 }
 

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireRole } from "@/lib/session";
-import { creditScopeOf, listApprovals, requestApproval, CreditApprovalError } from "@/lib/repo/creditApprovals";
+import { approvalScopeFor, listApprovals, requestApproval, CreditApprovalError } from "@/lib/repo/creditApprovals";
 import type { CreditApprovalRow } from "@/lib/repo/creditApprovals";
 import { MANAGE_ROLES } from "@/lib/roles";
 
@@ -16,7 +16,7 @@ export async function GET(req: NextRequest) {
     : undefined;
   return NextResponse.json({
     ok: true,
-    approvals: await listApprovals(guard.session.organizationId, status, creditScopeOf(guard.session)),
+    approvals: await listApprovals(guard.session.organizationId, status, await approvalScopeFor(guard.session)),
   });
 }
 

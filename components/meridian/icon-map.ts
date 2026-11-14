@@ -10,7 +10,7 @@ import {
   Radar, Sun, Contrast, Square, Banknote, Flag, Ellipsis, LocateFixed,
   List, LayoutGrid, Repeat, PanelBottom, PanelRight, Phone, Maximize, Minimize, Eye, EyeOff,
   Save, Copy, ClipboardPaste, Send, Upload, RefreshCw, LogIn, Navigation, Pin, PinOff,
-  AlarmClock, StickyNote, CalendarPlus, CheckCheck, Archive, KeyRound, Unlink, CircleStop,
+  AlarmClock, StickyNote, MessageCircle, CalendarPlus, CheckCheck, Archive, KeyRound, Unlink, CircleStop,
   House, Delete, Volume2, VolumeX, Play, Heart,
   type LucideIcon,
 } from "lucide-react";
@@ -139,6 +139,7 @@ export const ICONS = {
   "pin-off": PinOff,
   alarm: AlarmClock,
   note: StickyNote,
+  "message-circle": MessageCircle,
   "calendar-plus": CalendarPlus,
   "check-check": CheckCheck,
   archive: Archive,

@@ -13,15 +13,16 @@ import { DUR, EASE } from "@/lib/motion";
 import { normalisePersian } from "@/lib/persian";
 import { useTutorials } from "@/components/tutorials/TutorialProvider";
 import { TUTORIALS } from "@/lib/tutorials/catalog";
+import { matchActions } from "@/lib/actionList";
 import { searchTutorials } from "@/lib/tutorials/engine";
 import {
   MAP_FOCUS_EVENT, MIN_REMOTE_QUERY, RECENT_KEY, moveActive, parseRecent, pushRecent, rankPages,
   type SearchHit, type SearchKind,
 } from "@/lib/searchModel";
 
-const KIND_ICON: Record<SearchKind, IconName> = { page: "link", customer: "building", order: "receipt", user: "user", district: "map-pin", note: "clipboard", tutorial: "sparkle" };
+const KIND_ICON: Record<SearchKind, IconName> = { page: "link", customer: "building", order: "receipt", user: "user", district: "map-pin", note: "clipboard", tutorial: "sparkle", action: "plus" };
 const SECTION: Record<SearchKind | "recent", string> = {
-  recent: "اخیر", page: "صفحه‌ها", district: "مناطق", customer: "مشتریان", order: "سفارش‌ها", user: "ورود به‌جای کاربر", note: "یادداشت‌ها", tutorial: "آموزش",
+  recent: "اخیر", page: "صفحه‌ها", district: "مناطق", customer: "مشتریان", order: "سفارش‌ها", user: "ورود به‌جای کاربر", note: "یادداشت‌ها", tutorial: "آموزش", action: "کارها",
 };
 
 type Section = { key: SearchKind | "recent"; hits: SearchHit[] };
@@ -111,9 +112,16 @@ function Panel({ onClose, tabs }: { onClose: () => void; tabs: AppTab[] }) {
     [role, q],
   );
 
+  /* T14: the shared action list, filtered to what this role's tabs allow. */
+  const actionHits: SearchHit[] = useMemo(
+    () => (role && q.trim() ? matchActions(role, q).map((a) => ({ kind: "action" as const, id: `action:${a.id}`, label: a.label, sub: "کار", href: a.href ? a.href([]) : a.tab })) : []),
+    [role, q],
+  );
+
   const sections: Section[] = useMemo(() => {
     if (!q.trim()) return recent.length ? [{ key: "recent", hits: recent }] : [];
     return ([
+      { key: "action", hits: actionHits },
       { key: "page", hits: rankPages(tabs, q) },
       { key: "tutorial", hits: tutorialHits },
       // Districts first among the remote kinds: the code is the shortest thing a rep
@@ -125,7 +133,7 @@ function Panel({ onClose, tabs }: { onClose: () => void; tabs: AppTab[] }) {
       // F98: call and visit notes last, after the records themselves.
       { key: "note", hits: fresh ? remote.notes : [] },
     ] as Section[]).filter((s) => s.hits.length > 0);
-  }, [q, recent, remote, fresh, tabs, tutorialHits]);
+  }, [q, recent, remote, fresh, tabs, tutorialHits, actionHits]);
 
   const flat = useMemo(() => sections.flatMap((s) => s.hits), [sections]);
   /* The highlight belongs to one result list; a new list starts with nothing highlighted. */

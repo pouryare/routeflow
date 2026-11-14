@@ -1,9 +1,11 @@
+import { idleRulesFor, touchActive } from "@/lib/repo/idleSignout";
+import { idleExpired } from "@/lib/idleSignout";
 import { cache } from "react";
 import { NextRequest, NextResponse } from "next/server";
-import { COOKIE_NAME, parseSessionToken } from "./auth";
+import { COOKIE_NAME, MAX_AGE_SECONDS, parseSessionToken } from "./auth";
 import { getDb, type Role, type UserRow } from "./db";
 import { isVanRole } from "./roles";
-import { scopeForCompany, setRequestScopeResolver, withDbScope, type DbScope } from "./database/scope";
+import { scopeForCompany, setRequestActorResolver, setRequestScopeResolver, withDbScope, type DbScope } from "./database/scope";
 
 export interface Session {
   user: UserRow;
@@ -80,6 +82,17 @@ async function resolveSession(token: string | undefined | null): Promise<Session
   if (!user.active) return null;
   if (user.token_version !== claims.tv) return null;
 
+  /* E17: idle sign-out. The later of the last recorded use and the start of this sign-in (the token's expiry minus
+     its life) counts, so signing in again always starts fresh. An owner acting as someone (Login-As) is the actor's
+     own session and is not timed here. */
+  if (claims.act === undefined && user.organization_id !== null) {
+    const rules = await idleRulesFor(user.organization_id);
+    const signedInMs = (claims.exp - MAX_AGE_SECONDS) * 1000;
+    const lastMs = Math.max(signedInMs, user.last_active_at ? Date.parse(user.last_active_at) : 0);
+    if (idleExpired(rules, claims.role as Role, lastMs, Date.now())) return null;
+    await touchActive(user.id);
+  }
+
   /* An impersonation is only as valid as the actor behind it. A deactivated or demoted
      actor ends it on the very next request, not when the cookie expires.
      A platform_owner may act ACROSS tenants -- that is the vendor diagnosing a customer --
@@ -150,6 +163,14 @@ setRequestScopeResolver(COOKIE_NAME, async (token) => {
   if (scopeCache.size > 1000) scopeCache.clear();
   scopeCache.set(token, { scope, until: now + SCOPE_TTL_MS });
   return scope;
+});
+
+/* The audit record's actor: read straight from the signed cookie, no lookup. `act` is the owner who is
+   really driving under Login-As (lib/auth.ts), `uid` is whose account it is. */
+setRequestActorResolver((token) => {
+  const claims = parseSessionToken(token);
+  if (!claims) return "";
+  return claims.act ? `${claims.uid}:${claims.act}` : String(claims.uid);
 });
 
 export async function requireRole(req: NextRequest, roles: Role[]): Promise<Guard> {

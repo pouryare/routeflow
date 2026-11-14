@@ -29,7 +29,9 @@ export type LedgerSourceType =
   | "COMMISSION_PAYMENT"
   | "PARTNER_ADVANCE"
   | "DIVIDEND_PAYMENT"
-  | "PROFIT_SPLIT";
+  | "PROFIT_SPLIT"
+  | "HANDOVER"
+  | "YEAR_CLOSE";
 
 export interface LedgerLeg {
   accountId: number;
@@ -53,6 +55,8 @@ export interface PostInput {
   memo?: string | null;
   sourceId?: number | null;
   reversesJournalId?: number | null;
+  /** D2: which of the company's bank accounts the bank leg belongs to. */
+  bankAccountId?: number | null;
 }
 
 /** 'YYYY-MM-DD' -> '1405-04'. Derived here, never trusted from a caller: a period_key
@@ -63,7 +67,7 @@ export function periodKeyOf(postedAt: string): string | null {
   return `${j.jy}-${String(j.jm).padStart(2, "0")}`;
 }
 
-async function assertPeriodOpen(db: Db, orgId: number, periodKey: string): Promise<void> {
+async function assertPeriodOpen(db: Db, orgId: number, periodKey: string, postedAt: string): Promise<void> {
   const existing = await db
     .prepare("SELECT status FROM fiscal_periods WHERE organization_id = ? AND period_key = ?")
     .get(orgId, periodKey) as { status: string } | undefined;
@@ -78,6 +82,11 @@ async function assertPeriodOpen(db: Db, orgId: number, periodKey: string): Promi
     return;
   }
   if (existing.status === "closed") {
+    // B2: a few days the owner opened (with a reason) take entries until the opening runs out.
+    const opened = await db
+      .prepare("SELECT 1 AS ok FROM period_openings WHERE organization_id = ? AND period_key = ? AND from_date <= ? AND to_date >= ? AND expires_at > ? LIMIT 1")
+      .get(orgId, periodKey, postedAt.slice(0, 10), postedAt.slice(0, 10), new Date().toISOString());
+    if (opened) return;
     throw new LedgerError(`دورهٔ ${periodKey} بسته است و امکان ثبت ندارد`);
   }
 }
@@ -121,7 +130,7 @@ export async function postJournal(db: Db, input: PostInput): Promise<number> {
     if (!acc.is_postable || !acc.active) throw new LedgerError("به این حساب نمی‌توان سند زد");
   }
 
-  await assertPeriodOpen(db, orgId, periodKey);
+  await assertPeriodOpen(db, orgId, periodKey, input.postedAt);
 
   // Gapless per organization. Safe because the caller's transaction is IMMEDIATE, which
   // is what makes this read-then-write atomic -- and the reason postJournal refuses to
@@ -136,8 +145,8 @@ export async function postJournal(db: Db, input: PostInput): Promise<number> {
       .prepare(
         `INSERT INTO journals
            (organization_id, seq, posted_at, period_key, memo, source_type, source_id,
-            reverses_journal_id, created_by, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+            reverses_journal_id, created_by, created_at, bank_account_id)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       )
       .run(
         orgId,
@@ -149,7 +158,8 @@ export async function postJournal(db: Db, input: PostInput): Promise<number> {
         input.sourceId ?? null,
         input.reversesJournalId ?? null,
         input.createdBy,
-        now
+        now,
+        input.bankAccountId ?? null
       )).lastInsertRowid
   );
 

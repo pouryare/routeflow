@@ -1,6 +1,7 @@
 import type { Db } from "@/lib/database/client";
 import { getDb } from "@/lib/db";
 import { postJournal, accountIdByCode, LedgerError, type LedgerLeg } from "./ledger";
+import { TRANSFER_ACCOUNTS } from "@/lib/transferAccounts";
 
 /* Re-exported so a caller can tell a REFUSAL (show the user) from a bug, without also
    importing the engine module. postExpense and postSupplierPayment both throw it. */
@@ -20,12 +21,21 @@ async function accountOrThrow(code: string): Promise<number> {
  *  guess on their behalf. Guessing is how a receipt lands in the wrong ledger and nobody
  *  notices for a quarter. */
 export async function cashAccountFor(method: string): Promise<number> {
-  if (method === "CREDIT_NOTE" || method === "OTHER") {
+  if (method === "CREDIT_NOTE" || method === "OTHER" || method === "LEFTOVER") {
     throw new LedgerError("برای این روش پرداخت باید حساب را خودتان انتخاب کنید");
   }
   const code = method === "CASH" ? "1101" : method === "CHEQUE" ? "1202" : "1102";
   return await accountOrThrow(code);
 }
+
+/** D1: cash held by field people until the office counts it. */
+const HAND_CODE = "1104";
+
+/** Where a customer receipt's money side goes. A LEFTOVER (D3) is no money coming in: the balance is forgiven, so the
+ *  other side is the write-off expense. Only receipts may use it; an expense, a supplier payment or a commission paid
+ *  by "LEFTOVER" is refused by cashAccountFor. A CREDIT_NOTE (B1) is goods coming back: the other side is 4102 sales returns. */
+const receiptAccountFor = async (method: string): Promise<number> =>
+  method === "LEFTOVER" ? await accountOrThrow("5110") : method === "CREDIT_NOTE" ? await accountOrThrow("4102") : await cashAccountFor(method);
 
 /** A customer receipt: Dr cash (or cheques receivable) / Cr accounts receivable.
  *
@@ -43,6 +53,8 @@ export async function postReceipt(
     receivedAt: string;
     receivedBy: number;
     memo?: string | null;
+    /** D1: the cash went into a person's box (1104), not the office cash account. */
+    intoHand?: boolean;
   }
 ): Promise<number> {
   return await postJournal(db, {
@@ -53,13 +65,44 @@ export async function postReceipt(
     createdBy: input.receivedBy,
     memo: input.memo ?? null,
     legs: [
-      { accountId: await cashAccountFor(input.method), side: "D", amountToman: input.amountToman },
+      { accountId: input.intoHand ? await accountOrThrow(HAND_CODE) : await receiptAccountFor(input.method), side: "D", amountToman: input.amountToman },
       {
         accountId: await accountOrThrow("1201"),
         side: "C",
         amountToman: input.amountToman,
         customerId: input.customerId,
       },
+    ],
+  });
+}
+
+/** A cheque clears: Dr bank / Cr cheques receivable (H5).
+ *
+ *  The receipt put the money in 1202 when the cheque came in; without this entry it stays
+ *  there for ever and the bank balance is short by every cleared cheque. */
+export async function postChequeCleared(
+  db: Db,
+  input: {
+    organizationId: number;
+    chequeId: number;
+    amountToman: number;
+    clearedAt: string;
+    clearedBy: number;
+    memo?: string | null;
+    bankAccountId?: number | null;
+  }
+): Promise<number> {
+  return await postJournal(db, {
+    organizationId: input.organizationId,
+    postedAt: input.clearedAt,
+    bankAccountId: input.bankAccountId,
+    sourceType: "CHEQUE",
+    sourceId: input.chequeId,
+    createdBy: input.clearedBy,
+    memo: input.memo ?? null,
+    legs: [
+      { accountId: await accountOrThrow("1102"), side: "D", amountToman: input.amountToman },
+      { accountId: await accountOrThrow("1202"), side: "C", amountToman: input.amountToman },
     ],
   });
 }
@@ -80,6 +123,8 @@ export async function postReceiptReversal(
     reversedAt: string;
     reversedBy: number;
     reason: string;
+    /** D1: the original cash is still in a person's box (not counted yet), so it comes out of 1104. */
+    fromHand?: boolean;
   }
 ): Promise<number> {
   return await postJournal(db, {
@@ -92,7 +137,7 @@ export async function postReceiptReversal(
     memo: `ابطال: ${input.reason}`,
     legs: [
       // Sides flipped: the cash comes back out, the receivable goes back up.
-      { accountId: await cashAccountFor(input.method), side: "C", amountToman: input.amountToman },
+      { accountId: input.fromHand ? await accountOrThrow(HAND_CODE) : await receiptAccountFor(input.method), side: "C", amountToman: input.amountToman },
       {
         accountId: await accountOrThrow("1201"),
         side: "D",
@@ -106,7 +151,7 @@ export async function postReceiptReversal(
 /** COGS is posted by delivery recognition, never by hand. */
 const COGS_CODE = "5101";
 /** Commission is posted by lib/repo/ledgerCommission.ts from the commission ledgers, never by hand. */
-const SYSTEM_EXPENSE_CODES = [COGS_CODE, "5107", "5108", "5109"];
+const SYSTEM_EXPENSE_CODES = [COGS_CODE, "5107", "5108", "5109", "5110", "5111"];
 
 export interface ExpenseCategory {
   id: number;
@@ -169,7 +214,7 @@ export async function postExpense(
     throw new LedgerError("این حساب، حساب هزینه نیست");
   }
   if (acct.code !== COGS_CODE && SYSTEM_EXPENSE_CODES.includes(acct.code)) {
-    throw new LedgerError("پورسانت از دفتر پورسانت ثبت می‌شود و دستی ثبت نمی‌شود");
+    throw new LedgerError("پورسانت و بخشودگی از جای خودشان ثبت می‌شوند و دستی ثبت نمی‌شوند");
   }
   if (acct.code === COGS_CODE) {
     throw new LedgerError("بهای تمام‌شده با تحویل کالا ثبت می‌شود و دستی ثبت نمی‌شود");
@@ -279,6 +324,65 @@ export async function recordExpense(
   return await db.tx(async () => {
     const id = await postExpense(db, input);
     return id;
+  });
+}
+
+/** A4 «انتقال وجه»: money moves from one own account to another in one balanced entry; a bank fee, if any, leaves the
+ *  source account too (Dr other expenses). The bank tracking number goes in the memo. Example: 5,000,000 from the box to the bank,
+ *  fee 2,000, tracking 8891 → Dr bank 5,000,000, Dr fee 2,000 / Cr box 5,002,000. */
+export async function postTransfer(db: Db, input: { organizationId: number; from: string; to: string; amountToman: number; feeToman?: number; postedAt: string; tracking?: string | null; by: number }): Promise<number> {
+  const codes = TRANSFER_ACCOUNTS.map((a) => a.code) as string[];
+  if (!codes.includes(input.from) || !codes.includes(input.to) || input.from === input.to) throw new LedgerError("حساب مبدأ و مقصد باید دو حساب متفاوت از صندوق، بانک و تنخواه باشند");
+  const fee = input.feeToman ?? 0;
+  if (!Number.isInteger(input.amountToman) || input.amountToman <= 0 || !Number.isInteger(fee) || fee < 0) throw new LedgerError("مبلغ نامعتبر است");
+  const tracking = input.tracking?.trim();
+  const legs: LedgerLeg[] = [
+    { accountId: await accountOrThrow(input.to), side: "D", amountToman: input.amountToman },
+    ...(fee > 0 ? [{ accountId: await accountOrThrow("5106"), side: "D" as const, amountToman: fee }] : []),
+    { accountId: await accountOrThrow(input.from), side: "C", amountToman: input.amountToman + fee },
+  ];
+  return await postJournal(db, {
+    organizationId: input.organizationId,
+    postedAt: input.postedAt,
+    sourceType: "MANUAL",
+    createdBy: input.by,
+    memo: `انتقال وجه${tracking ? ` · پیگیری ${tracking}` : ""}${fee > 0 ? " · با کارمزد" : ""}`,
+    legs,
+  });
+}
+
+/** postTransfer in its own transaction, for the route. */
+export async function recordTransfer(input: Parameters<typeof postTransfer>[1]): Promise<number> {
+  const db = getDb();
+  return await db.tx(() => postTransfer(db, input));
+}
+
+/** Void an expense (H6): post the mirror entry and leave the original in the books. The «آخرین هزینه‌ها» list stops
+ *  showing it (a reversal points at it); the journal and the books still show both. One transaction.
+ *  Refused: a journal that is not an expense of this company, one already voided, a closed period (postJournal). */
+export async function voidExpense(organizationId: number, journalId: number, actor: number, reason: string): Promise<number> {
+  const why = reason.trim();
+  if (why.length === 0 || why.length > 200) throw new LedgerError("دلیل باطل کردن را بنویسید");
+  const db = getDb();
+  return await db.tx(async () => {
+    const j = (await db
+      .prepare("SELECT id, posted_at FROM journals WHERE id = ? AND organization_id = ? AND source_type = 'EXPENSE'")
+      .get(journalId, organizationId)) as { id: number; posted_at: string } | undefined;
+    if (!j) throw new LedgerError("هزینه پیدا نشد");
+    if (await db.prepare("SELECT 1 FROM journals WHERE reverses_journal_id = ?").get(journalId)) throw new LedgerError("این هزینه قبلاً باطل شده است");
+    const legs = (await db
+      .prepare("SELECT account_id, side, amount_toman, group_id FROM ledger_entries WHERE journal_id = ?")
+      .all(journalId)) as unknown as { account_id: number; side: "D" | "C"; amount_toman: number; group_id: number | null }[];
+    return await postJournal(db, {
+      organizationId,
+      postedAt: new Date().toISOString(),
+      sourceType: "REVERSAL",
+      sourceId: journalId,
+      reversesJournalId: journalId,
+      createdBy: actor,
+      memo: `ابطال هزینه: ${why}`,
+      legs: legs.map((l) => ({ accountId: Number(l.account_id), side: l.side === "D" ? "C" : "D", amountToman: Number(l.amount_toman), groupId: l.group_id === null ? null : Number(l.group_id) })),
+    });
   });
 }
 
@@ -404,3 +508,45 @@ export async function postSupplierPayment(
   });
 }
 
+
+/** D1: the office counted a person's cash. Dr office cash (what was counted) and any shortage / Cr the person's box
+ *  (what was expected) and any overage. A shortage is an expense (5111), an overage reduces it. */
+export async function postHandover(
+  db: Db,
+  input: { organizationId: number; handoverId: number; expectedToman: number; countedToman: number; postedAt: string; createdBy: number; memo: string | null }
+): Promise<number> {
+  const legs: LedgerLeg[] = [];
+  if (input.countedToman > 0) legs.push({ accountId: await accountOrThrow("1101"), side: "D", amountToman: input.countedToman });
+  if (input.countedToman < input.expectedToman) legs.push({ accountId: await accountOrThrow("5111"), side: "D", amountToman: input.expectedToman - input.countedToman });
+  legs.push({ accountId: await accountOrThrow(HAND_CODE), side: "C", amountToman: input.expectedToman });
+  if (input.countedToman > input.expectedToman) legs.push({ accountId: await accountOrThrow("5111"), side: "C", amountToman: input.countedToman - input.expectedToman });
+  return await postJournal(db, {
+    organizationId: input.organizationId,
+    postedAt: input.postedAt,
+    sourceType: "HANDOVER",
+    sourceId: input.handoverId,
+    createdBy: input.createdBy,
+    memo: input.memo,
+    legs,
+  });
+}
+
+/** B1: cash paid back to a customer for returned goods: Dr sales returns / Cr the office cash box. The customer had
+ *  already paid, so there is no receivable leg. */
+export async function postCashRefund(
+  db: Db,
+  input: { organizationId: number; refundId: number; customerId: number; amountToman: number; paidAt: string; paidBy: number; memo: string }
+): Promise<number> {
+  return await postJournal(db, {
+    organizationId: input.organizationId,
+    postedAt: input.paidAt,
+    sourceType: "MANUAL",
+    sourceId: input.refundId,
+    createdBy: input.paidBy,
+    memo: input.memo,
+    legs: [
+      { accountId: await accountOrThrow("4102"), side: "D", amountToman: input.amountToman, customerId: input.customerId },
+      { accountId: await accountOrThrow("1101"), side: "C", amountToman: input.amountToman, customerId: input.customerId },
+    ],
+  });
+}

@@ -26,7 +26,8 @@ describe("groups schema", () => {
   it("creates a groups table with the expected columns", async () => {
     // organization_id joined the list when the app became multi-tenant.
     expect((await cols("groups")).sort()).toEqual(
-      ["active", "color", "created_at", "id", "name", "organization_id", "slug"].sort()
+      // assign_mode and last_assigned_user_id: how a lead with no owner is handed out (S6).
+      ["active", "assign_mode", "color", "created_at", "id", "last_assigned_user_id", "name", "organization_id", "slug"].sort()
     );
   });
 
@@ -54,7 +55,9 @@ describe("users rebuild", () => {
       // avatar_url is nullable and optional: most accounts have no photo, and the avatar
       // component falls back to initials rather than inventing a face for them.
       // must_change_password (F35) marks a password an owner chose, to be replaced at next sign-in.
-      ["active", "avatar_stem", "avatar_url", "created_at", "display_name", "group_id", "id", "location_consent_at", "must_change_password", "organization_id", "password_hash", "phone", "prefs_json", "role", "staff_code", "telegram_chat_id", "telegram_link_nonce", "token_version", "totp_enabled_at", "totp_last_step", "totp_secret", "username"].sort()
+      // leave_until / leave_reason: a person away (S23).
+      // can_teach is the «مربی» permission an owner can give (Academy, AC3).
+      ["active", "avatar_stem", "avatar_url", "can_teach", "created_at", "display_name", "group_id", "id", "last_active_at", "leave_delegate_id", "leave_reason", "leave_until", "location_consent_at", "must_change_password", "organization_id", "password_hash", "phone", "prefs_json", "role", "staff_code", "telegram_chat_id", "telegram_link_nonce", "token_version", "totp_enabled_at", "totp_last_step", "totp_secret", "username"].sort()
     );
   });
 

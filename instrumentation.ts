@@ -40,4 +40,14 @@ export async function register() {
   } catch (err) {
     console.warn("[instrumentation] lead import recovery skipped:", err);
   }
+
+  // The background worker: reactions that may be a few seconds late, and the schedules (the rules sweep
+  // every 5 minutes). Its queue lives in the database; a failure to start must not stop the web app.
+  // `ROUTEFLOW_WORKER=off` switches it off (tests, a second server that should only serve pages).
+  try {
+    const { startWorker } = await import("./lib/worker");
+    await startWorker();
+  } catch (err) {
+    console.error("[instrumentation] background worker did not start:", err);
+  }
 }

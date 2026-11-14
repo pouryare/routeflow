@@ -28,13 +28,22 @@ export function readStoredView(): MapView | null {
  *
  *  Zoom levels: 15 puts a shop in its street, 13 fits a neighbourhood. */
 export function linkTargetView(
-  link: { customerId?: number; districtId?: number },
+  link: { customerId?: number; districtId?: number; customerIds?: number[] },
   customers: MapCustomer[],
   districts: DistrictProperties[]
 ): MapView | null {
   if (link.customerId !== undefined) {
     const c = customers.find((x) => x.id === link.customerId);
     if (c && c.lat !== null && c.lng !== null) return { lat: c.lat, lng: c.lng, zoom: 15 };
+  }
+  if (link.customerIds?.length) {
+    // S14: a list opens centred on the middle of the customers that have a pin, zoomed out enough to see the spread.
+    const pins = customers.filter((x) => link.customerIds!.includes(x.id) && x.lat !== null && x.lng !== null);
+    if (pins.length > 0) {
+      const lat = pins.reduce((n, c) => n + (c.lat as number), 0) / pins.length;
+      const lng = pins.reduce((n, c) => n + (c.lng as number), 0) / pins.length;
+      return { lat, lng, zoom: pins.length === 1 ? 15 : 12 };
+    }
   }
   if (link.districtId !== undefined) {
     const d = districts.find((x) => x.id === link.districtId);

@@ -12,6 +12,11 @@ export interface BackupStatus {
   finishedAt: string;
   database: { file: string; bytes: number; check: string } | null;
   photos: { file: string; bytes: number; check: string } | null;
+  /** F138: repositories other than the one on this machine, and when the newest backup in them finished.
+   *  Missing in a status file written before this field existed. */
+  offsite?: { repos: number; newestAt: string | null };
+  /** Whether the photo tarball is copied to another machine (ROUTEFLOW_PHOTOS_OFFSITE is set). */
+  photosOffsite?: boolean;
   error: string | null;
 }
 
@@ -21,12 +26,20 @@ export interface StatusFacts {
   forecastAt: string | null;
   lastSyncAt: string | null;
   customersSyncedAt: string | null;
+  /** The company's own limits for that age (D30); the defaults when left out. */
+  dataAgeingDays?: number;
+  dataStaleDays?: number;
   lastNotificationAt: string | null;
   /** F16: when the newest owner morning digest was queued. It is written by the rule sweep, so
    *  its age also says whether the server's sweep timer runs in the morning. */
   lastDigestAt: string | null;
   failedSignIns24h: number;
   dbBytes: number | null;
+  /** E2/E3: events whose reaction has not run yet, how many of them gave up after their attempts, and the
+   *  oldest one's time. The worker re-runs them every minute, so a few minutes of pending is normal. */
+  pendingEvents: number;
+  failedEvents: number;
+  oldestPendingEventAt: string | null;
 }
 
 export interface StatusLine {
@@ -59,11 +72,19 @@ export function statusLines(f: StatusFacts, now: Date = new Date()): StatusLine[
     ? "پروندهٔ وضعیت پشتیبان پیدا نشد؛ پشتیبان‌گیری شبانه یا اجرا نشده یا هنوز به نسخهٔ تازه نرسیده است."
     : !f.backup.ok
       ? `آخرین پشتیبان ناموفق بود: ${f.backup.error ?? f.backup.database?.check ?? "بررسی رد شد"}`
-      : `سالم${f.backup.database ? ` · ${megabytes(f.backup.database.bytes)}` : ""} · فقط روی همین سرور، نسخهٔ بیرونی هنوز نیست`;
+      : `سالم${f.backup.database ? ` · ${megabytes(f.backup.database.bytes)}` : ""}`;
+  const off = f.backup?.offsite;
+  const offsiteTone: Tone = !f.backup || !f.backup.ok || !off ? "unknown" : off.repos === 0 ? "bad" : ageTone(off.newestAt, now, 30, 48);
+  const offsiteDetail = !off
+    ? "هنوز مشخص نیست؛ پس از پشتیبان‌گیری بعدی نشان داده می‌شود."
+    : off.repos === 0
+      ? "نسخهٔ بیرونی تنظیم نشده؛ اگر این سرور از بین برود، پشتیبان هم می‌رود. در راهنمای سرور بخش ماشین دوم را ببینید."
+      : `روی ماشین دوم${f.backup?.photosOffsite === false ? " · عکس‌ها هنوز فقط روی همین سرورند" : ""}`;
 
-  const freshness = freshnessTier(f.customersSyncedAt, now);
+  const freshness = freshnessTier(f.customersSyncedAt, now, f.dataAgeingDays, f.dataStaleDays);
   return [
     { key: "backup", label: "پشتیبان شبانه", tone: backupTone, at: f.backup?.finishedAt ?? null, detail: backupDetail },
+    { key: "backup_offsite", label: "نسخهٔ بیرونی پشتیبان", tone: offsiteTone, at: off?.newestAt ?? null, detail: offsiteDetail },
     {
       key: "analysis",
       label: "محاسبهٔ شاخص‌ها",
@@ -109,6 +130,19 @@ export function statusLines(f: StatusFacts, now: Date = new Date()): StatusLine[
       detail: !f.lastDigestAt
         ? "هنوز خلاصه‌ای ساخته نشده؛ اجرای خودکار «به‌روزرسانی کارها» روی سرور باید هر صبح بعد از ساعت ۷ انجام شود"
         : "خلاصهٔ کارهای روز که هر صبح برای مالک فرستاده می‌شود",
+    },
+    {
+      key: "reactions",
+      label: "واکنش‌های خودکار",
+      // The worker retries every minute; stuck for a quarter of an hour, or given up, needs a look.
+      tone: f.failedEvents > 0 ? "bad" : f.pendingEvents === 0 ? "good" : ageTone(f.oldestPendingEventAt, now, 0.25, 2),
+      at: f.oldestPendingEventAt,
+      detail:
+        f.pendingEvents === 0
+          ? "همهٔ رویدادها واکنششان را گرفته‌اند"
+          : f.failedEvents > 0
+            ? `${f.failedEvents.toLocaleString("fa-IR")} رویداد بعد از چند بار تلاش هنوز واکنش نگرفته‌اند؛ به پشتیبانی خبر بدهید`
+            : `${f.pendingEvents.toLocaleString("fa-IR")} رویداد در صف واکنش است و دوباره تلاش می‌شود`,
     },
     {
       key: "signins",

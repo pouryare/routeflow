@@ -66,6 +66,8 @@ function backupDatabase() {
   pgbackrest("check");
   const after = info();
   const parts = [];
+  // F138: repo1 is this machine; any other repository is a copy elsewhere. The status page shows how old the newest one is.
+  const offsite = { repos: 0, newestAt: null };
   let bytes = 0;
   for (const key of repos) {
     const newest = after.backup
@@ -75,9 +77,14 @@ function backupDatabase() {
     const repo = after.repo.find((r) => r.key === key);
     if (repo?.status?.code !== 0) throw new Error(`repo${key}: ${repo?.status?.message ?? "not ok"}`);
     parts.push(`repo${key} ${newest.label}`);
+    if (key !== 1) {
+      const at = new Date(newest.timestamp.stop * 1000).toISOString();
+      offsite.repos += 1;
+      if (!offsite.newestAt || at > offsite.newestAt) offsite.newestAt = at;
+    }
     bytes = Math.max(bytes, newest.info.size);
   }
-  return { file: parts.join(" · "), bytes, check: "ok" };
+  return { file: parts.join(" · "), bytes, check: "ok", offsite };
 }
 
 function backupPhotos(ts) {
@@ -101,7 +108,8 @@ const startedAt = new Date().toISOString();
 try {
   const database = backupDatabase();
   const photos = backupPhotos(startedAt.replace(/[:.]/g, "-"));
-  writeStatus({ ok: true, startedAt, finishedAt: new Date().toISOString(), database, photos, error: null });
+  const { offsite, ...db } = database;
+  writeStatus({ ok: true, startedAt, finishedAt: new Date().toISOString(), database: db, offsite, photos, photosOffsite: Boolean(OFFSITE), error: null });
   console.log(`[backup] completed: ${database.file}${photos ? `, ${photos.file}` : ""}`);
 } catch (e) {
   const detail = why(e);

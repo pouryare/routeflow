@@ -3,6 +3,7 @@
 import { useMyPosition } from "@/components/MyPositionProvider";
 import { withPlace } from "@/lib/entryPlace";
 import { useEffect, useMemo, useState } from "react";
+import { idemKeeper } from "@/lib/idemKey";
 import TapFlow, { type CustomStepApi } from "@/components/tapflow/TapFlow";
 import DateStep from "@/components/tapflow/DateStep";
 import FlowDone from "@/components/tapflow/FlowDone";
@@ -51,6 +52,7 @@ export default function PaymentFlow({
   onClose: () => void;
   onReopen?: () => void;
 }) {
+  const [idem] = useState(idemKeeper);
   const today = useMemo(() => tehranTodayIso(), []);
   const [lastMethod] = useState(() => readLastMethod("payment"));
   const ctx = useMemo<FlowContext>(() => {
@@ -82,10 +84,13 @@ export default function PaymentFlow({
       }
       const res = await fetch(req.url, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...idem.headers() },
         body: JSON.stringify(req.body),
       });
-      if (res.ok) return { ok: true };
+      if (res.ok) {
+        idem.renew();
+        return { ok: true };
+      }
       const json = (await res.json().catch(() => ({}))) as { error?: string };
       return { ok: false, error: json.error };
     },

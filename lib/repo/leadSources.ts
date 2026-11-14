@@ -3,6 +3,8 @@ import { crmFilter, type Session } from "@/lib/session";
 import { FULFILLED_ORDER_STATUSES, sqlStatusList } from "@/lib/orderStateMachine";
 import { LEAD_SOURCES, LEAD_SOURCE_LABEL, isOneOf } from "@/lib/crm/vocab";
 import { addDays, round } from "@/lib/database/dialect";
+import { orderFilter } from "@/lib/session";
+import { orderChannelLabel } from "@/lib/orderChannel";
 
 /** F137: what each lead source has produced, from data already stored: how many records came in
  *  from it, how many became customers (have a delivered order), and what those customers bought in
@@ -89,4 +91,31 @@ export async function topReferrers(session: Session): Promise<ReferrerRow[]> {
         LIMIT 10`
     )
     .all(...f.params)).map((r) => ({ id: Number(r.id), name: String(r.name), referred: Number(r.referred), converted: Number(r.converted) }));
+}
+
+interface ChannelRow {
+  channel: string | null;
+  label: string;
+  orders: number;
+  revenue: number;
+}
+
+/** F85: delivered orders and their value by the way they reached the company, in the same scope as the
+ *  orders list. Orders made before the channel was kept (or skipped at entry) are the «بدون ثبت» row. */
+export async function orderChannelReport(session: Session): Promise<ChannelRow[]> {
+  const f = orderFilter(session, "o");
+  const fulfilled = sqlStatusList(FULFILLED_ORDER_STATUSES);
+  const rows = (await getDb()
+    .prepare(
+      `SELECT o.channel, COUNT(*) AS orders,
+              COALESCE(SUM((SELECT COALESCE(SUM(${round("COALESCE(l.packs_delivered, l.packs_ordered) * l.unit_price_toman")}), 0)
+                              FROM order_lines l WHERE l.order_id = o.id)), 0) AS revenue
+         FROM orders o
+        WHERE o.status IN (${fulfilled})${f.sql}
+        GROUP BY o.channel`
+    )
+    .all(...f.params)) as unknown as { channel: string | null; orders: number; revenue: number }[];
+  return rows
+    .map((r) => ({ channel: r.channel, label: orderChannelLabel(r.channel), orders: Number(r.orders), revenue: Number(r.revenue) }))
+    .sort((a, b) => b.revenue - a.revenue);
 }

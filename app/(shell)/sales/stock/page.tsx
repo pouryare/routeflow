@@ -6,6 +6,10 @@ import { activeProducts, facilityName } from "@/lib/repo/stockPageView";
 import { monthPurchasesIn, purchasesIn, stockPositionIn } from "@/lib/repo/routeAdapters";
 import { faToman, faNum } from "@/lib/format";
 import { faJalaliDate, toJalali, jalaliToIsoDate } from "@/lib/jalali";
+import { allSupplierPrices } from "@/lib/repo/supplierPrices";
+import VanLoadCard from "@/components/sales/VanLoadCard";
+import { vansToLoad } from "@/lib/repo/vanStock";
+import { productPickList } from "@/lib/repo/purchaseOrders";
 import PurchaseEntry from "@/components/sales/PurchaseEntry";
 import InventoryBoard from "@/components/meridian/InventoryBoard";
 import GradientStat from "@/components/meridian/GradientStat";
@@ -15,6 +19,7 @@ import PageHeader from "@/components/meridian/PageHeader";
 import { isVanRole, isOwner, MANAGE_ROLES } from "@/lib/roles";
 import { findDefaultFacilityId, onHandByProduct } from "@/lib/repo/stock";
 import Link from "next/link";
+import { Icon } from "@/components/meridian/Icon";
 import StockCountEntry from "@/components/flows/StockCountEntry";
 import ReceiveEntry from "@/components/flows/ReceiveEntry";
 import { pageMetadata } from "@/lib/pageMeta";
@@ -36,7 +41,9 @@ export default async function StockPage() {
   const stock = await stockPositionIn(orgScopeId(session));
   const purchases = isOwner(session.role) ? await purchasesIn(session.organizationId, 15) : [];
   const products = isOwner(session.role) ? await activeProducts(session.organizationId) : [];
+  const prices = isOwner(session.role) ? (await allSupplierPrices(session.organizationId)).map(({ supplier, product_id, price_toman, min_qty, delivery_days, supplier_code }) => ({ supplier, product_id, price_toman, min_qty, delivery_days, supplier_code })) : [];
 
+  const vans = MANAGE_ROLES.includes(session.role) ? await vansToLoad(session.organizationId) : [];
   const totalValue = stock.reduce((sum, row) => sum + row.value_toman, 0);
   const critCount = stock.filter((r) => r.status === "crit").length;
   const lowCount = stock.filter((r) => r.status === "low").length;
@@ -88,6 +95,7 @@ export default async function StockPage() {
     reorder_point: r.reorder_point,
     target_stock: r.target_stock,
     sell_off: r.sell_off,
+    vat_pct: r.vat_pct,
     status: r.status,
     daily_rate: r.daily_rate,
     days_left: r.days_left,
@@ -98,6 +106,24 @@ export default async function StockPage() {
   return (
     <>
     <PageHeader route="/sales/stock" />
+    {MANAGE_ROLES.includes(session.role) ? (
+      <Link href="/sales/stock/on-date" className="mb-3 inline-flex min-h-[44px] items-center gap-2 text-[length:var(--text-sm)] text-[var(--accent-text)]">
+        <Icon name="clock" size="md" />
+        موجودی در یک روز گذشته
+      </Link>
+    ) : null}
+    {isOwner(session.role) ? (
+      <Link href="/sales/stock/buy-list" className="mb-3 ms-4 inline-flex min-h-[44px] items-center gap-2 text-[length:var(--text-sm)] text-[var(--accent-text)]">
+        <Icon name="receipt" size="md" />
+        فهرست خرید
+      </Link>
+    ) : null}
+    {isOwner(session.role) ? (
+      <Link href="/sales/stock/orders" className="mb-3 ms-4 inline-flex min-h-[44px] items-center gap-2 text-[length:var(--text-sm)] text-[var(--accent-text)]">
+        <Icon name="truck" size="md" />
+        سفارش‌های خرید
+      </Link>
+    ) : null}
     <div className="flex flex-col gap-[var(--space-5)]">
       <div className="statrow">
         <GradientStat tone="peach" label="ارزش کل انبار"
@@ -200,7 +226,8 @@ export default async function StockPage() {
 
       <BatchList rows={batches} canManage={canManageBatches} />
 
-      {isOwner(session.role) && <PurchaseEntry products={products} />}
+      {vans.length > 0 && <VanLoadCard vans={vans} products={await productPickList(session.organizationId)} />}
+      {isOwner(session.role) && <PurchaseEntry products={products} prices={prices} />}
 
       {purchases.length > 0 && (
         <section className="card p-[var(--space-4)]">

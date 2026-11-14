@@ -1,6 +1,10 @@
 "use client";
 
 import { DEFAULT_SHEET_ORIENT, readSheetOrient, saveSheetOrient, type SheetOrient } from "@/lib/sheetOrient";
+import LeftoverSheet from "@/components/LeftoverSheet";
+import CreditNoteSheet from "@/components/CreditNoteSheet";
+import ContactPrefsSheet from "@/components/ContactPrefsSheet";
+import { mayCloseLeftover } from "@/lib/leftover";
 import { useEscapeKey } from "@/lib/useEscapeKey";
 import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { useHydrated } from "@/lib/useHydrated";
@@ -69,6 +73,8 @@ export default function CustomerDetailPanel({
   onClose,
   onReminderAdded,
   onUpdated,
+  leftover,
+  canEditContact,
 }: {
   customer: MapCustomer;
   facilities?: FacilityRow[];
@@ -81,7 +87,15 @@ export default function CustomerDetailPanel({
   /** Fired after a field on this customer is changed (e.g. lifecycle) so the caller
    *  can refetch. The panel also updates its own pill optimistically. */
   onUpdated?: () => void;
+  /** D3: given to a manager; the button shows when the balance is one they may close. */
+  leftover?: { limit: number; owner: boolean; refundLimit: number };
+  /** S15: shown to roles that may change what the customer asked us not to do. */
+  canEditContact?: boolean;
 }) {
+  const [leftoverOpen, setLeftoverOpen] = useState(false);
+  const [creditNoteOpen, setCreditNoteOpen] = useState(false);
+  const [contactOpen, setContactOpen] = useState(false);
+  const noCalls = customer.contact_off?.some((c) => c.channel === "calls") ?? false;
   const panelRef = useRef<HTMLDivElement>(null);
   const toast = useToast();
   const router = useRouter();
@@ -353,6 +367,7 @@ export default function CustomerDetailPanel({
               <a href={`tel:${customer.phone}`} className="hover:underline">
                 {customer.phone}
               </a>
+              {noCalls ? <span className="rounded-[var(--radius-sm)] border border-crit px-1.5 text-[length:var(--text-xs)] text-crit">تماس نشود</span> : null}
               <CopyButton value={customer.phone} what="کپی شماره تلفن" />
             </dd>
           </div>
@@ -424,6 +439,36 @@ export default function CustomerDetailPanel({
           </span>
         </div>
       )}
+
+      {canEditContact ? (
+        <>
+          <button type="button" onClick={() => setContactOpen(true)} data-tour="contact-prefs" className="mt-3 flex min-h-[44px] w-full items-center justify-center gap-2 rounded-[var(--radius-md)] border border-border px-3 py-2 text-[length:var(--text-sm)] text-text-muted transition-colors hover:border-accent hover:text-accent">
+            <Icon name="phone" size="sm" />
+            ترجیح تماس{customer.contact_off?.length ? ` · ${faNum(customer.contact_off.length)} مورد خاموش` : ""}
+          </button>
+          {contactOpen ? <ContactPrefsSheet open onClose={() => setContactOpen(false)} customerId={customer.id} name={customer.business_name} current={customer.contact_off ?? []} onDone={() => onUpdated?.()} /> : null}
+        </>
+      ) : null}
+
+      {leftover && customer.debt && mayCloseLeftover(leftover.owner, customer.debt.total, leftover.limit) ? (
+        <>
+          <button type="button" onClick={() => setLeftoverOpen(true)} data-tour="close-leftover" className="mt-3 flex min-h-[44px] w-full items-center justify-center gap-2 rounded-[var(--radius-md)] border border-border px-3 py-2 text-[length:var(--text-sm)] text-text-muted transition-colors hover:border-accent hover:text-accent">
+            <Icon name="x" size="sm" />
+            بستن مانده کوچک
+          </button>
+          <LeftoverSheet open={leftoverOpen} onClose={() => setLeftoverOpen(false)} customerId={customer.id} name={customer.business_name} owed={customer.debt.total} limit={leftover.limit} owner={leftover.owner} onDone={() => onUpdated?.()} />
+        </>
+      ) : null}
+
+      {leftover && customer.debt ? (
+        <>
+          <button type="button" onClick={() => setCreditNoteOpen(true)} data-tour="credit-note" className="mt-3 flex min-h-[44px] w-full items-center justify-center gap-2 rounded-[var(--radius-md)] border border-border px-3 py-2 text-[length:var(--text-sm)] text-text-muted transition-colors hover:border-accent hover:text-accent">
+            <Icon name="undo" size="sm" />
+            برگشت از فروش
+          </button>
+          {creditNoteOpen ? <CreditNoteSheet open onClose={() => setCreditNoteOpen(false)} customerId={customer.id} name={customer.business_name} owed={customer.debt.total} refund={{ limit: leftover.refundLimit, owner: leftover.owner }} onDone={() => onUpdated?.()} /> : null}
+        </>
+      ) : null}
 
       <a
         href={`/sales/payments?customer_id=${customer.id}`}

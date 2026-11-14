@@ -41,9 +41,9 @@ describe("bottom tabs", () => {
     }
   });
 
-  it("sales roles get the four destinations they use all day; a driver gets the two they have", () => {
+  it("sales roles get the four destinations they use all day; a driver gets the three they have", () => {
     expect(bottomTabs({ role: "phone_sales" }).primary.map((t) => t.href)).toEqual(["/sales/today", "/crm", "/sales/pocket", "/sales/orders"]);
-    expect(bottomTabs({ role: "delivery_driver" }).primary.map((t) => t.href)).toEqual(["/driver", "/sales/academy"]);
+    expect(bottomTabs({ role: "delivery_driver" }).primary.map((t) => t.href)).toEqual(["/driver", "/sales/catalogue", "/sales/academy"]);
   });
 });
 

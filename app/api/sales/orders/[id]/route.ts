@@ -70,7 +70,7 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
       if (!isSettablePriority(body.priority)) {
         return NextResponse.json({ ok: false, error: "اولویت نامعتبر است" }, { status: 400 });
       }
-      const set = await setOrderPriority(guard.session.organizationId, id, body.priority);
+      const set = await setOrderPriority(guard.session.organizationId, id, body.priority, guard.session.user.id);
       if (!set) return NextResponse.json({ ok: false, error: "اولویت سفارشِ بسته‌شده تغییر نمی‌کند" }, { status: 409 });
       return NextResponse.json({ ok: true });
     }

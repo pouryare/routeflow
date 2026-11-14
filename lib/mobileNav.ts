@@ -16,9 +16,9 @@ export const PRIMARY_BY_ROLE: Partial<Record<Role, string[]>> = {
   group_manager: ["/sales/today", "/crm", "/sales/orders", "/map"],
   rep_manager: ["/sales/today", "/crm", "/sales/tasks", "/map"],
   phone_sales: ["/sales/today", "/crm", "/sales/pocket", "/sales/orders"],
-  // Vans: the bar is simply their two tabs (appNav writes that menu out by hand).
-  field_rep: ["/driver", "/sales/academy"],
-  delivery_driver: ["/driver", "/sales/academy"],
+  // Vans: the bar is simply their three tabs (appNav writes that menu out by hand).
+  field_rep: ["/driver", "/sales/catalogue", "/sales/academy"],
+  delivery_driver: ["/driver", "/sales/catalogue", "/sales/academy"],
 };
 
 /** One glyph per bar destination. Every item is icon AND word (the icon rule), and the glyph is
@@ -27,10 +27,12 @@ export const TAB_ICON: Record<string, IconName> = {
   "/sales/today": "calendar",
   "/crm": "users",
   "/sales/pocket": "clipboard",
+  "/my-expenses": "wallet",
   "/sales/orders": "receipt",
   "/sales/tasks": "list",
   "/map": "map",
   "/driver": "route",
+  "/sales/catalogue": "package",
   "/sales/academy": "star",
 };
 
@@ -94,7 +96,7 @@ export const APP_SHORTCUTS: { label: string; href: string }[] = [
 
 export function quickActionsFor(session: { role: Role }): QuickAction[] {
   // A shareholder's login is the one read-only page; every action here writes.
-  if (isVanRole(session.role) || session.role === "shareholder") return [];
+  if (isVanRole(session.role) || session.role === "shareholder" || session.role === "accountant") return [];
   const reachable = new Set(appTabs(session).filter((t) => t.ready).map((t) => t.href));
   return QUICK_ACTIONS.filter((a) => (!a.requires || reachable.has(a.requires)) && !a.except?.includes(session.role));
 }

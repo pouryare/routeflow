@@ -23,7 +23,10 @@ import SectionHead from "@/components/meridian/SectionHead";
 import { isVanRole } from "@/lib/roles";
 import NotAVanNotice from "@/components/meridian/NotAVanNotice";
 import DriverLinks from "@/components/driver/DriverLinks";
+import WarmOffline from "@/components/driver/WarmOffline";
+import VanPositionSender from "@/components/driver/VanPositionSender";
 import FirstStepsCard from "@/components/tutorials/FirstStepsCard";
+import { listReasonCodes } from "@/lib/repo/reasonCodes";
 import { driverLinks } from "@/lib/driverLinks";
 
 import type { Metadata } from "next";
@@ -32,6 +35,9 @@ import LiveRefresh from "@/components/LiveRefresh";
 export const metadata: Metadata = { title: "مسیر امروز" };
 
 export const dynamic = "force-dynamic";
+
+/** Pages kept for the day without a signal. */
+const WARM = ["/sales/catalogue"];
 
 /** Phase 6: one line of weather from the run's frozen forecast, or null. */
 function weatherLine(run: { weather_json?: string | null }): string | null {
@@ -123,6 +129,8 @@ export default async function DriverPage() {
           </button>
         </form>
       </header>
+      <WarmOffline urls={WARM} />
+      {run?.status === "in_progress" && <VanPositionSender />}
       <DriverLinks links={driverLinks(session)} />
       <FirstStepsCard />
 
@@ -143,6 +151,8 @@ export default async function DriverPage() {
             driverName={session.user.display_name}
             businessName={businessName}
             receiptFooter={docs.receiptFooter}
+            lateReasons={(await listReasonCodes(session.organizationId, "delivery_delay")).map((r) => ({ id: r.id, label: r.label_fa }))}
+            failReasons={(await listReasonCodes(session.organizationId, "delivery_fail")).map((r) => ({ id: r.id, label: r.label_fa }))}
           />
 
           {commission.kg > 0 && (

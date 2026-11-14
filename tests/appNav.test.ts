@@ -145,7 +145,7 @@ describe("where each destination lives", () => {
   it("delivery and stock share one operations group", () => {
     // /sales/runs and /sales/deliveries are a view and a redirect now; the planner moved
     // to /sales/schedule, which sits in the day group beside the month it plans against.
-    expect(hrefsIn("ops")).toEqual(["/sales/batches", "/sales/routing", "/sales/stock"].sort());
+    expect(hrefsIn("ops")).toEqual(["/sales/batches", "/sales/hours", "/sales/routing", "/sales/stock"].sort());
   });
 
   it("every read-only overview is a report, the forecast included", () => {
@@ -157,7 +157,7 @@ describe("where each destination lives", () => {
   });
 
   it("organisation settings hold users, groups and our own sites", () => {
-    expect(hrefsIn("org")).toEqual(["/facilities", "/sales/admin/companies", "/sales/admin/discounts", "/sales/admin/groups", "/sales/admin/holidays", "/sales/admin/logins", "/sales/admin/rating-tags", "/sales/admin/status", "/sales/admin/storage", "/sales/admin/users"].sort());
+    expect(hrefsIn("org")).toEqual(["/facilities", "/sales/admin/companies", "/sales/admin/data", "/sales/admin/discounts", "/sales/admin/groups", "/sales/admin/holidays", "/sales/admin/logins", "/sales/admin/rating-tags", "/sales/admin/rules", "/sales/admin/status", "/sales/admin/storage", "/sales/admin/users"].sort());
   });
 
   it("names say what is on the page: my tasks, the sales summary, production batches", () => {
@@ -220,7 +220,7 @@ describe("a driver's menu", () => {
   it("is their whole day and the door library, and nothing else", () => {
     // /leads is the office's pin pool now. The stops a driver drives are the second
     // section of /driver, so a dual-hat person sees both jobs on one page.
-    expect(driver.map((t) => t.href)).toEqual(["/driver", "/sales/academy"]);
+    expect(driver.map((t) => t.href)).toEqual(["/driver", "/sales/catalogue", "/my-expenses", "/sales/academy"]);
   });
 
   it("keeps the customer and coverage surface off the vehicle", () => {
@@ -233,6 +233,8 @@ describe("a driver's menu", () => {
     expect(m.groups.map((g) => g.id)).toEqual(["day"]);
     expect(m.tabsByGroup.day.map((t) => t.href)).toEqual([
       "/driver",
+      "/sales/catalogue",
+      "/my-expenses",
       "/sales/academy",
     ]);
   });

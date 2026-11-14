@@ -5,9 +5,12 @@
  *  six months as it did on the day it was taken. Commission is paid off these numbers.
  */
 
+import { editRule } from "./orderEditRules";
 import { MAX_LINES_PER_ORDER, MAX_NOTES_LENGTH, MAX_PACKS_PER_LINE, isValidPacks } from "./orderLimits";
 import { refreshOrderFigures } from "./repo/orderFigures";
 import type { Db } from "@/lib/database/client";
+import type { CreatedSource } from "@/lib/createdSource";
+import type { OrderChannel } from "@/lib/orderChannel";
 import { getDb } from "./db";
 import { resolvePrice, costBasisFor } from "./catalogue";
 import { toJalali } from "./jalali";
@@ -55,6 +58,10 @@ export interface CreateOrderInput {
   organization_id: number;
   salesperson_user_id?: number | null;
   credit_override_by?: number | null;
+  /** T5: how the order came to exist; the form by default. */
+  source?: CreatedSource;
+  /** F85: how the order reached the company; empty when nobody said. */
+  channel?: OrderChannel | null;
   notes?: string | null;
   /** Phase 4: the client-generated idempotency key when this order was drafted offline. */
   client_uuid?: string | null;
@@ -95,6 +102,16 @@ export interface OrderDetail {
   priority: string;
   customer_id: number;
   customer_name: string;
+  /** A12: name, phone and address as they were when the order was confirmed; null before that. */
+  ship_name?: string | null;
+  ship_phone?: string | null;
+  /** D5: the day payment is due; set when the order is delivered. */
+  due_date?: string | null;
+  ship_address?: string | null;
+  /** D7: 1 when the order is an official invoice; the number is given at confirmation. */
+  official?: number;
+  invoice_year?: number | null;
+  invoice_no?: number | null;
   group_id: number | null;
   salesperson_user_id: number | null;
   salesperson_name: string | null;
@@ -283,8 +300,8 @@ export async function createOrder(
         .prepare(
           `INSERT INTO orders (order_no, customer_id, group_id, salesperson_user_id, status,
                                order_date, requested_day, requested_kind, notes, credit_override_by,
-                               client_uuid, created_by, created_at, updated_at, organization_id)
-           VALUES (?, ?, ?, ?, 'DRAFT', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+                               client_uuid, created_by, created_at, updated_at, organization_id, created_source, channel)
+           VALUES (?, ?, ?, ?, 'DRAFT', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
         )
         .run(
           orderNo,
@@ -302,7 +319,9 @@ export async function createOrder(
           input.created_by,
           now,
           now,
-          input.organization_id
+          input.organization_id,
+          input.source ?? "form",
+          input.channel ?? null
         )).lastInsertRowid
     );
 
@@ -366,9 +385,8 @@ export async function addLine(db: Db, orderId: number, line: LineInput): Promise
     | undefined;
   if (!order) throw new OrderError("سفارش پیدا نشد");
   assertValidLine(line);
-  if (order.status !== "DRAFT") {
-    throw new OrderError("سفارش تأییدشده ویرایش نمی‌شود؛ برای اصلاح، قلم برگشتی ثبت کنید");
-  }
+  const rule = editRule("line", order.status);
+  if (!rule.ok) throw new OrderError(rule.why);
   await insertLine(db, orderId, order.order_date, line, new Date().toISOString());
   await touch(db, orderId);
 }
@@ -408,6 +426,25 @@ export async function submitOrder(
   if (!await orderComplete(db, orderId)) throw new OrderError("سفارش بدون قلم یا با جمع صفر ثبت نمی‌شود");
 
   await advanceOrder(organizationId, orderId, "submit", actor);
+
+  /* F76: an order bigger than the company's limit waits for a manager, whoever the customer is. A signed-in
+     owner is the one who would approve it, so their own order goes on. A sample carries no value. */
+  if (order.order_type !== "SAMPLE" && !(actor.role === "owner" && actor.id != null)) {
+    const limit = Number(((await db.prepare("SELECT order_approval_limit_toman AS n FROM organizations WHERE id = ?").get(organizationId)) as { n: number } | undefined)?.n ?? 0);
+    const orderTotal = orderTotalToman(await linesOf(db, orderId));
+    if (limit > 0 && orderTotal > limit) {
+      await db.prepare("UPDATE orders SET credit_hold = 1 WHERE id = ? AND organization_id = ?").run(orderId, organizationId);
+      await requestApproval(organizationId, {
+        order_id: orderId,
+        requested_by: actor.id ?? order.created_by,
+        customer_id: order.customer_id,
+        customer_balance_toman: orderTotal,
+        credit_limit_toman: limit,
+        kind: "value",
+      });
+      return await advanceOrder(organizationId, orderId, "flagCredit", { id: actor.id, role: "system" });
+    }
+  }
 
   const isRepresentative = !!await db
     .prepare("SELECT 1 FROM representative_profiles WHERE customer_id = ? AND organization_id = ?")
@@ -555,6 +592,7 @@ export interface OrderSummary {
   /** Carried so a card can open the customer sheet without a second lookup per row. */
   customer_id: number;
   customer_name: string;
+  customer_phone?: string | null;
   /** The order's territory. Carried for the same reason as customer_id: the assignment board
    *  has to know which vans can legally take this order BEFORE the reader drops it, and a
    *  second lookup per card is how that check ends up missing. */
@@ -604,7 +642,7 @@ export async function readOrders(
     .prepare(
       `SELECT o.id, o.order_no, o.status, o.priority, o.order_date, o.payment_status, o.paid_toman,
               o.requested_day, o.requested_kind, o.discount_toman,
-              o.group_id, o.customer_id, c.business_name AS customer_name, u.display_name AS salesperson_name
+              o.group_id, o.customer_id, c.business_name AS customer_name, c.phone AS customer_phone, u.display_name AS salesperson_name
          FROM orders o
          JOIN customers c ON c.id = o.customer_id
          LEFT JOIN users u ON u.id = o.salesperson_user_id

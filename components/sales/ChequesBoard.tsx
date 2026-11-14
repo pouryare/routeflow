@@ -15,11 +15,17 @@ import { useRunAfterMount } from "@/lib/useRunAfterMount";
 import { friendlyError } from "@/lib/userMessage";
 import { Icon } from "@/components/meridian/Icon";
 import JalaliDateInput from "@/components/meridian/JalaliDateInput";
+import { useRouter } from "next/navigation";
 import { useCallback, useMemo, useState } from "react";
+import { idemKeeper } from "@/lib/idemKey";
+import { chequeAgenda } from "@/lib/chequeAgenda";
+import CustomerName from "@/components/CustomerName";
+import SectionHead from "@/components/meridian/SectionHead";
 import { faNum, faToman } from "@/lib/format";
 import PaymentFlow from "@/components/flows/PaymentFlow";
 import { CHEQUE_STATUS_LABEL, CHEQUE_TRANSITIONS, type ChequeStatus } from "@/lib/chequeStates";
 import SmartPicker from "@/components/mobile/SmartPicker";
+import DepositBankSheet from "@/components/sales/DepositBankSheet";
 
 interface Customer {
   id: number;
@@ -40,6 +46,8 @@ interface Cheque {
 const COLUMNS: ChequeStatus[] = ["in_hand", "deposited", "bounced"];
 
 export default function ChequesBoard({ customers, canSeeBooks = false }: { customers: Customer[]; canSeeBooks?: boolean }) {
+  const router = useRouter();
+  const [idem] = useState(idemKeeper);
   const [cheques, setCheques] = useState<Cheque[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   /* Phone entry is the tap flow, remounted per opening; the form below stays from md up. */
@@ -86,7 +94,7 @@ export default function ChequesBoard({ customers, canSeeBooks = false }: { custo
     }
     const res = await fetch("/api/cheques", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...idem.headers() },
       body: JSON.stringify({
         customer_id: Number(form.customer_id),
         amount_toman: amt,
@@ -101,6 +109,7 @@ export default function ChequesBoard({ customers, canSeeBooks = false }: { custo
       setError(friendlyError(body?.error, "چک ثبت نشد؛ دوباره تلاش کنید"));
       return;
     }
+    idem.renew();
     setForm((f) => ({ ...f, amount_toman: "", cheque_no: "", bank_name: "" }));
     void load();
   }
@@ -179,15 +188,25 @@ export default function ChequesBoard({ customers, canSeeBooks = false }: { custo
   const [picked, setPicked] = useState<Set<number> | null>(null);
   // Once picking, a finger can slide down the tick boxes to pick (or drop) many at once.
   const tick = useDragSelect(picked ?? new Set(), setPicked);
-  const bulk = (to: ChequeStatus) => {
+  const [bankSheet, setBankSheet] = useState(false);
+  const bulk = (to: ChequeStatus, bankAccountId: number | null = null) => {
     const { ids, skipped } = chequeBulk(cheques ?? [], picked ?? new Set(), to);
     if (ids.length === 0) {
       setError("هیچ‌کدام از چک‌های انتخاب‌شده به این وضعیت نمی‌روند");
       return;
     }
+    let slip: number | null = null;
     undoable.run({
       message: `${faNum(ids.length)} چک «${CHEQUE_STATUS_LABEL[to]}» شد${skipped ? ` · ${faNum(skipped)} مورد انجام نشد` : ""}`,
       send: async () => {
+        if (to === "deposited") {
+          // D2: all together under one numbered slip.
+          const res = await fetch("/api/cheques/deposit", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ids, bankAccountId }) });
+          const j = (await res.json().catch(() => null)) as { error?: string; slip?: number } | null;
+          if (!res.ok) return { ok: false, error: j?.error };
+          slip = j?.slip ?? null;
+          return { ok: true };
+        }
         for (const id of ids) {
           const res = await fetch(`/api/cheques/${id}`, {
             method: "PATCH",
@@ -202,6 +221,7 @@ export default function ChequesBoard({ customers, canSeeBooks = false }: { custo
       onDone: () => {
         setPicked(null);
         void load();
+        if (slip) router.push(`/sales/cheques/slips/${slip}`);
       },
     });
   };
@@ -264,7 +284,7 @@ export default function ChequesBoard({ customers, canSeeBooks = false }: { custo
       ) : (
         <div className="sticky top-0 z-10 flex flex-wrap items-center gap-2 rounded border border-accent bg-surface p-2" role="status">
           <span className="text-sm">{faNum(picked.size)} چک انتخاب شد</span>
-          <button type="button" disabled={picked.size === 0} onClick={() => bulk("deposited")} className="touch rounded border border-border px-3 text-sm disabled:opacity-40">
+          <button type="button" disabled={picked.size === 0} onClick={() => setBankSheet(true)} className="touch rounded border border-border px-3 text-sm disabled:opacity-40">
             <Icon name="check" size="sm" />
             به بانک سپرده شد
           </button>
@@ -278,6 +298,17 @@ export default function ChequesBoard({ customers, canSeeBooks = false }: { custo
           </button>
         </div>
       )}
+
+      {bankSheet ? (
+        <DepositBankSheet
+          count={picked?.size ?? 0}
+          onClose={() => setBankSheet(false)}
+          onPick={(bank) => {
+            setBankSheet(false);
+            bulk("deposited", bank);
+          }}
+        />
+      ) : null}
 
       <form onSubmit={record} className="hidden gap-3 rounded-lg border border-border bg-surface p-4 md:grid md:grid-cols-3">
         <SmartPicker
@@ -316,6 +347,29 @@ export default function ChequesBoard({ customers, canSeeBooks = false }: { custo
         </button>
         {error && <p className="col-span-full text-sm text-danger">{error}</p>}
       </form>
+
+      {/* T8: cheques in hand by the day they fall due, with the sum for each day */}
+      {chequeAgenda(cheques ?? []).length > 0 ? (
+        <section aria-label="سررسید چک‌ها" className="flex flex-col gap-2 rounded-lg border border-border bg-surface p-3" data-tour="cheque-agenda">
+          <SectionHead title="سررسید چک‌های در دست" as="h3" />
+          <ul className="m-0 flex list-none flex-col gap-2 p-0">
+            {chequeAgenda(cheques ?? []).map((d) => (
+              <li key={d.date} className="flex flex-col gap-1 border-b border-border pb-2 last:border-0 last:pb-0">
+                <div className="flex justify-between text-sm">
+                  <strong>{faJalaliDate(d.date)}{d.date < today ? " (گذشته)" : d.date === today ? " (امروز)" : ""}</strong>
+                  <span className="tnum">{faToman(d.totalToman)}</span>
+                </div>
+                {d.items.map((c) => (
+                  <div key={c.id} className="flex justify-between gap-2 text-xs text-text-muted">
+                    <CustomerName id={c.customer_id} name={customerName(c.customer_id)} />
+                    <span className="tnum">{faToman(c.amount_toman)}</span>
+                  </div>
+                ))}
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
 
       <div className="grid gap-4 md:grid-cols-3">
         {COLUMNS.map((col) => (

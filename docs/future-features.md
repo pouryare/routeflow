@@ -199,6 +199,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 **Prerequisites:** none in code; a messaging provider for the customer-facing half.
 
 
+**Built, first slice (2026-11-13, owner chose "positions + dot on map", decisions left to the agent):** the driver's phone sends its position every 30 s while one of their delivery runs is `in_progress` (`VanPositionSender`, `POST /api/driver/position`; the server refuses a position without such a run, so an off-duty driver is never tracked, and the driver's screen says it is on). One row per driver (`van_positions`), no trail. The owner and the group's managers get the dot through the live layer (`van.pos`, not stored) and see it on the coverage map with its age; a dot older than 5 minutes is grey. Choices: Q1 foreground phone GPS (Capacitor background later), Q2 and Q3 not built, Q4 last position only, Q5 nothing to partition. Not built: ETA, customer tracking page and messages, breadcrumb and replay, arrival after a stay, off-route and late alerts, a position setting per company, background location.
+
 **Groundwork built (2026-11-09, L4 and L5, decisions 10.7):** `publishLatest()` keeps each van's newest position so a dispatcher map that opens shows it at once, and a phone gets at most one position every 250 ms, newest only. GPS capture, the map and ETAs are not built.
 ---
 
@@ -300,6 +302,9 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 ---
 
 ## F12. Returns and quality management
+
+**Built (batch B, first slice).** A reason code on a credit note for returned goods (B1). Not yet: per batch, supplier claims, recall tracing, quarantine state.
+
 
 **What:** a return reason per line, per product and per batch; supplier claims; recall tracing from a batch to every customer who received it.
 
@@ -604,6 +609,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 **Prerequisites:** `activity_log`, the briefing exceptions panel.
 
+**Planned 2026-11-12:** the first slice is roadmap EV4 (`audit_log`, one generic trigger, owner-only history list); the anomaly rules, the money hash chain (D6) and the permission log (E6) come after it. See `docs/plans/event-architecture-2026-11-12.md` E4.
+
 **EspoCRM study (2026-10-30, E6):** for permissions, the answer to question 1 is a who/when/old/new log of role, group, active state, password resets and company settings, shown on the owner status page. See `docs/roadmap-archive.md` 1h.
 
 ---
@@ -726,6 +733,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 ---
 
 ## F34. Data export and backup self-service
+
+**Built (2026-11-13), first slice (PR #84):** `/sales/admin/data` (owner). «دریافت فایل اکسل» gives one workbook with a sheet each for customers, products, prices, and read-only orders and payments. An edited workbook (or CSV) can be uploaded for customers, products and prices: the page first shows every row as new, changed (old ← new), unchanged or error, and nothing is saved until «ثبت». Price changes keep their history and need the step-up code; imported customers are marked `import` (T5). Not built: restoring from a file, attachments, point-in-time restore (that stays pgBackRest).
 
 **What:** owners download their data (orders, customers, ledger) as files, see when the last backup ran, and restore a point in time without a developer.
 
@@ -987,7 +996,9 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 ---
 
-## F46. Credit-risk scoring from payment behaviour
+## F46. Credit-risk scoring from payment behaviour — built (first slice)
+
+**Built (2026-11-13):** `lib/creditRisk.ts` adds points for days overdue (10 to 40), bounced cheques in 180 days (15 each, max 30), balance near or over the limit (10 or 20) and broken promises (10 each, max 20); level low under 25, medium under 50, else high; the top three reasons are shown on the customer page (managers) and the credit-approval card. Advisory only, rules not a model. Not built: per-group thresholds, a lower-limit suggestion, using the score to hold an order.
 
 **What:** a score and the top reasons per customer, built from days-late trend, bounced cheques and credit exposure, shown at the credit-approval step and on the customer page. Finishes the half of F9 that is not built.
 
@@ -1030,6 +1041,9 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 ## F48. Change approvals (second-person sign-off)
 
+**Built (batch B, first slice).** Raising or removing a customer's credit limit by a group manager waits for the owner (`change_requests`, «سقف اعتبار» on the customer page; the owner decides on the discounts admin page). **Added 2026-11-13:** a second kind, «اصلاح جزئیات سفارش» (see F73): a group manager's edit of a confirmed order waits for the owner, the owner's applies at once; unanswered requests lapse after 3 days; the owner sees a line in «امروز». Discounts already had their own approval flow (every discount waits, `docs/decisions.md` batch A). Not yet: price edits on a price list, a push message to the owner.
+
+
 **What:** price edits, discounts above a limit, credit-limit increases and similar sensitive changes need a second person's approval, with the reason recorded.
 
 **Already in the app:** only the credit-limit breach is approved this way (`credit_approvals`, with its own decision flow). There is no general approval request for price, discount or limit changes.
@@ -1068,7 +1082,9 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 ---
 
-## F50. Payment promise tracker
+## F50. Payment promise tracker — built (first slice)
+
+**Built (2026-11-13):** a promise (amount, day) is noted on the customer page by managers, phone sales and field reps. Kept = payments since it was noted reach the amount; broken = its day passed without that. Both are worked out when read (`lib/repo/promises.ts`). A broken promise of the last 30 days shows as an action-centre row linking to the customer. Not built: partial payments shown as progress, a task for the rep, the calendar view (T8), the kept-rate on the statement (F18).
 
 **What:** record "the customer promised to pay on the 15th", follow up automatically if it isn't received, and track each customer's promise-kept rate.
 
@@ -1550,6 +1566,9 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 ## F73. Order edit history
 
+**Built (batch B, first slice).** One edit rule per stage (`lib/orderEditRules.ts`); a priority change writes an `edit` event with old and new value on the order timeline. **Finished 2026-11-13:** a confirmed order's delivery day, due date, address and notes can be changed with a required reason; each change writes an `edit` event with old value, new value and reason (and who asked, when the owner approved a manager's request). Lines stay locked after confirmation (return lines are the way to correct them).
+
+
 **What:** every change to an order after confirmation (quantities, prices, dates, address, notes) shown as a timeline with who changed it, when, and why, including what the old value was.
 
 **Already in the app:** `order_events` records each status transition of an order with the action, actor, reason code, note and time (`lib/repo/orders.ts`, with audit views in `lib/repo/journey.ts` and `lib/repo/why.ts`), and legacy orders get one synthetic create event. Order lines carry an `is_reversal` flag, which suggests corrections are posted as reversing lines. I did not confirm how a confirmed order is edited, and I found no field-level history (old and new values) for quantities, prices or dates.
@@ -1806,6 +1825,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 ---
 
 ## F85. Order source tracking
+
+**Built (2026-11-13), first slice (PR #84):** an optional row of chips on the order form (phone, visit, message, driver at the door, standing order, other), `orders.channel`; a van role's order is marked «driver» without asking; the lead-sources page lists delivered orders and their value per channel, the unsaid ones in their own row. Not built: prefilling from a standing-order draft or a call outcome, per-rep and per-group splits, lead source to first order by channel. This is separate from T5's `created_source`.
 
 **What:** record how each order arrived (phone call, visit, app, WhatsApp or Telegram message, driver on the spot, repeat from a standing order) to see which channels bring volume and where to invest rep time.
 
@@ -2371,6 +2392,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 ## F111. Recycle bin
 
+**Checked (2026-11-13):** photos already go to a 30-day trash with a restore button (`docs/storage.md`, decision 12) and tasks cannot be deleted, so only reminders remain. A trash table for reminders is not built.
+
 **What:** deleted customers, tasks, reminders, photos and similar records are kept for 30 days and can be restored by a manager, then removed for good.
 
 **Twenty study (decided 2026-10-30):** keep the JSON copy in a trash table (not a `deleted_at` column); a link to a deleted item shows who deleted it and when with a restore button for managers; keep-for-N-days per company. See `docs/roadmap-archive.md` 1e.
@@ -2623,7 +2646,9 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 3. Where they appear: customer page and filters first, tap flows later?
 4. How they travel: included in the customer export and in the offline sync pull, with validation on the server.
 
-**Suggested first slice:** owner-defined text and choice fields (up to ten), stored as values in a separate table keyed by customer and field, editable on the customer page and shown as columns in the customer list. No flow integration.
+**Built (first slice, 2026-11-13):** tables `custom_fields` and `custom_field_values` (values stored as text, one row per customer and field, RLS by company); owner adds a field on `/sales/admin/status` (text, number, choice, date, yes/no; up to ten active; rename; archive hides it and keeps values); a «ویژگی‌ها» card on the customer page for managers, phone sales and field reps (`PUT /api/customers/[id]/custom-fields`, all or nothing, validated on the server). Not yet: list columns, filters (T12), export, per-role hidden/read-only, ordered coloured choices, offline sync, conditional fields (E16).
+
+**Suggested first slice (done):** owner-defined text and choice fields (up to ten), stored as values in a separate table keyed by customer and field, editable on the customer page and shown as columns in the customer list. No flow integration.
 
 **Prerequisites:** none; F148 duplicates and F98 search could later include them.
 
@@ -2796,6 +2821,9 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 ---
 
 ## F130. Rule builder screen
+
+**Built (batch B, first slice).** The list screen `/sales/admin/rules`: state, waiting time and 14-day firings; switch and retune. Not yet: the builder, draft and publish, dry run, firing budget.
+
 
 **What:** the owner creates and edits automation rules in a form: pick an event or schedule, add conditions (for example "balance above X", "no order for 30 days"), choose the result (create a task, raise an alert, send a notification), set a cooldown and an escalation, and see recent firings.
 
@@ -2971,6 +2999,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 ## F138. Off-site backup copy
 
+**Built (2026-11-13), second slice (PR #84):** the nightly backup (`scripts/pg/backup.mjs`) records which pgBackRest repositories are not on this machine and when the newest backup in them finished, and whether photos are copied elsewhere; the status page shows a «نسخهٔ بیرونی پشتیبان» line (red with no copy or after two days, amber after a day and a quarter, «not known yet» for an older status file). The alert (a push when it goes stale) is not built.
+
 **What:** copy each nightly backup to storage away from the server, encrypted, check that the copy can be read, and alert the owner if a night's backup or copy fails.
 
 **Technology to consider (2026-10-23):** a backup fire drill (a scheduled restore into a scratch database) to prove the copy restores; see `docs/decisions.md`, section 10.
@@ -3014,6 +3044,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 ---
 
 ## F140. Company asset register
+
+**Built (2026-11-13), first slice (PR #84):** a «دارایی‌های شرکت» card on the users page (owner): type (van, phone, tablet, printer, scale, key, other), name, serial, who holds it since which day, condition (good, worn, broken); a retired thing leaves the list and is not deleted. Not built: history of past holders, a page of its own, depreciation (D25).
 
 **What:** a register of the company's own equipment (phones, tablets, Bluetooth printers, scales, scanners, laptops) with serial number, purchase date, condition and who holds it, plus a return check when a person leaves or changes role.
 

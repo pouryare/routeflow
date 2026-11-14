@@ -33,6 +33,13 @@ export interface ProductRow {
   target_stock: number | null;
   /** D32 «تصفیه»: sold as usual, never bought again. */
   sell_off?: number;
+  /** What a rep says at the door (VC1). All optional. */
+  category?: string | null;
+  /** Up to three lines, one per line. */
+  selling_points?: string | null;
+  how_to_say?: string | null;
+  /** content_images.id */
+  image_id?: number | null;
 }
 
 export interface PackagingRow {

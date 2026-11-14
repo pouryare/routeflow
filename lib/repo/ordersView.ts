@@ -1,4 +1,5 @@
 import { getDb, plain } from "@/lib/db";
+import { incomingByProduct } from "@/lib/repo/purchaseOrders";
 import { groupFilter, orderFilter, type Session } from "@/lib/session";
 import { readOrder, readOrders, type OrderDetail, type OrderSummary } from "@/lib/orders";
 import { customerDebtsForOrgOnce } from "@/lib/repo/payments";
@@ -22,7 +23,7 @@ export interface OrdersList {
 }
 
 /** The newest 100 orders the session can see, optionally narrowed to one visible customer. */
-export async function ordersListFor(session: Session, opts: { customerId?: number } = {}): Promise<OrdersList> {
+export async function ordersListFor(session: Session, opts: { customerId?: number; limit?: number } = {}): Promise<OrdersList> {
   const db = getDb();
   const scope = await groupFilter(session);
   const focused =
@@ -32,7 +33,7 @@ export async function ordersListFor(session: Session, opts: { customerId?: numbe
           .prepare(`SELECT id, business_name FROM customers WHERE id = ?${scope.sql}`)
           .get(opts.customerId, ...scope.params) as { id: number; business_name: string } | undefined) ?? null);
 
-  const orders = await readOrders(db, orderFilter(session), { limit: 100, customerId: focused?.id });
+  const orders = await readOrders(db, orderFilter(session), { limit: opts.limit ?? 100, customerId: focused?.id });
   const onARun = new Set(
     (
       plain(
@@ -101,6 +102,8 @@ export interface OrderEntryData {
     name: string;
     base_unit: string;
     kg_per_base_unit: number;
+    /** D27: units on open purchase orders and the earliest day one is expected (null when no date was given). */
+    incoming: { qty: number; expected: string | null } | null;
     packagings: { id: number; name: string; qty_per_pack: number; price_toman: number | null }[];
   }[];
   /** Whom an order can be credited to; empty for a seller, whose orders are always their own. */
@@ -129,11 +132,13 @@ export async function orderEntryFor(session: Session): Promise<OrderEntryData> {
     ) as unknown as Omit<OrderEntryData["customers"][number], "debt">[]
   ).map((c) => ({ ...c, debt: debtByCustomer.get(c.id)?.total ?? 0 }));
 
+  const incoming = await incomingByProduct(session.organizationId);
   const products = (await catalogueFor(session)).map((product) => ({
     id: product.id,
     name: product.name,
     base_unit: product.base_unit,
     kg_per_base_unit: product.kg_per_base_unit,
+    incoming: incoming.get(product.id) ?? null,
     packagings: product.packagings.map((pack) => ({
       id: pack.id,
       name: pack.name,

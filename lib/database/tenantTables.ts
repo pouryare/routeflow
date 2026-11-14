@@ -12,6 +12,27 @@
  *  Child tables are absent on purpose -- order_lines reaches its tenant through orders,
  *  and a second copy of the answer is a second thing to keep in step. */
 export const TENANT_TABLES = [
+  "cash_handovers",
+  "bank_accounts",
+  "period_openings",
+  "year_closes",
+  "saved_views",
+  "cash_refunds",
+  "deposit_slips",
+  "payment_promises",
+  "van_positions",
+  "custom_fields",
+  "custom_field_values",
+  "chat_messages",
+  "chat_reads",
+  "reconciled_entries",
+  "reconciliations",
+  "change_requests",
+  "supplier_prices",
+  "contact_preferences",
+  "idempotency_keys",
+  "private_categories",
+  "problem_reports",
   "groups",
   "company_domains",
   "customers",
@@ -28,6 +49,12 @@ export const TENANT_TABLES = [
   "products",
   "orders",
   "purchases",
+  "purchase_orders",
+  "expense_claims",
+  "staff_loan_entries",
+  "notification_attempts",
+  "export_jobs",
+  "staff_advance_requests",
   "delivery_runs",
   /* "lead_runs" is GONE — folded into delivery_runs by foldLeadRunsIntoDeliveryRuns. Its
      stops live on in `lead_run_stops`, which has no organization_id of its own and is reached
@@ -129,4 +156,14 @@ export const TENANT_TABLES = [
   "sales_daily",
   "sales_daily_products",
   "sales_daily_marks",
+  /* The shared «who changed what» record, filled by triggers (docs/plans/event-architecture-2026-11-12.md E4). */
+  "audit_log",
+  /* Company lessons and the pictures inside them and on products (AC1, VC1). */
+  "academy_categories",
+  "academy_lessons",
+  "content_images",
+  /* Customers lent to a colleague for a number of days (T13, lib/repo/handover.ts). */
+  "customer_loans",
+  /* The company's things and who holds them (F140, lib/repo/assets.ts). */
+  "assets",
 ] as const satisfies readonly string[];

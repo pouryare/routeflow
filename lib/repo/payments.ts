@@ -1,5 +1,6 @@
 import { cache } from "react";
 import { isToman } from "@/lib/money";
+import type { CreatedSource } from "@/lib/createdSource";
 import type { Db } from "@/lib/database/client";
 import { makeRepo } from "./base";
 import { linesByOrder } from "./orderLines";
@@ -11,9 +12,13 @@ import { tryEmitEvent } from "./events";
    engine. postJournal stays the only writer of journals; keeping the mapping in a
    separate file makes "one function writes a journal" structural rather than a comment
    a later editor can route around with a special case. */
+import { HOLDER_ROLES } from "@/lib/cashInHand";
+import { stillInHand } from "@/lib/repo/cashInHand";
 import { postReceipt, postReceiptReversal, receiptJournalIdFor } from "./ledgerPostings";
 
 import { round } from "@/lib/database/dialect";
+import { SELF_UNDO_METHODS, withinUndoWindow } from "@/lib/undoWindow";
+import { thresholdsFor } from "@/lib/repo/thresholds";
 export type { CustomerDebt };
 
 /** A refusal the caller shows the user, not a bug. */
@@ -25,7 +30,9 @@ export type PaymentMethod =
   | "CARD_TO_CARD"
   | "CHEQUE"
   | "CREDIT_NOTE"
-  | "OTHER";
+  | "OTHER"
+  /** D3: a small balance closed by a manager. Not cash: never counted as money collected. */
+  | "LEFTOVER";
 
 export interface PaymentRow {
   id: number;
@@ -64,6 +71,8 @@ export interface RecordPaymentInput {
   cheque_id?: number | null;
   delivery_stop_id?: number | null;
   note?: string | null;
+  /** T5: how the payment came to exist; the form by default. */
+  source?: CreatedSource;
   /** An explicit split. When omitted, FIFO over the customer's oldest unpaid
    *  delivered orders, remainder on account. */
   allocations?: AllocationInput[];
@@ -286,14 +295,17 @@ export async function recordPaymentTxn(
 
   const allocs = await validateAllocations(db, organizationId, input);
   const now = new Date().toISOString();
+  // D1: cash taken by a rep, driver or phone-sales person goes into their box until the office counts it.
+  const taker = (await db.prepare("SELECT role FROM users WHERE id = ?").get(input.received_by)) as { role: string } | undefined;
+  const inHand = input.method === "CASH" && taker !== undefined && HOLDER_ROLES.includes(taker.role) ? 1 : 0;
 
   const paymentId = Number(
     (await db
       .prepare(
         `INSERT INTO payments
            (organization_id, customer_id, amount_toman, method, received_at, received_by,
-            reference, receipt_photo_stem, cheque_id, delivery_stop_id, client_uuid, note, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+            reference, receipt_photo_stem, cheque_id, delivery_stop_id, client_uuid, note, created_at, created_source, in_hand)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       )
       .run(
         organizationId,
@@ -308,7 +320,9 @@ export async function recordPaymentTxn(
         input.delivery_stop_id ?? null,
         input.client_uuid ?? null,
         input.note ?? null,
-        now
+        now,
+        input.source ?? "form",
+        inHand
       )).lastInsertRowid
   );
 
@@ -359,6 +373,7 @@ export async function recordPaymentTxn(
     receivedAt: input.received_at,
     receivedBy: input.received_by,
     memo: input.note ?? null,
+    intoHand: inHand === 1,
   });
 
   return paymentId;
@@ -644,6 +659,18 @@ export async function voidPayment(
   });
 }
 
+/** E5: the person who took a payment may void it themselves within the owner's window (default 15 minutes), cash-like
+ *  methods only. Returns null when allowed, or the reason in words. Managers do not need this check. */
+export async function selfVoidProblem(organizationId: number, id: number, userId: number): Promise<string | null> {
+  const p = (await paymentsRepo.db()
+    .prepare("SELECT received_by, method, created_at, voided_at FROM payments WHERE id = ? AND organization_id = ?")
+    .get(id, organizationId)) as { received_by: number; method: string; created_at: string; voided_at: string | null } | undefined;
+  const minutes = (await thresholdsFor(organizationId)).undo_own_minutes;
+  const refusal = "فقط مدیر یا ثبت‌کنندهٔ دریافت، در مهلت کوتاه پس از ثبت، می‌تواند آن را باطل کند";
+  if (!p || p.voided_at || Number(p.received_by) !== userId || !SELF_UNDO_METHODS.includes(p.method)) return refusal;
+  return withinUndoWindow(p.created_at, Date.now(), minutes) ? null : refusal;
+}
+
 const ZERO_DEBT = (): CustomerDebt => ({
   total: 0,
   bucket_0_7: 0,
@@ -868,6 +895,7 @@ export async function voidPaymentTxn(
       reversedAt: now,
       reversedBy: voidedBy,
       reason,
+      fromHand: await stillInHand(payment.id),
     });
   }
 

@@ -20,6 +20,7 @@ import { leadVisitContext, leadVisitFlow } from "@/lib/crm/flows/leadVisit";
 import { ratingTagsFor } from "@/lib/repo/ratingTags";
 import type { CustomerLifecycle } from "@/lib/types";
 import { addLeadContext, flowContextFor, getBusiness } from "./businesses";
+import { pickRep } from "@/lib/repo/assign";
 import { findDuplicates } from "./dedupe";
 import { isVanRole } from "../../roles";
 
@@ -136,6 +137,7 @@ function replayOr400(cfg: FlowConfig, ctx: FlowContext, answers: FlowAnswer[]): 
   return st;
 }
 
+/** Called inside the save's `db.tx`, so the events commit with the change (docs/plans/event-architecture-2026-11-12.md E2). */
 const emitAll = async (org: number, events: EventInput[]) => { for (const e of events) await emitEvent(org, e); };
 
 /** The contact this activity is with: an existing one named by the flow, or a new one created from its answers. */
@@ -255,8 +257,8 @@ export async function applyFlowCore(
     }
     if (after.sales_stage !== core.sales_stage) events.push({ ...base, kind: "stage.changed", metadata: { from: core.sales_stage, to: after.sales_stage } });
     if (after.temperature !== core.temperature) events.push({ ...base, kind: "temperature.changed", metadata: { from: core.temperature, to: after.temperature } });
+    await emitAll(org, events);
   });
-  await emitAll(org, events);
   return { customerId, activityId, nextTaskId, acc };
 }
 
@@ -429,6 +431,8 @@ export async function createLead(session: Session, input: { answers: FlowAnswer[
     }
   }
   const groupId = session.role === "phone_sales" ? session.groupId : await groupForPoint(db, pin.lat, pin.lng, session.organizationId) ?? session.groupId;
+  // S6: a lead left in the pool goes to a person when the group's assignment mode says so.
+  if (owner === null && groupId !== null && groupId !== undefined) owner = await pickRep(db, org, groupId);
   const districtId = await districtIdForPoint(db, pin.lat, pin.lng);
   const area = districtId ? (await db.prepare("SELECT name FROM districts WHERE id = ?").get(districtId) as { name: string } | undefined)?.name ?? null : null;
   const link = linkOf(st.values);
@@ -446,8 +450,8 @@ export async function createLead(session: Session, input: { answers: FlowAnswer[
         (customer_code, business_name, phone, phone_norm, instagram, address, area_label, lat, lng, location_precision, district_id, maps_url,
          source_code, source_detail, source_url, referred_by_customer_id, parent_customer_id, business_type, customer_type, price_tier,
          working_hours_json, owner_user_id, group_id, lifecycle, verification, contact_status, sales_stage, temperature, client_uuid,
-         synced_at, organization_id)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'lead', ?, 'not_contacted', 'unknown', 'cold', ?, ?, ?)`)
+         synced_at, organization_id, created_source)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'lead', ?, 'not_contacted', 'unknown', 'cold', ?, ?, ?, 'form')`)
       .run(code, name, phone ? `0${phone}` : null, phone, instagram, pin.address ?? link?.address ?? null, area, pin.lat, pin.lng, pin.precision,
         districtId, link?.maps_url ?? null, acc.source ?? "OTHER", st.values.source_detail?.trim() || null, link?.maps_url ?? null,
         referred, basics?.branch_of ?? null, businessType, customerTypeFor(businessType), acc.price_tier ?? "unknown",
@@ -460,8 +464,8 @@ export async function createLead(session: Session, input: { answers: FlowAnswer[
     await recomputeState(db, id);
     events.push({ kind: "lead.created", entity_type: "customer", entity_id: id, actor_user_id: session.user.id, metadata: { source: acc.source ?? null } });
     if (verification === "verified") events.push({ kind: "lead.verified", entity_type: "customer", entity_id: id, actor_user_id: session.user.id });
+    await emitAll(org, events);
   });
-  await emitAll(org, events);
   return { id, nextTaskId, acc };
 }
 
@@ -475,8 +479,8 @@ export async function claimBusiness(session: Session, id: number): Promise<void>
     await db.prepare("UPDATE customers SET owner_user_id = ? WHERE id = ? AND owner_user_id IS NULL").run(session.user.id, id);
     await recordOwnerChange(db, { organizationId: core.organization_id, customerId: id, actorUserId: session.user.id, reason: "pool_claim", what: "owner", fromId: null, toId: session.user.id, at });
     if (core.next_task_id) await db.prepare("UPDATE tasks SET assignee_user_id = ? WHERE id = ? AND status = 'open' AND assignee_user_id IS NULL").run(session.user.id, core.next_task_id);
+    await emitEvent(core.organization_id, { kind: "lead.claimed", entity_type: "customer", entity_id: id, actor_user_id: session.user.id });
   });
-  await emitEvent(core.organization_id, { kind: "lead.claimed", entity_type: "customer", entity_id: id, actor_user_id: session.user.id });
 }
 
 /** A rep found a phone that belongs to a business they cannot see: ask its group's manager. */

@@ -1,10 +1,13 @@
 import { cookies } from "next/headers";
 import CreditDeckEntry from "@/components/flows/CreditDeckEntry";
+import ClaimsInboxEntry from "@/components/expenses/ClaimsInboxEntry";
+import { claimsToDecide } from "@/lib/repo/expenseClaims";
+import { loanRemindersCount, pendingAdvanceRequests } from "@/lib/repo/staffLoans";
 import DiscountDeckEntry from "@/components/flows/DiscountDeckEntry";
 import { pendingForDecider } from "@/lib/repo/discounts";
 import DuplicatesDeckEntry from "@/components/flows/DuplicatesDeckEntry";
 import { duplicatePairs } from "@/lib/repo/crm/duplicates";
-import { pendingForDeck, creditScopeOf } from "@/lib/repo/creditApprovals";
+import { pendingForDeck, approvalScopeFor } from "@/lib/repo/creditApprovals";
 import ActionCards from "@/components/mobile/ActionCard";
 import { suggestionsFor } from "@/lib/repo/suggestions";
 import { redirect } from "next/navigation";
@@ -93,9 +96,16 @@ export default async function SalesTodayPage() {
 
       {MANAGE_ROLES.includes(session.role) && (
         <div className="mb-3 flex flex-wrap gap-2">
-          <CreditDeckEntry approvals={await pendingForDeck(session.organizationId, creditScopeOf(session))} />
+          <CreditDeckEntry approvals={await pendingForDeck(session.organizationId, await approvalScopeFor(session))} />
           <DiscountDeckEntry
             approvals={await pendingForDecider(session.organizationId, { id: session.user.id, role: session.role, group_id: session.groupId })}
+          />
+          <ClaimsInboxEntry
+            count={
+              (await claimsToDecide({ role: session.role, organizationId: session.organizationId, userId: session.user.id, groupId: session.groupId })).length +
+              // Owner only: advance requests waiting for them, and people who owe money and have paid nothing back for too long.
+              (isOwner(session.role) ? (await pendingAdvanceRequests(session.organizationId)).length + (await loanRemindersCount(session.organizationId)) : 0)
+            }
           />
           <DuplicatesDeckEntry pairs={(await duplicatePairs(session)).map((p) => ({ ...p, keep: { ...p.keep }, drop: { ...p.drop } }))} />
         </div>

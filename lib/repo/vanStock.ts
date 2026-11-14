@@ -1,6 +1,6 @@
 import { getDb } from "@/lib/db";
 import { pickDepot } from "@/lib/routing/depot";
-import { onHand, recordMovementsTxn, type MovementInput } from "@/lib/repo/stock";
+import { onHand, onHandByProduct, recordMovementsTxn, type MovementInput } from "@/lib/repo/stock";
 
 /** A van is a facility. Goods move warehouse -> van -> the customer's door, and every step of
  *  that has to be a recorded movement, or the arithmetic stops meaning anything.
@@ -169,4 +169,31 @@ export async function vanFacilityFor(organizationId: number, driverUserId: numbe
  *  The throw is unchanged and still the right one: loading stock needs a real answer. */
 async function warehouseFor(organizationId: number): Promise<number> {
   return (await pickDepot(organizationId)).id;
+}
+/** The vans a manager can load: every active vehicle that has a default driver, with what its
+ *  stock holds now (kinds of product and total pieces). A van gets its stock location on first use. */
+export async function vansToLoad(organizationId: number): Promise<{ facility_id: number; label: string; kinds: number; pieces: number }[]> {
+  const rows = (await getDb()
+    .prepare(
+      `SELECT v.id, v.name, v.plate, u.display_name AS driver
+         FROM vehicles v JOIN users u ON u.id = v.driver_default_id
+        WHERE v.organization_id = ? AND v.active = 1 AND u.active = 1 ORDER BY v.id`
+    )
+    .all(organizationId)) as { id: number; name: string; plate: string | null; driver: string }[];
+  const out = [];
+  for (const r of rows) {
+    const facility_id = await createVanFacility(organizationId, r.name, r.plate ?? `veh-${r.id}`);
+    const held = [...(await onHandByProduct(organizationId, facility_id)).values()].filter((n) => n > 0);
+    out.push({ facility_id, label: `${r.name} · ${r.driver}`, kinds: held.length, pieces: held.reduce((a, b) => a + b, 0) });
+  }
+  return out;
+}
+
+/** Loads a van the company owns; a facility id from another company reads as «not found». */
+export async function loadVanChecked(organizationId: number, input: { facilityId: number; productId: number; qty: number; actorId: number | null }): Promise<void> {
+  const own = await getDb().prepare("SELECT 1 FROM facilities WHERE id = ? AND organization_id = ? AND kind = 'van'").get(input.facilityId, organizationId);
+  if (!own) throw new VanStockError("وانت پیدا نشد");
+  const product = await getDb().prepare("SELECT 1 FROM products WHERE id = ? AND organization_id = ? AND active = 1").get(input.productId, organizationId);
+  if (!product) throw new VanStockError("کالا پیدا نشد");
+  await loadVan(organizationId, input);
 }

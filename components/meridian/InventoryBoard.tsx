@@ -22,6 +22,7 @@ export interface InventoryRow {
   reorder_point: number | null;
   target_stock: number | null;
   sell_off: boolean;
+  vat_pct: number | null;
   status: "crit" | "low" | "ok" | "over";
   daily_rate: number;
   days_left: number | null;
@@ -272,10 +273,40 @@ function ProductCard({ row: r, canEdit, onSaved }: { row: InventoryRow; canEdit:
               <b>{r.target_stock !== null ? `${faNum(r.target_stock)} ${r.base_unit}` : "تنظیم‌نشده"}</b>
             )}
           </div>
+          {canEdit ? <VatField productId={r.product_id} initial={r.vat_pct} onSaved={onSaved} /> : null}
           {canEdit ? <SellOffToggle productId={r.product_id} on={r.sell_off} onSaved={onSaved} /> : null}
         </div>
       </details>
     </article>
+  );
+}
+
+/** D7: this product's own VAT rate in percent; empty follows the company's rate (set on the status page). */
+function VatField({ productId, initial, onSaved }: { productId: number; initial: number | null; onSaved: () => void }) {
+  const [value, setValue] = useState(initial === null ? "" : String(initial));
+  const [busy, setBusy] = useState(false);
+  const dirty = value !== (initial === null ? "" : String(initial));
+  async function save() {
+    const n = value.trim() === "" ? null : toNumber(value);
+    if (value.trim() !== "" && (n === null || !Number.isInteger(n) || n < 0 || n > 100)) return;
+    setBusy(true);
+    const res = await fetch(`/api/sales/products/${productId}/vat`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ vatPct: n }) }).catch(() => null);
+    setBusy(false);
+    if (res?.ok) onSaved();
+  }
+  return (
+    <div className="stmore__row">
+      <span>مالیات بر ارزش افزوده (٪)</span>
+      <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+        <KeypadField label="درصد مالیات" value={value} onChange={setValue} unit="٪" />
+        {dirty ? (
+          <button type="button" disabled={busy} onClick={() => void save()} className="inline-flex min-h-[44px] items-center gap-[var(--space-2)] rounded-[var(--radius-md)] border border-[var(--border)] px-[var(--space-3)] text-[length:var(--text-sm)]">
+            <Icon name="save" size="md" />
+            ذخیرهٔ مالیات
+          </button>
+        ) : null}
+      </span>
+    </div>
   );
 }
 

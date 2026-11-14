@@ -1,3 +1,4 @@
+import { numberInvoice } from "./invoice";
 import type { Db } from "@/lib/database/client";
 import { makeRepo } from "./base";
 import {
@@ -14,6 +15,8 @@ import {
 import { reserveForOrder, releaseForOrder, consumeForOrder } from "./stock";
 import { convertOnDelivery } from "./crm/conversion";
 import { tryEmitEvent } from "./events";
+import { dueDateFor, isTermKind } from "@/lib/paymentTerms";
+import { tehranTodayIso } from "@/lib/jalali";
 
 /** A refusal the caller shows the user, not a bug. */
 export class OrderError extends Error {}
@@ -135,6 +138,18 @@ async function runEffect(
   actorId: number | null
 ): Promise<void> {
   switch (effect) {
+    case "freezeCustomer":
+      // A12: the first confirmation keeps the copy; a later re-confirm (credit or hold released) does not overwrite it.
+      await conn
+        .prepare(
+          `UPDATE orders SET ship_name = c.business_name, ship_phone = c.phone, ship_address = c.address
+             FROM customers c WHERE c.id = orders.customer_id AND orders.id = ? AND orders.organization_id = ? AND orders.ship_name IS NULL`
+        )
+        .run(orderId, orgId);
+      return;
+    case "numberInvoice":
+      await numberInvoice(conn, orgId, orderId);
+      return;
     case "reserveStock":
       await reserveForOrder(orgId, orderId, conn);
       return;
@@ -155,6 +170,19 @@ async function runEffect(
           "UPDATE orders SET delivered_at = COALESCE(delivered_at, ?) WHERE id = ? AND organization_id = ?"
         )
         .run(new Date().toISOString(), orderId, orgId);
+      // D5: the due date is fixed now, from the customer's terms on the day of delivery.
+      {
+        const row = (await conn
+          .prepare(
+            `SELECT c.payment_terms_kind AS kind, c.payment_terms_days AS days, o.delivered_at FROM orders o JOIN customers c ON c.id = o.customer_id WHERE o.id = ? AND o.organization_id = ? AND o.due_date IS NULL`
+          )
+          .get(orderId, orgId)) as { kind: string; days: number; delivered_at: string } | undefined;
+        if (row) {
+          await conn
+            .prepare("UPDATE orders SET due_date = ? WHERE id = ? AND organization_id = ?")
+            .run(dueDateFor(isTermKind(row.kind) ? row.kind : "days", Number(row.days), tehranTodayIso(new Date(row.delivered_at))), orderId, orgId);
+        }
+      }
       return;
     /* The goods came back, so the customer owes nothing for them.
      *

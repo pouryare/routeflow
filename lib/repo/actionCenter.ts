@@ -7,6 +7,7 @@
  *  is filtered to open rows, a recent window, or a stalled set.
  */
 
+import { thresholdsFor } from "@/lib/repo/thresholds";
 import { getDb } from "@/lib/db";
 import { groupFilter, orderFilter, type Session } from "@/lib/session";
 import { FULFILLED_ORDER_STATUSES, sqlStatusList } from "@/lib/orderStateMachine";
@@ -15,8 +16,12 @@ import { stockLevels } from "@/lib/repo/stock";
 import { customerHealthMany } from "@/lib/repo/health";
 import { snapshotRows } from "@/lib/repo/kpiSnapshots";
 import { rankActionCenter, type Bucket, type Candidate, type RankedItem } from "@/lib/analysis/actionCenter";
+import { faJalaliDate } from "@/lib/jalali";
 import { customerHref } from "@/lib/deepLink";
-import { isVanRole } from "../roles";
+import { isOwner, isVanRole } from "../roles";
+import { pendingChangeCount } from "@/lib/repo/changeRequests";
+import { brokenPromisesFor } from "@/lib/repo/promises";
+import { recentGaps } from "@/lib/repo/cashInHand";
 import { AUTO_CANCEL_DAYS, staleDraftsFor } from "@/lib/repo/staleDrafts";
 
 /** Alert categories, in Persian.
@@ -48,7 +53,6 @@ const DAY_MS = 86_400_000;
 const IMPACT_REF_TOMAN = 20_000_000;
 const OVERDUE_WARN_TOMAN = 2_000_000;
 const OVERDUE_CRIT_TOMAN = 20_000_000;
-const STALLED_DAYS = 2;
 
 const norm = (toman: number): number => Math.max(0, Math.min(1, toman / IMPACT_REF_TOMAN));
 
@@ -102,7 +106,8 @@ interface StalledRow {
 async function stalledOrderCandidates(session: Session): Promise<Candidate[]> {
   const db = getDb();
   const scope = orderFilter(session, "o");
-  const cutoff = new Date(Date.now() - STALLED_DAYS * DAY_MS).toISOString();
+  const stalledDays = (await thresholdsFor(session.organizationId)).stalled_order_days;
+  const cutoff = new Date(Date.now() - stalledDays * DAY_MS).toISOString();
   const rows = await db
     .prepare(
       `SELECT * FROM (SELECT o.id, o.status,
@@ -119,7 +124,7 @@ async function stalledOrderCandidates(session: Session): Promise<Candidate[]> {
 
   const now = Date.now();
   return rows.map((r) => {
-    const staleDays = r.last_event ? (now - Date.parse(r.last_event)) / DAY_MS : STALLED_DAYS + 1;
+    const staleDays = r.last_event ? (now - Date.parse(r.last_event)) / DAY_MS : stalledDays + 1;
     return {
       key: `stalled_order:${r.id}`,
       kind: "stalled_order" as const,
@@ -364,6 +369,55 @@ async function churnCandidates(session: Session): Promise<Candidate[]> {
     }));
 }
 
+/** F50: a promise to pay whose day passed without the money. Wakes the owner or rep the morning after. */
+async function brokenPromiseCandidates(session: Session): Promise<Candidate[]> {
+  return (await brokenPromisesFor(session)).map((p) => ({
+    key: `broken_promise:${p.id}`,
+    kind: "broken_promise" as const,
+    title_fa: `وعدهٔ پرداخت شکسته · ${p.customer_name}`,
+    sub_fa: `${p.amount_toman.toLocaleString("fa-IR")} تومان تا ${faJalaliDate(p.promised_date)} قول داده بود`,
+    bucket: "warning" as Bucket,
+    impact: 0.5,
+    probability: 1,
+    urgency: 0.8,
+    href: customerHref(p.customer_id),
+  }));
+}
+
+/** D1: a day-end count that came out short, for the owner, for a week. */
+async function cashGapCandidates(session: Session): Promise<Candidate[]> {
+  if (!isOwner(session.role)) return [];
+  return (await recentGaps(session.organizationId)).map((g) => ({
+    key: `cash_gap:${g.id}`,
+    kind: "cash_gap" as const,
+    title_fa: `کسری شمارش پول · ${g.name}`,
+    sub_fa: `${g.short.toLocaleString("fa-IR")} تومان کمتر از انتظار${g.reason ? ` · ${g.reason}` : ""}`,
+    bucket: "warning" as Bucket,
+    impact: 0.4,
+    probability: 1,
+    urgency: 0.6,
+    href: "/sales/payments",
+  }));
+}
+
+/** F48: requests a manager sent that wait for the owner's yes; they lapse after 3 days. */
+async function approvalWaitingCandidates(session: Session): Promise<Candidate[]> {
+  if (!isOwner(session.role)) return [];
+  const n = await pendingChangeCount(session.organizationId);
+  if (n === 0) return [];
+  return [{
+    key: "approval_waiting",
+    kind: "approval_waiting" as const,
+    title_fa: `${n.toLocaleString("fa-IR")} درخواست منتظر تأیید شماست`,
+    sub_fa: "سقف اعتبار یا اصلاح سفارش؛ بعد از ۳ روز بی‌پاسخ منقضی می‌شود",
+    bucket: "warning" as Bucket,
+    impact: 0.4,
+    probability: 1,
+    urgency: 0.7,
+    href: "/sales/admin/discounts",
+  }];
+}
+
 /** FB40: drafts nobody finished, each with how long until the sweep cancels it. */
 async function staleDraftCandidates(session: Session): Promise<Candidate[]> {
   return (await staleDraftsFor(session)).map((d) => ({
@@ -387,6 +441,9 @@ export async function actionCenterFor(session: Session): Promise<Record<Bucket, 
     ...await alertCandidates(session),
     ...await stalledOrderCandidates(session),
     ...await staleDraftCandidates(session),
+    ...await brokenPromiseCandidates(session),
+    ...await cashGapCandidates(session),
+    ...await approvalWaitingCandidates(session),
     ...await overdueCandidates(session),
     ...await atRiskCandidates(session),
     ...await churnCandidates(session),

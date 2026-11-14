@@ -60,6 +60,15 @@ export default async function IncomeStatementPage({
             >
               همه
             </Link>
+            {[...new Set(periods.map((p) => p.periodKey.slice(0, 4)))].map((y) => (
+              <Link
+                key={y}
+                href={`/accounting/income-statement?period=${y}`}
+                className={`rounded-[var(--radius-sm)] border px-2 py-1 ${period === y ? "border-accent text-[var(--accent-text)]" : "border-border"}`}
+              >
+                سال {y}
+              </Link>
+            ))}
             {periods.map((p) => (
               <Link
                 key={p.periodKey}

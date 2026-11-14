@@ -49,6 +49,8 @@ commands:
 | `routeflow secrets list \| set KEY \| unset KEY \| backup \| restore <file>` | The encrypted secrets (below). |
 | `routeflow logs` | The last 100 app log lines and Caddy warnings. |
 
+**Background worker.** The app starts a queue worker (pg-boss, schema `pgboss` in the same database) when it boots. It runs the rules sweep every 5 minutes (callback and follow-up tasks, escalation, push and Telegram flush) and re-runs event reactions that failed, every minute. The schema comes from a migration, so the web role needs no extra rights. `ROUTEFLOW_WORKER=off` in the app's environment switches it off on a server that should only serve pages. Failed jobs stay 14 days in `pgboss.job`; the status page shows events still waiting for their reaction.
+
 Night order on the server (Tehran): 01:30 backup, 02:30 OS reboot if an update needs one, 03:30 app
 upgrade, 04:00 on the 1st the restore drill.
 

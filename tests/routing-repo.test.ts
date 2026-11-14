@@ -88,6 +88,26 @@ describe("routing repo (no OSRM/VROOM -> greedy path)", () => {
     expect(plan.assignments[0].distance_km).toBeGreaterThan(0);
   });
 
+  it("warns on a stop that would be reached before its shop opens, and never moves or drops it", async () => {
+    const early = await customerAt(35.705, 51.405);
+    const open = await customerAt(35.73, 51.43);
+    // 2026-03-01 is a Sunday (index 1): this shop opens at 12:00, the plan starts at 08:00.
+    await getDb().prepare("UPDATE customers SET working_hours_json = ? WHERE id = ?").run(JSON.stringify([{ days: [1], from: "12:00", to: "18:00" }]), early);
+    await getDb().prepare("UPDATE customers SET working_hours_json = ? WHERE id = ?").run(JSON.stringify([{ days: [1], from: "07:00", to: "20:00" }]), open);
+    await confirmedOrderFor(early);
+    await confirmedOrderFor(open);
+    await createVehicle(1, { name: "وانت", driver_default_id: driver, max_stops: 20 });
+
+    const plan = await buildPlan(1, { date: "2026-03-01" });
+    expect(plan.unassigned).toHaveLength(0);
+    const stops = plan.assignments[0].stops;
+    expect(stops).toHaveLength(2);
+    const ds = await routableDeliveriesFor(1, { date: "2026-03-01" });
+    const earlyId = ds.find((d) => d.lat === 35.705)!.delivery_id;
+    expect(stops.find((s) => s.delivery_id === earlyId)!.opening).toEqual({ kind: "before", opens: "12:00" });
+    expect(stops.find((s) => s.delivery_id !== earlyId)!.opening).toBeUndefined();
+  });
+
   it("commits the plan into one run with all the stops, and a re-commit adds nothing", async () => {
     await confirmedOrderFor(await customerAt(35.705, 51.405));
     await confirmedOrderFor(await customerAt(35.73, 51.43));

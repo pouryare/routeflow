@@ -31,6 +31,12 @@ import { discountOfOrder } from "@/lib/repo/discounts";
 import { DISCOUNT_REASONS, DISCOUNT_STATUS_LABEL } from "@/lib/discounts";
 import LiveRefresh from "@/components/LiveRefresh";
 import ViewingChip from "@/components/ViewingChip";
+import OrderDetailEdit from "@/components/sales/OrderDetailEdit";
+import { editRule } from "@/lib/orderEditRules";
+import RecordChat from "@/components/RecordChat";
+import { canChat } from "@/lib/chat";
+import OfficialInvoiceToggle from "@/components/sales/OfficialInvoiceToggle";
+import { invoiceNumberText } from "@/lib/invoice";
 
 export const dynamic = "force-dynamic";
 
@@ -113,15 +119,27 @@ export default async function OrderDetailPage({
       <BentoStrip>
         <BentoIdentity
           eyebrow={order.order_no}
-          title={order.customer_name}
+          title={order.ship_name ?? order.customer_name}
           meta={
             <>
               {faJalaliDate(order.order_date)} · {statusLabel(order.status)}
               {order.salesperson_name && ` · ${order.salesperson_name}`}
+              {order.ship_phone && <> · <span dir="ltr">{order.ship_phone}</span></>}
+              {order.ship_address && ` · ${order.ship_address}`}
+              {order.due_date && ` · سررسید ${faJalaliDate(order.due_date)}`}
             </>
           }
         >
+          {canChat(session.role) && <RecordChat type="order" id={order.id} name={order.order_no} />}
+          {MANAGE_ROLES.includes(session.role) && editRule("detail", order.status).ok && <OrderDetailEdit orderId={order.id} orderNo={order.order_no} isOwner={isOwner(session.role)} />}
           {order.status === "DRAFT" && <ConfirmOrderButton orderId={order.id} />}
+          {order.status === "DRAFT" && MANAGE_ROLES.includes(session.role) && <OfficialInvoiceToggle orderId={order.id} on={order.official === 1} />}
+          {order.invoice_no != null && order.invoice_year != null && (
+            <Link href={`/sales/orders/${order.id}/invoice`} className="btn ghost touch" data-tour="order-invoice">
+              <Icon name="receipt" size="md" />
+              فاکتور رسمی {invoiceNumberText(order.invoice_year, order.invoice_no)}
+            </Link>
+          )}
           {isOwner(session.role) && <BooksButton doc="order" id={order.id} />}
           {MANAGE_ROLES.includes(session.role) && canSetPriority(order.status) ? (
             <OrderPriorityToggle orderId={order.id} priority={order.priority} />

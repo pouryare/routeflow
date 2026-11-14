@@ -17,6 +17,7 @@ import { useDoneFlash } from "@/lib/useDoneFlash";
 import SectionHead from "@/components/meridian/SectionHead";
 import JalaliDateInput from "@/components/meridian/JalaliDateInput";
 import { Fragment, useCallback, useMemo, useState } from "react";
+import { idemKeeper } from "@/lib/idemKey";
 import { faToman } from "@/lib/format";
 import PaymentFlow from "@/components/flows/PaymentFlow";
 import { autoOpenFlow, currentSearch } from "@/lib/flows/autoOpen";
@@ -30,6 +31,7 @@ import SmartPicker from "@/components/mobile/SmartPicker";
 import { ChipGroup } from "@/components/mobile/ChipGroup";
 
 export default function PaymentsPanel({ customers, canSeeBooks = false }: { customers: Customer[]; canSeeBooks?: boolean }) {
+  const [idem] = useState(idemKeeper);
   /* The server pages the list (25 rows) and sends the totals cards' sums, so the screen no longer
      downloads every receipt ever taken. */
   const [payments, setPayments] = useState<Payment[] | null>(null);
@@ -178,7 +180,7 @@ export default function PaymentsPanel({ customers, canSeeBooks = false }: { cust
     setBusy(true);
     const res = await fetch("/api/payments", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...idem.headers() },
       body: JSON.stringify({
         customer_id: Number(customerId),
         amount_toman: amt,
@@ -194,6 +196,7 @@ export default function PaymentsPanel({ customers, canSeeBooks = false }: { cust
       setError(friendlyError(body?.error, "دریافت ثبت نشد؛ دوباره تلاش کنید"));
       return;
     }
+    idem.renew();
     flash();
     setAmount("");
     setReference("");
@@ -263,7 +266,7 @@ export default function PaymentsPanel({ customers, canSeeBooks = false }: { cust
             <ChipGroup
               wrap
               group={{ id: "method", label: "روش", mode: "single", neutral: "__none", value: method, onChange: (v) => { if (v !== "__none") setMethod(v as string); },
-                options: Object.entries(METHOD_LABEL).map(([k, v]) => ({ id: k, label: v })) }}
+                options: Object.entries(METHOD_LABEL).filter(([k]) => k !== "LEFTOVER" && k !== "CREDIT_NOTE").map(([k, v]) => ({ id: k, label: v })) }}
             />
           </label>
         </div>

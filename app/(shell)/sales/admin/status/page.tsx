@@ -11,8 +11,20 @@ import { maintenanceFor } from "@/lib/repo/maintenance";
 import AccessReviewCard from "@/components/meridian/AccessReviewCard";
 import DocumentSettingsForm from "@/components/meridian/DocumentSettingsForm";
 import TaskPushForm from "@/components/meridian/TaskPushForm";
+import DueReminderForm from "@/components/meridian/DueReminderForm";
+import { dueReminderDays } from "@/lib/repo/dueReminders";
+import ProblemReportsCard from "@/components/meridian/ProblemReportsCard";
+import { openProblemReports } from "@/lib/repo/problemReports";
+import IdleSignoutForm from "@/components/meridian/IdleSignoutForm";
+import { idleRulesFor } from "@/lib/repo/idleSignout";
+import { thresholdsFor } from "@/lib/repo/thresholds";
+import ThresholdsForm from "@/components/meridian/ThresholdsForm";
 import { taskPushMinutes } from "@/lib/repo/taskPush";
 import { documentSettingsFor } from "@/lib/repo/documentSettings";
+import { invoiceSettingsFor } from "@/lib/repo/invoice";
+import InvoiceSettingsForm from "@/components/meridian/InvoiceSettingsForm";
+import CustomFieldsForm from "@/components/meridian/CustomFieldsForm";
+import { activeFields } from "@/lib/repo/customFields";
 import { accessReview } from "@/lib/accessReview";
 import { accessUsers, recentImpersonations } from "@/lib/repo/accessReview";
 import { pageMetadata } from "@/lib/pageMeta";
@@ -20,7 +32,13 @@ import LiveConnectionsCard from "@/components/meridian/LiveConnectionsCard";
 import { connectionsOf } from "@/lib/repo/liveConnections";
 import SlowQueriesCard from "@/components/meridian/SlowQueriesCard";
 import { slowQueries } from "@/lib/repo/slowQueries";
+import AuditHistoryCard from "@/components/meridian/AuditHistoryCard";
+import DeliveryAttemptsCard from "@/components/meridian/DeliveryAttemptsCard";
+import { recentAttempts } from "@/lib/repo/notifications";
+import { auditHistory } from "@/lib/repo/auditLog";
 import ArchiveMonthsForm from "@/components/meridian/ArchiveMonthsForm";
+import LogRetentionForm from "@/components/meridian/LogRetentionForm";
+import { retentionPreview } from "@/lib/repo/logRetention";
 import { archiveHotMonths } from "@/lib/repo/historyArchive";
 
 export const metadata = pageMetadata("/sales/admin/status");
@@ -39,17 +57,24 @@ export default async function StatusPage() {
   const jar = await cookies();
   const session = await getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
   if (!session) redirect("/login");
-  const lines = statusLines(await statusFacts(session.organizationId));
+  const limits = await thresholdsFor(session.organizationId);
+  const idleRules = await idleRulesFor(session.organizationId);
+  const reports = await openProblemReports(session.organizationId);
+  const lines = statusLines({ ...(await statusFacts(session.organizationId)), dataAgeingDays: limits.data_ageing_days, dataStaleDays: limits.data_stale_days });
   const maintenance = await maintenanceFor(session.organizationId);
   const review = accessReview(await accessUsers(session.organizationId), new Date().toISOString());
   const logins = await recentImpersonations(session.organizationId);
   const docs = await documentSettingsFor(session.organizationId);
+  const invoiceSettings = await invoiceSettingsFor(session.organizationId);
+  const customFields = await activeFields(session.organizationId);
   const pushMinutes = await taskPushMinutes(session.organizationId);
   const connections = await connectionsOf(session.organizationId);
+  const changes = await auditHistory(session.organizationId, { limit: 100 });
   // The query counters are the whole server's, every company's together: the platform owner's only.
   const platform = session.hasRole("platform_owner");
   const slow = platform ? await slowQueries() : undefined;
   const hotMonths = platform ? await archiveHotMonths() : undefined;
+  const retention = platform ? await retentionPreview() : undefined;
 
   return (
     <>
@@ -71,7 +96,16 @@ export default async function StatusPage() {
         </ul>
       </section>
       <div className="mt-[var(--space-4)]">
+        <ProblemReportsCard rows={reports} />
+      </div>
+      <div className="mt-[var(--space-4)]">
         <LiveConnectionsCard rows={connections} />
+      </div>
+      <div className="mt-[var(--space-4)]">
+        <AuditHistoryCard rows={changes} />
+      </div>
+      <div className="mt-[var(--space-4)]">
+        <DeliveryAttemptsCard rows={await recentAttempts(session.organizationId)} />
       </div>
       {slow !== undefined ? (
         <div className="mt-[var(--space-4)]">
@@ -83,6 +117,11 @@ export default async function StatusPage() {
           <ArchiveMonthsForm months={hotMonths} />
         </div>
       ) : null}
+      {retention !== undefined ? (
+        <div className="mt-[var(--space-4)]">
+          <LogRetentionForm rows={retention} />
+        </div>
+      ) : null}
       <div className="mt-[var(--space-4)]">
         <AccessReviewCard review={review} logins={logins} />
       </div>
@@ -91,9 +130,18 @@ export default async function StatusPage() {
       </div>
       <div className="mt-[var(--space-4)]">
         <DocumentSettingsForm current={docs} />
+        <InvoiceSettingsForm current={invoiceSettings} />
+        <CustomFieldsForm fields={customFields} />
       </div>
       <div className="mt-[var(--space-4)]">
         <TaskPushForm minutes={pushMinutes} />
+        <DueReminderForm days={await dueReminderDays(session.organizationId)} />
+      </div>
+      <div className="mt-[var(--space-4)]">
+        <ThresholdsForm values={limits} />
+      </div>
+      <div className="mt-[var(--space-4)]">
+        <IdleSignoutForm rules={idleRules} />
       </div>
     </>
   );

@@ -9,6 +9,7 @@ import c_accounting_expenses from "./accounting-expenses.json";
 import c_accounting_income_statement from "./accounting-income-statement.json";
 import c_accounting_journal from "./accounting-journal.json";
 import c_accounting_ledger_accountId from "./accounting-ledger-accountId.json";
+import c_accounting_money from "./accounting-money.json";
 import c_accounting_payables from "./accounting-payables.json";
 import c_accounting_shareholders from "./accounting-shareholders.json";
 import c_accounting_suppliers_supplierId from "./accounting-suppliers-supplierId.json";
@@ -20,26 +21,32 @@ import c_facilities from "./facilities.json";
 import c_gallery from "./gallery.json";
 import c_leads from "./leads.json";
 import c_map from "./map.json";
+import c_my_expenses from "./my-expenses.json";
 import c_my_share from "./my-share.json";
 import c_planner from "./planner.json";
 import c_report from "./report.json";
+import c_sales_academy_manage from "./sales-academy-manage.json";
 import c_sales_academy from "./sales-academy.json";
 import c_sales_admin_companies from "./sales-admin-companies.json";
+import c_sales_admin_data from "./sales-admin-data.json";
 import c_sales_admin_discounts from "./sales-admin-discounts.json";
 import c_sales_admin_groups from "./sales-admin-groups.json";
 import c_sales_admin_holidays from "./sales-admin-holidays.json";
 import c_sales_admin_logins from "./sales-admin-logins.json";
 import c_sales_admin_rating_tags from "./sales-admin-rating-tags.json";
+import c_sales_admin_rules from "./sales-admin-rules.json";
 import c_sales_admin_status from "./sales-admin-status.json";
 import c_sales_admin_storage from "./sales-admin-storage.json";
 import c_sales_admin_users from "./sales-admin-users.json";
 import c_sales_batches from "./sales-batches.json";
+import c_sales_catalogue from "./sales-catalogue.json";
 import c_sales_cheques from "./sales-cheques.json";
 import c_sales_commission from "./sales-commission.json";
 import c_sales_complaints from "./sales-complaints.json";
 import c_sales_dashboard from "./sales-dashboard.json";
 import c_sales_data_quality from "./sales-data-quality.json";
 import c_sales_forecast from "./sales-forecast.json";
+import c_sales_hours from "./sales-hours.json";
 import c_sales_lead_sources from "./sales-lead-sources.json";
 import c_sales_orders_id from "./sales-orders-id.json";
 import c_sales_orders_new from "./sales-orders-new.json";
@@ -51,6 +58,9 @@ import c_sales_reasons from "./sales-reasons.json";
 import c_sales_reps from "./sales-reps.json";
 import c_sales_routing from "./sales-routing.json";
 import c_sales_schedule from "./sales-schedule.json";
+import c_sales_stock_buy_list from "./sales-stock-buy-list.json";
+import c_sales_stock_on_date from "./sales-stock-on-date.json";
+import c_sales_stock_orders from "./sales-stock-orders.json";
 import c_sales_stock from "./sales-stock.json";
 import c_sales_tasks from "./sales-tasks.json";
 import c_sales_today from "./sales-today.json";
@@ -68,6 +78,7 @@ export const CAPTURES: Record<string, Capture> = {
   "/accounting/income-statement": c_accounting_income_statement as Capture,
   "/accounting/journal": c_accounting_journal as Capture,
   "/accounting/ledger/[accountId]": c_accounting_ledger_accountId as Capture,
+  "/accounting/money": c_accounting_money as Capture,
   "/accounting/payables": c_accounting_payables as Capture,
   "/accounting/shareholders": c_accounting_shareholders as Capture,
   "/accounting/suppliers/[supplierId]": c_accounting_suppliers_supplierId as Capture,
@@ -79,26 +90,32 @@ export const CAPTURES: Record<string, Capture> = {
   "/gallery": c_gallery as Capture,
   "/leads": c_leads as Capture,
   "/map": c_map as Capture,
+  "/my-expenses": c_my_expenses as Capture,
   "/my-share": c_my_share as Capture,
   "/planner": c_planner as Capture,
   "/report": c_report as Capture,
+  "/sales/academy/manage": c_sales_academy_manage as Capture,
   "/sales/academy": c_sales_academy as Capture,
   "/sales/admin/companies": c_sales_admin_companies as Capture,
+  "/sales/admin/data": c_sales_admin_data as Capture,
   "/sales/admin/discounts": c_sales_admin_discounts as Capture,
   "/sales/admin/groups": c_sales_admin_groups as Capture,
   "/sales/admin/holidays": c_sales_admin_holidays as Capture,
   "/sales/admin/logins": c_sales_admin_logins as Capture,
   "/sales/admin/rating-tags": c_sales_admin_rating_tags as Capture,
+  "/sales/admin/rules": c_sales_admin_rules as Capture,
   "/sales/admin/status": c_sales_admin_status as Capture,
   "/sales/admin/storage": c_sales_admin_storage as Capture,
   "/sales/admin/users": c_sales_admin_users as Capture,
   "/sales/batches": c_sales_batches as Capture,
+  "/sales/catalogue": c_sales_catalogue as Capture,
   "/sales/cheques": c_sales_cheques as Capture,
   "/sales/commission": c_sales_commission as Capture,
   "/sales/complaints": c_sales_complaints as Capture,
   "/sales/dashboard": c_sales_dashboard as Capture,
   "/sales/data-quality": c_sales_data_quality as Capture,
   "/sales/forecast": c_sales_forecast as Capture,
+  "/sales/hours": c_sales_hours as Capture,
   "/sales/lead-sources": c_sales_lead_sources as Capture,
   "/sales/orders/[id]": c_sales_orders_id as Capture,
   "/sales/orders/new": c_sales_orders_new as Capture,
@@ -110,6 +127,9 @@ export const CAPTURES: Record<string, Capture> = {
   "/sales/reps": c_sales_reps as Capture,
   "/sales/routing": c_sales_routing as Capture,
   "/sales/schedule": c_sales_schedule as Capture,
+  "/sales/stock/buy-list": c_sales_stock_buy_list as Capture,
+  "/sales/stock/on-date": c_sales_stock_on_date as Capture,
+  "/sales/stock/orders": c_sales_stock_orders as Capture,
   "/sales/stock": c_sales_stock as Capture,
   "/sales/tasks": c_sales_tasks as Capture,
   "/sales/today": c_sales_today as Capture,

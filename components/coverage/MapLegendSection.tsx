@@ -21,18 +21,19 @@ export default function MapLegendSection({ groups, districtColorMode, setDistric
                 so the mode switches and the legend below switches with it. Hidden
                 entirely when there are no groups yet -- a switch with one option is
                 just clutter. */}
-            {groups.length > 0 && (
-              <div className="mb-2 grid grid-cols-2 gap-1 rounded-[var(--radius-md)] border border-border bg-surface p-1">
+            {
+              <div className="mb-2 flex gap-1 rounded-[var(--radius-md)] border border-border bg-surface p-1">
                 {(
                   [
                     ["status", "وضعیت پوشش"],
                     ["group", "گروه"],
+                    ["money", "پول"],
                   ] as [DistrictColorMode, string][]
-                ).map(([mode, label]) => (
+                ).filter(([mode]) => mode !== "group" || groups.length > 0).map(([mode, label]) => (
                   <button
                     key={mode}
                     onClick={() => setDistrictColorMode(mode)}
-                    className={`rounded-[var(--radius-sm)] px-0.5 py-1.5 text-[length:var(--text-xs)] transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] ${
+                    className={`min-h-[44px] flex-1 rounded-[var(--radius-sm)] px-0.5 py-1.5 text-[length:var(--text-xs)] transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] ${
                       districtColorMode === mode
                         ? "bg-accent font-medium text-accent-ink"
                         : "text-text-muted hover:bg-white/5 hover:text-text"
@@ -43,10 +44,16 @@ export default function MapLegendSection({ groups, districtColorMode, setDistric
                   </button>
                 ))}
               </div>
-            )}
+            }
 
             <div className="flex flex-col gap-1.5">
-              {districtColorMode === "group" ? (
+              {districtColorMode === "money" ? (
+                <>
+                  <StatusPill color={STATUS_COLOR.not_allowed} label="بدهی بیش از ۳۰ روز" shaped={shapedMarkers} />
+                  <StatusPill color={STATUS_COLOR.visited} label="فقط بدهی تازه" shaped={shapedMarkers} />
+                  <StatusPill color={STATUS_COLOR.unknown} label="بدون بدهی" shaped={shapedMarkers} />
+                </>
+              ) : districtColorMode === "group" ? (
                 <>
                   {groups.map((g) => (
                     <StatusPill

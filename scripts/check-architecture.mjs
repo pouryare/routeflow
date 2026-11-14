@@ -20,6 +20,8 @@
 //                         lib/roles (isOwner, isVanRole, MANAGE_ROLES), where adding a role updates it once
 //   longFunctions         functions (declarations, arrows, methods) over 150 lines in app/, lib/ and components/
 //   unusedExports         exports and exported types nothing imports (knip): dead surface that tempts the next agent
+//   foreignTableWrites    INSERT / UPDATE / DELETE on a table that has one owning module (ledger, stock, audit log, events)
+//                         from any other file (EV-L2)
 //   agentLitterFiles      tracked files of another tool's workspace (.zoocode*, superpowers-cline)
 import fs from "node:fs";
 import path from "node:path";
@@ -150,6 +152,30 @@ export function unscopedTenantSelects(files, tenants) {
   return out;
 }
 
+/** EV-L2: the tables that only their own module may write, and that module. */
+const TABLE_OWNERS = {
+  journals: "lib/repo/ledgerCore.ts",
+  ledger_entries: "lib/repo/ledgerCore.ts",
+  stock_movements: "lib/repo/stock.ts",
+  audit_log: "lib/repo/auditLog.ts",
+  events: "lib/repo/events.ts",
+};
+
+/** Writes to an owned table from a file that is not its owner. Each: { file, line, table }. */
+export function foreignTableWrites(files) {
+  const out = [];
+  for (const f of files) {
+    const src = fs.readFileSync(path.join(ROOT, f), "utf8");
+    for (const [table, owner] of Object.entries(TABLE_OWNERS)) {
+      if (f === owner) continue;
+      const re = new RegExp(`\\b(?:INSERT\\s+INTO|UPDATE|DELETE\\s+FROM)\\s+${table}\\b`, "g");
+      let m;
+      while ((m = re.exec(src))) out.push({ file: f, line: src.slice(0, m.index).split("\n").length, table });
+    }
+  }
+  return out;
+}
+
 const LONG_FUNCTION_LINES = 150;
 
 /** Functions longer than LONG_FUNCTION_LINES, found with the TypeScript parser (a regex cannot tell where a
@@ -202,6 +228,7 @@ export function measure() {
     .filter((f) => f.startsWith("app/") || f.startsWith("lib/repo/"))
     .reduce((n, f) => n + (fs.readFileSync(path.join(ROOT, f), "utf8").match(/\brole\s*(?:===|!==)\s*["']/g) ?? []).length, 0);
   const longFns = longFunctions(files);
+  const foreign = foreignTableWrites(files);
   let litter = [];
   try {
     litter = execFileSync("git", ["ls-files", ".zoocode", ".zoocodeules", "superpowers-cline"], { cwd: ROOT, encoding: "utf8" })
@@ -217,9 +244,10 @@ export function measure() {
       rawRoleChecks: rawRoles,
       longFunctions: longFns.length,
       unusedExports: unusedExports(),
+      foreignTableWrites: foreign.length,
       agentLitterFiles: litter.length,
     },
-    detail: { cycles: groups, dbImports, unscoped, longFns },
+    detail: { cycles: groups, dbImports, unscoped, longFns, foreign },
   };
 }
 
@@ -242,6 +270,7 @@ function main() {
       console.error(`\nFAILED: ${rose.map(([k, v]) => `${k} ${base[k]} -> ${v}`).join(", ")}. See docs/architecture-audit-2026-10-22.md.`);
       if (rose.some(([k]) => k === "importCycles")) for (const g of detail.cycles) console.error("  cycle:", g.join(" <-> "));
       if (rose.some(([k]) => k === "longFunctions")) for (const u of detail.longFns) console.error(`  ${u.file}:${u.line}  ${u.name} (${u.lines} lines)`);
+      if (rose.some(([k]) => k === "foreignTableWrites")) for (const u of detail.foreign) console.error(`  ${u.file}:${u.line}  writes ${u.table}, owned by ${TABLE_OWNERS[u.table]}`);
       if (rose.some(([k]) => k === "unscopedTenantSelects")) for (const u of detail.unscoped) console.error(`  ${u.file}:${u.line}  ${u.sql}`);
       process.exit(1);
     }

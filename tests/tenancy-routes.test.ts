@@ -111,7 +111,9 @@ let shape: Promise<{ tables: string[]; children: { t: string; from: string; pare
 function orgShape() {
   return (shape ??= (async () => {
     const all = await tableNames();
-    const tables = await filterSeq(all, async (name) => (await tableInfo(name)).some((c) => c.name === "organization_id"));
+    /* audit_log is append-only: every probe write adds a history row by design, so it cannot be restored
+       and is left out of the fingerprint (its reads are covered by audit-log.test.ts). */
+    const tables = await filterSeq(all.filter((name) => name !== "audit_log"), async (name) => (await tableInfo(name)).some((c) => c.name === "organization_id"));
     const orgTableSet = new Set(tables);
     const children: { t: string; from: string; parent: string }[] = [];
     for (const t of all.filter((name) => !orgTableSet.has(name))) {

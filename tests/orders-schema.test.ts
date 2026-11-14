@@ -81,6 +81,12 @@ describe("orders", () => {
         "customer_id",
         "group_id",
         "salesperson_user_id",
+        "ship_address",
+        "official",
+        "invoice_year",
+        "invoice_no",
+        "ship_name",
+        "ship_phone",
         "status",
         // Phase 3: the 12-state order machine plus its classifiers.
         "order_type",
@@ -116,6 +122,11 @@ describe("orders", () => {
         "invoice_sent_via",
         "notes",
         "created_by",
+        // T5: how the order was made (form, quick, offline, import, ...).
+        "created_source",
+        // F85: how the order reached the company (phone, visit, message, driver, standing).
+        "channel",
+        "due_date",
         "created_at",
         "updated_at",
       ].sort()
@@ -179,6 +190,7 @@ describe("order_lines", () => {
   it("has the columns the sales module needs", async () => {
     expect((await cols("order_lines")).sort()).toEqual(
       [
+        "vat_pct",
         "id",
         "order_id",
         "product_id",

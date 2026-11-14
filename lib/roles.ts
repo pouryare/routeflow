@@ -18,7 +18,8 @@ export type Role =
   | "phone_sales"
   | "field_rep"
   | "delivery_driver"
-  | "shareholder";
+  | "shareholder"
+  | "accountant";
 
 /** Ordered widest access first, which is also the order they read best in a dropdown. */
 export const ROLES: Role[] = [
@@ -30,6 +31,7 @@ export const ROLES: Role[] = [
   "field_rep",
   "delivery_driver",
   "shareholder",
+  "accountant",
 ];
 
 /** The two roles that work a route in a vehicle.
@@ -84,6 +86,19 @@ export const PIN_POOL_ROLES: Role[] = [...MANAGE_ROLES, "rep_manager"];
  *  name says which is which, and `OWNER_ROLES` reads as owner-only at the call site. */
 export const OWNER_ROLES: Role[] = ["platform_owner", "owner"];
 
+/** H3: who reads every accounting page and may post, reverse and close: the owners and the accountant.
+ *  DISTINCT from OWNER_ROLES on purpose: an accountant has no user admin, prices or commission. */
+export const ACCOUNTING_ROLES: Role[] = [...OWNER_ROLES, "accountant"];
+export const isAccountant = (r: Role | string | null | undefined): boolean => r === "accountant";
+
+/** The accountant's login is the books and its own settings, nothing else (proxy.ts confines it). */
+export const ACCOUNTANT_PATHS = ["/accounting", "/api/accounting", "/settings", "/password", "/api/logout", "/api/me", "/api/prefs", "/api/notifications", "/api/push/subscribe", "/api/tutorials", "/tutorials/voice"];
+export const isAccountantPath = (pathname: string) => {
+  if (pathname.includes("..") || pathname.includes("\\") || pathname.includes("%")) return false;
+  if (ACCOUNTANT_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`))) return true;
+  return !pathname.startsWith("/api") && /\.[a-z0-9]+$/i.test(pathname);
+};
+
 /** Owner-only, INCLUDING the platform's god key.
  *
  *  Derived from `OWNER_ROLES` on purpose. Writing `r === "owner"` at a call site is the bug
@@ -97,6 +112,8 @@ export const isOwner = (r: Role) => OWNER_ROLES.includes(r);
  *  no one is offered a form whose save will be refused. */
 export const SELL_ROLES: Role[] = ["platform_owner", "owner", "group_manager", "phone_sales", "field_rep", "delivery_driver"];
 /** The read-only partner login: one page, no company data. */
+/** A group manager, who runs one group (the one role the Academy and handover rules name directly). */
+export const isGroupManager = (r: Role | string | null | undefined): boolean => r === "group_manager";
 export const isShareholder = (r: Role | string | null | undefined): boolean => r === "shareholder";
 export const canSell = (r: Role | string | null | undefined): boolean => SELL_ROLES.includes(r as Role);
 
@@ -109,6 +126,7 @@ export const ROLE_LABEL: Record<Role, string> = {
   field_rep: "بازدیدکننده میدانی",
   delivery_driver: "راننده تحویل",
   shareholder: "شریک",
+  accountant: "حسابدار",
 };
 
 /** Names the `Role` union RETIRED but `users.role`'s CHECK still admits, on purpose.
@@ -155,6 +173,7 @@ export const ROLE_DESCRIPTION: Record<Role, string> = {
   field_rep: "بازدیدها و مسیرهای میدانی خودش — مشتری‌های گروه خودش",
   delivery_driver: "فقط مسیر و تحویل‌های امروز خودش",
   shareholder: "فقط صفحهٔ «سهم من»: سهم، سرمایه، علی‌الحساب و سود خودش؛ هیچ داده‌ای از شرکت یا شرکای دیگر دیده نمی‌شود",
+  accountant: "همه صفحه‌ها و خروجی‌های حسابداری؛ ثبت سند دستی، ابطال سند و بستن ماه و سال. بدون مدیریت کاربران، قیمت و پورسانت",
 };
 
 /** Whether this role's browser runs the offline sync client at all.
@@ -175,7 +194,7 @@ export const ROLE_DESCRIPTION: Record<Role, string> = {
  * the authoritative, DB-backed check — this is a hint that spares the browser a request,
  * not the thing standing between a cross-tenant pull and the wrong account. */
 export function hasSyncClient(role: Role): boolean {
-  return role !== "platform_owner" && role !== "shareholder";
+  return role !== "platform_owner" && role !== "shareholder" && role !== "accountant";
 }
 
 /** Where a signed-in person lands. A van role never enters the sales shell; everyone else,
@@ -183,6 +202,7 @@ export function hasSyncClient(role: Role): boolean {
  *  scopes itself to "all" for them. */
 export function homePathFor(role: Role): string {
   if (role === "shareholder") return "/my-share";
+  if (role === "accountant") return "/accounting/journal";
   return isVanRole(role) ? "/driver" : "/sales/today";
 }
 
