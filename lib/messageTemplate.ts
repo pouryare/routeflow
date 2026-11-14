@@ -17,8 +17,8 @@ export const TEMPLATE_PLACEHOLDERS: Record<string, readonly string[]> = {
   "cheque.due_soon": ["cheque_no", "due_date"],
   "reminder.due": ["message"],
 };
-export const TITLE_MAX = 80;
-export const BODY_MAX = 240;
+const TITLE_MAX = 80;
+const BODY_MAX = 240;
 
 const PLACEHOLDER = /\{([a-z_]+)\}/g;
 
