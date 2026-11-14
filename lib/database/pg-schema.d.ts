@@ -17,6 +17,8 @@ export type Generated<T> = T extends ColumnType<infer S, infer I, infer U>
   ? ColumnType<S, I | undefined, U>
   : ColumnType<T, T | undefined, T>;
 
+export type Numeric = ColumnType<number, number | string, number | string>;
+
 export type Timestamp = ColumnType<Date, Date | string, Date | string>;
 
 export interface AcademyCategories {
@@ -377,14 +379,14 @@ export interface ContentImages {
 }
 
 export interface CreditApprovals {
-  manager_ok_at: string | null;
-  manager_ok_by: number | null;
   credit_limit_toman: number | null;
   customer_balance_toman: number;
   decided_at: string | null;
   decided_by: number | null;
   id: Generated<number>;
   kind: Generated<string>;
+  manager_ok_at: string | null;
+  manager_ok_by: number | null;
   order_id: number;
   organization_id: number;
   overage_toman: number;
@@ -533,17 +535,6 @@ export interface DayWrapups {
   user_id: number;
 }
 
-export interface DeliveryRatings {
-  customer_id: number;
-  id: Generated<number>;
-  order_id: number;
-  organization_id: number;
-  rated_at: string;
-  rated_by: number;
-  reason: string | null;
-  stars: number;
-}
-
 export interface DeletedRows {
   deleted_at: string;
   entity_id: number;
@@ -598,6 +589,17 @@ export interface DeliveryLines {
   qty_delivered: Generated<number>;
   qty_planned: Generated<number>;
   qty_returned: Generated<number>;
+}
+
+export interface DeliveryRatings {
+  customer_id: number;
+  id: Generated<number>;
+  order_id: number;
+  organization_id: number;
+  rated_at: string;
+  rated_by: number;
+  reason: string | null;
+  stars: number;
 }
 
 export interface DeliveryRuns {
@@ -715,22 +717,6 @@ export interface EntryPlaces {
   ref_id: number;
 }
 
-export interface ExportJobs {
-  created_at: string;
-  error: string | null;
-  expires_at: string;
-  file: Buffer | null;
-  filename: string | null;
-  id: Generated<number>;
-  kind: string;
-  organization_id: number;
-  progress: Generated<number>;
-  scope_json: string;
-  status: Generated<string>;
-  total: Generated<number>;
-  user_id: number;
-}
-
 export interface Events {
   actor_user_id: number | null;
   attempts: Generated<number>;
@@ -792,6 +778,22 @@ export interface ExpenseReceipts {
   id: Generated<number>;
   journal_id: number;
   organization_id: number;
+}
+
+export interface ExportJobs {
+  created_at: string;
+  error: string | null;
+  expires_at: string;
+  file: Buffer | null;
+  filename: string | null;
+  id: Generated<number>;
+  kind: string;
+  organization_id: number;
+  progress: Generated<number>;
+  scope_json: string;
+  status: Generated<string>;
+  total: Generated<number>;
+  user_id: number;
 }
 
 export interface Facilities {
@@ -1138,16 +1140,6 @@ export interface ManagerCommissionPayments {
   period_to: string | null;
 }
 
-export interface NotificationChannels {
-  channel: string;
-  critical_breaks_quiet: Generated<number>;
-  enabled: Generated<number>;
-  quiet_end: string | null;
-  quiet_start: string | null;
-  updated_at: string;
-  user_id: number;
-}
-
 export interface NotificationAttempts {
   channel: string;
   error: string | null;
@@ -1156,6 +1148,16 @@ export interface NotificationAttempts {
   ok: boolean;
   organization_id: number;
   tried_at: string;
+  user_id: number;
+}
+
+export interface NotificationChannels {
+  channel: string;
+  critical_breaks_quiet: Generated<number>;
+  enabled: Generated<number>;
+  quiet_end: string | null;
+  quiet_start: string | null;
+  updated_at: string;
   user_id: number;
 }
 
@@ -1311,7 +1313,6 @@ export interface OrderEventsArchive {
 }
 
 export interface OrderLines {
-  uplift_percent: Generated<number>;
   created_at: string;
   id: Generated<number>;
   is_reversal: Generated<number>;
@@ -1327,12 +1328,12 @@ export interface OrderLines {
   sync_xid: Generated<string | null>;
   unit_cost_toman: Generated<number>;
   unit_price_toman: number;
+  uplift_percent: Generated<number>;
   vat_pct: number | null;
 }
 
 export interface Orders {
-  uplift_waive_reason: string | null;
-  uplift_waived_by: number | null;
+  below_min_reason: string | null;
   channel: string | null;
   client_uuid: string | null;
   cost_toman: number | null;
@@ -1341,7 +1342,6 @@ export interface Orders {
   created_source: string | null;
   credit_hold: Generated<number>;
   credit_override_by: number | null;
-  below_min_reason: string | null;
   customer_id: number;
   delivered_at: string | null;
   discount_toman: Generated<number>;
@@ -1373,10 +1373,14 @@ export interface Orders {
   sync_xid: Generated<string | null>;
   total_toman: number | null;
   updated_at: string;
+  uplift_waive_reason: string | null;
+  uplift_waived_by: number | null;
 }
 
 export interface Organizations {
   active: Generated<number>;
+  approval_owner_limit_toman: Generated<number>;
+  carton_nudge_percent: Generated<number>;
   contact_name: string | null;
   contact_phone: string | null;
   created_at: string;
@@ -1388,24 +1392,20 @@ export interface Organizations {
   due_reminder_days: string | null;
   duplicate_order_hours: Generated<number>;
   effects: Generated<string>;
-  undo_own_minutes: Generated<number>;
   expense_claim_limit_toman: Generated<number>;
-  loan_reminder_days: Generated<number>;
-  staff_loan_limit_toman: Generated<number>;
   id: Generated<number>;
   idle_signout_json: string | null;
   leftover_limit_toman: Generated<number>;
   legal_form: Generated<string>;
+  loan_reminder_days: Generated<number>;
   logo_data: string | null;
   logo_type: string | null;
   maintenance_from: string | null;
   maintenance_note: string | null;
   maintenance_to: string | null;
+  min_order_toman: Generated<number>;
   name: string;
   order_approval_limit_toman: Generated<number>;
-  approval_owner_limit_toman: Generated<number>;
-  min_order_toman: Generated<number>;
-  carton_nudge_percent: Generated<number>;
   order_prefix: string | null;
   plan: Generated<string>;
   quiet_customer_days: Generated<number>;
@@ -1414,16 +1414,16 @@ export interface Organizations {
   refund_limit_toman: Generated<number>;
   slug: string;
   sound_skin: Generated<string>;
+  staff_loan_limit_toman: Generated<number>;
   stalled_order_days: Generated<number>;
   step_up_required: Generated<boolean>;
   task_push_minutes: Generated<number>;
   tax_id: string | null;
+  undo_own_minutes: Generated<number>;
   vat_default_pct: Generated<number>;
 }
 
 export interface Packagings {
-  small_packs: number | null;
-  small_uplift_percent: number | null;
   active: Generated<number>;
   barcode: string | null;
   created_at: string;
@@ -1431,6 +1431,8 @@ export interface Packagings {
   name: string;
   product_id: number;
   qty_per_pack: number;
+  small_packs: number | null;
+  small_uplift_percent: number | null;
   sync_xid: Generated<string | null>;
 }
 
@@ -1520,6 +1522,23 @@ export interface PlatformSettings {
   value: string;
 }
 
+export interface PriceBaseLinks {
+  base_id: number;
+  factor: Numeric;
+  id: Generated<number>;
+  organization_id: number;
+  packaging_id: number | null;
+  product_id: number;
+}
+
+export interface PriceBases {
+  id: Generated<number>;
+  name: string;
+  organization_id: number;
+  updated_at: string;
+  value_toman: number;
+}
+
 export interface PrivateCategories {
   account_id: number;
   organization_id: number;
@@ -1561,23 +1580,6 @@ export interface ProductPrices {
   product_id: number;
   sync_xid: Generated<string | null>;
   valid_from: string;
-}
-
-export interface PriceBaseLinks {
-  base_id: number;
-  factor: string;
-  id: Generated<number>;
-  organization_id: number;
-  packaging_id: number | null;
-  product_id: number;
-}
-
-export interface PriceBases {
-  id: Generated<number>;
-  name: string;
-  organization_id: number;
-  updated_at: string;
-  value_toman: number;
 }
 
 export interface Products {
@@ -2013,6 +2015,36 @@ export interface Shareholdings {
   valid_from: string;
 }
 
+export interface StaffAdvanceRequests {
+  amount_toman: number;
+  created_at: string;
+  decided_at: string | null;
+  decided_by: number | null;
+  entry_id: number | null;
+  group_id: number | null;
+  id: Generated<number>;
+  monthly_hint_toman: number | null;
+  note: string | null;
+  organization_id: number;
+  reject_reason: string | null;
+  requested_by: number;
+  status: Generated<string>;
+  user_id: number;
+}
+
+export interface StaffLoanEntries {
+  amount_toman: number;
+  created_at: string;
+  created_by: number;
+  id: Generated<number>;
+  journal_id: number | null;
+  kind: string;
+  monthly_hint_toman: number | null;
+  note: string | null;
+  organization_id: number;
+  user_id: number;
+}
+
 export interface StockMovements {
   base_qty: number;
   batch_id: number | null;
@@ -2130,36 +2162,6 @@ export interface StoredFiles {
   trash_ref: string | null;
   upload_state: Generated<string>;
   variants: string;
-}
-
-export interface StaffAdvanceRequests {
-  amount_toman: number;
-  created_at: string;
-  decided_at: string | null;
-  decided_by: number | null;
-  entry_id: number | null;
-  group_id: number | null;
-  id: Generated<number>;
-  monthly_hint_toman: number | null;
-  note: string | null;
-  organization_id: number;
-  reject_reason: string | null;
-  requested_by: number;
-  status: Generated<string>;
-  user_id: number;
-}
-
-export interface StaffLoanEntries {
-  amount_toman: number;
-  created_at: string;
-  created_by: number;
-  id: Generated<number>;
-  journal_id: number | null;
-  kind: string;
-  monthly_hint_toman: number | null;
-  note: string | null;
-  organization_id: number;
-  user_id: number;
 }
 
 export interface SupplierPrices {
@@ -2423,10 +2425,10 @@ export interface DB {
   customers: Customers;
   day_wrapups: DayWrapups;
   deleted_rows: DeletedRows;
-  delivery_ratings: DeliveryRatings;
   deliveries: Deliveries;
   delivery_line_batches: DeliveryLineBatches;
   delivery_lines: DeliveryLines;
+  delivery_ratings: DeliveryRatings;
   delivery_runs: DeliveryRuns;
   delivery_stops: DeliveryStops;
   deposit_slips: DepositSlips;
@@ -2439,6 +2441,7 @@ export interface DB {
   events_archive: EventsArchive;
   expense_claims: ExpenseClaims;
   expense_receipts: ExpenseReceipts;
+  export_jobs: ExportJobs;
   facilities: Facilities;
   fiscal_periods: FiscalPeriods;
   forecast_models: ForecastModels;
@@ -2467,9 +2470,8 @@ export interface DB {
   login_events: LoginEvents;
   manager_commission_overrides: ManagerCommissionOverrides;
   manager_commission_payments: ManagerCommissionPayments;
-  notification_channels: NotificationChannels;
   notification_attempts: NotificationAttempts;
-  export_jobs: ExportJobs;
+  notification_channels: NotificationChannels;
   notification_deliveries: NotificationDeliveries;
   notification_prefs: NotificationPrefs;
   notification_types: NotificationTypes;
