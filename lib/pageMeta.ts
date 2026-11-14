@@ -163,6 +163,14 @@ export const PAGE_META: Record<string, PageMeta> = {
       "پورسانت هر نماینده بر پایهٔ فروش تأییدشده و نرخ‌های تعریف‌شده. ردیف‌ها تا سفارش‌های پشتشان قابل باز کردن‌اند.",
   },
 
+  "/sales/commission/month": {
+    title: "برگهٔ پرداخت ماه",
+    titleEn: "Monthly pay sheet",
+    help: "page.commission-month",
+    overview:
+      "پورسانت و هزینه‌های تأییدشدهٔ هر نفر در یک ماه شمسی، برای حسابدار. همان عددهای صفحهٔ پورسانت است و CSV هم دارد.",
+  },
+
   // تحویل
   "/sales/batches": {
     title: "سری‌های ساخت",
