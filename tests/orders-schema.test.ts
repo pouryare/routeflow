@@ -126,6 +126,11 @@ describe("orders", () => {
         "created_source",
         // F85: how the order reached the company (phone, visit, message, driver, standing).
         "channel",
+        // F64: why an order below the company minimum was let through.
+        "below_min_reason",
+        // F65: a manager waived the small-quantity uplift, with a reason.
+        "uplift_waive_reason",
+        "uplift_waived_by",
         "due_date",
         "created_at",
         "updated_at",
@@ -204,6 +209,8 @@ describe("order_lines", () => {
         "price_id",
         "is_reversal",
         "reverses_line_id",
+        // F65: the small-quantity percent already inside unit_price_toman.
+        "uplift_percent",
         "created_at",
       ].sort()
     );

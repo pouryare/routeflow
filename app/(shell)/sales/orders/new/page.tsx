@@ -7,7 +7,7 @@ import { thresholdsFor } from "@/lib/repo/thresholds";
 import OrderForm from "@/components/sales/OrderForm";
 import OrderQuickEntry from "@/components/flows/OrderQuickEntry";
 import PageHeader from "@/components/meridian/PageHeader";
-import { canSell, isOwner, isVanRole } from "@/lib/roles";
+import { canSell, isOwner, isVanRole, MANAGE_ROLES } from "@/lib/roles";
 import Link from "next/link";
 import StatePage from "@/components/meridian/StatePage";
 import { Icon } from "@/components/meridian/Icon";
@@ -86,6 +86,7 @@ export default async function NewOrderPage({
       initialCustomerId={initialCustomerId}
       minOrderToman={minOrderToman}
       cartonNudgePercent={cartonNudgePercent}
+      canWaiveUplift={MANAGE_ROLES.includes(session.role)}
     />    </>
   );
 }

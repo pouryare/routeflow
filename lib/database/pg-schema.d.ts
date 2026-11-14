@@ -1311,6 +1311,7 @@ export interface OrderEventsArchive {
 }
 
 export interface OrderLines {
+  uplift_percent: Generated<number>;
   created_at: string;
   id: Generated<number>;
   is_reversal: Generated<number>;
@@ -1330,6 +1331,8 @@ export interface OrderLines {
 }
 
 export interface Orders {
+  uplift_waive_reason: string | null;
+  uplift_waived_by: number | null;
   channel: string | null;
   client_uuid: string | null;
   cost_toman: number | null;
@@ -1419,6 +1422,8 @@ export interface Organizations {
 }
 
 export interface Packagings {
+  small_packs: number | null;
+  small_uplift_percent: number | null;
   active: Generated<number>;
   barcode: string | null;
   created_at: string;

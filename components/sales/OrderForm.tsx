@@ -13,6 +13,7 @@ import { faJalaliDate } from "@/lib/jalali";
 import { roundToman, toNumber } from "@/lib/money";
 import { MAX_PACKS_PER_LINE, parsePacks } from "@/lib/orderLimits";
 import { Icon } from "@/components/meridian/Icon";
+import { upliftPercentFor, upliftedPrice } from "@/lib/smallUplift";
 import { cartonNudge } from "@/lib/cartonNudge";
 import { BELOW_MIN_REASONS, belowMin } from "@/lib/minOrder";
 import BusyIcon from "@/components/meridian/BusyIcon";
@@ -46,11 +47,15 @@ interface Customer {
   credit_limit_toman: number | null;
 }
 
+const WAIVE_REASONS = ["قیمت توافقی با مشتری", "مشتری قدیمی و مهم", "مدیر موافق بود"] as const;
+
 interface Packaging {
   id: number;
   name: string;
   qty_per_pack: number;
   price_toman: number | null;
+  small_packs?: number | null;
+  small_uplift_percent?: number | null;
 }
 
 interface Product {
@@ -95,6 +100,7 @@ export default function OrderForm({
   initialCustomerId = null,
   minOrderToman = 0,
   cartonNudgePercent = 0,
+  canWaiveUplift = false,
 }: {
   customers: Customer[];
   products: Product[];
@@ -110,6 +116,8 @@ export default function OrderForm({
   minOrderToman?: number;
   /** F114: how close below a bigger pack the form says what completes it (0 = off). */
   cartonNudgePercent?: number;
+  /** F65: a manager may waive the small-quantity uplift for one order, with a reason. */
+  canWaiveUplift?: boolean;
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
@@ -118,6 +126,7 @@ export default function OrderForm({
 
   const [customerId, setCustomerId] = useState<number | null>(initialCustomerId);
   const [belowReason, setBelowReason] = useState("");
+  const [waiveUplift, setWaiveUplift] = useState("");
   const [orderDate, setOrderDate] = useState(() => tehranTodayIso());
   /* Phase 1 (mixed-route planning): the day the customer ASKED for, which is a different
    * question from the day the slip was typed. Defaults to «soonest» — uncommitted — because
@@ -189,15 +198,17 @@ export default function OrderForm({
       lines.map((line) => {
         const p = products.find((x) => x.id === line.product_id)!;
         const k = p.packagings.find((x) => x.id === line.packaging_id)!;
+        const uplift = upliftPercentFor(line.packs, { smallPacks: k.small_packs ?? null, percent: k.small_uplift_percent ?? null }, waiveUplift !== "");
         return {
           ...line,
           product: p,
           packaging: k,
-          total: roundToman(line.packs * (k.price_toman ?? 0)),
+          uplift,
+          total: roundToman(line.packs * upliftedPrice(k.price_toman ?? 0, uplift)),
           kg: line.packs * k.qty_per_pack * p.kg_per_base_unit,
         };
       }),
-    [lines, products]
+    [lines, products, waiveUplift]
   );
 
   const total = resolved.reduce((sum, l) => sum + l.total, 0);
@@ -280,6 +291,7 @@ export default function OrderForm({
           channel: channel || null,
           credit_override: overLimit,
           below_min_reason: belowMin(total, minOrderToman) ? belowReason : undefined,
+          waive_uplift_reason: waiveUplift || undefined,
           discount: toRequestBody(discount, payers),
           lines: lines.map((l) => ({
             product_id: l.product_id,
@@ -452,7 +464,7 @@ export default function OrderForm({
                     {line.product.name} · {line.packaging.name}
                   </span>
                   <span className="text-[length:var(--text-xs)] tabular-nums text-[var(--muted)]">
-                    {faNum(line.packs)} بسته · {faNum(line.kg)} کیلو
+                    {faNum(line.packs)} بسته · {faNum(line.kg)} کیلو{line.uplift > 0 ? ` · سفارش کم، ${faNum(line.uplift)}٪ بیشتر` : ""}
                   </span>
                 </div>
                 <div className="flex shrink-0 items-center gap-[var(--space-2)]">
@@ -551,6 +563,13 @@ export default function OrderForm({
             </button>
           </div>
         </div>
+      )}
+
+      {canWaiveUplift && resolved.some((l) => l.uplift > 0 || waiveUplift) && (
+        <section className="card flex flex-col gap-[var(--space-3)] p-[var(--space-4)]" data-tour="waive-uplift">
+          <p className="m-0 text-[length:var(--text-sm)] leading-6">بعضی اقلام به‌خاطر تعداد کم گران‌تر حساب شده‌اند. اگر این سفارش مستثنا است، دلیلش را انتخاب کنید تا قیمت عادی بشود.</p>
+          <ChipGroup wrap group={{ id: "waive-uplift", label: "بخشیدن افزایش", mode: "single", value: waiveUplift, onChange: (v) => setWaiveUplift(v as string), options: WAIVE_REASONS.map((r) => ({ id: r, label: r })) }} />
+        </section>
       )}
 
       {belowMin(total, minOrderToman) && (

@@ -1,4 +1,5 @@
 import type { FlowConfig, FlowContext, FlowOption } from "@/lib/crm/flows/types";
+import { upliftPercentFor, upliftedPrice } from "@/lib/smallUplift";
 import { BELOW_MIN_REASONS, belowMin } from "@/lib/minOrder";
 import { faNum, faToman } from "@/lib/format";
 import { faJalaliDate } from "@/lib/jalali";
@@ -52,7 +53,11 @@ export function orderLines(ctx: FlowContext, st: Vals) {
 
 export function orderTotal(ctx: FlowContext, st: Vals): number {
   const counts = orderCounts(ctx, st);
-  return (ctx.items ?? []).reduce((sum, i) => sum + roundToman((counts[i.id] ?? 0) * (i.price ?? 0)), 0);
+  return (ctx.items ?? []).reduce((sum, i) => {
+    const n = counts[i.id] ?? 0;
+    const pct = upliftPercentFor(n, i.small ? { smallPacks: i.small.packs, percent: i.small.percent } : null);
+    return sum + roundToman(n * upliftedPrice(i.price ?? 0, pct));
+  }, 0);
 }
 
 function requestedOf(st: Vals): { day: string | null; kind: "soonest" | "exact_date" | "week_offset" } {
@@ -292,7 +297,7 @@ export function usualCounts(
 export interface CatalogueProduct {
   id: number;
   name: string;
-  packagings: { id: number; name: string; price_toman: number | null }[];
+  packagings: { id: number; name: string; price_toman: number | null; small_packs?: number | null; small_uplift_percent?: number | null }[];
 }
 
 /** Last order's lines as flow items, priced from TODAY's catalogue. A line whose packaging has
@@ -312,7 +317,7 @@ export function itemsFromLastOrder(
       dropped += 1;
       continue;
     }
-    items.push({ id: k.id, parent: p.id, label: `${p.name} · ${k.name}`, qty: l.packs_ordered, max: 999, unit: "بسته", price: k.price_toman });
+    items.push({ id: k.id, parent: p.id, label: `${p.name} · ${k.name}`, qty: l.packs_ordered, max: 999, unit: "بسته", price: k.price_toman, ...(k.small_packs && k.small_uplift_percent ? { small: { packs: k.small_packs, percent: k.small_uplift_percent } } : {}) });
   }
   return { items, dropped };
 }

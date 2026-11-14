@@ -104,7 +104,7 @@ export interface OrderEntryData {
     kg_per_base_unit: number;
     /** D27: units on open purchase orders and the earliest day one is expected (null when no date was given). */
     incoming: { qty: number; expected: string | null } | null;
-    packagings: { id: number; name: string; qty_per_pack: number; price_toman: number | null }[];
+    packagings: { id: number; name: string; qty_per_pack: number; price_toman: number | null; small_packs: number | null; small_uplift_percent: number | null }[];
   }[];
   /** Whom an order can be credited to; empty for a seller, whose orders are always their own. */
   sellers: { id: number; display_name: string }[];
@@ -144,6 +144,8 @@ export async function orderEntryFor(session: Session): Promise<OrderEntryData> {
       name: pack.name,
       qty_per_pack: pack.qty_per_pack,
       price_toman: pack.price_toman,
+      small_packs: pack.small_packs === null || pack.small_packs === undefined ? null : Number(pack.small_packs),
+      small_uplift_percent: pack.small_uplift_percent === null || pack.small_uplift_percent === undefined ? null : Number(pack.small_uplift_percent),
     })),
   }));
 

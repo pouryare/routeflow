@@ -261,6 +261,7 @@ export default async function OrderDetailPage({
               </td>
               <td className="border-b border-[var(--border)] py-[var(--space-2)] text-left tabular-nums text-[var(--muted)]">
                 {faToman(line.unit_price_toman)}
+                {line.uplift_percent ? <span className="block text-[length:var(--text-xs)] text-[var(--warning)]">سفارش کم، {faNum(Number(line.uplift_percent))}٪ بیشتر</span> : null}
               </td>
               <td className="border-b border-[var(--border)] py-[var(--space-2)] text-left tabular-nums text-[var(--foreground)]">
                 {faToman(line.total_toman)}
@@ -324,6 +325,12 @@ export default async function OrderDetailPage({
         <p className="m-0 text-[length:var(--text-xs)] leading-6 text-[var(--muted)]">
           این سفارش تأیید شده و عددهایش ثابت است. قیمت‌ها همان‌هایی هستند که روز ثبت
           سفارش اعمال شده‌اند، حتی اگر قیمت کالا بعداً تغییر کرده باشد.
+        </p>
+      )}
+
+      {order.uplift_waive_reason && (
+        <p className="m-0 rounded-[var(--radius-md)] border border-[var(--border)] p-[var(--space-3)] text-[length:var(--text-xs)] text-[var(--muted)]">
+          افزایش قیمت سفارش کم برای این سفارش بخشیده شد. دلیل: {order.uplift_waive_reason}
         </p>
       )}
 
