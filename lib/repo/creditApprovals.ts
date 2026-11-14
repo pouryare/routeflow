@@ -18,7 +18,7 @@ export interface CreditApprovalRow {
   credit_limit_toman: number | null;
   overage_toman: number;
   /** "credit": over the customer's limit; "value": over the company's order-value limit (F76). */
-  kind: "credit" | "value";
+  kind: "credit" | "value" | "hold";
   status: "pending" | "approved" | "rejected" | "expired";
   decided_by: number | null;
   decided_at: string | null;
@@ -38,7 +38,7 @@ export async function requestApproval(
     customer_balance_toman: number;
     credit_limit_toman: number | null;
     /** Left out: a credit request. "value" is an order held for its size; it applies to representatives too. */
-    kind?: "credit" | "value";
+    kind?: "credit" | "value" | "hold";
   }
 ): Promise<number> {
   const db = creditApprovalsRepo.db();
@@ -151,7 +151,7 @@ registerOrderEffectHandlers({
       .run(
         order.customer_id,
         now.slice(0, 10),
-        held?.kind === "value" ? "سفارش از سقف مبلغ بدون تأیید بزرگ‌تر است — نیازمند تأیید مدیر" : "سفارش از سقف اعتبار مشتری عبور کرد — نیازمند تأیید مدیر",
+        held?.kind === "value" ? "سفارش از سقف مبلغ بدون تأیید بزرگ‌تر است — نیازمند تأیید مدیر" : held?.kind === "hold" ? "این مشتری نگه داشته شده است — سفارش نیازمند تأیید مدیر" : "سفارش از سقف اعتبار مشتری عبور کرد — نیازمند تأیید مدیر",
         now
       );
   },
@@ -182,7 +182,7 @@ export interface PendingApprovalCard {
   id: number;
   order_no: string;
   customer_name: string;
-  kind: "credit" | "value";
+  kind: "credit" | "value" | "hold";
   customer_balance_toman: number;
   credit_limit_toman: number | null;
   overage_toman: number;

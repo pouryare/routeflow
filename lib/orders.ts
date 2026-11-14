@@ -17,6 +17,7 @@ import { toJalali } from "./jalali";
 import type { RequestedKind } from "./requestedDay";
 import { customerDebt } from "./repo/payments";
 import { requestApproval } from "./repo/creditApprovals";
+import { activeHold } from "./repo/customerHolds";
 import { requestDiscount, type DiscountRequest } from "./repo/discounts";
 import type { Asker } from "./discounts";
 import { PRICED_ORDER_STATUSES, sqlStatusList } from "./orderStateMachine";
@@ -441,6 +442,24 @@ export async function submitOrder(
         customer_balance_toman: orderTotal,
         credit_limit_toman: limit,
         kind: "value",
+      });
+      return await advanceOrder(organizationId, orderId, "flagCredit", { id: actor.id, role: "system" });
+    }
+  }
+
+  /* F71: a customer on hold sends the new order to the manager's inbox, the same way F76 does; confirmed orders carry on. A sample
+     carries no value, and a signed-in owner is the one who would approve it. */
+  if (order.order_type !== "SAMPLE" && !(actor.role === "owner" && actor.id != null)) {
+    const hold = await activeHold(organizationId, order.customer_id);
+    if (hold) {
+      await db.prepare("UPDATE orders SET credit_hold = 1 WHERE id = ? AND organization_id = ?").run(orderId, organizationId);
+      await requestApproval(organizationId, {
+        order_id: orderId,
+        requested_by: actor.id ?? order.created_by,
+        customer_id: order.customer_id,
+        customer_balance_toman: orderTotalToman(await linesOf(db, orderId)),
+        credit_limit_toman: null,
+        kind: "hold",
       });
       return await advanceOrder(organizationId, orderId, "flagCredit", { id: actor.id, role: "system" });
     }

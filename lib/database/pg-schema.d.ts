@@ -400,6 +400,18 @@ export interface CrmNotDuplicates {
   organization_id: number;
 }
 
+export interface CustomerHolds {
+  customer_id: number;
+  expires_on: string;
+  id: Generated<number>;
+  organization_id: number;
+  placed_at: string;
+  placed_by: number;
+  reason: string;
+  released_at: string | null;
+  released_by: number | null;
+}
+
 export interface CustomerLoans {
   created_at: string;
   created_by: number | null;
@@ -2296,6 +2308,7 @@ export interface DB {
   crm_not_duplicates: CrmNotDuplicates;
   custom_field_values: CustomFieldValues;
   custom_fields: CustomFields;
+  customer_holds: CustomerHolds;
   customer_loans: CustomerLoans;
   customer_tags: CustomerTags;
   customers: Customers;

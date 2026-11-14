@@ -57,7 +57,9 @@ export default function CreditDeckEntry({ approvals }: { approvals: PendingAppro
             <>
               <strong>{a.customer_name}</strong>
               <span>سفارش {a.order_no}</span>
-              {a.kind === "value" ? (
+              {a.kind === "hold" ? (
+                <span>مشتری نگه داشته شده است · جمع سفارش {faToman(a.customer_balance_toman)} · دلیل را در صفحهٔ مشتری ببینید</span>
+              ) : a.kind === "value" ? (
                 <span>جمع سفارش {faToman(a.customer_balance_toman)} · سقف سفارش بدون تأیید {faToman(a.credit_limit_toman ?? 0)}</span>
               ) : (
                 <>
