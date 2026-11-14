@@ -12,6 +12,7 @@ Every fact the app writes to the `events` table with `emitEvent` or `tryEmitEven
 | `payment.recorded` | fact | `lib/repo/payments.ts`, inside the payment's transaction | Rule `notify_payment_recorded` |
 | `task.assigned` | fact | `lib/repo/tasks.ts`, only when a person is named | Rule `notify_task_assigned` |
 | `task.escalated` | fact | `lib/repo/rules.ts` (`escalateStaleRuns`) | Rule `notify_task_escalated` |
+| `sample.given` | fact | `lib/repo/doorSale.ts` (`giveSamples`: a van role hands a free sample over at the door; metadata: customer, product, packs) | None yet (the funnel report EV-L1, and the sample report on the stock page, read the `samples` table) |
 | `lead.created` | fact | `lib/repo/crm/write.ts` (`createLead`) | None yet (funnel report EV-L1) |
 | `lead.verified` | fact | `lib/repo/crm/write.ts` | None yet |
 | `lead.invalidated` | fact | `lib/repo/crm/write.ts` | None yet |
@@ -27,6 +28,6 @@ Every fact the app writes to the `events` table with `emitEvent` or `tryEmitEven
 | `system.test` | fact | `lib/repo/notification-test.ts`, a test notification only; never saved to `events` | The notification fan-out |
 | `lead_import.slow` | fact | `lib/repo/leadImportNotify.ts`, handed straight to the notification fan-out; never saved to `events` | The notification fan-out |
 
-**Missing on purpose (needed by the funnel report EV-L1):** sample requested, sample delivered, sample feedback, quote sent, customer became inactive, customer reactivated. They are added with the features that create them (F52 samples, F29 quotes, the churn sweep).
+**Missing on purpose (needed by the funnel report EV-L1):** sample requested, sample feedback (sample delivered is `sample.given`), quote sent, customer became inactive, customer reactivated. They are added with the features that create them (F52 samples, F29 quotes, the churn sweep).
 
 **Sweep rules** (`credit_approval_waiting`, `customer_overdue`, `expiring_batch`, `sample_followup`, `notify_cheque_due_soon`, `notify_credit_approval_waiting`, `notify_customer_overdue`, `notify_reminder_due`, `notify_task_due_soon`) are not triggered by an event: the worker's `rules.sweep` job looks for them every 5 minutes.

@@ -1966,6 +1966,23 @@ export interface SalesDailyProducts {
   salesperson_user_id: number | null;
 }
 
+export interface Samples {
+  base_qty: number;
+  client_uuid: string | null;
+  created_at: string;
+  customer_id: number;
+  given_at: string;
+  given_by: number;
+  id: Generated<number>;
+  note: string | null;
+  organization_id: number;
+  packaging_id: number;
+  packs: number;
+  product_id: number;
+  unit_cost_toman: Generated<number>;
+  van_facility_id: number | null;
+}
+
 export interface SavedLocations {
   address: string | null;
   created_at: string;
@@ -2551,6 +2568,7 @@ export interface DB {
   sales_daily: SalesDaily;
   sales_daily_marks: SalesDailyMarks;
   sales_daily_products: SalesDailyProducts;
+  samples: Samples;
   saved_locations: SavedLocations;
   saved_views: SavedViews;
   seasonal_factors: SeasonalFactors;

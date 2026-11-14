@@ -9,6 +9,8 @@ import { faJalaliDate, toJalali, jalaliToIsoDate, tehranTodayIso } from "@/lib/j
 import { allSupplierPrices } from "@/lib/repo/supplierPrices";
 import VanLoadCard from "@/components/sales/VanLoadCard";
 import { vansToLoad } from "@/lib/repo/vanStock";
+import { sampleReport } from "@/lib/repo/doorSale";
+import SampleReportCard from "@/components/sales/SampleReportCard";
 import { productPickList } from "@/lib/repo/purchaseOrders";
 import PurchaseEntry from "@/components/sales/PurchaseEntry";
 import InventoryBoard from "@/components/meridian/InventoryBoard";
@@ -229,6 +231,7 @@ export default async function StockPage() {
 
       <BatchList rows={batches} canManage={canManageBatches} />
 
+      {MANAGE_ROLES.includes(session.role) && <SampleReportCard rows={await sampleReport(session.organizationId)} />}
       {vans.length > 0 && <VanLoadCard vans={vans} products={await productPickList(session.organizationId)} />}
       {isOwner(session.role) && <PurchaseEntry products={products} prices={prices} />}
 

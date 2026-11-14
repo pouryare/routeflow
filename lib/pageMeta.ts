@@ -349,6 +349,12 @@ export const PAGE_META: Record<string, PageMeta> = {
     overview:
       "درس‌های خود شرکت را بنویسید، عکس بگذارید و برای نقش‌ها اجباری کنید. مالک مربی‌ها را هم تعیین می‌کند.",
   },
+  "/sales/door-sale": {
+    title: "فروش در محل",
+    titleEn: "Door sale",
+    overview:
+      "از کالای روی ماشین بفروشید یا نمونهٔ رایگان بدهید. فروش همان‌جا تحویل و پول هم ثبت می‌شود و از موجودی ماشین کم می‌شود.",
+  },
   "/sales/catalogue": {
     title: "کالاها",
     titleEn: "Catalogue",
