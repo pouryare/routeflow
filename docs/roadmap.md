@@ -700,7 +700,7 @@ Decided, but each needs something first. The "waits for" part is in the line. Th
 ### Screens, lists and desk speed
 
 - **UIB-E. Desk layouts and dashboards.** Denser desk screens and dashboard patterns. Comes after the phone patterns are done.
-- **FB19. Setup checklist details.** Minutes per step, a % bar, steps that tick from real data. Waits for UI batch D (UIB-D).
+- **FB19. Setup checklist details.** Minutes per step, a % bar, steps that tick from real data. Waits for UI batch D (UIB-D). **Built (first slice, batch D):** a card on the owner's «امروز» (five steps, minutes each, a % bar, ticked from real data). Ctrl-K actions, pinned pages, the shared selection bar and the first-use tour (the rest of UIB-D) are not built.
 - **A17. Typed filters on desk screens.** Text such as `بدهی>۱۰۰۰۰۰۰ منطقه:۳` turns into filter chips. Comes with T1. **Built (first slice, batch D)** on the customers list: «شهر:تهران روز_از_خرید>30 مسئول:من» in the search box; debt is not a field yet.
 
 ### Customers and sales (CRM)
