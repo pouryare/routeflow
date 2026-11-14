@@ -1221,6 +1221,15 @@ export interface NotificationsArchive {
   user_id: number;
 }
 
+export interface NotificationTemplates {
+  body_fa: string | null;
+  organization_id: number;
+  title_fa: string;
+  type_code: string;
+  updated_at: string;
+  updated_by: number;
+}
+
 export interface NotificationTypes {
   active: Generated<number>;
   category: string;
@@ -2485,6 +2494,7 @@ export interface DB {
   notification_channels: NotificationChannels;
   notification_deliveries: NotificationDeliveries;
   notification_prefs: NotificationPrefs;
+  notification_templates: NotificationTemplates;
   notification_types: NotificationTypes;
   notifications: Notifications;
   notifications_archive: NotificationsArchive;
